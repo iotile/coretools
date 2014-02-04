@@ -5,7 +5,7 @@ from handler import MIBHandler
 import sys
 import os.path
 from pymomo.utilities import build, template
-from hex8.decode import *
+from pymomo.hex8.decode import *
 import intelhex
 
 block_size = 16
@@ -46,6 +46,9 @@ class MIBBlock:
 		self.valid = True
 		self.error_msg = ""
 		self.num_features = 0
+
+		if isinstance(ih, basestring):
+			ih = intelhex.IntelHex16bit(ih)
 
 		if ih is not None:
 			try:
@@ -94,6 +97,7 @@ class MIBBlock:
 
 	def _check_magic(self, ih):
 		magic_addr = self.base_addr + magic_offset
+		print "Checking offset 0x%X" % magic_addr
 		instr = ih[magic_addr]
 
 		#Last instruction should be retlw 0xAA for the magic number
@@ -140,14 +144,17 @@ class MIBBlock:
 
 		self.name = decode_string(ih, self.base_addr + name_offset, 7)
 		self.hw_type = decode_retlw(ih, self.base_addr + hw_offset)
-		#self.info = decode_retlw(ih, self.base_addr + info_offset)
-		#self.module_type = decode_retlw(ih, self.base_addr + type_offset)
+		self.info = decode_retlw(ih, self.base_addr + info_offset)
+		self.module_type = decode_retlw(ih, self.base_addr + type_offset)
+
+		self.revision = self.info >> 4
+		self.flags = self.info & 0x0F
 
 
-	def create_asm(self):
+	def create_asm(self, folder):
 		temp = template.RecursiveTemplate(MIBBlock.TemplateName)
 		temp.add(self)
-		temp.render('./')
+		temp.render(folder)
 
 	def __str__(self):
 		rep = "\n"
@@ -160,11 +167,15 @@ class MIBBlock:
 			return rep
 
 		rep += "Block Valid\n"
-		rep += "Number of Features: %d\n" % self.num_features
 		rep += "Name: '%s'\n" % self.name
 		rep += "Type: %d\n" % self.module_type
-		rep += "Flags: %d\n" % self.flags
+		rep += "MIB Revision: %d\n" % self.revision
+		rep += "Flags: %s\n" % bin(self.flags)
+		rep += "Number of Features: %d\n" % self.num_features
+
 		rep += "\nFeature List\n"
+
+
 
 		for f in self.features.keys():
 			rep += "%d:\n" % f
