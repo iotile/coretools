@@ -72,8 +72,6 @@ class MIBDescriptor:
 
 	def _add_cmd(self, num, symbol, num_ints, has_buffer):
 		handler = MIBHandler.Create(symbol=symbol, ints=num_ints, has_buffer=has_buffer)
-		print "Num ints: %d" % num_ints
-		print "Has buffer:", has_buffer
 		
 		self.features[self.curr_feature][num] = handler
 
@@ -88,7 +86,7 @@ class MIBDescriptor:
 		has_buffer = match['has_buffer']
 		num_ints = match['num_ints']
 
-		self._add_cmd(num, symbol, has_buffer, num_ints)
+		self._add_cmd(num, symbol, num_ints=num_ints, has_buffer=has_buffer)
 
 	def _parse_include(self, match):
 		filename = match['filename']

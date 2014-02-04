@@ -97,7 +97,6 @@ class MIBBlock:
 
 	def _check_magic(self, ih):
 		magic_addr = self.base_addr + magic_offset
-		print "Checking offset 0x%X" % magic_addr
 		instr = ih[magic_addr]
 
 		#Last instruction should be retlw 0xAA for the magic number
