@@ -123,6 +123,72 @@ class Board:
 
 		return export
 
+	def variant_data(self, variant, include_costs=False, cost_quantity=1, requirements=None):
+		"""
+		Return a dictionary describing this variant, suitable for using to fill a template.
+		Create an array of BOM line items corresponding to this assembly variant
+		"""
+
+		res = {}
+
+		if include_costs:
+			self.lookup_parts()
+			res['include_costs'] = True
+			res['cost_quantity'] = cost_quantity
+		else:
+			res['include_costs'] = False
+
+		var = self.variants[variant]
+		lib = PCBReferenceLibrary()
+		today = date.today()
+
+		res['company'] = "WellDone International"
+		res['part'] = self.partname
+		res['variant'] = variant
+		res['revision'] = self.revision
+		res['date'] = today.strftime('%x')
+		res['lines'] = []
+		for line in var:
+			num = len(line)
+			refs = map(lambda x: x.name, line)
+			foot = lib.find_package(line[0].package)[0]
+			value = line[0].value
+			manu = line[0].manu
+			mpn = line[0].mpn
+			distpn = line[0].digipn
+			dist = ""
+			descr = line[0].desc
+			if distpn:
+				dist = "Digikey"
+
+			if include_costs:
+				quantity = num*cost_quantity
+				id = PartIdentifier(line[0])
+				if id.build_reference() in self.oracle:
+					price = self.oracle[id.build_reference()].best_price(quantity, requirements)
+					if price is not None:
+						unitprice = price[0]
+						lineprice = num*unitprice
+					else:
+						unitprice = ""
+						lineprice = ""
+
+			ldict = {}
+			ldict['qty'] = num
+			ldict['refs'] = refs
+			ldict['footprint'] = foot
+			ldict['value'] = value
+			ldict['manu'] = manu
+			ldict['mpn'] = mpn
+			ldict['dist'] = dist
+			ldict['distpn'] = distpn
+			ldict['unitprice'] = unitprice
+			ldict['lineprice'] = lineprice 
+
+			res['lines'].append(ldict)
+
+		return res
+
 	def export_bom(self, variant, stream, include_costs=False, cost_quantity=1, requirements=None):
 		var = self.variants[variant]
 
