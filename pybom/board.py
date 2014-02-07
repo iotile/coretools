@@ -161,6 +161,9 @@ class Board:
 			if distpn:
 				dist = "Digikey"
 
+			unitprice = ""
+			lineprice = ""
+
 			if include_costs:
 				quantity = num*cost_quantity
 				id = PartIdentifier(line[0])
@@ -169,9 +172,6 @@ class Board:
 					if price is not None:
 						unitprice = price[0]
 						lineprice = num*unitprice
-					else:
-						unitprice = ""
-						lineprice = ""
 
 			ldict = {}
 			ldict['qty'] = num
@@ -181,6 +181,7 @@ class Board:
 			ldict['manu'] = manu
 			ldict['mpn'] = mpn
 			ldict['dist'] = dist
+			ldict['description'] = descr
 			ldict['distpn'] = distpn
 			ldict['unitprice'] = unitprice
 			ldict['lineprice'] = lineprice 
