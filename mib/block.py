@@ -21,6 +21,12 @@ specs_offset = 13
 handlers_offset = 14
 magic_offset = 15
 
+known_hwtypes = {
+	2: "12lf1822",
+	3: "16lf1823",
+	4: "16lf1847"
+}
+
 class MIBBlock:
 	"""
 	The block in program memory describing a MoMo application module.  The MIB block
@@ -149,6 +155,19 @@ class MIBBlock:
 		self.revision = self.info >> 4
 		self.flags = self.info & 0x0F
 
+		self._parse_hwtype()
+
+	def _parse_hwtype(self):
+		"""
+		Convert the numerical hw id to a chip name using the well-known
+		conversion table
+		"""
+
+		if self.hw_type not in known_hwtypes:
+			self.chip_name = "Unknown Chip (type=%d)" % self.hw_type
+
+		self.chip_name = known_hwtypes[self.hw_type]
+
 
 	def create_asm(self, folder):
 		temp = template.RecursiveTemplate(MIBBlock.TemplateName)
@@ -168,6 +187,7 @@ class MIBBlock:
 		rep += "Block Valid\n"
 		rep += "Name: '%s'\n" % self.name
 		rep += "Type: %d\n" % self.module_type
+		rep += "Hardware: %s\n" % self.chip_name
 		rep += "MIB Revision: %d\n" % self.revision
 		rep += "Flags: %s\n" % bin(self.flags)
 		rep += "Number of Features: %d\n" % self.num_features

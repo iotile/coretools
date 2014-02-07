@@ -3,6 +3,7 @@
 
 import json as json
 from paths import MomoPaths
+from pymomo.mib.config12 import MIB12Processor
 import os.path
 
 def load_settings():
@@ -30,6 +31,19 @@ def load_chip_info(chip):
 
 	return (aliases, chip_info)
 
+def get_proc(alias):
+	"""
+	Look up the alias into a proper name, get the chip info for that chip
+	and use that to build a MIB12Processor instance
+	"""
+
+	finder = get_chip_finder()
+	name = finder(alias)
+	aliases, info = load_chip_info(name)
+
+	proc = MIB12Processor(name, info)
+	return proc
+
 def merge_dicts(a, b):
     "merges b into a"
 
@@ -43,3 +57,33 @@ def merge_dicts(a, b):
             a[key] = b[key]
     
     return a
+
+def get_chip_finder():
+	"""
+	Create a function that takes in a chip alias and returns
+	the proper name of that chip.
+	"""
+
+	conf = load_settings()
+	targets = conf['mib12']['known_targets']
+
+	chips = {}
+
+	for target in targets:
+		names = [target]
+		if target in conf['mib12']['chip_settings']:
+			settings = conf['mib12']['chip_settings'][target]
+			if 'aliases' in settings:
+				aliases = settings['aliases']
+				names.extend(aliases)
+
+		chips[target] = set(names)
+
+	def finder_func(name):
+		for target, names in chips.iteritems():
+			if name in names:
+				return target
+
+		raise ValueError("Could not locate chip alias %s" % name)
+
+	return finder_func 
