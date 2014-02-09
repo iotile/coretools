@@ -35,10 +35,10 @@ def build_reflasher(stub, payload, chip):
 
 	oldret = Instruction('retlw 0')
 
-	if stub[start_addr] != Instruction('retlw 0').encode():
+	if stub[start_addr] != Instruction('retlw 0xAB').encode():
 		raise ValueError("Invalid reflashing stub, wrong instruction at start_addr 0x%X" % start_addr)
 
-	if stub[size_addr] != Instruction('retlw 0').encode():
+	if stub[size_addr] != Instruction('retlw 0xCD').encode():
 		raise ValueError("Invalid reflashing stub, wrong instruction at size_addr 0x%X" % size_addr)
 
 	start_instr = 'retlw 0x%X' % start_row
