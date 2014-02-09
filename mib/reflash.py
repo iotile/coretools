@@ -97,6 +97,9 @@ def analyze_stub(stub, proc):
 	mib_start = int(math.floor(mibblock[0]/proc.row_size))*proc.row_size
 	mib_end = mibblock[1]
 
+	if (highest_addr + 1) % proc.row_size != 0:
+		raise ValueError("Stub does not end on a row boundary, cannot insert payload")
+
 	print "Skipping mib row: (0x%X, 0x%X)" % (mib_start, mib_end)
 	print "Starting Address for payload: 0x%X" % (highest_addr+1)
 	
