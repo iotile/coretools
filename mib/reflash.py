@@ -106,7 +106,7 @@ def analyze_stub(stub, proc):
 	skip = build_range(mib_start, mib_end)
 	payload_start = highest_addr + 1
 
-	max_size = proc.total_prog_mem - payload_start
+	max_size = proc.total_prog_mem - payload_start - proc.row_size #we can fill the entire memory - the mib block row
 	print "Maximum payload size: %d words" % max_size
 
 	return {'skip':[skip], 'start':payload_start, 'max_size': max_size} 
