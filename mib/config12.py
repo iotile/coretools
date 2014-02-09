@@ -1,11 +1,12 @@
-#mib12_config.py
+#config12.py
+
+from pymomo.utilities import build
 
 class MIB12Processor:
 	"""
 	Collection of settings pertaining to the location of various important
 	ROM and RAM regions in the MIB12 framework.
 	"""
-
 
 	def __init__(self, name, settings):
 		self.settings = settings
@@ -23,3 +24,12 @@ class MIB12Processor:
 		self.row_size = self.settings['flash_row_words']
 		self.total_prog_mem = self.settings['total_rom']
 		self.first_app_page = self.app_rom[0] / self.row_size
+
+	@classmethod
+	def FromChip(cls, chip):
+		"""
+		Create a processor instance from a valid chip name defined in build_settings.json
+		"""
+
+		aliases, info = build.load_chip_info(chip)
+		return MIB12Processor(chip, info)

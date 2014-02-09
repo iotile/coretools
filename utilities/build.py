@@ -3,7 +3,6 @@
 
 import json as json
 from paths import MomoPaths
-from pymomo.mib.config12 import MIB12Processor
 import os.path
 
 def load_settings():
@@ -30,19 +29,6 @@ def load_chip_info(chip):
 	chip_info = merge_dicts(default, settings)
 
 	return (aliases, chip_info)
-
-def get_proc(alias):
-	"""
-	Look up the alias into a proper name, get the chip info for that chip
-	and use that to build a MIB12Processor instance
-	"""
-
-	finder = get_chip_finder()
-	name = finder(alias)
-	aliases, info = load_chip_info(name)
-
-	proc = MIB12Processor(name, info)
-	return proc
 
 def merge_dicts(a, b):
     "merges b into a"

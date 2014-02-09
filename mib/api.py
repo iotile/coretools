@@ -13,8 +13,7 @@ class MIBAPI:
 		with open(hexfile, "r"):
 			self.hf = intelhex.IntelHex16bit(hexfile)
 
-		aliases, info = build.load_chip_info(chip)
-		proc = MIB12Processor(chip, info)
+		proc = MIB12Processor.FromChip(chip)
 		self.api_base = proc.api_range[0]
 
 		self.valid = self.verify_api()
