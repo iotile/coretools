@@ -50,14 +50,10 @@ class RPCCommand (Command):
 
 		if status == 0:
 			num_bytes = ord(stream.trans.read())
-			print "Reading %d bytes" % num_bytes
 			buf = stream.trans.read(num_bytes)
 			self.result = buf
 
 		seq = stream.trans.read()
-		if seq == "":
-			print self.result
-
 		self.status = status
 
 		return self.result, stream.parse_term(seq)
@@ -74,7 +70,6 @@ class RPCCommand (Command):
 
 		#Otherwise, parse the results according to the type information given
 		size = len(self.result)
-
 
 		if size < 2*num_ints:
 			raise RPCException('Return value too short to unpack', self.result)
