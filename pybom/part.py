@@ -53,9 +53,11 @@ class Part:
 		digipn = find_digipn(elem, variant)
 
 		if (mpn is not None and manu is not None) or (digipn is not None and digipn != ""):
-			return Part(name, pkg, digipn=digipn, mpn=mpn, manu=manu, value=value, desc=desc)
+			return Part(name, pkg, digipn=digipn, mpn=mpn, manu=manu, value=value, desc=desc), True
+		elif mpn == "" or digipn == "":
+			return None, True
 
-		return None
+		return None, False
 
 	def __init__(self, name, package, mpn=None, manu=None, digipn=None, value=None, desc=None):
 		"""
@@ -136,4 +138,4 @@ def find_digipn(part, variant):
 	if pn_elem is None:
 		return None
 
-	return pn_elem.get('value')
+	return pn_elem.get('value', "")

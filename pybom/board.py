@@ -293,28 +293,38 @@ class Board:
 		unknown = []
 		constant = []
 		variable = []
-		variants = find_variants(elems)
+		variants = find_variants(root)
+
+		all_vars = set(variants)
 
 		#Create a part object for each part that has a valid digikey-pn
 		#If there are multiple digikey part numbers, create a part for each one
 		for part in parts:
 			attribs = part.findall("attribute")
-			popd = filter(lambda x: x.get('name', 'Unnamed').startswith('DIGIKEY-PN'), attribs)
-
 			
-			valid_part = False	
+			valid_part = False
+			found_vars = set()
+
+			for v in variants:
+				p,found = Part.FromBoardElement(part, v)
+				if p and found:
+					variable.append( (v, p) )
+					found_vars.add(v)
+					valid_part = True
+				elif found:
+					#If this part has digipn == "", then it should not be populated in this variant
+					found_vars.add(v)
 
 			#See if this is a constant part (with no changes in different variants)
-			p = Part.FromBoardElement(part, "")
-			if p:
+			p,found = Part.FromBoardElement(part, "")
+			if p and len(found_vars) == 0:
 				constant.append(p)
 				valid_part = True
-			else:
-				for v in variants:
-					p = Part.FromBoardElement(part, v)
-					if p:
-						variable.append( (v, p) )
-						valid_part = True
+			elif p and len(found_vars) != len(all_vars):
+				#there are some variants that want the default part and some that want a change
+				for var in all_vars - found_vars:
+					variable.append( (var, p) )
+					valid_part = True
 
 			#Make sure this part has information for at least one assembly variant
 			if not valid_part:
