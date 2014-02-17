@@ -29,6 +29,13 @@ class MIBProxyObject (object):
 
 		if "raise" not in kw or kw['raise'] == True:
 			if res['status'] != 0:
-				raise RPCException(res.status, res.error)
+				raise RPCException(res['status'], res['error'])
 
 		return res
+
+	def verbose_printer(self, verbose):
+		def print_verb(str):
+			if verbose:
+				print str
+
+		return print_verb

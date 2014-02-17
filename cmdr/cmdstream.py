@@ -26,6 +26,8 @@ class CMDStream:
 			result = CMDStream.OkayResult
 		elif term == CMDStream.NACK:
 			result = CMDStream.ErrorResult
+		elif term == CMDStream.SYN:
+			result = CMDStream.PendingResult
 		else:
 			raise ValueError("Invalid terminator character encountered: %d" % term)
 
