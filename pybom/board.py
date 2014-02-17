@@ -386,7 +386,7 @@ def get_variant_id(pn_name):
 	return pn_name
 
 def find_attribute(root, name):
-	attr = root.find("./drawing/board/attributes/attribute[@name='%s']" % name)
+	attr = root.find(".//attribute[@name='%s']" % name)
 	if attr is None:
 		raise ValueError("Required global board attribute not found: %s" % name)
 
