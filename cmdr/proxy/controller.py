@@ -24,7 +24,33 @@ class MIBController (proxy.MIBProxyObject):
 		"""
 		res = self.rpc(42, 2, index, result_type=(0,True))
 
-		return ModuleDescriptor(res['buffer'])
+		return ModuleDescriptor(res['buffer'], 11+index)
+
+	def get_module(self, by_name=None, by_address=None, force=False):
+		"""
+		Given a module name or a fixed address, return a proxy object
+		for that module if it is connected to the bus.  If force is True
+		this call will construct an proxy object for the given address even
+		if the module is not found in the controller's database of connected
+		modules.
+		"""
+
+		if by_address is not None and force:
+			obj = proxy.MIBProxyObject(self.stream, by_address)
+			obj.name = 'Unknown'
+			return obj
+
+		mods = self.enumerate_modules()
+		if by_name is not None and len(by_name) < 7:
+			by_name += (' '*(7 - len(by_name)))
+
+		for mod in mods:
+			if by_name == mod.name or by_address == mod.address:
+				obj = proxy.MIBProxyObject(self.stream, mod.address)
+				obj.name = mod.name
+				return obj
+
+		raise ValueError("Could not find module by name or address (name=%s, address=%s)" % (str(by_name), str(by_address)))
 
 	def enumerate_modules(self):
 		"""

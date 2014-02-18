@@ -6,7 +6,7 @@ class ModuleDescriptor:
 	A structure holding information about a MIB module
 	"""
 
-	def __init__(self, buffer):
+	def __init__(self, buffer, addr):
 		if len(buffer) != 11:
 			raise TypeException('ModuleDescriptor', 'Length should have been 11, was %d' % len(buffer))
 
@@ -18,3 +18,4 @@ class ModuleDescriptor:
 		self.flags = info >> 4
 		self.name = name
 		self.num_features = feat_cnt
+		self.address = addr
