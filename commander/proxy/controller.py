@@ -280,8 +280,6 @@ class MIBController (proxy.MIBProxyObject):
 			prog = ProgressBar("Writing Flash", count)
 			prog.start()
 
-		#We can only write on page boundaries at a time, so internally divide
-		#the structure in page aligned segments and write those.
 		i = 0
 		while i < count:
 			if verbose:
@@ -291,13 +289,7 @@ class MIBController (proxy.MIBProxyObject):
 			addr_low = addr & 0xFFFF
 			addr_high = addr >> 16
 
-			page = addr & ~(0xFF)
-			next_page = page + 256
-			remaining = next_page - addr
-
-			length = min(14, count-i)
-			length = min(length, remaining)
-			
+			length = min(14, count-i)		
 			res = self.rpc(42, 4, addr_low, addr_high, buffer[i:i+length], result_type=(2, False))
 
 			written_addr = res['ints'][0] | (res['ints'][1] << 16)
