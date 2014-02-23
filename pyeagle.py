@@ -69,7 +69,7 @@ def process_section(board, output, type, layers):
 
 		os.remove(remfile)
 
-def process_2layer(board, output_dir, basename):
+def process_2layer(board, output_dir, basename, paste=False):
 	"""
 	Process the eagle file board specified to produce the correct gerber files for
 	fabrication and assembly.  All output files will have the same basename with 
@@ -82,6 +82,7 @@ def process_2layer(board, output_dir, basename):
 	bot_mask = os.path.join(output_dir, basename + '.sts')
 	top_mask = os.path.join(output_dir, basename + '.stc')
 	drill = os.path.join(output_dir, basename + '.drd')
+	top_cream = os.path.join(output_dir, basename + '.crm')
 
 	#Make sure the output dir exists
 	ensure_dir_exists(output_dir)
@@ -93,11 +94,14 @@ def process_2layer(board, output_dir, basename):
 	process_section(board, bot_mask, 'gerber', ['bStop'])
 	process_section(board, drill, 'excellon', ['Drills', 'Holes'])
 
+	if paste:
+		process_section(board, top_cream, 'gerber', ['tCream'])
+
 def ensure_dir_exists(output_dir):
 	if not os.path.isdir(output_dir):
 		os.makedirs(output_dir)
 
-def create_readme(output_dir, basename, brd_obj):
+def create_readme(output_dir, basename, brd_obj, paste=False):
 	with open(os.path.join(output_dir, 'README.txt'), "w") as f:
 		f.write('WellDone\n')
 		f.write("PCB Fabrication Files\n")
@@ -111,6 +115,10 @@ def create_readme(output_dir, basename, brd_obj):
 		f.write('%s: Top Soldermask\n' % (basename+'.stc'))
 		f.write('%s: Bottom Soldermask\n' % (basename+'.sts'))
 		f.write('%s: Bottom Copper\n' % (basename+'.sol'))
+
+		if paste:
+			f.write('%s: Top Cream\n' % (basename+'.crm'))
+
 		f.write('%s: Excellon Drill File\n' % (basename+'.drd'))
 
 def build_assembly_drawing(board, output):
@@ -120,7 +128,7 @@ def build_assembly_drawing(board, output):
 
 	export_image(board, output, ['tPlace', 'tNames', 'tDocu', 'Document', 'Reference','Dimension'])
 
-def build_production(board, output_dir):
+def build_production(board, output_dir, paste=False):
 	"""
 	Build the set of production files associated with this EAGLE board file.
 	Directory structure will be:
@@ -148,8 +156,8 @@ def build_production(board, output_dir):
 		shutil.rmtree(ass_dir)
 
 	#Create fabrication files
-	process_2layer(board, fab_dir, basename)
-	create_readme(fab_dir, basename, board_obj)
+	process_2layer(board, fab_dir, basename, paste=paste)
+	create_readme(fab_dir, basename, board_obj, paste=paste)
 	zipfab(fab_dir, os.path.join(output_dir, basename + '_fab'))
 
 	#Create assembly files

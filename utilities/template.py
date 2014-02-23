@@ -5,7 +5,7 @@
 import os.path
 import os
 from paths import MomoPaths
-
+import tempfile
 import Cheetah.Template
 
 class RecursiveTemplate:
@@ -43,7 +43,6 @@ class RecursiveTemplate:
 	def clear(self):
 		self.objs = []
 
-
 	def format_string(self, string):
 		templ = Cheetah.Template.Template(source=string, searchList=self.objs)
 
@@ -58,6 +57,22 @@ class RecursiveTemplate:
 	def _ensure_path(self,path):
 		if not os.path.exists(path):
 			os.makedirs(path)
+
+	def format_temp(self):
+		"""
+		For a nonrecursive template, render its output to a temporary file
+		and return the file name.  The caller is responible for deleting the file
+		when it is no longer needed.
+		"""
+
+		if self.recursive:
+			raise ValueError("Cannot call format_temp on recursive templates")
+
+		fh, outpath = tempfile.mkstemp();
+		os.close(fh)
+
+		self.format_file(os.path.join(self.basepath, self.name), outpath)
+		return outpath
 
 	def format(self, file_in, output_dir):
 		"""
@@ -78,7 +93,6 @@ class RecursiveTemplate:
 		dname = os.path.dirname(path)
 
 		self._ensure_path(dname)
-
 		self.format_file(inpath, filled_path)
 
 	def render(self, output_dir):

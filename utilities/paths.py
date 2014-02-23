@@ -9,6 +9,7 @@ class MomoPaths:
 		self.modules = os.path.join(self.base, 'momo_modules')
 		self.templates = os.path.join(self.config, 'templates')
 		self.pcb = os.path.join(self.base, 'pcb')
+		self.resources = os.path.join(self.base, 'resources')
 
 	def select(self, *args, **kwargs):
 		"""

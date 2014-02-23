@@ -43,7 +43,13 @@ class Part:
 
 		#allow overriding this package with a custom attribute
 		pkg = find_attribute(elem, 'FOOTPRINT', variant, pkg)
-		desc = find_attribute(elem, 'DESCRIPTION', variant, None)	
+		desc = find_attribute(elem, 'DESCRIPTION', variant, None)
+		pop_attr = find_attribute(elem, 'POPULATE', variant, "yes")
+
+		if pop_attr.lower() == "no":
+			return None, True
+		elif pop_attr != "yes":
+			raise ValueError("Unknown value in POPULATE attribute in element %s: %s" % (name, pop_attr))
 
 		#Only keep the value for part types where that is meaningful
 		if not Part.ref.has_value(name):
@@ -53,9 +59,11 @@ class Part:
 		digipn = find_digipn(elem, variant)
 
 		if (mpn is not None and manu is not None) or (digipn is not None and digipn != ""):
-			return Part(name, pkg, digipn=digipn, mpn=mpn, manu=manu, value=value, desc=desc)
+			return Part(name, pkg, digipn=digipn, mpn=mpn, manu=manu, value=value, desc=desc), True
+		elif mpn == "" or digipn == "":
+			return None, True
 
-		return None
+		return None, False
 
 	def __init__(self, name, package, mpn=None, manu=None, digipn=None, value=None, desc=None):
 		"""
@@ -136,4 +144,4 @@ def find_digipn(part, variant):
 	if pn_elem is None:
 		return None
 
-	return pn_elem.get('value')
+	return pn_elem.get('value', "")
