@@ -1,6 +1,6 @@
 import proxy
-from pymomo.cmdr.exceptions import *
-from pymomo.cmdr.types import *
+from pymomo.commander.exceptions import *
+from pymomo.commander.types import *
 from pymomo.utilities.console import ProgressBar
 import struct
 from intelhex import IntelHex
@@ -173,10 +173,11 @@ class MIBController (proxy.MIBProxyObject):
 		Get the firmware size and module type stored in the indicated bucket
 		"""
 
-		res = self.rpc(7, 3, bucket, result_type=(3, False))
+		res = self.rpc(7, 3, bucket, result_type=(5, False))
 
 		length = res['ints'][1] << 16 | res['ints'][2]
-		return {'module_type': res['ints'][0], 'length': length}
+		base = res['ints'][3] << 16 | res['ints'][4]
+		return {'module_type': res['ints'][0], 'length': length, 'base_address': base}
 
 	def get_firmware_count(self):
 		"""

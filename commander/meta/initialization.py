@@ -1,6 +1,6 @@
-from pymomo.cmdr import transport, cmdstream
-from pymomo.cmdr.proxy import *
-from pymomo.cmdr.exceptions import *
+from pymomo.commander import transport, cmdstream
+from pymomo.commander.proxy import *
+from pymomo.commander.exceptions import *
 
 def get_controller(serial_port):
 	"""
