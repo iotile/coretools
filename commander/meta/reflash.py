@@ -30,3 +30,11 @@ def reflash_module(controller, hexfile, name=None, address=None, force=False, ve
 		prog.end()
 	else:
 		prog.sleep(10)
+
+	if verbose:
+		print "Resetting the bus..."
+
+	controller.reset_bus(sync=True)
+
+	if verbose:
+		print "Reflash complete"

@@ -4,11 +4,26 @@ from pymomo.commander.types import *
 from pymomo.utilities.console import ProgressBar
 import struct
 from intelhex import IntelHex
+from time import sleep
 
 class MIBController (proxy.MIBProxyObject):
+	MaxModuleFirmwares = 4
+
 	def __init__(self, stream):
 		super(MIBController, self).__init__(stream, 8)
 		self.name = 'Controller'
+
+	def reset_bus(self, sync=True):
+		"""
+		Cycle power on all attched momo modules except the controller.
+		The count of attached modules is also reset to zero in anticipation
+		of the modules reregistering
+		"""
+
+		res = self.rpc(42, 5)
+
+		if sync:
+			sleep(1.5)
 
 	def count_modules(self):
 		"""
@@ -132,10 +147,10 @@ class MIBController (proxy.MIBProxyObject):
 		return bucket
 
 	def pull_firmware(self, bucket, verbose=True, pic12=True):
-		cnt = self.get_firmware_count()
+		res, reason = self._firmware_bucket_loaded(bucket)
 
-		if bucket >= cnt:
-			raise ValueError("Invalid firmware bucket specified, only %d buckets are filled" % cnt)
+		if res == False:
+			raise ValueError(reason)
 
 		info = self.get_firmware_info(bucket)
 		length = info['length']
@@ -161,9 +176,41 @@ class MIBController (proxy.MIBProxyObject):
 
 		return out
 
+	def _firmware_bucket_loaded(self, index):
+		res = self.get_firmware_count()
+		mods = res['module_buckets']
+
+		if index < 4 and index >= mods:
+			return False, "Invalid firmware bucket specified, only %d buckets are filled" % mods
+
+		if index == 4 and not res['controller_firmware']:
+			return False, "Controller firmware requested and none is loaded"
+
+		if index == 5 and not res['backup_firmware']:
+			return False, "Backup firmware requested and none is loaded"
+
+		if index > 5:
+			return False, "Invalid bucket index, there are only 6 firmware buckets (0-5)."
+
+		return True, "" 
+
 	def get_firmware_count(self):
-		res = self.rpc(7, 5, result_type=(1, False))
-		return res['ints'][0]
+		"""
+		Return a dictionary containing:
+		- the number of module firmwares loaded
+		- if there is a controller firmware loaded
+		- if there is a backup controller firmware loaded
+		"""
+
+		res = self.rpc(7, 5, result_type=(2, False))
+		con = res['ints'][1]
+
+		dic = {}
+		dic['module_buckets'] = res['ints'][0]
+		dic['controller_firmware'] = (con&0b1 == 1)
+		dic['backup_firmware'] = ((con >> 1) == 1)
+
+		return dic
 
 	def clear_firmware_cache(self):
 		self.rpc(7, 0x0A)
@@ -173,16 +220,11 @@ class MIBController (proxy.MIBProxyObject):
 		Get the firmware size and module type stored in the indicated bucket
 		"""
 
-		res = self.rpc(7, 3, bucket, result_type=(5, False))
+		res = self.rpc(7, 3, bucket, result_type=(7, False))
 
 		length = res['ints'][1] << 16 | res['ints'][2]
 		base = res['ints'][3] << 16 | res['ints'][4]
-		return {'module_type': res['ints'][0], 'length': length, 'base_address': base}
+		sub_start = res['ints'][5]
+		subs = res['ints'][6]
 
-	def get_firmware_count(self):
-		"""
-		Get the number of firmware buckets currently occupied
-		"""
-
-		res = self.rpc(7, 5, result_type=(1, False))
-		return res['ints'][0]
+		return {'module_type': res['ints'][0], 'length': length, 'base_address': base, 'bucket_start': sub_start, 'bucket_size': subs}
