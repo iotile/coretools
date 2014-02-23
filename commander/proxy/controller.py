@@ -228,3 +228,93 @@ class MIBController (proxy.MIBProxyObject):
 		subs = res['ints'][6]
 
 		return {'module_type': res['ints'][0], 'length': length, 'base_address': base, 'bucket_start': sub_start, 'bucket_size': subs}
+
+	def read_flash(self, baseaddr, count, verbose=True):
+		"""
+		Read count bytes of the controller's external flash starting at addr.
+		The flash is read 20 bytes at a time since this is the maximum mib 
+		frame size.
+		"""
+
+		if baseaddr >= 1024*1024:
+			raise ValueError("Address too large, flash is only 1MB in size")
+
+		buffer = bytearray()
+
+		if verbose:
+			prog = ProgressBar("Reading Flash", count)
+			prog.start()
+
+		for i in xrange(0, count, 20):
+			if verbose:
+				prog.progress(i)
+
+			addr = baseaddr + i
+			addr_low = addr & 0xFFFF
+			addr_high = addr >> 16
+
+			length = min(20, count-i)
+
+			res = self.rpc(42, 3, addr_low, addr_high, result_type=(0, True))
+			buffer.extend(res['buffer'][0:length])
+
+		if len(buffer) != count:
+			raise RuntimeError("Unknown error in read_flash, tried to read %d bytes, only read %d" % (count, len(buffer)))
+
+		if verbose:
+			prog.end()
+
+		return buffer
+
+	def write_flash(self, baseaddr, buffer, verbose=True):
+		"""
+		Write all of the bytes in buffer to the controller's external flash starting at baseaddr
+		"""
+
+		count = len(buffer)
+
+		if baseaddr >= 1024*1024:
+			raise ValueError("Address too large, flash is only 1MB in size")
+
+		if verbose:
+			prog = ProgressBar("Writing Flash", count)
+			prog.start()
+
+		#We can only write on page boundaries at a time, so internally divide
+		#the structure in page aligned segments and write those.
+		i = 0
+		while i < count:
+			if verbose:
+				prog.progress(i)
+
+			addr = baseaddr + i
+			addr_low = addr & 0xFFFF
+			addr_high = addr >> 16
+
+			page = addr & ~(0xFF)
+			next_page = page + 256
+			remaining = next_page - addr
+
+			length = min(14, count-i)
+			length = min(length, remaining)
+			
+			res = self.rpc(42, 4, addr_low, addr_high, buffer[i:i+length], result_type=(2, False))
+
+			written_addr = res['ints'][0] | (res['ints'][1] << 16)
+
+			if written_addr != addr:
+				raise RuntimeError("Tried to write to address 0x%X but wrote to address 0x%X instead" % (addr, written_addr))
+
+			i += length
+
+		if verbose:
+			prog.end()
+
+	def erase_flash(self, addr):
+		if addr >= 1024*1024:
+			raise ValueError("Address too large, flash is only 1MB in size")
+
+		addr_low = addr & 0xFFFF
+		addr_high = addr >> 16
+
+		res = self.rpc(42, 6, addr_low, addr_high)
