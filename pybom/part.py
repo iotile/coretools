@@ -43,7 +43,13 @@ class Part:
 
 		#allow overriding this package with a custom attribute
 		pkg = find_attribute(elem, 'FOOTPRINT', variant, pkg)
-		desc = find_attribute(elem, 'DESCRIPTION', variant, None)	
+		desc = find_attribute(elem, 'DESCRIPTION', variant, None)
+		pop_attr = find_attribute(elem, 'POPULATE', variant, "yes")
+
+		if pop_attr.lower() == "no":
+			return None, True
+		elif pop_attr != "yes":
+			raise ValueError("Unknown value in POPULATE attribute in element %s: %s" % (name, pop_attr))
 
 		#Only keep the value for part types where that is meaningful
 		if not Part.ref.has_value(name):

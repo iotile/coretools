@@ -10,7 +10,7 @@ from octopart.octopart import Octopart
 from reference import PCBReferenceLibrary
 
 class Board:
-	def __init__(self, name, file, variants, partname, width, height, revision, unknown):
+	def __init__(self, name, file, variants, partname, width, height, revision, unknown, nopop):
 		"""
 		Create a Board Object with 1 or more assembly variants from the variant dictionary passed in.
 		"""
@@ -23,6 +23,7 @@ class Board:
 		self.height = height
 		self.revision = revision
 		self.unknown = unknown
+		self.no_pop = nopop
 
 	def list_variants(self):
 		print "Assembly Variants"
@@ -47,6 +48,11 @@ class Board:
 			for line in self.variants[var]:
 				refs = map(lambda x: x.name, line)
 				ids.update(refs)
+
+		#If we're asked for all of the ids on this board, also include those that
+		#may never be populated
+		if variant is None:
+			ids.update(self.no_pop)
 
 		return ids
 
@@ -291,6 +297,7 @@ class Board:
 		parts = list(elems)
 
 		unknown = []
+		nopop = []
 		constant = []
 		variable = []
 		variants = find_variants(root)
@@ -299,11 +306,10 @@ class Board:
 
 		#Create a part object for each part that has a valid digikey-pn
 		#If there are multiple digikey part numbers, create a part for each one
-		for part in parts:
-			attribs = part.findall("attribute")
-			
+		for part in parts:			
 			valid_part = False
 			found_vars = set()
+			nopop_vars = set()
 
 			for v in variants:
 				p,found = Part.FromBoardElement(part, v)
@@ -312,17 +318,19 @@ class Board:
 					found_vars.add(v)
 					valid_part = True
 				elif found:
-					#If this part has digipn == "", then it should not be populated in this variant
-					found_vars.add(v)
+					#If this part has digipn == "" or Populate=no, then it should not be populated in this variant
+					valid_part = True
+					nopop_vars.add(v)
+					nopop.append(part.get('name',"Unknown Name"))
 
 			#See if this is a constant part (with no changes in different variants)
 			p,found = Part.FromBoardElement(part, "")
-			if p and len(found_vars) == 0:
+			if p and len(found_vars) == 0 and len(nopop_vars) == 0:
 				constant.append(p)
 				valid_part = True
 			elif p and len(found_vars) != len(all_vars):
 				#there are some variants that want the default part and some that want a change
-				for var in all_vars - found_vars:
+				for var in (all_vars - found_vars) - nopop_vars:
 					variable.append( (var, p) )
 					valid_part = True
 
@@ -340,7 +348,8 @@ class Board:
 						width=find_attribute(root, 'WIDTH'),
 						height=find_attribute(root, 'HEIGHT'),
 						revision=find_attribute(root, 'REVISION'),
-						unknown=unknown)
+						unknown=unknown,
+						nopop=nopop)
 
 	def _process_variant(self, parts):
 		"""
