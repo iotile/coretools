@@ -1,7 +1,7 @@
 #Transport layer for momo commander.  Should be able to send a stream of bytes
 #and list whether any fsu devices are presently connected
 
-from pymomo.cmdr.exceptions import *
+from pymomo.commander.exceptions import *
 
 class Transport:
 	def read_until(self, chars):

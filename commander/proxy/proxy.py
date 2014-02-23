@@ -1,7 +1,7 @@
 #MIB Proxy Objects
 
-from pymomo.cmdr.commands import RPCCommand
-from pymomo.cmdr.exceptions import *
+from pymomo.commander.commands import RPCCommand
+from pymomo.commander.exceptions import *
 
 class MIBProxyObject (object):
 	def __init__(self, stream, address):

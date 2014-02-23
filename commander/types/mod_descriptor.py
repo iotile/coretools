@@ -1,4 +1,4 @@
-from pymomo.cmdr.exceptions import *
+from pymomo.commander.exceptions import *
 import struct
 
 class ModuleDescriptor:

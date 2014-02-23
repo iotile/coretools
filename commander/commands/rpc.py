@@ -1,6 +1,6 @@
 
 from command import Command
-from pymomo.cmdr.exceptions import *
+from pymomo.commander.exceptions import *
 import base64
 
 class RPCCommand (Command):

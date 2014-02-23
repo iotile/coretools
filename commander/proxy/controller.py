@@ -1,6 +1,6 @@
 import proxy
-from pymomo.cmdr.exceptions import *
-from pymomo.cmdr.types import *
+from pymomo.commander.exceptions import *
+from pymomo.commander.types import *
 from pymomo.utilities.console import ProgressBar
 import struct
 from intelhex import IntelHex
