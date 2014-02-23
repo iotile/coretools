@@ -1,0 +1,1 @@
+from mod_descriptor import ModuleDescriptor
