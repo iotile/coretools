@@ -9,3 +9,10 @@ class RPCException:
 	def __init__(self, type, data):
 		self.type = type
 		self.data = data
+
+class InitializationException:
+	def __init__(self, description):
+		self.message = description
+
+	def __str__(self):
+		return self.message
