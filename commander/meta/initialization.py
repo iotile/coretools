@@ -30,6 +30,4 @@ def find_momo_serial():
 	"""
 	for port, desc, hwid in sorted( list_ports.comports() ):
 		if re.match( r"USB VID:PID=403:(\d+).*", hwid) != None:
-			continue
-		else:
 			return port
