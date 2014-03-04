@@ -170,9 +170,11 @@ class MIBController (proxy.MIBProxyObject):
 				if pic12 and (j%2 != 0):
 					out[i+j] &= 0x3F
 
-			prog.progress(i//20)
+			if verbose:
+				prog.progress(i//20)
 
-		prog.end()
+		if verbose:
+			prog.end()
 
 		return out
 
