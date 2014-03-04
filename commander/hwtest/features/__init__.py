@@ -1,2 +1,2 @@
 
-from firmware_cache import TestFirmwareCache
+from test_firmware_cache import TestFirmwareCache
