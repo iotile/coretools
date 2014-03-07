@@ -1,6 +1,7 @@
 import proxy
 from pymomo.commander.exceptions import *
 from pymomo.commander.types import *
+from pymomo.commander.cmdstream import *
 from pymomo.utilities.console import ProgressBar
 import struct
 from intelhex import IntelHex
@@ -312,3 +313,42 @@ class MIBController (proxy.MIBProxyObject):
 		addr_high = addr >> 16
 
 		res = self.rpc(42, 6, addr_low, addr_high)
+
+	def alarm_asserted(self):
+		"""
+		Query the field service unit if the alarm pin on the bus is asserted.  Returns True if 
+		the alarm is asserted (low value since it's active low).  Returns False otherwise
+		"""
+
+		resp, result = self.stream.send_cmd("alarm status")
+
+		if result != CMDStream.OkayResult:
+			raise RuntimeError("Alarm status command failed")
+
+		resp = resp.lstrip().rstrip()
+
+		val = int(resp)
+
+		if val == 0:
+			return True
+		elif val == 1:
+			return False
+		else:
+			raise RuntimeError("Invalid result returned from 'alarm status' command: %s" % resp)
+
+
+	def set_alarm(self, asserted):
+		"""
+		Instruct the field service unit to assert or deassert the alarm line on the MoMo bus.
+		"""
+
+		if asserted:
+			arg = "yes"
+		else:
+			arg = "no"
+
+		cmd = "alarm %s" % arg
+
+		resp, result = self.stream.send_cmd(cmd)
+		if result != CMDStream.OkayResult:
+			raise RuntimeError("Set alarm command failed")
