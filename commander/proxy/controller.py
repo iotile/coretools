@@ -321,7 +321,6 @@ class MIBController (proxy.MIBProxyObject):
 		"""
 
 		resp, result = self.stream.send_cmd("alarm status")
-
 		if result != CMDStream.OkayResult:
 			raise RuntimeError("Alarm status command failed")
 

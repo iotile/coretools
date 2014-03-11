@@ -6,8 +6,8 @@ class CMDStream:
 	"""
 
 	#Types of frame markers
-	ACK = 0x15
-	NACK = 0x06
+	ACK = 0x06
+	NACK = 0x15
 	SYN = 0x16
 	EOT = 0x04
 	term_chars = [ACK, NACK, SYN, EOT]
@@ -35,7 +35,6 @@ class CMDStream:
 
 	def read_frame(self):
 		buffer, tchar = self.trans.read_until(CMDStream.term_chars)
-
 		return buffer, self.parse_term(tchar)
 
 	def send_cmd(self, cmd):
