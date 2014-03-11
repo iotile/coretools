@@ -325,7 +325,6 @@ class MIBController (proxy.MIBProxyObject):
 			raise RuntimeError("Alarm status command failed")
 
 		resp = resp.lstrip().rstrip()
-
 		val = int(resp)
 
 		if val == 0:
