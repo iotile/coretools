@@ -34,6 +34,13 @@ class MIBController (proxy.MIBProxyObject):
 		res = self.rpc(42, 1, result_type=(1, False))
 		return res['ints'][0]
 
+	def reflash(self):
+		try:
+			self.rpc(42, 0xA)
+		except RPCException as e:
+			if e.type != 7:
+				raise e
+
 	def describe_module(self, index):
 		"""
 		Describe the module given its module index
