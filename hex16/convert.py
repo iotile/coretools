@@ -23,3 +23,19 @@ def unpad_pic24_hex(hexfile):
 		j += 3
 
 	return out
+
+def pad_pic24_hex(f):
+	out = ih.IntelHex()
+
+	i = 0
+	j = 0
+	
+	for i in xrange(0, len(f), 3):
+		out[j+0] = f[i+0]
+		out[j+1] = f[i+1]
+		out[j+2] = f[i+2]
+		out[j+3] = 0x00
+
+		j += 4
+
+	return out
