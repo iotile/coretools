@@ -19,6 +19,19 @@ class GSMModule (proxy.MIBProxyObject):
 
 		self.rpc(10, 1)
 
+	def send_text(self, number, text):
+		"""
+		Send a text message to the given number which must have the form:
+		+NUMBER with no dashes or spaces, for example:
+		+16506695211
+		"""
+		self.rpc(11, 0, number)
+		for i in xrange(0, len(text), 20):
+			buf = text[i:i+20]
+			self.rpc(11, 1, buf)
+
+		self.rpc(11, 2)
+
 	def module_on(self):
 		res = self.rpc(10, 0, result_type=(1, False))
 
