@@ -1,5 +1,8 @@
 
 import os.path
+import sys
+import subprocess
+import functools
 
 class MomoPaths:
 	def __init__(self):
@@ -48,3 +51,32 @@ class MomoPaths:
 				break
 
 		return files
+
+def memoize(obj):
+	cache = obj.cache = {}
+
+	@functools.wraps(obj)
+	def memoizer(*args, **kwargs):
+		key = str(args) + str(kwargs)
+		if key not in cache:
+			cache[key] = obj(*args, **kwargs)
+		return cache[key]
+	
+	return memoizer
+
+@memoize
+def convert_path(path):
+	"""
+	If we are running on cygwin and passing an absolute path to a utility that is not cygwin
+	aware, we need to convert that path to a windows style path. 
+	"""
+
+	if not os.path.isabs(path):
+		return path
+
+	if sys.platform == 'cygwin':
+		out = subprocess.check_output(['cygpath', '-mw', path])
+		out = out.lstrip().rstrip()
+		return out
+
+	return path
