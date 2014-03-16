@@ -22,8 +22,7 @@ class GSMModule (proxy.MIBProxyObject):
 	def send_text(self, number, text):
 		"""
 		Send a text message to the given number which must have the form:
-		+NUMBER with no dashes or spaces, for example:
-		+16506695211
+		+NUMBER with no dashes or spaces, for example: +16506695211
 		"""
 		self.rpc(11, 0, number)
 		for i in xrange(0, len(text), 20):
