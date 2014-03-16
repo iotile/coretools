@@ -16,7 +16,7 @@ class MIBController (proxy.MIBProxyObject):
 
 	def reset_bus(self, sync=True):
 		"""
-		Cycle power on all attched momo modules except the controller.
+		Cycle power on all attached momo modules except the controller.
 		The count of attached modules is also reset to zero in anticipation
 		of the modules reregistering
 		"""
