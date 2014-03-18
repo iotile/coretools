@@ -13,9 +13,9 @@ def get_controller(serial_port=None):
 	"""
 
 	if serial_port == None:
-		serial_port = find_momo_serial()
+		serial_port = _find_momo_serial()
 		if serial_port == None:
-			raise InitializationException( "No port specified and no valid USB device detected." )
+			raise NoSerialConnectionException( _get_serial_ports() )
 
 	s = transport.SerialTransport(serial_port)
 	c = cmdstream.CMDStream(s)
@@ -23,13 +23,15 @@ def get_controller(serial_port=None):
 	con = MIBController(c)
 	return con
 
-def find_momo_serial():
+def _get_serial_ports():
+	return list_ports.comports()
+
+def _find_momo_serial():
 	"""
 	Iterate over all connected COM devices and return the first
 	one that matches FTDI's Vendor ID (403)
 	"""
 
-	for port, desc, hwid in sorted( list_ports.comports() ):
-		print port, desc, hwid
+	for port, desc, hwid in _get_serial_ports():
 		if (re.match( r"USB VID:PID=0?403:6015", hwid) != None) or (re.match( r".*VID_0?403.PID_6015", hwid) != None):
 			return port
