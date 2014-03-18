@@ -72,11 +72,11 @@ def convert_path(path):
 	"""
 
 	if not os.path.isabs(path):
-		return path
+		return '"' + path + '"'
 
 	if sys.platform == 'cygwin':
 		out = subprocess.check_output(['cygpath', '-mw', path])
 		out = out.lstrip().rstrip()
-		return out
+		return '"' + out + '"'
 
-	return path
+	return '"' + path + '"'
