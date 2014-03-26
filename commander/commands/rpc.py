@@ -121,7 +121,6 @@ class RPCCommand (Command):
 
 		return self.result, stream.parse_term(seq)
 
-
 	def parse_result(self, num_ints, buff):
 		parsed = {'ints':[], 'buffer':"", 'status': self.status, 'error': 'No Error'}
 
