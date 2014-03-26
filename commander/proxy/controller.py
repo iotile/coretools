@@ -89,6 +89,50 @@ class MIBController (proxy.MIBProxyObject):
 
 		return mods
 
+	def get_debug_value(self):
+		"""
+		Return the current value of the debug flag in the controller.
+		This is an unsigned integer that can be used to signal that 
+		processes are ocurring or not occuring as they should.
+		"""
+
+		res = self.rpc(42, 0x0D, result_type=(1, False))
+		flag = res['ints'][0]
+		return flag
+
+
+	def current_time(self):
+		"""
+		Get the current RTCC time from the controller.  Returns a dictiornary with
+		all of the time components broken out.
+		"""
+
+		res = self.rpc(42, 0x0C, result_type=(6, False))
+
+		year = res['ints'][0]
+		month = res['ints'][1]
+		day = res['ints'][2]
+		hour = res['ints'][3]
+		minutes = res['ints'][4]
+		seconds = res['ints'][5]
+
+		t = {}
+		t['year'] = year
+		t['month'] = month
+		t['day'] = day
+		t['hour'] = hour
+		t['miunte'] = minutes
+		t['seconds'] = seconds
+
+		return t
+
+	def battery_status(self):
+		res = self.rpc(42, 0x0B, result_type=(1, False))
+		volt_raw = res['ints'][0]
+
+		volt = volt_raw/1024. * 2.78 * 2.0 	#ADC is on a divide by 2 resistor network with a VCC reference
+		return volt
+
 	def _encode_firmware_line(self, line):
 		if line[0] != ':':
 			raise ValueError("Invalid hex line, did not start with a ':': %s" % line)
