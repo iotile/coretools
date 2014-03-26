@@ -121,6 +121,7 @@ class RPCCommand (Command):
 
 		return self.result, stream.parse_term(seq)
 
+
 	def parse_result(self, num_ints, buff):
 		parsed = {'ints':[], 'buffer':"", 'status': self.status, 'error': 'No Error'}
 
@@ -128,16 +129,29 @@ class RPCCommand (Command):
 			parsed['error'] = self.result
 			return parsed
 		elif self.status != 0:
-			parsed['error'] = 'MIB Error'
+			if self.status == 1:
+				parsed['error'] = 'Unsupported Command'
+			elif self.status == 2:
+				parsed['error'] = 'Wrong Parameter Type'
+			elif self.status == 3:
+				parsed['error'] = 'Parameter Too Long'
+			elif self.status == 4:
+				parsed['error'] = 'Checksum Error'
+			elif self.status == 6:
+				parsed['error'] = 'Unknown Error'
+			elif self.status == 7:
+				parsed['error'] = 'Callback Error' % self.result
+			else:
+				parsed['error'] = 'Unrecognized MIB status code'
 			return parsed
 
 		#Otherwise, parse the results according to the type information given
 		size = len(self.result)
 
 		if size < 2*num_ints:
-			raise RPCException('Return value too short to unpack', self.result)
+			raise RPCException(300, 'Return value too short to unpack : %s' % self.result)
 		elif buff == False and size != 2*num_ints:
-			raise RPCException('Return value does not match return type', self.result)
+			raise RPCException(301, 'Return value does not match return type: %s' % self.result)
 
 		for i in xrange(0, num_ints):
 			low = ord(self.result[2*i])

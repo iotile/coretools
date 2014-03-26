@@ -24,11 +24,12 @@ class GSMModule (proxy.MIBProxyObject):
 		Send a text message to the given number which must have the form:
 		+NUMBER with no dashes or spaces, for example: +16506695211
 		"""
+
+		print "Sending message '%s' to %s" % ( text, number )
 		self.rpc(11, 0, number)
 		for i in xrange(0, len(text), 20):
 			buf = text[i:i+20]
 			self.rpc(11, 1, buf)
-
 		self.rpc(11, 2)
 
 	def module_on(self):
@@ -41,6 +42,10 @@ class GSMModule (proxy.MIBProxyObject):
 
 		return False
 
+	def module_off(self):
+		res = self.rpc(10,5)
+		return True
+
 	def at_cmd(self, cmd, wait=0.5):
 		"""
 		Send an AT command to the GSM module and wait for its
@@ -48,5 +53,10 @@ class GSMModule (proxy.MIBProxyObject):
 		"""
 
 		res = self.rpc(10, 2, cmd, result_type=(0, True))
+
+		return res['buffer']
+
+	def dump_buffer(self):
+		res = self.rpc(10,4, result_type=(0, True))
 
 		return res['buffer']

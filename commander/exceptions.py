@@ -10,6 +10,9 @@ class RPCException:
 		self.type = type
 		self.data = data
 
+	def __str__(self):
+		return "RPC failed, code %s : %s" % (self.type, self.data)
+
 class NoSerialConnectionException:
 	def __init__(self, ports ):
 		self.message = "No port specified and no valid USB device detected."
