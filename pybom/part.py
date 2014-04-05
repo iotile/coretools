@@ -41,7 +41,6 @@ class Part:
 		pkg_info = None
 
 		if pkg in packages:
-			print pkg
 			pkg_info = packages[pkg]
 
 		name = elem.get('name', 'Unnamed')
