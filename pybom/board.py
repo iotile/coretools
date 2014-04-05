@@ -294,7 +294,6 @@ class Board:
 
 		#Find all of the defined packages in this file
 		packages = {x.name: x for x in map(lambda x: Package(x), root.findall('.//package'))}
-		print packages
 
 		elems = root.find("./drawing/board/elements")
 		if elems is None:
