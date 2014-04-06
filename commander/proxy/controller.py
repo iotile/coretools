@@ -100,6 +100,13 @@ class MIBController (proxy.MIBProxyObject):
 		flag = res['ints'][0]
 		return flag
 
+	def set_sleep(self, val):
+		if val:
+			arg = 1
+		else:
+			arg = 0
+
+		res = self.rpc(42, 0x0E, arg)
 
 	def current_time(self):
 		"""
