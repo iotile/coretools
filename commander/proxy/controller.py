@@ -403,8 +403,8 @@ class MIBController (proxy.MIBProxyObject):
 			raise RuntimeError("Set alarm command failed")
 
 	def log_sensor_event( self, value):
-		res = self.rpc( 70, 0, struct.pack( 'BBBQ', 0, 42, 17, value ) );
+		res = self.rpc( 70, 0, 0, 42, 17, struct.pack( 'Q', value ) );
 
 	def read_sensor_value( self ):
 		res = self.rpc( 70, 0x10, result_type=(0, True) )
-		return SensorEvent( res.buffer );
+		return SensorEvent( res['buffer'] );

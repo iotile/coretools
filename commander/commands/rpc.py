@@ -139,7 +139,7 @@ class RPCCommand (Command):
 			elif self.status == 6:
 				parsed['error'] = 'Unknown Error'
 			elif self.status == 7:
-				parsed['error'] = 'Callback Error' % self.result
+				parsed['error'] = 'Callback Error'
 			else:
 				parsed['error'] = 'Unrecognized MIB status code'
 			return parsed
