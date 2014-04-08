@@ -401,3 +401,10 @@ class MIBController (proxy.MIBProxyObject):
 		resp, result = self.stream.send_cmd(cmd)
 		if result != CMDStream.OkayResult:
 			raise RuntimeError("Set alarm command failed")
+
+	def log_sensor_event( self, value):
+		res = self.rpc( 70, 0, struct.pack( 'BBBQ', 0, 42, 17, value ) );
+
+	def read_sensor_value( self ):
+		res = self.rpc( 70, 0x10, result_type=(0, True) )
+		return SensorEvent( res.buffer );
