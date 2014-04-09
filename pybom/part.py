@@ -26,7 +26,7 @@ class Part:
 	ref = reference.PCBReferenceLibrary()
 
 	@staticmethod
-	def FromBoardElement(elem, variant):
+	def FromBoardElement(elem, variant, packages):
 		"""
 		Create a Part object from an element in an EAGLE board file. 
 		pn_attrib specifies the attribute name that contains the correct
@@ -38,6 +38,11 @@ class Part:
 		"""
 
 		pkg = elem.get('package', 'Unknown Package')
+		pkg_info = None
+
+		if pkg in packages:
+			pkg_info = packages[pkg]
+
 		name = elem.get('name', 'Unnamed')
 		value = elem.get('value', 'No Value')
 
@@ -59,13 +64,13 @@ class Part:
 		digipn = find_digipn(elem, variant)
 
 		if (mpn is not None and manu is not None) or (digipn is not None and digipn != ""):
-			return Part(name, pkg, digipn=digipn, mpn=mpn, manu=manu, value=value, desc=desc), True
+			return Part(name, pkg, digipn=digipn, mpn=mpn, manu=manu, value=value, desc=desc, pkg_info=pkg_info), True
 		elif mpn == "" or digipn == "":
 			return None, True
 
 		return None, False
 
-	def __init__(self, name, package, mpn=None, manu=None, digipn=None, value=None, desc=None):
+	def __init__(self, name, package, mpn=None, manu=None, digipn=None, value=None, desc=None, pkg_info=None):
 		"""
 		Create a part object from the data passed
 		"""
@@ -77,6 +82,7 @@ class Part:
 		self.value = value
 		self.digipn = digipn
 		self.desc = desc
+		self.pkg_info = pkg_info
 
 		#If no description is given try creating a generic one based on the type of the part (resistor, etc)
 		if self.desc is None:
@@ -100,6 +106,12 @@ class Part:
 			return "%s_%s" % (self.manu, self.mpn)
 
 		return "Digikey_%s" % self.digipn
+
+	def package_info(self):
+		if self.pkg_info is None:
+			return {'pins': 0, 'pads': 0}
+
+		return {'pins': self.pkg_info.num_pins, 'pads': self.pkg_info.num_pads}
 
 def attrib_name(name, variant):
 	if variant == "MAIN" or variant == "":

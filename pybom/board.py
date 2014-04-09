@@ -8,6 +8,7 @@ from datetime import date
 from octopart.identifier import PartIdentifier
 from octopart.octopart import Octopart
 from reference import PCBReferenceLibrary
+from package import Package
 
 class Board:
 	def __init__(self, name, file, variants, partname, width, height, revision, unknown, nopop):
@@ -191,7 +192,8 @@ class Board:
 			ldict['distpn'] = distpn
 			ldict['unitprice'] = unitprice
 			ldict['lineprice'] = lineprice 
-
+			ldict['pkg_info'] = line[0].pkg_info
+			
 			res['lines'].append(ldict)
 
 		return res
@@ -290,6 +292,9 @@ class Board:
 
 		root = tree.getroot()
 
+		#Find all of the defined packages in this file
+		packages = {x.name: x for x in map(lambda x: Package(x), root.findall('.//package'))}
+
 		elems = root.find("./drawing/board/elements")
 		if elems is None:
 			raise ValueError("File %s does not contain a list of elements.  This is an invalid board file" % brd_file)
@@ -312,7 +317,7 @@ class Board:
 			nopop_vars = set()
 
 			for v in variants:
-				p,found = Part.FromBoardElement(part, v)
+				p,found = Part.FromBoardElement(part, v, packages)
 				if p and found:
 					variable.append( (v, p) )
 					found_vars.add(v)
@@ -324,7 +329,7 @@ class Board:
 					nopop.append(part.get('name',"Unknown Name"))
 
 			#See if this is a constant part (with no changes in different variants)
-			p,found = Part.FromBoardElement(part, "")
+			p,found = Part.FromBoardElement(part, "", packages)
 			if p and len(found_vars) == 0 and len(nopop_vars) == 0:
 				constant.append(p)
 				valid_part = True
