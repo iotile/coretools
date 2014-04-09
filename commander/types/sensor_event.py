@@ -13,8 +13,11 @@ class SensorEvent:
 
 		stream, metadata, timestamp_year, timestamp_month, timestamp_day, timestamp_hours, timestamp_minutes, timestamp_seconds, value = struct.unpack('BBBBBBBBQ', buffer)
 
-		print timestamp_year, timestamp_month, timestamp_day, timestamp_hours, timestamp_minutes, timestamp_seconds
+		if timestamp_year < 1960:
+			timestamp_year = 1960
+		timestamp_month += 1 # no 0th month in python
+
 		self.stream = stream
 		self.metadata = metadata
-		self.timestamp = datetime(timestamp_year+1960, timestamp_month+1, timestamp_day, timestamp_hours, timestamp_minutes, timestamp_seconds)
+		self.timestamp = datetime(timestamp_year, timestamp_month, timestamp_day, timestamp_hours, timestamp_minutes, timestamp_seconds)
 		self.value = value

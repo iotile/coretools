@@ -402,8 +402,8 @@ class MIBController (proxy.MIBProxyObject):
 		if result != CMDStream.OkayResult:
 			raise RuntimeError("Set alarm command failed")
 
-	def log_sensor_event( self, value):
-		res = self.rpc( 70, 0, 0, 42, 17, struct.pack( 'Q', value ) );
+	def log_sensor_event( self, stream, meta, value):
+		res = self.rpc( 70, 0, stream, meta, struct.pack( 'Q', value ) );
 
 	def read_sensor_value( self ):
 		res = self.rpc( 70, 0x10, result_type=(0, True) )
