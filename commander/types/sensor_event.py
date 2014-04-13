@@ -16,6 +16,7 @@ class SensorEvent:
 		if timestamp_year < 1960:
 			timestamp_year = 1960
 		timestamp_month += 1 # no 0th month in python
+		timestamp_day += 1
 
 		self.stream = stream
 		self.metadata = metadata
