@@ -100,6 +100,13 @@ class MIBController (proxy.MIBProxyObject):
 		flag = res['ints'][0]
 		return flag
 
+	def set_sleep(self, val):
+		"""
+		Enable or disable sleeping on the controller when there are no tasks 
+		to perform.  val should be True to enable sleeping, False to disable 
+		it. 
+		"""
+		res = self.rpc(42, 0x0E, int(bool(val)))
 
 	def current_time(self):
 		"""
