@@ -20,5 +20,5 @@ class SensorEvent:
 
 		self.stream = stream
 		self.metadata = metadata
-		self.timestamp = datetime(timestamp_year, timestamp_month, timestamp_day, timestamp_hours, timestamp_minutes, timestamp_seconds)
+		self.timestamp = datetime(1960,4,12,0,0,30)#timestamp_year, timestamp_month, timestamp_day, timestamp_hours, timestamp_minutes, timestamp_seconds)
 		self.value = value
