@@ -12,12 +12,15 @@ class GSMModule (proxy.MIBProxyObject):
 		super(GSMModule, self).__init__(stream, addr)
 		self.name = 'GSM Module'
 
-	def power_module(self):
+	def power_module(self, on=True):
 		"""
 		Turn on power to the GSM module
 		"""
 
-		self.rpc(10, 1)
+		if on:
+			self.rpc(10, 1)
+		else:
+			self.rpc(10, 6)
 
 	def send_text(self, number, text):
 		"""
@@ -37,8 +40,6 @@ class GSMModule (proxy.MIBProxyObject):
 
 		if res['ints'][0] == 1:
 			return True
-
-		print res['ints'][0]
 
 		return False
 
