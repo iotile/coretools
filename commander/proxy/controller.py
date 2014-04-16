@@ -408,3 +408,23 @@ class MIBController (proxy.MIBProxyObject):
 		resp, result = self.stream.send_cmd(cmd)
 		if result != CMDStream.OkayResult:
 			raise RuntimeError("Set alarm command failed")
+
+	def sensor_log( self, stream, meta, value):
+		res = self.rpc( 70, 0, stream, meta, struct.pack( 'Q', value ) );
+
+	def sensor_log_read( self ):
+		res = self.rpc( 70, 0x1, result_type=(0, True) )
+		return SensorEvent( res['buffer'] );
+
+	def sensor_log_count( self ):
+		res = self.rpc( 70, 0x2, result_type=(0, True) )
+		(count, ) = struct.unpack('I', res['buffer'])
+		return count
+
+	def sensor_log_clear( self ):
+		res = self.rpc( 70, 0x3 )
+
+	def sensor_log_debug( self ):
+		res = self.rpc( 70, 0x4, result_type=(0, True) )
+		(min, max, start, end) = struct.unpack('IIII', res['buffer'])
+		return (min,max,start,end)
