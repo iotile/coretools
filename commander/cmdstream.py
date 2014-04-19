@@ -8,9 +8,7 @@ class CMDStream:
 	#Types of frame markers
 	ACK = 0x06
 	NACK = 0x15
-	SYN = 0x16
-	EOT = 0x04
-	term_chars = [ACK, NACK, SYN, EOT]
+	term_chars = [ACK, NACK]
 
 	OkayResult = 0
 	ErrorResult = 1
@@ -59,3 +57,19 @@ class CMDStream:
 			return cmd.handle_result(self)
 		else:
 			return self.read_frame()
+
+	def heartbeat(self):
+		"""
+		Send a heartbeat character on the line that the FSU should respond to with
+		the same character if it is working correctly.  Return true if the heartbeat
+		was received, return false otherwise.
+		"""
+
+
+		self.trans.write(chr(255))
+		try:
+			self.trans.read_until(255)
+		except TimeoutException:
+			return False 
+
+		return True
