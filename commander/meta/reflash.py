@@ -39,7 +39,7 @@ def reflash_module(controller, hexfile, name=None, address=None, force=False, ve
 	if verbose:
 		print "Resetting the bus..."
 
-	controller.reset_bus(sync=True)
+	controller.reset(sync=True)
 
 	if verbose:
 		print "Reflash complete"
