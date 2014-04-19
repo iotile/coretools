@@ -69,8 +69,9 @@ class CMDStream:
 
 		self.trans.write(chr(255))
 		try:
-			self.trans.read_until(255)
-		except TimeoutException:
-			return False 
+			c = self.trans.read()
+			if len(c) == 0 or c[0] != chr(255):
+				print c
+				return False 
 
 		return True
