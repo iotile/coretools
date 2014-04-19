@@ -409,6 +409,21 @@ class MIBController (proxy.MIBProxyObject):
 		if result != CMDStream.OkayResult:
 			raise RuntimeError("Set alarm command failed")
 
+	def momo_attached(self):
+		resp, result = self.stream.send_cmd("attached")
+		if result != CMDStream.OkayResult:
+			raise RuntimeError("Attached command failed")
+
+		resp = resp.lstrip().rstrip()
+		val = int(resp)
+
+		if val == 1:
+			return True
+		elif val == 0:
+			return False
+		else:
+			raise RuntimeError("Invalid result returned from 'attached' command: %s" % resp)
+
 	def sensor_log( self, stream, meta, value):
 		res = self.rpc( 70, 0, stream, meta, struct.pack( 'Q', value ) );
 

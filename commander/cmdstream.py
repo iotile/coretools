@@ -13,7 +13,6 @@ class CMDStream:
 
 	OkayResult = 0
 	ErrorResult = 1
-	PendingResult = 2
 
 	def __init__(self, transport):
 		self.trans = transport
@@ -25,8 +24,6 @@ class CMDStream:
 			result = CMDStream.OkayResult
 		elif term == CMDStream.NACK:
 			result = CMDStream.ErrorResult
-		elif term == CMDStream.SYN:
-			result = CMDStream.PendingResult
 		else:
 			raise ValueError("Invalid terminator character encountered: %d" % term)
 
@@ -68,10 +65,19 @@ class CMDStream:
 
 
 		self.trans.write(chr(255))
-		try:
-			c = self.trans.read()
-			if len(c) == 0 or c[0] != chr(255):
-				print c
-				return False 
+		
+		c = self.trans.read()
+		if len(c) == 0 or c[0] != chr(255):
+			print "'%s'" % c
+			return False 
+
+		return True
+
+	def reset(self):
+		self.trans.write(chr(0))
+		c = self.trans.read()
+		if len(c) == 0 or c[0] != chr(1):
+			print "'%s'" % c
+			return False 
 
 		return True

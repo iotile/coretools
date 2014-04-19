@@ -11,7 +11,6 @@ class Transport:
 			c = self.read()
 			if len(c) == 0:
 				raise TimeoutException("Transport.read_until, looking for %s" % chars)
-
 						
 			for x in chars:
 				if ord(c) == x:

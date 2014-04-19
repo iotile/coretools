@@ -17,7 +17,11 @@ class SerialTransport (transport.Transport):
 		self.io.flush()
 
 	def read(self, cnt=1):
-		return self.io.read(cnt)
+		buf = self.io.read(cnt)
+		return buf
 
 	def close(self):
 		self.port.close
+
+	def receive_count(self):
+		return self.io.inWaiting()
