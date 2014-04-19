@@ -1,3 +1,4 @@
+from exceptions import TimeoutException
 
 class CMDStream:
 	"""
