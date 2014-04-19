@@ -33,3 +33,6 @@ class MultiSensorModule (proxy.MIBProxyObject):
 	def read_voltage(self):
 		res = self.rpc(20, 6, result_type=(1,False))
 		return res['ints'][0] 
+
+	def set_inverted(self, inverted):
+		self.rpc(20, 7, int(bool(inverted)))
