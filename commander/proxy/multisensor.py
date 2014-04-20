@@ -40,3 +40,10 @@ class MultiSensorModule (proxy.MIBProxyObject):
 	def read_voltage(self):
 		res = self.rpc(20, 5, result_type=(1,False))
 		return res['ints'][0]
+
+	def acquire_pulses(self):
+		self.rpc(20, 6)
+
+	def read_pulses(self):
+		res = self.rpc(20, 7, result_type=(1, False))
+		return res['ints'][0]
