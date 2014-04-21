@@ -428,3 +428,22 @@ class MIBController (proxy.MIBProxyObject):
 		res = self.rpc( 70, 0x4, result_type=(0, True) )
 		(min, max, start, end) = struct.unpack('IIII', res['buffer'])
 		return (min,max,start,end)
+
+	def start_reporting(self):
+		"""
+		Start regular reporting
+		"""
+		self.rpc(60, 1)
+
+	def stop_reporting(self):
+		"""
+		Stop regular reporting
+		"""
+		self.rpc(60, 2)
+
+	def send_report(self):
+		"""
+		Send a single report
+		"""
+
+		self.rpc(60, 0)
