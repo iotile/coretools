@@ -1,3 +1,4 @@
+from exceptions import TimeoutException
 
 class CMDStream:
 	"""
@@ -8,13 +9,10 @@ class CMDStream:
 	#Types of frame markers
 	ACK = 0x06
 	NACK = 0x15
-	SYN = 0x16
-	EOT = 0x04
-	term_chars = [ACK, NACK, SYN, EOT]
+	term_chars = [ACK, NACK]
 
 	OkayResult = 0
 	ErrorResult = 1
-	PendingResult = 2
 
 	def __init__(self, transport):
 		self.trans = transport
@@ -26,8 +24,6 @@ class CMDStream:
 			result = CMDStream.OkayResult
 		elif term == CMDStream.NACK:
 			result = CMDStream.ErrorResult
-		elif term == CMDStream.SYN:
-			result = CMDStream.PendingResult
 		else:
 			raise ValueError("Invalid terminator character encountered: %d" % term)
 
@@ -59,3 +55,29 @@ class CMDStream:
 			return cmd.handle_result(self)
 		else:
 			return self.read_frame()
+
+	def heartbeat(self):
+		"""
+		Send a heartbeat character on the line that the FSU should respond to with
+		the same character if it is working correctly.  Return true if the heartbeat
+		was received, return false otherwise.
+		"""
+
+
+		self.trans.write(chr(255))
+		
+		c = self.trans.read()
+		if len(c) == 0 or c[0] != chr(255):
+			print "'%s'" % c
+			return False 
+
+		return True
+
+	def reset(self):
+		self.trans.write(chr(0))
+		c = self.trans.read()
+		if len(c) == 0 or c[0] != chr(1):
+			print "'%s'" % c
+			return False 
+
+		return True

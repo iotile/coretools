@@ -15,18 +15,6 @@ class MIBController (proxy.MIBProxyObject):
 		super(MIBController, self).__init__(stream, 8)
 		self.name = 'Controller'
 
-	def reset_bus(self, sync=True):
-		"""
-		Cycle power on all attached momo modules except the controller.
-		The count of attached modules is also reset to zero in anticipation
-		of the modules reregistering
-		"""
-
-		res = self.rpc(42, 5)
-
-		if sync:
-			sleep(1.5)
-
 	def count_modules(self):
 		"""
 		Count the number of attached devices to this controller
@@ -410,6 +398,21 @@ class MIBController (proxy.MIBProxyObject):
 		if result != CMDStream.OkayResult:
 			raise RuntimeError("Set alarm command failed")
 
+	def momo_attached(self):
+		resp, result = self.stream.send_cmd("attached")
+		if result != CMDStream.OkayResult:
+			raise RuntimeError("Attached command failed")
+
+		resp = resp.lstrip().rstrip()
+		val = int(resp)
+
+		if val == 1:
+			return True
+		elif val == 0:
+			return False
+		else:
+			raise RuntimeError("Invalid result returned from 'attached' command: %s" % resp)
+
 	def sensor_log( self, stream, meta, value):
 		res = self.rpc( 70, 0, stream, meta, struct.pack( 'Q', value ) );
 
@@ -459,3 +462,17 @@ class MIBController (proxy.MIBProxyObject):
 		year, month, day, hour, minute, second = struct.unpack( "HHHHHH", res['buffer'] )
 
 		return datetime( year, month+1, day+1, hour, minute, second )
+
+	def reset(self, sync=True):
+		"""
+		Instruct the controller to reset itself.
+		"""
+
+		try:
+			self.rpc(42, 0xF)
+		except RPCException as e:
+			if e.type != 7:
+				raise e
+
+		if sync:
+			sleep(1.5)
