@@ -140,6 +140,8 @@ class RPCCommand (Command):
 				parsed['error'] = 'Unknown Error'
 			elif self.status == 7:
 				parsed['error'] = 'Callback Error'
+			elif self.status == 0xFF:
+				parsed['error'] = 'Module at address ' + self.addr + ' not found.'
 			else:
 				parsed['error'] = 'Unrecognized MIB status code'
 			return parsed
