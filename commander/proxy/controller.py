@@ -491,8 +491,12 @@ class MIBController (proxy.MIBProxyObject):
 		Describe a scheduled callback
 		"""
 
-		res = self.rpc(43, 3, int(index), result_type=(0,True) );
-		return res['buffer'] #struct.unpack('BBB', res['buffer'][:3])
+		try:
+			res = self.rpc(43, 3, int(index), result_type=(0,True) );
+			return struct.unpack('BBBxB', res['buffer'][:5])
+		except RPCException as e:
+			if e.type == 7:
+				return None
 
 	def reset(self, sync=True):
 		"""
