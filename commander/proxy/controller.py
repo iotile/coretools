@@ -6,6 +6,7 @@ from pymomo.utilities.console import ProgressBar
 import struct
 from intelhex import IntelHex
 from time import sleep
+from datetime import datetime
 
 class MIBController (proxy.MIBProxyObject):
 	MaxModuleFirmwares = 4
@@ -431,6 +432,36 @@ class MIBController (proxy.MIBProxyObject):
 		res = self.rpc( 70, 0x4, result_type=(0, True) )
 		(min, max, start, end) = struct.unpack('IIII', res['buffer'])
 		return (min,max,start,end)
+
+	def start_reporting(self):
+		"""
+		Start regular reporting
+		"""
+		self.rpc(60, 1)
+
+	def stop_reporting(self):
+		"""
+		Stop regular reporting
+		"""
+		self.rpc(60, 2)
+
+	def send_report(self):
+		"""
+		Send a single report
+		"""
+
+		self.rpc(60, 0)
+
+	def current_time(self):
+		"""
+		Get the current time according to the controller's RTCC
+		"""
+
+		res = self.rpc(42, 0x0C, result_type=(0, True));
+
+		year, month, day, hour, minute, second = struct.unpack( "HHHHHH", res['buffer'] )
+
+		return datetime( year, month+1, day+1, hour, minute, second )
 
 	def reset(self, sync=True):
 		"""
