@@ -61,3 +61,8 @@ class GSMModule (proxy.MIBProxyObject):
 		res = self.rpc(10,4, result_type=(0, True))
 
 		return res['buffer']
+
+	def debug(self):
+		res = self.rpc(10,7, result_type=(0, True))
+
+		return res['buffer']		
