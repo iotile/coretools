@@ -463,6 +463,41 @@ class MIBController (proxy.MIBProxyObject):
 
 		return datetime( year, month+1, day+1, hour, minute, second )
 
+	def scheduler_map(self):
+		"""
+		Get the map of used scheduler buckets
+		"""
+
+		res = self.rpc(43, 2, result_type=(1, False));
+
+		return res['ints'][0];
+
+	def scheduler_new(self, address, feature, command, frequency):
+		"""
+		Schedule a new task
+		"""
+
+		res = self.rpc(43, 0, int(address), ( (int(feature)<<8) | (int(command)&0xFF) ), int(frequency) );
+
+	def scheduler_remove(self, address, feature, command, frequency):
+		"""
+		Remove a scheduled task
+		"""
+
+		res = self.rpc(43, 1, int(address), ( (int(feature)<<8) | (int(command)&0xFF) ), int(frequency) );
+
+	def scheduler_describe(self, index):
+		"""
+		Describe a scheduled callback
+		"""
+
+		try:
+			res = self.rpc(43, 3, int(index), result_type=(0,True) );
+			return struct.unpack('BBBxB', res['buffer'][:5])
+		except RPCException as e:
+			if e.type == 7:
+				return None
+
 	def reset(self, sync=True):
 		"""
 		Instruct the controller to reset itself.
