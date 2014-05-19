@@ -29,10 +29,13 @@ class GSMModule (proxy.MIBProxyObject):
 		"""
 
 		print "Sending message '%s' to %s" % ( text, number )
+		print "> start (%s)" % number
 		self.rpc(11, 0, number)
 		for i in xrange(0, len(text), 20):
 			buf = text[i:i+20]
+			print "> stream (%s)" % buf
 			self.rpc(11, 1, buf)
+		print "> end"
 		self.rpc(11, 2)
 
 	def module_on(self):
