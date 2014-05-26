@@ -9,7 +9,7 @@ import os
 import sys
 
 
-def reflash_module(controller, hexfile, name=None, address=None, force=False, verbose=True):
+def reflash_module(controller, hexfile, name=None, address=None, force=False, verbose=True, noreset=False):
 	"""
 	Given a controller instance, reflash a pic12 application module
 	given either its address or name.
@@ -36,10 +36,11 @@ def reflash_module(controller, hexfile, name=None, address=None, force=False, ve
 	else:
 		sleep(10)
 
-	if verbose:
-		print "Resetting the bus..."
+	if not noreset: 
+		if verbose:
+			print "Resetting the bus..."
 
-	controller.reset(sync=True)
+		controller.reset(sync=True)
 
 	if verbose:
 		print "Reflash complete"
