@@ -464,6 +464,13 @@ class MIBController (proxy.MIBProxyObject):
 
 		self.rpc(60, 0)
 
+	def set_report_address(self, address):
+		self.rpc(60, 5, address)
+
+	def get_report_address(self):
+		res = self.rpc(60, 6, result_type=(0, True))		
+		return res['buffer']
+
 	def current_time(self):
 		"""
 		Get the current time according to the controller's RTCC
@@ -524,5 +531,8 @@ class MIBController (proxy.MIBProxyObject):
 		if sync:
 			sleep(1.5)
 
-
-			print e.data
+	def factory_reset(self):
+		"""
+		Instruct the controller to reset all internal state to "factory defaults."  Use with caution.
+		"""
+		self.rpc(42, 0x10)
