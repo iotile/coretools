@@ -7,7 +7,13 @@ import struct
 from intelhex import IntelHex
 from time import sleep
 from datetime import datetime
-from pymomo.utilities.typedargs.annotate import annotated,param
+from pymomo.utilities.typedargs.annotate import annotated,param,returns
+
+#Formatters for the return types used in this class
+def print_module_list(mods):
+	print "Listing attached modules"
+	for i, mod in enumerate(mods):
+		print "%d: %s at address %d" % (i, mod.name, mod.address)
 
 class MIBController (proxy.MIBProxyObject):
 	MaxModuleFirmwares = 4
@@ -16,6 +22,7 @@ class MIBController (proxy.MIBProxyObject):
 		super(MIBController, self).__init__(stream, 8)
 		self.name = 'Controller'
 
+	@returns(desc='number of attached module', data=True)
 	def count_modules(self):
 		"""
 		Count the number of attached devices to this controller
@@ -65,6 +72,7 @@ class MIBController (proxy.MIBProxyObject):
 
 		raise ValueError("Could not find module by name or address (name=%s, address=%s)" % (str(by_name), str(by_address)))
 
+	@returns(desc='list of attached modules', printer=print_module_list, data=True)
 	def enumerate_modules(self):
 		"""
 		Get list of all attached modules and describe them all
@@ -513,15 +521,5 @@ class MIBController (proxy.MIBProxyObject):
 		if sync:
 			sleep(1.5)
 
-	#Annotated Functions
-	@annotated
-	def list_modules(self):
-		try:
-			mods = self.enumerate_modules()
-		except RPCException as e:
-			print e.type
-			print e.data
 
-		print "Listing attached modules"
-		for i, mod in enumerate(mods):
-			print "%d: %s at address %d" % (i, mod.name, mod.address)
+			print e.data

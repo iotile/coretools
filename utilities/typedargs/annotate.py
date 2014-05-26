@@ -4,6 +4,7 @@ from decorator import decorator
 from exceptions import ValidationError
 import inspect
 import types
+from collections import namedtuple
 
 def _check_and_execute(f, *args, **kwargs):
 	"""
@@ -135,6 +136,12 @@ def print_help(f):
 	print "Arguments:"
 	#TODO: Finish printing arguments with descriptions
 
+def print_retval(f, value):
+	if f.retval.printer[0] is not None:
+		f.retval.printer[0](value)
+	elif f.retval.desc != "":
+		print "%s: %s" % (f.retval.desc, str(value))
+
 def find_all(container):
 	names = dir(container)
 	context = {}
@@ -145,6 +152,12 @@ def find_all(container):
 			context[name] = obj
 
 	return context
+
+def returns_data(f):
+	if not hasattr(f, 'retval'):
+		return False
+
+	return f.retval.data
 
 #Decorator
 def param(name, type, *validators, **kwargs):
@@ -168,7 +181,25 @@ def param(name, type, *validators, **kwargs):
 
 	return _param
 
-#Decorator
+def returns(desc=None, printer=None, data=False):
+	def _returns(f):
+		f.retval = namedtuple("ReturnValue", ["desc", "printer", "data"])
+		f.retval.desc = desc
+		f.retval.printer = (printer,)
+		f.retval.data = data
+
+		if not hasattr(f, 'params'):
+			f.params = {}
+		if not hasattr(f, 'valids'):
+			f.valids = {}
+		if not hasattr(f, 'types'):
+			f.types = {}
+
+		f.annotated = True
+		return f
+
+	return _returns
+
 def annotated(f):
 	if not hasattr(f, 'params'):
 		f.params = {}

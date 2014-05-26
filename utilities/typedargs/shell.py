@@ -31,7 +31,7 @@ def print_dir(context):
 		print " - " + annotate.get_signature(find_function(context, fun))
 
 	print ""
-	
+
 def print_help(context, fname):
 	func = find_function(context, fname)
 	annotate.print_help(func)
@@ -98,5 +98,8 @@ def invoke(context, line):
 	#print "Consumed %d arguments to execute function" % i
 	#print "Remaining line:", line[i:]
 
-	return func(*posargs, **kwargs), line[i:]
+	val = func(*posargs, **kwargs)
+	if annotate.returns_data(func):
+		annotate.print_retval(func, val)
 
+	return val, line[i:]
