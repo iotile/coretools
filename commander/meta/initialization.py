@@ -1,6 +1,7 @@
 from pymomo.commander import transport, cmdstream
 from pymomo.commander.proxy import *
 from pymomo.commander.exceptions import *
+from pymomo.utilities.typedargs.annotate import param
 
 import serial
 from serial.tools import list_ports
@@ -35,3 +36,16 @@ def _find_momo_serial():
 	for port, desc, hwid in _get_serial_ports():
 		if (re.match( r"USB VID:PID=0?403:6015", hwid) != None) or (re.match( r".*VID_0?403.PID_6015", hwid) != None):
 			return port
+
+#Annotated functions for use with momo tool
+@param('serial', 'string', desc='the serial port to use')
+def controller(serial=""):
+	"""
+	Given serial port descriptor, create all of the necessary
+	object to get a controller proxy module 
+	"""
+	
+	if serial == "":
+		serial = None
+
+	return get_controller(serial)

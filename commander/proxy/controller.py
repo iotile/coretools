@@ -7,6 +7,7 @@ import struct
 from intelhex import IntelHex
 from time import sleep
 from datetime import datetime
+from pymomo.utilities.typedargs.annotate import annotated,param
 
 class MIBController (proxy.MIBProxyObject):
 	MaxModuleFirmwares = 4
@@ -511,3 +512,16 @@ class MIBController (proxy.MIBProxyObject):
 
 		if sync:
 			sleep(1.5)
+
+	#Annotated Functions
+	@annotated
+	def list_modules(self):
+		try:
+			mods = self.enumerate_modules()
+		except RPCException as e:
+			print e.type
+			print e.data
+
+		print "Listing attached modules"
+		for i, mod in enumerate(mods):
+			print "%d: %s at address %d" % (i, mod.name, mod.address)
