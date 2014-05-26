@@ -33,13 +33,6 @@ class MIBProxyObject (object):
 
 		return res
 
-	def reset(self):
-		try:
-			self.rpc(1, 1)
-		except RPCException as e:
-			if e.type != 7:
-				raise e 
-
 	def verbose_printer(self, verbose):
 		def print_verb(str):
 			if verbose:
