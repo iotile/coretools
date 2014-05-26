@@ -31,13 +31,17 @@ class MIB12ProxyObject (proxy.MIBProxyObject):
 
 	@returns(desc='application firmware checksum', data=True)
 	def checksum(self):
+		"""
+		Get the 8-bit application checksum.
+		"""
 		return self.rpc(1,2, result_type=(1,False))['ints'][0]
 
 	@returns(desc='module status register', data=True, printer=print_status)
 	def status(self):
 		"""
-		Get the module status register.  Returns executive version, runtime
-		parameters, hw type, executive size and whether the module has crashed.
+		Get the module status register.
+
+		Returns executive version, runtime parameters, hw type, executive size and whether the module has crashed.
 		"""
 
 		res = self.rpc(1,4, result_type=(2,False))
@@ -50,6 +54,13 @@ class MIB12ProxyObject (proxy.MIBProxyObject):
 		status.trapped = bool(status.status & 1<<7) 
 
 		return status
+
+	@param('location','integer','positive',desc='RAM address to read')
+	@param('type', 'string', ('list', ['uint8']), desc='Type of variable to read (supports: uint8)')
+	@returns(desc='variable contents', data=True)
+	def readram(self, location, type='uint8'):
+		res = self.rpc(1,3, location, result_type=(0,True))
+		return ord(res['buffer'][0])
 
 	@annotated
 	def reset(self):
