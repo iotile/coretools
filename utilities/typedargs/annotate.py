@@ -86,7 +86,12 @@ def get_spec(f):
 	else:
 		numpos = len(spec.args) - len(spec.defaults)
 
-	posargs = set(spec.args[0:numpos])
+	#If the first argument is self, don't return it
+	start = 0
+	if numpos > 0 and spec.args[0] == 'self':
+		start = 1
+
+	posargs = set(spec.args[1:numpos])
 	kwargs = set(spec.args[numpos:])
 
 	return posargs, kwargs
