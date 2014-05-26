@@ -1,5 +1,5 @@
 from pymomo.commander import transport, cmdstream
-from pymomo.commander.proxy import *
+from pymomo.commander.proxy import MIBController
 from pymomo.commander.exceptions import *
 from pymomo.utilities.typedargs.annotate import param
 
@@ -44,7 +44,7 @@ def controller(serial=""):
 	Given serial port descriptor, create all of the necessary
 	object to get a controller proxy module 
 	"""
-	
+
 	if serial == "":
 		serial = None
 
