@@ -1,4 +1,5 @@
 import proxy
+import proxy12
 from pymomo.commander.exceptions import *
 from pymomo.commander.types import *
 from pymomo.commander.cmdstream import *
@@ -46,7 +47,9 @@ class MIBController (proxy.MIBProxyObject):
 
 		return ModuleDescriptor(res['buffer'], 11+index)
 
-	def get_module(self, by_name=None, by_address=None, force=False):
+	@param("name", "string", desc="module name")
+	@param("address", "integer", ("range", 11, 127), desc="modules address")
+	def get_module(self, name=None, address=None, force=False):
 		"""
 		Given a module name or a fixed address, return a proxy object
 		for that module if it is connected to the bus.  If force is True
@@ -55,22 +58,22 @@ class MIBController (proxy.MIBProxyObject):
 		modules.
 		"""
 
-		if by_address is not None and force:
-			obj = proxy.MIBProxyObject(self.stream, by_address)
+		if address is not None and force:
+			obj = proxy12.MIB12ProxyObject(self.stream, address)
 			obj.name = 'Unknown'
 			return obj
 
 		mods = self.enumerate_modules()
-		if by_name is not None and len(by_name) < 7:
-			by_name += (' '*(7 - len(by_name)))
+		if name is not None and len(name) < 7:
+			name += (' '*(7 - len(name)))
 
 		for mod in mods:
-			if by_name == mod.name or by_address == mod.address:
-				obj = proxy.MIBProxyObject(self.stream, mod.address)
+			if name == mod.name or address == mod.address:
+				obj = proxy12.MIB12ProxyObject(self.stream, mod.address)
 				obj.name = mod.name
 				return obj
 
-		raise ValueError("Could not find module by name or address (name=%s, address=%s)" % (str(by_name), str(by_address)))
+		raise ValueError("Could not find module by name or address (name=%s, address=%s)" % (str(name), str(address)))
 
 	@returns(desc='list of attached modules', printer=print_module_list, data=True)
 	def enumerate_modules(self):
