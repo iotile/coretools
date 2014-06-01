@@ -45,6 +45,8 @@ def merge_dicts(a, b):
     
     return a
 
+MISSING = object()
+
 class ChipSettings:
 	"""
 	A class that contains a dictionary of all the settings defined for
@@ -80,7 +82,7 @@ class ChipSettings:
 
 		return {'build': build, 'output': output, 'test': test}
 
-	def property(self, name, default=None):
+	def property(self, name, default=MISSING):
 		"""
 		Get the value of the given property for this chip, using the default
 		value if not found and one is provided.  If not found and default is None,
@@ -90,7 +92,7 @@ class ChipSettings:
 		if name in self.settings:
 			return self.settings[name]	
 		
-		if default is not None:
+		if default is not MISSING:
 			return default
 
 		raise ValueError("property %s not found for chip %s" % (name, self.name))
