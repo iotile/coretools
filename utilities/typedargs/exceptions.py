@@ -9,3 +9,11 @@ class ConversionError(Exception):
 class NotFoundError(Exception):
 	def __str__(self):
 		return "Could not find callable '%s' in current context" % (self.args)
+
+class TimeoutError(Exception):
+	def __str__(self):
+		return "A Timeout occurred, context is: %s" % (self.args)
+
+class APIError(Exception):
+	def __str__(self):
+		return "An internal error occured in an API function: %s" % (self.args)
