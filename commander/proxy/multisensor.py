@@ -1,4 +1,4 @@
-import proxy
+import proxy12
 from pymomo.commander.exceptions import *
 from pymomo.commander.types import *
 from pymomo.commander.cmdstream import *
@@ -7,7 +7,7 @@ import struct
 from intelhex import IntelHex
 from time import sleep
 
-class MultiSensorModule (proxy.MIBProxyObject):
+class MultiSensorModule (proxy12.MIB12ProxyObject):
 	ranges = {'offset': set(range(0, 256)), 'gain1': set(range(0, 128)), 'gain2':set(range(0,8)), 'delay': set(range(1, 256)), 
 				'invert': set(['yes', 'no']), 'select':set(['current', 'differential'])}
 	mapper = {'yes': 1, 'no': 0, 'current': 1, 'differential': 0}

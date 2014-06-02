@@ -1,4 +1,4 @@
-import proxy
+import proxy12
 from pymomo.commander.exceptions import *
 from pymomo.commander.types import *
 from pymomo.commander.cmdstream import *
@@ -7,7 +7,7 @@ import struct
 from intelhex import IntelHex
 from time import sleep
 
-class GSMModule (proxy.MIBProxyObject):
+class GSMModule (proxy12.MIB12ProxyObject):
 	def __init__(self, stream, addr):
 		super(GSMModule, self).__init__(stream, addr)
 		self.name = 'GSM Module'

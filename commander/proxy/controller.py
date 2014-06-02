@@ -1,4 +1,5 @@
 import proxy
+import proxy12
 from pymomo.commander.exceptions import *
 from pymomo.commander.types import *
 from pymomo.commander.cmdstream import *
@@ -7,6 +8,13 @@ import struct
 from intelhex import IntelHex
 from time import sleep
 from datetime import datetime
+from pymomo.utilities.typedargs.annotate import annotated,param,returns
+
+#Formatters for the return types used in this class
+def print_module_list(mods):
+	print "Listing attached modules"
+	for i, mod in enumerate(mods):
+		print "%d: %s at address %d" % (i, mod.name, mod.address)
 
 class MIBController (proxy.MIBProxyObject):
 	MaxModuleFirmwares = 4
@@ -15,6 +23,7 @@ class MIBController (proxy.MIBProxyObject):
 		super(MIBController, self).__init__(stream, 8)
 		self.name = 'Controller'
 
+	@returns(desc='number of attached module', data=True)
 	def count_modules(self):
 		"""
 		Count the number of attached devices to this controller
@@ -38,7 +47,9 @@ class MIBController (proxy.MIBProxyObject):
 
 		return ModuleDescriptor(res['buffer'], 11+index)
 
-	def get_module(self, by_name=None, by_address=None, force=False):
+	@param("name", "string", desc="module name")
+	@param("address", "integer", ("range", 11, 127), desc="modules address")
+	def get_module(self, name=None, address=None, force=False):
 		"""
 		Given a module name or a fixed address, return a proxy object
 		for that module if it is connected to the bus.  If force is True
@@ -47,23 +58,24 @@ class MIBController (proxy.MIBProxyObject):
 		modules.
 		"""
 
-		if by_address is not None and force:
-			obj = proxy.MIBProxyObject(self.stream, by_address)
+		if address is not None and force:
+			obj = proxy12.MIB12ProxyObject(self.stream, address)
 			obj.name = 'Unknown'
 			return obj
 
 		mods = self.enumerate_modules()
-		if by_name is not None and len(by_name) < 7:
-			by_name += (' '*(7 - len(by_name)))
+		if name is not None and len(name) < 7:
+			name += (' '*(7 - len(name)))
 
 		for mod in mods:
-			if by_name == mod.name or by_address == mod.address:
-				obj = proxy.MIBProxyObject(self.stream, mod.address)
+			if name == mod.name or address == mod.address:
+				obj = proxy12.MIB12ProxyObject(self.stream, mod.address)
 				obj.name = mod.name
 				return obj
 
-		raise ValueError("Could not find module by name or address (name=%s, address=%s)" % (str(by_name), str(by_address)))
+		raise ValueError("Could not find module by name or address (name=%s, address=%s)" % (str(name), str(address)))
 
+	@returns(desc='list of attached modules', printer=print_module_list, data=True)
 	def enumerate_modules(self):
 		"""
 		Get list of all attached modules and describe them all
@@ -524,4 +536,3 @@ class MIBController (proxy.MIBProxyObject):
 		Instruct the controller to reset all internal state to "factory defaults."  Use with caution.
 		"""
 		self.rpc(42, 0x10)
-

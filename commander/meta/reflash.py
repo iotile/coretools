@@ -9,7 +9,7 @@ import os
 import sys
 
 
-def reflash_module(controller, hexfile, name=None, address=None, force=False, verbose=True):
+def reflash_module(controller, hexfile, name=None, address=None, force=False, verbose=True, noreset=False):
 	"""
 	Given a controller instance, reflash a pic12 application module
 	given either its address or name.
@@ -24,22 +24,26 @@ def reflash_module(controller, hexfile, name=None, address=None, force=False, ve
 	mod.rpc(1, 0, 8, bucket)
 	mod.reset()
 
-	if verbose:
-		prog = ProgressBar("Reflashing", 10)
-		prog.start()
+	sleep(1.5)
+	if not controller.alarm_asserted():
+		print "Module reflash NOT DETECTED.  Verify the module checksum to ensure it is programmed correctly."
+		raise RuntimeError("Could not reflash module, reflash not detected using alarm pin.")
 
-		for i in xrange(0, 10):
-			sleep(1)
-			prog.progress(i)
+	print "Reflash in progress"
+	while controller.alarm_asserted():
+		sys.stdout.write('.')
+		sys.stdout.flush()
+		sleep(0.1)
 
-		prog.end()
-	else:
-		sleep(10)
+	print "\nReflash complete."
 
-	if verbose:
-		print "Resetting the bus..."
+	sleep(0.5)
 
-	controller.reset(sync=True)
+	if not noreset: 
+		if verbose:
+			print "Resetting the bus..."
+
+		controller.reset(sync=True)
 
 	if verbose:
 		print "Reflash complete"
