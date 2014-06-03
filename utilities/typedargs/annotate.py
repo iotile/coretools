@@ -1,7 +1,7 @@
 #annotate.py
 
 from decorator import decorator
-from exceptions import ValidationError
+from exceptions import *
 import inspect
 import types
 from collections import namedtuple
@@ -25,7 +25,15 @@ def _check_and_execute(f, *args, **kwargs):
 	for key, val in kwargs:
 		convkw[key] = _process_arg(f, key, val)
 
-	return f(*convargs, **convkw)
+	#Ensure that only MoMoException subclasses are passed by the caller
+	try:
+		retval = f(*convargs, **convkw)
+	except MoMoException as e:
+		raise e
+	except Exception as unknown:
+		raise APIError(str(unknown.args))
+
+	return retval
 
 def _process_arg(f, arg, value):
 	"""
