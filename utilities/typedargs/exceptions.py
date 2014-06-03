@@ -38,7 +38,11 @@ class NotFoundError(MoMoException):
 	"""
 
 	def __str__(self):
-		return "Could not find callable '%s' in current context" % (self.args)
+		args = self.args
+		if len(self.args) == 1:
+			args = self.args[0]
+
+		return "Could not find callable '%s' in current context" % str(args)
 
 class TimeoutError(MoMoException):
 	"""
@@ -47,7 +51,25 @@ class TimeoutError(MoMoException):
 	"""
 
 	def __str__(self):
-		return "A Timeout occurred, context is: %s" % (self.args)
+		args = self.args
+		if len(self.args) == 1:
+			args = self.args[0]
+
+		return "A Timeout occurred, context is: %s" % str(args)
+
+class InternalError(MoMoException):
+	"""
+	The method could not be completed with the user input passed for 
+	an unexpected reason.  This does not signify a bug in the API 
+	method code.  More details should be passed in the arguments 
+	"""
+
+	def __str__(self):
+		args = self.args
+		if len(self.args) == 1:
+			args = self.args[0]
+
+		return "An internal error occurred: %s" % str(args)
 
 class APIError(MoMoException):
 	"""
@@ -62,4 +84,8 @@ class APIError(MoMoException):
 	"""
 
 	def __str__(self):
-		return "An internal error occured in an API function: %s" % (self.args)
+		args = self.args
+		if len(self.args) == 1:
+			args = self.args[0]
+
+		return "A bug occured in an API function: %s" % str(args)
