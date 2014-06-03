@@ -1,5 +1,8 @@
 #simworker.py
 #Base class for worker objects that implement PIC simulators
+from pymomo.utilities.typedargs.exceptions import *
+import time
+import select
 
 class SimWorker:
 	def __init__(self, pipe):
@@ -18,12 +21,21 @@ class SimWorker:
 	def _format_error(self, message, **kwargs):
 		return self._build_message(error=True, message=message, **kwargs)
 
+
 	def _check_cmd(self, cmd):
 		if not isinstance(cmd, dict):
-			raise ValueError("Command packet is not a dictionary")
+			raise APIError("Command packet is not a dictionary")
 
 		if "method" not in cmd:
-			raise ValueError("No method specified in command packet")
+			raise APIError("No method specified in command packet")
+
+	def send_error(self, message, **kwargs):
+		msg = self._format_error(message, **kwargs)
+		self.pipe.send(msg)
+
+	def send_message(self, **kwargs):
+		msg = self._build_message(**kwargs)
+		self.pipe.send(msg)
 
 	def _dispatch_cmd(self, cmd):
 		"""
@@ -38,12 +50,16 @@ class SimWorker:
 
 		#If the method exists, call it and return the results
 		if hasattr(self, method):
-			result = self.getattr(method)(cmd['args'])
-			msg = self._build_message(**result)
-			self.pipe.send(msg)
+			params = cmd.copy()
+			del params['method']
+
+			result = getattr(self, method)(**params)
+			if result is not None:
+				self.send_message(**result)
+			else:
+				self.send_message()
 		else:
-			msg = self._format_error('Method does not exist: %s' % method)
-			self.pipe.send(msg)
+			raise APIError('Method does not exist: %s' % method)
 
 		return True
 
@@ -52,19 +68,30 @@ class SimWorker:
 		Run forever in a loop until we receive a quit command.
 		"""
 
-		try:
-			while(True):
+		while(True):
+			try:
 				cmd = self.pipe.recv()
 				self._check_cmd(cmd)
 
 				if self._dispatch_cmd(cmd) is False:
 					self.finish()
 					return
-		except ValueError as e:
-			#All errors are propogated as exceptions, catch them and 
-			#send an error report.
-			msg = self._format_error(e.args)
-			self.pipe.send(msg)
+			except MoMoException as e:
+				#All errors are propogated as exceptions, catch them and 
+				#send an error report.
+				args = e.args
+				if len(args) == 1:
+					args = args[0]
+
+				msg = self._format_error(args)
+				self.pipe.send(msg)
+			except Exception as ex:
+				args = ex.args
+				if len(args) == 1:
+					args = args[0]
+
+				msg = self._format_error(args)
+				self.pipe.send(msg)
 
 	def finish(self):
 		"""
