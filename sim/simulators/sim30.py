@@ -23,6 +23,7 @@ class SIM30 (SimWorker):
 		self.sim = None
 		self.sim = subprocess.Popen([sim30path], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 		self.input = AsyncLineBuffer(self.sim.stdout)
+		self.waiting = False #Whether or not we are waiting for a prompt to appear
 
 		self._wait_prompt() #discard return value because its just random information
 		self._init_sim()
@@ -44,6 +45,9 @@ class SIM30 (SimWorker):
 		#so we can splice it off
 		buffer = self.read_until(self.input, SIM30.prompt)
 		buffer = buffer[:-len(SIM30.prompt)]
+
+		self.waiting = False
+
 		return buffer
 
 	def _command(self, cmd, *args, **kwargs):
@@ -90,6 +94,15 @@ class SIM30 (SimWorker):
 		#We need to 
 		self.first_run = True
 
+	def wait(self):
+		if not self.waiting:
+			return
+
+		self._wait_prompt()
+
+	def set_log(self, file):
+		pass
+
 	def execute(self):
 		#sim30 requires the processor to be reset before executing
 		#code the first time or it dies for an unknown reason.
@@ -98,17 +111,19 @@ class SIM30 (SimWorker):
 			self.first_run = False
 
 		self._command('E', sync=False)
+		self.waiting = True
 
 		#Nothing should be returned if successful, so a read should timeout
 		success = True
 		try:
-			c = self.input.read(1, 0.1)
-			success = False
+			c = self.input.peek(1, 0.1)
 			msg = self._wait_prompt()
-			msg = c+msg
+			if msg != "":
+				success = False
 		except TimeoutError:
 			pass
 
 		if success is False:
 			raise InternalError(msg)
+
 

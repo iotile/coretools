@@ -79,7 +79,26 @@ class Simulator:
 		elif ext == '.hex':
 			type = 'hex'
 
-		self._command('load_program', program=program, type=type)	
+		self._command('load_program', program=program, type=type)
+
+	@param("file", "path", "writeable", desc="Path of log file to generate")
+	def set_log(self, file):
+		"""
+		Upon completion of this simulation, generate a log file containing
+		the output of the simulated code at path file.  The log file is not
+		guaranteed to be generated until shutdown() is called on the simulator.
+		"""
+
+		self._command('set_log', file=file)
+
+	@annotated
+	def wait(self):
+		"""
+		Wait for the simulator to finish executing code and return to being able
+		to process commands.
+		"""
+
+		self._command('wait')
 
 	@annotated
 	def execute(self):
