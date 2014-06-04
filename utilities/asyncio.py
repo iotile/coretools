@@ -69,3 +69,16 @@ class AsyncLineBuffer:
 			self._update_buffer()
 
 		return self.buffer.read(n)
+
+	def peek(self, n, timeout=3.0):
+		"""
+		Peek at the next n bytes, resetting the cursor afterward, even in the
+		case of an exception
+		"""
+		
+		loc = self.buffer.tell()
+
+		try:
+			return self.read(n, timeout)
+		finally:
+			self.buffer.seek(loc)
