@@ -109,31 +109,6 @@ class MIBController (proxy.MIBProxyObject):
 		"""
 		res = self.rpc(42, 0x0E, int(bool(val)))
 
-	def current_time(self):
-		"""
-		Get the current RTCC time from the controller.  Returns a dictiornary with
-		all of the time components broken out.
-		"""
-
-		res = self.rpc(42, 0x0C, result_type=(6, False))
-
-		year = res['ints'][0]
-		month = res['ints'][1]
-		day = res['ints'][2]
-		hour = res['ints'][3]
-		minutes = res['ints'][4]
-		seconds = res['ints'][5]
-
-		t = {}
-		t['year'] = year
-		t['month'] = month
-		t['day'] = day
-		t['hour'] = hour
-		t['miunte'] = minutes
-		t['seconds'] = seconds
-
-		return t
-
 	def battery_status(self):
 		res = self.rpc(42, 0x0B, result_type=(1, False))
 		volt_raw = res['ints'][0]
@@ -477,10 +452,9 @@ class MIBController (proxy.MIBProxyObject):
 		"""
 
 		res = self.rpc(42, 0x0C, result_type=(0, True));
-
 		year, month, day, hour, minute, second = struct.unpack( "HHHHHH", res['buffer'] )
 
-		return datetime( year, month+1, day+1, hour, minute, second )
+		return datetime( year+2000, month, day, hour, minute, second )
 
 	def scheduler_map(self):
 		"""
