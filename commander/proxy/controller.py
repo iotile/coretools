@@ -456,6 +456,36 @@ class MIBController (proxy.MIBProxyObject):
 
 		return datetime( year+2000, month, day, hour, minute, second )
 
+	@annotated
+	def build_report(self):
+		res = self.rpc(60, 0x0C)
+
+	@annotated 
+	def get_report(self):
+		report = ""
+		for i in xrange(0, 160, 20):
+			res = self.rpc(60, 0x0D, i, result_type=(0, True))
+			report += res['buffer']
+
+		print report
+
+	@param('counter', 'integer', 'nonnegative')
+	def perf_counter(self, counter):
+		res = self.rpc(42, 0x26, counter, result_type=(2, False))
+		val = res['ints'][0] | (res['ints'][1] << 16)
+
+		print "Counter %d" % counter
+		print "%d cycles" % val
+		print "%d us" % (int(val/4))
+		print "%.2f ms" % (val/(4e3))
+
+	@param('address', 'integer', 'nonnegative')
+	def read_ram(self, address):
+		res = self.rpc(42, 0x11, address, result_type=(0, True))
+		print ord(res['buffer'][0])
+		
+		return res['buffer']
+
 	def scheduler_map(self):
 		"""
 		Get the map of used scheduler buckets
