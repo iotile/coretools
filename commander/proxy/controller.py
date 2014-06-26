@@ -470,14 +470,10 @@ class MIBController (proxy.MIBProxyObject):
 		print report
 
 	@param('counter', 'integer', 'nonnegative')
+	@returns(desc="Performance Counter", printer=lambda x: x.display(), data=True)
 	def perf_counter(self, counter):
-		res = self.rpc(42, 0x26, counter, result_type=(2, False))
-		val = res['ints'][0] | (res['ints'][1] << 16)
-
-		print "Counter %d" % counter
-		print "%d cycles" % val
-		print "%d us" % (int(val/4))
-		print "%.2f ms" % (val/(4e3))
+		res = self.rpc(42, 0x26, counter, result_type=(0, True))
+		return PerformanceCounter(res['buffer'], name=counter)
 
 	@param('address', 'integer', 'nonnegative')
 	def read_ram(self, address):
