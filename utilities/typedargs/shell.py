@@ -6,6 +6,12 @@ from exceptions import *
 import annotate
 import inspect
 
+builtin_help = {
+	'help': "help [function]: print help information about the current context or a function",
+	'back': "back: replace the current context with its parent",
+	'quit': "quit: quit the momo shell"
+}
+
 def process_kwarg(flag, arg_it):
 	flag = flag[2:]
 	skip = 0
@@ -27,20 +33,27 @@ def print_dir(context):
 	if doc is not None:
 		doc = inspect.cleandoc(doc)
 		print "\n" + doc
-	print "\nAvailable Functions:"
+	print "\nDefined Functions:"
 
 	if isinstance(context, dict):
 		funs = context.keys()
 	else:
 		funs = annotate.find_all(context)
-		funs = filter(lambda x: not x.startswith('__'), funs)
 
 	for fun in funs:
 		print " - " + annotate.get_signature(find_function(context, fun))
 
+	print "\nBuiltin Functions"
+	for bi in builtin_help.values():
+		print ' - ' + bi
+
 	print ""
 
 def print_help(context, fname):
+	if fname in builtin_help:
+		print builtin_help[fname]
+		return
+
 	func = find_function(context, fname)
 	annotate.print_help(func)
 
@@ -57,6 +70,18 @@ def find_function(context, funname):
 
 	return func
 
+def _do_help(context, line):
+	args = line[1:]
+	if len(args) == 0:
+		print_dir(context)
+	elif len(args) == 1:
+		print_help(context, args[0])
+	else:
+		print "Too many arguments:", args
+		print "Usage: help [function]"
+
+	return [], True
+
 def invoke(contexts, line):
 	"""
 	Given a list of command line arguments, attempt
@@ -70,15 +95,12 @@ def invoke(contexts, line):
 
 	#Check if we are asked for help
 	if funname == 'help':
-		args = line[1:]
-		if len(args) == 0:
-			print_dir(context)
-		elif len(args) == 1:
-			print_help(context, args[0])
-		else:
-			print "Too many arguments:", args
-			print "Usage: help [function]"
-
+		return _do_help(context, line)
+	if funname == 'quit':
+		del contexts[:]
+		return [], True
+	if funname == 'back':
+		contexts.pop()
 		return [], True
 
 	func = find_function(context, funname)
@@ -92,12 +114,12 @@ def invoke(contexts, line):
 
 	i = 1
 	for arg in arg_it:
-		if arg.startswith('--'):
+		if arg.startswith('--') or (arg.startswith('-') and len(arg)==2):
 			name,val,skip = process_kwarg(arg, arg_it)
 			kwargs[name] = val
 			i+= skip
 		else:
-			if len(posargs) == len(posset):
+			if annotate.spec_filled(posset, kwset, posargs, kwargs):
 				break
 
 			posargs.append(arg)
@@ -106,6 +128,9 @@ def invoke(contexts, line):
 
 	#print "Consumed %d arguments to execute function" % i
 	#print "Remaining line:", line[i:]
+
+	if not annotate.spec_filled(posset, kwset, posargs, kwargs):
+		raise ArgumentError("too few arguments")
 
 	val = func(*posargs, **kwargs)
 	finished = True

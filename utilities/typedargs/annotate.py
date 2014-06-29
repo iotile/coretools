@@ -93,19 +93,28 @@ def get_spec(f):
 	spec = inspect.getargspec(f)
 
 	if spec.defaults is None:
-		numpos = len(spec.args)
+		numreq = len(spec.args)
 	else:
-		numpos = len(spec.args) - len(spec.defaults)
+		numreq = len(spec.args) - len(spec.defaults)
 
 	#If the first argument is self, don't return it
 	start = 0
-	if numpos > 0 and spec.args[0] == 'self':
+	if numreq > 0 and spec.args[0] == 'self':
 		start = 1
 
-	posargs = set(spec.args[1:numpos])
-	kwargs = set(spec.args[numpos:])
+	reqargs = spec.args[start:numreq]
+	optargs = set(spec.args[numreq:])
 
-	return posargs, kwargs
+	return reqargs, optargs
+
+def spec_filled(req, opt, pos, kw):
+	left = filter(lambda x: x not in kw, pos)
+	left = req[len(left):]
+
+	if len(left) == 0:
+		return True
+
+	return False
 
 def get_signature(f):
 	"""
@@ -178,11 +187,22 @@ def print_retval(f, value):
 		print "%s: %s" % (f.retval.desc, str(value))
 
 def find_all(container):
-	names = dir(container)
+	if isinstance(container, dict):
+		names = container.keys()
+	else:
+		names = dir(container)
+	
 	context = {}
 
 	for name in names:
-		obj = getattr(container, name)
+		#Ignore __ names
+		if name.startswith('__'):
+			continue
+
+		if isinstance(container, dict):
+			obj = container[name]
+		else:
+			obj = getattr(container, name)
 		if hasattr(obj, 'annotated'):
 			context[name] = obj
 

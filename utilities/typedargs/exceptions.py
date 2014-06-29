@@ -57,6 +57,23 @@ class TimeoutError(MoMoException):
 
 		return "A Timeout occurred, context is: %s" % str(args)
 
+class ArgumentError(MoMoException):
+	"""
+	The method could not be called with the arguments passed.  This
+	differs from InternalError in that when ArgumentError is returned,
+	it is known that these arguments can never work for this function.
+
+	An example would be passing three arguments to a function requiring
+	4 arguments.
+	"""
+
+	def __str__(self):
+		args = self.args
+		if len(self.args) == 1:
+			args = self.args[0]
+
+		return "Invalid arguments: %s" % str(args)
+
 class InternalError(MoMoException):
 	"""
 	The method could not be completed with the user input passed for 
