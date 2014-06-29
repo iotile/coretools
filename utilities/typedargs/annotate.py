@@ -87,6 +87,9 @@ def _parse_validators(type, valids):
 	return outvals
 
 def get_spec(f):
+	if inspect.isclass(f):
+		f = f.__init__
+
 	spec = inspect.getargspec(f)
 
 	if spec.defaults is None:
@@ -110,6 +113,11 @@ def get_signature(f):
 	foobar(type arg, type arg=val, ...)
 	"""
 
+	name = f.__name__
+
+	if inspect.isclass(f):
+		f = f.__init__
+
 	spec = inspect.getargspec(f)
 	num_args = len(spec.args)
 
@@ -122,6 +130,9 @@ def get_signature(f):
 	args = []
 	for i in xrange(0, len(spec.args)):
 		typestr = ""
+		if i == 0 and spec.args[i] == 'self':
+			continue
+
 		if spec.args[i] in f.types:
 			typestr = "%s " % f.types[spec.args[i]]
 
@@ -134,7 +145,7 @@ def get_signature(f):
 		else:
 			args.append(typestr + str(spec.args[i]))
 
-	return "%s(%s)" % (f.__name__, ", ".join(args))
+	return "%s(%s)" % (name, ", ".join(args))
 
 def print_help(f):
 	sig = get_signature(f)
@@ -146,11 +157,22 @@ def print_help(f):
 	if doc is not None:
 		print doc
 
-	print "Arguments:"
-	#TODO: Finish printing arguments with descriptions
+	if inspect.isclass(f):
+		f = f.__init__
+
+	print "\nArguments:"
+	for key in f.params.iterkeys():
+		type = f.types[key]
+		desc = ""
+		if key in f.param_descs:
+			desc = f.param_descs[key]
+
+		print " - %s (%s): %s" % (key, type, desc)
 
 def print_retval(f, value):
-	if f.retval.printer[0] is not None:
+	if not hasattr(f, 'retval'):
+		print str(value)
+	elif f.retval.printer[0] is not None:
 		f.retval.printer[0](value)
 	elif f.retval.desc != "":
 		print "%s: %s" % (f.retval.desc, str(value))
@@ -166,7 +188,7 @@ def find_all(container):
 
 	return context
 
-def returns_data(f):
+def check_returns_data(f):
 	if not hasattr(f, 'retval'):
 		return False
 
@@ -175,12 +197,7 @@ def returns_data(f):
 #Decorator
 def param(name, type, *validators, **kwargs):
 	def _param(f):
-		if not hasattr(f, 'params'):
-			f.params = {}
-		if not hasattr(f, 'valids'):
-			f.valids = {}
-		if not hasattr(f, 'types'):
-			f.types = {}
+		f = annotated(f)
 
 		if not hasattr(types, type):
 			raise AttributeError('Unknown parameter type: %s' % str(type))
@@ -188,7 +205,9 @@ def param(name, type, *validators, **kwargs):
 		f.params[name] = getattr(types, type)
 		f.types[name] = type
 		f.valids[name] = _parse_validators(f.params[name], validators)
-		f.annotated = True
+
+		if 'desc' in kwargs:
+			f.param_descs[name] = kwargs['desc']
 
 		return decorator(_check_and_execute, f)
 
@@ -196,22 +215,40 @@ def param(name, type, *validators, **kwargs):
 
 def returns(desc=None, printer=None, data=False):
 	def _returns(f):
+		annotated(f)
+
 		f.retval = namedtuple("ReturnValue", ["desc", "printer", "data"])
 		f.retval.desc = desc
 		f.retval.printer = (printer,)
 		f.retval.data = data
 
-		if not hasattr(f, 'params'):
-			f.params = {}
-		if not hasattr(f, 'valids'):
-			f.valids = {}
-		if not hasattr(f, 'types'):
-			f.types = {}
-
-		f.annotated = True
 		return f
 
 	return _returns
+
+def returns_data(desc=None, printer=None):
+	return returns(desc, printer, data=True)
+
+def context(name):
+	def _context(cls):
+		annotated(cls)
+		cls.context = True
+		cls._annotated_name = name
+		return cls
+
+	return _context
+
+def context_name(context):
+	"""
+	Given a context, return its proper name
+	"""
+
+	if hasattr(context, "_annotated_name"):
+		return context._annotated_name
+	elif inspect.isclass(context):
+		return context.__class__.__name__
+
+	return str(context)
 
 def annotated(f):
 	if not hasattr(f, 'params'):
@@ -220,6 +257,8 @@ def annotated(f):
 		f.valids = {}
 	if not hasattr(f, 'types'):
 		f.types = {}
+	if not hasattr(f, 'param_descs'):
+		f.param_descs = {}
 
 	f.annotated = True
 	return f

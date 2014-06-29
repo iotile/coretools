@@ -4,6 +4,7 @@
 
 from exceptions import *
 import annotate
+import inspect
 
 def process_kwarg(flag, arg_it):
 	flag = flag[2:]
@@ -20,12 +21,19 @@ def process_kwarg(flag, arg_it):
 	return name, value, skip
 
 def print_dir(context):
+	print annotate.context_name(context)
+
+	doc = inspect.getdoc(context)
+	if doc is not None:
+		doc = inspect.cleandoc(doc)
+		print "\n" + doc
 	print "\nAvailable Functions:"
 
 	if isinstance(context, dict):
 		funs = context.keys()
 	else:
 		funs = annotate.find_all(context)
+		funs = filter(lambda x: not x.startswith('__'), funs)
 
 	for fun in funs:
 		print " - " + annotate.get_signature(find_function(context, fun))
@@ -49,7 +57,7 @@ def find_function(context, funname):
 
 	return func
 
-def invoke(context, line):
+def invoke(contexts, line):
 	"""
 	Given a list of command line arguments, attempt
 	to find the function being specified and map the passed 
@@ -58,6 +66,7 @@ def invoke(context, line):
 	"""
 
 	funname = line[0]
+	context = contexts[-1]
 
 	#Check if we are asked for help
 	if funname == 'help':
@@ -70,7 +79,7 @@ def invoke(context, line):
 			print "Too many arguments:", args
 			print "Usage: help [function]"
 
-		return None, []
+		return [], True
 
 	func = find_function(context, funname)
 
@@ -99,7 +108,12 @@ def invoke(context, line):
 	#print "Remaining line:", line[i:]
 
 	val = func(*posargs, **kwargs)
-	if annotate.returns_data(func):
-		annotate.print_retval(func, val)
+	finished = True
 
-	return val, line[i:]
+	if annotate.check_returns_data(func):
+		annotate.print_retval(func, val)
+	else:
+		contexts.append(val)
+		finished = False
+
+	return line[i:], finished

@@ -10,6 +10,25 @@ def print_ranges(ranges):
 	for start,stop in ranges:
 		print "[0x%X, 0x%X]" % (start, stop) 
 
+def print_errors(errors):
+	print "Comparing hex files"
+
+	if len(errors) == 0:
+		print "Files are equivalent"
+		return
+
+	for error in errors:
+		src = 'first'
+		this = error['this']
+		other = error['other']
+		if error['direction'] == 'reverse':
+			src = 'second'
+			this = error['other']
+			other = error['this']
+
+		print "Mismatch in range (0x%X, 0x%X) defined in %s file, file 1: 0x%X, file 2: 0x%X" % (error['range'][0], error['range'][1], src, this, other)
+
+@context("HexFile")
 class HexFile(object):
 	"""
 	A generalized container object for representing sparse memory views like those
@@ -19,11 +38,11 @@ class HexFile(object):
 	pic12 and pic24 hex files which have 14-bit and 24-bit words respectively.
 	"""
 
-	@param("source", "path", "readable", description="hex file to load")
-	@param("wordsize", "integer", "positive", description="native word size of architecture in bits")
-	@param("filewords", "integer", "positive", description="bytes per word in hex file")
-	@param("skip", "integer", "positive", description="valid addresses: 1=all, 2=even")
-	@param("cutoff", "integer", "positive", description="ignore addresses above this value")
+	@param("source", "path", "readable", desc="hex file to load")
+	@param("wordsize", "integer", "positive", desc="native word size of architecture in bits")
+	@param("filewords", "integer", "positive", desc="bytes per word in hex file")
+	@param("skip", "integer", "positive", desc="valid addresses: 1=all, 2=even")
+	@param("cutoff", "integer", "positive", desc="ignore addresses above this value")
 	def __init__(self, source, wordsize, filewords, skip=1, cutoff=0xFFFF):
 		"""
 		Create a HexFile object representing the source file 
@@ -86,6 +105,12 @@ class HexFile(object):
 	def addresses(self):
 		return sorted(self._buf.keys())
 
+	def __getitem__(self, x):
+		if x in self._buf:
+			return self._buf[x]
+
+		return self.fill
+
 	@returns("list of defined address ranges", printer=print_ranges, data=True)
 	def ranges(self):
 		"""
@@ -107,3 +132,42 @@ class HexFile(object):
 		ranges.append((rstart, valid_addr[-1]))
 
 		return ranges
+
+	@param("other", "path", "readable", desc="Other hex file to compare to this one")
+	@param("type", "string", ("list", ("oneway, twoway")), desc="compare in both directions")
+	@returns("list of mismatches", printer=print_errors, data=True)
+	def compare(self, other, type="oneway"):
+		"""
+		Load another hex file from the given path and compare it to this one.  If type is
+		oneway, then only consider the address ranges defined in this file, so the files
+		compare as the same if all addresses defined in this HexFile agree with the values
+		in the other hex file.  If type is twoway, the comparison is repeated for all address
+		ranges defined in the other file as well.
+		"""
+
+		if not isinstance(other, HexFile):
+			other = HexFile(other, self.wordsize, self.filewords, self.skip, self.cutoff)
+
+		ownranges = self.ranges()
+
+		errors = []
+
+		for r in ownranges:
+			for i in xrange(r[0], r[1]+1):
+				sval = self[i]
+				oval = other[i]
+
+				if sval != oval:
+					err = {"range": r, "address": i, "this": sval, "other": oval, "direction": "forward"}
+					errors.append(err)
+					break
+
+		#if we're asked for a two-way comparison, also compare the other direction
+		if type == "twoway":
+			rev_errors = other.compare(self)
+			for err in rev_errors:
+				err['direction'] = 'reverse'
+
+			errors.extend(rev_errors)
+
+		return errors
