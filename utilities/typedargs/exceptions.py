@@ -72,7 +72,7 @@ class ArgumentError(MoMoException):
 		if len(self.args) == 1:
 			args = self.args[0]
 
-		return "Invalid arguments: %s" % str(args)
+		return str(args)
 
 class InternalError(MoMoException):
 	"""
