@@ -108,37 +108,46 @@ def invoke(contexts, line):
 	#find out how many position and kw args this function takes
 	posset,kwset = annotate.get_spec(func)
 
-	arg_it = (x for x in line[1:])
-	kwargs = {}
-	posargs = []
+	#If the function wants arguments directly, do not parse them
+	if func.takes_cmdline == True:
+		val = func(line[1:])
+	else:
+		arg_it = (x for x in line[1:])
+		kwargs = {}
+		posargs = []
 
-	i = 1
-	for arg in arg_it:
-		if arg.startswith('--') or (arg.startswith('-') and len(arg)==2):
-			name,val,skip = process_kwarg(arg, arg_it)
-			kwargs[name] = val
-			i+= skip
-		else:
-			if annotate.spec_filled(posset, kwset, posargs, kwargs):
-				break
+		i = 1
+		for arg in arg_it:
+			if arg.startswith('--') or (arg.startswith('-') and len(arg)==2):
+				name,val,skip = process_kwarg(arg, arg_it)
+				kwargs[name] = val
+				i+= skip
+			else:
+				if annotate.spec_filled(posset, kwset, posargs, kwargs):
+					break
 
-			posargs.append(arg)
+				posargs.append(arg)
 
-		i += 1
+			i += 1
 
-	#print "Consumed %d arguments to execute function" % i
-	#print "Remaining line:", line[i:]
+		#print "Consumed %d arguments to execute function" % i
+		#print "Remaining line:", line[i:]
 
-	if not annotate.spec_filled(posset, kwset, posargs, kwargs):
-		raise ArgumentError("too few arguments")
+		if not annotate.spec_filled(posset, kwset, posargs, kwargs):
+			raise ArgumentError("too few arguments")
 
-	val = func(*posargs, **kwargs)
+		val = func(*posargs, **kwargs)
+
+	#Update our current context if this function destroyed it or returned a new one.
 	finished = True
 
-	if annotate.check_returns_data(func):
-		annotate.print_retval(func, val)
-	else:
-		contexts.append(val)
-		finished = False
+	if func.finalizer == True:
+		contexts.pop()
+	elif val is not None:
+		if annotate.check_returns_data(func):
+			annotate.print_retval(func, val)
+		else:
+			contexts.append(val)
+			finished = False
 
 	return line[i:], finished

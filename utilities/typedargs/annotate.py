@@ -258,6 +258,16 @@ def context(name):
 
 	return _context
 
+def finalizer(f):
+	"""
+	Indicate that this function destroys the context in which it is invoked, such as a quit method
+	on a subprocess or a delete method on an object.
+	"""
+
+	f = annotated(f)
+	f.finalizer = True
+	return f
+
 def context_name(context):
 	"""
 	Given a context, return its proper name
@@ -270,6 +280,12 @@ def context_name(context):
 
 	return str(context)
 
+def takes_cmdline(f):
+	f = annotated(f)
+	f.takes_cmdline = True
+
+	return f
+	
 def annotated(f):
 	if not hasattr(f, 'params'):
 		f.params = {}
@@ -281,5 +297,7 @@ def annotated(f):
 		f.param_descs = {}
 
 	f.annotated = True
+	f.finalizer = False
+	f.takes_cmdline = False
 	return f
 

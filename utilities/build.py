@@ -5,6 +5,24 @@ import json as json
 from paths import MomoPaths
 import os.path
 from pymomo.utilities import deprecated
+import sys
+from pymomo.utilities.typedargs.annotate import *
+
+@takes_cmdline
+def build(args):
+	"""
+	Invoke the scons build system from the current directory, exactly as if 
+	the scons tool had been invoked. 
+	"""
+
+	import pymomo.utilities.invoke
+	import SCons.Script
+
+	site_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'site_scons'))
+
+	all_args = ['momo', '--site-dir=%s' % site_path]
+	sys.argv = all_args + list(args)
+	SCons.Script.main()
 
 def load_settings():
 	paths = MomoPaths()
