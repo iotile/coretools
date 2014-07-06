@@ -22,7 +22,7 @@ class SIM30 (SimWorker):
 		
 		self.sim = None
 		self.sim = subprocess.Popen([sim30path], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-		self.input = AsyncLineBuffer(self.sim.stdout)
+		self.input = AsyncLineBuffer(self.sim.stdout, separator=SIM30.prompt, strip=True)
 		self.waiting = False #Whether or not we are waiting for a prompt to appear
 
 		self._wait_prompt() #discard return value because its just random information
@@ -36,19 +36,18 @@ class SIM30 (SimWorker):
 		if self.sim is not None:
 			self.sim.terminate()
 
-	def _wait_prompt(self):
+	def _wait_prompt(self, timeout=3):
 		"""
 		Wait for a prompt to appear indicating that the last command finished. 
 		"""
 
 		#if this returns we know that the end of buffer is SIM30.prompt
 		#so we can splice it off
-		buffer = self.read_until(self.input, SIM30.prompt)
-		buffer = buffer[:-len(SIM30.prompt)]
-
+		
+		msg = self.input.readline(timeout)
 		self.waiting = False
 
-		return buffer
+		return msg
 
 	def _command(self, cmd, *args, **kwargs):
 		"""
@@ -94,13 +93,14 @@ class SIM30 (SimWorker):
 		#We need to 
 		self.first_run = True
 
-	def wait(self):
+	def wait(self, timeout):
 		if not self.waiting:
 			return
 
-		self._wait_prompt()
+		self._wait_prompt(timeout)
 
 	def set_log(self, file):
+		#FIXME, actually attach a log file
 		pass
 
 	def execute(self):
@@ -116,8 +116,7 @@ class SIM30 (SimWorker):
 		#Nothing should be returned if successful, so a read should timeout
 		success = True
 		try:
-			c = self.input.peek(1, 0.1)
-			msg = self._wait_prompt()
+			msg = self._wait_prompt(0.1)
 			if msg != "":
 				success = False
 		except TimeoutError:
@@ -125,5 +124,3 @@ class SIM30 (SimWorker):
 
 		if success is False:
 			raise InternalError(msg)
-
-
