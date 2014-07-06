@@ -10,7 +10,7 @@ import os
 from pymomo.utilities.typedargs.exceptions import *
 
 class AsyncLineBuffer:
-	def __init__(self, file):
+	def __init__(self, file, separator='\n', strip=True):
 		"""
 		Given an underlying file like object, syncronously read from it 
 		in a separate thread and communicate the data back to the buffer
@@ -19,66 +19,45 @@ class AsyncLineBuffer:
 
 		self.queue = Queue()
 		self.items = Event()
-		self.thread = Thread(target=AsyncLineBuffer.ReaderThread, args=(self.queue, file, self.items))
+		self.thread = Thread(target=AsyncLineBuffer.ReaderThread, args=(self.queue, file, self.items, separator, strip))
 		self.thread.daemon = True
 		self.thread.start()
-		self.buffer = StringIO()
 
 	@staticmethod
-	def ReaderThread(queue, file, items):
+	def ReaderThread(queue, file, items, separator, strip):
 		while True:
-			c = file.read(1)
-			queue.put(c)
+			line_done = False
+			line = ''
+			while not line_done:
+				c = file.read(1)
+				line += c
+
+				if line.endswith(separator):
+					line_done = True
+
+			if strip:
+				line = line[:-len(separator)]
+
+			queue.put(line)
 			items.set()
-
-	def _update_buffer(self):
-		"""
-		Add all current contents that have been read to the buffer
-		without moving the current position.
-		"""
-
-		loc = self.buffer.tell()
-
-		while not self.queue.empty():
-			self.buffer.write(self.queue.get())
-
-		self.buffer.seek(loc)
 
 	def available(self):
 		"""
-		Return the number of available bytes in the buffer
+		Return the number of available lines in the buffer
 		"""
-		loc = self.buffer.tell()
-		self.buffer.seek(0, os.SEEK_END)
-		end = self.buffer.tell()
-		self.buffer.seek(loc)
+		
+		return self.queue.qsize()
 
-		return end-loc
-
-	def read(self, n, timeout=3.0):
+	def readline(self, timeout=3.0):
 		"""
 		read n bytes, timeout if n bytes are not available 
 		"""
 
-		while self.available() < n:
+		if self.available() == 0:
 			flag_set = self.items.wait(timeout)
 			if flag_set is False:
-				raise TimeoutError("Asynchronous Read timed out waiting for %d bytes" % n)
+				raise TimeoutError("Asynchronous Read timed out waiting for a line to be read")
 
 			self.items.clear()
-			self._update_buffer()
 
-		return self.buffer.read(n)
-
-	def peek(self, n, timeout=3.0):
-		"""
-		Peek at the next n bytes, resetting the cursor afterward, even in the
-		case of an exception
-		"""
-		
-		loc = self.buffer.tell()
-
-		try:
-			return self.read(n, timeout)
-		finally:
-			self.buffer.seek(loc)
+		return self.queue.get()
