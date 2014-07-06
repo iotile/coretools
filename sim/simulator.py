@@ -24,9 +24,9 @@ def _quit_simulator(sim):
 	"""
 	Quit the simulator process.
 	"""
-	sim.quit()
+	sim.exit()
 
-
+@context("Simulator")
 class Simulator:
 	"""
 	Generic interface for simulating embedded microprocessors.
@@ -53,8 +53,8 @@ class Simulator:
 		#executing proces
 		atexit.register(_quit_simulator, self)
 
-	@annotated
-	def quit(self):
+	@finalizer
+	def exit(self):
 		"""
 		Tell the simulator to quit and wait for it to exit
 		"""
@@ -91,14 +91,14 @@ class Simulator:
 
 		self._command('set_log', file=file)
 
-	@annotated
-	def wait(self):
+	@param("wait", "integer", desc="maximum number of seconds to wait (-1 is forever)")
+	def wait(self, wait):
 		"""
 		Wait for the simulator to finish executing code and return to being able
 		to process commands.
 		"""
 
-		self._command('wait')
+		self._command('wait', timeout=wait)
 
 	@annotated
 	def execute(self):
