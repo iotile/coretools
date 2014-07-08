@@ -432,6 +432,14 @@ class MIBController (proxy.MIBProxyObject):
 		"""
 		self.rpc(60, 2)
 
+	def get_reporting(self):
+		"""
+		Get regular reporting state
+		"""
+		res = self.rpc(60,14, result_type=(1, True))
+		enabled = bool(res['ints'][0])
+		return enabled
+
 	def send_report(self):
 		"""
 		Send a single report
