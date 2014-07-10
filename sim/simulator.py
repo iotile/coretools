@@ -91,6 +91,7 @@ class Simulator:
 
 		self._command('set_log', file=file)
 
+	@returns_data(desc="reason")
 	@param("wait", "integer", desc="maximum number of seconds to wait (-1 is forever)")
 	def wait(self, wait):
 		"""
@@ -98,7 +99,16 @@ class Simulator:
 		to process commands.
 		"""
 
-		self._command('wait', timeout=wait)
+		return self._command('wait', timeout=wait)
+
+	@returns_data(desc="ready for commands")
+	def ready(self):
+		"""
+		Return if the simulator is ready to accept new commands or if it is running
+		code.
+		"""
+
+		return self._command('ready')
 
 	@annotated
 	def execute(self):
@@ -107,7 +117,6 @@ class Simulator:
 		"""
 
 		self._command('execute')
-
 
 	#Communication functions to communicate with the simulator worker objects
 	def _send_cmd(self, method, **kwargs):
@@ -130,4 +139,4 @@ class Simulator:
 		if resp['error'] is True:
 			raise InternalError("Result of calling method '%s' was '%s'" % (method, resp['message']))
 
-		return resp
+		return resp.get('result', None)

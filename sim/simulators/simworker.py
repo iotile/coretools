@@ -92,6 +92,8 @@ class SimWorker:
 
 				msg = self._format_error(args)
 				self.pipe.send(msg)
+			except KeyboardInterrupt as ex:
+				self.finish()
 
 	def finish(self):
 		"""

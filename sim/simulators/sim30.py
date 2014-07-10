@@ -4,6 +4,14 @@ import subprocess
 from pymomo.utilities.typedargs.annotate import *
 from pymomo.utilities.typedargs.exceptions import *
 from pymomo.utilities.asyncio import AsyncLineBuffer
+from collections import namedtuple
+
+messages = {
+	'CORE-W0008: Software Reset Instruction called at PC=': '_parse_reset'
+}
+
+#Types of sim30 messages
+SoftwareResetMessage = namedtuple('SoftwareResetMessage', ['pc'])
 
 class SIM30 (SimWorker):
 	"""
@@ -25,7 +33,7 @@ class SIM30 (SimWorker):
 		self.input = AsyncLineBuffer(self.sim.stdout, separator=SIM30.prompt, strip=True)
 		self.waiting = False #Whether or not we are waiting for a prompt to appear
 
-		self._wait_prompt() #discard return value because its just random information
+		self._wait_prompt(noparse=True) #discard messages because its just random information
 		self._init_sim()
 
 	def _init_sim(self):
@@ -36,7 +44,7 @@ class SIM30 (SimWorker):
 		if self.sim is not None:
 			self.sim.terminate()
 
-	def _wait_prompt(self, timeout=3):
+	def _wait_prompt(self, timeout=3, noparse=False):
 		"""
 		Wait for a prompt to appear indicating that the last command finished. 
 		"""
@@ -47,7 +55,33 @@ class SIM30 (SimWorker):
 		msg = self.input.readline(timeout)
 		self.waiting = False
 
-		return msg
+		if not noparse:
+			parsed = self._process_sim30_message(msg)
+			return parsed
+
+	def _process_sim30_message(self, msg):
+		"""
+		Given the textual output of a sim30 response to a command, parse it and
+		see if it indicates an error.  Convert the result to a standard format
+		for further inspection as well.
+		"""
+
+		msg = msg.rstrip()
+		lines = [x for x in msg.split('\n') if len(x) > 0]
+
+		parsed = []
+
+		for line in lines:
+			matches = [messages[x] for x in messages.iterkeys() if line.startswith(x)]
+			if len(matches) == 0:
+				raise APIError("Unknown message from sim30: %s" % line)
+			elif len(matches) > 1:
+				raise APIError("Multiple matches for message from sim30: %s" % line)
+
+			parser = getattr(self, matches[0])
+			parsed.append(parser(line))
+		
+		return parsed
 
 	def _command(self, cmd, *args, **kwargs):
 		"""
@@ -68,14 +102,15 @@ class SIM30 (SimWorker):
 		self.sim.stdin.write(cmd)
 
 		if "sync" not in kwargs or kwargs["sync"]:
-			result = self._wait_prompt()
+			noparse = kwargs.get('noparse', False)
+			result = self._wait_prompt(noparse=noparse)
 			return result
 		else:
 			return None
 
 	@param("mode", "string", ("list", ['pic24']))
 	def _set_mode(self, mode):
-		result = self._command('LD %s' % 'pic24super')
+		result = self._command('LD %s' % 'pic24super', noparse=True)
 
 	### BEGIN SIMULATION COMMANDS ###
 	def load_program(self, program, type):
@@ -95,13 +130,26 @@ class SIM30 (SimWorker):
 
 	def wait(self, timeout):
 		if not self.waiting:
-			return
+			return None
 
-		self._wait_prompt(timeout)
+		res = self._wait_prompt(timeout)
+
+		return {'result': res}
 
 	def set_log(self, file):
 		#FIXME, actually attach a log file
 		pass
+
+	def ready(self):
+		if not self.waiting:
+			return {'result': True}
+
+		try:
+			self._wait_prompt(0.0)
+		except TimeoutError:
+			return {'result': False}
+
+		return {'result': True}
 
 	def execute(self):
 		#sim30 requires the processor to be reset before executing
@@ -110,17 +158,18 @@ class SIM30 (SimWorker):
 			self._command('RP')
 			self.first_run = False
 
+		#Stop execution on each warning so that we can regain control after a 
+		#reset instruction.
+		self._command('HW on')
 		self._command('E', sync=False)
 		self.waiting = True
 
-		#Nothing should be returned if successful, so a read should timeout
-		success = True
-		try:
-			msg = self._wait_prompt(0.1)
-			if msg != "":
-				success = False
-		except TimeoutError:
-			pass
 
-		if success is False:
-			raise InternalError(msg)
+	#Utility routines for parsing specific messages from sim30
+	def _parse_reset(self, line):
+		skip = len('CORE-W0008: Software Reset Instruction called at PC=')
+		pcstr = line[skip:]
+		pc = int(pcstr, 16)
+
+		msg = SoftwareResetMessage(pc)
+		return msg
