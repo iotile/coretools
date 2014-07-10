@@ -5,6 +5,7 @@
 from exceptions import *
 import annotate
 import inspect
+from pymomo.utilities.printer import Printer
 
 builtin_help = {
 	'help': "help [function]: print help information about the current context or a function",
@@ -118,7 +119,7 @@ def invoke(contexts, line):
 
 		i = 1
 		for arg in arg_it:
-			if arg.startswith('--') or (arg.startswith('-') and len(arg)==2):
+			if arg.startswith('--') or ((arg.startswith('-') and len(arg)==2)):
 				name,val,skip = process_kwarg(arg, arg_it)
 				kwargs[name] = val
 				i+= skip
@@ -129,9 +130,6 @@ def invoke(contexts, line):
 				posargs.append(arg)
 
 			i += 1
-
-		#print "Consumed %d arguments to execute function" % i
-		#print "Remaining line:", line[i:]
 
 		if not annotate.spec_filled(posset, kwset, posargs, kwargs):
 			raise ArgumentError("too few arguments")

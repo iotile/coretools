@@ -8,7 +8,10 @@ class MoMoException(Exception):
 	API functions will throw only MoMoException subclasses as defined
 	below.
 	"""
-	pass
+	
+	def format(self):
+		msg = "%s: %s" % (self.__class__.__name__, str(self))
+		return msg
 
 class ValidationError(MoMoException):
 	"""
