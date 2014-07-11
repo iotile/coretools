@@ -137,8 +137,7 @@ class SIM30 (SimWorker):
 		return {'result': res}
 
 	def set_log(self, file):
-		#FIXME, actually attach a log file
-		pass
+		self._command('io nul %s' % file)
 
 	def ready(self):
 		if not self.waiting:
