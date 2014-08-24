@@ -70,6 +70,9 @@ class Simulator:
 		for i in self.temporaries:
 			os.remove(i)
 
+		#If we are called twice, make sure we don't try to clean up again.
+		self.temporaries = []
+
 	@annotated
 	def finish(self):
 		"""
@@ -120,7 +123,7 @@ class Simulator:
 		may not flush data to the log file until they are closed and we cannot use a pipe because
 		not all of the external simulator programs support it.
 		"""
-		
+
 		if not hasattr(self, 'logfile'):
 			raise InternalError('You must attach a log using attach_log before calling get log')
 
