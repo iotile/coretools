@@ -7,6 +7,9 @@ import os.path
 from pymomo.utilities import deprecated
 import sys
 from pymomo.utilities.typedargs.annotate import *
+from pymomo.utilities.typedargs.exceptions import *
+from collections import namedtuple
+from copy import deepcopy
 
 @takes_cmdline
 def build(args):
@@ -24,14 +27,22 @@ def build(args):
 	sys.argv = all_args + list(args)
 	SCons.Script.main()
 
-def load_settings():
-	paths = MomoPaths()
-	filename = os.path.join(paths.config,'build_settings.json')
+def load_settings(filename=None):
+	local_file = True
 
-	with open(filename,'r') as f:
-		return json.load(f)
+	if filename is None:
+		paths = MomoPaths()
+		filename = os.path.join(paths.config,'build_settings.json')
+		local_file = False
 
-	ValueError('Could not load global build settings file (config/build_settings.json)')
+	try:
+		with open(filename,'r') as f:
+			return json.load(f)
+	except IOError:
+		if local_file:
+			raise ArgumentError("Could not open settings file '%s'" % str(filename))
+		else:
+			raise APIError('Could not load global build settings file (config/build_settings.json)')
 
 def load_chip_info(chip):
 	"""
@@ -44,7 +55,7 @@ def load_chip_info(chip):
 	if 'aliases' in settings:
 		aliases = settings['aliases']
 
-	default = conf['mib12']['default_settings'].copy()
+	default = deepcopy(conf['mib12']['default_settings'])
 	chip_info = merge_dicts(default, settings)
 
 	return (aliases, chip_info)
@@ -65,7 +76,9 @@ def merge_dicts(a, b):
 
 MISSING = object()
 
-class ChipSettings:
+ModuleSettings = namedtuple('ModuleSettings', ['overlays', 'settings'])
+
+class TargetSettings:
 	"""
 	A class that contains a dictionary of all the settings defined for
 	a given chip in a ChipFamily.  The settings are a combination of
@@ -73,15 +86,9 @@ class ChipSettings:
 	specific settings.
 	"""
 
-	def __init__(self, name, settings, family, module=None):
+	def __init__(self, name, settings, family):
 		self.name = name
-
-		#If we are passed in a module, merge in any module specific overrides
-		if module is not None and name in module:
-			self.settings = merge_dicts(settings, module[name])
-		else:
-			self.settings = settings
-
+		self.settings = settings
 		self.family = family
 
 	def build_dirs(self):
@@ -113,7 +120,7 @@ class ChipSettings:
 		if default is not MISSING:
 			return default
 
-		raise ValueError("property %s not found for chip %s" % (name, self.name))
+		raise ArgumentError("property %s not found for target '%s' and no default given" % (name, self.name))
 
 	def includes(self):
 		"""
@@ -127,6 +134,8 @@ class ChipSettings:
 
 		if "includes" in self.settings:
 			includes += self.settings['includes']
+		if "extra_includes" in self.settings:
+			includes += self.settings['extra_includes']
 
 		fullpaths = [os.path.normpath(os.path.join(base, x)) for x in includes + self.family.includes]
 		return fullpaths
@@ -139,48 +148,38 @@ class ChipFamily:
 	fashion.  The data is loaded from config/build_settings.json.
 	"""
 
-	def __init__(self, surname):
+	def __init__(self, surname, localfile=None):
 		"""
 		Build a ChipFamily from the family name, e.g. mib12, mib24
+		If localfile is not None, use that file to load the settings from,
+		otherwise load settings from gobal build_settings file
 		"""
 
-		settings = load_settings()
+		settings = load_settings(localfile)
 		if not surname in settings:
-			raise ValueError("Could not find family %s in config file" % surname)
+			raise InternalError("Could not find family %s in config file" % surname)
 
 		family = settings[surname]
 
-
-		self.aliases = {}
+		self.archs = {}
 		self.module_targets = {}
-		self.includes = []
+		self.modules = {}
+		self.default_settings = {}
 
-
-		self._load_family(settings, surname)
+		self._load_architectures(family)
+		self._load_module_targets(family)
 		self._load_modules(family)
-		self._load_module_overrides(family)
 
-		if "includes" in family:
-			self.includes = family['includes']
+		if "default_settings" in family:
+			self.default_settings = family['default_settings']
+
 
 	def find(self, name, module=None):
 		"""
-		Find a given chip by one of its aliases. Returns a ChipSettings object.
-		If kw module is passed, module specific overrides are added to the 
-		ChipSettings object.
+		Given a target name and optionally a module name, return a settings object
+		for that target 
 		"""
-
-		if name not in self.aliases:
-			raise KeyError("Could not find chip by alias %s" % name)
-
-		target = self.aliases[name]
-		chip = self.known_targets[target]
-
-		overrides = {}
-		if module in self.module_settings:
-			overrides = self.module_settings[module]
-
-		return ChipSettings(chip.name, chip.settings, self, overrides)
+		return self._load_target(name, module)
 
 	def targets(self, module):
 		"""
@@ -202,43 +201,91 @@ class ChipFamily:
 		for target in self.targets(module):
 			func(target)
 
-	def _load_family(self, settings, surname):
-		family = settings[surname]
-
-		targets = family['known_targets']
-		self.known_targets = {x: self._load_target(family, x) for x in targets}
-
-	def _load_module_overrides(self, family):
+	def validate_target(self, target):
 		"""
-		Modules can override chip specific definitions 
+		Make sure that the specified target only contains architectures that we know about. 
 		"""
 
-		if 'module_settings' not in family:
-			self.module_settings = {}
+		archs = target.split('/')
 
-		self.module_settings = {mod: settings for mod,settings in family['module_settings'].iteritems()}
+		for arch in archs:
+			if not arch in self.archs:
+				return False
 
-	def _load_target(self, family, target):
+		return True
+
+	def _load_target(self, target, module=None):
 		"""
-		Load in the chip specific target information and aliases for the
-		given target
+		Given a string specifying a series of architectural overlays as:
+		<arch 1>/<arch 2>/... and optionally a module name to pull in
+		module specific settings, return a TargetSettings object that
+		encapsulates all of the settings for this target.
 		"""
 
-		chip_settings = {}
-		default = family['default_settings'].copy()
+		mod = ModuleSettings({}, {})
+		if not self.validate_target(target):
+			raise ArgumentError("Target %s is invalid, check to make sure every architecture in it is defined" % target)
 
-		if target in family['chip_settings']:
-			chip_settings = family['chip_settings'][target]
-			if "aliases" in chip_settings:
-				for alias in chip_settings['aliases']:
-					self.aliases[alias] = target
+		if module is not None:
+			if module not in self.modules:
+				raise ArgumentError("Unknown module name passed: %s" % module)
 
-		self.aliases[target] = target
+			mod = self.modules[module]
 
-		chip_settings = merge_dicts(default, chip_settings)
-		return ChipSettings(target, chip_settings, self)
+		settings = deepcopy(self.default_settings)
+		archs = target.split('/')
 
-	def _load_modules(self, family):
+		for arch in archs:
+			arch_settings = deepcopy(self.archs[arch])
+
+			if arch in mod.overlays:
+				arch_settings = merge_dicts(arch_settings, mod.overlays[arch])
+
+			settings = merge_dicts(settings, arch_settings)
+
+		settings = merge_dicts(settings, mod.settings)
+
+		targetname = "%s:%s" % (str(module), target)
+
+		return TargetSettings(targetname, settings, self)
+
+	def _load_module_targets(self, family):
 		if "module_targets" in family:
 			for mod, targets in family['module_targets'].iteritems():
+				for target in targets:
+					if not self.validate_target(target):
+						raise InternalError("Module %s targets unknown architectures '%s'" % (mod, target))
+
 				self.module_targets[mod] = targets
+
+	def _load_architectures(self, family):
+		"""
+		Load in all of the architectural overlays for this family.  An architecture adds configuration
+		information that is used to build a common set of source code for a particular hardware and sitation.
+		They are stackable so that you can specify a chip and a configuration for that chip, for example.
+		"""
+
+		if "architectures" not in family:
+			raise InternalError("required architectures key not in build_settings.json for desired family")
+
+
+		for key, val in family['architectures'].iteritems():
+			if not isinstance(val, dict):
+				raise InternalError("All entries under chip_settings must be dictionaries")
+
+			self.archs[key] = deepcopy(val)
+
+	def _load_modules(self, family):
+		if "modules" not in family:
+			raise InternalError("required modules key not in build_settings.json for desired family")
+
+		for modname in family['modules']:
+			overlays = {}
+			rawmod = family['modules'][modname]
+
+			if 'overlays' in rawmod:
+				overlays = rawmod['overlays']
+				del rawmod['overlays']
+
+			mod = ModuleSettings(overlays, rawmod)
+			self.modules[modname] = mod
