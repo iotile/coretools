@@ -91,6 +91,13 @@ class TargetSettings:
 		self.settings = settings
 		self.family = family
 
+	def output_name(self):
+		return self.name.replace('/', '_').replace(":","_")
+
+	def arch_name(self):
+		mod,arch = self.name.split(':')
+		return arch.replace('/',"_")
+
 	def build_dirs(self):
 		"""
 		Return the build directory hierarchy:
@@ -101,9 +108,11 @@ class TargetSettings:
 		where chip is the cannonical name for the chip passed in
 		"""
 
-		build = os.path.join('build', self.name)
+		arch = self.arch_name()
+
+		build = os.path.join('build', arch)
 		output = os.path.join('build', 'output')
-		test = os.path.join('build', 'test', self.name)
+		test = os.path.join('build', 'test', arch)
 
 		return {'build': build, 'output': output, 'test': test}
 
@@ -137,7 +146,7 @@ class TargetSettings:
 		if "extra_includes" in self.settings:
 			includes += self.settings['extra_includes']
 
-		fullpaths = [os.path.normpath(os.path.join(base, x)) for x in includes + self.family.includes]
+		fullpaths = [os.path.normpath(os.path.join(base, x)) for x in includes]
 		return fullpaths
 
 
