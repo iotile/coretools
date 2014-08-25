@@ -1,10 +1,6 @@
 {
 	"mib12" : 
 	{
-		"common_xc8_flags": ["-G", "--addrqual=require", "--summary=default,+psect,-class,+mem,-hex,-file", "--output=default,-inhx032", "--asmlist", "-P", "--mode=pro", "--opt=all,-asmfile" ],
-		"exec_xc8_flags": ["--runtime=default,+clear,+keep,+init,-no_startup,-osccal,,-resetbits,-download,-stackcall,-clib"],
-		"app_xc8_flags": ["--runtime=-init,+no_startup,-osccal,-clear,+clib,-plib,+download"],
-
 		"default_settings" :
 		{
 			"executive_rom": [0, 959],
@@ -16,86 +12,92 @@
 			"defines":
 			{
 				"kExecutiveSerialNumber": 1
-			}
+			},
+
+			"includes":
+			[
+				"shared/pic12/src",
+				"shared/pic12/src/peripheral",
+				"shared/portable/core",
+				"shared/portable/mib",
+				"shared/portable/mib/slave",
+				"shared/portable/mib/master",
+				"shared/portable/util"
+			],
+
+			"test_includes": ["../test/pic12/gpsim_logging"],
+			"xc8_flags": ["-G", "--addrqual=require", "--summary=default,+psect,-class,+mem,-hex,-file", "--output=default,-inhx032", "--asmlist", "-P", "--mode=pro", "--opt=all,-asmfile" ]
 		},
 
-		"chip_settings" :
+		"architectures" :
 		{
 			"16lf1847":
 			{
 				"executive_rom": [0, 1119],
 				"flash_row_words": 32,
 				"total_rom": 8192,
-				"aliases": ["16F1847", "16LF1847"],
 				"xc8_target": "16F1847",
-				"xc8_define": "__PIC16LF1847__",
 				"gpsim_proc": "p16f1823",
 
 				"defines":
 				{
 					"kMultipageDevice": 1,
-					"kModuleHWType": "kMIBPic16lf1847"
+					"kModuleHWType": "kMIBPic16lf1847",
+					"__PIC16LF1847__": 1
 				}
 			},
 
 			"16lf1823" :
 			{
-				"aliases": ["16F1823", "16LF1823"],
 				"xc8_target": "16F1823",
-				"xc8_define": "__PIC16LF1823__",
 				"gpsim_proc": "p16f1823",
 
 				"defines":
 				{
-					"kModuleHWType": "kMIBPic16lf1823"
+					"kModuleHWType": "kMIBPic16lf1823",
+					"__PIC16LF1823__": 1
 				}
 			},
 
 			"12lf1822" :
 			{
-				"aliases": ["12F1822", "12LF1822"],
 				"xc8_target": "12F1822",
-				"xc8_define": "__PIC12LF1822__",
 				"gpsim_proc": "p12f1822",
 
 				"defines":
 				{
-					"kModuleHWType": "kMIBPic12lf1822"
+					"kModuleHWType": "kMIBPic12lf1822",
+					"__PIC12LF1822__": 1
 				}
+			},
+
+			"exec":
+			{
+				"extra_xc8_flags": ["--runtime=default,+clear,+keep,+init,-no_startup,-osccal,-resetbits,-download,-stackcall,-clib"],
+				"is_exec": true
+			},
+
+			"app":
+			{
+				"extra_xc8_flags": ["--runtime=-init,+no_startup,-osccal,-clear,+clib,-plib,+download"],
+				"is_exec": false
 			}
 		},
 
-		"includes" :
-		[
-			"../shared/pic12/src",
-			"../shared/pic12/src/peripheral",
-			"../shared/portable/core",
-			"../shared/portable/mib",
-			"../shared/portable/mib/slave",
-			"../shared/portable/mib/master",
-			"../shared/portable/util"
-		],
-
-		"known_targets" :
-		[
-			"12lf1822",
-			"16lf1823",
-			"16lf1847"
-		],
+		"modules":
+		{
+			"gsm_module": {},
+			"pv_module": {},
+			"multi_sensor_module": {},
+			"pic12_executive": {}
+		},
 
 		"module_targets" :
 		{
-			"gsm_module": ["16lf1823"],
-			"pv_module": ["16lf1847"],
-			"multi_sensor_module": ["16lf1847"]
-		},
-
-		"test" :
-		{
-			"includes": 
-			[
-				"../test/pic12/gpsim_logging"
-			]
+			"gsm_module": ["16lf1823/app"],
+			"pv_module": ["16lf1847/app"],
+			"multi_sensor_module": ["16lf1847/app"],
+			"pic12_executive": ["16lf1847/exec", "16lf1823/exec", "12lf1822/exec"]
 		},
 
 		"mib" :
@@ -158,7 +160,9 @@
 				"defines":
 				{
 					"__PIC24F16KA101__": 1
-				}
+				},
+
+				"chip": "24f16ka101"
 			},
 
 			"24fj64ga306":
@@ -166,7 +170,9 @@
 				"defines":
 				{
 					"__PIC24FJ64GA306__": 1
-				}
+				},
+
+				"chip": "24fj64ga306"
 			}
 		},
 
@@ -183,7 +189,7 @@
 				},
 
 				"libraries": ["pic24"],
-				"includes":
+				"extra_includes":
 				[
 					"mainboard/src/core",
 					"mainboard/src/mib",
@@ -196,14 +202,15 @@
 
 			"mainboard_bootloader":
 			{
-				"24fj64ga306":
+				"overlays":
 				{
-					"linker": "./linker/p24FJ64GA306.gld",
-					"libraries":
-					[
-						"pic24"
-					]
-				}
+					"24fj64ga306":
+					{
+						"linker": "./linker/p24FJ64GA306.gld"
+					}
+				},
+				
+				"libraries": ["pic24"]
 			},
 
 			"field_service_unit":
@@ -217,12 +224,18 @@
 							"field_service_unit/src/core",
 							"field_service_unit/src/debug",
 							"field_service_unit/src/diagnostics"
-						]
+						],
+
+						"linker": "p24F16KA101.gld"
 					}
 				},
 
-				"libraries": ["pic24"],
-				"linker": "p24F16KA101.gld"
+				"libraries": ["pic24"]
+			},
+
+			"libpic24":
+			{
+
 			}
 		},
 
@@ -230,7 +243,8 @@
 		{
 			"mainboard": ["24fj64ga306"],
 			"mainboard_bootloader": ["24fj64ga306"],
-			"field_service_unit": ["24f16ka101"]
+			"field_service_unit": ["24f16ka101"],
+			"libpic24": ["24f16ka101", "24fj64ga306"]
 		}
 	}
 }

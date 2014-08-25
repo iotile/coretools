@@ -20,7 +20,7 @@ def test_localsettings():
 	build.load_settings(_local_settings())
 
 def test_loadfamilies():
-	#mib12 = build.ChipFamily('mib12')
+	mib12 = build.ChipFamily('mib12', localfile=_local_settings())
 	mib24 = build.ChipFamily('mib24', localfile=_local_settings())
 
 @raises(InternalError)
