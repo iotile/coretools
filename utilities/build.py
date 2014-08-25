@@ -98,6 +98,17 @@ class TargetSettings:
 		mod,arch = self.name.split(':')
 		return arch.replace('/',"_")
 
+	def arch_list(self):
+		return self.name.split(':')[1]
+
+	def archs(self):
+		archs = self.arch_list().split('/')
+		return set(archs)
+
+	def module_name(self):
+		name = self.name.split(':')[0]
+		return name
+
 	def build_dirs(self):
 		"""
 		Return the build directory hierarchy:
@@ -202,13 +213,14 @@ class ChipFamily:
 
 		return [self.find(x, module) for x in self.known_targets.keys()]
 
-	def for_all_targets(self, module, func):
+	def for_all_targets(self, module, func, filter=None):
 		"""
 		Call func once for all of the targets of this module 
 		"""
 		
 		for target in self.targets(module):
-			func(target)
+			if filter is None or filter(target) == True:
+				func(target)
 
 	def validate_target(self, target):
 		"""
