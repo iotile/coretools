@@ -5,7 +5,6 @@
 from exceptions import *
 import annotate
 import inspect
-from pymomo.utilities.printer import Printer
 
 builtin_help = {
 	'help': "help [function]: print help information about the current context or a function",
