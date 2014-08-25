@@ -102,12 +102,38 @@ class TargetSettings:
 		return self.name.split(':')[1]
 
 	def archs(self):
+		"""
+		Return a set containing all of the architectures used in this TargetSettings
+		object.
+		"""
+
 		archs = self.arch_list().split('/')
 		return set(archs)
 
 	def module_name(self):
+		"""
+		Return the module name used to produce this TargetSettings object
+		"""
+
 		name = self.name.split(':')[0]
 		return name
+
+	def retarget(self, remove=[], add=[]):
+		"""
+		Return a TargetSettings object for the same module but with some of the architectures
+		removed and others added.
+		"""
+
+		archs = self.arch_list().split('/')
+
+		for r in remove:
+			if r in archs:
+				archs.remove(r)
+
+		archs.extend(add)
+
+		archstr = "/".join(archs)
+		return self.family.find(archstr, self.module_name())
 
 	def build_dirs(self):
 		"""
