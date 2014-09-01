@@ -10,6 +10,7 @@ from pymomo.utilities.typedargs.annotate import *
 from pymomo.utilities.typedargs.exceptions import *
 from collections import namedtuple
 from copy import deepcopy
+import itertools
 
 @takes_cmdline
 def build(args):
@@ -175,15 +176,26 @@ class TargetSettings:
 
 		paths = MomoPaths()
 		base = paths.modules
-
-		includes = []
-
-		if "includes" in self.settings:
-			includes += self.settings['includes']
-		if "extra_includes" in self.settings:
-			includes += self.settings['extra_includes']
+		
+		incs = [y for x,y in self.settings.iteritems() if x.endswith('includes')]
+		includes = itertools.chain(*incs)
 
 		fullpaths = [os.path.normpath(os.path.join(base, x)) for x in includes]
+		return fullpaths
+
+	def extra_sources(self):
+		"""
+		If the architectures have specified that extra source files be included, return a list of paths to
+		those source files.
+		"""
+
+		paths = MomoPaths()
+		base = paths.modules
+		
+		srcs = [y for x,y in self.settings.iteritems() if x.endswith('sources')]
+		sources = itertools.chain(*srcs)
+
+		fullpaths = [os.path.normpath(os.path.join(base, x)) for x in sources]
 		return fullpaths
 
 
