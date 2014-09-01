@@ -43,7 +43,7 @@ class Simulator:
 		"""
 
 		if not hasattr(simulators, type):
-			raise ValidationError("Unknown simulator type passed: %s" % str(type))
+			raise ArgumentError("unknown simulator type '%s'" % str(type))
 
 		self.sim_type = getattr(simulators, type)
 		self._pipe, child_pipe = Pipe(duplex=True)
