@@ -109,31 +109,6 @@ class MIBController (proxy.MIBProxyObject):
 		"""
 		res = self.rpc(42, 0x0E, int(bool(val)))
 
-	def current_time(self):
-		"""
-		Get the current RTCC time from the controller.  Returns a dictiornary with
-		all of the time components broken out.
-		"""
-
-		res = self.rpc(42, 0x0C, result_type=(6, False))
-
-		year = res['ints'][0]
-		month = res['ints'][1]
-		day = res['ints'][2]
-		hour = res['ints'][3]
-		minutes = res['ints'][4]
-		seconds = res['ints'][5]
-
-		t = {}
-		t['year'] = year
-		t['month'] = month
-		t['day'] = day
-		t['hour'] = hour
-		t['miunte'] = minutes
-		t['seconds'] = seconds
-
-		return t
-
 	def battery_status(self):
 		res = self.rpc(42, 0x0B, result_type=(1, False))
 		volt_raw = res['ints'][0]
@@ -457,6 +432,14 @@ class MIBController (proxy.MIBProxyObject):
 		"""
 		self.rpc(60, 2)
 
+	def get_reporting(self):
+		"""
+		Get regular reporting state
+		"""
+		res = self.rpc(60,14, result_type=(1, True))
+		enabled = bool(res['ints'][0])
+		return enabled
+
 	def send_report(self):
 		"""
 		Send a single report
@@ -477,10 +460,35 @@ class MIBController (proxy.MIBProxyObject):
 		"""
 
 		res = self.rpc(42, 0x0C, result_type=(0, True));
-
 		year, month, day, hour, minute, second = struct.unpack( "HHHHHH", res['buffer'] )
 
-		return datetime( year, month+1, day+1, hour, minute, second )
+		return datetime( year+2000, month, day, hour, minute, second )
+
+	@annotated
+	def build_report(self):
+		res = self.rpc(60, 0x0C)
+
+	@annotated 
+	def get_report(self):
+		report = ""
+		for i in xrange(0, 160, 20):
+			res = self.rpc(60, 0x0D, i, result_type=(0, True))
+			report += res['buffer']
+
+		print report
+
+	@param('counter', 'integer', 'nonnegative')
+	@returns(desc="Performance Counter", printer=lambda x: x.display(), data=True)
+	def perf_counter(self, counter):
+		res = self.rpc(42, 0x26, counter, result_type=(0, True))
+		return PerformanceCounter(res['buffer'], name=counter)
+
+	@param('address', 'integer', 'nonnegative')
+	def read_ram(self, address):
+		res = self.rpc(42, 0x11, address, result_type=(0, True))
+		print ord(res['buffer'][0])
+		
+		return res['buffer']
 
 	def scheduler_map(self):
 		"""

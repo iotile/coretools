@@ -45,9 +45,6 @@ def reflash_module(controller, hexfile, name=None, address=None, force=False, ve
 
 		controller.reset(sync=True)
 
-	if verbose:
-		print "Reflash complete"
-
 def _convert_hex24(hexfile):
 	tmpf = NamedTemporaryFile(delete=False)
 	tmpf.close()
