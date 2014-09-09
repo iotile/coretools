@@ -454,6 +454,8 @@ class MIBController (proxy.MIBProxyObject):
 		res = self.rpc(60, 6, result_type=(0, True))		
 		return res['buffer']
 
+	@annotated
+	@returns(desc="Time", data=True)
 	def current_time(self):
 		"""
 		Get the current time according to the controller's RTCC
@@ -463,6 +465,21 @@ class MIBController (proxy.MIBProxyObject):
 		year, month, day, hour, minute, second = struct.unpack( "HHHHHH", res['buffer'] )
 
 		return datetime( year+2000, month, day, hour, minute, second )
+
+	@annotated
+	def set_time(self, year, month, day, hours, minutes, seconds, weekday=0 ):
+		"""
+		Set the current time of the controller's RTCC
+		"""
+
+		packed = struct.pack('BBBBBBBB', int(year), int(month), int(day), int(hours), int(minutes), int(seconds), int(weekday), 0);
+		self.rpc(42, 0x12, packed)
+
+	@annotated
+	def sync_time(self):
+		now = datetime.now()
+		self.set_time( now.date().year - 2000, now.date().month, now.date().day, now.time().hour, now.time().minute, now.time().second, now.weekday() )
+		print now
 
 	@annotated
 	def build_report(self):
