@@ -118,7 +118,7 @@ class SIM30 (SimWorker):
 		#error.  sim30 cannot handle spaces in program paths.
 		cmd = 'LP'
 
-		if type == 'coff':
+		if type == 'coff' or type== 'elf':
 			cmd = 'LC'
 
 		result = self._command(cmd, program)

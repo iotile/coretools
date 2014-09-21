@@ -300,6 +300,17 @@ class ChipFamily:
 			if arch in mod.overlays:
 				arch_settings = merge_dicts(arch_settings, mod.overlays[arch])
 
+			#Allow this architecture to overlay previous architectures as well
+			if "overlays" in arch_settings:
+				for arch2 in archs:
+					if arch2 == arch:
+						break
+
+					if arch2 in arch_settings["overlays"]:
+						arch_settings = merge_dicts(arch_settings, arch_settings["overlays"][arch2])
+
+				del arch_settings["overlays"]
+
 			settings = merge_dicts(settings, arch_settings)
 
 		settings = merge_dicts(settings, mod.settings)
