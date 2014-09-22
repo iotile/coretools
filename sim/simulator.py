@@ -102,6 +102,15 @@ class Simulator:
 
 		self._command('load_program', program=program, type=type)
 
+	@param("name", "string", desc="Name of the simulator parameter to set")
+	@param("value", "string", desc="Value of the parameter")
+	def set_param(self, name, value):
+		"""
+		Set a simulator specific parameter by name.
+		"""
+
+		self._command('set_param', name=name, value=value)
+
 	@annotated
 	def attach_log(self):
 		"""
@@ -125,7 +134,7 @@ class Simulator:
 		"""
 
 		if not hasattr(self, 'logfile'):
-			raise InternalError('You must attach a log using attach_log before calling get log')
+			raise InternalError('You must attach a log using attach_log before calling get_log')
 
 		try:
 			with open(self.logfile, 'r') as f:

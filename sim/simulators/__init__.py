@@ -1,1 +1,1 @@
-from sim30 import SIM30
+from sim30 import SIM30 as pic24

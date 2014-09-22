@@ -19,6 +19,7 @@ class SIM30 (SimWorker):
 	"""
 
 	prompt = '\rdsPIC30> '
+	known_params = set(['model'])
 
 	def _build_sim(self):
 		"""
@@ -32,12 +33,13 @@ class SIM30 (SimWorker):
 		self.sim = subprocess.Popen([sim30path], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 		self.input = AsyncLineBuffer(self.sim.stdout, separator=SIM30.prompt, strip=True)
 		self.waiting = False #Whether or not we are waiting for a prompt to appear
+		self.model = 'pic24super'
 
 		self._wait_prompt(noparse=True) #discard messages because its just random information
 		self._init_sim()
 
 	def _init_sim(self):
-		self._set_mode('pic24')
+		self._set_mode(self.model)
 		self.first_run = True
 
 	def finish(self):
@@ -108,9 +110,8 @@ class SIM30 (SimWorker):
 		else:
 			return None
 
-	@param("mode", "string", ("list", ['pic24']))
 	def _set_mode(self, mode):
-		result = self._command('LD %s' % 'pic24super', noparse=True)
+		result = self._command('LD %s' % mode, noparse=True)
 
 	### BEGIN SIMULATION COMMANDS ###
 	def load_program(self, program, type):
@@ -127,6 +128,14 @@ class SIM30 (SimWorker):
 
 		#We need to 
 		self.first_run = True
+
+	def set_param(self, name, value):
+		if name in self.known_params:
+			setattr(self, name, value)
+
+
+		if name == 'model':
+			self._init_sim()
 
 	def wait(self, timeout):
 		if not self.waiting:
