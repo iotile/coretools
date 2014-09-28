@@ -206,7 +206,7 @@ class ChipFamily:
 	fashion.  The data is loaded from config/build_settings.json.
 	"""
 
-	def __init__(self, surname, localfile=None):
+	def __init__(self, surname, localfile=None, modulefile=None):
 		"""
 		Build a ChipFamily from the family name, e.g. mib12, mib24
 		If localfile is not None, use that file to load the settings from,
@@ -218,6 +218,19 @@ class ChipFamily:
 			raise InternalError("Could not find family %s in config file" % surname)
 
 		family = settings[surname]
+		if "modules" not in family:
+			family['modules'] = {}
+		if "module_targets" not in family:
+			family['module_targets'] = {}
+
+		if modulefile is not None:
+			modsettings = load_settings(modulefile)
+
+			if "modules" in modsettings:
+				merge_dicts(family['modules'], modsettings['modules'].copy())
+
+			if "module_targets" in modsettings:
+				merge_dicts(family['module_targets'], modsettings['module_targets'].copy())
 
 		self.archs = {}
 		self.module_targets = {}
