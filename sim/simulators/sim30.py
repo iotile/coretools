@@ -25,12 +25,9 @@ class SIM30 (SimWorker):
 		"""
 		Create a subprocess for sim30 and wire up its input and output for us to control
 		"""
-
-		settings = ConfigFile('settings')
-		sim30path = settings['external_tools/sim30']
 		
 		self.sim = None
-		self.sim = subprocess.Popen([sim30path], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+		self.sim = subprocess.Popen(['sim30'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 		self.input = AsyncLineBuffer(self.sim.stdout, separator=SIM30.prompt, strip=True)
 		self.waiting = False #Whether or not we are waiting for a prompt to appear
 		self.model = 'pic24super'
