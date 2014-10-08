@@ -66,7 +66,7 @@ def find_function(context, funname):
 		func = getattr(context, funname)
 
 	if func is None:
-		raise NotFoundError(funname)
+		raise NotFoundError("Function not found", function=funname)
 
 	return func
 

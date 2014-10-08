@@ -222,15 +222,19 @@ class ChipFamily:
 			family['modules'] = {}
 		if "module_targets" not in family:
 			family['module_targets'] = {}
+		if "architectures" not in family:
+			family['architectures'] = {}
 
+		#Add in all information from local modules file if there is one
 		if modulefile is not None:
 			modsettings = load_settings(modulefile)
 
 			if "modules" in modsettings:
 				merge_dicts(family['modules'], modsettings['modules'].copy())
-
 			if "module_targets" in modsettings:
 				merge_dicts(family['module_targets'], modsettings['module_targets'].copy())
+			if "architectures" in modsettings:
+				merge_dicts(family['architectures'], modsettings['architectures'].copy())
 
 		self.archs = {}
 		self.module_targets = {}

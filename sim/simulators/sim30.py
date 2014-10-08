@@ -130,7 +130,6 @@ class SIM30 (SimWorker):
 		if name in self.known_params:
 			setattr(self, name, value)
 
-
 		if name == 'model':
 			self._init_sim()
 

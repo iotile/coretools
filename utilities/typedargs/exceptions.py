@@ -8,9 +8,18 @@ class MoMoException(Exception):
 	API functions will throw only MoMoException subclasses as defined
 	below.
 	"""
+
+	def __init__(self, msg, **kwargs):
+		self.params = kwargs
+		self.msg = msg
 	
 	def format(self):
-		msg = "%s: %s" % (self.__class__.__name__, str(self))
+		msg = "%s: %s" % (self.__class__.__name__, self.msg)
+
+		if len(self.params) != 0:
+			paramstring = "\n".join([str(key) + ": " + str(val) for key,val in self.params.iteritems()])
+			msg += "\nAdditional Information:\n" + paramstring
+		
 		return msg
 
 class ValidationError(MoMoException):
@@ -21,8 +30,7 @@ class ValidationError(MoMoException):
 	or "exists".  When validation fails, this error is thrown.
 	"""
 
-	def __str__(self):
-		return "Parameter '%s' with value '%s' failed validation: %s" % (self.args[0], str(self.args[1]), self.args[2])
+	pass
 
 class ConversionError(MoMoException):
 	"""
@@ -31,8 +39,7 @@ class ConversionError(MoMoException):
 	valid conversion exists for the data type passed, this error is thrown.
 	"""
 
-	def __str__(self):
-		return "Parameter '%s' with value '%s' could not be converted: %s" % (self.args[0], str(self.args[1]), self.args[2])
+	pass
 
 class NotFoundError(MoMoException):
 	"""
@@ -40,12 +47,7 @@ class NotFoundError(MoMoException):
 	method does not exist.
 	"""
 
-	def __str__(self):
-		args = self.args
-		if len(self.args) == 1:
-			args = self.args[0]
-
-		return "Could not find callable '%s' in current context" % str(args)
+	pass
 
 class TimeoutError(MoMoException):
 	"""
@@ -53,12 +55,7 @@ class TimeoutError(MoMoException):
 	occurred, either with another process or with a hardware module.
 	"""
 
-	def __str__(self):
-		args = self.args
-		if len(self.args) == 1:
-			args = self.args[0]
-
-		return "A Timeout occurred, context is: %s" % str(args)
+	pass
 
 class ArgumentError(MoMoException):
 	"""
@@ -70,12 +67,7 @@ class ArgumentError(MoMoException):
 	4 arguments.
 	"""
 
-	def __str__(self):
-		args = self.args
-		if len(self.args) == 1:
-			args = self.args[0]
-
-		return str(args)
+	pass
 
 class InternalError(MoMoException):
 	"""
@@ -84,12 +76,7 @@ class InternalError(MoMoException):
 	method code.  More details should be passed in the arguments 
 	"""
 
-	def __str__(self):
-		args = self.args
-		if len(self.args) == 1:
-			args = self.args[0]
-
-		return "An internal error occurred: %s" % str(args)
+	pass
 
 class APIError(MoMoException):
 	"""
@@ -103,9 +90,14 @@ class APIError(MoMoException):
 	reported and fixed. 
 	"""
 
-	def __str__(self):
-		args = self.args
-		if len(self.args) == 1:
-			args = self.args[0]
+	pass
 
-		return "A bug occured in an API function: %s" % str(args)
+class BuildError(MoMoException):
+	"""
+	There is an error with some part of the build system.  This does not
+	mean that there is a compilation error but rather that a required part
+	of the build process did not complete successfully.  This exception means
+	that something is misconfigured.
+	"""
+
+	pass

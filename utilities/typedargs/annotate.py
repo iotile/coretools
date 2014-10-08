@@ -54,7 +54,7 @@ def _process_arg(f, arg, value):
 			for valid in f.valids[arg]:
 				valid[0](val, *valid[1])
 	except (ValueError,TypeError) as e:
-		raise ValidationError(arg, val, e.args[0])
+		raise ValidationError(e.args[0], argument=arg, value=val)
 
 	return val
 

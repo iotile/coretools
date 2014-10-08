@@ -56,6 +56,6 @@ class MoMoContext:
 			func = getattr(self.funcs, funname)
 
 		if func is None:
-			raise NotFoundError(funname)
+			raise NotFoundError('Cannot find function to invoke', function=funname)
 
 		return func
