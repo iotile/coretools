@@ -16,7 +16,11 @@ def unpad_pic24_hex(hexfile):
 	i = 0
 	j = 0
 
-	for i in xrange(0, len(f), 4):
+
+	if (f.maxaddr() +1) % 4 != 0:
+		raise ValueError("Cannot pack PIC24 hex file since its length is not a multiple of 4")
+
+	for i in xrange(0, f.maxaddr()+1, 4):
 		out[j+0] = f[i+0]
 		out[j+1] = f[i+1]
 		out[j+2] = f[i+2]
@@ -29,8 +33,11 @@ def pad_pic24_hex(f):
 
 	i = 0
 	j = 0
+
+	if (f.maxaddr() + 1) % 3 != 0:
+		raise ValueError("PIC24 hex file did not have length of a multiple of 3, was not correctly packed.")
 	
-	for i in xrange(0, len(f), 3):
+	for i in xrange(0, f.maxaddr()+1, 3):
 		out[j+0] = f[i+0]
 		out[j+1] = f[i+1]
 		out[j+2] = f[i+2]

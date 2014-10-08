@@ -26,7 +26,7 @@ def print_errors(errors):
 			this = error['other']
 			other = error['this']
 
-		print "Mismatch in range (0x%X, 0x%X) defined in %s file, file 1: 0x%X, file 2: 0x%X" % (error['range'][0], error['range'][1], src, this, other)
+		print "Mismatch in range (0x%X, 0x%X) defined in %s file, file 1: 0x%X, file 2: 0x%X @ address 0x%x" % (error['range'][0], error['range'][1], src, this, other, error['address'])
 
 @context("HexFile")
 class HexFile(object):
@@ -102,6 +102,28 @@ class HexFile(object):
 			word = self._read_word(ih, i)
 			self._buf[addr] = word
 
+	def _convert_to_hex(self):
+		"""
+		Convert from a native word representation to a padded hex file
+		using the parameters specified upon creation of this HexFile object
+		"""
+
+		ih = intelhex.IntelHex()
+
+		addrs = self.addresses()
+		mask = (1 << self.wordsize) -1
+
+		for addr in addrs:
+			start = (addr/self.skip) * self.filewords
+
+			val = self._buf[addr] & mask
+
+			for i in xrange(0, self.filewords):
+				byte_i = (val >> (8*i)) & 0xFF
+				ih[start + i] = byte_i
+
+		return ih
+
 	def addresses(self):
 		return sorted(self._buf.keys())
 
@@ -110,6 +132,9 @@ class HexFile(object):
 			return self._buf[x]
 
 		return self.fill
+
+	def __setitem__(self, x, val):
+		self._buf[x] = val
 
 	@returns("list of defined address ranges", printer=print_ranges, data=True)
 	def ranges(self):
@@ -132,6 +157,16 @@ class HexFile(object):
 		ranges.append((rstart, valid_addr[-1]))
 
 		return ranges
+
+	@param("dest", "path", "writeable", desc='path of output file to create')
+	def save(self, dest):
+		"""
+		Save a copy of the current state of this hexfile to the path specified
+		by dest.
+		"""
+
+		ih = self._convert_to_hex()
+		ih.write_hex_file(dest)
 
 	@param("other", "path", "readable", desc="Other hex file to compare to this one")
 	@param("type", "string", ("list", ("oneway, twoway")), desc="compare in both directions")
