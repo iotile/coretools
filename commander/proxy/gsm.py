@@ -22,15 +22,22 @@ class GSMModule (proxy12.MIB12ProxyObject):
 		else:
 			self.rpc(10, 6)
 
-	def send_text(self, number, text):
+	def send_text(self, destination, text):
 		"""
-		Send a text message to the given number which must have the form:
-		+NUMBER with no dashes or spaces, for example: +16506695211
+		Send a  message to the given destination which must have the form:
+		+NUMBER with no dashes or spaces, for example: +16506695211, or a URL
 		"""
+		apn = "wap.cingular"
 
-		print "Sending message '%s' to %s" % ( text, number )
-		print "> start (%s)" % number
-		self.rpc(11, 0, number)
+		print "Sending message '%s' to %s" % ( text, destination )
+		print "> apn %s" % apn
+		self.rpc(10, 9, apn)
+		for i in xrange(0, len(destination), 18):
+			buf = destination[i:i+18]
+			print "> comm_destination %d %s" % ( i, buf )
+			self.rpc(11, 4, i, buf)
+		print "> start %d" % len(text)
+		self.rpc(11, 0, len(text))
 		for i in xrange(0, len(text), 20):
 			buf = text[i:i+20]
 			print "> stream (%s)" % buf
@@ -68,4 +75,17 @@ class GSMModule (proxy12.MIB12ProxyObject):
 	def debug(self):
 		res = self.rpc(10,7, result_type=(0, True))
 
-		return res['buffer']		
+		return res['buffer']
+
+	def set_apn(self,apn):
+		res = self.rpc(10,9,apn)
+
+	def test_gprs(self):
+		apn = "wap.cingular"
+
+		print "> apn %s" % apn
+		self.rpc(10, 9, apn)
+		print "> testgprs"
+		res = self.rpc(10,8, result_type=(0, True))
+
+		return res['buffer']

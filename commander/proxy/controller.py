@@ -475,6 +475,12 @@ class MIBController (proxy.MIBProxyObject):
 		enabled = bool(res['ints'][0])
 		return enabled
 
+	def reset_reporting_config(self):
+		"""
+		Reset the reporting configuration.
+		"""
+		res = self.rpc(60,0x14)
+
 	def send_report(self):
 		"""
 		Send a single report
@@ -482,11 +488,18 @@ class MIBController (proxy.MIBProxyObject):
 
 		self.rpc(60, 0)
 
-	def set_report_address(self, address):
-		self.rpc(60, 5, address)
+	def set_report_route_primary(self, route):
+		self.rpc(60, 5, route)
 
-	def get_report_address(self):
+	def get_report_route_primary(self):
 		res = self.rpc(60, 6, result_type=(0, True))		
+		return res['buffer']
+
+	def set_report_route_secondary(self, route):
+		self.rpc(60, 0x12, route)
+
+	def get_report_route_secondary(self):
+		res = self.rpc(60, 0x13, result_type=(0, True))		
 		return res['buffer']
 
 	@annotated
