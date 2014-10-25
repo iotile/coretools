@@ -1,3 +1,4 @@
+#MoMo Exceptions
 
 class MoMoException(Exception):
 	"""
@@ -16,6 +17,14 @@ class MoMoException(Exception):
 	def format(self):
 		msg = "%s: %s" % (self.__class__.__name__, self.msg)
 
+		if len(self.params) != 0:
+			paramstring = "\n".join([str(key) + ": " + str(val) for key,val in self.params.iteritems()])
+			msg += "\nAdditional Information:\n" + paramstring
+		
+		return msg
+
+	def format_msg(self):
+		msg = self.msg
 		if len(self.params) != 0:
 			paramstring = "\n".join([str(key) + ": " + str(val) for key,val in self.params.iteritems()])
 			msg += "\nAdditional Information:\n" + paramstring

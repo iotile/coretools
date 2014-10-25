@@ -1,7 +1,7 @@
 #annotate.py
 
 from decorator import decorator
-from exceptions import *
+from pymomo.exceptions import *
 import inspect
 import types
 from collections import namedtuple

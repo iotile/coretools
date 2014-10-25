@@ -157,7 +157,7 @@ class I2CMasterSequence:
 
 seq = I2CMasterSequence(1000)
 
-cmd = [1, 2, 0]
+cmd = [10, 0, 0]
 cmd.append(seq.checksum(cmd))
 
 seq.write(10, cmd)

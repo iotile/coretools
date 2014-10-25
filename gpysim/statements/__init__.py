@@ -2,6 +2,7 @@ import loghex
 import logcaller
 import logassert
 import logfinished
+import logcheckpoint
 
 #Map control bytes to statement handlers
 statements = {
@@ -9,5 +10,6 @@ statements = {
 		1: loghex.LogHex,
 		#2: LogString,
 		3: logcaller.LogCaller,
-		4: logassert.LogAssert
+		4: logassert.LogAssert,
+		5: logcheckpoint.LogCheckpoint
 }

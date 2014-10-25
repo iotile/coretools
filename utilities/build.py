@@ -7,7 +7,7 @@ import os.path
 from pymomo.utilities import deprecated
 import sys
 from pymomo.utilities.typedargs.annotate import *
-from pymomo.utilities.typedargs.exceptions import *
+from pymomo.exceptions import *
 from collections import namedtuple
 from copy import deepcopy
 import itertools

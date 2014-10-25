@@ -6,7 +6,7 @@
 
 import simulators
 from pymomo.utilities.typedargs.annotate import *
-from pymomo.utilities.typedargs.exceptions import *
+from pymomo.exceptions import *
 from multiprocessing import Process, Queue, Pipe
 import atexit
 import os.path
@@ -144,6 +144,16 @@ class Simulator:
 
 		return contents
 
+	@param("command", "string", desc="Raw command string to execute in simulator")
+	def raw_command(self, command):
+		"""
+		Pass a raw string command to the underlying simulator and execute it.  This
+		can be useful if there is not a high level API function for achieving what
+		you need to accomplish.
+		"""
+
+		self._command('raw_command', command=command)
+
 	@returns_data(desc="reason")
 	@param("wait", "integer", desc="maximum number of seconds to wait (-1 is forever)")
 	def wait(self, wait):
@@ -190,7 +200,8 @@ class Simulator:
 		resp = self._receive_response()
 
 		if resp['error'] is True:
-			raise InternalError("Result of calling method '%s' was '%s'" % (method, resp['message']))
+			params = {x:y for x,y in resp.iteritems() if x != 'message' and x != 'error'}
+			raise InternalError(resp['message'], **params)
 
 		return resp.get('result', None)
 

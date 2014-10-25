@@ -7,7 +7,6 @@ from statements.unknown import UnknownStatement
 from pymomo.hex8 import symbols
 
 class LogFile:	
-
 	def __init__(self, filename, symtab=None):
 		with open(filename, "r") as f:
 			lines = f.readlines()
@@ -64,19 +63,29 @@ class LogFile:
 			for entry in self.entries:
 				f.write(entry.format_line(self.symtab, use_colors=False) + '\n')
 
-	def test_passed(self):
+	def test_passed(self, testcase):
 		for entry in self.entries:
 			if entry.error():
 				return False
 
-		return True
+		#Make sure that all checkpoints were passed and logged the correct values
+		pts = testcase.checkpoints
 
-	def save_status(self, path):
-		with open(path, "w") as f:
-			if self.test_passed():
-				f.write('PASSED')
-			else:
-				f.write('FAILED')
+		passed_pts = [x for x in self.entries if isinstance(x, statements.logcheckpoint.LogCheckpoint)]
+
+		if len(pts) != len(passed_pts):
+			return False
+
+		#Make sure the symbol and value match for each passed checkpoint
+		for expected, passed in zip(pts, passed_pts):
+			passed_sym = self.symtab.map_address(passed.address)[0]
+
+			if passed_sym != expected[0]:
+				return False
+			if expected[1] != passed.data:
+				return False
+
+		return True
 
 def extract_info(entry):
 	info = {}

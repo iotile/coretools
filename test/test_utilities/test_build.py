@@ -2,7 +2,7 @@ from pymomo.utilities import build
 from nose.tools import *
 import unittest
 import os.path
-from pymomo.utilities.typedargs.exceptions import *
+from pymomo.exceptions import *
 
 def _local_settings():
 	folder,last = os.path.split(__file__)

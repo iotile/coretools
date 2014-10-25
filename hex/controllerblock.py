@@ -1,6 +1,6 @@
 #controllerblock.py
 from pymomo.utilities.typedargs.types import *
-from pymomo.utilities.typedargs.exceptions import *
+from pymomo.exceptions import *
 from pymomo.utilities.typedargs.annotate import *
 from hexfile import HexFile
 

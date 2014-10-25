@@ -2,7 +2,7 @@
 
 import intelhex
 from pymomo.utilities.typedargs.types import *
-from pymomo.utilities.typedargs.exceptions import *
+from pymomo.exceptions import *
 from pymomo.utilities.typedargs.annotate import *
 
 def print_ranges(ranges):

@@ -1,8 +1,8 @@
-from simworker import SimWorker
+from externalsim import ExternalSimulator
 from pymomo.utilities.config import ConfigFile
 import subprocess
 from pymomo.utilities.typedargs.annotate import *
-from pymomo.utilities.typedargs.exceptions import *
+from pymomo.exceptions import *
 from pymomo.utilities.asyncio import AsyncLineBuffer
 from collections import namedtuple
 
@@ -13,52 +13,26 @@ messages = {
 #Types of sim30 messages
 SoftwareResetMessage = namedtuple('SoftwareResetMessage', ['pc'])
 
-class SIM30 (SimWorker):
+class SIM30 (ExternalSimulator):
 	"""
-	A SimWorker object encapsulating the sim30 pic24 simulator from microchip
+	An ExternalSimulator object encapsulating the sim30 pic24 simulator from microchip
 	"""
 
 	prompt = '\rdsPIC30> '
 	known_params = set(['model'])
 
-	def _build_sim(self):
-		"""
-		Create a subprocess for sim30 and wire up its input and output for us to control
-		"""
-		
-		self.sim = None
-		self.sim = subprocess.Popen(['sim30'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-		self.input = AsyncLineBuffer(self.sim.stdout, separator=SIM30.prompt, strip=True)
-		self.waiting = False #Whether or not we are waiting for a prompt to appear
-		self.model = 'pic24super'
+	def _sim_path(self):
+		return ['sim30']
 
-		self._wait_prompt(noparse=True) #discard messages because its just random information
+	def _initialize(self):
+		self.model = 'pic24super'
 		self._init_sim()
 
 	def _init_sim(self):
 		self._set_mode(self.model)
 		self.first_run = True
 
-	def finish(self):
-		if self.sim is not None:
-			self.sim.terminate()
-
-	def _wait_prompt(self, timeout=3, noparse=False):
-		"""
-		Wait for a prompt to appear indicating that the last command finished. 
-		"""
-
-		#if this returns we know that the end of buffer is SIM30.prompt
-		#so we can splice it off
-		
-		msg = self.input.readline(timeout)
-		self.waiting = False
-
-		if not noparse:
-			parsed = self._process_sim30_message(msg)
-			return parsed
-
-	def _process_sim30_message(self, msg):
+	def _process_message(self, msg, cmd=None):
 		"""
 		Given the textual output of a sim30 response to a command, parse it and
 		see if it indicates an error.  Convert the result to a standard format
@@ -81,31 +55,6 @@ class SIM30 (SimWorker):
 			parsed.append(parser(line))
 		
 		return parsed
-
-	def _command(self, cmd, *args, **kwargs):
-		"""
-		Send the command cmd to the simulator and wait for a prompt
-		to appear again signaling that it has finished executing. if
-		additional args are passed, they are converted to strings,
-		separated with spaces and appended to cmd, which must be a 
-		string.
-		"""
-
-		if len(args) > 0:
-			argstr = " ".join(args)
-			cmd = cmd + " " + argstr
-
-		if cmd[-1] != '\n':
-			cmd += '\n'
-
-		self.sim.stdin.write(cmd)
-
-		if "sync" not in kwargs or kwargs["sync"]:
-			noparse = kwargs.get('noparse', False)
-			result = self._wait_prompt(noparse=noparse)
-			return result
-		else:
-			return None
 
 	def _set_mode(self, mode):
 		result = self._command('LD %s' % mode, noparse=True)
@@ -133,27 +82,8 @@ class SIM30 (SimWorker):
 		if name == 'model':
 			self._init_sim()
 
-	def wait(self, timeout):
-		if not self.waiting:
-			return None
-
-		res = self._wait_prompt(timeout)
-
-		return {'result': res}
-
 	def set_log(self, file):
 		self._command('io nul %s' % file)
-
-	def ready(self):
-		if not self.waiting:
-			return {'result': True}
-
-		try:
-			self._wait_prompt(0.0)
-		except TimeoutError:
-			return {'result': False}
-
-		return {'result': True}
 
 	def execute(self):
 		#sim30 requires the processor to be reset before executing

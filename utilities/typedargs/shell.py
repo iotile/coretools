@@ -2,7 +2,7 @@
 #Given a command line string, attempt to map it to a function and fill in 
 #the parameters based on that function's annotated type information.
 
-from exceptions import *
+from pymomo.exceptions import *
 import annotate
 import inspect
 

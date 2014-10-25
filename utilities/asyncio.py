@@ -7,7 +7,7 @@ from threading import Thread, Event
 from cStringIO import StringIO
 from Queue import Queue
 import os
-from pymomo.utilities.typedargs.exceptions import *
+from pymomo.exceptions import *
 
 class AsyncLineBuffer:
 	def __init__(self, file, separator='\n', strip=True):

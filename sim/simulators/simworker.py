@@ -1,6 +1,6 @@
 #simworker.py
 #Base class for worker objects that implement PIC simulators
-from pymomo.utilities.typedargs.exceptions import *
+from pymomo.exceptions import *
 import time
 import select
 
@@ -8,6 +8,9 @@ class SimWorker:
 	def __init__(self, pipe):
 		self.pipe = pipe
 		self._build_sim()
+
+	def _build_sim(self):
+		raise APIError("SimWorker subclasses must override _build_sim()")
 
 	def _build_message(self, error=False, message=None, **kwargs):
 		msg = {
@@ -79,11 +82,8 @@ class SimWorker:
 			except MoMoException as e:
 				#All errors are propogated as exceptions, catch them and 
 				#send an error report.
-				args = e.args
-				if len(args) == 1:
-					args = args[0]
 
-				msg = self._format_error(args)
+				msg = self._format_error(e.msg, **e.params)
 				self.pipe.send(msg)
 			except Exception as ex:
 				args = ex.args
@@ -102,26 +102,3 @@ class SimWorker:
 		"""
 
 		pass
-
-	def read_until(self, file, match):
-		"""
-		Read from file until match occurs:
-		"""
-
-		if len(match) == 0:
-			return
-
-		buffer = bytearray()
-
-		i = 0
-
-		while i<len(match):
-			c = file.read(1)
-			if c == match[i]:
-				i += 1
-			else:
-				i = 0
-
-			buffer.append(c)
-
-		return str(buffer)

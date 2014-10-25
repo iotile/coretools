@@ -1,4 +1,4 @@
-from exceptions import *
+from pymomo.exceptions import *
 import annotate
 import inspect
 from pymomo.utilities.printer import Printer
