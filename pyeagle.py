@@ -14,7 +14,7 @@ import utilities.config
 settings = utilities.config.ConfigFile('settings')
 
 def execute_eagle(args):
-	eagle = settings['external_tools/eagle']
+	eagle = 'eagle'
 
 	with open(os.devnull, 'wb') as DEVNULL:
 		subprocess.check_call([eagle] + args, stdout=DEVNULL, stderr=DEVNULL)
