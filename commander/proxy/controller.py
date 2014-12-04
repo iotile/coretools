@@ -8,7 +8,10 @@ import struct
 from intelhex import IntelHex
 from time import sleep
 from datetime import datetime
-from pymomo.utilities.typedargs.annotate import annotated,param,returns
+from pymomo.syslog import RawLogEntry, SystemLog
+from pymomo.utilities.typedargs.annotate import annotated,param,returns, context
+from pymomo.utilities import typedargs
+from pymomo.exceptions import *
 
 #Formatters for the return types used in this class
 def print_module_list(mods):
@@ -16,9 +19,18 @@ def print_module_list(mods):
 	for i, mod in enumerate(mods):
 		print "%d: %s at address %d" % (i, mod.name, mod.address)
 
+def print_log(log):
+	print log
+
+@context("MIBController")
 class MIBController (proxy.MIBProxyObject):
+	"""
+	A python proxy object for interacting with the MoMo controller board.
+	"""
+
 	MaxModuleFirmwares = 4
 
+	@annotated
 	def __init__(self, stream):
 		super(MIBController, self).__init__(stream, 8)
 		self.name = 'Controller'
@@ -46,6 +58,29 @@ class MIBController (proxy.MIBProxyObject):
 		res = self.rpc(42, 2, index, result_type=(0,True))
 
 		return ModuleDescriptor(res['buffer'], 11+index)
+
+	@annotated
+	def clear_log(self):
+		"""
+		Clear the MoMo system log.
+		"""
+
+		self.rpc(42,0x23)
+
+	@annotated
+	def read_log(self):
+		"""
+		Read the MoMo system log
+		"""
+		count = self.rpc(42, 0x21, result_type=(1,False))['ints'][0]
+
+		log = []
+
+		for i in xrange(0, count):
+			res = self.rpc(42, 0x22, i, 0, result_type=(0, True))
+			log.append(RawLogEntry(res['buffer']))
+
+		return SystemLog(log)
 
 	@param("name", "string", desc="module name")
 	@param("address", "integer", ("range", 11, 127), desc="modules address")
@@ -477,6 +512,10 @@ class MIBController (proxy.MIBProxyObject):
 
 	@annotated
 	def sync_time(self):
+		"""
+		Set the time on the momo controller to the current system time.
+		"""
+
 		now = datetime.now()
 		self.set_time( now.date().year - 2000, now.date().month, now.date().day, now.time().hour, now.time().minute, now.time().second, now.weekday() )
 		print now
@@ -500,12 +539,43 @@ class MIBController (proxy.MIBProxyObject):
 		res = self.rpc(42, 0x26, counter, result_type=(0, True))
 		return PerformanceCounter(res['buffer'], name=counter)
 
-	@param('address', 'integer', 'nonnegative')
-	def read_ram(self, address):
-		res = self.rpc(42, 0x11, address, result_type=(0, True))
-		print ord(res['buffer'][0])
+	@param('address', 'integer', 'nonnegative', desc='address to start reading')
+	@param('type', 'string', desc='format read data as this type')
+	@param('size', 'integer', 'nonnegative', desc='optional size of data to read')
+	@returns(desc='read object')
+	def read_ram(self, address, type=None, size=0):
+		"""
+		Read bytes from the controller ram starting at the specified address.  If a 
+		type is provided, use the type information to determine how many bytes to read
+		and how to format the results.  If type is supplied, an object of that type is
+		returned. Otherwise read size bytes are read and returned as a binary string
+		object.
+		"""
+
+		if type is not None:
+			if not typedargs.is_known_type(type):
+				raise ArgumentError("unknown type specified", type=type)
+
+			if size == 0:
+				size = typedargs.get_type_size(type)
+
+		if size == 0:
+			raise ArgumentError("size not specified and could not be determined from supplied type info", supplied_size=size, supplied_type=type)
+
+		buf = ""
+
+		for i in xrange(0, size, 20):
+			res = self.rpc(42, 0x11, address+i, result_type=(0, True))
+			valid = min(20, size - i)
+			buf += res['buffer'][:valid]
 		
-		return res['buffer']
+		if size != len(buf):
+			raise InternalError("Read size does not match specified size, this should not happen", read_size=len(buf), specified_size=size)
+		
+		if type is not None:
+			return typedargs.convert_to_type(buf, type)
+
+		return buf
 
 	def scheduler_map(self):
 		"""
@@ -542,6 +612,7 @@ class MIBController (proxy.MIBProxyObject):
 			if e.type == 7:
 				return None
 
+	@annotated
 	def reset(self, sync=True):
 		"""
 		Instruct the controller to reset itself.
@@ -556,6 +627,7 @@ class MIBController (proxy.MIBProxyObject):
 		if sync:
 			sleep(1.5)
 
+	@annotated
 	def factory_reset(self):
 		"""
 		Instruct the controller to reset all internal state to "factory defaults."  Use with caution.

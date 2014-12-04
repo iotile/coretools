@@ -6,6 +6,9 @@ import inspect
 import types
 from collections import namedtuple
 
+class BasicContext(dict):
+	pass
+
 def _check_and_execute(f, *args, **kwargs):
 	"""
 	Check the type of all parameters with type information, converting 
@@ -157,6 +160,25 @@ def get_signature(f):
 	return "%s(%s)" % (name, ", ".join(args))
 
 def print_help(f):
+	"""
+	Print usage information about a context or function.
+
+	For contexts, just print the context name and its docstring
+	For functions, print the function signature as well as its
+	argument types.
+	"""
+
+	if isinstance(f, BasicContext):
+		name = context_name(f)
+
+		print "\n" + name + "\n"
+		doc = inspect.getdoc(f)
+		if doc is not None:
+			doc = inspect.cleandoc(doc)
+			print doc
+
+		return
+
 	sig = get_signature(f)
 	doc = inspect.getdoc(f)
 	if doc is not None:
@@ -192,7 +214,7 @@ def find_all(container):
 	else:
 		names = dir(container)
 	
-	context = {}
+	context = BasicContext()
 
 	for name in names:
 		#Ignore __ names
@@ -203,10 +225,38 @@ def find_all(container):
 			obj = container[name]
 		else:
 			obj = getattr(container, name)
-		if hasattr(obj, 'annotated'):
+
+		#Check if this is an annotated object that should be included.  Check the type of
+		#annotated to avoid issues with module imports where someone did from annotate import *
+		#into the module causing an annotated symbol to be defined as a decorator
+		if hasattr(obj, 'annotated') and isinstance(getattr(obj, 'annotated'), int):
 			context[name] = obj
 
 	return context
+
+def context_from_module(module):
+	"""
+	Given a module, create a context from all of the top level annotated
+	symbols in that module.  
+	"""
+
+	con = find_all(module)
+
+	if hasattr(module, "__doc__"):
+		setattr(con, "__doc__", module.__doc__)
+
+	if hasattr(module, "_name_"):
+		name = module._name_
+	else:
+		name = module.__name__
+
+	setattr(con, '_annotated_name', name)
+	setattr(con, 'context', True)
+
+	con = annotated(con)
+
+	return name, con
+
 
 def check_returns_data(f):
 	if not hasattr(f, 'retval'):
@@ -214,7 +264,7 @@ def check_returns_data(f):
 
 	return f.retval.data
 
-#Decorator
+#Decorators
 def param(name, type, *validators, **kwargs):
 	def _param(f):
 		f = annotated(f)
@@ -233,7 +283,15 @@ def param(name, type, *validators, **kwargs):
 
 	return _param
 
-def returns(desc=None, printer=None, data=False):
+def returns(desc=None, printer=None, data=True):
+	"""
+	Specify how the return value of this function should be handled
+
+	If data == True, then this function just returns data and does 
+	not return a context so that the context for future calls remains
+	unchanged.  
+	"""
+
 	def _returns(f):
 		annotated(f)
 
@@ -246,14 +304,21 @@ def returns(desc=None, printer=None, data=False):
 
 	return _returns
 
-def returns_data(desc=None, printer=None):
-	return returns(desc, printer, data=True)
+def context(name=None):
+	"""
+	Declare that a class defines a MoMo context for use with the momo function for discovering
+	and using functionality.
+	"""
 
-def context(name):
 	def _context(cls):
 		annotated(cls)
 		cls.context = True
-		cls._annotated_name = name
+
+		if name is not None:
+			cls._annotated_name = name
+		else:
+			cls._annotated_name = cls.__name__
+
 		return cls
 
 	return _context
@@ -301,3 +366,15 @@ def annotated(f):
 	f.takes_cmdline = False
 	return f
 
+def short_description(f):
+	"""
+	Given an object with a docstring, return the first line of the docstring
+	"""
+
+	doc = inspect.getdoc(f)
+	if doc is not None:
+		doc = inspect.cleandoc(doc)
+		lines = doc.splitlines()
+		return lines[0]
+
+	return ""

@@ -32,3 +32,10 @@ def validate_range(arg, lower, upper):
 
 	if arg < lower or arg > upper:
 		raise ValueError("not in required range [%d, %d]" %(int(lower), int(upper)))
+
+#Formatting functions
+def format_unsigned(arg, **kwarg):
+	return format(arg, 'd')
+
+def format_hex(arg, **kwarg):
+	return "0x%X" % arg

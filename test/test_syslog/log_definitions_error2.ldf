@@ -1,0 +1,14 @@
+- "Address" as integer, format hex
+
+ErrorSendingMessage
+"There was an error sending an RPC call to a module"
+
+- "Address" as integer, format hex
+
+ErrorReceivingMessage
+"There was an error receiving an RPC call from a module"
+
+- "Address" as integer, format hex
+
+HeartbeatMessage
+"The system is still functional, thankfully"

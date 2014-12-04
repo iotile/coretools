@@ -181,6 +181,8 @@ class TargetSettings:
 		includes = itertools.chain(*incs)
 
 		fullpaths = [os.path.normpath(os.path.join(base, x)) for x in includes]
+		fullpaths.append(os.path.normpath(os.path.abspath(self.build_dirs()['build'])))
+
 		return fullpaths
 
 	def extra_sources(self):

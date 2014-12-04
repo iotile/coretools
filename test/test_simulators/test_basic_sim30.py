@@ -2,6 +2,7 @@ import os.path
 import unittest
 from pymomo.sim import simulator
 from pymomo.utilities.config import ConfigFile
+from distutils.spawn import find_executable
 
 class TestSIM30BasicFunctionality(unittest.TestCase):
 	"""
@@ -10,13 +11,12 @@ class TestSIM30BasicFunctionality(unittest.TestCase):
 	"""
 
 	def setUp(self):
-		conf = ConfigFile('settings')
-		sim30path = conf['external_tools/sim30']
+		sim30path = find_executable("sim30")
 
 		if not os.path.exists(sim30path):
 			unittest.skip('SIM30 executable not found')
 		else:
-			self.sim = simulator.Simulator('SIM30')
+			self.sim = simulator.Simulator('pic24')
 
 	def tearDown(self):
 		if hasattr(self, 'sim'):

@@ -147,7 +147,7 @@ class ControllerBlock:
 		self.code_checksum	= self._calculate_checksum(0x200 + 32, ControllerBlock.firmware_length - 32)
 		self.block_checksum = self._calculate_checksum(0x200, 30)
 
-	@returns_data('HW Compatibility Version')
+	@returns('HW Compatibility Version')
 	def get_hw_version(self):
 		return self.hw_version
 
@@ -165,7 +165,7 @@ class ControllerBlock:
 
 		self.hw_version = hw
 
-	@returns_data("Controller Block Status", printer=print_validity)
+	@returns("Controller Block Status", printer=print_validity)
 	def validate(self):
 		"""
 		Validate the data contained in this metadata block.

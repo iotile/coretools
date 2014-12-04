@@ -1,5 +1,5 @@
 from pymomo.exceptions import *
-from pymomo.utilities.typedargs.annotate import param, returns, returns_data
+from pymomo.utilities.typedargs.annotate import param, returns
 from itertools import tee, izip
 from collections import namedtuple
 

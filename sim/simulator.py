@@ -123,7 +123,7 @@ class Simulator:
 		self._command('set_log', file=path)
 		self.logfile = path
 
-	@returns_data(desc="log contents")
+	@returns(desc="log contents")
 	def get_log(self):
 		"""
 		Return the log attached to the simulator in a simulator-dependent manner as a string.
@@ -154,7 +154,7 @@ class Simulator:
 
 		self._command('raw_command', command=command)
 
-	@returns_data(desc="reason")
+	@returns(desc="reason")
 	@param("wait", "integer", desc="maximum number of seconds to wait (-1 is forever)")
 	def wait(self, wait):
 		"""
@@ -164,7 +164,7 @@ class Simulator:
 
 		return self._command('wait', timeout=wait)
 
-	@returns_data(desc="ready for commands")
+	@returns(desc="ready for commands")
 	def ready(self):
 		"""
 		Return if the simulator is ready to accept new commands or if it is running

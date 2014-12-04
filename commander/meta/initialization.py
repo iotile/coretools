@@ -1,5 +1,5 @@
 from pymomo.commander import transport, cmdstream
-from pymomo.commander.proxy import MIBController
+import pymomo.commander.proxy
 from pymomo.commander.exceptions import *
 from pymomo.utilities.typedargs.annotate import param
 
@@ -21,7 +21,7 @@ def get_controller(serial_port=None):
 	s = transport.SerialTransport(serial_port)
 	c = cmdstream.CMDStream(s)
 
-	con = MIBController(c)
+	con = pymomo.commander.proxy.MIBController(c)
 	return con
 
 def _get_serial_ports():
