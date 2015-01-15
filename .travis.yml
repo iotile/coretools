@@ -1,9 +1,15 @@
 language: python
 python:
-  - "2.7"
-# command to install dependencies
+- '2.7'
 install:
-  - "./test/install.sh"
-# command to run tests
-# TODO: MOMOPATH is bogus for now.
+- ./test/install.sh
 script: source ~/.profile; export MOMOPATH=.; nosetests -w test
+deploy:
+  provider: pypi
+  user: welldone
+  password:
+    secure: R+2My9xlrw2RSzIe9bCCdecsfCnebp0ahMFpQHxKkadPCLTm8441PubrMUeTOqFrlO/uoZidl7uC9WWG3aen8ivortmNSE3yPMo4hP5r6kdQwffAQvqrZERrroOvl/q2edSxokmfxXxkdwqknyvvR49a9Q00c99waQhSHQwhlQs=
+  on:
+    repo: WellDone/pymomo
+    branch: master
+    tags: true
