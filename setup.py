@@ -47,7 +47,7 @@ setup(
         ],
     long_description = """\
 PyMoMo - WellDone Mobile Monitor (MoMo) Interaction Library
--------------------------------------
+-----------------------------------------------------------
 
 """
 )
