@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 setup(
     name = "pymomo",
     packages = find_packages(),
-    version = "0.1.0",
+    version = "1.0.0",
     install_requires=[
         "beautifulsoup4==4.3.2",
         "BTrees==4.1.1",
@@ -40,14 +40,16 @@ setup(
     keywords = ["momo", "remote", "monitoring", "embedded", "hardware"],
     classifiers = [
         "Programming Language :: Python",
-        "Development Status :: 4 - Beta",
+        "Development Status :: 5 - Production/Stable",
         "License :: OSI Approved :: GNU Library or Lesser General Public License (LGPL)",
         "Operating System :: OS Independent",
         "Topic :: Software Development :: Libraries :: Python Modules"
         ],
     long_description = """\
-PyMoMo - WellDone Mobile Monitor (MoMo) Interaction Library
------------------------------------------------------------
+PyMoMo
+------
+
+A python library for interacting with MoMo devices.  See https://momo.welldone.org.
 
 """
 )
