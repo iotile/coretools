@@ -12,3 +12,4 @@ deploy:
   on:
     repo: WellDone/pymomo
     tags: true
+    all_branches: true
