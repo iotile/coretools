@@ -11,5 +11,4 @@ deploy:
     secure: R+2My9xlrw2RSzIe9bCCdecsfCnebp0ahMFpQHxKkadPCLTm8441PubrMUeTOqFrlO/uoZidl7uC9WWG3aen8ivortmNSE3yPMo4hP5r6kdQwffAQvqrZERrroOvl/q2edSxokmfxXxkdwqknyvvR49a9Q00c99waQhSHQwhlQs=
   on:
     repo: WellDone/pymomo
-    branch: master
     tags: true
