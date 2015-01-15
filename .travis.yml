@@ -1,0 +1,9 @@
+language: python
+python:
+  - "2.7"
+# command to install dependencies
+install:
+  - "./test/install.sh"
+# command to run tests
+# TODO: MOMOPATH is bogus for now.
+script: source ~/.profile; export MOMOPATH=.; nosetests -w test

@@ -1,0 +1,22 @@
+
+{
+	"footprint_names": 
+	{
+		"SMD 0402" : ["C0402", "C0402K", "0402"],
+		"SMD 0603" : ["C0603", "R0603", "C0603K", "0603"],
+		"SMD 1206" : ["1206", "C1206", "C1206K"],
+		"SMD 0805" : ["0805", "C0805", "C0805K", "R0805"],
+		"SMD 6028" : ["NR6028-INDUCTOR"],
+		"Through Hole" : ["1X06", "MOMO-EDGE-8F", "MOMO-EDGE-SMALL-2M"]
+	},
+
+	"description_templates":
+	{
+		"R": "{value} Resistor",
+		"C": "{value} Capacitor",
+		"L": "{value} Inductor",
+		"D": "Diode"
+	},
+
+	"types_with_values": ["C", "R", "L"]
+}

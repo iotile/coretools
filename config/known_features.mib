@@ -1,0 +1,7 @@
+//Wellknown features that have specifically defined feature numbers
+mib_management = 1;
+
+//mib_management feature
+setup_bootloading = 0;
+reset_device = 1;
+verify_application = 2;

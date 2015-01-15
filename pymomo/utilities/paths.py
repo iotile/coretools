@@ -4,15 +4,26 @@ import sys
 import subprocess
 import functools
 
+from pkg_resources import resource_filename, Requirement
+
+class MissingConfigError(Exception):
+  """A required configuration environment variable was not found."""
+  def __init__(self, var):
+    self.msg = "A required configuration environment variable (%s) was not found" % var
+  def __str__(self):
+  	return self.msg
+
 class MomoPaths:
 	def __init__(self):
-		self.base = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..' ))
+		self.config = resource_filename(Requirement.parse("pymomo"), "config")
+		self.base = os.environ.get('MOMOPATH')
 
-		self.config = os.path.join(self.base, 'config')
+		if self.base == None:
+			raise MissingConfigError('MOMOPATH')
+
 		self.modules = os.path.join(self.base, 'momo_modules')
 		self.templates = os.path.join(self.config, 'templates')
 		self.pcb = os.path.join(self.base, 'pcb')
-		self.resources = os.path.join(self.base, 'resources')
 
 	def select(self, *args, **kwargs):
 		"""
