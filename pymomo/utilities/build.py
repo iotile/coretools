@@ -11,6 +11,8 @@ from pymomo.exceptions import *
 from collections import namedtuple
 from copy import deepcopy
 import itertools
+import os
+from paths import MomoPaths
 
 @takes_cmdline
 def build(args):
@@ -22,7 +24,9 @@ def build(args):
 	import pymomo.utilities.invoke
 	import SCons.Script
 
-	site_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'site_scons'))
+	paths = MomoPaths()
+
+	site_path = os.path.abspath(paths.site_tools)
 
 	all_args = ['momo', '--site-dir=%s' % site_path]
 	sys.argv = all_args + list(args)
