@@ -31,5 +31,7 @@ class MIB12Processor:
 		Create a processor instance from a valid chip name defined in build_settings.json
 		"""
 
-		aliases, info = build.load_chip_info(chip)
-		return MIB12Processor(chip, info)
+		fam = build.ChipFamily('mib12')
+		info = fam.find(chip)
+
+		return MIB12Processor(chip, info.settings)
