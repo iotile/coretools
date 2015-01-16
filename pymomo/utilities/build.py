@@ -22,7 +22,7 @@ def build(args):
 	import pymomo.utilities.invoke
 	import SCons.Script
 
-	site_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'site_scons'))
+	site_path = os.path.abspath(os.path.join(MomoPaths().config, 'site_scons'))
 
 	all_args = ['momo', '--site-dir=%s' % site_path]
 	sys.argv = all_args + list(args)
