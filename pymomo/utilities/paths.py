@@ -16,7 +16,6 @@ class MissingConfigError(Exception):
 class MomoPaths:
 	def __init__(self):
 		self.config = resource_filename(Requirement.parse("pymomo"), "pymomo/config")
-		print self.config
 		self.base = os.environ.get('MOMOPATH')
 
 		if self.base == None:
