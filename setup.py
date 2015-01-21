@@ -15,7 +15,7 @@ def list_data_files():
 setup(
     name = "pymomo",
     packages = find_packages(),
-    version = "1.0.2",
+    version = "1.0.3",
     install_requires=[
         "beautifulsoup4==4.3.2",
         "BTrees==4.1.1",
