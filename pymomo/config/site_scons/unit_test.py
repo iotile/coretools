@@ -101,7 +101,9 @@ class UnitTest (object):
 	def build(self, module_targets, summary_env):
 		"""
 		Build this unit test for the intersection of the targets that it is designed for
-		and the targets that the module it is targeted at is designed for.
+		and the targets that the module it is targeted at is designed for.  If more architectures
+		are specified in the module_targets than in a unit test, the unit test is assumed to
+		apply if all of the architectures in the unit test are contained in the module_target.
 		"""
 
 		for mod_target in module_targets:
@@ -156,6 +158,34 @@ class UnitTest (object):
 			canonical_targets.append(self._parse_target(t))
 
 		self.targets = canonical_targets
+
+	def find_support_file(self, support_name, target):
+		"""
+		Given the name of a support file, try to find it by looking in the 
+		same directory as the first unit test file and searching the following
+		names, where target is a list of architectures like:
+		arch1/arch2/arch3
+		
+		name_arch1_arch2_arch3.ext
+		name_arch1_arch2.ext
+		name_arch1.ext
+		name.ext
+
+		If no file can be found, return None.
+		"""
+
+		name, ext = os.path.splitext(support_name)
+
+		prefixes = list(reversed(target.arch_prefixes()))
+		prefixes.append([])
+		for prefix in prefixes:
+			name_str = "_".join([name] + prefix)
+			name_str += ext
+
+			if os.path.exists(name_str):
+				return name_str
+
+		raise BuildError("could not find support file", filename=support_name, arch_prefixes=prefixes)
 
 	def _extract_header(self, file):
 		"""

@@ -101,7 +101,7 @@ class Pic12UnitTest (unit_test.UnitTest):
 		cmdfile = None
 
 		if hasattr(self, 'cmdfile'):
-			cmdfile = self.cmdfile 
+			cmdfile = self.find_support_file(self.cmdfile, target)
 		
 		pic12_unit.build_unittest(self, target, summary_env, cmds=cmdfile)
 
@@ -226,3 +226,4 @@ class Pic12UnitTest (unit_test.UnitTest):
 
 unit_test.known_types['executive'] = Pic12UnitTest
 unit_test.known_types['application'] = Pic12UnitTest
+unit_test.known_types['executive_integration'] = Pic12UnitTest

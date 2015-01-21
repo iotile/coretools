@@ -20,7 +20,9 @@ def build_unittest(test, arch, summary_env, cmds=None):
 	"""
 
 	#Extract information from test
-	test_files = test.files
+	#Allow files to be renamed with architecture extensions automatically
+	test_files = filter(lambda x: x is not None, map(lambda x: test.find_support_file(x, arch), test.files))
+
 	name = test.name
 	type = test.type
 
@@ -29,7 +31,7 @@ def build_unittest(test, arch, summary_env, cmds=None):
 	env['TEST'] = test
 
 	#Configure for app module or exec
-	if type == "executive":
+	if type.startswith("executive"):
 		orig_name = 'mib12_executive_symbols'
 		env['ARCH'] = arch.retarget(remove=['exec'], add=['app'])
 		pic12.configure_env_for_xc8(env, force_app=True)
@@ -42,7 +44,7 @@ def build_unittest(test, arch, summary_env, cmds=None):
 		pic12.configure_env_for_xc8(env, force_exec=True)
 		test_harness = ['../test/pic12/app_harness/mib12_app_unittest.c', '../test/pic12/app_harness/mib12_test_api.as', '../test/pic12/gpsim_logging/test_log.as']
 	else:
-		raise BuildError("Invalid unit test type specified. Should be executive or application.", type=type)
+		raise BuildError("Invalid unit test type specified. Should start with executive or application.", type=type)
 
 	orig_symfile = orig_name + '.h'
 	orig_symtab = orig_name + '.stb'
@@ -85,9 +87,17 @@ def build_unittest(test, arch, summary_env, cmds=None):
 	apphex = env.xc8(os.path.join(testdir, name + '_unit.hex'), srcfiles)
 	env.Depends(apphex[0], symfile)
 
-	if type == "executive":
+	if type.startswith("executive"):
 		app_start = env['CHIP'].app_rom[0] + 2
-		lowhex = env.Command(os.path.join(testdir, 'mib12_executive_local.hex'), os.path.join(builddir, 'mib12_executive_patched.hex'), action='python ../../tools/scripts/patch_start.py %d $SOURCE $TARGET' % app_start)
+
+		#Executive integration tests run the entire executive startup routine
+		#Regular integration tests skip it to save time (1 second delay for registration)
+		#and to avoid triggering any bugs in the executive code since these are unit tests.
+		#for specific routines.
+		if type == "executive_integration":
+			lowhex = os.path.join(builddir, 'mib12_executive_patched.hex')
+		else:
+			lowhex = env.Command(os.path.join(testdir, 'mib12_executive_local.hex'), os.path.join(builddir, 'mib12_executive_patched.hex'), action='python ../../tools/scripts/patch_start.py %d $SOURCE $TARGET' % app_start)
 		highhex = apphex[0]
 	else:
 		lowhex = apphex[0]
@@ -113,8 +123,7 @@ def build_unittest(test, arch, summary_env, cmds=None):
 	env.Clean(outscript, outdir)
 	additional_files = test.get_intermediates(arch)
 	for file in additional_files:
-		print file
-		#env.Clean(outscript, file)
+		env.Clean(outscript, file)
 
 def build_exec_unittest(test_files, name, chip):
 	"""
