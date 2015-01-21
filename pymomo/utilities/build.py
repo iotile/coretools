@@ -25,6 +25,7 @@ def build(args):
 	import SCons.Script
 
 	paths = MomoPaths()
+
 	site_path = os.path.abspath(paths.site_tools)
 
 	all_args = ['momo', '--site-dir=%s' % site_path]

@@ -30,8 +30,19 @@ setup(
         "ZODB3==3.11.0",
         "zope.interface==4.1.2"
     ],
-    package_data={
-        'pymomo': ['config/*']
+    package_data={ #This could be better
+        'pymomo': [
+          'config/*',
+          'config/resources/bom_formatting/*',
+          'config/site_scons/*',
+          'config/site_scons/site_tools/*',
+          'config/templates/*',
+          'config/templates/mib12_module/*',
+          'config/templates/mib12_module/build/.gitkeep'
+          'config/templates/mib12_module/src/*',
+          'config/templates/mib12_module/src/mib/*',
+          'config/templates/mib12_module/test/.gitkeep'
+        ]
     },
     description = "WellDone Mobile Monitor (MoMo) Interaction Library",
     author = "WellDone International",

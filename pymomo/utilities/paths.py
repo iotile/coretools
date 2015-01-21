@@ -15,7 +15,8 @@ class MissingConfigError(Exception):
 
 class MomoPaths:
 	def __init__(self):
-		self.config = resource_filename(Requirement.parse("pymomo"), "config")
+		self.config = resource_filename(Requirement.parse("pymomo"), "pymomo/config")
+		print self.config
 		self.base = os.environ.get('MOMOPATH')
 
 		if self.base == None:
@@ -24,7 +25,7 @@ class MomoPaths:
 		self.modules = os.path.join(self.base, 'momo_modules')
 		self.templates = os.path.join(self.config, 'templates')
 		self.pcb = os.path.join(self.base, 'pcb')
-		self.site_tools = os.path.join(self.base, 'tools', 'site_scons')
+		self.site_tools = os.path.join(self.config, 'site_scons')
 
 	def select(self, *args, **kwargs):
 		"""
