@@ -11,6 +11,8 @@ from pymomo.exceptions import *
 from collections import namedtuple
 from copy import deepcopy
 import itertools
+import os
+from paths import MomoPaths
 
 @takes_cmdline
 def build(args):
@@ -22,7 +24,9 @@ def build(args):
 	import pymomo.utilities.invoke
 	import SCons.Script
 
-	site_path = os.path.abspath(os.path.join(MomoPaths().config, 'site_scons'))
+	paths = MomoPaths()
+
+	site_path = os.path.abspath(paths.site_tools)
 
 	all_args = ['momo', '--site-dir=%s' % site_path]
 	sys.argv = all_args + list(args)
@@ -102,13 +106,17 @@ class TargetSettings:
 	def arch_list(self):
 		return self.name.split(':')[1]
 
-	def archs(self):
+	def archs(self, as_list=False):
 		"""
 		Return a set containing all of the architectures used in this TargetSettings
 		object.
 		"""
 
 		archs = self.arch_list().split('/')
+		
+		if as_list:
+			return archs
+
 		return set(archs)
 
 	def module_name(self):
@@ -199,6 +207,22 @@ class TargetSettings:
 
 		fullpaths = [os.path.normpath(os.path.join(base, x)) for x in sources]
 		return fullpaths
+
+	def arch_prefixes(self):
+		"""
+		Return the initial 1, 2, ..., N architectures as a prefix list
+
+		For arch1/arch2/arch3, this returns
+		[arch1],[arch1/arch2],[arch1/arch2/arch3]
+		"""
+
+		archs = self.archs(as_list=True)
+		prefixes = []
+
+		for i in xrange(1, len(archs)+1):
+			prefixes.append(archs[:i])
+
+		return prefixes
 
 
 class ChipFamily:

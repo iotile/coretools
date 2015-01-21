@@ -9,8 +9,6 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 	    vb.customize ['modifyvm', :id, '--usb', 'on']
 	  end
 
-	  pymomo.vm.network "forwarded_port", guest: 80, host: 1111
-
 	  pymomo.vm.provision "shell", inline: "/vagrant/test/install.sh"
 	end
 end

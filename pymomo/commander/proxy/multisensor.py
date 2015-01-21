@@ -45,5 +45,39 @@ class MultiSensorModule (proxy12.MIB12ProxyObject):
 		self.rpc(20, 6)
 
 	def read_pulses(self):
-		res = self.rpc(20, 7, result_type=(1, False))
-		return res['ints'][0]
+		"""
+		Return the total number of pulses read and the number of sampling
+		periods that the number corresponds to. Each sampling period is 4
+		seconds long and the flow is sampled for 0.1 seconds, so there are
+		40 times more counts per period than reported.
+		"""
+
+		res = self.rpc(20, 7, result_type=(2, False))
+		counts = res['ints'][0]
+		periods = res['ints'][1]
+
+		return counts, periods
+
+	def pulse_rate(self):
+		"""
+		Compute the average pulses per second
+
+		Uses the data from all available sampling periods to make the estimate
+		as accurate as possible.
+		"""
+
+		counts, periods = self.read_pulses()
+
+		counts *= 10.0
+		if periods == 0:
+			return 0
+		
+		return counts/periods
+
+	def clear_counters(self):
+		"""
+		Clear the accumulated number of pulses and the number of 
+		sampled periods.
+		"""
+
+		self.rpc(20, 8)
