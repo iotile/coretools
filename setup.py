@@ -1,4 +1,17 @@
 from setuptools import setup, find_packages
+
+import os
+from os.path import basename
+
+def list_data_files():
+    result = [ ]
+    dirname = os.path.join(os.path.dirname(__file__), 'pymomo')
+    print dirname
+    for root, dirs, files in os.walk(os.path.join(dirname, 'config')):
+        for filename in files:
+            result.append( os.path.join( root, filename )[len(dirname)+1:] )
+    return result
+
 setup(
     name = "pymomo",
     packages = find_packages(),
@@ -31,18 +44,7 @@ setup(
         "zope.interface==4.1.2"
     ],
     package_data={ #This could be better
-        'pymomo': [
-          'config/*',
-          'config/resources/bom_formatting/*',
-          'config/site_scons/*',
-          'config/site_scons/site_tools/*',
-          'config/templates/*',
-          'config/templates/mib12_module/*',
-          'config/templates/mib12_module/build/.gitkeep'
-          'config/templates/mib12_module/src/*',
-          'config/templates/mib12_module/src/mib/*',
-          'config/templates/mib12_module/test/.gitkeep'
-        ]
+        'pymomo': list_data_files()
     },
     description = "WellDone Mobile Monitor (MoMo) Interaction Library",
     author = "WellDone International",
