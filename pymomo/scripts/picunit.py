@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-#pcbtool
-#A program for creating BOMs, gerbers and assembly drawings from annotated EAGLE circuit board diagrams.
 
 import sys
 import os.path
@@ -12,7 +10,7 @@ from pymomo.exceptions import *
 
 def main():
 	if len(sys.argv) != 4:
-		print "Usage: picunit (pic24super|pic24fpsuper) ELF_FILE OUTPUT_LOG"
+		print "Usage: momo-picunit (pic24super|pic24fpsuper) ELF_FILE OUTPUT_LOG"
 		return 1
 
 	model = sys.argv[1]
