@@ -46,6 +46,20 @@ setup(
     package_data={ #This could be better
         'pymomo': list_data_files()
     },
+    entry_points={
+        'console_scripts': [
+            'momo = pymomo.scripts.momo:main',
+            'momo-mod = pymomo.scripts.modtool:main',
+            'momo-gsm = pymomo.scripts.gsmtool:main',
+            'momo-pcb = pymomo.scripts.pcbtool:main',
+            'momo-hex = pymomo.scripts.hextool:main',
+            'momo-mib = pymomo.scripts.mibtool:main',
+            'momo-reportinator = pymomo.scripts.reportinator:main',
+            'momo-picunit = pymomo.scripts.picunit:main',
+            'momo-multisensor = pymomo.scripts.multisensor:main',
+            'momo-sensor = pymomo.scripts.momosensor:main'
+        ]
+    },
     description = "WellDone Mobile Monitor (MoMo) Interaction Library",
     author = "WellDone International",
     author_email = "info@welldone.org",
