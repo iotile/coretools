@@ -12,6 +12,7 @@ from pymomo.syslog import RawLogEntry, SystemLog
 from pymomo.utilities.typedargs.annotate import annotated,param,returns, context
 from pymomo.utilities import typedargs
 from pymomo.exceptions import *
+import itertools
 
 #Formatters for the return types used in this class
 def print_module_list(mods):
@@ -383,6 +384,48 @@ class MIBController (proxy.MIBProxyObject):
 
 		res = self.rpc(42, 6, addr_low, addr_high)
 
+	def bootloader_status(self):
+		"""
+		Check to see if the alarm pin is blinking at a fixed rate.  This is the
+		bootloader's way of communicating with us, so figure out the pulse freq
+		and match it to the bootloader's error code.
+		"""
+
+		alarm_codes = {
+			100: "Invalid firmware magic number",
+			150: "Invalid firmware checksum",
+			200: "Invalid metadata checksum",
+			250: "Hardware compatibility version does not match",
+			300: "Address error (internal bootloader error)",
+			350: "No firmware image loaded",
+			400: "Wrong firmware length"
+		}
+
+		probe = []
+
+		val = False
+		for i in xrange(0, 400):
+			down = self.alarm_asserted()
+			if down != val:
+				t = datetime.now()
+				val = down
+				probe.append(t)
+
+			sleep(0.01)
+
+		trans_pairs = itertools.izip(probe[2:], probe[1:-1])
+		widths = map(lambda x: (x[0] - x[1]).total_seconds()*1000.0, trans_pairs)
+		
+		if len(widths) == 0:
+			return "No Bootloader Error Detected"
+
+		avg_width = sum(widths)/len(widths)
+
+		code = min(alarm_codes.keys(), key=lambda x:abs(x-avg_width))
+
+		return "Bootloader Error Detected: %s" % alarm_codes[code]
+
+
 	def alarm_asserted(self):
 		"""
 		Query the field service unit if the alarm pin on the bus is asserted.  Returns True if 
@@ -420,6 +463,17 @@ class MIBController (proxy.MIBProxyObject):
 		if result != CMDStream.OkayResult:
 			raise RuntimeError("Set alarm command failed")
 
+	@returns(desc='bluetooth receive buffer', data=True)
+	def bt_debug_log(self):
+		"""
+		Return the first 20 bytes of BTLE communication receive buffer.
+		This contains the response to the last command sent to the unit.
+		"""
+
+
+		res = self.rpc(42, 0x27, result_type=(0,True))
+		return str(res['buffer'])
+
 	def momo_attached(self):
 		resp, result = self.stream.send_cmd("attached")
 		if result != CMDStream.OkayResult:
@@ -440,7 +494,7 @@ class MIBController (proxy.MIBProxyObject):
 
 	def sensor_log_read( self ):
 		res = self.rpc( 70, 0x1, result_type=(0, True) )
-		return SensorEvent( res['buffer'] );
+		return SensorEvent( res['buffer'] )
 
 	def sensor_log_count( self ):
 		res = self.rpc( 70, 0x2, result_type=(0, True) )

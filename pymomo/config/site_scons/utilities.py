@@ -44,10 +44,19 @@ def build_staticlibs(libs, chip):
 	if isinstance(libs, basestring):
 		libs = [libs]
 
-	#Append chip type and suffix
-	libs = ["%s_%s" % (x, chip.arch_name()) for x in libs]
+	processed = []
+	for lib in libs:
 
-	return ['-l%s' % x for x in libs]
+		#Allow specifying absolute libraries that don't get architectures
+		#appended
+		if lib[0] == '#':
+			processed.append(lib[1:])
+		else:
+			#Append chip type and suffix
+			proclib = "%s_%s" % (lib, chip.arch_name())
+			processed.append(proclib)
+
+	return ['-l%s' % x for x in processed]
 
 def build_defines(defines):
 	return ['-D%s=%s' % (x,str(y)) for x,y in defines.iteritems()]

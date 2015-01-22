@@ -170,7 +170,9 @@
 				{
 					"__PIC24F16KA101__": 1,
 					"__NO_PERF__": 1,
-					"__NO_FLASH__": 1
+					"__NO_FLASH__": 1,
+					"kI2CBaud": 39,
+					"kClockspeed": "4000000L" 
 				},
 
 				"chip": "24f16ka101"
@@ -180,7 +182,9 @@
 			{
 				"defines":
 				{
-					"__PIC24FJ64GA306__": 1
+					"__PIC24FJ64GA306__": 1,
+					"kI2CBaud": 39,
+					"kClockspeed": "4000000L"
 				},
 
 				"chip": "24fj64ga306"
