@@ -118,4 +118,4 @@ def compile_mib(env):
 
 	env['MIBFILE'] = '#' + cmdmap_path
 
-	return env.Command(cmdmap_path, mibname, 'python ../../tools/bin/mibtool.py gen -o %s $SOURCE' % dirs['build'])
+	return env.Command(cmdmap_path, mibname, 'momo-mib gen -o %s $SOURCE' % dirs['build'])
