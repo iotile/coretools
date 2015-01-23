@@ -1,4 +1,5 @@
-[![Build Status](https://travis-ci.org/WellDone/pymomo.svg?branch=dev)](https://travis-ci.org/WellDone/pymomo)
+[![Travis Build Status](https://travis-ci.org/WellDone/pymomo.svg?branch=dev)](https://travis-ci.org/WellDone/pymomo)
+[![Windows Build Status](https://ci.appveyor.com/api/projects/status/7t80jgu9efkmale5?svg=true)](https://ci.appveyor.com/project/amcgee/pymomo)
 [![PyPI version](https://badge.fury.io/py/pymomo.svg)](http://badge.fury.io/py/pymomo)
 
 # pymomo
