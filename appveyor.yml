@@ -1,0 +1,49 @@
+environment:
+  global:
+    MOMOPATH: "."
+
+  matrix:
+    - PYTHON: "C:\\Python27"
+      PYTHON_VERSION: "2.7.8"
+      PYTHON_ARCH: "32"
+
+    # - PYTHON: "C:\\Python27-x64"
+    #   PYTHON_VERSION: "2.7.8"
+    #   PYTHON_ARCH: "64"
+
+install:
+  - ECHO "Test directory:"
+  - ps: "ls \".\\test\""
+
+  # Install Python (from the official .msi of http://python.org) and pip when
+  # not already installed.
+  - "powershell ./test/install.ps1"
+
+  # Prepend newly installed Python to the PATH of this build (this cannot be
+  # done from inside the powershell script as it would require to restart
+  # the parent CMD process).
+  - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
+
+  # Check that we have the expected version and architecture for Python
+  - "python --version"
+  - "python -c \"import struct; print(struct.calcsize('P') * 8)\""
+
+  # TODO: Download and install pywin32 or remove the dependency
+  # - http://downloads.sourceforge.net/project/pywin32/pywin32/Build%20219/pywin32-219.win32-py2.7.exe?r=http%3A%2F%2Fsourceforge.net%2Fprojects%2Fpywin32%2Ffiles%2Fpywin32%2FBuild%2520219%2F&ts=1421974381&use_mirror=iweb
+
+  # Install the build dependencies of the project. If some dependencies contain
+  # compiled extensions and are not provided as pre-built wheel packages,
+  # pip will build them from source using the MSVC compiler matching the
+  # target Python version and architecture
+  - "pip install -r requirements.txt"
+
+build: false  # Not a C# project, build stuff at the test step instead.
+
+test_script:
+  # Build the compiled extension and run the project tests
+  # (since SIM30 is not installed that test will be skipped)
+  - "nosetests -w test"
+
+  # Ensure that the momo tool was installed and accessible
+  # (currently there's a requirement to additionally instal pywin32, it needs to be fixed)
+  # - momo help
