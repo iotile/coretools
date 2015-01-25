@@ -1,3 +1,8 @@
+#Caveats and possible issues
+#Mac OS X
+# - when using a virtualenv, readline is not properly installed into the virtualenv
+#   and cannot be imported.  You need to install it using easy_install as described here
+#   http://calvinx.com/tag/readline/
 from setuptools import setup, find_packages
 
 import os
@@ -30,7 +35,6 @@ setup(
     license = "LGPLv3",
     install_requires=[
         "beautifulsoup4==4.3.2",
-        "BTrees==4.1.1",
         "Cheetah==2.4.4",
         "cmdln==1.1.2",
         "colorama==0.3.3",
@@ -38,21 +42,14 @@ setup(
         "intelhex==1.5",
         "Markdown==2.5.2",
         "nose==1.3.4",
-        "persistent==4.0.8",
         "py==1.4.26",
         "pycparser==2.10",
         "pyparsing==2.0.3",
         "pyserial==2.7",
         "pytest==2.6.4",
         "six==1.9.0",
-        "transaction==1.4.3",
-        "zc.lockfile==1.1.0",
-        "ZConfig==3.0.4",
-        "zdaemon==4.0.1",
-        "ZEO==4.1.0",
-        "ZODB==4.1.0",
-        "ZODB3==3.11.0",
-        "zope.interface==4.1.2"
+        "xlsxwriter>=0.6.7",
+        "pint>=0.6"
     ],
     package_data={ #This could be better
         'pymomo': list_data_files()

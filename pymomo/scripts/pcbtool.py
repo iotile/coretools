@@ -82,18 +82,14 @@ class PCBTool(cmdln.Cmdln):
 		reqs = self.build_pricemodel(opts)
 		brd = self.get_board(id)
 
-		if opts.format == 'csv':
-			out,close = self.build_outstream(opts)
-			brd.export_bom(opts.variant, out, include_costs=opts.prices, cost_quantity=opts.units, requirements=reqs)
-			if close:
-				out.close()
-		elif opts.format == 'pdf' or opts.format == 'html':
+		if opts.format == 'pdf' or opts.format == 'html':
 			data = brd.variant_data(opts.variant, include_costs=opts.prices, cost_quantity=opts.units, requirements=reqs)
-			templ = RecursiveTemplate('bom_template.html')
-			templ.add(data)
-			formatted = templ.format_temp()
+			print data
+			#templ = RecursiveTemplate('bom_template.html')
+			#templ.add(data)
+			#formatted = templ.format_temp()
 
-			shutil.move(formatted, opts.output)
+			#shutil.move(formatted, opts.output)
 
 	@cmdln.option('-v', '--variant', action='append', default=None, help="Print detailed information about the listed assembly variants.")
 	def do_info(self, subcmd, opts, id):
@@ -216,20 +212,20 @@ class PCBTool(cmdln.Cmdln):
 		prices, unmatched = brd.price_variant(opts.variant, multiplier, model)
 
 		for line in unmatched:
-			print Fore.RED + "\nCould not find:", map(lambda x: x.name, line), Style.RESET_ALL + '\n'
+			print Fore.RED + "Could not find:", map(lambda x: x.name, line), Style.RESET_ALL
 
 		print "Price for %d Units with %.0f%% excess" % (units, opts.excess)
 		total_price = 0.0
 
 		for i, line in enumerate(prices):
 			parts, offer = line
-			price = float(offer[0])*multiplier
+			price = float(offer['price'])*multiplier
 			if opts.lines:
-				desc = "from %s" % offer[1]
-				if offer[2] is not None:
-					desc += " in %s" % (offer[2])
+				desc = "from %s" % offer['offer'].seller
+				if offer['offer'].packaging is not None and offer['offer'].packaging is not "":
+					desc += " in %s" % (offer['offer'].packaging,)
 				
-				print "Line %d: $%.2f (%d @ $%.2f) %s" % (i+1, price, len(parts), float(offer[0]), desc), map(lambda x: x.name, parts)
+				print "Line %d: $%.2f (%d @ $%.2f) %s" % (i+1, price, len(parts), float(offer['price']), desc), map(lambda x: x.name, parts)
 			
 			total_price += price
 

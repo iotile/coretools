@@ -34,6 +34,9 @@ def validate_range(arg, lower, upper):
 		raise ValueError("not in required range [%d, %d]" %(int(lower), int(upper)))
 
 #Formatting functions
+def default_formatter(arg, **kwarg):
+	return str(arg)
+
 def format_unsigned(arg, **kwarg):
 	return format(arg, 'd')
 

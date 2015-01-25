@@ -6,10 +6,11 @@ from pymomo.exceptions import *
 import annotate
 import inspect
 import shlex
-import typeinfo
+from typeinfo import type_system
 from pymomo.utilities.rcfile import RCFile
 import os.path
 import platform
+import importlib
 
 posix_lex = platform.system() != 'Windows'
 
@@ -57,7 +58,7 @@ def import_types(package, module=None):
 	else:
 		path = os.path.join(package, module)
 
-	typeinfo.load_external_types(path)
+	type_system.load_external_types(path)
 
 def print_dir(context):
 	doc = inspect.getdoc(context)
@@ -114,11 +115,35 @@ def _do_help(context, line):
 
 	return [], True
 
+def deferred_add(add_action):
+	"""
+	Perform a lazy import of a context so that we don't have a huge initial startup time
+	loading all of the modules that someone might want even though they probably only 
+	will use a few of them.
+	"""
+
+	module, sep, obj = add_action.partition(',')
+
+	mod = importlib.import_module(module)
+	if obj == "":
+		name, con = annotate.context_from_module(mod)
+		return con
+
+	if hasattr(mod, obj):
+		return getattr(mod, obj)
+
+	raise ArgumentError("Attempted to import nonexistent object from module", module=module, object=obj)
+
 def find_function(context, funname):
 	func = None
 	if isinstance(context, dict):
 		if funname in context:
 			func = context[funname]
+
+			#Allowed lazy loading of functions
+			if isinstance(func, basestring):
+				func = deferred_add(func)
+				context[funname] = func
 	elif hasattr(context, funname):
 		func = getattr(context, funname)
 

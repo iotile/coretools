@@ -7,7 +7,7 @@ import os.path
 import re
 import sys
 
-from ..utilities.config import ConfigFile
+from pymomo.utilities.config import ConfigFile
 
 data_file = ConfigFile('pcb_library')
 
@@ -69,7 +69,7 @@ class PCBReferenceLibrary:
 	def find_package(self, pkg):
 		"""
 		Look for the footprint in our list of known packages.  Return a tuple
-		of (package name, bool found).  
+		of (package name, bool found).
 		"""
 		for name, val in self.packages.iteritems():
 			if pkg in val:

@@ -1,10 +1,10 @@
 #annotate.py
-
 from decorator import decorator
 from pymomo.exceptions import *
 import inspect
-import types
+from typeinfo import type_system
 from collections import namedtuple
+import sys
 
 class BasicContext(dict):
 	pass
@@ -31,10 +31,10 @@ def _check_and_execute(f, *args, **kwargs):
 	#Ensure that only MoMoException subclasses are passed by the caller
 	try:
 		retval = f(*convargs, **convkw)
-	except MoMoException as e:
-		raise e
+	except MoMoException:
+		raise
 	except Exception as unknown:
-		raise APIError(str(unknown.args))
+		raise APIError(str(unknown.args)), None, sys.exc_info()[2]
 
 	return retval
 
@@ -47,7 +47,7 @@ def _process_arg(f, arg, value):
 	"""
 
 	if arg in f.params:
-			val = getattr(f.params[arg], 'convert')(value)
+		val = type_system.convert_to_type(value, f.types[arg])
 	else:
 		val = value
 
@@ -201,8 +201,13 @@ def print_help(f):
 		print " - %s (%s): %s" % (key, type, desc)
 
 def print_retval(f, value):
+	if hasattr(f, 'typed_retval') and f.typed_retval == True:
+		print type_system.format_return_value(f, value)
+		return
+
 	if not hasattr(f, 'retval'):
 		print str(value)
+
 	elif f.retval.printer[0] is not None:
 		f.retval.printer[0](value)
 	elif f.retval.desc != "":
@@ -217,8 +222,8 @@ def find_all(container):
 	context = BasicContext()
 
 	for name in names:
-		#Ignore __ names
-		if name.startswith('__'):
+		#Ignore _ and __ names
+		if name.startswith('_'):
 			continue
 
 		if isinstance(container, dict):
@@ -229,7 +234,12 @@ def find_all(container):
 		#Check if this is an annotated object that should be included.  Check the type of
 		#annotated to avoid issues with module imports where someone did from annotate import *
 		#into the module causing an annotated symbol to be defined as a decorator
-		if hasattr(obj, 'annotated') and isinstance(getattr(obj, 'annotated'), int):
+		
+		#If we are in a dict context then strings point to lazily loaded modules so include them
+		#too.
+		if isinstance(container, dict) and isinstance(obj, basestring):
+			context[name] = obj
+		elif hasattr(obj, 'annotated') and isinstance(getattr(obj, 'annotated'), int):
 			context[name] = obj
 
 	return context
@@ -259,6 +269,9 @@ def context_from_module(module):
 
 
 def check_returns_data(f):
+	if hasattr(f, 'typed_retval') and f.typed_retval == True:
+		return True
+
 	if not hasattr(f, 'retval'):
 		return False
 
@@ -269,10 +282,7 @@ def param(name, type, *validators, **kwargs):
 	def _param(f):
 		f = annotated(f)
 
-		if not hasattr(types, type):
-			raise AttributeError('Unknown parameter type: %s' % str(type))
-
-		f.params[name] = getattr(types, type)
+		f.params[name] = type_system.get_type(type)
 		f.types[name] = type
 		f.valids[name] = _parse_validators(f.params[name], validators)
 
@@ -299,6 +309,25 @@ def returns(desc=None, printer=None, data=True):
 		f.retval.desc = desc
 		f.retval.printer = (printer,)
 		f.retval.data = data
+
+		return f
+
+	return _returns
+
+def return_type(type, formatter=None):
+	"""
+	Specify that this function returns a typed value
+
+	type must be a type known to the MoMo type system and formatter
+	must be a valid formatter for that type
+	"""
+
+	def _returns(f):
+		annotated(f)
+		f.typed_retval = True
+		f.retval_type = type_system.get_type(type)
+		f.retval_typename = type
+		f.retval_formatter = formatter
 
 		return f
 

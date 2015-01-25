@@ -31,7 +31,7 @@ class SystemLog:
 		self.entries = []
 
 		entries = []
-		self.mapper = LogDefinitionMap()
+		self._mapper = LogDefinitionMap()
 
 		for entry in raw_entries:
 			if len(entries) != 0 and entry.typecode == RawLogEntry.ContinuationType:
@@ -111,13 +111,13 @@ class SystemLog:
 		Add an ldf file to help parse log entries
 		"""
 
-		self.mapper.add_ldf(file)
+		self._mapper.add_ldf(file)
 
 	def __str__(self):
 		val = ""
 
 		for entry in self.entries:
-			ldf = self.mapper.map(entry.header.msg)
+			ldf = self._mapper.map(entry.header.msg)
 			if ldf.message is not None:
 				desc = ldf.message
 			else:
