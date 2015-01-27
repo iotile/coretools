@@ -8,10 +8,10 @@ A python library for interacting with MoMo devices.
 ## Installation
 
 ```
-pip install --allow-external intelhex --allow-unverified intelhex --allow-external dirspec --allow-unverified dirspec pymomo
+pip install --allow-external intelhex --allow-unverified intelhex pymomo
 ```
 
-Pymomo currently relies on two non-PyPI packages, `intelhex` and `dirspec`.  This should change soon.
+Pymomo currently relies on one non-PyPI package, `intelhex`.  This should change soon.
 
 To build MoMo firmware you must also install [SCons](http://www.scons.org/)* and [two Microchip compilers](http://www.microchip.com/pagehandler/en_us/devtools/mplabxc/) - XC8 and XC16
 

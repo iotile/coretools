@@ -3,6 +3,8 @@ import os.path
 import sys
 import subprocess
 import functools
+import platform
+import os
 
 from pkg_resources import resource_filename, Requirement
 
@@ -25,6 +27,36 @@ class MomoPaths:
 		self.templates = os.path.join(self.config, 'templates')
 		self.pcb = os.path.join(self.base, 'pcb')
 		self.site_tools = os.path.join(self.config, 'site_scons')
+		self.settings = self._find_settings_dir()
+
+	def _find_settings_dir(self):
+		"""
+		Find a per user settings directory that is appropriate for each
+		type of system that we are installed on.
+		"""
+
+		system = platform.system()
+
+		basedir = None
+
+		if system == 'Windows':
+			if 'APPDATA' in os.environ:
+				basedir = os.environ['APPDATA']
+		elif system == 'Darwin':
+			basedir = os.path.expanduser('~/Library/Preferences')
+
+		#If we're not on Windows or Mac OS X, assume we're on some
+		#kind of posix system where the appropriate place would be
+		#~/.config
+		if basedir is None:
+			basedir = os.path.expanduser('~')
+			basedir = os.path.join(basedir, '.config')
+
+		settings_dir = os.path.abspath(os.path.join(basedir, 'WellDone-MoMo'))
+		if not os.path.exists(settings_dir):
+			os.makedirs(settings_dir, 0755)
+
+		return settings_dir
 
 	def select(self, *args, **kwargs):
 		"""

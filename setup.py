@@ -24,7 +24,6 @@ setup(
         "cmdln==1.1.2",
         "colorama==0.3.3",
         "decorator==3.4.0",
-        "dirspec==13.10",
         "intelhex==1.5",
         "Markdown==2.5.2",
         "nose==1.3.4",
