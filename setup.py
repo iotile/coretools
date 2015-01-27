@@ -3,6 +3,17 @@ from setuptools import setup, find_packages
 import os
 from os.path import basename
 
+import re
+def parse_version():
+    VERSIONFILE="pymomo/__version__.py"
+    verstrline = open(VERSIONFILE, "rt").read()
+    VSRE = r"^__version__ = ['\"]([^'\"]*)['\"]"
+    mo = re.search(VSRE, verstrline, re.M)
+    if mo:
+        return mo.group(1)
+    else:
+        raise RuntimeError("Unable to find version string in %s." % (VERSIONFILE,))
+
 def list_data_files():
     result = [ ]
     dirname = os.path.join(os.path.dirname(__file__), 'pymomo')
@@ -15,7 +26,7 @@ def list_data_files():
 setup(
     name = "pymomo",
     packages = find_packages(),
-    version = "1.0.4",
+    version = parse_version(),
     license = "LGPLv3",
     install_requires=[
         "beautifulsoup4==4.3.2",
