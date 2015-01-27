@@ -18,7 +18,17 @@ class MessageEntry:
 		stream, timestamp, msg, remote_source, remote_seq, res1, res2 = struct.unpack('<BLLBBHH', buf)
 
 		self.stream = stream
-		self.timestamp = datetime.datetime.fromtimestamp(timestamp + 946684800)
+
+		#Two important notes about this
+		#1: the magic number 946684800 is the difference between the UNIX Epoch and 
+		#Jan 1, 2000 12:00am in seconds since the RTCC in the PICs counts from 0 at
+		#Jan 1, 2000 12:00am
+		#2: utcfromtimestamp is used rather than fromtimestamp because fromtimestamp
+		#assumes that the timestamp is in UTC and applies a timezone correction to your
+		#current timezone.  utcfromtimestamp does not.  Since times are in local time
+		#in the PIC, we don't want to apply any timezone correction and just display the
+		#data as it is in the momo.
+		self.timestamp = datetime.datetime.utcfromtimestamp(timestamp + 946684800)
 		self.msg = msg
 		self.remote_source = remote_source
 		self.remote_seq = remote_seq
