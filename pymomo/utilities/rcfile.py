@@ -3,8 +3,8 @@
 #It uses dirspec to find the appropriate config directory for each platform and
 #then creates a file under that directory with the appropriate application name
 
-from dirspec.basedir import get_xdg_config_home
 import os.path
+from paths import MomoPaths
 from pymomo.exceptions import *
 
 class RCFile:
@@ -38,10 +38,11 @@ class RCFile:
 			self.contents = []
 
 	def _build_path(self):
-		dname = get_xdg_config_home()
+		paths = MomoPaths()
+		
 		fname = "%s_config.txt" % self.name
 
-		return os.path.join(dname, fname)
+		return os.path.join(paths.settings, fname)
 
 	def save(self):
 		"""
