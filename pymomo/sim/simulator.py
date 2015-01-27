@@ -197,7 +197,15 @@ class Simulator:
 
 	def _command(self, method, **kwargs):
 		self._send_cmd(method, **kwargs)
-		resp = self._receive_response()
+
+		if "timeout" in kwargs:
+			timeout = kwargs['timeout']+1
+			if kwargs['timeout'] < 0:
+				timeout = None
+
+			resp = self._receive_response(timeout=timeout)
+		else:
+			resp = self._receive_response()
 
 		if resp['error'] is True:
 			params = {x:y for x,y in resp.iteritems() if x != 'message' and x != 'error'}
