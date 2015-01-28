@@ -84,12 +84,12 @@ class Reportinator(cmdln.Cmdln):
 		"""
 		con = self._get_controller( opts )
 		if primary != None:
-			con.set_report_route_primary(primary)
-			if secondary != None:
-				con.set_report_route_secondary(secondary)
+			con.set_report_route(0, primary)
+			if secondary == "" or secondary != None:
+				con.set_report_route(1, secondary)
 
-		primary = con.get_report_route_primary();
-		secondary = con.get_report_route_secondary();
+		primary = con.get_report_route(0);
+		secondary = con.get_report_route(1);
 		print "primary:   %s" % (primary)
 		print "secondary: %s" % (secondary)
 
