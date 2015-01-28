@@ -542,19 +542,29 @@ class MIBController (proxy.MIBProxyObject):
 
 		self.rpc(60, 0)
 
-	def set_report_route_primary(self, route):
-		self.rpc(60, 5, route)
+	def set_report_route(self, index, route):
+		print index
+		if len(route) == 0:
+			arg = struct.unpack('H', struct.pack('BB', 0, int(index)))
+			self.rpc(60, 5, arg[0], route)
+		else:
+			for i in xrange(0, len(route), 18):
+				print i
+				buf = route[i:i+18]
+				arg = struct.unpack('H', struct.pack('BB', int(i), int(index)))
+				self.rpc(60, 5, arg[0], buf)
 
-	def get_report_route_primary(self):
-		res = self.rpc(60, 6, result_type=(0, True))		
-		return res['buffer']
-
-	def set_report_route_secondary(self, route):
-		self.rpc(60, 0x12, route)
-
-	def get_report_route_secondary(self):
-		res = self.rpc(60, 0x13, result_type=(0, True))		
-		return res['buffer']
+	def get_report_route(self, index):
+		route = ""
+		i = 0
+		while True:
+			arg = struct.unpack('H', struct.pack('BB', int(i),int(index)))
+			res = self.rpc(60, 6, arg[0], result_type=(0, True))
+			if len(res['buffer']) == 0:
+				break
+			i += len(res['buffer']);
+			route += res['buffer']
+		return route
 
 	@annotated
 	@returns(desc="Time", data=True)
