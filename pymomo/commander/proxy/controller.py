@@ -543,13 +543,11 @@ class MIBController (proxy.MIBProxyObject):
 		self.rpc(60, 0)
 
 	def set_report_route(self, index, route):
-		print index
 		if len(route) == 0:
 			arg = struct.unpack('H', struct.pack('BB', 0, int(index)))
 			self.rpc(60, 5, arg[0], route)
 		else:
 			for i in xrange(0, len(route), 18):
-				print i
 				buf = route[i:i+18]
 				arg = struct.unpack('H', struct.pack('BB', int(i), int(index)))
 				self.rpc(60, 5, arg[0], buf)
@@ -565,6 +563,13 @@ class MIBController (proxy.MIBProxyObject):
 			i += len(res['buffer']);
 			route += res['buffer']
 		return route
+
+	def get_gprs_apn(self):
+		res = self.rpc(60, 0x14, result_type=(0,True))
+		return res['buffer']
+
+	def set_gprs_apn(self, apn):
+		res = self.rpc(60, 0x13, apn)
 
 	@annotated
 	@returns(desc="Time", data=True)

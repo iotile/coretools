@@ -94,6 +94,19 @@ class Reportinator(cmdln.Cmdln):
 		print "secondary: %s" % (secondary)
 
 	@cmdln.option('-p', '--port', help='Serial port that fsu is plugged into')
+	def do_apn(self, subcmd, opts, apn=None):
+		"""${cmd_name}: Get or set the GPRS APN.
+
+		${cmd_usage}
+		${cmd_option_list}
+		"""
+
+		con = self._get_controller( opts )
+		if apn != None:
+			con.set_gprs_apn(apn)
+		print con.get_gprs_apn()
+
+	@cmdln.option('-p', '--port', help='Serial port that fsu is plugged into')
 	def do_interval(self, subcmd, opts, interval=None):
 		"""${cmd_name}: Get or set the reporting interval.
 
