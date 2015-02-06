@@ -533,7 +533,7 @@ class MIBController (proxy.MIBProxyObject):
 		"""
 		Reset the reporting configuration.
 		"""
-		res = self.rpc(60,0x14)
+		res = self.rpc(60,0x12)
 
 	def send_report(self):
 		"""
