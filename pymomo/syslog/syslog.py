@@ -53,13 +53,14 @@ class SystemLog:
 					self.entries.append(current)
 
 				current = LogEntry(MessageEntry(entry.data))
-			elif entry.typecode == RawLogEntry.IntegerListType:
-				ints = self._parse_ints(entry)
-				current.params.extend(ints)
-			elif entry.typecode == RawLogEntry.StringType:
-				current.params.append(('array', entry.data[:-1])) #Chomp extra '\0' at the end of string entries
-			else:
-				current.params.append(('array', entry.data))
+			elif current is not None:
+				if entry.typecode == RawLogEntry.IntegerListType:
+					ints = self._parse_ints(entry)
+					current.params.extend(ints)
+				elif entry.typecode == RawLogEntry.StringType:
+					current.params.append(('array', entry.data[:-1])) #Chomp extra '\0' at the end of string entries
+				else:
+					current.params.append(('array', entry.data))
 
 		if current is not None:
 			self.entries.append(current)

@@ -62,7 +62,9 @@ class GSMTool(cmdln.Cmdln):
 		print "shutdown_pending: %s" % bool(ord(res[1]))
 		print "rx_buffer_start: %d" % ord(res[2])
 		print "rx_buffer_end: %d" % ord(res[3])
-		print "debug_val: %d" % ord(res[4])
+		print "rx_buffer_len: %d" % ord(res[4])
+		print "debug_val: %d" % ord(res[5])
+		print "http_status: %d" % ( ord(res[6]) | ord(res[7])<<8)
 
 	@cmdln.option('-p', '--port', help='Serial port that fsu is plugged into')
 	@cmdln.option('-a', '--address', help='The MIB address of the GSM module' )
