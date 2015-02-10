@@ -22,7 +22,7 @@ class GSMModule (proxy12.MIB12ProxyObject):
 		else:
 			self.rpc(10, 6)
 
-	def send_text(self, destination, text):
+	def send_message(self, destination, text):
 		"""
 		Send a  message to the given destination which must have the form:
 		+NUMBER with no dashes or spaces, for example: +16506695211, or a URL
