@@ -22,12 +22,12 @@ class GSMModule (proxy12.MIB12ProxyObject):
 		else:
 			self.rpc(10, 6)
 
-	def send_text(self, destination, text):
+	def send_message(self, destination, text):
 		"""
 		Send a  message to the given destination which must have the form:
 		+NUMBER with no dashes or spaces, for example: +16506695211, or a URL
 		"""
-		apn = "wap.cingular"
+		apn = "JTM2M"
 
 		print "Sending message '%s' to %s" % ( text, destination )
 		print "> apn %s" % apn
@@ -68,9 +68,13 @@ class GSMModule (proxy12.MIB12ProxyObject):
 		return res['buffer']
 
 	def dump_buffer(self):
-		res = self.rpc(10,4, result_type=(0, True))
-
-		return res['buffer']
+		output = ""
+		while True:
+			res = self.rpc(10,4, result_type=(0, True))
+			if len(res['buffer']) == 0:
+				break;
+			output += res['buffer']
+		return output
 
 	def debug(self):
 		res = self.rpc(10,7, result_type=(0, True))

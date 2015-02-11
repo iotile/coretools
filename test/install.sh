@@ -73,5 +73,5 @@ fi
 echo "DONE!"
 
 cd $MOMOROOT
-pip install http://sourceforge.net/projects/scons/files/latest/download --egg
+pip install http://downloads.sourceforge.net/project/scons/scons/2.3.4/scons-2.3.4.tar.gz --egg
 pip install -r requirements.txt

@@ -13,6 +13,8 @@ from pymomo.utilities.typedargs.annotate import annotated,param,returns, context
 from pymomo.utilities import typedargs
 from pymomo.exceptions import *
 import itertools
+import base64
+import uuid
 
 #Formatters for the return types used in this class
 def print_module_list(mods):
@@ -20,8 +22,8 @@ def print_module_list(mods):
 	for i, mod in enumerate(mods):
 		print "%d: %s at address %d" % (i, mod.name, mod.address)
 
-def print_log(log):
-	print log
+def _print(x):
+	print x
 
 @context("MIBController")
 class MIBController (proxy.MIBProxyObject):
@@ -79,7 +81,11 @@ class MIBController (proxy.MIBProxyObject):
 
 		for i in xrange(0, count):
 			res = self.rpc(42, 0x22, i, 0, result_type=(0, True))
-			log.append(RawLogEntry(res['buffer']))
+			try:
+				log.append(RawLogEntry(res['buffer']))
+			except ValidationError as e:
+				print "FAILED TO PARSE A LOG ENTRY, %d entries discarded" % (count - i)
+				break
 
 		return SystemLog(log)
 
@@ -708,6 +714,27 @@ class MIBController (proxy.MIBProxyObject):
 
 		if sync:
 			sleep(1.5)
+
+	@annotated
+	@returns(desc="Module UUID", printer=_print, data=True)
+	def uuid(self):
+		"""
+		Get the current UUID of the controller.
+		"""
+
+		res = self.rpc(42, 0x13, result_type=(2,False))
+		guid = struct.pack('HH', res['ints'][0], res['ints'][1])
+		print struct.unpack('<L', guid)[0];
+		return base64.b64encode(bytes(guid)).rstrip('=')
+
+	@annotated 
+	def register(self):
+		#TODO: register with the server
+		guid = uuid.uuid4()
+		guid = struct.unpack('<L', guid.bytes[-4:])[0]
+		print guid
+		print base64.b64encode(struct.pack('<L', guid)).rstrip('=')
+		self.rpc(42, 0x14, guid & 0xFFFF, guid >> 16)
 
 	@annotated
 	def factory_reset(self):
