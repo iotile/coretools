@@ -59,10 +59,12 @@ class GSMTool(cmdln.Cmdln):
 		gsm = self._create_proxy( opts )
 		res = gsm.debug()
 		print "module_on: %s" % bool(ord(res[0]))
-		print "shutdown_pending: %s" % bool(ord(res[1]))
+		print "callback_pending: %s" % bool(ord(res[1]))
 		print "rx_buffer_start: %d" % ord(res[2])
 		print "rx_buffer_end: %d" % ord(res[3])
-		print "debug_val: %d" % ord(res[4])
+		print "rx_buffer_len: %d" % ord(res[4])
+		print "debug_val: %d" % ord(res[5])
+		print "http_status: %d" % ( ord(res[6]) | ord(res[7])<<8)
 
 	@cmdln.option('-p', '--port', help='Serial port that fsu is plugged into')
 	@cmdln.option('-a', '--address', help='The MIB address of the GSM module' )
@@ -85,9 +87,7 @@ class GSMTool(cmdln.Cmdln):
 		${cmd_option_list}
 		"""
 		gsm = self._create_proxy( opts )
-		#gsm.module_on();
-		res = gsm.send_text( dest, text );
-		#gsm.module_off();
+		res = gsm.send_message( dest, text );
 
 	@cmdln.option('-p', '--port', help='Serial port that fsu is plugged into')
 	@cmdln.option('-a', '--address', help='The MIB address of the GSM module' )
