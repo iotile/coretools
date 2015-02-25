@@ -37,47 +37,65 @@ class MultiSensorModule (proxy12.MIB12ProxyObject):
 
 		self.rpc(20, 3, self.ids[name], value)
 
+	def set_sensor_push(self, push):
+		"""
+		Set whether the sensor module should push sensor data to the controller.
+		"""
+
+		res = self.rpc(20, 11, int(push))
+
 	def read_voltage(self):
 		res = self.rpc(20, 5, result_type=(1,False))
 		return res['ints'][0]
 
 	def acquire_pulses(self):
+		"""
+		Tell the multisensor module to sample flow rate for 1 sampling period.
+		"""
+
 		self.rpc(20, 6)
 
 	def read_pulses(self):
 		"""
-		Return the total number of pulses read and the number of sampling
-		periods that the number corresponds to. Each sampling period is 4
-		seconds long and the flow is sampled for 0.1 seconds, so there are
-		40 times more counts per period than reported.
+		Return a list of all of the pulse widths and intervals between pulses
+		acquired during the last acquisition period.
+
+		Returns a 2-tuple containing the list of valid pulses and the
+		number of invalid pulses
 		"""
 
 		res = self.rpc(20, 7, result_type=(2, False))
 		counts = res['ints'][0]
-		periods = res['ints'][1]
+		invalid = res['ints'][1]
 
-		return counts, periods
+		pulses = []
+		for i in xrange(0, counts):
+			res = self.rpc(20, 8, i, result_type=(2, False))
+			width = res['ints'][0]
+			interval = res['ints'][1]
 
-	def pulse_rate(self):
+			if i == counts-1:
+				interval = 0
+
+			pulses.append((width, interval))
+
+		return pulses, invalid
+
+	def read_median(self):
 		"""
-		Compute the average pulses per second
+		Find the median of the list of pulse intervals recorded
+		and return it.  This call is not idempotent since finding
+		the median required destroying the list of recorded intervals
+		"""
+		res = self.rpc(20, 10, result_type=(1,False))
 
-		Uses the data from all available sampling periods to make the estimate
-		as accurate as possible.
+		return res['ints'][0]
+
+	def read_periods(self):
+		"""
+		Return the number of periods that have been sampled.
 		"""
 
-		counts, periods = self.read_pulses()
+		res = self.rpc(20, 9, result_type=(1, False))
 
-		counts *= 10.0
-		if periods == 0:
-			return 0
-		
-		return counts/periods
-
-	def clear_counters(self):
-		"""
-		Clear the accumulated number of pulses and the number of 
-		sampled periods.
-		"""
-
-		self.rpc(20, 8)
+		return res['ints'][0]
