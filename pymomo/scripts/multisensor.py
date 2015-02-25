@@ -53,12 +53,33 @@ class SensorTool(cmdln.Cmdln):
 
 	@cmdln.option('-p', '--port', help='Serial port that fsu is plugged into')
 	@cmdln.option('-a', '--address', help='The MIB address of the multisensor module' )
-	@cmdln.option('-c', '--continuous', action='store', type=int, default=5, help='Continually sample and report' )
-	def do_pulse(self, subcmd, opts):
-		"""${cmd_name}: Sample the pulse counters and return the average pulse rate
+	def do_set_push(self, subcmd, opts, enabled):
+		"""${cmd_name}: Set whether sensor data is pushed to the get_controller
 
-		Optionally sample continously with a delay between each report.  The delay should between
-		at least 4 seconds to allow for one complete sampling cycle per report.
+		Valid options are enabled or disabled.
+
+		${cmd_usage}
+		${cmd_option_list}
+		"""
+
+		sens = self._create_proxy(opts)
+		
+		if enabled.lower() == 'enabled':
+			en = True
+		elif enabled.lower() == 'disabled':
+			en = False
+		else:
+			print "Invalid option: use enabled or disabled"
+			return
+
+		sens.set_sensor_push(en)
+
+	@cmdln.option('-p', '--port', help='Serial port that fsu is plugged into')
+	@cmdln.option('-a', '--address', help='The MIB address of the multisensor module' )
+	@cmdln.option('-c', '--continuous', action='store', type=int, default=1, help='Continually sample and report' )
+	def do_pulse(self, subcmd, opts):
+		"""${cmd_name}: Sample the pulse counters for one sample period and return the pulses seen
+	
 		${cmd_usage}
 		${cmd_option_list}
 		"""
@@ -66,10 +87,24 @@ class SensorTool(cmdln.Cmdln):
 		sens = self._create_proxy(opts)
 
 		while True:
-			val = sens.pulse_rate()
-			sens.clear_counters()
-			print "Pulse Count: %.2f pulses per second" % val
+			sens.acquire_pulses()
 			
+			time.sleep(0.6)
+			pulses, invalid = sens.read_pulses()
+			median = sens.read_median()
+			med_pulses, invalid = sens.read_pulses()
+
+			print "%d pulses (not including %d invalid pulses)" % (len(pulses), invalid)
+			print "Median pulse interval: %.0f ms" % (median*8.e-3,)
+
+			for width, interval in pulses:
+				int_str = "---"
+				if interval > 0:
+					int_str = "%.0f ms" % (interval*8.e-3,)
+
+				print "width: %.0f ms, spacing: %s" % (width*8.e-3, int_str)
+			
+
 			if not opts.continuous:
 				break
 
