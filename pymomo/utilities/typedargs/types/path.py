@@ -34,3 +34,6 @@ def validate_writeable(arg):
 	if not os.path.isdir(parent):
 		raise ValueError("Parent directory does not exist and path must be writeable")
 	
+#Formatting functions
+def default_formatter(arg, **kwargs):
+	return str(arg)

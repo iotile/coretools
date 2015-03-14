@@ -10,6 +10,7 @@ import datetime
 from pymomo.commander.meta import *
 from pymomo.commander.exceptions import *
 from pymomo.hex16.convert import *
+from pymomo.utilities.typedargs import type_system
 import cmdln
 from colorama import Fore, Style
 import pytest
@@ -430,5 +431,6 @@ class ModTool(cmdln.Cmdln):
 		sys.exit(1)
 
 def main():
+	type_system.interactive = True
 	modtool = ModTool()
 	return modtool.main()

@@ -2,8 +2,9 @@
 
 import os
 import json
+from pymomo.utilities.paths import MomoPaths
 
-conf_dir = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'config')
+conf_dir = MomoPaths().config
 
 class ConfigFile:
 	"""

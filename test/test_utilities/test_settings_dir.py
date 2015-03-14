@@ -29,7 +29,6 @@ class TestSettingsDirectory:
 			base = self.confdir
 
 		settings_dir = os.path.abspath(os.path.join(base, 'WellDone-MoMo'))
-
 		assert settings_dir == self.paths.settings
 
 	@unittest.skipIf(platform.system() != 'Darwin', 'Mac OS X specific test')

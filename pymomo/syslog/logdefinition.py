@@ -65,10 +65,10 @@ class LogDefinition:
 		return True
 
 	def add_data(self, name, type, format, is_list=False):
-		if not typedargs.is_known_type(type):
+		if not typedargs.type_system.is_known_type(type):
 			raise ArgumentError("Parameter has unknown type", param=name, type=type)
 
-		if format is not None and not typedargs.is_known_format(type, format):
+		if format is not None and not typedargs.type_system.is_known_format(type, format):
 			raise ArgumentError("Parameter has unknown format", param=name, type=type, format=format)
 
 		definition = LogDataItem(name, type, format, is_list)

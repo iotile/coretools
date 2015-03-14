@@ -6,11 +6,10 @@ from pymomo.utilities.typedargs.shell import HierarchicalShell, posix_lex
 from pymomo.exceptions import *
 from pymomo.utilities.typedargs import annotate
 from pymomo.commander.meta import initialization
-from pymomo.hex import ControllerBlock, HexFile
-from pymomo.sim.simulator import Simulator
 from pymomo.utilities import build
 from pymomo.utilities.rcfile import RCFile
-import pymomo.syslog
+from multiprocessing import freeze_support
+import traceback
 
 def main():
 	line = sys.argv[1:]
@@ -20,29 +19,32 @@ def main():
 		norc = True
 		line = line[1:]
 
-	if len(line) > 0 and line[0] == '--rcdir':
+	if len(line) > 0 and line[0] == '--rcfile':
 		rc = RCFile('momo')
 		print rc.path
 		return 0
 
 	shell = HierarchicalShell('momo', no_rc=norc)
-	shell.root_update(annotate.find_all(initialization))
-	shell.root_update(annotate.find_all(build))
 	
-	name,con = annotate.context_from_module(pymomo.syslog)
-	shell.root_add(name, con)
-	shell.root_add('ControllerBlock', ControllerBlock)
-	shell.root_add('HexFile', HexFile)
-	shell.root_add('Simulator', Simulator)
+	shell.root_update(annotate.find_all(initialization))
+	
+	shell.root_add("build", "pymomo.utilities.build,build")
+	shell.root_add("SystemLog", "pymomo.syslog")
+	shell.root_add("pcb", "pymomo.pcb")
+	shell.root_add('ControllerBlock', "pymomo.hex,ControllerBlock")
+	shell.root_add('HexFile', "pymomo.hex,HexFile")
+	shell.root_add('Simulator', "pymomo.sim,Simulator")
 
 	finished = False
 
 	try:
 		while len(line) > 0:
 			line, finished = shell.invoke(line)
+	except APIError:
+		traceback.print_exc()
+		return 1
 	except MoMoException as e:
 		print e.format()
-
 		#if the command passed on the command line fails, then we should
 		#just exit rather than drop the user into a shell.
 		return 1
@@ -67,7 +69,7 @@ def main():
 	readline.set_completer_delims(' \t\n;')
 	#Handle Mac OS X special libedit based readline
 	#See: http://stackoverflow.com/questions/7116038/python-tab-completion-mac-osx-10-7-lion
-	if 'libedit' in readline.__doc__:
+	if readline.__doc__ is not None and 'libedit' in readline.__doc__:
 		readline.parse_and_bind("bind ^I rl_complete")
 	else:
 		readline.parse_and_bind("tab: complete")
@@ -86,6 +88,8 @@ def main():
 				try:
 					while len(line) > 0:
 						line, finished = shell.invoke(line)
+				except APIError as e:
+					traceback.print_exc()
 				except MoMoException as e:
 					print e.format()
 

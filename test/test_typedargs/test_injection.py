@@ -1,16 +1,17 @@
 from pymomo.utilities import typedargs
+from pymomo.utilities.typedargs import type_system
 import unittest
 from nose.tools import *
 import os.path
 from pymomo.exceptions import *
 
 def test_type_injection():
-	typeobj = {}
+	import extra_type_package.extra_type as typeobj
 
-	assert not typedargs.is_known_type("test_injected_type1")
+	assert not type_system.is_known_type("test_injected_type1")
 
-	typedargs.inject_type("test_injected_type1", typeobj)
-	assert typedargs.is_known_type("test_injected_type1")
+	type_system.inject_type("test_injected_type1", typeobj)
+	assert type_system.is_known_type("test_injected_type1")
 
 def test_external_module_injection():
 	"""
@@ -19,9 +20,9 @@ def test_external_module_injection():
 
 	path = os.path.join(os.path.dirname(__file__), 'extra_types')
 
-	assert not typedargs.is_known_type('new_type')
-	typedargs.load_external_types(path)
-	assert typedargs.is_known_type('new_type')
+	assert not type_system.is_known_type('new_type')
+	type_system.load_external_types(path)
+	assert type_system.is_known_type('new_type')
 
 def test_external_package_injection():
 	"""
@@ -30,9 +31,9 @@ def test_external_package_injection():
 
 	path = os.path.join(os.path.dirname(__file__), 'extra_type_package')
 
-	assert not typedargs.is_known_type('new_pkg_type')
-	typedargs.load_external_types(path)
-	assert typedargs.is_known_type('new_pkg_type')
+	assert not type_system.is_known_type('new_pkg_type')
+	type_system.load_external_types(path)
+	assert type_system.is_known_type('new_pkg_type')
 
 @raises(ArgumentError)
 def test_external_package_injection_failure():
@@ -41,4 +42,4 @@ def test_external_package_injection_failure():
 	"""
 
 	path = os.path.join(os.path.dirname(__file__), 'extra_type_package_nonexistant')
-	typedargs.load_external_types(path)
+	type_system.load_external_types(path)

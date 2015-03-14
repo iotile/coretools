@@ -31,6 +31,10 @@ class MoMoException(Exception):
 		
 		return msg
 
+	def __str__(self):
+		msg = self.format()
+		return msg
+
 class ValidationError(MoMoException):
 	"""
 	API routines can impose validation criteria on their arguments in 
@@ -78,11 +82,22 @@ class ArgumentError(MoMoException):
 
 	pass
 
+class DataError(MoMoException):
+	"""
+	The method relied on data pass in by the user and the data was invalid.
+
+	This could be because a file was the wrong type or because a data provider
+	returned an unexpected result.  The parameters passed with this exception
+	provide more detail on what occurred and where.
+	"""
+
+	pass
+
 class InternalError(MoMoException):
 	"""
 	The method could not be completed with the user input passed for 
 	an unexpected reason.  This does not signify a bug in the API 
-	method code.  More details should be passed in the arguments 
+	method code.  More details should be passed in the arguments.
 	"""
 
 	pass
@@ -107,6 +122,24 @@ class BuildError(MoMoException):
 	mean that there is a compilation error but rather that a required part
 	of the build process did not complete successfully.  This exception means
 	that something is misconfigured.
+	"""
+
+	pass
+
+class TypeSystemError(MoMoException):
+	"""
+	There was an error with the MoMo type system.  This can be due to improperly
+	specifying an unknown type or because the required type was not properly loaded
+	from an external module before a function that used that type was needed.
+	"""
+
+	pass
+
+class EnvironmentError(MoMoException):
+	"""
+	The environment is not properly configured for the MoMo API command that was called.
+	This can be because a required program was not installed or accessible or because
+	a required environment variable was not defined.
 	"""
 
 	pass

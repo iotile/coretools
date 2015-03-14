@@ -13,3 +13,14 @@ def validate_list(arg, choices):
 
 	if arg not in choices:
 		raise ValueError('Value not in list: %s' % str(choices))
+
+def validate_not_empty(arg):
+	"""
+	Make sure the string is not empty
+	"""
+
+	if len(arg) == 0:
+		raise ValueError("String cannot be empty")
+
+def default_formatter(arg, **kwargs):
+	return arg

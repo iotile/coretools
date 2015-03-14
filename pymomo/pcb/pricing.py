@@ -17,30 +17,44 @@ class OfferRequirements:
 
 	def _wrap_single(self, s):
 		if (isinstance(s, basestring)):
-			return [s]
+			return [self._canonicalize_name(s)]
 
 		if s is None:
 			return []
 
-		return s
+		return map(lambda x: self._canonicalize_name(x), s)
+
+	def _canonicalize_name(self, name):
+		"""
+		Given a name, like a distributor's name, convert it to
+		lowercase and remove all spaces,_ or - characters 
+		"""
+
+		if name is None:
+			return "None"
+
+		return name.lower().replace(' ', '').replace('-', '').replace('_', '')
 
 	def validate(self, offer, quantity):
 		if offer.invalid:
 			return False
 
-		if offer.seller_name in self.invalid_sellers:
+		if offer.moq is not None and quantity < offer.moq:
 			return False
 
-		if offer.packaging in self.invalid_packages:
+		if self._canonicalize_name(offer.seller) in self.invalid_sellers:
 			return False
 
-		if len(self.valid_sellers)>0 and offer.seller_name not in self.valid_sellers:
+		if self._canonicalize_name(offer.packaging) in self.invalid_packages:
 			return False
 
-		if len(self.valid_packages)>0 and offer.packaging not in self.valid_packages:
+		if len(self.valid_sellers)>0 and self._canonicalize_name(offer.seller) not in self.valid_sellers:
 			return False
 
-		if self.in_stock and quantity > offer.in_stock_quant:
+		if len(self.valid_packages)>0 and self._canonicalize_name(offer.packaging) not in self.valid_packages:
+			return False
+
+		if self.in_stock and quantity > offer.stock_quantity:
 			return False
 
 		return True
