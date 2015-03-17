@@ -38,7 +38,7 @@ class I2CAnalyzer:
 	StopCondition 		  = 3
 	UnclassifiedCondition = 4
 
-	def __init__(self, states):
+	def __init__(self, states, ignore_errors=False):
 		"""
 		Take in a list of tuples of the form (cycle, clock, data) where
 		cycle is a monotonically increasing cycle counter (time measured
@@ -61,7 +61,11 @@ class I2CAnalyzer:
 		self.bus_events = []
 
 		while len(states) > 0:
-			trans, states = self._process_transaction(states)
+			trans, states = self._process_transaction(states, ignore_errors=ignore_errors)
+
+			if len(trans) == 0:
+				break
+
 			self.bus_events.extend(trans)
 
 	def _is_byte_transmission(self, states):
@@ -92,7 +96,7 @@ class I2CAnalyzer:
 
 		return AddressByte(start, end, addr, write, acked)
 
-	def _process_transaction(self, states):
+	def _process_transaction(self, states, ignore_errors=False):
 		"""
 		Process a Start, [Byte...], [Repeated Start...], Stop Series
 		"""
@@ -140,12 +144,15 @@ class I2CAnalyzer:
 				i += i
 				break
 			else:
+				if ignore_errors:
+					break
+
 				raise InternalError("Invalid I2C State", state=states[i])
 
-		if not isinstance(trans[-1], StopCondition):
+		if not ignore_errors and not isinstance(trans[-1], StopCondition):
 			raise InternalError("I2C Transaction did not end with a STOP", last_state=trans[-1])
 
-		return trans, states[i:]	
+		return trans, states[i:]
 
 	def _classify_state(self, last, state):
 		"""
@@ -227,7 +234,8 @@ class I2CAnalyzer:
 	@classmethod
 	@param("clock_path", "path", "readable", desc="Path to GPSIM log of i2c clock signal")
 	@param("data_path", "path", "readable", desc="Path to GPSIM log of i2c data signal")
-	def FromGPSIMLogs(cls, clock_path, data_path):
+	@param("ignore_errors", "bool", desc="If the stream is not valid, parse only the valid part")
+	def FromGPSIMLogs(cls, clock_path, data_path, ignore_errors=False):
 		with open(clock_path, "r") as f:
 			clk = f.readlines()
 			clk = [x.rstrip().lstrip() for x in clk if x.rstrip().lstrip() != ""]
@@ -272,4 +280,4 @@ class I2CAnalyzer:
 				sample = (cycle, curr_clock, curr_data)
 				processed.append(sample)
 
-		return I2CAnalyzer(processed)
+		return I2CAnalyzer(processed, ignore_errors=ignore_errors)
