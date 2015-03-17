@@ -38,6 +38,8 @@
 				"total_rom": 8192,
 				"xc8_target": "16F1847",
 				"gpsim_proc": "p16f1847",
+				"gpsim_sda": "portb1",
+				"gpsim_scl": "portb4",
 
 				"defines":
 				{
@@ -51,6 +53,8 @@
 			{
 				"xc8_target": "16F1823",
 				"gpsim_proc": "p16f1823",
+				"gpsim_sda": "portc1",
+				"gpsim_scl": "portc0",
 
 				"defines":
 				{
@@ -63,6 +67,8 @@
 			{
 				"xc8_target": "12F1822",
 				"gpsim_proc": "p12f1822",
+				"gpsim_sda": "porta2",
+				"gpsim_scl": "porta1",
 
 				"defines":
 				{
