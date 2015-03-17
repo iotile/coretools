@@ -5,6 +5,7 @@ import pic12_unit
 from pymomo.exceptions import *
 from pymomo.gpysim import i2c_log
 import os.path
+import os
 
 typemap = { 'RS': i2c_log.RepeatedStartCondition, 'S': i2c_log.StartCondition,
 			'P': i2c_log.StopCondition, 'A': i2c_log.AddressByte, 'D': i2c_log.DataByte}
@@ -15,13 +16,106 @@ class Pic12UnitTest (unit_test.UnitTest):
 		#be overwritten by imported header information.
 		self.i2c_capture = None
 		self.checkpoints = []
+		self.slaves = []
+		self.script_additions = {'libraries': set(), 'modules':{}, 'setup_lines': {}, 'sda_node': set(), 'scl_node': set()}
 		unit_test.UnitTest.__init__(self, files, **kwargs)
+
+		#Initialize 10K pullups on SDA and SCL to simulate the required pullups on the i2c lines
+		self._add_library('libgpsim_modules')
+		
+		self._add_module('pullup_scl', 'pullup')
+		self._add_setupline('pullup_scl', 'pullup_scl.voltage = 5')
+		self._add_setupline('pullup_scl', 'pullup_scl.resistance = 10000')
+		self._connect_to_scl('pullup_scl.pin')
+
+		self._add_module('pullup_sda', 'pullup')
+		self._add_setupline('pullup_sda', 'pullup_sda.voltage = 5')
+		self._add_setupline('pullup_sda', 'pullup_sda.resistance = 10000')
+		self._connect_to_sda('pullup_sda.pin')
 
 	#PIC12 Specific Attibutes
 	def _parse_checkpoints(self, value):
 		pts = value.split(',')
 		ptlist = [self._add_checkpoint(x) for x in pts]
 		self.checkpoints = ptlist
+
+	def _parse_attach_slave(self, value):
+		"""
+		Attach Slave: <address>, python_module.py
+
+		Create a python slave responder at the given address and attach it to
+		the simulation.  Whenever a MIB packet is directed at that address the
+		slave responder will process it as if it were attached to the bus.  
+		
+		Any number of slaves can be attached and they will be named sequentially:
+		slave0, slave1, etc. 
+		"""
+
+		vals = [x.strip() for x in value.split(',')]
+		if len(vals) != 2:
+			raise BuildError("Attach slave error: value must be of the form <address>, <python_module.py>", value=value)
+
+		addr, filename = vals
+
+		try:
+			addr = int(addr)
+		except ValueError:
+			raise BuildError("Attach slave error: address must be a number", address=addr)
+
+		filepath = os.path.join(os.path.dirname(self.files[0]), filename)
+		if not os.path.exists(filepath):
+			raise BuildError("Attach slave error: python module does not exist", filename=filename, cwd=os.getcwd(), filepath=filepath)
+
+		base, ext = os.path.splitext(filename)
+		if ext != ".py":
+			raise BuildError("Attach slave error: slave responder code must end in .py", filename=filename, extension=ext)
+
+		self.slaves.append((addr, base))
+		self.copy_file(filepath, filename)
+
+		#Add this slave into the simulation script
+		sname = "slave%d" % len(self.slaves)
+
+		self._add_library('libgpsim_modules')
+		self._add_module(sname, 'MoMoPythonSlave')
+		self._add_setupline(sname, '%s.address = %d' % (sname, addr))
+		self._add_setupline(sname, '%s.logfile = calls_%s.txt' % (sname, sname))
+		self._add_setupline(sname, '%s.python_module = %s' % (sname, base))
+		self._connect_to_scl('%s.scl' % sname)
+		self._connect_to_sda('%s.sda' % sname)
+
+	def _add_library(self, lib):
+		"""
+		Specify that we need a custom gpsim library
+		"""
+
+		self.script_additions['libraries'].add(lib)
+
+	def _add_module(self, name, type):
+		"""
+		Specify that we need to load a custom gpsim module
+		"""
+
+		if name in self.script_additions['modules']:
+			raise BuildError("Same GPSIM module name specified twice", name=name, type=type, script_additions=self.script_additions)
+		
+		self.script_additions['modules'][name] = type
+
+	def _add_setupline(self, name, line):
+		"""
+		Insert a custom setup line into gpsim script output
+		"""
+
+		if name not in self.script_additions['setup_lines']:
+			self.script_additions['setup_lines'][name] = []
+
+		self.script_additions['setup_lines'][name].append(line)
+
+	def _connect_to_sda(self, pin):
+		self.script_additions['sda_node'].add(pin)
+
+	def _connect_to_scl(self, pin):
+		self.script_additions['scl_node'].add(pin)
 
 	def _parse_i2c_capture(self, value):
 		"""
@@ -39,41 +133,23 @@ class Pic12UnitTest (unit_test.UnitTest):
 		and N corresponds to it being cleared.
 		"""
 
+		#Add this module into the test script
+		self._add_library('libgpsim_modules')
+		self._add_module('record_clock', 'FileRecorder')
+		self._add_module('record_data', 'FileRecorder')
+
+		self._add_setupline('record_clock', 'record_clock.digital = true')
+		self._add_setupline('record_clock', 'record_clock.file = clock.txt')
+		self._add_setupline('record_data', 'record_data.digital = true')
+		self._add_setupline('record_data', 'record_data.file = data.txt')
+
+		self._connect_to_scl('record_clock.pin')
+		self._connect_to_sda('record_data.pin')
+
 		sigs = [x.strip() for x in value.split(',')]
 		self.i2c_capture = [self._process_i2c_signal(x) for x in sigs]
 		self.add_intermediate('clock.txt', folder='test')
 		self.add_intermediate('data.txt', folder='test')
-
-	def _process_i2c_signal(self, sig):
-		if sig.upper() == 'S':
-			return ('S', None)
-		elif sig.upper() == 'RS':
-			return ('RS', None)
-		elif sig.upper() == 'P':
-			return ('P', None)
-		else:
-			#sig should be a number
-			splitvals = sig.split('/')
-			if len(splitvals) != 2:
-				raise BuildError("No modifier specified in data byte", test=self.name, value=sig)
-
-			val = int(splitvals[0],0)
-			mods = splitvals[1].upper()
-
-			if len(mods) == 0 or len(mods) > 2:
-				raise BuildError("Modifier too long or missing in I2C capture data byte specification", test=self.name, value=sig, parsed_modifier=mods)
-
-			if mods[-1] != 'A' and mods[-1] != 'N':
-				raise BuildError("Invalid A/N modifier in I2C capture data or address specification", test=self.name, value=sig, parsed_modifier=mods)
-
-			if len(mods) == 2 and mods[0] != 'R' and mods[0] != 'W':
-				raise BuildError("Invalid R/W modifier in I2C capture address byte specification", test=self.name, value=sig, parsed_modifier=mods)
-
-			#Parse a data byte
-			if len(mods) == 1:
-				return ('D', val, mods[0] == 'A')
-			else:
-				return ('A', val, mods[0] == 'W', mods[1] == 'A')
 
 	def _parse_additional(self, value):
 		"""
@@ -208,6 +284,36 @@ class Pic12UnitTest (unit_test.UnitTest):
 
 		return status, analyzer.format(), self._format_i2c_sequence()
 
+	def _process_i2c_signal(self, sig):
+		if sig.upper() == 'S':
+			return ('S', None)
+		elif sig.upper() == 'RS':
+			return ('RS', None)
+		elif sig.upper() == 'P':
+			return ('P', None)
+		else:
+			#sig should be a number
+			splitvals = sig.split('/')
+			if len(splitvals) != 2:
+				raise BuildError("No modifier specified in data byte", test=self.name, value=sig)
+
+			val = int(splitvals[0],0)
+			mods = splitvals[1].upper()
+
+			if len(mods) == 0 or len(mods) > 2:
+				raise BuildError("Modifier too long or missing in I2C capture data byte specification", test=self.name, value=sig, parsed_modifier=mods)
+
+			if mods[-1] != 'A' and mods[-1] != 'N':
+				raise BuildError("Invalid A/N modifier in I2C capture data or address specification", test=self.name, value=sig, parsed_modifier=mods)
+
+			if len(mods) == 2 and mods[0] != 'R' and mods[0] != 'W':
+				raise BuildError("Invalid R/W modifier in I2C capture address byte specification", test=self.name, value=sig, parsed_modifier=mods)
+
+			#Parse a data byte
+			if len(mods) == 1:
+				return ('D', val, mods[0] == 'A')
+			else:
+				return ('A', val, mods[0] == 'W', mods[1] == 'A')
 
 	def _add_checkpoint(self, pt):
 		"""

@@ -108,8 +108,14 @@ def build_unittest(test, arch, summary_env, cmds=None):
 	outscript = env.Command([os.path.join(outdir, 'test.stc')], [outhex], action=env.Action(build_unittest_script, "Building test script"))
 
 	raw_log_path = os.path.join(outdir, build_logfile_name(env))
-
 	raw_results = env.gpsim_run(raw_log_path, [outscript, outhex]) #include outhex so that scons knows to rerun this command when the hex changes
+
+	#Copy over any addition files that might be needed
+	for src, dst in test.copy_files:
+		add_file = Command(os.path.join(outdir, dst), src, Copy("$TARGET", "$SOURCE"))
+		env.Clean(raw_results, add_file)
+		env.Depends(raw_results, add_file)
+
 	formatted_log = env.Command([build_formatted_log_name(env), build_status_name(env)], [raw_results, symtab], action=env.Action(process_unittest_log, 
 		"Processing test log"))
 
@@ -145,6 +151,11 @@ def build_unittest_script(target, source, env):
 
 	sim = env['TESTCHIP']
 	name = env['TESTNAME']
+	test = env['TEST']
+	arch = env['ARCH']
+
+	sda = arch.property('gpsim_sda')
+	scl = arch.property('gpsim_scl')
 
 	extracmds = None
 
@@ -158,13 +169,35 @@ def build_unittest_script(target, source, env):
 		f.write('break w 0x291, reg(0x291) == 0x00\n')
 		f.write('log w %s.ccpr1l\n' % sim)
 		f.write('log w %s.ccpr1h\n' % sim)
-		f.write("log on '%s'\n" % logfile)
+		f.write("log on '%s'\n\n" % logfile)
+		
+		#Add in all required libraries
+		for lib in test.script_additions['libraries']:
+			f.write('module library %s\n' % lib)
+
+		#Add in all required modules
+		for module,type in test.script_additions['modules'].iteritems():
+			f.write('module load %s %s\n' % (type, module))
+
+		#Add in all setup lines:
+		for module in test.script_additions['setup_lines'].keys():
+			f.write('\n')
+			for line in test.script_additions['setup_lines'][module]:
+				f.write(line + '\n')
+
+		#Add in sda, scl nodes
+		f.write('node sda\n')
+		f.write('node scl\n')
+
+		f.write('attach scl %s %s\n' % (scl, ' '.join(test.script_additions['scl_node'])))
+		f.write('attach sda %s %s\n' % (sda, ' '.join(test.script_additions['sda_node'])))
+
 		if extracmds is not None:
 			for cmd in extracmds:
 				f.write(cmd)
-		else:
-			f.write('run\n')
-
+			
+		#Always run the test and qui when we are done
+		f.write('run\n')
 		f.write('quit\n')
 
 def process_unittest_log(target, source, env):
