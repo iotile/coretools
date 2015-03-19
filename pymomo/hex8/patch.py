@@ -1,4 +1,4 @@
-import intelhex
+from pymomo.utilities import intelhex
 
 def parse_symtab(path):
 	lines = [line.strip() for line in open(path)]

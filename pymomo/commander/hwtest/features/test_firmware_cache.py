@@ -1,6 +1,6 @@
 from pymomo.commander.hwtest.fixtures import *
 from pymomo.commander.exceptions import *
-from intelhex import IntelHex16bit
+from pymomo.utilities.intelhex import IntelHex16bit
 import random
 import os.path
 

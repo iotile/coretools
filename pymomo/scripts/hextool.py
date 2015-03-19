@@ -3,7 +3,7 @@
 import sys
 import os.path
 import os
-import intelhex
+from pymomo.utilities import intelhex
 
 import cmdln
 from colorama import Fore, Style

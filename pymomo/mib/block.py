@@ -6,7 +6,7 @@ import sys
 import os.path
 from pymomo.utilities import build, template
 from pymomo.hex8.decode import *
-import intelhex
+from pymomo.utilities import intelhex
 
 block_size = 16
 

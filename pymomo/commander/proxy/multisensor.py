@@ -4,7 +4,7 @@ from pymomo.commander.types import *
 from pymomo.commander.cmdstream import *
 from pymomo.utilities.console import ProgressBar
 import struct
-from intelhex import IntelHex
+from pymomo.utilities.intelhex import IntelHex
 from time import sleep
 
 class MultiSensorModule (proxy12.MIB12ProxyObject):
