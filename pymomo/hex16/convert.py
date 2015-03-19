@@ -3,7 +3,7 @@
 #Each pic24 instruction is 3 bytes.  XC16 pads this to 4 bytes.  We can't
 #have it padded since we need to program it into the device directly
 
-import intelhex as ih
+from pymomo.utilities import intelhex as ih
 
 def unpad_pic24_hex(hexfile):
 	"""

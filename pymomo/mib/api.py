@@ -6,7 +6,7 @@ from pymomo.hex8.decode import *
 from pymomo.utilities.paths import MomoPaths
 from pymomo.utilities import build
 from config12 import MIB12Processor
-import intelhex
+from pymomo.utilities import intelhex
 
 class MIBAPI:
 	def __init__(self, hexfile, chip):

@@ -1,5 +1,2 @@
 --index-url https://pypi.python.org/simple/
-
---allow-external intelhex
---allow-unverified intelhex
 -e .
