@@ -4,8 +4,8 @@
 		"default_settings" :
 		{
 			"executive_rom": [0, 959],
-			"application_ram": [ [32, 120] ],
-			"executive_ram": [ [121,127], [160, 191] ],
+			"executive_ram": [ [32, 120] ],
+			"application_ram": [ [121,127], [160, 191] ],
 			"total_rom": 2048,
 			"flash_row_words": 16,
 
