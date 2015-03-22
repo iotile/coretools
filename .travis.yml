@@ -4,19 +4,7 @@ python:
 install:
 - ./test/install.sh
 script: 
-- source ~/.profile
-- export MOMOPATH=.
-- nosetests -w test
-- momo help
-- momo-mod help
-- momo-mib help
-- momo-hex help
-- momo-gsm help
-#- momo-pcb help #(help currently not supported)
-- momo-reportinator help
-- momo-sensor help
-- momo-multisensor help
-#- momo-picunit help #(help currently not supported)
+- ./test/run_tests.sh
 deploy:
   provider: pypi
   user: welldone

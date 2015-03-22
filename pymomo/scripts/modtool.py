@@ -3,7 +3,7 @@
 import sys
 import os.path
 import os
-import intelhex
+from pymomo.utilities import intelhex
 from time import sleep
 import datetime
 

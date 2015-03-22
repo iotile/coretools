@@ -1,7 +1,7 @@
 #merge.py
 #Given two intelhex16bit objects, merge them together with various options
 
-import intelhex
+from pymomo.utilities import intelhex
 
 def insert_hex(stub, payload, start_addr, skip_ranges, payload_size):
 	addrs = clip_payload(payload, payload_size)

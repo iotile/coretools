@@ -8,10 +8,8 @@ A python library for interacting with MoMo devices.
 ## Installation
 
 ```
-pip install --allow-external intelhex --allow-unverified intelhex pymomo
+pip install pymomo
 ```
-
-Pymomo currently relies on one non-PyPI package, `intelhex`.  This should change soon.
 
 To build MoMo firmware you must also install [SCons](http://www.scons.org/)* and [two Microchip compilers](http://www.microchip.com/pagehandler/en_us/devtools/mplabxc/) - XC8 and XC16
 
@@ -19,3 +17,5 @@ To build MoMo firmware you must also install [SCons](http://www.scons.org/)* and
 
 ## Copyright and license
 Code and documentation copyright 2015 WellDone International. The pymomo library is released under the [LGPLv3](https://www.gnu.org/licenses/lgpl.html) Open Source license.  See the LICENSE file.
+
+Pymomo embeds version 1.5 of the [intelhex](http://pythonhosted.org/IntelHex/) package.  The `intelhex` code retains its original BSD license, which [allows for embedded redistribution](http://pythonhosted.org/IntelHex/part4.html#embedding-into-other-projects).

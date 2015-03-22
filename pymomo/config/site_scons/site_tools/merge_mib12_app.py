@@ -1,6 +1,6 @@
 import SCons.Builder
 import utilities
-import intelhex
+from pymomo.utilities import intelhex
 
 def merge_app(target, source, env):
 	"""
