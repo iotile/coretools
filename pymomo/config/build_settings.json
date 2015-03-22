@@ -36,6 +36,7 @@
 				"executive_rom": [0, 1119],
 				"flash_row_words": 32,
 				"total_rom": 8192,
+				"totam_ram": 1024,
 				"xc8_target": "16F1847",
 				"gpsim_proc": "p16f1847",
 				"gpsim_sda": "portb1",
@@ -55,6 +56,7 @@
 				"gpsim_proc": "p16f1823",
 				"gpsim_sda": "portc1",
 				"gpsim_scl": "portc0",
+				"total_ram": 128,
 
 				"defines":
 				{
@@ -69,6 +71,7 @@
 				"gpsim_proc": "p12f1822",
 				"gpsim_sda": "porta2",
 				"gpsim_scl": "porta1",
+				"total_ram": 128,
 
 				"defines":
 				{
