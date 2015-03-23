@@ -186,11 +186,12 @@ class Pic12UnitTest (unit_test.UnitTest):
 			f.write('\n## Additional Tests ##\n')
 
 			if self.i2c_capture is not None:
-				passed, observed, expected = self._check_i2c_output(chip)
+				passed, observed, obs_short, expected = self._check_i2c_output(chip)
 				if passed:
 					f.write("I2C Output Match: PASSED\n")
 				else:
 					f.write("I2C Output Match: FAILED\n")
+					f.write("Short output (for copying to test header): %s\n" % obs_short)
 					f.write("# Observed Output #\n")
 					f.write(observed)
 					if observed[-1] != '\n':
@@ -204,27 +205,43 @@ class Pic12UnitTest (unit_test.UnitTest):
 
 		return True
 
-	def _format_i2c_sequence(self):
-		events = [self._format_event(x) for x in self.i2c_capture]
-		return "\n".join(events)
+	def _format_i2c_sequence(self, short=False):
+		events = [self._format_event(x, short=short) for x in self.i2c_capture]
 
-	def _format_start(self, ev):
-		return "Start"
+		if short:
+			return ", ".join(events)
+		else:
+			return "\n".join(events)
 
-	def _format_repeated_start(self, ev):
-		return "Repeated Start"
+	def _format_start(self, ev, short):
+		if short:
+			return "S"
+		else:
+			return "Start"
 
-	def _format_stop(self, ev):
-		return "Stop"
+	def _format_repeated_start(self, ev, short):
+		if short:
+			return "RS"
+		else: 
+			return "Repeated Start"
+
+	def _format_stop(self, ev, short):
+		if short:
+			return "P"
+		else:
+			return "Stop"
 	
-	def _format_data(self, ev):
+	def _format_data(self, ev, short):
 		a = 'NACK'
 		if ev[2]:
-			a = 'ACK'
+			a = 'ACK'	
 
-		return "0x%x %s" % (ev[1], a)
+		if short:
+			return "0x%x/%s" % (ev[1], a[0])
+		else:
+			return "0x%x %s" % (ev[1], a)
 
-	def _format_address(self, ev):
+	def _format_address(self, ev, short):
 		a = 'NACK'
 		if ev[3]:
 			a = 'ACK'
@@ -233,19 +250,22 @@ class Pic12UnitTest (unit_test.UnitTest):
 		if ev[2]:
 			d = 'WRITE to'
 
-		return "%s 0x%x %s" % (d, ev[1], a)
+		if short:
+			return "0x%x/%s%s" % (ev[1], d[0], a[0])
+		else:
+			return "%s 0x%x %s" % (d, ev[1], a)
 
-	def _format_event(self, ev):
+	def _format_event(self, ev, **kwargs):
 		if ev[0] == 'S':
-			return self._format_start(ev)
+			return self._format_start(ev, **kwargs)
 		elif ev[0] == 'P':
-			return self._format_stop(ev)
+			return self._format_stop(ev, **kwargs)
 		elif ev[0] == 'D':
-			return self._format_data(ev)
+			return self._format_data(ev, **kwargs)
 		elif ev[0] == 'A':
-			return self._format_address(ev)
+			return self._format_address(ev, **kwargs)
 		elif ev[0] == 'RS':
-			return self._format_repeated_start(ev)
+			return self._format_repeated_start(ev, **kwargs)
 		
 		raise InternalError("Unknown event type in i2c log, cannot format", event=ev)
 
@@ -282,7 +302,7 @@ class Pic12UnitTest (unit_test.UnitTest):
 					status = False
 					break
 
-		return status, analyzer.format(), self._format_i2c_sequence()
+		return status, analyzer.format(), analyzer.format(short=True), self._format_i2c_sequence()
 
 	def _process_i2c_signal(self, sig):
 		if sig.upper() == 'S':

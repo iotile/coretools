@@ -51,7 +51,7 @@ def configure_env_for_xc8(env, **kwargs):
 
 		flags += ['-L-Pmibapi=%xh' % env['MIB_API_BASE'], '-L-Papp_vectors=%xh' % proc.app_rom[0]] #Place the MIB api in the right place
 
-		env['RAMEXCLUDE'] =  arch.property('application_ram')
+		env['RAMEXCLUDE'] =  proc.app_ram
 	else:
 		exec_range = proc.exec_rom
 
@@ -68,7 +68,7 @@ def configure_env_for_xc8(env, **kwargs):
 		flags += [lnk_cmd]
 
 		#MIB12 Executive takes all ram in first 
-		env['RAMEXCLUDE'] = arch.property('executive_ram')
+		env['RAMEXCLUDE'] = proc.exec_ram
 		env['NO_STARTUP'] = True
 
 	env['XC8FLAGS'] = flags

@@ -178,23 +178,35 @@ class I2CAnalyzer:
 
 		return I2CAnalyzer.UnclassifiedCondition 
 
-	def _format_start(self, ev):
+	def _format_start(self, ev, short):
+		if short:
+			return "S"
+
 		return "%d) Start" % ev.cycle
 
-	def _format_repeated_start(self, ev):
+	def _format_repeated_start(self, ev, short):
+		if short:
+			return "RS"
+
 		return "%d) Repeated Start" % ev.cycle
 
-	def _format_stop(self, ev):
+	def _format_stop(self, ev, short):
+		if short:
+			return "P"
+
 		return "%d) Stop" % ev.cycle
 	
-	def _format_data(self, ev):
+	def _format_data(self, ev, short):
 		a = 'NACK'
 		if ev.acked:
 			a = 'ACK'
 
+		if short:
+			return "0x%x/%s" % (ev.value, a[0])
+
 		return "%d) 0x%x %s" % (ev.start_cycle, ev.value, a)
 
-	def _format_address(self, ev):
+	def _format_address(self, ev, short):
 		a = 'NACK'
 		if ev.acked:
 			a = 'ACK'
@@ -203,23 +215,26 @@ class I2CAnalyzer:
 		if ev.is_write:
 			d = 'WRITE to'
 
+		if short:
+			return "0x%x/%s%s" % (ev.address, d[0], a[0])
+
 		return "%d) %s 0x%x %s" % (ev.start_cycle, d, ev.address, a)
 
-	def _format_event(self, ev):
+	def _format_event(self, ev, **kwargs):
 		if isinstance(ev, StartCondition):
-			return self._format_start(ev)
+			return self._format_start(ev, **kwargs)
 		elif isinstance(ev, StopCondition):
-			return self._format_stop(ev)
+			return self._format_stop(ev, **kwargs)
 		elif isinstance(ev, DataByte):
-			return self._format_data(ev)
+			return self._format_data(ev, **kwargs)
 		elif isinstance(ev, AddressByte):
-			return self._format_address(ev)
+			return self._format_address(ev, **kwargs)
 		elif isinstance(ev, RepeatedStartCondition):
-			return self._format_repeated_start(ev)
+			return self._format_repeated_start(ev, **kwargs)
 		
 		raise InternalError("Unknown event type in i2c log, cannot format", event=ev)
 
-	def format(self):
+	def format(self, short=False):
 		"""
 		Format this i2c log for printing
 		"""
@@ -227,8 +242,11 @@ class I2CAnalyzer:
 		log = []
 
 		for ev in self.bus_events:
-			log.append(self._format_event(ev))
+			log.append(self._format_event(ev, short=short))
 
+		if short:
+			return ", ".join(log)
+		
 		return "\n".join(log)
 
 	@classmethod
