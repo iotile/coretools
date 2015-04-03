@@ -282,7 +282,7 @@ class Pic12UnitTest (unit_test.UnitTest):
 		analyzer = i2c_log.I2CAnalyzer.FromGPSIMLogs(clockpath, datapath)
 
 		if len(analyzer.bus_events) != len(self.i2c_capture):
-			return False, analyzer.format(), self._format_i2c_sequence()
+			return False, analyzer.format(), analyzer.format(short=True), self._format_i2c_sequence()
 
 		status = True
 
