@@ -171,8 +171,8 @@
 					"__PIC24F16KA101__": 1,
 					"__NO_PERF__": 1,
 					"__NO_FLASH__": 1,
-					"kI2CBaud": 39,
-					"kClockspeed": "4000000L" 
+					"kI2CBaud": 157,
+					"kClockspeed": "16000000L" 
 				},
 
 				"chip": "24f16ka101"

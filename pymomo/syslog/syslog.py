@@ -78,7 +78,7 @@ class SystemLog:
 				typed_params = ldf.assign_types(entry.params)
 
 				for desc, data in typed_params:
-					s = typedargs.format_value(data[1], desc.type, desc.format)
+					s = typedargs.type_system.format_value(data[1], desc.type, desc.format)
 					fmt = "%s: %s" % (desc.name, s)
 					fmtd.append(fmt)
 			except MoMoException:

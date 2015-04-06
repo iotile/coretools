@@ -7,7 +7,7 @@ class SerialTransport (transport.Transport):
 	Standard serial port transport layer
 	"""
 
-	def __init__(self, dev, baud=115200, timeout=120):
+	def __init__(self, dev, baud=125000, timeout=120):
 		self.io = serial.Serial(port=dev, baudrate=baud, timeout=timeout)
 
 	def write(self, buffer):
