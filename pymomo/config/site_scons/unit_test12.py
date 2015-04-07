@@ -84,6 +84,17 @@ class Pic12UnitTest (unit_test.UnitTest):
 		self._connect_to_scl('%s.scl' % sname)
 		self._connect_to_sda('%s.sda' % sname)
 
+	def _parse_triggered_master(self, value):
+		"""
+		Triggered Master: cycle, python_file.py
+
+		Attach a master i2c module that begins a transmission cycle
+		at the indicated cycle and reads a python file to determine
+		the aprropriate packet to send.
+		"""
+
+		
+
 	def _add_library(self, lib):
 		"""
 		Specify that we need a custom gpsim library
