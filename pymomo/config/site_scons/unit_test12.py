@@ -17,6 +17,7 @@ class Pic12UnitTest (unit_test.UnitTest):
 		self.i2c_capture = None
 		self.checkpoints = []
 		self.slaves = []
+		self.masters = []
 		self.script_additions = {'libraries': set(), 'modules':{}, 'setup_lines': {}, 'sda_node': set(), 'scl_node': set()}
 		unit_test.UnitTest.__init__(self, files, **kwargs)
 
@@ -93,7 +94,40 @@ class Pic12UnitTest (unit_test.UnitTest):
 		the aprropriate packet to send.
 		"""
 
-		
+		vals = [x.strip() for x in value.split(',')]
+		if len(vals) != 2:
+			raise BuildError("Triggered Master: value must be of the form cycle, <python_file.py>", value=value)
+
+		try:
+			cycle = int(vals[0])
+		except ValueError:
+			raise BuildError("Triggered Master: cycle trigger must be a number", cycle=vals[0])
+
+		if cycle <= 0:
+			raise BuildError("Triggered Master: cycle trigger must be greater than 0", cycle=vals[0])
+
+		filename = vals[1]
+
+		filepath = os.path.join(os.path.dirname(self.files[0]), filename)
+		if not os.path.exists(filepath):
+			raise BuildError("Triggered Master: python module does not exist", filename=filename, cwd=os.getcwd(), filepath=filepath)
+
+		base, ext = os.path.splitext(filename)
+		if ext != ".py":
+			raise BuildError("Triggered Master: master code must end in .py", filename=filename, extension=ext)
+
+		self.copy_file(filepath, filename)
+
+		self.masters.append((cycle, filename))
+		sname = "master%d" % len(self.masters)
+
+		#Add this master to the simulation
+		self._add_library('libgpsim_modules')
+		self._add_module(sname, 'MoMoTriggeredMaster')
+		self._add_setupline(sname, '%s.trigger_cycle = %d' % (sname, cycle))
+		self._add_setupline(sname, '%s.python_module = %s' % (sname, base))
+		self._connect_to_scl('%s.scl' % sname)
+		self._connect_to_sda('%s.sda' % sname)
 
 	def _add_library(self, lib):
 		"""
