@@ -8,6 +8,7 @@ def build_symbols(target, source, env):
 	symtab = symbols.XC8SymbolTable(str(source[0]))
 	symtab.generate_h_file(str(target[0]))
 	symtab.generate_stb_file(str(target[1]))
+	symtab.generate_rom_file(str(target[2]))
 
 _build_sym_h = SCons.Builder.Builder(
 	action = build_symbols

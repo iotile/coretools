@@ -100,11 +100,12 @@ def build_module(name, arch):
 
 	#Compile the *.mib file specified in env['MIBFILE'] in SConscript into a command_map.asm file
 
-	prods = [os.path.join(dirs['build'], 'mib12_app_module.hex'), os.path.join(dirs['build'], 'mib12_app_module_symbols.h'), os.path.join(dirs['build'], 'mib12_app_module_symbols.stb')]
+	prods = [os.path.join(dirs['build'], 'mib12_app_module.hex'), os.path.join(dirs['build'], 'mib12_app_module_symbols.h'), os.path.join(dirs['build'], 'mib12_app_module_symbols.stb'), os.path.join(dirs['build'], 'mib12_app_module_rom_summary.txt')]
 
 	hexfile = env.InstallAs(os.path.join(dirs['output'], '%s_%s.hex' % (name, arch.arch_name())), prods[0])
 	symheader = env.InstallAs(os.path.join(dirs['output'], '%s_symbols_%s.h' % (name, arch.arch_name())), prods[1])
 	symtable = env.InstallAs(os.path.join(dirs['output'], '%s_symbols_%s.stb' % (name, arch.arch_name())), prods[2])
+	romusage = env.InstallAs(os.path.join(dirs['output'], '%s_rom_summary_%s.stb' % (name, arch.arch_name())), prods[3])
 
 def compile_mib(env):
 	"""
