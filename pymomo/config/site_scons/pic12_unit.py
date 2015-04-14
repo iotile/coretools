@@ -116,6 +116,10 @@ def build_unittest(test, arch, summary_env, cmds=None):
 		env.Clean(raw_results, add_file)
 		env.Depends(raw_results, add_file)
 
+	#Make sure that the test results explicitly depend on all the additional files that we included
+	for src in test.files:
+		env.Depends(raw_results, src)
+
 	#Make the log and status files depend on the contents of all of the test sources so that if we change part of the
 	#header, which changes what tests are run, the logs are regenerated.
 	formatted_log = env.Command([build_formatted_log_name(env), build_status_name(env)], [raw_results, symtab] + srcfiles, action=env.Action(process_unittest_log, 
