@@ -60,13 +60,19 @@ class I2CAnalyzer:
 		states = self.processed_states
 		self.bus_events = []
 
-		while len(states) > 0:
-			trans, states = self._process_transaction(states, ignore_errors=ignore_errors)
+		try:
+			while len(states) > 0:
+				trans, states = self._process_transaction(states, ignore_errors=ignore_errors)
 
-			if len(trans) == 0:
-				break
+				if len(trans) == 0:
+					break
 
-			self.bus_events.extend(trans)
+				self.bus_events.extend(trans)
+		except InternalError:
+			if ignore_errors:
+				print "Error processing some states, using states until error occurred."
+			else:
+				raise
 
 	def _is_byte_transmission(self, states):
 		if len(states) != 9:
