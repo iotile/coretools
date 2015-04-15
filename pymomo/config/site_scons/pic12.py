@@ -9,11 +9,13 @@ import sys
 import os.path
 from copy import deepcopy
 import utilities
+import pyparsing
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from pymomo.utilities import build
 from pymomo.mib.config12 import MIB12Processor
+from pymomo.mib.descriptor import MIBDescriptor
 
 
 def configure_env_for_xc8(env, **kwargs):
@@ -98,8 +100,6 @@ def build_module(name, arch):
 	Export('env')
 	SConscript(os.path.join(builddir, 'SConscript'))
 
-	#Compile the *.mib file specified in env['MIBFILE'] in SConscript into a command_map.asm file
-
 	prods = [os.path.join(dirs['build'], 'mib12_app_module.hex'), os.path.join(dirs['build'], 'mib12_app_module_symbols.h'), os.path.join(dirs['build'], 'mib12_app_module_symbols.stb'), os.path.join(dirs['build'], 'mib12_app_module_rom_summary.txt')]
 
 	hexfile = env.InstallAs(os.path.join(dirs['output'], '%s_%s.hex' % (name, arch.arch_name())), prods[0])
@@ -119,4 +119,14 @@ def compile_mib(env):
 
 	env['MIBFILE'] = '#' + cmdmap_path
 
-	return env.Command(cmdmap_path, mibname, 'momo-mib gen -o %s $SOURCE' % dirs['build'])
+	return env.Command(cmdmap_path, mibname, action=env.Action(mib_compilation_action, "Compiling MIB definitions"))
+
+def mib_compilation_action(target, source, env):
+	try:
+		d = MIBDescriptor(str(source[0]))
+	except pyparsing.ParseException as e:
+		raise BuildError("Could not parse mib file", parsing_exception=e, )
+
+	#Build a MIB block from the mib file
+	block = d.get_block()
+	block.create_asm(str(target[0]))

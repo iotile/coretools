@@ -7,19 +7,21 @@ import os.path
 from pymomo.utilities import build, template
 from pymomo.hex8.decode import *
 from pymomo.utilities import intelhex
+from pymomo.exceptions import *
 
 block_size = 16
 
 hw_offset = 0
-type_offset = 1
-info_offset = 2
+major_api_offset = 1
+minor_api_offset = 2
 name_offset = 3
-num_feature_offset = 10
-features_offset = 11
-cmds_offset = 12
-specs_offset = 13
-handlers_offset = 14
-magic_offset = 15
+major_version_offset = 9
+minor_version_offset = 10
+patch_version_offset = 11
+checksum_offset = 12
+magic_offset = 13
+command_map_offset = 14
+interface_map_offset = 15
 
 known_hwtypes = {
 	2: "12lf1822",
@@ -31,8 +33,8 @@ class MIBBlock:
 	"""
 	The block in program memory describing a MoMo application module.  The MIB block
 	contains information on the application module and a sparse matrix representation
-	of a jump table containing all of the feature, command combinations that the 
-	module knows how to respond to.
+	of a jump table containing all of the command ids and interfaces that the module 
+	knows how to respond to.
 	"""
 
 	TemplateName = 'command_map.asm'
@@ -48,10 +50,9 @@ class MIBBlock:
 
 		self.base_addr = build_settings["mib12"]["mib"]["base_address"]
 		self.curr_version = build_settings["mib12"]["mib"]["current_version"]
-		self.features = {}
+		self.commands = {}
 		self.valid = True
 		self.error_msg = ""
-		self.num_features = 0
 
 		if isinstance(ih, basestring):
 			ih = intelhex.IntelHex16bit(ih)
@@ -61,99 +62,99 @@ class MIBBlock:
 				self._load_from_hex(ih)
 				self._check_consistency()
 				self._interpret_handlers()
-				self._build_feature_map()
+				self._build_command_map()
 			except ValueError as e:
 				self.error_msg = e
 				self.valid = False
 
-	def set_variables(self, name, type, flags):
+	def set_api_version(self, major, minor):
+		"""
+		Set the API version this module was designed for.
+
+		Each module must declare the mib12 API version it was compiled with as a
+		2 byte major.minor number.  This information is used by the pic12_executive
+		to decide whether the application is compatible.
+		"""
+
+		if major > 255 or major < 0 or minor > 255 or minor < 0:
+			raise ArgumentError("Invalid API version number with component that does not fit in 1 byte", major=major, minor=minor)
+		
+		self.api_version = (major, minor)
+
+	def set_module_version(self, major, minor, patch):
+		"""
+		Set the module version for this module.
+
+		Each module must declare a semantic version number in the form:
+		major.minor.patch
+
+		where each component is a 1 byte number between 0 and 255.
+		"""
+
+		if major > 255 or major < 0 or minor > 255 or minor < 0 or patch > 255 or patch < 0:
+			raise ArgumentError("Invalid module version number with component that does not fit in 1 byte", major=major, minor=minor, patch=patch)
+
+		self.module_version = (major, minor, patch)
+
+	def set_name(self, name):
+		"""
+		Set the module name to a 6 byte string
+
+		If the string is too short it is appended with space characters.
+		"""
+
+		if len(name) > 6:
+			raise ArgumentError("Name must be at most 6 characters long", name=name)
+
+		if len(name) < 6:
+			name += ' '*(6 - len(name))
+
 		self.name = name
-		self.flags = flags
-		self.module_type = type
 
-	def add_command(self, feature, cmd, handler):
+	def add_command(self, cmd_id, handler):
 		"""
-		Add a command to the MIBBlock.  The cmd must be sequential after
-		the last command in the feature that it is added to, i.e. you must add
-		feature 1, cmd 0 before adding feature 1 cmd 1.
+		Add a command to the MIBBlock.  
+
+		The cmd_id must be a non-negative 2 byte number.
+		handler should be the command handler
 		"""
 
-		if feature not in self.features:
-			self.features[feature] = []
-			self.num_features = len(self.features.keys())
+		if cmd_id < 0 or cmd_id >= 2**16:
+			raise ArgumentError("Command ID in mib block is not a non-negative 2-byte number", cmd_id=cmd_id, handler=handler)
 
-		if cmd != len(self.features[feature]):
-			raise ValueError("Added noncontiguous command %d (%s) to feature %d, last command was %d" % (cmd, handler.symbol, feature, len(self.features[feature])))
+		if cmd_id in self.commands:
+			raise ArgumentError("Attempted to add the same command ID twice.", cmd_id=cmd_id, existing_handler=self.commands[cmd_id],
+								new_handler=handler)
 
-		self.features[feature].append(handler)
+		self.commands[cmd_id] = handler
 
 	def _interpret_handlers(self):
 		self.handlers = map(lambda i: MIBHandler(self.spec_list[i], address=self.handler_addrs[i]), xrange(0, len(self.spec_list)))
-
-	def _build_feature_map(self):
-		cmd_i  = 0
-
-		self.features = {}
-		for i in xrange(0, len(self.feature_list)):
-			self.features[self.feature_list[i]] = []
-			for j in xrange(self.cmd_list[i], self.cmd_list[i+1]):
-				self.features[self.feature_list[i]].append(self.handlers[cmd_i])
-
-				cmd_i += 1
 
 	def _check_magic(self, ih):
 		magic_addr = self.base_addr + magic_offset
 		instr = ih[magic_addr]
 
-		#Last instruction should be retlw 0xAA for the magic number
+		#Magic Value should be a retlw 0xAA
 		if instr == 0x34AA:
 			return True
 
 		return False
 
-	def _check_consistency(self):
-		"""
-		Check that the features, commands, handlers, and specifications are mutually consistent
-		"""
-
-		self.valid = False
-
-		if self.num_features != len(self.feature_list):
-			raise ValueError("Mismatch between length of feature list and num_features.")
-
-		if len(self.cmd_list) != len(self.feature_list)+1:
-			raise ValueError("Command list has wrong number of entries, was %d, should be %d" % (len(cmds), len(features)+1))
-
-		if len(self.spec_list) != len(self.handler_addrs):
-			raise ValueError("There should be a 1-1 mapping between command specs and handlers. Their lengths differed (specs: %d, handlers: %d)." % (len(self.specs), len(self.handler_addrs)))
-
-		if len(self.handler_addrs) != self.cmd_list[-1]:
-			raise ValueError("Command array has invalid format.  Last entry should be the number of total handlers (total handlers: %d, cmd entry: %d)" % (len(self.handler_addrs), self.cmds[-1]))
-
-		self.valid = True
-
 	def _load_from_hex(self, ih):
 		if not self._check_magic(ih):
 			raise ValueError("Invalid magic number.")
 
-		self.num_features = decode_retlw(ih, self.base_addr + num_feature_offset)
-		self.features_addr = decode_goto(ih, self.base_addr + features_offset)
-		self.cmds_addr = decode_goto(ih, self.base_addr + cmds_offset)
-		self.specs_addr = decode_goto(ih, self.base_addr + specs_offset)
-		self.handlers_addr = decode_goto(ih, self.base_addr + handlers_offset)
+		self.cmds_addr = decode_goto(ih, self.base_addr + command_map_offset)
+		self.interfaces_addr = decode_goto(ih, self.base_addr + interface_map_offset)
 
-		self.feature_list = decode_table(ih, self.features_addr, decode_retlw)
 		self.cmd_list = decode_table(ih, self.cmds_addr, decode_retlw)
-		self.spec_list = decode_table(ih, self.specs_addr, decode_retlw)
-		self.handler_addrs = decode_table(ih, self.handlers_addr, decode_goto)
+		self.interface_list = decode_table(ih, self.interfaces_addr, decode_retlw)
 
 		self.name = decode_string(ih, self.base_addr + name_offset, 7)
 		self.hw_type = decode_retlw(ih, self.base_addr + hw_offset)
-		self.info = decode_retlw(ih, self.base_addr + info_offset)
-		self.module_type = decode_retlw(ih, self.base_addr + type_offset)
 
-		self.revision = self.info >> 4
-		self.flags = self.info & 0x0F
+		#FIXME: Parse other items from the mib block
 
 		self._parse_hwtype()
 
@@ -168,6 +169,9 @@ class MIBBlock:
 
 		self.chip_name = known_hwtypes[self.hw_type]
 
+	def _check_consistency(self):
+		self.valid = True
+		#FIXME: Check to make sure that the cmd and interface lists end with a sentinel
 
 	def create_asm(self, folder):
 		temp = template.RecursiveTemplate(MIBBlock.TemplateName)

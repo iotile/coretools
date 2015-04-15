@@ -6,6 +6,7 @@ from handler import MIBHandler
 import sys
 import os.path
 from pymomo.utilities.paths import MomoPaths
+from pymomo.exceptions import *
 import block
 
 #DSL for mib definitions
@@ -24,6 +25,8 @@ number = (Word(nums).setParseAction(lambda s,l,t: [int(t[0])])) | symbol
 ints = number('num_ints') + Optional(Literal('ints') | Literal('int'))
 has_buffer = (Literal('yes') | Literal('no')).setParseAction(lambda s,l,t: [t[0] == 'yes'])
 comma = Literal(',').suppress()
+quote = Literal('"').suppress()
+
 left = Literal('(').suppress()
 right = Literal(')').suppress()
 colon = Literal(':').suppress()
@@ -31,10 +34,9 @@ comment = Literal('#')
 
 assignment_def = symbol("variable") + "=" + (number('value') | strval('value')) + ';'
 cmd_def = number("cmd_number") + colon + symbol("symbol") + left + ints + comma + has_buffer('has_buffer') + right + ";"
-feat_def = Literal("feature") + number("feature_number")
-include = Literal("#include") + left + filename("filename") + right
+include = Literal("#include") + quote + filename("filename") + quote
 
-statement = include | cmd_def | feat_def | comment | assignment_def
+statement = include | cmd_def | comment | assignment_def
 
 class MIBDescriptor:
 	"""
@@ -42,17 +44,12 @@ class MIBDescriptor:
 	in a MIB12 module and can output an asm file containing the proper MIB command map
 	for that architecture.
 	"""
+
 	def __init__(self, filename):
-		self.curr_feature = -1
-		self.features = {}
 		self.variables = {}
+		self.commands = {}
 
 		self._parse_file(filename)
-
-		for feature in self.features.keys():
-			self._validate_feature(feature)
-			self.features[feature] = [self.features[feature][i] for i in sorted(self.features[feature].keys())]
-
 		self._validate_information()
 	def _parse_file(self, filename):
 		with open(filename, "r") as f:
@@ -64,24 +61,20 @@ class MIBDescriptor:
 
 				self._parse_line(line)
 
-	def _add_feature(self, feature_var):
-		feature = self._parse_number(feature_var)
-
-		self.features[feature] = {}
-		self.curr_feature = feature
-
 	def _add_cmd(self, num, symbol, num_ints, has_buffer):
 		handler = MIBHandler.Create(symbol=symbol, ints=num_ints, has_buffer=has_buffer)
 		
-		self.features[self.curr_feature][num] = handler
+		if num in self.commands:
+			raise DataError("Attempted to add the same command number twice", number=num, old_handler=self.commands[num], new_handler=handler)
+
+		self.commands[num] = handler
 
 	def _parse_cmd(self, match):
 		symbol = match['symbol']
 
-		if self.curr_feature < 0:
-			raise ValueError("MIB Command specified without first declaring a feature.")
-
 		num = self._parse_number(match['cmd_number'])
+		if num < 0 or num >= 2**16:
+			raise DataError("Invalid command identifier, must be a number between 0 and 2^16 - 1.", command_id=num)
 
 		has_buffer = match['has_buffer']
 		num_ints = match['num_ints']
@@ -118,46 +111,64 @@ class MIBDescriptor:
 	def _parse_line(self, line):
 		matched = statement.parseString(line)
 
-		if 'feature_number' in matched:
-			self._add_feature(matched['feature_number'])
-		elif 'symbol' in matched:
+		if 'symbol' in matched:
 			self._parse_cmd(matched)
 		elif 'filename' in matched:
 			self._parse_include(matched)
 		elif 'variable' in matched:
 			self._parse_assignment(matched)
 
-	def _validate_feature(self, feature):
-		curr_index = 0
-
-		for i in sorted(self.features[feature]):
-			if i != curr_index:
-				raise ValueError("Feature %d has nonsequential command.  Must start at 0 and have no gaps. Command was %d, expected %d." % (feature, i, curr_index))
-
-			curr_index += 1
-
 	def _validate_information(self):
 		"""
 		Validate that all information has been filled in
 		"""
 
-		needed_variables = ["ModuleName", "ModuleFlags", "ModuleType"]
+		needed_variables = ["ModuleName", "ModuleType", "ModuleVersion", "APIVersion"]
 
 		for var in needed_variables:
 			if var not in self.variables:
-				raise ValueError("Needed variable %s was not defined in mib file." % var)
+				raise DataError("Needed variable was not defined in mib file.", variable=var)
 
-		#Make sure ModuleName is <= 7 characters
-		if len(self.variables["ModuleName"]) > 7:
-			raise ValueError("ModuleName ('%s') too long, must be less than 8 characters." % self.variables["ModuleName"])
+		#Make sure ModuleName is <= 6 characters
+		if len(self.variables["ModuleName"]) > 6:
+			raise DataError("ModuleName too long, must be 6 or fewer characters.", module_name=self.variables["ModuleName"])
 
 		if not isinstance(self.variables["ModuleType"], int):
 			raise ValueError("ModuleType ('%s') must be an integer." % str(self.variables['ModuleType']))
 
-		if not isinstance(self.variables["ModuleFlags"], int):
-			raise ValueError("ModuleFlags ('%s') must be an integer." % str(self.variables['ModuleFlags']))
+		if not isinstance(self.variables["ModuleVersion"], string):
+			raise ValueError("ModuleVersion ('%s') must be a string of the form X.Y.Z" % str(self.variables['ModuleVersion']))
 
-		self.variables["ModuleName"] = self.variables["ModuleName"].ljust(7)
+		if not isinstance(self.variables["APIVersion"], string):
+			raise ValueError("APIVersion ('%s') must be a string of the form X.Y" % str(self.variables['APIVersion']))
+
+
+		self.variables['ModuleVersion'] = self._convert_module_version(self.variables["ModuleVersion"])
+		self.variables['APIVersion'] = self._convert_api_version(self.variables["APIVersion"])
+		self.variables["ModuleName"] = self.variables["ModuleName"].ljust(6)
+
+	def _convert_version(version_string):
+		vals = [int(x) for x in version_string.split(".")]
+
+		invalid = [x for x in vals if x < 0 or x > 255]
+		if len(invalid) > 0:
+			raise DataError("Invalid version number larger than 1 byte", number=invalid[0], version_string=version_string)
+
+		return vals
+
+	def _convert_module_version(version):
+		vals = self._convert_version(versions)
+		if len(vals) != 3:
+			raise DataError("Invalid Module Version, should be X.Y.Z", version_string=version)
+
+		return vals
+
+	def _convert_api_version(version):
+		vals = self._convert_version(versions)
+		if len(vals) != 2:
+			raise DataError("Invalid API Version, should be X.Y", version_string=version)
+
+		return vals		
 
 	def get_block(self):
 		"""
