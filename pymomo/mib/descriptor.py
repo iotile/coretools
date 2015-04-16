@@ -20,7 +20,7 @@ import block
 #with # are considered comments and ignored.
 symbol = Regex('[_a-zA-Z][_a-zA-Z0-9]*')
 filename = Regex('[_a-zA-Z][_a-zA-Z0-9]*\.mib')
-strval = Regex('"[_a-zA-Z0-9]+"')
+strval = Regex('"[_a-zA-Z0-9.]+"')
 number = (Word(nums).setParseAction(lambda s,l,t: [int(t[0])])) | symbol
 ints = number('num_ints') + Optional(Literal('ints') | Literal('int'))
 has_buffer = (Literal('yes') | Literal('no')).setParseAction(lambda s,l,t: [t[0] == 'yes'])
@@ -35,8 +35,9 @@ comment = Literal('#')
 assignment_def = symbol("variable") + "=" + (number('value') | strval('value')) + ';'
 cmd_def = number("cmd_number") + colon + symbol("symbol") + left + ints + comma + has_buffer('has_buffer') + right + ";"
 include = Literal("#include") + quote + filename("filename") + quote
+interface_def = number('interface') + ';'
 
-statement = include | cmd_def | comment | assignment_def
+statement = include | cmd_def | comment | assignment_def | interface_def
 
 class MIBDescriptor:
 	"""
@@ -45,9 +46,12 @@ class MIBDescriptor:
 	for that architecture.
 	"""
 
-	def __init__(self, filename):
+	def __init__(self, filename, include_dirs=[]):
 		self.variables = {}
 		self.commands = {}
+		self.interfaces = []
+
+		self.include_dirs = include_dirs + [MomoPaths().config]
 
 		self._parse_file(filename)
 		self._validate_information()
@@ -60,6 +64,14 @@ class MIBDescriptor:
 					continue
 
 				self._parse_line(line)
+
+	def _find_include_file(self, filename):
+		for d in self.include_dirs:
+			path = os.path.join(d, filename)
+			if os.path.isfile(path):
+				return path
+
+		raise ArgumentError("Could not find included mib file", filename=filename, search_dirs=self.include_dirs)
 
 	def _add_cmd(self, num, symbol, num_ints, has_buffer):
 		handler = MIBHandler.Create(symbol=symbol, ints=num_ints, has_buffer=has_buffer)
@@ -84,9 +96,7 @@ class MIBDescriptor:
 	def _parse_include(self, match):
 		filename = match['filename']
 
-		folder = MomoPaths().config
-
-		path = os.path.join(folder, filename)
+		path = self._find_include_file(filename)
 		self._parse_file(path)
 
 	def _parse_number(self, number):
@@ -97,6 +107,13 @@ class MIBDescriptor:
 			return self.variables[number]
 
 		raise ValueError("Reference to undefined variable %s" % number)
+
+	def _parse_interface(self, match):
+		interface = match['interface']
+		if interface in self.interfaces:
+			raise DataError("Attempted to add the same interface twice", interface=interface)
+
+		self.interfaces.append(interface)
 
 	def _parse_assignment(self, match):
 		var = match['variable']
@@ -117,13 +134,15 @@ class MIBDescriptor:
 			self._parse_include(matched)
 		elif 'variable' in matched:
 			self._parse_assignment(matched)
+		elif 'interface' in matched:
+			self._parse_interface(matched)
 
 	def _validate_information(self):
 		"""
 		Validate that all information has been filled in
 		"""
 
-		needed_variables = ["ModuleName", "ModuleType", "ModuleVersion", "APIVersion"]
+		needed_variables = ["ModuleName", "ModuleVersion", "APIVersion"]
 
 		for var in needed_variables:
 			if var not in self.variables:
@@ -133,13 +152,10 @@ class MIBDescriptor:
 		if len(self.variables["ModuleName"]) > 6:
 			raise DataError("ModuleName too long, must be 6 or fewer characters.", module_name=self.variables["ModuleName"])
 
-		if not isinstance(self.variables["ModuleType"], int):
-			raise ValueError("ModuleType ('%s') must be an integer." % str(self.variables['ModuleType']))
-
-		if not isinstance(self.variables["ModuleVersion"], string):
+		if not isinstance(self.variables["ModuleVersion"], basestring):
 			raise ValueError("ModuleVersion ('%s') must be a string of the form X.Y.Z" % str(self.variables['ModuleVersion']))
 
-		if not isinstance(self.variables["APIVersion"], string):
+		if not isinstance(self.variables["APIVersion"], basestring):
 			raise ValueError("APIVersion ('%s') must be a string of the form X.Y" % str(self.variables['APIVersion']))
 
 
@@ -147,7 +163,7 @@ class MIBDescriptor:
 		self.variables['APIVersion'] = self._convert_api_version(self.variables["APIVersion"])
 		self.variables["ModuleName"] = self.variables["ModuleName"].ljust(6)
 
-	def _convert_version(version_string):
+	def _convert_version(self, version_string):
 		vals = [int(x) for x in version_string.split(".")]
 
 		invalid = [x for x in vals if x < 0 or x > 255]
@@ -156,15 +172,15 @@ class MIBDescriptor:
 
 		return vals
 
-	def _convert_module_version(version):
-		vals = self._convert_version(versions)
+	def _convert_module_version(self, version):
+		vals = self._convert_version(version)
 		if len(vals) != 3:
 			raise DataError("Invalid Module Version, should be X.Y.Z", version_string=version)
 
 		return vals
 
-	def _convert_api_version(version):
-		vals = self._convert_version(versions)
+	def _convert_api_version(self, version):
+		vals = self._convert_version(version)
 		if len(vals) != 2:
 			raise DataError("Invalid API Version, should be X.Y", version_string=version)
 
@@ -177,11 +193,14 @@ class MIBDescriptor:
 
 		mib = block.MIBBlock()
 
-		for feat, cmds in self.features.iteritems():
-			for i,cmd in enumerate(cmds):
-				mib.add_command(feat, i, cmd)
+		for key, val in self.commands.iteritems():
+			mib.add_command(key, val)
 
-		mib.set_variables(	name=self.variables["ModuleName"], flags=self.variables["ModuleFlags"],
-							type=self.variables["ModuleType"])
+		for interface in self.interfaces:
+			mib.add_interface(interface)
+
+		mib.set_api_version(*self.variables["APIVersion"])
+		mib.set_module_version(*self.variables["ModuleVersion"])
+		mib.set_name(self.variables["ModuleName"])
 
 		return mib

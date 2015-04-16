@@ -129,4 +129,5 @@ def mib_compilation_action(target, source, env):
 
 	#Build a MIB block from the mib file
 	block = d.get_block()
-	block.create_asm(str(target[0]))
+	block.create_asm(os.path.dirname(str(target[0])))
+

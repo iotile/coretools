@@ -90,6 +90,7 @@ class RecursiveTemplate:
 			path = os.path.join(output_dir, self.rename, relpath)
 
 		filled_path = self.format_string(path)
+
 		dname = os.path.dirname(path)
 
 		self._ensure_path(dname)

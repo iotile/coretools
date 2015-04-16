@@ -2,24 +2,20 @@
 ;3 structures defining the features, commands and handlers that we support
 
 \#include "constants.h"
-#define __DEFINES_ONLY__
-\#include "mib_definitions.h"
-#undef __DEFINES_ONLY__
+\#include "protocol_defines.h"
+\#include <xc.inc>
 
 ;All MIB endpoints are defined in other files so they must be declared global here.
-#for $feat in $features.keys()
-	#for $cmd in $features[$feat]
+#for $cmd in $commands.values()
 global $cmd.symbol
-	#end for
 #end for
-
 
 ;High memory command structure for processing mib slave endpoints
 PSECT mibblock,global,class=CONST,delta=2
 ;Module information
 retlw 	kModuleHWType		;The HW type that this application module runs on
-retlw 	$api_major_version
-retlw   $api_minor_version
+retlw 	$api_version[0]	;Compatible Exectuive API Major Version
+retlw   $api_version[1] ;Compatible Exectuive API Minor Version
 
 ;Module Name (must be exactly 6 characters long)
 ;The following instructions ascii-encode this name: '$name'
@@ -28,48 +24,69 @@ retlw 	$ord($name[$i])
 #end for
 
 ;Module Version Information
-retlw 	$version_major
-retlw 	$version_minor
-retlw 	$version_patch
+retlw 	$module_version[0] ;Module Major Version
+retlw 	$module_version[1] ;Module Minor Version
+retlw 	$module_version[2] ;Module Patch Version
 
 retlw 	0x00 			;Checksum to be patched in during build
-retlw	kMIBMagicNumber
+retlw	kMIBMagicNumber ;MIB magic number
 
 ;MIB Endpoint Information
 goto	load_command_map
 goto 	load_interface_map
 
 
-;All of the jump table information is stored here.  On devices with more than one
-;memory page, an additional jump table with movlp instructions is created as well
-;force that this structure be placed in the same page as mibblock
-PSECT mibstructs,global,class=CONST,delta=2,with=mibblock
+;These generated functions return the command map and interface map
+;locations, which can be located at an RAM or ROM location.
+PSECT mibstructs,global,class=CODE,delta=2,with=mibblock
 
 load_command_map:
 movlw LOW (command_map)
-movwf FRS0L
+movwf FSR0L
 movlw HIGH (command_map)
 movwf FSR0H
 return 
 
 load_interface_map:
 movlw LOW (interface_map)
-movwf FRS0L
+movwf FSR0L
 movlw HIGH (interface_map)
 movwf FSR0H
 return 
 
+;Command Map Table
+PSECT mib_command_map, global, class=CONST, delta=2
 
-mibhandlers:
-#if $len($features.keys())>0
-brw
-#end if
+command_map:
+#for $id in $sorted($commands.keys())
+#set $idlow = $id & 0xFF
+#set $idhigh = $id >> 8
+retlw $idlow
+retlw $idhigh
+retlw LOW $commands[$id].symbol
+retlw HIGH $commands[$id].symbol
 
-#for $feat in $features.keys()
-	#set $cmd_cnt = 0
-	#for $cmd in $features[$feat]
-	goto $cmd.symbol			; Feature $feat, Command $cmd_cnt
-	#set $cmd_cnt = $cmd_cnt + 1
-	#end for
 #end for
-\#endif
+;Sentinel value
+retlw 0xFF
+retlw 0xFF
+retlw 0xFF
+retlw 0xFF
+
+interface_map:
+#for $iface in $sorted($interfaces)
+#set $id1 = $iface & 0xFF
+#set $id2 = ($iface >> 8) & 0xFF
+#set $id3 = ($iface >> 16) & 0xFF
+#set $id4 = ($iface >> 24) & 0xFF
+retlw $id1
+retlw $id2
+retlw $id3
+retlw $id4
+
+#end for
+;Sentinel value
+retlw 0xFF
+retlw 0xFF
+retlw 0xFF
+retlw 0xFF

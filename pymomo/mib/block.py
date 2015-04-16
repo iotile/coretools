@@ -51,8 +51,11 @@ class MIBBlock:
 		self.base_addr = build_settings["mib12"]["mib"]["base_address"]
 		self.curr_version = build_settings["mib12"]["mib"]["current_version"]
 		self.commands = {}
+		self.interfaces = []
+
 		self.valid = True
 		self.error_msg = ""
+		self.hw_type = -1
 
 		if isinstance(ih, basestring):
 			ih = intelhex.IntelHex16bit(ih)
@@ -60,12 +63,11 @@ class MIBBlock:
 		if ih is not None:
 			try:
 				self._load_from_hex(ih)
-				self._check_consistency()
-				self._interpret_handlers()
-				self._build_command_map()
 			except ValueError as e:
 				self.error_msg = e
 				self.valid = False
+
+		self._parse_hwtype()
 
 	def set_api_version(self, major, minor):
 		"""
@@ -111,6 +113,21 @@ class MIBBlock:
 
 		self.name = name
 
+	def add_interface(self, interface):
+		"""
+		Add an interface to the MIB Block.
+
+		The interface must be a number between 0 and 2^32 - 1, i.e. a non-negative 4 byte integer 
+		"""
+
+		if interface < 0 or interface >= 2**32:
+			raise ArgumentError("Interface ID is not a non-negative 4-byte number", interface=interface)
+
+		if interface in self.interfaces:
+			raise ArgumentError("Attempted to add the same interface twice.", interface=interface, existing_interfaces=self.interfaces)
+
+		self.interfaces.append(interface)
+
 	def add_command(self, cmd_id, handler):
 		"""
 		Add a command to the MIBBlock.  
@@ -128,9 +145,6 @@ class MIBBlock:
 
 		self.commands[cmd_id] = handler
 
-	def _interpret_handlers(self):
-		self.handlers = map(lambda i: MIBHandler(self.spec_list[i], address=self.handler_addrs[i]), xrange(0, len(self.spec_list)))
-
 	def _check_magic(self, ih):
 		magic_addr = self.base_addr + magic_offset
 		instr = ih[magic_addr]
@@ -145,18 +159,37 @@ class MIBBlock:
 		if not self._check_magic(ih):
 			raise ValueError("Invalid magic number.")
 
-		self.cmds_addr = decode_goto(ih, self.base_addr + command_map_offset)
-		self.interfaces_addr = decode_goto(ih, self.base_addr + interface_map_offset)
+		cmd_list_addr = decode_fsr0_loader(ih, self.base_addr + command_map_offset)
+		interfaces_list_addr = decode_fsr0_loader(ih, self.base_addr + interface_map_offset)
 
-		self.cmd_list = decode_table(ih, self.cmds_addr, decode_retlw)
-		self.interface_list = decode_table(ih, self.interfaces_addr, decode_retlw)
+		cmd_table = decode_sentinel_table(ih, cmd_list_addr, 4, [0xFF, 0xFF, 0xFF, 0xFF])
+		iface_table = decode_sentinel_table(ih, interfaces_list_addr, 4, [0xFF, 0xFF, 0xFF, 0xFF])
 
-		self.name = decode_string(ih, self.base_addr + name_offset, 7)
+		#Decode and add the commands to our command map
+		for entry in cmd_table:
+			cmd_id = entry[0] | (entry[1] << 8)
+			cmd_addr = entry[2] | (entry[3] << 8)
+
+			self.add_command(cmd_id, MIBHandler(address=cmd_addr))
+
+		#Decode and add the interfaces to our interface list
+		for entry in iface_table:
+			iface_id = entry[0] | (entry[1] << 8) | (entry[2] << 16) | (entry[3] << 24)
+			self.add_interface(iface_id)
+
+		self.name = decode_string(ih, self.base_addr + name_offset, 6)
+
 		self.hw_type = decode_retlw(ih, self.base_addr + hw_offset)
-
-		#FIXME: Parse other items from the mib block
-
 		self._parse_hwtype()
+
+		api_major = decode_retlw(ih, self.base_addr + major_api_offset)
+		api_minor = decode_retlw(ih, self.base_addr + minor_api_offset)
+		self.set_api_version(api_major, api_minor)
+
+		mod_major = decode_retlw(ih, self.base_addr + major_version_offset)
+		mod_minor = decode_retlw(ih, self.base_addr + minor_version_offset)
+		mod_patch = decode_retlw(ih, self.base_addr + patch_version_offset)
+		self.set_module_version(mod_major, mod_minor, mod_patch)
 
 	def _parse_hwtype(self):
 		"""
@@ -166,12 +199,9 @@ class MIBBlock:
 
 		if self.hw_type not in known_hwtypes:
 			self.chip_name = "Unknown Chip (type=%d)" % self.hw_type
+			return
 
 		self.chip_name = known_hwtypes[self.hw_type]
-
-	def _check_consistency(self):
-		self.valid = True
-		#FIXME: Check to make sure that the cmd and interface lists end with a sentinel
 
 	def create_asm(self, folder):
 		temp = template.RecursiveTemplate(MIBBlock.TemplateName)
@@ -179,9 +209,7 @@ class MIBBlock:
 		temp.render(folder)
 
 	def __str__(self):
-		rep = "\n"
-
-		rep += "MIB Block\n"
+		rep  = "MIB Block\n"
 		rep += "---------\n"
 
 		if not self.valid:
@@ -190,19 +218,16 @@ class MIBBlock:
 
 		rep += "Block Valid\n"
 		rep += "Name: '%s'\n" % self.name
-		rep += "Type: %d\n" % self.module_type
 		rep += "Hardware: %s\n" % self.chip_name
-		rep += "MIB Revision: %d\n" % self.revision
-		rep += "Flags: %s\n" % bin(self.flags)
-		rep += "Number of Features: %d\n" % self.num_features
+		rep += "API Version: %d.%d\n" % (self.api_version[0], self.api_version[1])
+		rep += "Module Version: %d.%d.%d\n" % (self.module_version[0], self.module_version[1], self.module_version[2])
 
-		rep += "\nFeature List\n"
+		rep += "\n# Supported Commands #"
+		for id, handler in self.commands.iteritems():
+			rep += "\n0x%X: %s" % (id, str(handler))
 
-
-
-		for f in self.features.keys():
-			rep += "%d:\n" % f
-			for i,h in enumerate(self.features[f]):
-				rep += "    %d: %s\n" % (i, str(h))
+		rep += "\n\n# Supported Interfaces #"
+		for id in self.interfaces:
+			rep += "\n0x%X" % id
 
 		return rep
