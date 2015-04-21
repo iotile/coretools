@@ -135,13 +135,13 @@ class I2CAnalyzer:
 			if states[i][0] == self.StopCondition:
 				trans.append(StopCondition(states[i][1]))
 				i += 1
-			elif states[i][0] == self.ClockRisingEdge and states[i+1][0] == self.StartCondition:
+			elif states[i][0] == self.ClockRisingEdge and (i+1) < len(states) and states[i+1][0] == self.StartCondition:
 				trans.append(RepeatedStartCondition(states[i+1][1]))
 				i += 2
 			elif states[i][0] == self.StartCondition:
 				trans.append(RepeatedStartCondition(states[i][1]))
 				i += 1
-			elif states[i][0] == self.ClockRisingEdge and states[i+1][0] == self.StopCondition:
+			elif states[i][0] == self.ClockRisingEdge and (i+1) < len(states) and states[i+1][0] == self.StopCondition:
 				trans.append(StopCondition(states[i+1][1]))
 				i += 2
 				break

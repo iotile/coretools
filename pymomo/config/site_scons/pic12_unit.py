@@ -84,6 +84,11 @@ def build_unittest(test, arch, summary_env, cmds=None):
 	#Must do this in 1 statement so we don't modify test_files
 	srcfiles = test_files + test_harness
 
+	#If we are compiling a special mib block, add it in
+	if test.mibfile is not None:
+		cmdmap = pic12.compile_mib(env, test.mibfile, testdir)
+		srcfiles += cmdmap
+
 	apphex = env.xc8(os.path.join(testdir, name + '_unit.hex'), srcfiles)
 	env.Depends(apphex[0], symfile)
 

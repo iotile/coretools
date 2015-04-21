@@ -107,15 +107,20 @@ def build_module(name, arch):
 	symtable = env.InstallAs(os.path.join(dirs['output'], '%s_symbols_%s.stb' % (name, arch.arch_name())), prods[2])
 	romusage = env.InstallAs(os.path.join(dirs['output'], '%s_rom_summary_%s.stb' % (name, arch.arch_name())), prods[3])
 
-def compile_mib(env):
+def compile_mib(env, mibname=None, outdir=None):
 	"""
 	Given a path to a *.mib file, use mibtool to process it and return a command_map.asm file
 	return the path to that file.
 	"""
 
-	dirs = env["ARCH"].build_dirs()
-	mibname = os.path.join('src', 'mib', env["MODULE"] + ".mib")
-	cmdmap_path = os.path.join(dirs['build'], 'command_map.asm')
+	if outdir is None:
+		dirs = env["ARCH"].build_dirs()
+		outdir = dirs['build']
+
+	if mibname is None: 
+		mibname = os.path.join('src', 'mib', env["MODULE"] + ".mib")
+
+	cmdmap_path = os.path.join(outdir, 'command_map.asm')
 
 	env['MIBFILE'] = '#' + cmdmap_path
 

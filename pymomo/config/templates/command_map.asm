@@ -3,6 +3,7 @@
 
 \#include "constants.h"
 \#include "protocol_defines.h"
+\#include "mib12_block.h"
 \#include <xc.inc>
 
 ;All MIB endpoints are defined in other files so they must be declared global here.
@@ -41,16 +42,16 @@ goto 	load_interface_map
 PSECT mibstructs,global,class=CODE,delta=2,with=mibblock
 
 load_command_map:
-movlw LOW (command_map)
+movlw (command_map & 0xFF)
 movwf FSR0L
-movlw HIGH (command_map)
+movlw ((command_map >> 8) | (1 << 7))
 movwf FSR0H
 return 
 
 load_interface_map:
-movlw LOW (interface_map)
+movlw (interface_map & 0xFF)
 movwf FSR0L
-movlw HIGH (interface_map)
+movlw ((interface_map >> 8) | (1 << 7))
 movwf FSR0H
 return 
 
@@ -63,8 +64,8 @@ command_map:
 #set $idhigh = $id >> 8
 retlw $idlow
 retlw $idhigh
-retlw LOW $commands[$id].symbol
-retlw HIGH $commands[$id].symbol
+retlw $commands[$id].symbol & 0xFF
+retlw ($commands[$id].symbol >> 8) & 0xFF
 
 #end for
 ;Sentinel value

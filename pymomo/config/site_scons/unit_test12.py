@@ -2,6 +2,7 @@
 
 import unit_test
 import pic12_unit
+import pic12
 from pymomo.exceptions import *
 from pymomo.gpysim import i2c_log
 import os.path
@@ -18,6 +19,7 @@ class Pic12UnitTest (unit_test.UnitTest):
 		self.checkpoints = []
 		self.slaves = []
 		self.masters = []
+		self.mibfile = None
 		self.script_additions = {'libraries': set(), 'modules':{}, 'setup_lines': {}, 'sda_node': set(), 'scl_node': set()}
 		unit_test.UnitTest.__init__(self, files, **kwargs)
 
@@ -212,6 +214,8 @@ class Pic12UnitTest (unit_test.UnitTest):
 				self.files += (os.path.join(self.basedir, f), )
 			elif ext == '.cmd':
 				self.cmdfile = os.path.join(self.basedir, f)
+			elif ext == '.mib':
+				self.mibfile = os.path.join(self.basedir, f)
 			else:
 				raise BuildError("Unknown file extension in Additional header", test=self.name, filename=f)
 
