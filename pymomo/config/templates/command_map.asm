@@ -32,14 +32,29 @@ retlw 	$module_version[2] ;Module Patch Version
 retlw 	0x00 			;Checksum to be patched in during build
 retlw	kMIBMagicNumber ;MIB magic number
 
-;MIB Endpoint Information
-goto	load_command_map
-goto 	load_interface_map
+;MIB endpoint, interfaces and configuration information
+goto	app_information
+
+;Reserved, must be zero.
+retlw 	0x00
 
 
 ;These generated functions return the command map and interface map
 ;locations, which can be located at an RAM or ROM location.
 PSECT mibstructs,global,class=CODE,delta=2,with=mibblock
+
+;Given a value in W, return the appropriate information by loading it into FSR0
+;0: selects the MIB endpoint table
+;1: selects the supported interface list
+;2: selects the configuration variable list
+;3: reserved, must be retlw 0xFF
+app_information:
+andlw 0b11
+brw
+goto load_command_map
+goto load_interface_map
+retlw 0xFF
+retlw 0xFF
 
 load_command_map:
 movlw (command_map & 0xFF)

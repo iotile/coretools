@@ -20,8 +20,14 @@ minor_version_offset = 10
 patch_version_offset = 11
 checksum_offset = 12
 magic_offset = 13
-command_map_offset = 14
-interface_map_offset = 15
+app_information_offset = 14
+reserved = 15
+
+# Indices into the app_information_table
+cmd_map_index = 0
+interface_list_index = 1
+config_list_index = 2
+reserved_index = 3
 
 known_hwtypes = {
 	2: "12lf1822",
@@ -159,8 +165,11 @@ class MIBBlock:
 		if not self._check_magic(ih):
 			raise ValueError("Invalid magic number.")
 
-		cmd_list_addr = decode_fsr0_loader(ih, self.base_addr + command_map_offset)
-		interfaces_list_addr = decode_fsr0_loader(ih, self.base_addr + interface_map_offset)
+		app_info_table_addr = decode_goto(ih, self.base_addr + app_information_offset) + 1 # table contains andlw as the first instruction so get past that
+		app_info_table = decode_table(ih ,app_info_table_addr, decode_goto)
+
+		cmd_list_addr = decode_fsr0_loader(ih, app_info_table[cmd_map_index])
+		interfaces_list_addr = decode_fsr0_loader(ih, app_info_table[interface_list_index])
 
 		cmd_table = decode_sentinel_table(ih, cmd_list_addr, 4, [0xFF, 0xFF, 0xFF, 0xFF])
 		iface_table = decode_sentinel_table(ih, interfaces_list_addr, 4, [0xFF, 0xFF, 0xFF, 0xFF])
