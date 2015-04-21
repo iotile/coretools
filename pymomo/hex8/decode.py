@@ -105,9 +105,9 @@ def decode_sentinel_table(ih, addr, entry_size, sentinel_value):
 
 	return table
 
-def decode_fsr0_loader(ih, goto_addr):
+def decode_fsr0_loader(ih, func_addr):
 	"""
-	Given a goto statement that points to a function that loads FSR0 with a certain value,
+	Given the address of a function that loads FSR0 with a certain value,
 	decode that value.
 
 	Function must have the form:
@@ -117,8 +117,6 @@ def decode_fsr0_loader(ih, goto_addr):
 	movwf FSR0H
 	return
 	"""
-
-	func_addr = decode_goto(ih, goto_addr)
 
 	#Make sure it ends with a return
 	decode_return(ih, func_addr + 4)

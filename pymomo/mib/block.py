@@ -161,15 +161,31 @@ class MIBBlock:
 
 		return False
 
+	def _convert_program_address(self, addr):
+		"""
+		Make sure that addr points to program memory (by having the high bit set) 
+		and then strip the high bit
+		"""
+
+		if not addr & (1 << 15):
+			raise ValueError("Address 0x%X did not have the high bit set indicating a program memory address." % addr)
+
+		return addr & ~(1 << 15)
+
 	def _load_from_hex(self, ih):
 		if not self._check_magic(ih):
 			raise ValueError("Invalid magic number.")
 
 		app_info_table_addr = decode_goto(ih, self.base_addr + app_information_offset) + 1 # table contains andlw as the first instruction so get past that
+		
 		app_info_table = decode_table(ih ,app_info_table_addr, decode_goto)
 
 		cmd_list_addr = decode_fsr0_loader(ih, app_info_table[cmd_map_index])
 		interfaces_list_addr = decode_fsr0_loader(ih, app_info_table[interface_list_index])
+
+		#Strip off the high bits indicating program memmory addresses
+		cmd_list_addr = self._convert_program_address(cmd_list_addr)
+		interfaces_list_addr = self._convert_program_address(interfaces_list_addr)
 
 		cmd_table = decode_sentinel_table(ih, cmd_list_addr, 4, [0xFF, 0xFF, 0xFF, 0xFF])
 		iface_table = decode_sentinel_table(ih, interfaces_list_addr, 4, [0xFF, 0xFF, 0xFF, 0xFF])
