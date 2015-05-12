@@ -288,7 +288,10 @@ class Pic12UnitTest (unit_test.UnitTest):
 		if short:
 			return "0x%x/%s" % (ev[1], a[0])
 		else:
-			return "0x%x %s" % (ev[1], a)
+			if ev[1] is None:
+				return "XX %s" % a
+			else:
+				return "0x%x %s" % (ev[1], a)
 
 	def _format_address(self, ev, short):
 		a = 'NACK'
@@ -342,6 +345,10 @@ class Pic12UnitTest (unit_test.UnitTest):
 				break
 
 			if exp[0] == 'D':
+				#If we don't care about this data byte, don't match it
+				if exp[1] is None and exp[2] == act.acked:
+					continue
+
 				if exp[1] != act.value or exp[2] != act.acked:
 					status = False
 					break
@@ -366,7 +373,12 @@ class Pic12UnitTest (unit_test.UnitTest):
 			if len(splitvals) != 2:
 				raise BuildError("No modifier specified in data byte", test=self.name, value=sig)
 
-			val = int(splitvals[0],0)
+			# Allow for specifying bytes that are unpredictable.
+			if splitvals[0].lower() == 'xx':
+				val = None
+			else:
+				val = int(splitvals[0],0)
+
 			mods = splitvals[1].upper()
 
 			if len(mods) == 0 or len(mods) > 2:

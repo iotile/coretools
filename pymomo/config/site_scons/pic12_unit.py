@@ -100,10 +100,12 @@ def build_unittest(test, arch, summary_env, cmds=None):
 		#and to avoid triggering any bugs in the executive code since these are unit tests.
 		#for specific routines.
 		if type == "executive_integration":
+			#Patch in the application checksum that's appropriate here
+			highhex = env.Command(os.path.join(testdir, name + '_unit_checksummed.hex'), apphex[0], action=env.Action(pic12.checksum_insertion_action, "Patching Application Checksum"))
 			lowhex = os.path.join(builddir, 'mib12_executive_patched.hex')
 		else:
 			lowhex = env.Command(os.path.join(testdir, 'mib12_executive_local.hex'), os.path.join(builddir, 'mib12_executive_patched.hex'), action='python ../../tools/scripts/patch_start.py %d $SOURCE $TARGET' % app_start)
-		highhex = apphex[0]
+			highhex = apphex[0]
 	else:
 		lowhex = apphex[0]
 		highhex = env.Command(os.path.join(testdir, 'mib12_app_module_local.hex'), os.path.join(builddir, 'mib12_app_module.hex'), Copy("$TARGET", "$SOURCE"))

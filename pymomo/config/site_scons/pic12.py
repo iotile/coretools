@@ -16,6 +16,11 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from pymomo.utilities import build
 from pymomo.mib.config12 import MIB12Processor
 from pymomo.mib.descriptor import MIBDescriptor
+from pymomo.mib.block import MIBBlock
+import pymomo.mib.block
+
+from pymomo.hex8 import patch
+from pymomo.utilities import intelhex
 
 
 def configure_env_for_xc8(env, **kwargs):
@@ -102,7 +107,10 @@ def build_module(name, arch):
 
 	prods = [os.path.join(dirs['build'], 'mib12_app_module.hex'), os.path.join(dirs['build'], 'mib12_app_module_symbols.h'), os.path.join(dirs['build'], 'mib12_app_module_symbols.stb'), os.path.join(dirs['build'], 'mib12_app_module_rom_summary.txt')]
 
-	hexfile = env.InstallAs(os.path.join(dirs['output'], '%s_%s.hex' % (name, arch.arch_name())), prods[0])
+	#Patch in the correct checksum for this module
+	outhex = env.Command(env.Command(os.path.join(dirs['build'], 'mib12_app_module_checksummed.hex'), prods[0], action=env.Action(pic12.checksum_insertion_action, "Patching Application Checksum")))
+
+	hexfile = env.InstallAs(os.path.join(dirs['output'], '%s_%s.hex' % (name, arch.arch_name())), outhex[0])
 	symheader = env.InstallAs(os.path.join(dirs['output'], '%s_symbols_%s.h' % (name, arch.arch_name())), prods[1])
 	symtable = env.InstallAs(os.path.join(dirs['output'], '%s_symbols_%s.stb' % (name, arch.arch_name())), prods[2])
 	romusage = env.InstallAs(os.path.join(dirs['output'], '%s_rom_summary_%s.stb' % (name, arch.arch_name())), prods[3])
@@ -136,3 +144,16 @@ def mib_compilation_action(target, source, env):
 	block = d.get_block()
 	block.create_asm(os.path.dirname(str(target[0])))
 
+def checksum_insertion_action(target, source, env):
+	block = MIBBlock(str(source[0]))
+
+	desired_check = block.app_checksum - block.stored_checksum
+	desired_check = (~(desired_check) + 1) & 0xFF
+
+	ih = intelhex.IntelHex16bit(str(source[0]))
+	result = patch.patch_retlw(ih, block.base_addr + pymomo.mib.block.checksum_offset, block.stored_checksum, desired_check)
+
+	if result is False:
+		raise BuildError("Could not patch checksum, unknown error occurred", hex_file=str(source[0]), mib_block=block)
+
+	ih.write_hex_file(str(target[0]))

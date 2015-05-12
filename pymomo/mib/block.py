@@ -8,6 +8,7 @@ from pymomo.utilities import build, template
 from pymomo.hex8.decode import *
 from pymomo.utilities import intelhex
 from pymomo.exceptions import *
+from config12 import MIB12Processor
 
 block_size = 16
 
@@ -65,6 +66,7 @@ class MIBBlock:
 
 		if isinstance(ih, basestring):
 			ih = intelhex.IntelHex16bit(ih)
+			ih.padding = 0x3FFF
 
 		if ih is not None:
 			try:
@@ -216,6 +218,31 @@ class MIBBlock:
 		mod_patch = decode_retlw(ih, self.base_addr + patch_version_offset)
 		self.set_module_version(mod_major, mod_minor, mod_patch)
 
+		self.stored_checksum = decode_retlw(ih, self.base_addr + checksum_offset)
+		self.app_checksum = self._calculate_app_checksum(ih)
+
+	def _calculate_app_checksum(self, ih):
+		"""
+		Calculate the checksum of the application module.
+
+		Automatically find the correct start and stop rows based on the information for this
+		hardware type.
+		"""
+
+		proc = MIB12Processor.FromChip(self.chip_name)
+
+		start,stop = proc.app_rom
+
+		check = 0
+		for i in xrange(start, stop+1):
+			low = ih[i] & 0xFF
+			high = ih[i] >> 8
+			high = high & 0b00111111
+			check += low + high
+
+		check = check & 0xFF
+		return check
+
 	def _parse_hwtype(self):
 		"""
 		Convert the numerical hw id to a chip name using the well-known
@@ -246,6 +273,8 @@ class MIBBlock:
 		rep += "Hardware: %s\n" % self.chip_name
 		rep += "API Version: %d.%d\n" % (self.api_version[0], self.api_version[1])
 		rep += "Module Version: %d.%d.%d\n" % (self.module_version[0], self.module_version[1], self.module_version[2])
+		rep += "Stored Checksum: 0x%X\n" % self.stored_checksum
+		rep += "Checksum Valid: %s" % (self.app_checksum == 0,)
 
 		rep += "\n# Supported Commands #"
 		for id, handler in self.commands.iteritems():
