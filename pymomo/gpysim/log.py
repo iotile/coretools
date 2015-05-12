@@ -13,9 +13,10 @@ class LogFile:
 
 		self.entries = []
 
-		#Only keep entries where we write to the logging registers
+		#Only keep entries where we write to the logging registers	
 		lines = filter(lambda x: not x.startswith('  Read:'), lines)
 		lines = filter(lambda x: not x.startswith('  BREAK:'), lines)
+		lines = filter(lambda x: not x.startswith('  Wrote:') or 'to ccpr1l(0x0291)' in x or 'to ccpr1h(0x0292)' in x, lines)
 
 		if len(lines) % 2 != 0:
 			raise ValueError("File length is invalid, filtered entries should be a multiple of 2, len=%d." % len(lines))
