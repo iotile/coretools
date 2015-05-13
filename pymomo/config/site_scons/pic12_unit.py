@@ -127,6 +127,10 @@ def build_unittest(test, arch, summary_env, cmds=None):
 	for src in test.files:
 		env.Depends(raw_results, src)
 
+	for dep in test.extra_depends:
+		dep_path = os.path.join(outdir, dep)
+		env.Depends(raw_results, dep_path)
+
 	#Make the log and status files depend on the contents of all of the test sources so that if we change part of the
 	#header, which changes what tests are run, the logs are regenerated.
 	formatted_log = env.Command([build_formatted_log_name(env), build_status_name(env)], [raw_results, symtab] + srcfiles, action=env.Action(process_unittest_log, 
@@ -183,6 +187,7 @@ def build_unittest_script(target, source, env):
 		f.write('log w %s.ccpr1l\n' % sim)
 		f.write('log w %s.ccpr1h\n' % sim)
 		f.write("log on '%s'\n\n" % logfile)
+		f.write("BreakOnReset = false\n\n")
 		
 		#Add in all required libraries
 		for lib in test.script_additions['libraries']:

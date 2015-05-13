@@ -18,6 +18,7 @@ class UnitTest (object):
 		self.targets = None
 		self.patch = {}
 		self.copy_files = []
+		self.extra_depends = []
 
 		self.ignore_extra_attributes = ignore_extra_attributes
 		self.basedir = os.path.dirname(files[0])
@@ -27,6 +28,15 @@ class UnitTest (object):
 		self._check_files()
 
 		self.status = "Unknown"
+
+	def result_depends(self, filename):
+		"""
+		Record that the result of this unit test depends on the file filename,
+		which is assumed to be located in the unit test's generated folder,
+		put there via copy_file, for example.
+		"""
+
+		self.extra_depends.append(filename)
 	
 	def show(self):
 		print "#Unit Test#"

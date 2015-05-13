@@ -87,6 +87,27 @@ class Pic12UnitTest (unit_test.UnitTest):
 		self._connect_to_scl('%s.scl' % sname)
 		self._connect_to_sda('%s.sda' % sname)
 
+	def _parse_copy(self, value):
+		"""
+		Copy: src_filename, dst_filename
+
+		Copy the filename into this unit test's output folder so that it can be accessed during
+		operation.  Make the result of the unit test depend on this file as well.
+		"""
+
+		vals = [x.strip() for x in value.split(',')]
+		if len(vals) != 2:
+			raise BuildError("Copy error: value must be of the form <src file>, <dest filename>", value=value)
+
+		filename = vals[0]
+
+		filepath = os.path.join(os.path.dirname(self.files[0]), filename)
+		if not os.path.exists(filepath):
+			raise BuildError("Copy: file does not exist", filename=filename, cwd=os.getcwd(), filepath=filepath)
+
+		self.copy_file(filepath, vals[1])
+		self.result_depends(vals[1])
+
 	def _parse_triggered_master(self, value):
 		"""
 		Triggered Master: cycle, python_file.py
@@ -254,8 +275,11 @@ class Pic12UnitTest (unit_test.UnitTest):
 
 		return True
 
-	def _format_i2c_sequence(self, short=False):
+	def _format_i2c_sequence(self, short=False, error_line=None):
 		events = [self._format_event(x, short=short) for x in self.i2c_capture]
+
+		if error_line is not None:
+			events[error_line] += " <------ First disagreement"
 
 		if short:
 			return ", ".join(events)
@@ -338,6 +362,7 @@ class Pic12UnitTest (unit_test.UnitTest):
 
 		status = True
 
+		i = 0
 		for exp, act in zip(self.i2c_capture, analyzer.bus_events):
 			expected_type = typemap[exp[0]]
 			if not isinstance(act, expected_type):
@@ -347,6 +372,7 @@ class Pic12UnitTest (unit_test.UnitTest):
 			if exp[0] == 'D':
 				#If we don't care about this data byte, don't match it
 				if exp[1] is None and exp[2] == act.acked:
+					i += 1
 					continue
 
 				if exp[1] != act.value or exp[2] != act.acked:
@@ -358,7 +384,13 @@ class Pic12UnitTest (unit_test.UnitTest):
 					status = False
 					break
 
-		return status, analyzer.format(), analyzer.format(short=True), self._format_i2c_sequence()
+			i+= 1
+
+		error = None
+		if status == False:
+			error = i
+
+		return status, analyzer.format(), analyzer.format(short=True), self._format_i2c_sequence(error_line=error)
 
 	def _process_i2c_signal(self, sig):
 		if sig.upper() == 'S':
