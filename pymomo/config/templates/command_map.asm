@@ -1,7 +1,6 @@
 ;command_map.asm
 ;3 structures defining the features, commands and handlers that we support
 
-\#include "constants.h"
 \#include "protocol_defines.h"
 \#include "mib12_block.h"
 \#include <xc.inc>
