@@ -21,6 +21,7 @@ import pymomo.mib.block
 
 from pymomo.hex8 import patch
 from pymomo.utilities import intelhex
+from pymomo.exceptions import *
 
 
 def configure_env_for_xc8(env, **kwargs):
@@ -108,7 +109,7 @@ def build_module(name, arch):
 	prods = [os.path.join(dirs['build'], 'mib12_app_module.hex'), os.path.join(dirs['build'], 'mib12_app_module_symbols.h'), os.path.join(dirs['build'], 'mib12_app_module_symbols.stb'), os.path.join(dirs['build'], 'mib12_app_module_rom_summary.txt')]
 
 	#Patch in the correct checksum for this module
-	outhex = env.Command(env.Command(os.path.join(dirs['build'], 'mib12_app_module_checksummed.hex'), prods[0], action=env.Action(pic12.checksum_insertion_action, "Patching Application Checksum")))
+	outhex = env.Command(os.path.join(dirs['build'], 'mib12_app_module_checksummed.hex'), prods[0], action=env.Action(checksum_insertion_action, "Patching Application Checksum"))
 
 	hexfile = env.InstallAs(os.path.join(dirs['output'], '%s_%s.hex' % (name, arch.arch_name())), outhex[0])
 	symheader = env.InstallAs(os.path.join(dirs['output'], '%s_symbols_%s.h' % (name, arch.arch_name())), prods[1])

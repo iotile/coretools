@@ -180,7 +180,9 @@
 					"__NO_PERF__": 1,
 					"__NO_FLASH__": 1,
 					"kI2CBaud": 157,
-					"kClockspeed": "16000000L" 
+					"kClockspeed": "16000000L",
+					"SDA": "B9", 
+					"SCL": "B8"
 				},
 
 				"chip": "24f16ka101"
@@ -192,7 +194,9 @@
 				{
 					"__PIC24FJ64GA306__": 1,
 					"kI2CBaud": 39,
-					"kClockspeed": "4000000L"
+					"kClockspeed": "4000000L",
+					"SDA": "G3", 
+					"SCL": "G2"
 				},
 
 				"chip": "24fj64ga306"
