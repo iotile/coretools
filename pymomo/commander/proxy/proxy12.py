@@ -34,7 +34,7 @@ class MIB12ProxyObject (proxy.MIBProxyObject):
 		"""
 		Get the 8-bit application checksum.
 		"""
-		return self.rpc(1,2, result_type=(1,False))['ints'][0]
+		return self.rpc(0,2, result_type=(1,False))['ints'][0]
 
 	@returns(desc='module status register', data=True, printer=print_status)
 	def status(self):
@@ -44,7 +44,7 @@ class MIB12ProxyObject (proxy.MIBProxyObject):
 		Returns executive version, runtime parameters, hw type, executive size and whether the module has crashed.
 		"""
 
-		res = self.rpc(1,4, result_type=(2,False))
+		res = self.rpc(0,4, result_type=(2,False))
 		status = namedtuple("ExecutiveStatus", ['serial', 'hwtype', 'approw', 'status', 'trapped'])
 
 		status.serial = res['ints'][0] & 0xFF
@@ -59,7 +59,7 @@ class MIB12ProxyObject (proxy.MIBProxyObject):
 	@param('type', 'string', ('list', ['uint8']), desc='Type of variable to read (supports: uint8)')
 	@returns(desc='variable contents', data=True)
 	def readram(self, location, type='uint8'):
-		res = self.rpc(1,3, location, result_type=(0,True))
+		res = self.rpc(0,3, location, result_type=(0,True))
 		return ord(res['buffer'][0])
 
 	@annotated
@@ -69,7 +69,7 @@ class MIB12ProxyObject (proxy.MIBProxyObject):
 		"""
 
 		try:
-			self.rpc(1, 1)
+			self.rpc(0, 1)
 		except RPCException as e:
-			if e.type != 7:
+			if e.type != 63:
 				raise e 

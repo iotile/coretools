@@ -21,7 +21,7 @@ def reflash_module(controller, hexfile, name=None, address=None, force=False, ve
 	controller.clear_firmware_cache()
 	bucket = controller.push_firmware(hexfile, 0, verbose=verbose)
 
-	mod.rpc(1, 0, 8, bucket)
+	mod.rpc(0, 5, 8, bucket)
 	mod.reset()
 
 	sleep(1.5)

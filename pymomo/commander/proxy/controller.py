@@ -709,7 +709,7 @@ class MIBController (proxy.MIBProxyObject):
 		try:
 			self.rpc(42, 0xF)
 		except RPCException as e:
-			if e.type != 7:
+			if e.type != 63:
 				raise e
 
 		if sync:

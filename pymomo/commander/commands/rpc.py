@@ -81,19 +81,11 @@ class RPCCommand (Command):
 		if len(fmtd) > 20:
 			raise ValueError("Arguments are greater then the maximum mib packet size, size was %d" % len(fmtd))
 
+		#Calculate the command type spec
+		self.spec = len(fmtd)
+
 		if len(fmtd) < 20:
 			fmtd += bytearray(20 - len(fmtd))
-
-		#Calculate the command type spec
-		spec = 0
-
-		if num_bufs == 1:
-			spec = 1 << 7
-			spec |= buff_len & 0b11111
-
-		spec |= (num_ints&0b11) << 5
-
-		self.spec = spec
 
 		return fmtd
 
@@ -102,8 +94,11 @@ class RPCCommand (Command):
 		"""
 		rpc command on 
 		"""
-		status = ord(stream.trans.read())
+		status_value = ord(stream.trans.read())
+		status = status_value & 0b00111111
+
 		self.status = status
+		self.complete_status = status_value
 
 		if status == 254:
 			buf, term = stream.read_frame()
@@ -139,7 +134,7 @@ class RPCCommand (Command):
 				parsed['error'] = 'Unknown Error'
 			elif self.status == 7:
 				parsed['error'] = 'Callback Error'
-			elif self.status == 0xFF:
+			elif self.complete_status == 0xFF:
 				parsed['error'] = 'Module at address ' + str(self.addr) + ' not found.'
 			else:
 				parsed['error'] = 'Unrecognized MIB status code'
