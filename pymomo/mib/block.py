@@ -273,8 +273,12 @@ class MIBBlock:
 		rep += "Hardware: %s\n" % self.chip_name
 		rep += "API Version: %d.%d\n" % (self.api_version[0], self.api_version[1])
 		rep += "Module Version: %d.%d.%d\n" % (self.module_version[0], self.module_version[1], self.module_version[2])
-		rep += "Stored Checksum: 0x%X\n" % self.stored_checksum
-		rep += "Checksum Valid: %s" % (self.app_checksum == 0,)
+
+		if hasattr(self, 'stored_checksum'):
+			rep += "Stored Checksum: 0x%X\n" % self.stored_checksum
+			rep += "Checksum Valid: %s" % (self.app_checksum == 0,)
+		else:
+			rep += "Checksum Valid: Unknown" 
 
 		rep += "\n# Supported Commands #"
 		for id, handler in self.commands.iteritems():

@@ -31,4 +31,4 @@ class TestRAMCalculations(unittest.TestCase):
 
 		print self.p1822.app_ram
 		print self.p1822.exec_ram
-		assert False
+

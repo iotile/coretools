@@ -3,7 +3,7 @@ from pymomo.mib.block import MIBBlock
 import unittest
 from nose.tools import *
 from pymomo.exceptions import *
-import intelhex
+from pymomo.utilities import intelhex
 
 def _load_hex(filename):
 	path = os.path.join(os.path.dirname(__file__), 'hex_files', filename)
