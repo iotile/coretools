@@ -20,6 +20,7 @@ class Pic12UnitTest (unit_test.UnitTest):
 		self.slaves = []
 		self.masters = []
 		self.mibfile = None
+		self.cycle_limit = None
 		self.script_additions = {'libraries': set(), 'modules':{}, 'setup_lines': {}, 'sda_node': set(), 'scl_node': set()}
 		unit_test.UnitTest.__init__(self, files, **kwargs)
 
@@ -41,6 +42,14 @@ class Pic12UnitTest (unit_test.UnitTest):
 		pts = value.split(',')
 		ptlist = [self._add_checkpoint(x) for x in pts]
 		self.checkpoints = ptlist
+
+	def _parse_cycle_limit(self, value):
+		"""
+		Cycle Limit: <number>
+		"""
+		cycle = int(value.strip(), 0)
+		self.cycle_limit = cycle
+		self._add_setupline('cycles', 'break c %d' % cycle)
 
 	def _parse_attach_slave(self, value):
 		"""

@@ -12,14 +12,24 @@ class LogFile:
 			lines = f.readlines()
 
 		self.entries = []
+		self.symtab = symtab
+
+		#initialize program counter
+		self.current_address = 0
 
 		#Only keep entries where we write to the logging registers	
 		lines = filter(lambda x: not x.startswith('  Read:'), lines)
 		lines = filter(lambda x: not x.startswith('  BREAK:'), lines)
+		lines = filter(lambda x: not x.rstrip().endswith('sleep'), lines)
 		lines = filter(lambda x: not x.startswith('  Wrote:') or 'to ccpr1l(0x0291)' in x or 'to ccpr1h(0x0292)' in x, lines)
 
 		if len(lines) % 2 != 0:
+			print lines
 			raise ValueError("File length is invalid, filtered entries should be a multiple of 2, len=%d." % len(lines))
+
+		if len(lines) == 0:
+			self.entries = []
+			return
 
 		entries = zip(lines[0::2], lines[1::2])
 		entries = map(lambda x: (x[0]+x[1]).rstrip(), entries)
@@ -39,11 +49,6 @@ class LogFile:
 
 		#at this point we have the indices corresponding to all control statements
 		#and their lengths build the statements
-		self.symtab = symtab
-
-		#initialize program counter
-		self.current_address = 0
-
 		statements = [{'control': info[c], 'data':info[c+1:c+lengths[i]]} for i,c in enumerate(controls)]
 		entries = map(lambda x:self._process_statement(x), statements)
 		
