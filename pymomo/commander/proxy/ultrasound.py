@@ -52,12 +52,13 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		res = self.rpc(110, 3, address, value)
 
 	@param("address", "integer", desc="Address of register to read")
+	@return_type("integer", formatter="hex")
 	def read_tdc7200_24bit(self, address):
 		"""
 		Read a 24-bit register from the TDC7200 stopwatch chip
 		"""
 
-		res = self.rpc(110, 5, address, value)
+		res = self.rpc(110, 5, address, result_type=(0, True))
 		lsb = ord(res['buffer'][0])
 		nsb = ord(res['buffer'][1])
 		msb = ord(res['buffer'][2])
@@ -87,7 +88,7 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 
 	@param("cycles", "integer", "positive", desc="Number of clock cycles to use (2, 10, 20 or 40)")
 	@return_type("map(string,integer)")
-	def oscillator_period(self, cycles):
+	def oscillator_period(self, cycles, do_power=True):
 		"""
 		Determine the ring oscillator period of the TDC7200
 
@@ -100,13 +101,15 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		This routine automatically powers the TDC7200 on and off.
 		"""
 
-		if cycles not in [2, 10, 20, 40]:
+		bit_map = {2: 0x00, 10: 0x01, 20: 0b10, 40: 0b11}
+		if cycles not in bit_map:
 			raise ArgumentError("cycles must be one of 2, 10, 20 or 40", cycles=cycles)
 
-		config2 = (cycles << 6)
+		config2 = (bit_map[cycles] << 6)
 		config1 = (1 << 7) | (1 << 1) | 1
 		
-		self.set_power(True)
+		if do_power:
+			self.set_power(True)
 		
 		self.write_tdc7200(1, config2)
 		self.write_tdc7200(0, config1)
@@ -116,6 +119,34 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		cycle1 = self.read_tdc7200_24bit(0x1B)
 		cycleN = self.read_tdc7200_24bit(0x1C)
 
-		self.set_power(False)
+		if do_power:
+			self.set_power(False)
 
 		return {'1 cycle': cycle1, 'N cycles': cycleN}
+
+	@param("cycles", "integer", "positive", desc="Number of clock cycles to use (2, 10, 20 or 40)")
+	@param("repeat", "integer", "positive", desc="Number of times to perform the measurement")
+	def oscillator_jitter(self, cycles=10, averages=100):
+		"""
+		Measure the ring oscillator jitter
+
+		Sample the ring oscillator period many times and compute the mean and std deviation
+		given that the external oscillator frequency is 8 Mhz.
+		"""
+
+		times = []
+		self.set_power(True)
+
+		for i in xrange(0, averages):
+			res = self.oscillator_period(cycles, do_power=False)
+
+			time1 = res['1 cycle']
+			timeN = res['N cycles']
+
+			count_est = (timeN - time1) / (cycles - 1.0)
+			time_est = (1.0/8.0)/count_est * 1e6
+			times.append(time_est)
+			
+		self.set_power(False)
+
+		print times
