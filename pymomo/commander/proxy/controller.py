@@ -1,5 +1,6 @@
 import proxy
 import proxy12
+import pymomo.commander.proxy
 from pymomo.commander.exceptions import *
 from pymomo.commander.types import *
 from pymomo.commander.cmdstream import *
@@ -91,7 +92,8 @@ class MIBController (proxy.MIBProxyObject):
 
 	@param("name", "string", desc="module name")
 	@param("address", "integer", ("range", 11, 127), desc="modules address")
-	def get_module(self, name=None, address=None, force=False):
+	@param("type", "string", desc="type of proxy object to return")
+	def get_module(self, name=None, address=None, force=False, type=None):
 		"""
 		Given a module name or a fixed address, return a proxy object
 		for that module if it is connected to the bus.  If force is True
@@ -111,7 +113,12 @@ class MIBController (proxy.MIBProxyObject):
 
 		for mod in mods:
 			if name == mod.name or address == mod.address:
-				obj = proxy12.MIB12ProxyObject(self.stream, mod.address)
+				typeobj = proxy12.MIB12ProxyObject
+				if type is not None:
+					if hasattr(pymomo.commander.proxy, type):
+						typeobj = getattr(pymomo.commander.proxy, type)
+
+				obj = typeobj(self.stream, mod.address)
 				obj.name = mod.name
 				return obj
 
