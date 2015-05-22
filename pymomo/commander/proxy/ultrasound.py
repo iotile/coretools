@@ -150,3 +150,22 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		self.set_power(False)
 
 		print times
+
+	@param("gain", "integer", desc="PGA Gain to Use")
+	@param("lna", "bool", desc="Use LNA")
+	@param("pulses", "integer", "positive", desc="Number of pulses to transmit")
+	@param("threshold", "integer", desc="Treshold to use for qualifying echos (0-7)")
+	@param("min_recepts", "integer", desc="Number of echos that must be received")
+	@return_type("integer")
+	def take_level_measurement(self, gain, lna, pulses, threshold, min_recepts):
+		"""
+		Instruct the ultrasonic module to take a level measurement
+
+		The supplied parameters determine the analog gain and threshold limits as well
+		as the number of pulses to transmit and how many must be received for a valid
+		measurement.
+		"""
+
+		res = self.rpc(100, 6, min_recepts, pulses, gain, lna, threshold, result_type=(0, True))
+
+		return ord(res['buffer'][0])
