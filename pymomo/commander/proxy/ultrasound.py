@@ -86,6 +86,11 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 
 		res = self.rpc(110, 4, address, value)
 
+	@param("time", "integer", desc="Masking period duration in 8ths of a microsecond")
+	def set_masking_period(self, time):
+		write_tdc7200(0x09, time & 0xFF)
+		write_tdc7200(0x08, (time >> 8) & 0xFF)
+
 	@param("cycles", "integer", "positive", desc="Number of clock cycles to use (2, 10, 20 or 40)")
 	@return_type("map(string,integer)")
 	def oscillator_period(self, cycles, do_power=True):
