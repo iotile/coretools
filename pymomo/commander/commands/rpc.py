@@ -75,9 +75,6 @@ class RPCCommand (Command):
 		if num_bufs > 1:
 			raise ValueError("You must pass at most 1 buffer. num_bufs=%d" % num_bufs)
 
-		if num_ints > 4:
-			raise ValueError("You must pass at most 4 integers. num_ints=%d" % num_ints)
-
 		if len(fmtd) > 20:
 			raise ValueError("Arguments are greater then the maximum mib packet size, size was %d" % len(fmtd))
 

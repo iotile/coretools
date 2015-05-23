@@ -166,6 +166,18 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		measurement.
 		"""
 
-		res = self.rpc(100, 6, min_recepts, pulses, gain, lna, threshold, result_type=(0, True))
+		res = self.rpc(110, 6, pulses, min_recepts, gain, int(not lna), threshold, result_type=(0, True))
 
-		return ord(res['buffer'][0])
+		if len(res['buffer']) == 1:
+			return ord(res['buffer'][0])
+
+		for i in xrange(0, 5):
+			lsb = ord(res['buffer'][i*4 + 0])
+			n1sb = ord(res['buffer'][i*4 + 1])
+			n2sb = ord(res['buffer'][i*4 + 2])
+			msb = ord(res['buffer'][i*4 + 3])
+
+			tof = msb << 24 | n2sb << 16 | n1sb << 8 | lsb;
+			print "TOF %d: %.3f us" % (i+1, tof/1e6)
+
+		return 0
