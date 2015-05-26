@@ -160,9 +160,9 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 	@param("lna", "bool", desc="Use LNA")
 	@param("pulses", "integer", "positive", desc="Number of pulses to transmit")
 	@param("threshold", "integer", desc="Treshold to use for qualifying echos (0-7)")
-	@param("min_recepts", "integer", desc="Number of echos that must be received")
+	@param("mask", "float", desc="Number of microseconds to mask (rounded to nearest 8th of a microsecond")
 	@return_type("integer")
-	def take_level_measurement(self, gain, lna, pulses, threshold, min_recepts):
+	def take_level_measurement(self, gain, lna, pulses, threshold, mask):
 		"""
 		Instruct the ultrasonic module to take a level measurement
 
@@ -171,7 +171,10 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		measurement.
 		"""
 
-		res = self.rpc(110, 6, pulses, min_recepts, gain, int(not lna), threshold, result_type=(0, True))
+		mask_cycles = int(mask*8)
+
+		self.set_power(True)
+		res = self.rpc(110, 6, pulses, 0, gain, int(not lna), threshold, mask_cycles, result_type=(0, True))
 
 		if len(res['buffer']) == 1:
 			return ord(res['buffer'][0])
