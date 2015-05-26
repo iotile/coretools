@@ -9,7 +9,7 @@ from time import sleep
 from pymomo.utilities.typedargs.annotate import annotated,param,return_type, context
 from pymomo.utilities import typedargs
 from itertools import product
-
+from pymomo.exceptions import *
 
 @context("UltrasonicModule")
 class UltrasonicModule (proxy12.MIB12ProxyObject):
@@ -203,8 +203,8 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 
 		items = product(gain1, gain2, thresh)
 
-		output = map(lambda x: x[2] * pow(10.0, -(gain1 + gain2)/20.0), items)
-		codes = product(gain1_code, gain2_code, thresh_code)
+		output = map(lambda x: x[2] * pow(10.0, -(x[0] + x[1])/20.0), items)
+		codes = [x for x in product(gain1_code, gain2_code, thresh_code)]
 
 		return {output[i]: codes[i] for i in xrange(0, len(codes))}
 
@@ -217,42 +217,47 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		"""
 
 		cycle_time = int(time*8.0)
-		start_cycle = cycle_time - 1
-		start_mask = start_cycle*8.0
+		start_cycle = cycle_time - 2
+		start_mask = start_cycle/8.0
 
 		gains = self._generate_thresholds()
 
 		gain_keys = sorted(gains.keys())
 		gain_range = [0, len(gain_keys)-1]
 
-		echos = take_level_measurement(7, True, pulses, 0, start_mask)
+		echos = self.take_level_measurement(7, True, pulses, 0, start_mask)
 
-		if abs(echos[0] - time) > 0.125:
+		if len(echos) == 0 or abs(echos[0] - time) > 0.5:
 			raise InternalError("Could not find echo at requested time", time=time, start_mask=start_mask, found_echos=echos)
 
-		echos = take_level_measurement(0, False, pulses, 7, start_mask)
-		if abs(echos[0] - time) <= 0.125:
+		echos = self.take_level_measurement(0, False, pulses, 7, start_mask)
+		if len(echos) > 0 and abs(echos[0] - time) <= 0.5:
 			return 1500.
 
 		#Binary search to find the first gain where this echo does not occur
 		while gain_range[0] < gain_range[1]:
 			guess = (gain_range[0] + gain_range[1]) // 2
-			guess_gain = gain_keys[guess]]
+			guess_gain = gain_keys[guess]
 			guess_settings = gains[guess_gain]
 
-			echos = take_level_measurement(gain_settings[0], gain_settings[1], pulses, gain_settings[2], start_mask)
+			echos = self.take_level_measurement(guess_settings[0], guess_settings[1], pulses, guess_settings[2], start_mask)
 
 			#Check if echo disappeared
-			if abs(echos[0] - time) > 0.125:
-				gain_range[0] = guess + 1
-			else:
+			if len(echos) == 0 or abs(echos[0] - time) > 0.5:
+				print "Disappeared at %.2f" % guess_gain
+				print echos
 				gain_range[1] = guess - 1
+			else:
+				print "Appeared at %.2f" % guess_gain
+				gain_range[0] = guess + 1
 
+		guess_gain = gain_keys[gain_range[0]]
 		return guess_gain
 
 	@param('mode', 'string', desc='Type of measurement (level or flow)')
+	@param("pulses", "integer", "positive", desc="Number of pulses to transmit")
 	@return_type("map(float, float)")
-	def map_echos(self):
+	def map_echos(self, pulses):
 		"""
 		Find the amplitude of all received echos 
 
@@ -263,7 +268,23 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		Returns a map of TOF to amplitude in volts.
 		"""
 
-		pass
+		echos = self.find_echos(pulses)
+
+		self.set_power(True)
+
+		ampl = {}
+		for echo in echos:
+			try:
+				ampl[echo] = self.echo_amplitude(pulses, echo)
+
+				print "%.2f: %.1f" % (echo, ampl[echo])
+			except InternalError:
+				print "%.2f: Error" % echo
+				pass
+
+		self.set_power(False)
+
+		return ampl
 
 	@param("gain", "integer", desc="PGA Gain to Use")
 	@param("lna", "bool", desc="Use LNA")
