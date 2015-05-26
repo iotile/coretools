@@ -187,6 +187,48 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 
 		return echos
 
+	@param("pulses", "integer", "positive", desc="Number of pulses to send")
+	@param("time", "float", "nonnegative", desc="Time of the echo to map")
+	@return_type("float")
+	def echo_amplitude(self, pulses, time):
+		"""
+		Determine the amplitude of the echo at the given time
+		"""
+
+		cycle_time = int(time*8.0)
+		start_cycle = cycle_time - 1
+		start_mask = start_cycle*8.0
+
+		gains = {0: (0, False), 3: (1, False), 6: (2, False), 9: (3, False), 12: (4, False), 15: (5, False), 18: (6, False), 21: (7, False),
+				 20: (0, True), 23: (1, True), 26: (2, True), 29: (3, True), 32: (4, True), 35: (5, True), 38: (6, True), 41: (7, True)}
+
+		gain_keys = sorted(gains.keys())
+		gain_range = [0, len(gain_keys)-1]
+
+		echos = take_level_measurement(7, True, pulses, 0, start_mask)
+
+		if abs(echos[0] - time) > 0.125:
+			raise InternalError("Could not find echo at requested time", time=time, start_mask=start_mask, found_echos=echos)
+
+		echos = take_level_measurement(0, False, pulses, 0, start_mask)
+		if abs(echos[0] - time) <= 0.125:
+			return 35.0
+
+		#Binary search to find the first gain where this echo does not occur
+		while gain_range[0] < gain_range[1]:
+			guess = (gain_range[0] + gain_range[1]) // 2
+			guess_gain = gain_keys[guess]]
+			guess_settings = gains[guess_gain]
+
+			echos = take_level_measurement(gain_settings[0], gain_settings[1], pulses, 0, start_mask)
+
+			#Check if echo disappeared
+			if abs(echos[0] - time) > 0.125:
+				gain_range[0] = guess + 1
+			else:
+				gain_range[1] = guess - 1
+
+		return 35.0 / (guess_gain / 2.0)
 
 	@param('mode', 'string', desc='Type of measurement (level or flow)')
 	@return_type("map(float, float)")
