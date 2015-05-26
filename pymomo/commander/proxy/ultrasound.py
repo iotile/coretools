@@ -161,6 +161,7 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		print times
 		print offsets
 
+	@param("pulses", "integer", "positive", desc="Number of pulses to send")
 	@return_type("list(float)"):
 	def find_echos(self, pulses):
 		"""
