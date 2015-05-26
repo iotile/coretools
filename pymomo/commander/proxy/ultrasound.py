@@ -8,6 +8,8 @@ from pymomo.utilities.intelhex import IntelHex
 from time import sleep
 from pymomo.utilities.typedargs.annotate import annotated,param,return_type, context
 from pymomo.utilities import typedargs
+from itertools import product
+
 
 @context("UltrasonicModule")
 class UltrasonicModule (proxy12.MIB12ProxyObject):
@@ -187,6 +189,25 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 
 		return echos
 
+	def _generate_thresholds(self):
+		"""
+		Generate a map of all of the threshold voltages that the TDC1000 supports.
+		"""
+
+		thresh = [35., 50., 75., 125., 220., 410., 775., 1500.]
+		thresh_code = [0, 1, 2, 3, 4, 5, 6, 7]
+		gain1 = [0, 3, 6, 9, 12, 15, 18, 21]
+		gain1_code = [0, 1, 2, 3, 4, 5, 6, 7]
+		gain2 = [0, 20]
+		gain2_code = [False, True]
+
+		items = product(gain1, gain2, thresh)
+
+		output = map(lambda x: x[2] * pow(10.0, -(gain1 + gain2)/20.0), items)
+		codes = product(gain1_code, gain2_code, thresh_code)
+
+		return {output[i]: codes[i] for i in xrange(0, len(codes))}
+
 	@param("pulses", "integer", "positive", desc="Number of pulses to send")
 	@param("time", "float", "nonnegative", desc="Time of the echo to map")
 	@return_type("float")
@@ -199,8 +220,7 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		start_cycle = cycle_time - 1
 		start_mask = start_cycle*8.0
 
-		gains = {0: (0, False), 3: (1, False), 6: (2, False), 9: (3, False), 12: (4, False), 15: (5, False), 18: (6, False), 21: (7, False),
-				 20: (0, True), 23: (1, True), 26: (2, True), 29: (3, True), 32: (4, True), 35: (5, True), 38: (6, True), 41: (7, True)}
+		gains = self._generate_thresholds()
 
 		gain_keys = sorted(gains.keys())
 		gain_range = [0, len(gain_keys)-1]
@@ -210,9 +230,9 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		if abs(echos[0] - time) > 0.125:
 			raise InternalError("Could not find echo at requested time", time=time, start_mask=start_mask, found_echos=echos)
 
-		echos = take_level_measurement(0, False, pulses, 0, start_mask)
+		echos = take_level_measurement(0, False, pulses, 7, start_mask)
 		if abs(echos[0] - time) <= 0.125:
-			return 35.0
+			return 1500.
 
 		#Binary search to find the first gain where this echo does not occur
 		while gain_range[0] < gain_range[1]:
@@ -220,7 +240,7 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 			guess_gain = gain_keys[guess]]
 			guess_settings = gains[guess_gain]
 
-			echos = take_level_measurement(gain_settings[0], gain_settings[1], pulses, 0, start_mask)
+			echos = take_level_measurement(gain_settings[0], gain_settings[1], pulses, gain_settings[2], start_mask)
 
 			#Check if echo disappeared
 			if abs(echos[0] - time) > 0.125:
@@ -228,7 +248,7 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 			else:
 				gain_range[1] = guess - 1
 
-		return 35.0 / (guess_gain / 2.0)
+		return guess_gain
 
 	@param('mode', 'string', desc='Type of measurement (level or flow)')
 	@return_type("map(float, float)")
