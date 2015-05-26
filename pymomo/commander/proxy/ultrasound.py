@@ -88,8 +88,8 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 
 	@param("time", "integer", desc="Masking period duration in 8ths of a microsecond")
 	def set_masking_period(self, time):
-		write_tdc7200(0x09, time & 0xFF)
-		write_tdc7200(0x08, (time >> 8) & 0xFF)
+		self.write_tdc7200(0x09, time & 0xFF)
+		self.write_tdc7200(0x08, (time >> 8) & 0xFF)
 
 	@param("cycles", "integer", "positive", desc="Number of clock cycles to use (2, 10, 20 or 40)")
 	@return_type("map(string,integer)")
@@ -130,7 +130,7 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		return {'1 cycle': cycle1, 'N cycles': cycleN}
 
 	@param("cycles", "integer", "positive", desc="Number of clock cycles to use (2, 10, 20 or 40)")
-	@param("repeat", "integer", "positive", desc="Number of times to perform the measurement")
+	@param("averages", "integer", "positive", desc="Number of times to perform the measurement")
 	def oscillator_jitter(self, cycles=10, averages=100):
 		"""
 		Measure the ring oscillator jitter
@@ -140,6 +140,7 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		"""
 
 		times = []
+		offsets = []
 		self.set_power(True)
 
 		for i in xrange(0, averages):
@@ -151,10 +152,14 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 			count_est = (timeN - time1) / (cycles - 1.0)
 			time_est = (1.0/8.0)/count_est * 1e6
 			times.append(time_est)
+
+			offset = abs(1.0/8.0*1e6 - time_est*time1)
+			offsets.append(offset)
 			
 		self.set_power(False)
 
 		print times
+		print offsets
 
 	@param("gain", "integer", desc="PGA Gain to Use")
 	@param("lna", "bool", desc="Use LNA")
