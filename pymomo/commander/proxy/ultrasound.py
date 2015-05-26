@@ -177,6 +177,7 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		res = self.rpc(110, 6, pulses, 0, gain, int(not lna), threshold, mask_cycles, result_type=(0, True))
 
 		if len(res['buffer']) == 1:
+			self.set_power(False)
 			return ord(res['buffer'][0])
 
 		for i in xrange(0, 5):
@@ -188,4 +189,5 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 			tof = msb << 24 | n2sb << 16 | n1sb << 8 | lsb;
 			print "TOF %d: %.3f us" % (i+1, tof/1e6)
 
+		self.set_power(False)
 		return 0
