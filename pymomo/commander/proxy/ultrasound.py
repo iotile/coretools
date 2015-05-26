@@ -161,12 +161,53 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		print times
 		print offsets
 
+	@return_type("list(float)"):
+	def find_echos(self, pulses):
+		"""
+		Find all echos that we can at maximum sensitivity.
+
+		Returns a list of the time of each echo that we can find.
+		"""
+
+		echos = []
+		self.set_power(True)
+
+		start_mask = 0.0
+
+		while True:
+			curr_echos = take_level_measurement(7, True, pulses, 0, start_mask)
+			if len(curr_echos) == 0:
+				break
+
+			start_mask = curr_echos[-1] + 1.0/8.
+			echos += curr_echos
+
+		self.set_power(False)
+
+		return echos
+
+
+	@param('mode', 'string', desc='Type of measurement (level or flow)')
+	@return_type("map(float, float)")
+	def map_echos(self):
+		"""
+		Find the amplitude of all received echos 
+
+		Uses the programmable receive path of the TDC1000 to vary the threshold
+		and gain of the receiving transducer in order to determine the best guess
+		amplitude and time of each echo received in level measurement mode.
+
+		Returns a map of TOF to amplitude in volts.
+		"""
+
+		pass
+
 	@param("gain", "integer", desc="PGA Gain to Use")
 	@param("lna", "bool", desc="Use LNA")
 	@param("pulses", "integer", "positive", desc="Number of pulses to transmit")
 	@param("threshold", "integer", desc="Treshold to use for qualifying echos (0-7)")
 	@param("mask", "float", desc="Number of microseconds to mask (rounded to nearest 8th of a microsecond")
-	@return_type("integer")
+	@return_type("list(float)")
 	def take_level_measurement(self, gain, lna, pulses, threshold, mask):
 		"""
 		Instruct the ultrasonic module to take a level measurement
@@ -174,16 +215,18 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		The supplied parameters determine the analog gain and threshold limits as well
 		as the number of pulses to transmit and how many must be received for a valid
 		measurement.
+
+		Returns a list of the times of each echo in microseconds.
 		"""
 
 		mask_cycles = int(mask*8)
 
-		self.set_power(True)
 		res = self.rpc(110, 6, pulses, 0, gain, int(not lna), threshold, mask_cycles, result_type=(0, True))
 
 		if len(res['buffer']) == 1:
-			self.set_power(False)
-			return ord(res['buffer'][0])
+			return []
+
+		echos = []
 
 		for i in xrange(0, 5):
 			lsb = ord(res['buffer'][i*4 + 0])
@@ -192,7 +235,7 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 			msb = ord(res['buffer'][i*4 + 3])
 
 			tof = msb << 24 | n2sb << 16 | n1sb << 8 | lsb;
-			print "TOF %d: %.3f us" % (i+1, tof/1e6)
+			if tof > 0:
+				echos.append(float(tof)/1e6)
 
-		self.set_power(False)
-		return 0
+		return sorted(echos)
