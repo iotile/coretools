@@ -162,7 +162,7 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		print offsets
 
 	@param("pulses", "integer", "positive", desc="Number of pulses to send")
-	@return_type("list(float)"):
+	@return_type("list(float)")
 	def find_echos(self, pulses):
 		"""
 		Find all echos that we can at maximum sensitivity.
@@ -176,7 +176,7 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		start_mask = 0.0
 
 		while True:
-			curr_echos = take_level_measurement(7, True, pulses, 0, start_mask)
+			curr_echos = self.take_level_measurement(7, True, pulses, 0, start_mask)
 			if len(curr_echos) == 0:
 				break
 
