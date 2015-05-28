@@ -359,7 +359,50 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 
 		mask_cycles = int(mask*8)
 
-		res = self.rpc(110, 6, pulses, 0, gset[0], int(not gset[1]), threshold, mask_cycles, result_type=(0, True))
+		res = self.rpc(110, 6, pulses, 0, gset[0], int(not gset[1]), threshold, mask_cycles, 0b00, result_type=(0, True))
+
+		if len(res['buffer']) == 1:
+			return []
+
+		echos = []
+
+		for i in xrange(0, 5):
+			lsb = ord(res['buffer'][i*4 + 0])
+			n1sb = ord(res['buffer'][i*4 + 1])
+			n2sb = ord(res['buffer'][i*4 + 2])
+			msb = ord(res['buffer'][i*4 + 3])
+
+			tof = msb << 24 | n2sb << 16 | n1sb << 8 | lsb;
+			if tof > 0:
+				echos.append(float(tof)/1e6)
+
+		return sorted(echos)
+
+	@param("gain", "integer", desc="Total gain to use")
+	@param("pulses", "integer", "positive", desc="Number of pulses to transmit")
+	@param("threshold", "integer", desc="Treshold to use for qualifying echos (0-7)")
+	@param("mask", "float", desc="Number of microseconds to mask (rounded to nearest 8th of a microsecond")
+	@return_type("list(float)")
+	def take_tof_measurement(self, gain, pulses, threshold, mask):
+		"""
+		Instruct the ultrasonic module to take a TOF measurement
+
+		The supplied parameters determine the analog gain and threshold limits as well
+		as the number of pulses to transmit and how many must be received for a valid
+		measurement.
+
+		Returns a list of the times of each tof pulse reception in microseconds.
+		"""
+
+		gains = self._generate_gains()
+		if gain not in gains:
+			raise ArgumentError("Unknown gain not in the list of supported gains", gain=gain, supported_gains=gains)
+
+		gset = gains[gain]
+
+		mask_cycles = int(mask*8)
+
+		res = self.rpc(110, 6, pulses, 0, gset[0], int(not gset[1]), threshold, mask_cycles, 0b01, result_type=(0, True))
 
 		if len(res['buffer']) == 1:
 			return []
