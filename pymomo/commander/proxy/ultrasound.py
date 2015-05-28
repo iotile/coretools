@@ -164,21 +164,31 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		print offsets
 
 	@param("pulses", "integer", "positive", desc="Number of pulses to send")
+	@param("gain", "integer", "positive", desc="Gain to use")
+	@param("threshold", "integer", "nonnegative", desc="Threshold id")
 	@return_type("list(float)")
-	def find_echos(self, pulses):
+	def find_echos(self, pulses, gain, threshold):
 		"""
-		Find all echos that we can at maximum sensitivity.
+		Find all echos that we can at the desired sensitivity.
 
 		Returns a list of the time of each echo that we can find.
 		"""
 
+		gains = self._generate_gains()
+		if gain not in gains:
+			raise ArgumentError("Unknown gain not in the list of supported gains", gain=gain, supported_gains=gains)
+
+		gset = gains[gain]
+
 		echos = []
 		self.set_power(True)
+
+
 
 		start_mask = 0.0
 
 		while True:
-			curr_echos = self.take_level_measurement(7, True, pulses, 0, start_mask)
+			curr_echos = self.take_level_measurement(gset[0], gset[1], pulses, threshold, start_mask)
 			if len(curr_echos) == 0:
 				break
 
@@ -205,6 +215,23 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 
 		output = map(lambda x: x[2] * pow(10.0, -(x[0] + x[1])/20.0), items)
 		codes = [x for x in product(gain1_code, gain2_code, thresh_code)]
+
+		return {output[i]: codes[i] for i in xrange(0, len(codes))}
+
+	def _generate_gains(self):
+		"""
+		Generate a map of all of the gains that the TDC1000 supports.
+		"""
+
+		gain1 = [0, 3, 6, 9, 12, 15, 18, 21]
+		gain1_code = [0, 1, 2, 3, 4, 5, 6, 7]
+		gain2 = [0, 20]
+		gain2_code = [False, True]
+
+		items = product(gain1, gain2)
+
+		output = map(lambda x: x[0] + x[1], items)
+		codes = [x for x in product(gain1_code, gain2_code)]
 
 		return {output[i]: codes[i] for i in xrange(0, len(codes))}
 
@@ -244,11 +271,8 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 
 			#Check if echo disappeared
 			if len(echos) == 0 or abs(echos[0] - time) > 0.5:
-				print "Disappeared at %.2f" % guess_gain
-				print echos
 				gain_range[1] = guess - 1
 			else:
-				print "Appeared at %.2f" % guess_gain
 				gain_range[0] = guess + 1
 
 		guess_gain = gain_keys[gain_range[0]]
@@ -286,13 +310,37 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 
 		return ampl
 
-	@param("gain", "integer", desc="PGA Gain to Use")
-	@param("lna", "bool", desc="Use LNA")
+	@param("gain", "integer", desc="Total gain to use")
+	@param("pulses", "integer", "positive", desc="Number of pulses to transmit")
+	@param("threshold", "integer", desc="Treshold to use for qualifying echos (0-7)")
+	@param("mask", "float", desc="Number of microseconds to mask (rounded to nearest 8th of a microsecond")
+	@param("cycles", "integer", desc="Number of cycles to average")
+	@return_type("float")
+	def average_level(self, gain, pulses, threshold, mask, cycles=10):
+		"""
+		Average N level measurements and return the mean
+		"""
+
+		total = 0.0
+		cnt = 0
+
+		self.set_power(True)
+
+		for i in xrange(0, cycles):
+			res = self.take_level_measurement(gain, pulses, threshold, mask)
+			if len(res) > 0:
+				total += res[0]
+				cnt += 1
+
+		self.set_power(False)
+		return total/cnt
+
+	@param("gain", "integer", desc="Total gain to use")
 	@param("pulses", "integer", "positive", desc="Number of pulses to transmit")
 	@param("threshold", "integer", desc="Treshold to use for qualifying echos (0-7)")
 	@param("mask", "float", desc="Number of microseconds to mask (rounded to nearest 8th of a microsecond")
 	@return_type("list(float)")
-	def take_level_measurement(self, gain, lna, pulses, threshold, mask):
+	def take_level_measurement(self, gain, pulses, threshold, mask):
 		"""
 		Instruct the ultrasonic module to take a level measurement
 
@@ -303,9 +351,15 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		Returns a list of the times of each echo in microseconds.
 		"""
 
+		gains = self._generate_gains()
+		if gain not in gains:
+			raise ArgumentError("Unknown gain not in the list of supported gains", gain=gain, supported_gains=gains)
+
+		gset = gains[gain]
+
 		mask_cycles = int(mask*8)
 
-		res = self.rpc(110, 6, pulses, 0, gain, int(not lna), threshold, mask_cycles, result_type=(0, True))
+		res = self.rpc(110, 6, pulses, 0, gset[0], int(not gset[1]), threshold, mask_cycles, result_type=(0, True))
 
 		if len(res['buffer']) == 1:
 			return []
