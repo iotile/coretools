@@ -17,6 +17,7 @@ class Pic12UnitTest (unit_test.UnitTest):
 		#be overwritten by imported header information.
 		self.i2c_capture = None
 		self.checkpoints = []
+		self.ignore_checkpoints = True
 		self.slaves = []
 		self.masters = []
 		self.mibfile = None

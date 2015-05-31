@@ -74,6 +74,9 @@ class LogFile:
 			if entry.error():
 				return False
 
+		if testcase.ignore_checkpoints:
+			return True
+
 		#Make sure that all checkpoints were passed and logged the correct values
 		pts = testcase.checkpoints
 
@@ -84,6 +87,9 @@ class LogFile:
 
 		#Make sure the symbol and value match for each passed checkpoint
 		for expected, passed in zip(pts, passed_pts):
+			if self.symtab.map_address(passed.address) is None:
+				return False
+
 			passed_sym = self.symtab.map_address(passed.address)[0]
 
 			if passed_sym != expected[0]:

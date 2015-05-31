@@ -87,7 +87,7 @@
 
 			"app":
 			{
-				"extra_xc8_flags": ["--runtime=-init,+no_startup,-osccal,-clear,+clib,-plib,+download"],
+				"extra_xc8_flags": ["--runtime=+init,-no_startup,-osccal,+clear,+clib,-plib,+download"],
 				"is_exec": false
 			}
 		},

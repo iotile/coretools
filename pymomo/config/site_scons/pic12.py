@@ -42,6 +42,7 @@ def configure_env_for_xc8(env, **kwargs):
 	#set up definitions for this chip
 	defines = deepcopy(arch.property('defines'))
 	defines["kFirstApplicationRow"] = proc.first_app_page
+	defines["kApplicationAddress"] = proc.first_app_page*proc.row_size
 	defines["kFlashRowSize"] = proc.row_size
 	defines["kFlashMemorySize"] = proc.total_prog_mem
 	
@@ -69,7 +70,7 @@ def configure_env_for_xc8(env, **kwargs):
 		#Make sure we don't let the code overlap with the MIB map in high memory
 		env['ROMEXCLUDE'] = []
 
-		flags += ['-L-preset_vec=%xh' % (exec_range[1]+1)]
+		flags += ['--codeoffset=%x' % (exec_range[1]+1)]
 
 		mibstart = proc.mib_range[0]
 		lnk_cmd = '-L-Pmibblock=%xh' % mibstart
