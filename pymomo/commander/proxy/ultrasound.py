@@ -423,7 +423,8 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		self.threshold = threshold
 		self.mask = mask
 
-		self.rpc(110,7, self.gain, self.threshold, self.pulses, self.mask)
+		mask_cycles = int(self.mask*8)
+		self.rpc(110,7, self.gain, self.threshold, self.pulses, mask_cycles)
 
 	@param("average", "integer", "positive", desc="Total gain to use")
 	@return_type("float")
@@ -437,32 +438,23 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		if average not in mapper:
 			raise ArgumentError("Invalid number of averages, not a power of 2 between 1 and 128", readings=average)
 
-		res = self.rpc(110, 8, mapper[average], return_type=(0, True))
+		res = self.rpc(110, 8, mapper[average], result_type=(0, True))
 
-		lsb = ord(res['buffer'][i*4 + 0])
-		n1sb = ord(res['buffer'][i*4 + 1])
-		n2sb = ord(res['buffer'][i*4 + 2])
-		msb = ord(res['buffer'][i*4 + 3])
+		delta,tof1,tof2 = struct.unpack_from("<lll", res['buffer'])
+		
+		return float(delta)
 
-		tof = msb << 24 | n2sb << 16 | n1sb << 8 | lsb;
-		return float(tof)
-
-	@param("number", "integer", "positive", desc="Total number of measurements to take")
+	@param("average", "integer", "positive", desc="Number of averaging periods")
+	@param("count", "integer", "positive", desc="Number of samples to get")
 	@return_type("list(float)")
-	def tof_difference_histogram(self, number):
-		"""
-		Figure out the time of flight difference in two directions
-		"""
+	def tof_histogram(self, average, count):
+		vals = []
 
-		diffs = []
-		for i in xrange(0, number):
-			tof0 = self.take_tof_measurement(direction=0)
-			tof1 = self.take_tof_measurement(direction=1)
+		for i in xrange(0, count):
+			val = self.tof_difference(average)
+			vals.append(val)
 
-			diff = (tof1[0] - tof0[0])*1e6
-			diffs.append(diff)
-
-		return diffs
+		return vals
 
 	@return_type("list(float)")
 	def take_tof_measurement(self, direction=0):
