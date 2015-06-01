@@ -426,11 +426,13 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		mask_cycles = int(self.mask*8)
 		self.rpc(110,7, self.gain, self.threshold, self.pulses, mask_cycles)
 
-	@param("average", "integer", "positive", desc="Total gain to use")
 	@return_type("float")
-	def tof_difference(self, average):
+	def tof_difference(self):
 		"""
 		Figure out the time of flight difference in two directions
+
+		No filtering other than the built-in median filter is performed
+		and the raw delta TOF is reported in picoseconds.
 		"""
 
 		res = self.rpc(110, 8, , result_type=(0, True))
@@ -438,14 +440,17 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		
 		return float(delta)
 
-	@param("average", "integer", "positive", desc="Number of averaging periods")
-	@param("count", "integer", "positive", desc="Number of samples to get")
+	@param("count", "integer", "positive", desc="Number of samples to take")
 	@return_type("list(float)")
-	def tof_histogram(self, average, count):
+	def tof_histogram(self, count):
+		"""
+		Get a list of <<count>> TOF deltas for building a histogram
+		"""
+
 		vals = []
 
 		for i in xrange(0, count):
-			val = self.tof_difference(average)
+			val = self.tof_difference()
 			vals.append(val)
 
 		return vals
