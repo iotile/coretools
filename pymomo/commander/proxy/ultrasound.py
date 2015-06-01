@@ -432,15 +432,20 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		Figure out the time of flight difference in two directions
 		"""
 
-		diffs = []
-		for i in xrange(0, average):
-			tof0 = self.take_tof_measurement(direction=0)
-			tof1 = self.take_tof_measurement(direction=1)
+		mapper = {1: 0, 2: 1, 4:2, 8:3, 16:4, 32:5, 64:6, 128:7}
 
-			diff = (tof1[0] - tof0[0])*1e6
-			diffs.append(diff)
+		if average not in mapper:
+			raise ArgumentError("Invalid number of averages, not a power of 2 between 1 and 128", readings=average)
 
-		return sum(diffs)/len(diffs)
+		res = self.rpc(110, 8, mapper[average], return_type=(0, True))
+
+		lsb = ord(res['buffer'][i*4 + 0])
+		n1sb = ord(res['buffer'][i*4 + 1])
+		n2sb = ord(res['buffer'][i*4 + 2])
+		msb = ord(res['buffer'][i*4 + 3])
+
+		tof = msb << 24 | n2sb << 16 | n1sb << 8 | lsb;
+		return float(tof)
 
 	@param("number", "integer", "positive", desc="Total number of measurements to take")
 	@return_type("list(float)")
