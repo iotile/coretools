@@ -25,6 +25,11 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		super(UltrasonicModule, self).__init__(stream, addr)
 		self.name = 'Ultrasonic Module'
 
+		self.gain = 18
+		self.threshold = 1
+		self.pulses = 8
+		self.mask = 5
+
 	@param("power", "bool", desc="true to enable power")
 	def set_power(self, power):
 		"""
@@ -235,6 +240,36 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 
 		return {output[i]: codes[i] for i in xrange(0, len(codes))}
 
+	@return_type("map(string,bool)")
+	def tdc1000_get_error(self):
+		"""
+		Get the error flags register from the tdc1000 module
+		"""
+
+		val = self.read_tdc1000(7)
+
+		out = {}
+		out['high_signal'] = bool(val & (1 << 0))
+		out['no_signal'] = bool(val & (1 << 1))
+		out['weak_signal'] = bool(val & (1 << 2))
+
+		return out
+
+	@return_type("map(string,bool)")
+	def tdc7200_get_error(self):
+		"""
+		Get the error flags register from the tdc7200 module
+		"""
+
+		val = self.read_tdc7200(2)
+		out = {}
+		out['new_measurement'] = bool(val & (1 << 0))
+		out['coarse_overflow'] = bool(val & (1 << 1))
+		out['clock_overflow'] = bool(val & (1 << 2))
+		out['measurement_started'] = bool(val & (1 << 3))
+		out['measurement_complete'] = bool(val & (1 << 3))
+
+		return out
 	@param("pulses", "integer", "positive", desc="Number of pulses to send")
 	@param("time", "float", "nonnegative", desc="Time of the echo to map")
 	@return_type("float")
@@ -335,12 +370,8 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		self.set_power(False)
 		return total/cnt
 
-	@param("gain", "integer", desc="Total gain to use")
-	@param("pulses", "integer", "positive", desc="Number of pulses to transmit")
-	@param("threshold", "integer", desc="Treshold to use for qualifying echos (0-7)")
-	@param("mask", "float", desc="Number of microseconds to mask (rounded to nearest 8th of a microsecond")
 	@return_type("list(float)")
-	def take_level_measurement(self, gain, pulses, threshold, mask):
+	def take_level_measurement(self):
 		"""
 		Instruct the ultrasonic module to take a level measurement
 
@@ -352,14 +383,14 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		"""
 
 		gains = self._generate_gains()
-		if gain not in gains:
+		if self.gain not in gains:
 			raise ArgumentError("Unknown gain not in the list of supported gains", gain=gain, supported_gains=gains)
 
-		gset = gains[gain]
+		gset = gains[self.gain]
 
-		mask_cycles = int(mask*8)
+		mask_cycles = int(self.mask*8)
 
-		res = self.rpc(110, 6, pulses, 0, gset[0], int(not gset[1]), threshold, mask_cycles, 0b00, result_type=(0, True))
+		res = self.rpc(110, 6, pulses, 0, gset[0], int(not gset[1]), self.threshold, mask_cycles, 0b00, 1, result_type=(0, True))
 
 		if len(res['buffer']) == 1:
 			return []
@@ -382,8 +413,52 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 	@param("pulses", "integer", "positive", desc="Number of pulses to transmit")
 	@param("threshold", "integer", desc="Treshold to use for qualifying echos (0-7)")
 	@param("mask", "float", desc="Number of microseconds to mask (rounded to nearest 8th of a microsecond")
+	def set_parameters(self, gain, pulses, threshold, mask):
+		"""
+		Set measurement parameters for future measurements.
+		"""
+
+		self.gain = gain
+		self.pulses = pulses
+		self.threshold = threshold
+		self.mask = mask
+
+	@param("average", "integer", "positive", desc="Total gain to use")
+	@return_type("float")
+	def tof_difference(self, average):
+		"""
+		Figure out the time of flight difference in two directions
+		"""
+
+		diffs = []
+		for i in xrange(0, average):
+			tof0 = self.take_tof_measurement(direction=0)
+			tof1 = self.take_tof_measurement(direction=1)
+
+			diff = (tof1[0] - tof0[0])*1e6
+			diffs.append(diff)
+
+		return sum(diffs)/len(diffs)
+
+	@param("number", "integer", "positive", desc="Total number of measurements to take")
 	@return_type("list(float)")
-	def take_tof_measurement(self, gain, pulses, threshold, mask):
+	def tof_difference_histogram(self, number):
+		"""
+		Figure out the time of flight difference in two directions
+		"""
+
+		diffs = []
+		for i in xrange(0, number):
+			tof0 = self.take_tof_measurement(direction=0)
+			tof1 = self.take_tof_measurement(direction=1)
+
+			diff = (tof1[0] - tof0[0])*1e6
+			diffs.append(diff)
+
+		return diffs
+
+	@return_type("list(float)")
+	def take_tof_measurement(self, direction=0):
 		"""
 		Instruct the ultrasonic module to take a TOF measurement
 
@@ -395,16 +470,17 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		"""
 
 		gains = self._generate_gains()
-		if gain not in gains:
+		if self.gain not in gains:
 			raise ArgumentError("Unknown gain not in the list of supported gains", gain=gain, supported_gains=gains)
 
-		gset = gains[gain]
+		gset = gains[self.gain]
 
-		mask_cycles = int(mask*8)
+		mask_cycles = int(self.mask*8)
 
-		res = self.rpc(110, 6, pulses, 0, gset[0], int(not gset[1]), threshold, mask_cycles, 0b01, result_type=(0, True))
+		res = self.rpc(110, 6, self.pulses, 0, gset[0], int(not gset[1]), self.threshold, mask_cycles, 0b01, direction, result_type=(0, True))
 
 		if len(res['buffer']) == 1:
+			print "No echos"
 			return []
 
 		echos = []
