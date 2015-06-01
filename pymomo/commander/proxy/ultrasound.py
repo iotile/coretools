@@ -423,6 +423,8 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		self.threshold = threshold
 		self.mask = mask
 
+		self.rpc(110,7, self.gain, self.threshold, self.pulses, self.mask)
+
 	@param("average", "integer", "positive", desc="Total gain to use")
 	@return_type("float")
 	def tof_difference(self, average):
