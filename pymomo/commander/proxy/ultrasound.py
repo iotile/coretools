@@ -433,14 +433,8 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		Figure out the time of flight difference in two directions
 		"""
 
-		mapper = {1: 0, 2: 1, 4:2, 8:3, 16:4, 32:5, 64:6, 128:7}
-
-		if average not in mapper:
-			raise ArgumentError("Invalid number of averages, not a power of 2 between 1 and 128", readings=average)
-
-		res = self.rpc(110, 8, mapper[average], result_type=(0, True))
-
-		delta,tof1,tof2 = struct.unpack_from("<lll", res['buffer'])
+		res = self.rpc(110, 8, , result_type=(0, True))
+		delta = struct.unpack_from("<l", res['buffer'])
 		
 		return float(delta)
 
