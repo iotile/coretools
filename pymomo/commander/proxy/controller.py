@@ -485,7 +485,7 @@ class MIBController (proxy.MIBProxyObject):
 
 
 		res = self.rpc(42, 0x27, result_type=(0,True))
-		return str(res['buffer'])
+		return repr(res['buffer'])
 
 	def momo_attached(self):
 		resp, result = self.stream.send_cmd("attached")

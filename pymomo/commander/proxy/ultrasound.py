@@ -435,8 +435,8 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		and the raw delta TOF is reported in picoseconds.
 		"""
 
-		res = self.rpc(110, 8, , result_type=(0, True))
-		delta = struct.unpack_from("<l", res['buffer'])
+		res = self.rpc(110, 8, result_type=(0, True))
+		delta, = struct.unpack_from("<l", res['buffer'])
 		
 		return float(delta)
 
