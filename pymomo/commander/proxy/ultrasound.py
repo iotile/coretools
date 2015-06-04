@@ -441,6 +441,57 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		
 		return float(delta)
 
+	@return_type("integer")
+	@param("gain", "integer", "positive", desc="Gain to use")
+	@param("threshold", "integer", "nonnegative", desc="Threshold id")
+	def setting_variance(self, gain, threshold):
+		"""
+		Estimate the delta TOF variance in measurement accuracy
+		"""
+
+		res = self.rpc(110, 0xA, gain, threshold, result_type=(0, True))
+
+		var, = struct.unpack_from("<l", res['buffer'])
+		
+		return var
+
+	@return_type("integer")
+	def get_optimal_settings(self):
+		"""
+		Get the measurement variance at the optimal gain settings
+		"""
+
+		res = self.rpc(110, 0xB, result_type=(0, True))
+
+		var,gain,threshold, err = struct.unpack_from("<lBBB", res['buffer'])
+
+		if err != 0:
+			raise InternalError("No signal, could not optimize settings")
+
+		print "Optimal Gain:", gain
+		print "Optimal Threshold:", threshold
+
+		return var
+
+	@return_type("float")
+	def noise_floor(self):
+		"""
+		Find the noise floor of the ultrasound module in microvolts
+
+		Cycle through all of the gain conditions until background noise
+		excites the module and report the highest gain that can be used
+		without being affected by noise.
+		"""
+
+		res = self.rpc(110, 9, result_type=(0, True))
+
+		delta, threshold, gain = struct.unpack_from("<LLL", res['buffer'])
+		
+		print threshold
+		print gain
+
+		return float(delta)
+
 	@param("count", "integer", "positive", desc="Number of samples to take")
 	@return_type("list(float)")
 	def tof_histogram(self, count):
