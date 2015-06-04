@@ -435,7 +435,7 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		and the raw delta TOF is reported in picoseconds.
 		"""
 
-		res = self.rpc(110, 8, , result_type=(0, True))
+		res = self.rpc(110, 8, result_type=(0, True))
 		delta = struct.unpack_from("<l", res['buffer'])
 		
 		return float(delta)
@@ -460,9 +460,8 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		"""
 		Instruct the ultrasonic module to take a TOF measurement
 
-		The supplied parameters determine the analog gain and threshold limits as well
-		as the number of pulses to transmit and how many must be received for a valid
-		measurement.
+		The previously supplied parameters to set_parameters determine the analog gain and threshold limits 
+		as well as the number of pulses to transmit and how many must be received for a valid measurement.
 
 		Returns a list of the times of each tof pulse reception in microseconds.
 		"""
