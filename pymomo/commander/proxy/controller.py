@@ -10,7 +10,7 @@ from pymomo.utilities.intelhex import IntelHex
 from time import sleep
 from datetime import datetime
 from pymomo.syslog import RawLogEntry, SystemLog
-from pymomo.utilities.typedargs.annotate import annotated,param,returns, context
+from pymomo.utilities.typedargs.annotate import annotated,param,returns, context, return_type
 from pymomo.utilities import typedargs
 from pymomo.exceptions import *
 import itertools
@@ -483,9 +483,27 @@ class MIBController (proxy.MIBProxyObject):
 		This contains the response to the last command sent to the unit.
 		"""
 
-
 		res = self.rpc(42, 0x27, result_type=(0,True))
 		return repr(res['buffer'])
+
+	@return_type("integer")
+	@param("message", "string", desc="Message to send with broadcast packets (<=20 bytes)")
+	def bt_setbroadcast(self, message):
+		"""
+		Set the message sent with broadcast packets for this device.
+
+		The message needs to be <= 20 bytes long.  The call returns a
+		status code from the BTLE module indicating success or failure.
+
+		A return value of 0 is success.
+		"""
+
+		if len(message) > 20:
+			raise ArgumentError("Message too long (limit = 20 bytes)", message=message)
+
+		res = self.rpc(42, 0x28, message, result_type=(1, False))
+
+		return res['ints'][0]
 
 	def momo_attached(self):
 		resp, result = self.stream.send_cmd("attached")
