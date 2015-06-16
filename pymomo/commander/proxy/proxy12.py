@@ -71,5 +71,5 @@ class MIB12ProxyObject (proxy.MIBProxyObject):
 		try:
 			self.rpc(0, 1)
 		except RPCException as e:
-			if e.type != 63:
+			if e.type != 127:
 				raise e 
