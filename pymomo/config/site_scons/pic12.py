@@ -58,7 +58,7 @@ def configure_env_for_xc8(env, **kwargs):
 		env['ROMSTART'] = proc.exec_rom[0]
 		env['ROMEND'] = proc.exec_rom[1]
 
-		flags += ['-L-Pmibapi=%xh' % env['MIB_API_BASE'], '-L-Papp_vectors=%xh' % proc.app_rom[0]] #Place the MIB api in the right place
+		flags += ['-L-Pmibapi=%xh' % env['MIB_API_BASE']] #Place the MIB api in the right place
 
 		env['RAMEXCLUDE'] =  proc.app_ram
 	else:
