@@ -35,7 +35,7 @@ def build_unittest(test, arch, summary_env, cmds=None):
 		orig_name = 'mib12_executive_symbols'
 		env['ARCH'] = arch.retarget(remove=['exec'], add=['app'])
 		pic12.configure_env_for_xc8(env, force_app=True)
-		test_harness = ['../test/pic12/exec_harness/mib12_exec_unittest.c', '../test/pic12/exec_harness/mib12_api.as', '../test/pic12/exec_harness/mib12_exec_unittest_startup.as', '../test/pic12/gpsim_logging/test_log.as', '../test/pic12/gpsim_logging/test_mib.as']
+		test_harness = ['../test/pic12/exec_harness/mib12_exec_unittest.c', '../test/pic12/exec_harness/mib12_api.as', '../test/pic12/gpsim_logging/test_log.as', '../test/pic12/gpsim_logging/test_mib.as']
 	elif type == "application":
 		orig_name = "mib12_app_module_symbols"
 
