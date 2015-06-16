@@ -28,7 +28,7 @@ class MIBProxyObject (object):
 		res = r.parse_result(*res_type)
 
 		if "raise" not in kw or kw['raise'] == True:
-			if res['status'] != 0:
+			if res['status'] != 0 or res['error'] != 'No Error':
 				raise RPCException(res['status'], res['error'])
 
 		return res

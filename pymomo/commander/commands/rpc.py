@@ -97,13 +97,19 @@ class RPCCommand (Command):
 		self.status = status
 		self.complete_status = status_value
 
-		if status == 254:
+		if status_value == 254:
 			buf, term = stream.read_frame()
 			self.result = buf
 			return buf, term
 
-		if status == 0:
+		print "Complete Status:", bin(status_value)
+		print "Status Code:", status
+
+		#Only read data if the command was successful and the module did not return busy
+		if status == 0 and status_value != 0:
 			num_bytes = ord(stream.trans.read())
+			print "Length:", num_bytes
+
 			buf = stream.trans.read(num_bytes)
 			self.result = buf
 
@@ -112,11 +118,15 @@ class RPCCommand (Command):
 
 		return self.result, stream.parse_term(seq)
 
+	#FIXME: Update these to correspond with the new error codes
 	def parse_result(self, num_ints, buff):
 		parsed = {'ints':[], 'buffer':"", 'status': self.status, 'error': 'No Error'}
 
 		if self.status == 254:
 			parsed['error'] = self.result
+			return parsed
+		elif self.complete_status == 0:
+			parsed['error'] = 'Module Busy'
 			return parsed
 		elif self.status != 0:
 			if self.status == 1:

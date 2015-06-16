@@ -63,7 +63,6 @@ class CMDStream:
 		was received, return false otherwise.
 		"""
 
-
 		self.trans.write(chr(255))
 		
 		c = self.trans.read()
