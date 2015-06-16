@@ -102,13 +102,9 @@ class RPCCommand (Command):
 			self.result = buf
 			return buf, term
 
-		print "Complete Status:", bin(status_value)
-		print "Status Code:", status
-
 		#Only read data if the command was successful and the module did not return busy
 		if status == 0 and status_value != 0:
 			num_bytes = ord(stream.trans.read())
-			print "Length:", num_bytes
 
 			buf = stream.trans.read(num_bytes)
 			self.result = buf
@@ -120,31 +116,40 @@ class RPCCommand (Command):
 
 	#FIXME: Update these to correspond with the new error codes
 	def parse_result(self, num_ints, buff):
-		parsed = {'ints':[], 'buffer':"", 'status': self.status, 'error': 'No Error'}
+		parsed = {'ints':[], 'buffer':"", 'error': 'No Error', 'is_error': False}
 
-		if self.status == 254:
+		status_code = self.status
+		complete_status = self.complete_status & 0b01111111
+
+		#Check for a command stream layer error
+		if self.complete_status == 254:
 			parsed['error'] = self.result
+			parsed['status'] = self.complete_status
+			parsed['is_error'] = True
+
 			return parsed
-		elif self.complete_status == 0:
-			parsed['error'] = 'Module Busy'
+
+		parsed['status'] = complete_status
+
+		#Check if the module was not found
+		if self.complete_status == 0xFF:
+			parsed['error'] = 'Module at address ' + str(self.addr) + ' not found.'
+			parsed['is_error'] = True
 			return parsed
-		elif self.status != 0:
-			if self.status == 1:
-				parsed['error'] = 'Unsupported Command'
-			elif self.status == 2:
-				parsed['error'] = 'Wrong Parameter Type'
-			elif self.status == 3:
-				parsed['error'] = 'Parameter Too Long'
-			elif self.status == 4:
+
+		#Check for protocol defined errors
+		if not complete_status & (1<<6):
+			#This is a protocol defined error since the App Defined bit is not set
+			if status_code == 0:
+				parsed['error'] = 'Module Busy'
+			elif status_code == 1:
 				parsed['error'] = 'Checksum Error'
-			elif self.status == 6:
-				parsed['error'] = 'Unknown Error'
-			elif self.status == 7:
-				parsed['error'] = 'Callback Error'
-			elif self.complete_status == 0xFF:
-				parsed['error'] = 'Module at address ' + str(self.addr) + ' not found.'
+			elif status_code == 2:
+				parsed['error'] = 'Unsupported Command'
 			else:
 				parsed['error'] = 'Unrecognized MIB status code'
+
+			parsed['is_error'] = True
 			return parsed
 
 		#Otherwise, parse the results according to the type information given
