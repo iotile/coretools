@@ -4,7 +4,7 @@ import shlex
 
 from pymomo.utilities.typedargs.shell import HierarchicalShell, posix_lex
 from pymomo.exceptions import *
-from pymomo.utilities.typedargs import annotate
+from pymomo.utilities.typedargs import annotate, type_system
 from pymomo.commander.meta import initialization
 from pymomo.utilities import build
 from pymomo.utilities.rcfile import RCFile
@@ -12,6 +12,7 @@ from multiprocessing import freeze_support
 import traceback
 
 def main():
+	type_system.interactive = True
 	line = sys.argv[1:]
 
 	norc=False
@@ -34,6 +35,7 @@ def main():
 	shell.root_add('ControllerBlock', "pymomo.hex,ControllerBlock")
 	shell.root_add('HexFile', "pymomo.hex,HexFile")
 	shell.root_add('Simulator', "pymomo.sim,Simulator")
+	shell.root_add('hw', "pymomo.commander.hwmanager,HardwareManager")
 
 	finished = False
 

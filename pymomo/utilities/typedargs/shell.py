@@ -272,11 +272,18 @@ class HierarchicalShell:
 
 		path = ".".join([annotate.context_name(x) for x in self.contexts])
 
+		#Make sure we don't clutter up the output with return values from
+		#initialization functions
+		old_interactive = type_system.interactive
+		type_system.interactive = False
+
 		for key,cmds in self.init_commands.iteritems():
 			if path.endswith(key):
 				for cmd in cmds:
 					line = shlex.split(cmd, posix=posix_lex)
 					self.invoke(line)
+
+		type_system.interactive = old_interactive
 
 	def invoke(self, line):
 		"""
@@ -343,7 +350,8 @@ class HierarchicalShell:
 			self.contexts.pop()
 		elif val is not None:
 			if annotate.check_returns_data(func):
-				annotate.print_retval(func, val)
+				if type_system.interactive:
+					annotate.print_retval(func, val)
 			else:
 				self.contexts.append(val)
 				self._check_initialize_context()
