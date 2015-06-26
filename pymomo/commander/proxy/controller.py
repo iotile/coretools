@@ -1,5 +1,5 @@
-import proxy
-import proxy12
+from pymomo.commander.proxy import proxy
+from pymomo.commander.proxy import proxy12
 import pymomo.commander.proxy
 from pymomo.commander.exceptions import *
 from pymomo.commander.types import *
@@ -12,10 +12,15 @@ from datetime import datetime
 from pymomo.syslog import RawLogEntry, SystemLog
 from pymomo.utilities.typedargs.annotate import annotated,param,returns, context, return_type
 from pymomo.utilities import typedargs
+from pymomo.utilities.typedargs import type_system, iprint
 from pymomo.exceptions import *
+from tempfile import NamedTemporaryFile
+from pymomo.hex16.convert import *
 import itertools
 import base64
 import uuid
+import os
+import sys
 
 #Formatters for the return types used in this class
 def print_module_list(mods):
@@ -35,8 +40,8 @@ class MIBController (proxy.MIBProxyObject):
 	MaxModuleFirmwares = 4
 
 	@annotated
-	def __init__(self, stream):
-		super(MIBController, self).__init__(stream, 8)
+	def __init__(self, stream, address=8):
+		super(MIBController, self).__init__(stream, address)
 		self.name = 'Controller'
 
 	@returns(desc='number of attached module', data=True)
@@ -48,7 +53,7 @@ class MIBController (proxy.MIBProxyObject):
 		res = self.rpc(42, 1, result_type=(1, False))
 		return res['ints'][0]
 
-	def reflash(self):
+	def _reflash(self):
 		try:
 			self.rpc(42, 0xA)
 		except RPCException as e:
@@ -80,15 +85,67 @@ class MIBController (proxy.MIBProxyObject):
 
 		log = []
 
+		pb = ProgressBar("Downloading %d log entries" % count, count)
+
+		pb.start()
 		for i in xrange(0, count):
 			res = self.rpc(42, 0x22, i, 0, result_type=(0, True))
 			try:
 				log.append(RawLogEntry(res['buffer']))
 			except ValidationError as e:
-				print "FAILED TO PARSE A LOG ENTRY, %d entries discarded" % (count - i)
+				iprint("FAILED TO PARSE A LOG ENTRY, %d entries discarded" % (count - i))
 				break
 
+			pb.progress(i)
+
+		pb.end()
+
 		return SystemLog(log)
+
+	def _convert_hex24(self, hexfile):
+		"""
+		Convert a hex file for the pic24 from 4 bytes per 2 words to 3 bytes per two words
+
+		This is how the file is stored on the MoMo Controller to save space.
+		"""
+
+		tmpf = NamedTemporaryFile(delete=False)
+		tmpf.close()
+
+		tmp = tmpf.name
+
+		out = unpad_pic24_hex(hexfile)
+		out.write_hex_file(tmp)
+		return tmp
+
+	@param("hexfile", "path", "readable", desc="new controller hex file")
+	def reflash(self, hexfile):
+		"""
+		Reflash the controller with a new application image.
+
+		Given a path to a hexfile, push it onto the controller and then
+		tell the controller to reflash itself.  This is a synchronous command
+		that will return once the reflash operation is complete and the new code
+		is running on the controller.  Any errors in the process will be raised.
+		"""
+
+		processed = self._convert_hex24(hexfile)
+		self.push_firmware(processed, 5)
+		os.remove(processed)
+		self._reflash()
+
+		sleep(0.5)
+		if not self.alarm_asserted():
+			raise HardwareError("Could not reflash controller", reason="Controller reflash NOT DETECTED.  You may need to try the recovery procedure.")
+
+		iprint("Reflash in progress")
+		while self.alarm_asserted():
+			if type_system.interactive:
+				sys.stdout.write('.')
+				sys.stdout.flush()
+
+			sleep(0.1)
+		iprint("\nReflash complete.")
 
 	@param("name", "string", desc="module name")
 	@param("address", "integer", ("range", 11, 127), desc="modules address")
@@ -107,7 +164,7 @@ class MIBController (proxy.MIBProxyObject):
 			obj.name = 'Unknown'
 			return obj
 
-		mods = self.enumerate_modules()
+		mods = self.list_modules()
 		if name is not None and len(name) < 7:
 			name += (' '*(7 - len(name)))
 
@@ -125,7 +182,7 @@ class MIBController (proxy.MIBProxyObject):
 		raise ValueError("Could not find module by name or address (name=%s, address=%s)" % (str(name), str(address)))
 
 	@returns(desc='list of attached modules', printer=print_module_list, data=True)
-	def enumerate_modules(self):
+	def list_modules(self):
 		"""
 		Get list of all attached modules and describe them all
 		"""

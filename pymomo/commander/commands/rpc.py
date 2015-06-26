@@ -86,34 +86,6 @@ class RPCCommand (Command):
 
 		return fmtd
 
-
-	def handle_result(self, stream):
-		"""
-		rpc command on 
-		"""
-		status_value = ord(stream.trans.read())
-		status = status_value & 0b00111111
-
-		self.status = status
-		self.complete_status = status_value
-
-		if status_value == 254:
-			buf, term = stream.read_frame()
-			self.result = buf
-			return buf, term
-
-		#Only read data if the command was successful and the module did not return busy
-		if status == 0 and status_value != 0:
-			num_bytes = ord(stream.trans.read())
-
-			buf = stream.trans.read(num_bytes)
-			self.result = buf
-
-		seq = stream.trans.read()
-		self.status = status
-
-		return self.result, stream.parse_term(seq)
-
 	#FIXME: Update these to correspond with the new error codes
 	def parse_result(self, num_ints, buff):
 		parsed = {'ints':[], 'buffer':"", 'error': 'No Error', 'is_error': False}
