@@ -5,7 +5,6 @@ import shlex
 from pymomo.utilities.typedargs.shell import HierarchicalShell, posix_lex
 from pymomo.exceptions import *
 from pymomo.utilities.typedargs import annotate, type_system
-from pymomo.commander.meta import initialization
 from pymomo.utilities import build
 from pymomo.utilities.rcfile import RCFile
 from multiprocessing import freeze_support
@@ -26,9 +25,7 @@ def main():
 		return 0
 
 	shell = HierarchicalShell('momo', no_rc=norc)
-	
-	shell.root_update(annotate.find_all(initialization))
-	
+		
 	shell.root_add("build", "pymomo.utilities.build,build")
 	shell.root_add("SystemLog", "pymomo.syslog")
 	shell.root_add("pcb", "pymomo.pcb")
