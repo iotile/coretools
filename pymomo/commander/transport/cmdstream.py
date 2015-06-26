@@ -21,7 +21,7 @@ class CMDStream:
 		"""
 
 		if not hasattr(self, '_check_alarm'):
-			raise HardwareError("Command stream selected does not support checking alarm status")
+			raise StreamOperationNotSupportedError(command="check_alarm")
 
 	def set_alarm(self, status):
 		"""
@@ -32,16 +32,18 @@ class CMDStream:
 		"""
 
 		if not hasattr(self, '_set_alarm'):
-			raise HardwareError("Command stream selected does not support setting the alarm line")
+			raise StreamOperationNotSupportedError(command="set_alarm")
 
 	def send_rpc(self, address, feature, command, *args):
 		if not hasattr(self, '_send_rpc'):
-			raise HardwareError("Command stream selected does not support sending RPCs")
+			raise StreamOperationNotSupportedError(command="send_rpc")
 
 	def heartbeat(self):
 		if not hasattr(self, '_heartbeat'):
-			raise HardwareError("Command stream selected does not support heartbeats")
+			raise StreamOperationNotSupportedError(command="heartbeat")
+
+		return self._heartbeat()
 
 	def reset(self):
 		if not hasattr(self, '_reset'):
-			raise HardwareError("Command stream selected does not support resetting itself")
+			raise StreamOperationNotSupportedError(command="reset")

@@ -1,6 +1,6 @@
 from pymomo.utilities.typedargs import *
 
-from pymomo.commander import transport, cmdstream
+from pymomo.commander.transport import *
 from pymomo.commander.exceptions import *
 from pymomo.exceptions import *
 from pymomo.utilities.typedargs.annotate import param, return_type
@@ -44,6 +44,7 @@ class HardwareManager:
 		if arg != "":
 			self.port = arg
 
+		self.stream = self._create_stream()
 		self.proxies = {}
 		self.name_map = {}
 
@@ -78,6 +79,10 @@ class HardwareManager:
 		con = self._create_proxy('MIBController', 8) #Controllers always have address 8
 		con.hwmanager = self
 		return con
+
+	@return_type("bool")
+	def heartbeat(self):
+		return self.stream.heartbeat()
 
 	@param("path", "path", "readable", desc="path to module to load")
 	@return_type("integer")
@@ -158,9 +163,7 @@ class HardwareManager:
 			raise UnknownModuleTypeError("unknown proxy module specified", module_type=proxy, known_types=self.proxies.keys())
 
 		proxy_class = self.proxies[proxy]
-		stream = self._create_stream()
-
-		return proxy_class(stream, address)
+		return proxy_class(self.stream, address)
 
 	def _create_stream(self):
 		stream = None
@@ -172,10 +175,9 @@ class HardwareManager:
 			if serial_port == None:
 				raise NoSerialConnectionException(available_ports=_get_serial_ports())
 
-			stream = transport.SerialTransport(serial_port)
+			stream = SerialTransport(serial_port)
+			return FSUStream(stream)
 		elif self.transport == 'null':
-			stream = None
+			return FSUStream(None)
 		else:
 			raise ArgumentError("unknown connection method specified in HardwareManager", transport=self.transport)
-
-		return cmdstream.CMDStream(stream)

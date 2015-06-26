@@ -37,6 +37,30 @@ class FSUStream (CMDStream):
 		buffer, tchar = self.trans.read_until(CMDStream.term_chars)
 		return buffer, self.parse_term(tchar)
 
+	#FIXME: Remove this function
+	def send_cmd(self, cmd):
+		"""
+		Given a cmd string, append a newline if required and send it, waiting for
+		the response.
+		"""
+
+		#Convert the command to a unicode object
+		if not isinstance(cmd, basestring) and hasattr(cmd, "__str__"):
+			cmdstr = cmd.__str__()
+		else:
+			cmdstr = cmd
+
+		if cmdstr[-1] != '\n':
+			cmdstr += '\n'
+
+		self.trans.write(cmdstr)
+
+		#If there is a custom result handler, use that, otherwise read a standard frame
+		if hasattr(cmd, 'handle_result'):
+			return cmd.handle_result(self)
+		else:
+			return self.read_frame()
+
 	def _handle_rpc_result(self):
 		"""
 		Handle the RPC command result
@@ -75,7 +99,7 @@ class FSUStream (CMDStream):
 		status, payload = self._handle_rpc_result()
 		
 		return status, payload
-
+	
 	def _heartbeat(self):
 		"""
 		Send a heartbeat character on the line that the FSU should respond to with

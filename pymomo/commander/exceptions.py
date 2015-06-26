@@ -26,7 +26,7 @@ class StreamNotConnectedError(RPCError):
 	def __init__(self, **kwargs):
 		super(ModuleBusyError, self).__init__("Stream was not connected to any MoMo devices", **kwargs)
 
-class StreamOperationNotSupported(RPCError):
+class StreamOperationNotSupportedError(RPCError):
 	def __init__(self, **kwargs):
 		super(ModuleBusyError, self).__init__("Underlying command stream does not support the required operation", **kwargs)
 
