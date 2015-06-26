@@ -23,6 +23,8 @@ class CMDStream:
 		if not hasattr(self, '_check_alarm'):
 			raise StreamOperationNotSupportedError(command="check_alarm")
 
+		return self._check_alarm()
+
 	def set_alarm(self, status):
 		"""
 		Assert the alarm line is status is true, release it if status is false
@@ -34,9 +36,20 @@ class CMDStream:
 		if not hasattr(self, '_set_alarm'):
 			raise StreamOperationNotSupportedError(command="set_alarm")
 
+		return self._set_alarm(status)
+
 	def send_rpc(self, address, feature, command, *args):
 		if not hasattr(self, '_send_rpc'):
 			raise StreamOperationNotSupportedError(command="send_rpc")
+
+		status, payload = self._send_rpc(address, feature, command, *args)
+
+		if status == 0:
+			raise ModuleBusyError(address)
+		elif status == 0xFF:
+			raise ModuleNotFoundError(address)
+
+		return status, payload
 
 	def heartbeat(self):
 		if not hasattr(self, '_heartbeat'):

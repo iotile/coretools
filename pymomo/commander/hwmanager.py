@@ -82,7 +82,27 @@ class HardwareManager:
 
 	@return_type("bool")
 	def heartbeat(self):
+		"""
+		Check whether the underlying command stream is functional
+		"""
+
 		return self.stream.heartbeat()
+
+	@param("asserted", "bool", desc="Whether alarm should be asserted or released")
+	def set_alarm(self, asserted):
+		"""
+		Assert or release the alarm line
+		"""
+
+		self.stream.set_alarm(asserted)
+
+	@return_type("bool")
+	def check_alarm(self):
+		"""
+		Check whether the alarm line is asserted
+		"""
+
+		return self.stream.check_alarm()
 
 	@param("path", "path", "readable", desc="path to module to load")
 	@return_type("integer")

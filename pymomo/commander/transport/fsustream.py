@@ -24,20 +24,19 @@ class FSUStream (CMDStream):
 	def parse_term(self, char):
 		term = ord(char)
 
-		if term == CMDStream.ACK:
-			result = CMDStream.OkayResult
-		elif term == CMDStream.NACK:
-			result = CMDStream.ErrorResult
+		if term == FSUStream.ACK:
+			result = FSUStream.OkayResult
+		elif term == FSUStream.NACK:
+			result = FSUStream.ErrorResult
 		else:
 			raise HardwareError("Invalid terminator character encountered", stream_type="Field Service Unit", terminator=term)
 
 		return result
 
 	def read_frame(self):
-		buffer, tchar = self.trans.read_until(CMDStream.term_chars)
+		buffer, tchar = self.trans.read_until(FSUStream.term_chars)
 		return buffer, self.parse_term(tchar)
 
-	#FIXME: Remove this function
 	def send_cmd(self, cmd):
 		"""
 		Given a cmd string, append a newline if required and send it, waiting for
@@ -74,7 +73,7 @@ class FSUStream (CMDStream):
 
 		result = []
 		#Only read data if the command was successful and the module did not return busy
-		if status == 0 and status_value != 0:
+		if status == 0 and complete_status != 0:
 			num_bytes = ord(self.trans.read())
 
 			buf = self.trans.read(num_bytes)
@@ -122,3 +121,18 @@ class FSUStream (CMDStream):
 			return False 
 
 		return True
+
+	def _check_alarm(self):
+		resp, result = self.send_cmd("alarm status")
+		if result != FSUStream.OkayResult:
+			raise HardwareError("Alarm status command failed")
+
+		resp = resp.lstrip().rstrip()
+		val = int(resp)
+
+		if val == 0:
+			return True
+		elif val == 1:
+			return False
+		
+		raise HardwareError("Invalid result returned from 'alarm status' command: %s" % resp)

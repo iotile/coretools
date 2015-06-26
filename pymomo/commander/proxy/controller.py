@@ -56,9 +56,8 @@ class MIBController (proxy.MIBProxyObject):
 	def _reflash(self):
 		try:
 			self.rpc(42, 0xA)
-		except RPCException as e:
-			if e.type != 127:
-				raise e
+		except ModuleNotFoundError:
+			pass
 
 	def describe_module(self, index):
 		"""
@@ -502,19 +501,7 @@ class MIBController (proxy.MIBProxyObject):
 		the alarm is asserted (low value since it's active low).  Returns False otherwise
 		"""
 
-		resp, result = self.stream.send_cmd("alarm status")
-		if result != CMDStream.OkayResult:
-			raise RuntimeError("Alarm status command failed")
-
-		resp = resp.lstrip().rstrip()
-		val = int(resp)
-
-		if val == 0:
-			return True
-		elif val == 1:
-			return False
-		else:
-			raise RuntimeError("Invalid result returned from 'alarm status' command: %s" % resp)
+		return self.hwmanager.check_alarm()
 
 
 	def set_alarm(self, asserted):
@@ -522,16 +509,7 @@ class MIBController (proxy.MIBProxyObject):
 		Instruct the field service unit to assert or deassert the alarm line on the MoMo bus.
 		"""
 
-		if asserted:
-			arg = "yes"
-		else:
-			arg = "no"
-
-		cmd = "alarm %s" % arg
-
-		resp, result = self.stream.send_cmd(cmd)
-		if result != CMDStream.OkayResult:
-			raise RuntimeError("Set alarm command failed")
+		self.hwmanager.set_alarm(asserted)
 
 	@returns(desc='bluetooth receive buffer', data=True)
 	def bt_debug_log(self):
@@ -790,9 +768,8 @@ class MIBController (proxy.MIBProxyObject):
 
 		try:
 			self.rpc(42, 0xF)
-		except RPCException as e:
-			if e.type != 127:
-				raise e
+		except ModuleNotFoundError:
+			pass
 
 		if sync:
 			sleep(1.5)
