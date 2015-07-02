@@ -117,6 +117,45 @@ class MIBController (proxy.MIBProxyObject):
 		out.write_hex_file(tmp)
 		return tmp
 
+	@param("hexfile", "path", "readable", desc="Hex file containing firmware to flash")
+	@param("name", "string", desc="(optional)Name of module to reflash")
+	@param("address", "integer", desc="(optional)Address of module to reflash")
+	@param("noreset", "bool", desc="Do not reset the bus after reflash is complete")
+	def reflash_module(self, hexfile, name=None, address=None, noreset=False):
+		"""
+		Reflash a mib module other given either its name or address.
+		"""
+
+		#Make sure the module exists before pushing the firmware
+		mod = self.get_module(name, address, False)
+
+		self.clear_firmware_cache()
+		bucket = self.push_firmware(hexfile, 0)
+
+		mod.rpc(0, 5, 8, bucket)
+		mod.reset()
+
+		sleep(1.5)
+		if not self.alarm_asserted():
+			iprint("Module reflash NOT DETECTED.  Verify the module checksum to ensure it is programmed correctly.")
+			raise HardwareError("Could not reflash module, reflash not detected using alarm pin.")
+
+		iprint("Reflash in progress")
+		while self.alarm_asserted():
+			if type_system.interactive:
+				sys.stdout.write('.')
+				sys.stdout.flush()
+			sleep(0.1)
+
+		iprint("\nReflash complete.")
+
+		sleep(0.5)
+
+		if not noreset: 
+			iprint("Resetting the bus...")
+
+		self.reset(sync=True)
+
 	@param("hexfile", "path", "readable", desc="new controller hex file")
 	def reflash(self, hexfile):
 		"""
@@ -503,7 +542,6 @@ class MIBController (proxy.MIBProxyObject):
 
 		return self.hwmanager.check_alarm()
 
-
 	def set_alarm(self, asserted):
 		"""
 		Instruct the field service unit to assert or deassert the alarm line on the MoMo bus.
@@ -511,15 +549,32 @@ class MIBController (proxy.MIBProxyObject):
 
 		self.hwmanager.set_alarm(asserted)
 
-	@returns(desc='bluetooth receive buffer', data=True)
+	@return_type("map(string, string)")
 	def bt_debug_log(self):
 		"""
 		Return the first 20 bytes of BTLE communication receive buffer.
 		This contains the response to the last command sent to the unit.
 		"""
 
-		res = self.rpc(42, 0x27, result_type=(0,True))
-		return repr(res['buffer'])
+		out = ""
+		for i in xrange(0, 648, 20):
+			res = self.rpc(42, 0x27, i, result_type=(0,True))
+			out += res['buffer']
+
+		fmt = "<H"
+
+		flags, = struct.unpack_from(fmt, out)
+		i = 2
+		send = out[i:i+100]
+		i += 100
+
+		receive = out[i:i+256]
+		i += 256
+
+		unsolic = out[i:i+100]
+		i += 100
+
+		return {'flags': bin(flags), 'send_buffer': repr(send), 'receive_buffer': repr(receive), 'unsolicited_buffer': repr(unsolic)}
 
 	@return_type("integer")
 	@param("message", "string", desc="Message to send with broadcast packets (<=20 bytes)")
@@ -701,11 +756,11 @@ class MIBController (proxy.MIBProxyObject):
 		"""
 
 		if type is not None:
-			if not typedargs.is_known_type(type):
+			if not typedargs.type_system.is_known_type(type):
 				raise ArgumentError("unknown type specified", type=type)
 
 			if size == 0:
-				size = typedargs.get_type_size(type)
+				size = typedargs.type_system.get_type_size(type)
 
 		if size == 0:
 			raise ArgumentError("size not specified and could not be determined from supplied type info", supplied_size=size, supplied_type=type)
@@ -721,7 +776,7 @@ class MIBController (proxy.MIBProxyObject):
 			raise InternalError("Read size does not match specified size, this should not happen", read_size=len(buf), specified_size=size)
 		
 		if type is not None:
-			return typedargs.convert_to_type(buf, type)
+			return typedargs.type_system.convert_to_type(buf, type)
 
 		return buf
 
