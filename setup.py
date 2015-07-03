@@ -36,7 +36,7 @@ setup(
     install_requires=[
         "beautifulsoup4==4.3.2",
         "Cheetah==2.4.4",
-        "cmdln==1.1.2",
+        "cmdln>=1.1.2",
         "colorama==0.3.3",
         "decorator==3.4.0",
         "Markdown==2.5.2",
