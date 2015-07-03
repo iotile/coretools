@@ -3,11 +3,11 @@
 #pipe that is not seekable or peekable in a cross-platform
 #way without potentially blocking forever.
 
-from threading import Thread, Event
-from cStringIO import StringIO
+from threading import Thread, Event, Condition
 from Queue import Queue
 import os
 from pymomo.exceptions import *
+import sys
 
 class AsyncLineBuffer:
 	def __init__(self, file, separator='\n', strip=True):
@@ -18,7 +18,7 @@ class AsyncLineBuffer:
 		"""
 
 		self.queue = Queue()
-		self.items = Event()
+		self.items = Condition()
 		self.thread = Thread(target=AsyncLineBuffer.ReaderThread, args=(self.queue, file, self.items, separator, strip))
 		self.thread.daemon = True
 		self.thread.start()
@@ -38,8 +38,10 @@ class AsyncLineBuffer:
 			if strip:
 				line = line[:-len(separator)]
 
+			items.acquire()
 			queue.put(line)
-			items.set()
+			items.notify()
+			items.release()
 
 	def available(self):
 		"""
@@ -50,14 +52,16 @@ class AsyncLineBuffer:
 
 	def readline(self, timeout=3.0):
 		"""
-		read n bytes, timeout if n bytes are not available 
+		read one line, timeout if one line is not available in the timeout period
 		"""
 
+		self.items.acquire()
 		if self.available() == 0:
-			flag_set = self.items.wait(timeout)
-			if flag_set is False:
+			self.items.wait(timeout)
+			if self.available() == 0:
+				self.items.release()
 				raise TimeoutError("Asynchronous Read timed out waiting for a line to be read")
 
-			self.items.clear()
+			self.items.release()
 
 		return self.queue.get()

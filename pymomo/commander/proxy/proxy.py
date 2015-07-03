@@ -49,7 +49,7 @@ class MIBProxyObject (object):
 
 		#Check for protocol defined errors
 		if not status & (1<<6):
-			if status_code == 2:
+			if status == 2:
 				raise UnsupportedCommandError(address=self.addr)
 			
 			raise RPCError("Unknown status code received from RPC call", address=self.addr, status_code=status)
@@ -61,7 +61,7 @@ class MIBProxyObject (object):
 		if size < 2*num_ints:
 			raise RPCError('Return value too short to unpack', expected_minimum_size=2*num_ints, actual_size=size)
 		elif buff == False and size != 2*num_ints:
-			raise RPCException('Return value was not the correct size', expected_size=2*num_ints, actual_size=size)
+			raise RPCError('Return value was not the correct size', expected_size=2*num_ints, actual_size=size)
 
 		for i in xrange(0, num_ints):
 			low = ord(payload[2*i])
