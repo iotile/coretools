@@ -3,7 +3,6 @@ from pymomo.commander.proxy import proxy12
 import pymomo.commander.proxy
 from pymomo.commander.exceptions import *
 from pymomo.commander.types import *
-from pymomo.commander.cmdstream import *
 from pymomo.utilities.console import ProgressBar
 import struct
 from pymomo.utilities.intelhex import IntelHex
@@ -210,8 +209,10 @@ class MIBController (proxy.MIBProxyObject):
 			if name == mod.name or address == mod.address:
 				typeobj = proxy12.MIB12ProxyObject
 				if type is not None:
-					if hasattr(pymomo.commander.proxy, type):
-						typeobj = getattr(pymomo.commander.proxy, type)
+					typeobj = self.hwmanager.get_proxy(type)
+
+				if typeobj is None:
+					raise ArgumentError("Could not find proxy module for specified type", type=type, known_types=self.hwmanager.name_map.keys())
 
 				obj = typeobj(self.stream, mod.address)
 				obj.name = mod.name

@@ -31,15 +31,8 @@ class StreamOperationNotSupportedError(RPCError):
 		super(StreamOperationNotSupportedError, self).__init__("Underlying command stream does not support the required operation", **kwargs)
 
 class NoSerialConnectionException (pymomo.exceptions.EnvironmentError):
-	def __init__(self, ports):
-		self.message = "No port specified and no valid USB device detected."
-		self.ports = ports
-
-	def __str__(self):
-		return self.message
-
-	def available_ports(self):
-		return self.ports
+	def __init__(self, **kwargs):
+		super(NoSerialConnectionException, self).__init__("No usual serial connection found to MoMo device", **kwargs)
 
 class UnknownModuleTypeError (pymomo.exceptions.TypeSystemError):
 	pass
