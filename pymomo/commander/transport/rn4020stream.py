@@ -31,6 +31,7 @@ class RN4020SerialBoard:
 		self.response_stamp = 0
 		self.connected = False
 		self.mldp_mode = False
+		self.picmode = False
 
 		self.check_centrality()
 
@@ -143,29 +144,76 @@ class RN4020SerialBoard:
 
 		self.mldp_mode = True
 
-	def leave_mldp(self):
-		if self.mldp_mode == False:
-			return
-
-		if not self.connected:
+	def enter_picmode(self):
+		if self.picmode:
 			return
 
 		time.sleep(1.2)
-		self.io.write('$$$\r')
-		time.sleep(0.05)
-		self.io.write('I#A,04\r')
-		time.sleep(0.1)
-		self.io.write('I#A,00\r')
+		self.io.write('$$$')
+		r = self.receive_solicited()
+		if r != "<PIC-CMD>":
+			raise HardwareError("Could not enter PIC mode", expected='<PIC-CMD>', received=r)
+		
+		#Buffer should now contain 1 carrot
+
+		self.picmode = True
+
+	def leave_picmode(self):
+		if not self.picmode:
+			return
+
 		time.sleep(1.2)
-		self.io.write('$$$\r')
-		time.sleep(0.1)
-		
-		#self.io.write('GN\r')
-		
+		self.io.write('$$$')
+		r = self.receive_solicited()
+		if r != '>':
+			raise HardwareError("Could not leave PIC mode", expected='>', received=r)
+
+		r = self.receive_solicited()
+		if r != "<PIC-END>":
+			raise HardwareError("Could not leave PIC mode", expected='(anything followed by)<PIC-END>', received=r)
+
+		#The first command after leaving PIC mode always fails..., just clear it out
+		#We have to send more than just a \n because \n are silently ignored when there is no other data
 		time.sleep(0.2)
-		while self.stream.available() > 0:
-			print self.stream.readline(3.0)
+		self.io.write('GN\n')
+		r = self.receive_solicited()
 
+		self.picmode = False
+
+	def leave_mldp(self):
+		if not self.mldp_mode:
+			return
+
+		self.enter_picmode()
+
+		cmd = 'I#A,04\r'
+		for i in xrange(0, len(cmd)):
+			self.io.write(cmd[i])
+			time.sleep(.05)
+
+		r = self.receive_solicited()
+		if r != ">" + cmd[:-1]:
+			raise HardwareError("Could not send command in PIC mode", cmd=cmd, response=r, expected_response=cmd)
+		r = self.receive_solicited()
+		if r != ">OK":
+			raise HardwareError("Could not send command in PIC mode", cmd=cmd, response=r, expected_response="OK")
+		
+		time.sleep(0.1)
+
+		cmd = 'I#A,00\r'
+		for i in xrange(0, len(cmd)):
+			self.io.write(cmd[i])
+			time.sleep(.05)
+
+		r = self.receive_solicited()
+		if r != ">" + cmd[:-1]:
+			raise HardwareError("Could not send command in PIC mode", cmd=cmd, response=r, expected_response=cmd)
+		r = self.receive_solicited()
+		if r != ">OK":
+			raise HardwareError("Could not send command in PIC mode", cmd=cmd, response=r, expected_response="OK")
+
+		self.leave_picmode()
+			
 		self.mldp_mode = False
 
 	def get_connection_params(self):
