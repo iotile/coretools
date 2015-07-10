@@ -15,6 +15,7 @@ from pymomo.utilities.typedargs import type_system, iprint
 from pymomo.exceptions import *
 from tempfile import NamedTemporaryFile
 from pymomo.hex16.convert import *
+import pymomo.hex
 import itertools
 import base64
 import uuid
@@ -284,6 +285,17 @@ class MIBController (proxy.MIBProxyObject):
 		packed = struct.pack('HB%dB' % cnt, addr, rec, *data)
 		return bytearray(packed)
 
+	@param("hexfile", "path", "readable", desc="path of backup firmware image to load")
+	def push_backup(self, hexfile):
+		"""
+		Push a recovery firmware image to the controller
+		"""
+
+		processed = self._convert_hex24(hexfile)
+		iprint("Pushing (processed) backup controller firmware")
+		self.push_firmware(processed, 6, verbose=True)
+		os.remove(processed)
+
 	def push_firmware(self, firmware, module_type, verbose=True):
 		"""
 		Given either a path to a hex file or an open file-like object,
@@ -326,21 +338,28 @@ class MIBController (proxy.MIBProxyObject):
 
 		return bucket
 
-	def pull_firmware(self, bucket, verbose=True, pic12=True):
+	@param("bucket", "integer", ("range", 0, 5), desc="Firmware bucket to pull from [0-5]")
+	@param("save", "path", desc="Output file to save")
+	@param("raw", "bool", desc='Do not process the result in any way')
+	def pull_firmware(self, bucket, save=None, raw=False):
 		res, reason = self._firmware_bucket_loaded(bucket)
 
 		if res == False:
 			raise ValueError(reason)
+
+		if bucket < 4:
+			pic12 = True
+		else:
+			pic12 = False
 
 		info = self.get_firmware_info(bucket)
 		length = info['length']
 
 		out = IntelHex()
 
-		if verbose:
-			print "Getting Firmware, size=0x%X" % length
-			prog = ProgressBar("Transmission Progress", length // 20)
-			prog.start()
+		iprint("Getting Firmware, size=0x%X" % length)
+		prog = ProgressBar("Transmission Progress", length // 20)
+		prog.start()
 
 		for i in xrange(0, length, 20):
 			res = self.rpc(7, 4, bucket, i, result_type=(0, True))
@@ -350,13 +369,30 @@ class MIBController (proxy.MIBProxyObject):
 				if pic12 and (j%2 != 0):
 					out[i+j] &= 0x3F
 
-			if verbose:
-				prog.progress(i//20)
+			prog.progress(i//20)
 
-		if verbose:
-			prog.end()
+		prog.end()
 
-		return out
+		if not pic12 and not raw:
+			out = pad_pic24_hex(out)
+		
+		if save is not None:
+			out.write_hex_file(save)
+			return 
+		
+		tmpf = NamedTemporaryFile(delete=False)
+		tmpf.close()
+		tmp = tmpf.name
+		out.write_hex_file(tmp)
+
+		if pic12:
+			outhex = pymomo.hex.HexFile(tmp, 14, 2, 1)
+		else:	
+			outhex = pymomo.hex.HexFile(tmp, 24, 4, 2)
+
+		os.remove(tmp)
+		return outhex
+
 
 	def _firmware_bucket_loaded(self, index):
 		res = self.get_firmware_count()
@@ -550,6 +586,16 @@ class MIBController (proxy.MIBProxyObject):
 
 		self.hwmanager.set_alarm(asserted)
 
+	@param("value", "string", desc='Data to echo')
+	@return_type("string")
+	def echo(self, value):
+		res = self.rpc(42, 0x28, value, result_type=(0,True))
+
+		print len(value)
+		print len(res['buffer'])
+		print value
+		print res['buffer']
+
 	@return_type("map(string, string)")
 	def bt_debug_log(self):
 		"""
@@ -572,10 +618,22 @@ class MIBController (proxy.MIBProxyObject):
 		receive = out[i:i+256]
 		i += 256
 
-		unsolic = out[i:i+100]
-		i += 100
+		cmd = out[i:i+26]
+		i += 26
 
-		return {'flags': bin(flags), 'send_buffer': repr(send), 'receive_buffer': repr(receive), 'unsolicited_buffer': repr(unsolic)}
+		transmitted_cursor, = struct.unpack_from(fmt, out[i:i+2])
+		i+=2
+
+		send_cursor, = struct.unpack_from(fmt, out[i:i+2])
+		i+=2
+
+		receive_cursor, = struct.unpack_from(fmt, out[i:i+2])
+		i+=2
+
+		checksum_errors, = struct.unpack_from(fmt, out[i:i+2])
+		i+=2
+
+		return {'flags': bin(flags), 'cmd_buffer': repr(cmd), 'checksum_errors': checksum_errors, 'send_buffer': repr(send), 'receive_buffer': repr(receive), 'send_cursor':send_cursor, 'transmitted_cursor': transmitted_cursor}
 
 	@return_type("integer")
 	@param("message", "string", desc="Message to send with broadcast packets (<=20 bytes)")

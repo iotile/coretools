@@ -88,6 +88,14 @@ class HardwareManager:
 
 		return self.stream.heartbeat()
 
+	@annotated
+	def reset(self):
+		"""
+		Attempt to reset the underlying stream back to a known state
+		"""
+
+		self.stream.reset()
+
 	@param("asserted", "bool", desc="Whether alarm should be asserted or released")
 	def set_alarm(self, asserted):
 		"""
@@ -197,6 +205,12 @@ class HardwareManager:
 
 			stream = SerialTransport(serial_port)
 			return FSUStream(stream)
+		elif self.transport == 'rn4020':
+			port,mac = self.port.split(',')
+			
+			port = port.strip()
+			mac = mac.strip()
+			return RN4020DevStream(port, mac)
 		elif self.transport == 'null':
 			return FSUStream(None)
 		else:

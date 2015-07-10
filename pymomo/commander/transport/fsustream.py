@@ -122,6 +122,16 @@ class FSUStream (CMDStream):
 
 		return True
 
+	def _set_alarm(self, value):
+		if value == True:
+			cmd = 'alarm yes'
+		else:
+			cmd = 'alarm no'
+
+		resp, result = self.send_cmd(cmd)
+		if result != FSUStream.OkayResult:
+			raise HardwareError("Alarm command failed", cmd=cmd)
+
 	def _check_alarm(self):
 		resp, result = self.send_cmd("alarm status")
 		if result != FSUStream.OkayResult:

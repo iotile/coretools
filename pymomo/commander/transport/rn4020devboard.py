@@ -8,6 +8,7 @@ import sys
 from collections import namedtuple
 import time
 import base64
+import random
 
 BTLECharacteristic = namedtuple("BTLECharacteristic", ["value_handle", "readable", "writable", "config_handle", "notify", "indicate"])
 
@@ -32,6 +33,7 @@ class RN4020SerialBoard:
 		self.connected = False
 		self.mldp_mode = False
 		self.picmode = False
+		self.remote_cmd = False
 
 		self.check_centrality()
 
@@ -181,7 +183,7 @@ class RN4020SerialBoard:
 		self.picmode = False
 
 	def leave_mldp(self):
-		if not self.mldp_mode:
+		if not self.mldp_mode and not self.remote_cmd:
 			return
 
 		self.enter_picmode()
@@ -215,40 +217,61 @@ class RN4020SerialBoard:
 		self.leave_picmode()
 			
 		self.mldp_mode = False
+		self.remote_cmd = False
 
 	def get_connection_params(self):
 		self.io.write("GT\n")
 		return self.receive_solicited()
 
-	def test_throughput(self, trials=100):
-		"""
-		Determine how many commands can be executed per second
-		"""
+	def receive_mib_response(self):
+		received = self.receive_solicited()
+
+		if len(received) == 38:
+			if received[0] == '@':
+				received = received[1:]
+			else:
+				raise HardwareError("Corrupted MIB packet received from MoMo device", received_packet=received, length=len(received), expected_first_character='@')
+		elif len(received) != 37:
+			raise HardwareError("Corrupted MIB packet (invalid length) received from MoMo device", received_packet=received, length=len(received))
+
+		if received[-1] != '!':
+			raise HardwareError("Corrupted MIB packet (invalid termination character) received from MoMo device", received_packet=received)
+
+		received = received[:-1]
+		assert len(received) == 36
+
+		unpacked = base64.decodestring(received)
+		assert len(unpacked) == 25
+
+		return unpacked
+
+	def send_mib_packet(self, address, feature, cmd, payload):
+		length = len(payload)
+
+		if len(payload) < 20:
+			payload += '\x00'*(20 - len(payload))
+
+		if len(payload) > 20:
+			raise ArgumentError("Payload is too long, must be at most 20 bytes", payload=payload, length=len(payload))
+
+		#Send checksum as well
+		out_data = chr(address) + chr(length) + chr(0) + chr(cmd) + chr(feature) + payload
+		checksum = 0
+
+		for i in xrange(0, len(out_data)):
+			checksum += out_data[i]
+
+		checksum %= 256
+		checksum = (256 - checksum) % 256
+
+		out_buffer = '@' + out_data + chr(checksum) + '!'
+		assert len(out_buffer) == 28
 
 		self.enter_mldp()
-		payload = bytearray(23)
-		
-		start = time.time()
+		self.io.write(out_buffer)
 
-		try:
-			for i in xrange(0, trials):
-
-				val = '@' + base64.b64encode(payload) + chr(ord('0') + (i % 100)/10) + chr(ord('0') + i%10) + '!\r\n'
-				self.io.write(val)
-				r = self.receive_solicited()
-
-				if r != val[1:-2]:
-					print "Invalid response echoed back"
-					print repr(r)
-					break
-		except TimeoutError:
-			print "Error occurred after %d trials" % i
-
-		end = time.time()
-
-		print start
-		print end
-		return trials/(end - start)*20
+		packet = self.receive_mib_response()
+		return packet
 
 	def enable_notifiations(self, uuid):
 		"""
@@ -274,7 +297,7 @@ class RN4020SerialBoard:
 		if r != 'AOK':
 			raise HardwareError("Error received enabling notifications", message=r)
 
-	def connect(self, mac, timeout=5.0):
+	def connect(self, mac, timeout=15.0):
 		cmd = "E,0,%s\n" % mac
 
 		self.io.write(cmd)
@@ -293,12 +316,12 @@ class RN4020SerialBoard:
 		self.peripheral_mac = mac
 
 		services = self.list_services()
-		if not self._check_mib(services):
-			self.disconnect()
-			raise HardwareError("Connection established but remote device does not support MIB service", supported_services=services)
+		#if not self._check_mib(services):
+			#self.disconnect()
+			#raise HardwareError("Connection established but remote device does not support MIB service", supported_services=services)
 
 		self.services = services
-		self.enable_notifiations(RN4020SerialBoard.MIBResponseCharacteristic)
+		#self.enable_notifiations(RN4020SerialBoard.MIBResponseCharacteristic)
 
 	def disconnect(self, throw=False):
 		"""
@@ -308,6 +331,12 @@ class RN4020SerialBoard:
 		from the far side previously through a timeout.
 		"""
 
+		if self.mldp_mode:
+			self.leave_mldp()
+		elif self.remote_cmd:
+			self.leave_remote_mode()
+
+		#Now that we're guaranteed to be back in normal cmd mode
 		self.io.write('K\n')
 		line = self.receive_solicited(include_connection=True)
 		if line == 'Connection End':
@@ -336,6 +365,119 @@ class RN4020SerialBoard:
 			return False
 
 		return True
+
+	def enter_remote_mode(self):
+		if self.remote_cmd:
+			return
+
+		if not self.connected:
+			raise HardwareError("Cannot enter remote mode with being connected to a remote device")
+
+		if self.mldp_mode:
+			self.leave_mldp()
+
+		self.io.write("!,1\n")
+		r = self.receive_solicited()
+		if r != 'RMT_CMD':
+			raise HardwareError('Could not enter Remote Command mode', expected='RMT_CMD', response=r)
+
+		self.remote_cmd = True
+
+	def leave_remote_mode(self):
+		self.leave_mldp()
+
+	def read_remote_script(self):
+		if not self.remote_cmd:
+			raise HardwareError("You must be in remote command mode to read remote scripts")
+
+		self.io.write("LW\n")
+		r = self.receive_solicited()
+		if r.startswith("LW\n"):
+			r = r[3:]
+
+		if r == 'ERR':
+			raise HardwareError("Could not read remote script", response=r)
+
+		resp = ""
+		while r != 'END':
+			resp += r
+			r = self.receive_solicited()
+
+		return resp
+
+	def stop_remote_script(self):
+		if not self.remote_cmd:
+			raise HardwareError("You must be in remote command mode to stop remote scripts")
+
+		self.io.write('WP\n')
+		r = self.receive_solicited()
+		if r.startswith('WP\n'):	
+			r = r[3:]
+
+		if r != 'AOK':
+			raise HardwareError('Error stopping remote script')
+
+	def load_connection_script(self):
+		script = "@PW_ON\nA,07D0\n|O,04,04\n@CONN\n|O,04,00\n@DISCON\nA,07D0\n|O,04,04\n"
+		self.enter_remote_mode()
+		self.load_remote_script(script)
+		self.leave_remote_mode()
+
+	def load_remote_script(self, script):
+		if not self.remote_cmd:
+			raise HardwareError("You must be in remote command mode to load remote scripts")
+
+		#Stop any script activity
+		self.io.write("WP\n")
+		r = self.receive_solicited()
+		if r.startswith('WP\n'):	
+			r = r[3:]
+
+		if r != 'AOK':
+			raise HardwareError('Error stopping remote script')
+
+		#Clear old script
+		self.io.write("WC\n")
+		r = self.receive_solicited()
+		if r.startswith('WC\n'):	
+			r = r[3:]
+
+		if r != 'AOK':
+			raise HardwareError('Error clearing remote script')
+
+		self.io.write('WW\n')
+
+		r = self.receive_solicited()
+		if r.startswith('WW\n'):	
+			r = r[3:]
+
+		if r != 'AOK':
+			raise HardwareError('Error loading remote script')
+
+		lines = script.split('\n')
+
+		sent = ''
+		for line in lines:
+			line = line.rstrip()
+			if line == "":
+				continue
+
+			line += '\n'
+			sent += line
+
+			self.io.write(line)
+			time.sleep(0.1)
+
+		self.io.write('\x1b')
+	
+		sent += '\x1b'
+		r = self.receive_solicited()
+		if r != sent:
+				raise HardwareError("Error inputting script", sent_script=repr(line), received_script=repr(r))
+
+		r = self.receive_solicited()
+		if r != 'END':
+			raise HardwareError("Could not send script", response=repr(r))
 
 	def list_services(self):
 		if not self.connected:

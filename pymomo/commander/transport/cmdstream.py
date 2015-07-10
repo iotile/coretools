@@ -60,3 +60,5 @@ class CMDStream:
 	def reset(self):
 		if not hasattr(self, '_reset'):
 			raise StreamOperationNotSupportedError(command="reset")
+
+		self._reset()
