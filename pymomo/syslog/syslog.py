@@ -78,7 +78,15 @@ class SystemLog:
 				typed_params = ldf.assign_types(entry.params)
 
 				for desc, data in typed_params:
-					s = typedargs.type_system.format_value(data[1], desc.type, desc.format)
+					disp_data = data[1]
+					#If there is an integer that is in array format, convert it to an integer first
+					#assuming that it is little endian
+					if desc.type == 'integer' and data[0] == 'array':
+						disp_data = 0
+						for i in xrange(0, len(data[1])):
+							disp_data |= ord(data[1][i]) << (i*8)
+
+					s = typedargs.type_system.format_value(disp_data, desc.type, desc.format)
 					fmt = "%s: %s" % (desc.name, s)
 					fmtd.append(fmt)
 			except MoMoException:

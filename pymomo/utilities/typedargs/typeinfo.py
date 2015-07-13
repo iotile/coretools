@@ -266,7 +266,7 @@ class TypeSystem(object):
 			fileobj,pathname,description = imp.find_module(p, [d])
 			mod = imp.load_module(p, fileobj, pathname, description)
 		except ImportError as e:
-			raise ArgumentError("could not import module in order to load external types", module_path=path, parent_directory=p, module_name=p, error=str(e))
+			raise ArgumentError("could not import module in order to load external types", module_path=path, parent_directory=d, module_name=p, error=str(e))
 
 		self.load_type_module(mod, verbose)
 
@@ -277,3 +277,11 @@ class TypeSystem(object):
 #information
 
 type_system = TypeSystem(types)
+
+def iprint(stringable):
+	"""
+	A simple function to only print text if in an interactive session.
+	"""
+
+	if type_system.interactive:
+		print str(stringable)
