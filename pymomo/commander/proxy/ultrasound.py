@@ -426,8 +426,24 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		mask_cycles = int(self.mask*8)
 		self.rpc(110,7, self.gain, self.threshold, self.pulses, mask_cycles)
 
-	@return_type("float")
-	def tof_difference(self):
+	@return_type("map(string, integer)")
+	def get_parameters(self):
+		"""
+		Return a dictionary containing the current settings for the TOF measurements
+		"""
+
+		res = self.rpc(110, 0xC, result_type=(3, False))
+
+		params = {}
+		params['gain'] = res['ints'][0]
+		params['threshold'] = res['ints'][1]
+		params['pulses'] = res['ints'][2]
+
+		return params
+
+	@param("average_bits", "integer", desc="log2(number of averages to take)")
+	@return_type('list(integer)')
+	def tof_difference(self, average_bits):
 		"""
 		Figure out the time of flight difference in two directions
 
@@ -435,11 +451,37 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		and the raw delta TOF is reported in picoseconds.
 		"""
 
-		res = self.rpc(110, 8, result_type=(0, True))
+		res = self.rpc(110, 8, average_bits, result_type=(0, True))
 
-		delta, = struct.unpack_from("<l", res['buffer'])
-		
-		return float(delta)
+		diff,num,err = struct.unpack_from("<lLB", res['buffer'])
+
+		if num == 0:
+			return []
+
+		print num
+		return [diff*10/(num)]
+
+
+	@param("direction", "integer", desc="Direction of TOF readings to get (1 or 2)")
+	@return_type("list(integer)")
+	def get_tofs(self, direction):
+		res = self.rpc(110, 0xD, direction, result_type=(0, True))
+
+		tofs = struct.unpack_from("<lllll", res['buffer'])
+		return tofs
+
+	@annotated
+	def find_signal(self):
+		"""
+		Figure out the time of flight difference in two directions
+
+		No filtering other than the built-in median filter is performed
+		and the raw delta TOF is reported in picoseconds.
+		"""
+
+		while True:
+			res = self.rpc(110, 8, 0, result_type=(0, True))
+			error = struct.unpack_from("<H", res['buffer'])
 
 	@return_type("integer")
 	@param("gain", "integer", "positive", desc="Gain to use")
@@ -492,9 +534,10 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 
 		return float(delta)
 
+	@param("averages", "integer", "nonnegative", desc="Number of averages per sample (in log2)")	
 	@param("count", "integer", "positive", desc="Number of samples to take")
 	@return_type("list(float)")
-	def tof_histogram(self, count):
+	def tof_histogram(self, averages, count):
 		"""
 		Get a list of <<count>> TOF deltas for building a histogram
 		"""
@@ -502,8 +545,8 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		vals = []
 
 		for i in xrange(0, count):
-			val = self.tof_difference()
-			vals.append(val)
+			val = self.tof_difference(averages)
+			vals.extend(val)
 
 		return vals
 
