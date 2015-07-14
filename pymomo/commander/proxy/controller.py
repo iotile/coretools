@@ -255,7 +255,8 @@ class MIBController (proxy.MIBProxyObject):
 		"""
 		res = self.rpc(42, 0x0E, int(bool(val)))
 
-	def battery_status(self):
+	@return_type("float")
+	def battery_level(self):
 		res = self.rpc(42, 0x0B, result_type=(1, False))
 		volt_raw = res['ints'][0]
 

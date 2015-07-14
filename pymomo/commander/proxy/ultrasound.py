@@ -6,6 +6,7 @@ import struct
 from pymomo.utilities.intelhex import IntelHex
 from time import sleep
 from pymomo.utilities.typedargs.annotate import annotated,param,return_type, context
+from pymomo.utilities.typedargs import iprint
 from pymomo.utilities import typedargs
 from itertools import product
 from pymomo.exceptions import *
@@ -440,6 +441,20 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 
 		return params
 
+	@return_type('list(integer)')
+	@param("direction", "integer", ("range", 0, 1), desc="Measurement direction (0 or 1)")
+	def take_tof(self, direction):
+		"""
+		Take a single TOF measurement in one direction and return the first 5 echos
+		"""
+
+		res = self.rpc(110, 0xE, direction, result_type=(0, True))
+
+		tof0,tof1,tof2,tof3,ints = struct.unpack_from("<llllB", res['buffer'])
+
+		iprint("Interrupt Flags Register: %s" % bin(ints))
+		return [tof0, tof1, tof2, tof3]
+
 	@param("average_bits", "integer", desc="log2(number of averages to take)")
 	@return_type('list(integer)')
 	def tof_difference(self, average_bits):
@@ -454,12 +469,12 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 
 		diff,num,err = struct.unpack_from("<lLB", res['buffer'])
 
+		if err != 0:
+			iprint("Error code returned from measurement: %d" % err)
 		if num == 0:
 			return []
 
-		print num
 		return [diff*10/(num)]
-
 
 	@param("direction", "integer", desc="Direction of TOF readings to get (1 or 2)")
 	@return_type("list(integer)")
@@ -548,42 +563,3 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 			vals.extend(val)
 
 		return vals
-
-	@return_type("list(float)")
-	def take_tof_measurement(self, direction=0):
-		"""
-		Instruct the ultrasonic module to take a TOF measurement
-
-		The previously supplied parameters to set_parameters determine the analog gain and threshold limits 
-		as well as the number of pulses to transmit and how many must be received for a valid measurement.
-
-		Returns a list of the times of each tof pulse reception in microseconds.
-		"""
-
-		gains = self._generate_gains()
-		if self.gain not in gains:
-			raise ArgumentError("Unknown gain not in the list of supported gains", gain=gain, supported_gains=gains)
-
-		gset = gains[self.gain]
-
-		mask_cycles = int(self.mask*8)
-
-		res = self.rpc(110, 6, self.pulses, 0, gset[0], int(not gset[1]), self.threshold, mask_cycles, 0b01, direction, result_type=(0, True))
-
-		if len(res['buffer']) == 1:
-			print "No echos"
-			return []
-
-		echos = []
-
-		for i in xrange(0, 5):
-			lsb = ord(res['buffer'][i*4 + 0])
-			n1sb = ord(res['buffer'][i*4 + 1])
-			n2sb = ord(res['buffer'][i*4 + 2])
-			msb = ord(res['buffer'][i*4 + 3])
-
-			tof = msb << 24 | n2sb << 16 | n1sb << 8 | lsb;
-			if tof > 0:
-				echos.append(float(tof)/1e6)
-
-		return sorted(echos)
