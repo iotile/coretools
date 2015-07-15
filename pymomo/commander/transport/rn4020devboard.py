@@ -223,8 +223,8 @@ class RN4020SerialBoard:
 		self.io.write("GT\n")
 		return self.receive_solicited()
 
-	def receive_mib_response(self):
-		received = self.receive_solicited()
+	def receive_mib_response(self, timeout=3.0):
+		received = self.receive_solicited(timeout=timeout)
 
 		if len(received) == 38:
 			if received[0] == '@':
@@ -245,7 +245,7 @@ class RN4020SerialBoard:
 
 		return unpacked
 
-	def send_mib_packet(self, address, feature, cmd, payload):
+	def send_mib_packet(self, address, feature, cmd, payload, **kwargs):
 		length = len(payload)
 
 		if len(payload) < 20:
@@ -270,7 +270,10 @@ class RN4020SerialBoard:
 		self.enter_mldp()
 		self.io.write(out_buffer)
 
-		packet = self.receive_mib_response()
+		timeout = 3.0
+		if "timeout" in kwargs:
+			timeout = kwargs['timeout']
+		packet = self.receive_mib_response(timeout=timeout)
 		return packet
 
 	def enable_notifiations(self, uuid):

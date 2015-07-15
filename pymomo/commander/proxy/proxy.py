@@ -17,7 +17,7 @@ class MIBProxyObject (object):
 		is not successful.
 		"""
 
-		status, payload = self.stream.send_rpc(self.addr, feature, cmd, *args)
+		status, payload = self.stream.send_rpc(self.addr, feature, cmd, *args, **kw)
 
 		if "result_type" in kw:
 			res_type = kw['result_type']

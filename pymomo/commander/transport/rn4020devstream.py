@@ -14,14 +14,14 @@ class RN4020DevStream (CMDStream):
 		self.board.connect(self.mac)
 		atexit.register(self.board.disconnect)
 
-	def _send_rpc(self, address, feature, command, *args):
+	def _send_rpc(self, address, feature, command, *args, **kwargs):
 		rpc = RPCCommand(address, feature, command, *args)
 
 		payload = rpc._format_args()
 		payload = payload[:rpc.spec]
 
 		try:
-			response = self.board.send_mib_packet(address, feature, command, payload)
+			response = self.board.send_mib_packet(address, feature, command, payload, **kwargs)
 			status = ord(response[0])
 			length = ord(response[3])
 		

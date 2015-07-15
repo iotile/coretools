@@ -38,11 +38,11 @@ class CMDStream:
 
 		return self._set_alarm(status)
 
-	def send_rpc(self, address, feature, command, *args):
+	def send_rpc(self, address, feature, command, *args, **kwargs):
 		if not hasattr(self, '_send_rpc'):
 			raise StreamOperationNotSupportedError(command="send_rpc")
 
-		status, payload = self._send_rpc(address, feature, command, *args)
+		status, payload = self._send_rpc(address, feature, command, *args, **kwargs)
 
 		if status == 0:
 			raise ModuleBusyError(address)
