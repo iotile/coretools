@@ -86,7 +86,7 @@ class FSUStream (CMDStream):
 		return complete_status, result
 
 	#Supported Stream Commands
-	def _send_rpc(self, address, feature, command, *args):
+	def _send_rpc(self, address, feature, command, *args, **kwargs):
 		rpc = RPCCommand(address, feature, command, *args)
 		cmd = str(rpc)
 

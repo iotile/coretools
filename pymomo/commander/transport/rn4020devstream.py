@@ -23,7 +23,12 @@ class RN4020DevStream (CMDStream):
 		try:
 			response = self.board.send_mib_packet(address, feature, command, payload, **kwargs)
 			status = ord(response[0])
-			length = ord(response[3])
+
+			#Only read the length of the packet if the has data bit is set
+			if (status & 1 << 7):
+				length = ord(response[3])
+			else:
+				length = 0
 		
 			mib_buffer = response[4:4+length]
 			assert len(mib_buffer) == length

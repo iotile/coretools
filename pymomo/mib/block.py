@@ -77,6 +77,24 @@ class MIBBlock:
 
 		self._parse_hwtype()
 
+	@classmethod
+	def ParseHardwareType(cls, ih):
+		if isinstance(ih, basestring):
+			ih = intelhex.IntelHex16bit(ih)
+			ih.padding = 0x3FFF
+
+		if ih is None:
+			raise ArgumentError("Could not load intelhex file from arguement", argument=strih)
+
+		build_settings = build.load_settings()
+		base_addr = build_settings["mib12"]["mib"]["base_address"]
+		hw_type = decode_retlw(ih, base_addr + hw_offset)
+		
+		if hw_type in known_hwtypes:
+			return known_hwtypes[hw_type]
+
+		raise DataError("Unknown Hardware Type", hw_type=hw_type)
+
 	def set_api_version(self, major, minor):
 		"""
 		Set the API version this module was designed for.

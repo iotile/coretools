@@ -60,7 +60,7 @@ class MIB12ProxyObject (proxy.MIBProxyObject):
 
 		return status
 
-	@param('location','integer','positive',desc='RAM address to read')
+	@param('location','integer','nonnegative',desc='RAM address to read')
 	@param('type', 'string', ('list', ['uint8']), desc='Type of variable to read (supports: uint8)')
 	@returns(desc='variable contents', data=True)
 	def readram(self, location, type='uint8'):

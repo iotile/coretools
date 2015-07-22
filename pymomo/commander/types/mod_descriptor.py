@@ -19,3 +19,6 @@ class ModuleDescriptor:
 		self.name = name
 		self.num_features = feat_cnt
 		self.address = addr
+
+		if len(self.name) > 6:
+			self.name = self.name[0:6]

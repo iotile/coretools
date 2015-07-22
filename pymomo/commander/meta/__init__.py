@@ -1,3 +1,3 @@
 #Convenience and complex routines that touch multiple MIB modules
 
-from reflash import reflash_module, reflash_controller
+from reflash import reflash_module

@@ -68,6 +68,14 @@ class MIBController (proxy.MIBProxyObject):
 		return ModuleDescriptor(res['buffer'], 11+index)
 
 	@annotated
+	def enter_safe_mode(self):
+		"""
+		Reset all attached MoMo modules and prevent user code from running
+		"""
+
+		self.rpc(42, 0x29, 1)
+
+	@annotated
 	def clear_log(self):
 		"""
 		Clear the MoMo system log.
@@ -118,16 +126,19 @@ class MIBController (proxy.MIBProxyObject):
 		return tmp
 
 	@param("hexfile", "path", "readable", desc="Hex file containing firmware to flash")
-	@param("name", "string", desc="(optional)Name of module to reflash")
-	@param("address", "integer", desc="(optional)Address of module to reflash")
+	@param("name", "string", desc="Name of module to reflash")
 	@param("noreset", "bool", desc="Do not reset the bus after reflash is complete")
-	def reflash_module(self, hexfile, name=None, address=None, noreset=False):
+	def reflash_module(self, hexfile, name, noreset=False):
 		"""
-		Reflash a mib module other given either its name or address.
+		Reflash a mib module given its name.
 		"""
 
+		#Enter safe mode and wait for the modules to all reregister
+		#self.enter_safe_mode()
+		#sleep(2)
+
 		#Make sure the module exists before pushing the firmware
-		mod = self.get_module(name, address, False)
+		mod = self.get_module(name=name, force=False)
 
 		self.clear_firmware_cache()
 		bucket = self.push_firmware(hexfile, 0)
@@ -135,17 +146,22 @@ class MIBController (proxy.MIBProxyObject):
 		mod.rpc(0, 5, 8, bucket)
 		mod.reset()
 
-		sleep(1.5)
-		if not self.alarm_asserted():
-			iprint("Module reflash NOT DETECTED.  Verify the module checksum to ensure it is programmed correctly.")
-			raise HardwareError("Could not reflash module, reflash not detected using alarm pin.")
+		try:
+			sleep(1.5)
+			if not self.alarm_asserted():
+				iprint("Module reflash NOT DETECTED.  Verify the module checksum to ensure it is programmed correctly.")
+				raise HardwareError("Could not reflash module, reflash not detected using alarm pin.")
 
-		iprint("Reflash in progress")
-		while self.alarm_asserted():
-			if type_system.interactive:
-				sys.stdout.write('.')
-				sys.stdout.flush()
-			sleep(0.1)
+			iprint("Reflash in progress")
+
+			while self.alarm_asserted():
+				if type_system.interactive:
+					sys.stdout.write('.')
+					sys.stdout.flush()
+				sleep(0.1)
+		except StreamOperationNotSupportedError:
+			iprint("Waiting 12 seconds for module to reflash itself.")
+			sleep(12.)
 
 		iprint("\nReflash complete.")
 
@@ -172,17 +188,23 @@ class MIBController (proxy.MIBProxyObject):
 		os.remove(processed)
 		self._reflash()
 
-		sleep(0.5)
-		if not self.alarm_asserted():
-			raise HardwareError("Could not reflash controller", reason="Controller reflash NOT DETECTED.  You may need to try the recovery procedure.")
+		try:
+			sleep(0.5)
+			if not self.alarm_asserted():
+				raise HardwareError("Could not reflash controller", reason="Controller reflash NOT DETECTED.  You may need to try the recovery procedure.")
 
-		iprint("Reflash in progress")
-		while self.alarm_asserted():
-			if type_system.interactive:
-				sys.stdout.write('.')
-				sys.stdout.flush()
+			iprint("Reflash in progress")
 
-			sleep(0.1)
+			while self.alarm_asserted():
+				if type_system.interactive:
+					sys.stdout.write('.')
+					sys.stdout.flush()
+
+				sleep(0.1)
+		except StreamOperationNotSupportedError:
+			iprint("Waiting 7 seconds for module to reflash itself.")
+			sleep(7.0)
+
 		iprint("\nReflash complete.")
 
 	@param("name", "string", desc="module name")
@@ -203,14 +225,14 @@ class MIBController (proxy.MIBProxyObject):
 			return obj
 
 		mods = self.list_modules()
-		if name is not None and len(name) < 7:
-			name += (' '*(7 - len(name)))
+		if name is not None and len(name) < 6:
+			name += (' '*(6 - len(name)))
 
 		for mod in mods:
 			if name == mod.name or address == mod.address:
 				typeobj = proxy12.MIB12ProxyObject
 				if type is not None:
-					typeobj = self.hwmanager.get_proxy(type)
+					return self.hwmanager._create_proxy(type, mod.address)
 
 				if typeobj is None:
 					raise ArgumentError("Could not find proxy module for specified type", type=type, known_types=self.hwmanager.name_map.keys())
@@ -219,14 +241,14 @@ class MIBController (proxy.MIBProxyObject):
 				obj.name = mod.name
 				return obj
 
-		raise ValueError("Could not find module by name or address (name=%s, address=%s)" % (str(name), str(address)))
+		raise ArgumentError("Could not find module by name or address", name=name, address=address, attached_modules=[mod.name for mod in mods])
 
 	@returns(desc='list of attached modules', printer=print_module_list, data=True)
 	def list_modules(self):
 		"""
 		Get list of all attached modules and describe them all
 		"""
-		
+
 		num = self.count_modules()
 
 		mods = []
@@ -716,7 +738,8 @@ class MIBController (proxy.MIBProxyObject):
 		"""
 		res = self.rpc(60,0x12)
 
-	def send_report(self):
+	@annotated
+	def post_single_report(self):
 		"""
 		Send a single report
 		"""

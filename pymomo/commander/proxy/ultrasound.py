@@ -10,6 +10,7 @@ from pymomo.utilities.typedargs import iprint
 from pymomo.utilities import typedargs
 from itertools import product
 from pymomo.exceptions import *
+import math
 
 @context("UltrasonicModule")
 class UltrasonicModule (proxy12.MIB12ProxyObject):
@@ -20,6 +21,18 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 	ultrasonic flow and level measurements using the TDC1000 and
 	TDC7200 chips from Texas Instruments.
 	"""
+
+	#A list of all (gain, threshold) combinations that the TDC1000 supports ordered from highest gain to lowest gain
+	gain_settings = [(41, 0), (38, 0), (41, 1), (35, 0), (38, 1), (41, 2), (32, 0), (35, 1), (38, 2), (41, 3), (29, 0), (32, 1), (35, 2),
+(38, 3), (26, 0), (29, 1), (32, 2), (41, 4), (35, 3), (23, 0), (26, 1), (29, 2), (38, 4), (21, 0), (32, 3), (20, 0), 
+(23, 1), (41, 5), (26, 2), (35, 4), (18, 0), (29, 3), (21, 1), (20, 1), (38, 5), (23, 2), (32, 4), (15, 0), (26, 3), 
+(18, 1), (21, 2), (41, 6), (35, 5), (20, 2), (29, 4), (12, 0), (23, 3), (15, 1), (18, 2), (38, 6), (32, 5), (26, 4), 
+(21, 3), (9, 0), (20, 3), (12, 1), (15, 2), (41, 7), (35, 6), (29, 5), (23, 4), (18, 3), (6, 0), (9, 1), (12, 2), 
+(38, 7), (32, 6), (21, 4), (26, 5), (20, 4), (15, 3), (3, 0), (6, 1), (9, 2), (35, 7), (29, 6), (18, 4), (23, 5), 
+(12, 3), (0, 0), (3, 1), (21, 5), (6, 2), (32, 7), (26, 6), (15, 4), (20, 5), (9, 3), (0, 1), (18, 5), (3, 2), (29, 7), 
+(23, 6), (12, 4), (6, 3), (21, 6), (15, 5), (0, 2), (26, 7), (20, 6), (9, 4), (3, 3), (18, 6), (12, 5), (23, 7), (6, 4), 
+(0, 3), (21, 7), (15, 6), (9, 5), (20, 7), (3, 4), (18, 7), (12, 6), (6, 5), (0, 4), (15, 7), (9, 6), (3, 5), (12, 7), 
+(6, 6), (0, 5), (9, 7), (3, 6), (6, 7), (0, 6), (3, 7), (0, 7)]
 
 	def __init__(self, stream, addr):
 		super(UltrasonicModule, self).__init__(stream, addr)
@@ -93,117 +106,6 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 
 		res = self.rpc(110, 4, address, value)
 
-	@param("time", "integer", desc="Masking period duration in 8ths of a microsecond")
-	def set_masking_period(self, time):
-		self.write_tdc7200(0x09, time & 0xFF)
-		self.write_tdc7200(0x08, (time >> 8) & 0xFF)
-
-	@param("cycles", "integer", "positive", desc="Number of clock cycles to use (2, 10, 20 or 40)")
-	@return_type("map(string,integer)")
-	def oscillator_period(self, cycles, do_power=True):
-		"""
-		Determine the ring oscillator period of the TDC7200
-
-		There is an extern 8 Mhz clock signal that the TDC7200 can use to calibrate
-		itself and turn its ring oscillator periods into absolute time durations.  
-		This routine uses the internal calibration feature of the TDC7200 to report 
-		the ring oscillator period based on counting either 2, 10, 20 or 40 external
-		clock periods.
-
-		This routine automatically powers the TDC7200 on and off.
-		"""
-
-		bit_map = {2: 0x00, 10: 0x01, 20: 0b10, 40: 0b11}
-		if cycles not in bit_map:
-			raise ArgumentError("cycles must be one of 2, 10, 20 or 40", cycles=cycles)
-
-		config2 = (bit_map[cycles] << 6)
-		config1 = (1 << 7) | (1 << 1) | 1
-		
-		if do_power:
-			self.set_power(True)
-		
-		self.write_tdc7200(1, config2)
-		self.write_tdc7200(0, config1)
-
-		sleep(0.1)
-
-		cycle1 = self.read_tdc7200_24bit(0x1B)
-		cycleN = self.read_tdc7200_24bit(0x1C)
-
-		if do_power:
-			self.set_power(False)
-
-		return {'1 cycle': cycle1, 'N cycles': cycleN}
-
-	@param("cycles", "integer", "positive", desc="Number of clock cycles to use (2, 10, 20 or 40)")
-	@param("averages", "integer", "positive", desc="Number of times to perform the measurement")
-	def oscillator_jitter(self, cycles=10, averages=100):
-		"""
-		Measure the ring oscillator jitter
-
-		Sample the ring oscillator period many times and compute the mean and std deviation
-		given that the external oscillator frequency is 8 Mhz.
-		"""
-
-		times = []
-		offsets = []
-		self.set_power(True)
-
-		for i in xrange(0, averages):
-			res = self.oscillator_period(cycles, do_power=False)
-
-			time1 = res['1 cycle']
-			timeN = res['N cycles']
-
-			count_est = (timeN - time1) / (cycles - 1.0)
-			time_est = (1.0/8.0)/count_est * 1e6
-			times.append(time_est)
-
-			offset = abs(1.0/8.0*1e6 - time_est*time1)
-			offsets.append(offset)
-			
-		self.set_power(False)
-
-		print times
-		print offsets
-
-	@param("pulses", "integer", "positive", desc="Number of pulses to send")
-	@param("gain", "integer", "positive", desc="Gain to use")
-	@param("threshold", "integer", "nonnegative", desc="Threshold id")
-	@return_type("list(float)")
-	def find_echos(self, pulses, gain, threshold):
-		"""
-		Find all echos that we can at the desired sensitivity.
-
-		Returns a list of the time of each echo that we can find.
-		"""
-
-		gains = self._generate_gains()
-		if gain not in gains:
-			raise ArgumentError("Unknown gain not in the list of supported gains", gain=gain, supported_gains=gains)
-
-		gset = gains[gain]
-
-		echos = []
-		self.set_power(True)
-
-
-
-		start_mask = 0.0
-
-		while True:
-			curr_echos = self.take_level_measurement(gset[0], gset[1], pulses, threshold, start_mask)
-			if len(curr_echos) == 0:
-				break
-
-			start_mask = curr_echos[-1] + 1.0/8.
-			echos += curr_echos
-
-		self.set_power(False)
-
-		return echos
-
 	def _generate_thresholds(self):
 		"""
 		Generate a map of all of the threshold voltages that the TDC1000 supports.
@@ -270,144 +172,6 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		out['measurement_complete'] = bool(val & (1 << 3))
 
 		return out
-	@param("pulses", "integer", "positive", desc="Number of pulses to send")
-	@param("time", "float", "nonnegative", desc="Time of the echo to map")
-	@return_type("float")
-	def echo_amplitude(self, pulses, time):
-		"""
-		Determine the amplitude of the echo at the given time
-		"""
-
-		cycle_time = int(time*8.0)
-		start_cycle = cycle_time - 2
-		start_mask = start_cycle/8.0
-
-		gains = self._generate_thresholds()
-
-		gain_keys = sorted(gains.keys())
-		gain_range = [0, len(gain_keys)-1]
-
-		echos = self.take_level_measurement(7, True, pulses, 0, start_mask)
-
-		if len(echos) == 0 or abs(echos[0] - time) > 0.5:
-			raise InternalError("Could not find echo at requested time", time=time, start_mask=start_mask, found_echos=echos)
-
-		echos = self.take_level_measurement(0, False, pulses, 7, start_mask)
-		if len(echos) > 0 and abs(echos[0] - time) <= 0.5:
-			return 1500.
-
-		#Binary search to find the first gain where this echo does not occur
-		while gain_range[0] < gain_range[1]:
-			guess = (gain_range[0] + gain_range[1]) // 2
-			guess_gain = gain_keys[guess]
-			guess_settings = gains[guess_gain]
-
-			echos = self.take_level_measurement(guess_settings[0], guess_settings[1], pulses, guess_settings[2], start_mask)
-
-			#Check if echo disappeared
-			if len(echos) == 0 or abs(echos[0] - time) > 0.5:
-				gain_range[1] = guess - 1
-			else:
-				gain_range[0] = guess + 1
-
-		guess_gain = gain_keys[gain_range[0]]
-		return guess_gain
-
-	@param('mode', 'string', desc='Type of measurement (level or flow)')
-	@param("pulses", "integer", "positive", desc="Number of pulses to transmit")
-	@return_type("map(float, float)")
-	def map_echos(self, pulses):
-		"""
-		Find the amplitude of all received echos 
-
-		Uses the programmable receive path of the TDC1000 to vary the threshold
-		and gain of the receiving transducer in order to determine the best guess
-		amplitude and time of each echo received in level measurement mode.
-
-		Returns a map of TOF to amplitude in volts.
-		"""
-
-		echos = self.find_echos(pulses)
-
-		self.set_power(True)
-
-		ampl = {}
-		for echo in echos:
-			try:
-				ampl[echo] = self.echo_amplitude(pulses, echo)
-
-				print "%.2f: %.1f" % (echo, ampl[echo])
-			except InternalError:
-				print "%.2f: Error" % echo
-				pass
-
-		self.set_power(False)
-
-		return ampl
-
-	@param("gain", "integer", desc="Total gain to use")
-	@param("pulses", "integer", "positive", desc="Number of pulses to transmit")
-	@param("threshold", "integer", desc="Treshold to use for qualifying echos (0-7)")
-	@param("mask", "float", desc="Number of microseconds to mask (rounded to nearest 8th of a microsecond")
-	@param("cycles", "integer", desc="Number of cycles to average")
-	@return_type("float")
-	def average_level(self, gain, pulses, threshold, mask, cycles=10):
-		"""
-		Average N level measurements and return the mean
-		"""
-
-		total = 0.0
-		cnt = 0
-
-		self.set_power(True)
-
-		for i in xrange(0, cycles):
-			res = self.take_level_measurement(gain, pulses, threshold, mask)
-			if len(res) > 0:
-				total += res[0]
-				cnt += 1
-
-		self.set_power(False)
-		return total/cnt
-
-	@return_type("list(float)")
-	def take_level_measurement(self):
-		"""
-		Instruct the ultrasonic module to take a level measurement
-
-		The supplied parameters determine the analog gain and threshold limits as well
-		as the number of pulses to transmit and how many must be received for a valid
-		measurement.
-
-		Returns a list of the times of each echo in microseconds.
-		"""
-
-		gains = self._generate_gains()
-		if self.gain not in gains:
-			raise ArgumentError("Unknown gain not in the list of supported gains", gain=gain, supported_gains=gains)
-
-		gset = gains[self.gain]
-
-		mask_cycles = int(self.mask*8)
-
-		res = self.rpc(110, 6, pulses, 0, gset[0], int(not gset[1]), self.threshold, mask_cycles, 0b00, 1, result_type=(0, True))
-
-		if len(res['buffer']) == 1:
-			return []
-
-		echos = []
-
-		for i in xrange(0, 5):
-			lsb = ord(res['buffer'][i*4 + 0])
-			n1sb = ord(res['buffer'][i*4 + 1])
-			n2sb = ord(res['buffer'][i*4 + 2])
-			msb = ord(res['buffer'][i*4 + 3])
-
-			tof = msb << 24 | n2sb << 16 | n1sb << 8 | lsb;
-			if tof > 0:
-				echos.append(float(tof)/1e6)
-
-		return sorted(echos)
 
 	@param("gain", "integer", desc="Total gain to use")
 	@param("pulses", "integer", "positive", desc="Number of pulses to transmit")
@@ -455,9 +219,48 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		iprint("Interrupt Flags Register: %s" % bin(ints))
 		return [tof0, tof1, tof2, tof3]
 
+	@return_type("integer")
+	def find_signal(self):
+		"""
+		Find the ultrasonic signal strength
+		"""
+
+		res = self.rpc(110, 0xF, result_type=(0,True))
+
+		signal, = struct.unpack_from("<B", res['buffer'])
+		return signal
+
+	@annotated
+	def find_optimal_gain(self):
+		"""
+		Find the optimal gain setting for minimizing variance in the measurement
+		"""
+
+		res = self.rpc(110, 0x10, result_type=(0, True), timeout=60.)
+
+		variance, index, err = struct.unpack_from("<lbB", res['buffer'])
+
+		if index < len(self.gain_settings):
+			gain_setting = self.gain_settings[index]
+
+			print "Standard Deviation: %d ps" % (math.sqrt(variance)*16.0,)
+			print "Expected Deviation at 128 averages: %d ps" % (math.sqrt(variance)*16.0/math.sqrt(128.0),)
+			print "Gain Setting: %d db gain, %d threshold" % gain_setting
+		
+		print "Error Code: %d" % err
+
+	@return_type("integer")
+	def last_automatic_reading(self):
+		res = self.rpc(110, 0x11, result_type=(0, True), timeout=3.)
+
+		reading, = struct.unpack_from("<l", res['buffer'])
+
+		return reading*16
+
 	@param("average_bits", "integer", desc="log2(number of averages to take)")
+	@param("mode", "string", ("list", ['fast', 'robust']))
 	@return_type('list(integer)')
-	def tof_difference(self, average_bits):
+	def tof_difference(self, average_bits, mode='robust'):
 		"""
 		Figure out the time of flight difference in two directions
 
@@ -465,16 +268,25 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		and the raw delta TOF is reported in picoseconds.
 		"""
 
-		res = self.rpc(110, 8, average_bits, result_type=(0, True))
+		if mode == 'robust':
+			fast = 0
+		else:
+			fast = 1
+
+		res = self.rpc(110, 8, average_bits, fast, result_type=(0, True))
 
 		diff,num,err = struct.unpack_from("<lLB", res['buffer'])
 
 		if err != 0:
 			iprint("Error code returned from measurement: %d" % err)
+		
+		if fast:
+			return [int(diff*16),]
+
 		if num == 0:
 			return []
 
-		return [diff*10/(num)]
+		return [int(diff*16)]
 
 	@param("direction", "integer", desc="Direction of TOF readings to get (1 or 2)")
 	@return_type("list(integer)")
@@ -483,19 +295,6 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 
 		tofs = struct.unpack_from("<lllll", res['buffer'])
 		return tofs
-
-	@annotated
-	def find_signal(self):
-		"""
-		Figure out the time of flight difference in two directions
-
-		No filtering other than the built-in median filter is performed
-		and the raw delta TOF is reported in picoseconds.
-		"""
-
-		while True:
-			res = self.rpc(110, 8, 0, result_type=(0, True))
-			error = struct.unpack_from("<H", res['buffer'])
 
 	@return_type("integer")
 	@param("gain", "integer", "positive", desc="Gain to use")
@@ -511,42 +310,20 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		
 		return var
 
-	@return_type("integer")
-	def get_optimal_settings(self):
+	@return_type("list(float)")
+	def get_pulse_deviations(self):
 		"""
-		Get the measurement variance at the optimal gain settings
-		"""
-
-		res = self.rpc(110, 0xB, result_type=(0, True))
-
-		var,gain,threshold, err = struct.unpack_from("<lBBB", res['buffer'])
-
-		if err != 0:
-			raise InternalError("No signal, could not optimize settings")
-
-		print "Optimal Gain:", gain
-		print "Optimal Threshold:", threshold
-
-		return var
-
-	@return_type("float")
-	def noise_floor(self):
-		"""
-		Find the noise floor of the ultrasound module in microvolts
-
-		Cycle through all of the gain conditions until background noise
-		excites the module and report the highest gain that can be used
-		without being affected by noise.
+		Get the standard deviation of delta TOF for each pulse in the 5 pulse train
 		"""
 
-		res = self.rpc(110, 9, result_type=(0, True))
+		from math import sqrt
 
-		delta, threshold, gain = struct.unpack_from("<LLL", res['buffer'])
+		res = self.rpc(110, 9, result_type=(0, True), timeout=30.0)
+
+		variances = struct.unpack_from('<lllll', res['buffer'])
 		
-		print threshold
-		print gain
-
-		return float(delta)
+		stds = [sqrt(x)*16.0 for x in variances]
+		return stds
 
 	@param("averages", "integer", "nonnegative", desc="Number of averages per sample (in log2)")	
 	@param("count", "integer", "positive", desc="Number of samples to take")
