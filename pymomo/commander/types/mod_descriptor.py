@@ -10,7 +10,7 @@ class ModuleDescriptor:
 		if len(buffer) != 11:
 			raise TypeError('ModuleDescriptor', 'Length should have been 11, was %d' % len(buffer))
 
-		hw_type, mod_type, info, name, feat_cnt = struct.unpack('BBB7sB', buffer)
+		hw_type, mod_type, info, name, reserved, feat_cnt = struct.unpack('BBB6sBB', buffer)
 
 		self.hw = hw_type
 		self.type = mod_type

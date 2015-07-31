@@ -4,7 +4,7 @@ import sys, os
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
-from pymomo.commander.meta import *
+from pymomo.commander.hwmanager import HardwareManager
 from pymomo.commander.exceptions import *
 from pymomo.commander.proxy import *
 
@@ -338,19 +338,7 @@ class Reportinator(cmdln.Cmdln):
 			con.set_time( 14, 1, day, hour, minute, second )
 
 	def _get_controller(self,opts):
-		try:
-			con = get_controller(opts.port)
-		except NoSerialConnectionException as e:
-			print "Available serial ports:"
-			if not e.available_ports():
-				print "<none>"
-			else:
-				for port, desc, hwid in e.available_ports():
-					print "\t%s (%s, %s)" % ( port, desc, hwid )
-			self.error(str(e))
-		except ValueError as e:
-			self.error(str(e))
-
+		con = HardwareManager(opts.port).controller()
 		return con
 
 def main():

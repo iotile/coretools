@@ -6,7 +6,7 @@ import struct
 from pymomo.utilities.intelhex import IntelHex
 from pymomo.utilities.typedargs import param, annotated, context, return_type, iprint
 from pymomo.exceptions import *
-from time import sleep
+from time import sleep, time
 
 @context("GSMModule")
 class GSMModule (proxy12.MIB12ProxyObject):
@@ -22,6 +22,8 @@ class GSMModule (proxy12.MIB12ProxyObject):
 	def __init__(self, stream, addr):
 		super(GSMModule, self).__init__(stream, addr)
 		self.name = 'GSM Module'
+		self.rx_buffer_loc = 0x21f4
+		self.rx_buffer_length = 100
 
 	@param("destination", "string", desc="URL or phone number to send messages to")
 	def set_destination(self, destination):
@@ -36,6 +38,25 @@ class GSMModule (proxy12.MIB12ProxyObject):
 			iprint("Setting Destination (offset %d): %s" % ( i, buf ))
 			self.rpc(11, 4, i, buf)
 
+	@annotated
+	@return_type("string")
+	def read_rx_buffer(self):
+		buff = ''
+		for i in xrange(self.rx_buffer_loc, self.rx_buffer_loc + self.rx_buffer_length, 20):
+			res = self.rpc(0,3, i, result_type=(0,True))
+			buff += res['buffer']
+
+		return buff
+
+	@param("destination", "string", desc="Stream destination")
+	@param("length", "integer", desc="Length of stream")
+	def open_stream(self, destination, length):
+		self.set_destination(destination)
+
+		res = self.rpc(11, 0, length, result_type=(1, False), timeout=5*60.0)
+		if res['ints'][0] != 0:
+			raise HardwareError("Could not open GSM stream", result_code=res['ints'][0])
+
 	@param("destination", "string", desc="phone number or url")
 	@param("text", "string", desc="data to send")
 	def send_message(self, destination, text):
@@ -49,7 +70,7 @@ class GSMModule (proxy12.MIB12ProxyObject):
 		2. 'URL' prefixed with http:// in order to send an http post request
 		"""
 
-		apn = "JTM2M"
+		apn = "m2m.tele2.com"
 
 		iprint("Sending message '%s' to %s" % ( text, destination ))
 		iprint("Setting APN: %s" % apn)
@@ -57,13 +78,21 @@ class GSMModule (proxy12.MIB12ProxyObject):
 
 		self.set_destination(destination)
 
+		start_time = time()
 		iprint("Opening stream with length %d" % len(text))
-		res = self.rpc(11, 0, len(text), result_type=(1, False), timeout=60.0)
+		res = self.rpc(11, 0, len(text), result_type=(1, False), timeout=5*60.0)
 		if res['ints'][0] != 0:
 			raise HardwareError("Could not open GSM stream", result_code=res['ints'][0])
 
+		end_time = time()
+
+		iprint("Opening stream took %.1f seconds" % ((end_time - start_time),))
+
 		for i in xrange(0, len(text), 20):
-			buf = text[i:i+20]
+			if (len(text) - i) >= 20:
+				buf = text[i:i+20]
+			else:
+				buf = text[i:]
 
 			iprint("> Streaming data: '%s'" % buf)
 			res = self.rpc(11, 1, buf, timeout=10.0, result_type=(1, False))
@@ -71,9 +100,15 @@ class GSMModule (proxy12.MIB12ProxyObject):
 				raise HardwareError("Could not stream data to GSM module", result_code=res['ints'][0])
 		
 		iprint("Closing stream")
-		res = self.rpc(11, 2, timeout=60.0, result_type=(1, False))
+
+		start_time = time()
+		res = self.rpc(11, 2, timeout=4*60.0, result_type=(1, False))
+		end_time = time()
+		iprint("Closing stream took %.1f seconds" % ((end_time - start_time),))
+
 		if res['ints'][0] != 0:
 			raise HardwareError("Could not close GSM stream", result_code=res['ints'][0])
+
 
 	@annotated
 	def module_on(self):
@@ -89,8 +124,8 @@ class GSMModule (proxy12.MIB12ProxyObject):
 
 		res = self.rpc(10, 0, result_type=(1, False), timeout=15.0)
 
-		if res['ints'][0] == 0:
-			raise HardwareError("Could not turn on GSM module")
+		if res['ints'][0] != 0:
+			raise HardwareError("Could not turn on GSM module", error_code=res['ints'][0])
 
 	@annotated
 	def register(self):
@@ -105,8 +140,8 @@ class GSMModule (proxy12.MIB12ProxyObject):
 		try:
 			res = self.rpc(10, 1, timeout=(2*60.0 + 2), result_type=(1, False))
 
-			if res['ints'][0] == 0:
-				raise TimeoutError("Could not register on the network during the 2 minute timeout period")
+			if res['ints'][0] != 0:
+				raise TimeoutError("Could not register on the network", error_code=res['ints'][0])
 		except RPCError as e:
 			raise HardwareError("Could not register to network, likely because the gsm module was not on")
 
@@ -118,7 +153,7 @@ class GSMModule (proxy12.MIB12ProxyObject):
 	@param("cmd", "string", desc="AT command to send")
 	@param("timeout", "float", "nonnegative", desc="maximum time to wait (in seconds)")
 	@return_type("string")
-	def at_command(self, cmd, timeout=5.0):
+	def at_command(self, cmd, timeout=10.0):
 		"""
 		Send an AT command to the GSM module and wait for its response
 
@@ -131,8 +166,15 @@ class GSMModule (proxy12.MIB12ProxyObject):
 		takes longer than 5 seconds to execute, this command will timeout.  
 		"""
 
-		res = self.rpc(10, 2, cmd, result_type=(0, True), timeout=timeout)
+		for i in xrange(0, len(cmd), 20):
+			if (len(cmd) - i) >= 20:
+				buf = cmd[i:i+20]
+			else:
+				buf = cmd[i:]
 
+			res = self.rpc(10, 2, buf)
+
+		res = self.rpc(10, 2, result_type=(0, True), timeout=timeout)
 		return res['buffer']
 
 	def debug(self):
