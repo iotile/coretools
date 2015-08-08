@@ -68,14 +68,6 @@ class MIBController (proxy.MIBProxyObject):
 		return ModuleDescriptor(res['buffer'], 11+index)
 
 	@annotated
-	def enter_safe_mode(self):
-		"""
-		Reset all attached MoMo modules and prevent user code from running
-		"""
-
-		self.rpc(42, 0x29, 1)
-
-	@annotated
 	def clear_log(self):
 		"""
 		Clear the MoMo system log.
@@ -658,6 +650,17 @@ class MIBController (proxy.MIBProxyObject):
 
 		return {'flags': bin(flags), 'cmd_buffer': repr(cmd), 'checksum_errors': checksum_errors, 'send_buffer': repr(send), 'receive_buffer': repr(receive), 'send_cursor':send_cursor, 'transmitted_cursor': transmitted_cursor}
 
+	@param('element_size', 'integer', 'positive', desc='Size of each flashqueue element [1, 256]')
+	@param('subsection', 'integer', 'positive', desc='Number of subsections to allocate [2, 7]')
+	@param('version', 'integer', 'positive', desc='Version of flashblock to create')
+	def test_fq_init(self, element_size, subsections, version):
+		self.rpc(42, 0x30, version, element_size, subsections)
+
+	@return_type("integer")
+	def test_fq_address(self):
+		res = self.rpc(42, 0x31, result_type=(1, False))
+		return res['ints'][0]
+		
 	@return_type("integer")
 	@param("message", "string", desc="Message to send with broadcast packets (<=20 bytes)")
 	def bt_setbroadcast(self, message):
