@@ -148,7 +148,7 @@ class GSMModule (proxy12.MIB12ProxyObject):
 
 	@annotated
 	def module_off(self):
-		res = self.rpc(10,5)
+		res = self.rpc(10,5, timeout=7.0)
 
 	@param("cmd", "string", desc="AT command to send")
 	@param("timeout", "float", "nonnegative", desc="maximum time to wait (in seconds)")
