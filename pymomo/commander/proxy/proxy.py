@@ -59,9 +59,9 @@ class MIBProxyObject (object):
 		size = len(payload)
 
 		if size < 2*num_ints:
-			raise RPCError('Return value too short to unpack', expected_minimum_size=2*num_ints, actual_size=size)
+			raise RPCError('Return value too short to unpack', expected_minimum_size=2*num_ints, actual_size=size, status_code=status, payload=payload)
 		elif buff == False and size != 2*num_ints:
-			raise RPCError('Return value was not the correct size', expected_size=2*num_ints, actual_size=size)
+			raise RPCError('Return value was not the correct size', expected_size=2*num_ints, actual_size=size, status_code=status, payload=payload)
 
 		for i in xrange(0, num_ints):
 			low = ord(payload[2*i])

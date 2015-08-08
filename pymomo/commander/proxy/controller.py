@@ -680,6 +680,14 @@ class MIBController (proxy.MIBProxyObject):
 
 		return res['ints'][0]
 
+	@param("address", "integer", desc="Address of Comm Module to test")
+	def test_comm_streaming(self, address):
+		"""
+		Stream a test message to the specified comm module
+		"""
+
+		res = self.rpc(60, 0x15, address)
+
 	def momo_attached(self):
 		resp, result = self.stream.send_cmd("attached")
 		if result != CMDStream.OkayResult:
@@ -715,26 +723,68 @@ class MIBController (proxy.MIBProxyObject):
 		(min, max, start, end) = struct.unpack('IIII', res['buffer'])
 		return (min,max,start,end)
 
+	@return_type('string')
+	def get_report_interval(self):
+		intervals = {4: '10 minutes', 5: '1 hour', 6: '1 day'}
+
+		res = self.rpc(60, 0x04, result_type=(1,False))
+		interval = res['ints'][0]
+
+		if interval not in intervals:
+			raise HardwareError("Unknown interval number in momo", interval=interval, known_intervals=intervals.keys())
+
+		return intervals[interval]
+
+	@param("interval", "string", desc="reporting interval")
+	def set_report_interval(self, interval):
+		"""
+		Set the interval between automatic reports
+
+		Interval should be passed as a string with valid options being:
+		10 minutes
+		1 hour
+		1 day
+		"""
+
+		intervals = {'10 minutes': 4, '1 hour': 5, '1 day': 6}
+
+		interval = interval.lower()
+
+		if interval not in intervals:
+			raise ValidationError("Unknown interval string", interval=interval, known_intervals=intervals.keys())
+
+		intnumber = intervals[interval]
+
+		self.rpc(60, 3, intnumber)
+
+		value = self.get_report_interval()
+		assert value == interval
+
+	@annotated
 	def start_reporting(self):
 		"""
 		Start regular reporting
 		"""
 		self.rpc(60, 1)
 
+	@annotated
 	def stop_reporting(self):
 		"""
 		Stop regular reporting
 		"""
 		self.rpc(60, 2)
 
-	def get_reporting(self):
+	@return_type("bool")
+	def reporting_state(self):
 		"""
-		Get regular reporting state
+		Get whether automatic reporting is enabled
 		"""
-		res = self.rpc(60,14, result_type=(1, True))
+
+		res = self.rpc(60, 14, result_type=(1, True))
 		enabled = bool(res['ints'][0])
 		return enabled
 
+	@annotated
 	def reset_reporting_config(self):
 		"""
 		Reset the reporting configuration.
@@ -749,6 +799,8 @@ class MIBController (proxy.MIBProxyObject):
 
 		self.rpc(60, 0)
 
+	@param("index", "integer", desc="0 for primary route, 1 for secondary route")
+	@param("route", "string", desc="URL or phone number to stream data to")
 	def set_report_route(self, index, route):
 		if len(route) == 0:
 			arg = struct.unpack('H', struct.pack('BB', 0, int(index)))
@@ -759,6 +811,8 @@ class MIBController (proxy.MIBProxyObject):
 				arg = struct.unpack('H', struct.pack('BB', int(i), int(index)))
 				self.rpc(60, 5, arg[0], buf)
 
+	@param("index", "integer", desc="0 for primary route, 1 for secondary route")
+	@return_type("string")
 	def get_report_route(self, index):
 		route = ""
 		i = 0
@@ -771,10 +825,12 @@ class MIBController (proxy.MIBProxyObject):
 			route += res['buffer']
 		return route
 
+	@return_type("string")
 	def get_gprs_apn(self):
 		res = self.rpc(60, 0x14, result_type=(0,True))
 		return res['buffer']
 
+	@param("apn", "string", desc='APN for gsm data connections')
 	def set_gprs_apn(self, apn):
 		res = self.rpc(60, 0x13, apn)
 
@@ -805,9 +861,10 @@ class MIBController (proxy.MIBProxyObject):
 		Set the time on the momo controller to the current system time.
 		"""
 
-		now = datetime.now()
-		self.set_time( now.date().year - 2000, now.date().month, now.date().day, now.time().hour, now.time().minute, now.time().second, now.weekday() )
-		print now
+		#Module time should be in UTC so there is uniformity on the server side
+		now = datetime.utcnow()
+		self.set_time(now.date().year - 2000, now.date().month, now.date().day, now.time().hour, now.time().minute, now.time().second, now.weekday())
+		print "Assigned UTC Time:", now
 
 	@annotated
 	def build_report(self):
@@ -866,6 +923,7 @@ class MIBController (proxy.MIBProxyObject):
 
 		return buf
 
+	@return_type("integer")
 	def scheduler_map(self):
 		"""
 		Get the map of used scheduler buckets
@@ -889,6 +947,7 @@ class MIBController (proxy.MIBProxyObject):
 
 		res = self.rpc(43, 1, int(address), ( (int(feature)<<8) | (int(command)&0xFF) ), int(frequency) );
 
+	@return_type('map(string, integer)')
 	def scheduler_describe(self, index):
 		"""
 		Describe a scheduled callback
