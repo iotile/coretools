@@ -651,15 +651,30 @@ class MIBController (proxy.MIBProxyObject):
 		return {'flags': bin(flags), 'cmd_buffer': repr(cmd), 'checksum_errors': checksum_errors, 'send_buffer': repr(send), 'receive_buffer': repr(receive), 'send_cursor':send_cursor, 'transmitted_cursor': transmitted_cursor}
 
 	@param('element_size', 'integer', 'positive', desc='Size of each flashqueue element [1, 256]')
-	@param('subsection', 'integer', 'positive', desc='Number of subsections to allocate [2, 7]')
+	@param('subsections', 'integer', 'positive', desc='Number of subsections to allocate [2, 7]')
 	@param('version', 'integer', 'positive', desc='Version of flashblock to create')
 	def test_fq_init(self, element_size, subsections, version):
 		self.rpc(42, 0x30, version, element_size, subsections)
 
 	@return_type("integer")
 	def test_fq_address(self):
-		res = self.rpc(42, 0x31, result_type=(1, False))
+		res = self.rpc(42, 0x32, result_type=(1, False))
 		return res['ints'][0]
+
+	@param("start", 'integer')
+	@param("count", 'integer')
+	def test_fq_push_n(self, start, count):
+		self.rpc(42, 0x31, count, start, timeout=20.0)
+
+	@return_type("integer")
+	def test_fq_pop(self):
+		res = self.rpc(42, 0x33, result_type=(1, True))
+
+		if res['ints'][0] == 0:
+			return -1
+
+		out = ord(res['buffer'][0]) | (ord(res['buffer'][1]) << 8)
+		return out
 		
 	@return_type("integer")
 	@param("message", "string", desc="Message to send with broadcast packets (<=20 bytes)")
