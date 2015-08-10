@@ -201,7 +201,7 @@ class HardwareManager:
 			if serial_port == None:
 				serial_port = self._find_momo_serial()
 			if serial_port == None:
-				raise NoSerialConnectionException(available_ports=self._get_serial_ports())
+				raise NoSerialConnectionException(available_ports=[x for x in self._get_serial_ports()])
 
 			stream = SerialTransport(serial_port)
 			return FSUStream(stream)
