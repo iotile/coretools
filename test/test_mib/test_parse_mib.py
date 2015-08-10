@@ -41,6 +41,37 @@ def test_extend_name():
 	assert len(desc.variables['ModuleName']) == 6
 	assert desc.variables['ModuleName'] == 'test  '
 
+def test_hexvalues():
+	desc = _load_mib("hexvalues.mib")
+
+	assert desc.variables['RandomVariable'] == 0x100
+	assert 0x12ab in desc.commands
+	assert 64000 in desc.commands
+
+def test_parse_configs():
+	desc = _load_mib("configvariables.mib")
+
+	assert 'testvar1' in desc.configs
+	assert 'testvar2' in desc.configs
+	assert 'testvar3' in desc.configs
+	assert 'testvar4' in desc.configs
+
+	testvar1 = desc.configs['testvar1']
+	assert testvar1['required'] == True
+	assert testvar1['type'] == 'uint8_t'
+	assert testvar1['total_size'] == 1
+	assert testvar1['array'] == False
+
+
+@raises(pyparsing.ParseException)
+def test_parse_badconfig1():
+	desc = _load_mib("badconfig1.mib")
+
+
+@raises(pyparsing.ParseException)
+def test_parse_badconfig2():
+	desc = _load_mib("badconfig2.mib")
+
 @raises(DataError)
 def test_long_name():
 	desc = _load_mib("long_name.mib")

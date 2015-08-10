@@ -1,0 +1,18 @@
+ModuleName = "test12";
+ModuleVersion = "1.2.3";
+APIVersion = "1.2";
+
+RandomVariable = 0x100;
+
+#Endpoints you can call on this module
+0x12ab: _test(0, no);
+64000: test2(1, yes);
+
+#Required configuration variables that need to be set
+required config uint8_t testvar1;
+required config char testvar2[26];
+
+#Optional configuration variables that can be set
+optional config uint32_t testvar3 = 0x1202341;
+optional config char testvar4[15] = "test string";
+optional config char testvar5[30] = "http://www.test.com";

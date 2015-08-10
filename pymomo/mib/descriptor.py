@@ -1,7 +1,7 @@
 #descriptor.py
 #Define a Domain Specific Language for specifying MIB endpoints
 
-from pyparsing import Word, Regex, nums, Literal, Optional, Group
+from pyparsing import Word, Regex, nums, hexnums, Literal, Optional, Group, oneOf, dblQuotedString
 from handler import MIBHandler
 import sys
 import os.path
@@ -20,8 +20,8 @@ import block
 #with # are considered comments and ignored.
 symbol = Regex('[_a-zA-Z][_a-zA-Z0-9]*')
 filename = Regex('[_a-zA-Z][_a-zA-Z0-9]*\.mib')
-strval = Regex('"[_a-zA-Z0-9.]+"')
-number = (Word(nums).setParseAction(lambda s,l,t: [int(t[0])])) | symbol
+strval = Regex('"[_a-zA-Z0-9. ]+"')
+number = Regex('((0x[a-fA-F0-9]+)|[0-9]+)').setParseAction(lambda s,l,t: [int(t[0], 0)]) | symbol
 ints = number('num_ints') + Optional(Literal('ints') | Literal('int'))
 has_buffer = (Literal('yes') | Literal('no')).setParseAction(lambda s,l,t: [t[0] == 'yes'])
 comma = Literal(',').suppress()
@@ -30,14 +30,24 @@ quote = Literal('"').suppress()
 left = Literal('(').suppress()
 right = Literal(')').suppress()
 colon = Literal(':').suppress()
+leftB = Literal('[').suppress()
+rightB = Literal(']').suppress()
 comment = Literal('#')
+
+valid_type = oneOf('uint8_t uint16_t uint32_t int8_t int16_t int32_t char')
 
 assignment_def = symbol("variable") + "=" + (number('value') | strval('value')) + ';'
 cmd_def = number("cmd_number") + colon + symbol("symbol") + left + ints + comma + has_buffer('has_buffer') + right + ";"
 include = Literal("#include") + quote + filename("filename") + quote
-interface_def = number('interface') + ';'
+interface_def = Literal('interface') + number('interface') + ';'
 
-statement = include | cmd_def | comment | assignment_def | interface_def
+reqconfig = Literal('required').suppress() + Literal('config').suppress() + valid_type('type') + symbol('configvar') + Optional(leftB + number('length') + rightB) + ';'
+optconfig = Literal('optional').suppress() + Literal('config').suppress() + valid_type('type') + symbol('configvar') + Optional(leftB + number('length') + rightB) + "=" + (number('value') | dblQuotedString('value')) + ';'
+
+statement = include | cmd_def | comment | assignment_def | interface_def | reqconfig | optconfig
+
+#Known Variable Type Lengths
+type_lengths = {'uint8_t': 1, 'char': 1, 'int8_t': 1, 'uint16_t': 2, 'int16_t':2, 'uint32_t': 4, 'int32_t': 4} 
 
 class MIBDescriptor:
 	"""
@@ -50,6 +60,7 @@ class MIBDescriptor:
 		self.variables = {}
 		self.commands = {}
 		self.interfaces = []
+		self.configs = {}
 
 		self.include_dirs = include_dirs + [MomoPaths().config]
 
@@ -106,7 +117,7 @@ class MIBDescriptor:
 		if number in self.variables:
 			return self.variables[number]
 
-		raise ValueError("Reference to undefined variable %s" % number)
+		raise DataError("Reference to undefined variable %s" % number)
 
 	def _parse_interface(self, match):
 		interface = match['interface']
@@ -125,6 +136,34 @@ class MIBDescriptor:
 
 		self.variables[var] = val
 
+	def _parse_required_configvar(self, match):
+		if 'length' in match:
+			array = True
+			quantity = match['length']
+		else:
+			array = False
+			quantity = 1
+
+		if 'value' in match:
+			default_value = match['value']
+			required = False
+		else:
+			default_value = None
+			required = True
+
+		varname = match['configvar']
+		vartype = match['type']
+
+		varsize = quantity*type_lengths[vartype]
+
+		config = {'name': varname, 'type': vartype, 'total_size': varsize, 'array': array, 'count': quantity, 'required': required}
+
+		if varname in self.configs:
+			raise DataError("Attempted to add the same config variable twice", variable_name=varname, defined_variables=self.configs.keys())
+		
+		self.configs[varname] = config
+
+
 	def _parse_line(self, line):
 		matched = statement.parseString(line)
 
@@ -136,6 +175,8 @@ class MIBDescriptor:
 			self._parse_assignment(matched)
 		elif 'interface' in matched:
 			self._parse_interface(matched)
+		elif 'configvar' in matched:
+			self._parse_required_configvar(matched)
 
 	def _validate_information(self):
 		"""
