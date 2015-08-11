@@ -8,6 +8,9 @@ import os.path
 from pymomo.utilities.paths import MomoPaths
 from pymomo.exceptions import *
 import block
+import shutil
+from pymomo.utilities.template import RecursiveTemplate
+import struct
 
 #DSL for mib definitions
 #Format:
@@ -41,13 +44,14 @@ cmd_def = number("cmd_number") + colon + symbol("symbol") + left + ints + comma 
 include = Literal("#include") + quote + filename("filename") + quote
 interface_def = Literal('interface') + number('interface') + ';'
 
-reqconfig = Literal('required').suppress() + Literal('config').suppress() + valid_type('type') + symbol('configvar') + Optional(leftB + number('length') + rightB) + ';'
-optconfig = Literal('optional').suppress() + Literal('config').suppress() + valid_type('type') + symbol('configvar') + Optional(leftB + number('length') + rightB) + "=" + (number('value') | dblQuotedString('value')) + ';'
+reqconfig = number("confignum") + colon + Literal('required').suppress() + Literal('config').suppress() + valid_type('type') + symbol('configvar') + Optional(leftB + number('length') + rightB) + ';'
+optconfig = number("confignum") + colon + Literal('optional').suppress() + Literal('config').suppress() + valid_type('type') + symbol('configvar') + Optional(leftB + number('length') + rightB) + "=" + (number('value') | dblQuotedString('value')) + ';'
 
 statement = include | cmd_def | comment | assignment_def | interface_def | reqconfig | optconfig
 
 #Known Variable Type Lengths
 type_lengths = {'uint8_t': 1, 'char': 1, 'int8_t': 1, 'uint16_t': 2, 'int16_t':2, 'uint32_t': 4, 'int32_t': 4} 
+type_codes = {'uint8_t': 'B', 'char': 'B', 'int8_t': 'b', 'uint16_t': 'H', 'int16_t': 'h', 'uint32_t': 'L', 'int32_t': 'l'} 
 
 class MIBDescriptor:
 	"""
@@ -75,6 +79,27 @@ class MIBDescriptor:
 					continue
 
 				self._parse_line(line)
+
+	def generate_config_h(self, filename):
+		templ = RecursiveTemplate('configvariables.h')
+		templ.add({'configvars': self.configs})
+		out = templ.format_temp()
+
+		shutil.move(out, filename)
+
+	def generate_config_c(self, filename):
+		templ = RecursiveTemplate('configvariables.c')
+		templ.add({'configvars': self.configs})
+		out = templ.format_temp()
+
+		shutil.move(out, filename)
+
+	def generate_config_defaults_as(self, filename):
+		templ = RecursiveTemplate('config_defaults_asm.as')
+		templ.add({'configvars': self.configs})
+		out = templ.format_temp()
+
+		shutil.move(out, filename)
 
 	def _find_include_file(self, filename):
 		for d in self.include_dirs:
@@ -136,7 +161,27 @@ class MIBDescriptor:
 
 		self.variables[var] = val
 
-	def _parse_required_configvar(self, match):
+	def _convert_value_to_bytes(self, value, type):
+		"""
+		Given an integer, convert it to an array of bytes
+		"""
+
+		if isinstance(value, int) or isinstance(value, long):
+			fmt = '<%s' % (type_codes[type])
+			output = struct.pack(fmt, value)
+		elif isinstance(value, basestring):
+			return bytearray(value)
+		else:
+			output_vals = []
+			for x in value:
+				out = self._convert_value_to_bytes(x, type)
+				output_vals.append(out)
+
+			output = [x for itembytes in output_vals for x in itembytes]
+
+		return bytearray(output)
+
+	def _parse_configvar(self, match):
 		if 'length' in match:
 			array = True
 			quantity = match['length']
@@ -145,7 +190,7 @@ class MIBDescriptor:
 			quantity = 1
 
 		if 'value' in match:
-			default_value = match['value']
+			default_value = self._convert_value_to_bytes(match['value'], match['type'])
 			required = False
 		else:
 			default_value = None
@@ -153,15 +198,26 @@ class MIBDescriptor:
 
 		varname = match['configvar']
 		vartype = match['type']
+		varnum = match['confignum']
 
 		varsize = quantity*type_lengths[vartype]
 
-		config = {'name': varname, 'type': vartype, 'total_size': varsize, 'array': array, 'count': quantity, 'required': required}
+		flags = len(self.configs)
 
-		if varname in self.configs:
-			raise DataError("Attempted to add the same config variable twice", variable_name=varname, defined_variables=self.configs.keys())
+		if flags >= 64:
+			raise DataError("Too many configuration variables.  The maximum number of supported variables is 64")
+		if array:
+			flags |= (1 << 7)
+		if required:
+			flags |= (1 << 6)
+
+
+		config = {'name': varname, 'flags': flags, 'type': vartype, 'total_size': varsize, 'array': array, 'count': quantity, 'required': required, 'default_value': default_value}
+
+		if varnum in self.configs:
+			raise DataError("Attempted to add the same config variable twice", variable_name=varname, id_number=varnum, defined_variables=self.configs.keys())
 		
-		self.configs[varname] = config
+		self.configs[varnum] = config
 
 
 	def _parse_line(self, line):
@@ -176,7 +232,7 @@ class MIBDescriptor:
 		elif 'interface' in matched:
 			self._parse_interface(matched)
 		elif 'configvar' in matched:
-			self._parse_required_configvar(matched)
+			self._parse_configvar(matched)
 
 	def _validate_information(self):
 		"""
@@ -239,6 +295,9 @@ class MIBDescriptor:
 
 		for interface in self.interfaces:
 			mib.add_interface(interface)
+
+		for id, config in self.configs.iteritems():
+			mib.add_config(id, config)
 
 		mib.set_api_version(*self.variables["APIVersion"])
 		mib.set_module_version(*self.variables["ModuleVersion"])

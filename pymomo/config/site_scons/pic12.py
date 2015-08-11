@@ -103,6 +103,7 @@ def build_module(name, arch):
 	#Load in all of the xc8 configuration from build_settings
 	configure_env_for_xc8(env)
 	compile_mib(env)
+	compile_config_variables(env)
 
 	Export('env')
 	SConscript(os.path.join(builddir, 'SConscript'))
@@ -135,6 +136,37 @@ def compile_mib(env, mibname=None, outdir=None):
 	env['MIBFILE'] = '#' + cmdmap_path
 
 	return env.Command(cmdmap_path, mibname, action=env.Action(mib_compilation_action, "Compiling MIB definitions"))
+
+def compile_config_variables(env, mibname=None, outdir=None):
+	"""
+	Given a path to a *.mib file, use mibtool to process it and return a command_map.asm file
+	return the path to that file.
+	"""
+
+	if outdir is None:
+		dirs = env["ARCH"].build_dirs()
+		outdir = dirs['build']
+
+	if mibname is None: 
+		mibname = os.path.join('src', 'mib', env["MODULE"] + ".mib")
+
+	config_h = os.path.join(outdir, 'config_variables.h')
+	config_c = os.path.join(outdir, 'config_variables.c')
+	config_as = os.path.join(outdir, 'config_variable_defaults.as')
+
+	env['CONFIGVARIABLES'] = ['#' + x for x in [config_h, config_c, config_as]]
+
+	return env.Command([config_h, config_c, config_as], mibname, action=env.Action(config_compilation_action, "Compiling Configuration Variables"))
+
+def config_compilation_action(target, source, env):
+	try:
+		d = MIBDescriptor(str(source[0]))
+	except pyparsing.ParseException as e:
+		raise BuildError("Could not parse mib file", parsing_exception=e, )
+
+	d.generate_config_h(str(target[0]))
+	d.generate_config_c(str(target[1]))
+	d.generate_config_defaults_as(str(target[2]))
 
 def mib_compilation_action(target, source, env):
 	try:

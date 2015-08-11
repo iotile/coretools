@@ -10,6 +10,19 @@
 global $cmd.symbol
 #end for
 
+;All Config Variables are defined in other files so they must be declared global here
+#for $var in $configs.values()
+global _$var.name
+#end for
+
+;All Default Config Variable Values (if any) are defined in other files so they must be declared global here
+#for $var in $configs.values()
+#if $var.required == False
+global ${var.name}_default
+#end if
+#end for
+
+
 ;High memory command structure for processing mib slave endpoints
 PSECT mibblock,global,class=CONST,delta=2
 ;Module information
@@ -45,15 +58,15 @@ PSECT mibstructs,global,class=CODE,delta=2,with=mibblock
 ;Given a value in W, return the appropriate information by loading it into FSR0
 ;0: selects the MIB endpoint table
 ;1: selects the supported interface list
-;2: selects the configuration variable list
-;3: reserved, must be retlw 0xFF
+;2: selects the configuration variable metadata list
+;3: selects the configuration variable address list
 app_information:
 andlw 0b11
 brw
 goto load_command_map
 goto load_interface_map
-retlw 0xFF
-retlw 0xFF
+goto load_config_metadata_map
+goto load_config_address_map
 
 load_command_map:
 movlw (command_map & 0xFF)
@@ -66,6 +79,20 @@ load_interface_map:
 movlw (interface_map & 0xFF)
 movwf FSR0L
 movlw ((interface_map >> 8) | (1 << 7))
+movwf FSR0H
+return 
+
+load_config_metadata_map:
+movlw (config_metadata_map & 0xFF)
+movwf FSR0L
+movlw ((config_metadata_map >> 8) | (1 << 7))
+movwf FSR0H
+return 
+
+load_config_address_map:
+movlw (config_address_map & 0xFF)
+movwf FSR0L
+movlw ((config_address_map >> 8) | (1 << 7))
 movwf FSR0H
 return 
 
@@ -105,3 +132,46 @@ retlw 0xFF
 retlw 0xFF
 retlw 0xFF
 retlw 0xFF
+
+;Defined configuration variables in this module
+;Format is:
+;Byte 1: Low byte of ID
+;Byte 2: High byte of ID
+;Byte 3: Flags organized as:
+;  - Bits 0-5: The offset of this entry in the list
+;  - Bit 6: Whether this variable has a default value
+;  - Bit 7: Whether this variable is a buffer (1) or has a fixed length (0)
+config_metadata_map:
+#for $id, $var in $configs.iteritems()
+#set $id1 = $id & 0xFF
+#set $id2 = ($id >> 8) & 0xFF
+;Variable $var.name
+retlw $id1
+retlw $id2
+retlw $var.flags
+retlw $var.total_size
+
+#end for
+retlw 0xFF
+retlw 0xFF
+retlw 0xFF
+retlw 0xFF
+
+config_address_map:
+#for $id, $var in $configs.iteritems()
+retlw (_$var.name & 0xFF)
+retlw (_$var.name >> 8) & 0xFF
+#if $var.required
+retlw 0xFF
+retlw 0xFF
+#else
+retlw (${var.name}_default & 0xFF)
+retlw ((${var.name}_default >> 8) | (1 << 7))
+#end if
+
+#end for
+retlw 0xFF
+retlw 0xFF
+retlw 0xFF
+retlw 0xFF
+

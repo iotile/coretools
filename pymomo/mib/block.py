@@ -58,6 +58,7 @@ class MIBBlock:
 		self.base_addr = build_settings["mib12"]["mib"]["base_address"]
 		self.curr_version = build_settings["mib12"]["mib"]["current_version"]
 		self.commands = {}
+		self.configs = {}
 		self.interfaces = []
 
 		self.valid = True
@@ -170,6 +171,20 @@ class MIBBlock:
 								new_handler=handler)
 
 		self.commands[cmd_id] = handler
+
+	def add_config(self, config_id, config_data):
+		"""
+		Add a configuration variable to the MIB block
+		"""
+
+		if config_id < 0 or config_id >= 2**16:
+			raise ArgumentError("Config ID in mib block is not a non-negative 2-byte number", config_data=config_id, data=config_data)
+
+		if config_id in self.configs:
+			raise ArgumentError("Attempted to add the same command ID twice.", config_data=config_id, old_data=self.configs[config_id],
+								new_data=config_data)
+
+		self.configs[config_id] = config_data
 
 	def _check_magic(self, ih):
 		magic_addr = self.base_addr + magic_offset

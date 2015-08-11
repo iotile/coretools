@@ -87,7 +87,8 @@ def build_unittest(test, arch, summary_env, cmds=None):
 	#If we are compiling a special mib block, add it in
 	if test.mibfile is not None:
 		cmdmap = pic12.compile_mib(env, test.mibfile, testdir)
-		srcfiles += cmdmap
+		config_h, config_c, config_as = pic12.compile_config_variables(env, test.mibfile, testdir)
+		srcfiles += cmdmap + [config_c, config_as]
 
 	apphex = env.xc8(os.path.join(testdir, name + '_unit.hex'), srcfiles)
 	env.Depends(apphex[0], symfile)
