@@ -97,8 +97,6 @@ def test_config_default_as():
 		for line in f:
 			print line.rstrip()
 
-	assert False
-
 def test_parse_configs():
 	desc = _load_mib("configvariables.mib")
 
@@ -114,6 +112,20 @@ def test_parse_configs():
 	assert testvar1['total_size'] == 1
 	assert testvar1['array'] == False
 	assert testvar1['name'] == 'testvar1'
+
+def test_config_defaults():
+	desc = _load_mib("configvariables.mib")
+	testvar4 = desc.configs[0x1236]
+
+	assert testvar4['required'] == False
+	assert testvar4['type'] == 'char'
+	assert testvar4['total_size'] == 15 
+
+	print len(testvar4['default_value'])
+	print len("test string")
+	print testvar4['default_value']
+	assert len(testvar4['default_value']) == len("test string")
+	
 
 def test_value_convesion():
 	desc = _load_mib("configvariables.mib")

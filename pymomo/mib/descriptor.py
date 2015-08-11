@@ -1,7 +1,7 @@
 #descriptor.py
 #Define a Domain Specific Language for specifying MIB endpoints
 
-from pyparsing import Word, Regex, nums, hexnums, Literal, Optional, Group, oneOf, dblQuotedString
+from pyparsing import Word, Regex, nums, hexnums, Literal, Optional, Group, oneOf, QuotedString
 from handler import MIBHandler
 import sys
 import os.path
@@ -45,7 +45,7 @@ include = Literal("#include") + quote + filename("filename") + quote
 interface_def = Literal('interface') + number('interface') + ';'
 
 reqconfig = number("confignum") + colon + Literal('required').suppress() + Literal('config').suppress() + valid_type('type') + symbol('configvar') + Optional(leftB + number('length') + rightB) + ';'
-optconfig = number("confignum") + colon + Literal('optional').suppress() + Literal('config').suppress() + valid_type('type') + symbol('configvar') + Optional(leftB + number('length') + rightB) + "=" + (number('value') | dblQuotedString('value')) + ';'
+optconfig = number("confignum") + colon + Literal('optional').suppress() + Literal('config').suppress() + valid_type('type') + symbol('configvar') + Optional(leftB + number('length') + rightB) + "=" + (number('value') | QuotedString(quoteChar='"', unquoteResults=True)('value')) + ';'
 
 statement = include | cmd_def | comment | assignment_def | interface_def | reqconfig | optconfig
 

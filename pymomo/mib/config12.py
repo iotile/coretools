@@ -63,7 +63,24 @@ class MIB12Processor:
 		total_ram = self._build_ram(self.settings['total_ram'])
 
 		self.exec_ram = map(lambda x: (x.lower_bound, x.upper_bound), exec_ram.intervals)
-		self.app_ram = map(lambda x: (x.lower_bound, x.upper_bound), (total_ram - exec_ram).intervals)
+
+		#We need to be careful calculating the application ram because the result of total_ram - exec_ram
+		#will typically include open intervals that need to be handled specially to avoid off by 1 errors
+		app_intervals = (total_ram - exec_ram).intervals
+		app_ram = []
+		for ival in app_intervals:
+			start = ival.lower_bound
+			end = ival.upper_bound
+
+			if not ival.upper_closed:
+				end -= 1
+
+			if not ival.lower_closed:
+				start += 1
+
+			app_ram.append((start, end))
+		
+		self.app_ram = app_ram
 		self.total_ram_size = self.settings['total_ram']
 
 	@classmethod
