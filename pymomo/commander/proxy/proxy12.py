@@ -6,6 +6,7 @@ from pymomo.utilities.typedargs.annotate import returns, param, annotated, retur
 from collections import namedtuple
 from pymomo.commander.exceptions import *
 import struct
+from pymomo.utilities import typedargs
 
 #Printer functions for displaying return values.
 def print_status(status):
@@ -41,7 +42,7 @@ class MIB12ProxyObject (proxy.MIBProxyObject):
 		"""
 		return self.rpc(0,2, result_type=(1,False))['ints'][0]
 
-	@returns(desc='module status register', data=True, printer=print_status)
+	@return_type("fw_mib12_status")
 	def status(self):
 		"""
 		Get the module status register.
@@ -49,16 +50,9 @@ class MIB12ProxyObject (proxy.MIBProxyObject):
 		Returns executive version, runtime parameters, hw type, executive size and whether the module has crashed.
 		"""
 
-		res = self.rpc(0,4, result_type=(2,False))
-		status = namedtuple("ExecutiveStatus", ['serial', 'hwtype', 'approw', 'status', 'trapped'])
-
-		status.serial = res['ints'][0] & 0xFF
-		status.hwtype = res['ints'][0] >> 8
-		status.approw = res['ints'][1] & 0xFF
-		status.status = res['ints'][1] >> 8
-		status.trapped = bool(status.status & 1<<7) 
-
-		return status
+		res = self.rpc(0,4, result_type=(0, True))
+		
+		return res['buffer']
 
 	@param('location','integer','nonnegative',desc='RAM address to read')
 	@param('type', 'string', ('list', ['uint8']), desc='Type of variable to read (supports: uint8)')

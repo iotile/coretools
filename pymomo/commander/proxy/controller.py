@@ -2,7 +2,9 @@ from pymomo.commander.proxy import proxy
 from pymomo.commander.proxy import proxy12
 import pymomo.commander.proxy
 from pymomo.commander.exceptions import *
-from pymomo.commander.types import *
+from pymomo.commander.basic_types.mod_descriptor import *
+from pymomo.commander.basic_types.perfcount import *
+from pymomo.commander.basic_types.sensor_event import *
 from pymomo.utilities.console import ProgressBar
 import struct
 from pymomo.utilities.intelhex import IntelHex
