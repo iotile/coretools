@@ -158,7 +158,7 @@ retlw 0xFF
 retlw 0xFF
 
 config_address_map:
-#for $id, $var in $configs.iteritems()
+#for $id, $var in sorted($configs.iteritems(), key=lambda x: $x[1].flags & 0b00111111)
 retlw (_$var.name & 0xFF)
 retlw (_$var.name >> 8) & 0xFF
 #if $var.required
