@@ -8,11 +8,6 @@
 			"total_rom": 2048,
 			"flash_row_words": 16,
 
-			"defines":
-			{
-				"kExecutiveSerialNumber": 2
-			},
-
 			"includes":
 			[
 				"shared/pic12/src",
