@@ -110,7 +110,6 @@ def test_parse_configs():
 	assert testvar1['required'] == True
 	assert testvar1['type'] == 'uint8_t'
 	assert testvar1['total_size'] == 1
-	assert testvar1['array'] == False
 	assert testvar1['name'] == 'testvar1'
 
 def test_config_defaults():

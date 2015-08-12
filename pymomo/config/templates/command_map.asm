@@ -142,7 +142,7 @@ retlw 0xFF
 ;  - Bit 6: Whether this variable has a default value
 ;  - Bit 7: Whether this variable is a buffer (1) or has a fixed length (0)
 config_metadata_map:
-#for $id, $var in $configs.iteritems()
+#for $id, $var in sorted($configs.iteritems(), key=lambda x: $x[1].flags & 0b00111111)
 #set $id1 = $id & 0xFF
 #set $id2 = ($id >> 8) & 0xFF
 ;Variable $var.name

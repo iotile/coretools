@@ -4,7 +4,7 @@
 		"default_settings" :
 		{
 			"executive_rom": [0, 959],
-			"executive_ram": [[32, 61], [110,113]],
+			"executive_ram": [[32, 63], [110,113]],
 			"total_rom": 2048,
 			"flash_row_words": 16,
 

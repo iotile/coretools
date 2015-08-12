@@ -11,10 +11,8 @@ global ${variable.name}_default
 #for $variable in $configvars.itervalues()
 #if not $variable.required
 ${variable.name}_default:
-#if $variable.array
 #set $length = $len($variable.default_value)
 retlw $length ; Variable Length $length
-#end if
 #for $byte in $variable.default_value
 retlw $byte
 #end for

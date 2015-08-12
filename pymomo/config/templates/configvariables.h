@@ -4,13 +4,16 @@
 \#include <stdint.h>
 
 #for $variable in $configvars.itervalues()
-#if $variable.array
-extern persistent uint8_t ${variable.name}_length;
-extern persistent $variable.type ${variable.name}[$variable.count];
-#else
-extern persistent $variable.type ${variable.name};
-#end if
+typedef struct
+{
+	uint8_t length;
+	$variable.type data[$variable.count];
+} config_${variable.name}_t;
 
+#end for
+
+#for $variable in $configvars.itervalues()
+extern persistent config_${variable.name}_t ${variable.name};
 #end for
 
 \#endif

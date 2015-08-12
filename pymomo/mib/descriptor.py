@@ -182,11 +182,10 @@ class MIBDescriptor:
 		return bytearray(output)
 
 	def _parse_configvar(self, match):
+
 		if 'length' in match:
-			array = True
 			quantity = match['length']
 		else:
-			array = False
 			quantity = 1
 
 		if 'value' in match:
@@ -206,13 +205,11 @@ class MIBDescriptor:
 
 		if flags >= 64:
 			raise DataError("Too many configuration variables.  The maximum number of supported variables is 64")
-		if array:
-			flags |= (1 << 7)
 		if required:
 			flags |= (1 << 6)
 
 
-		config = {'name': varname, 'flags': flags, 'type': vartype, 'total_size': varsize, 'array': array, 'count': quantity, 'required': required, 'default_value': default_value}
+		config = {'name': varname, 'flags': flags, 'type': vartype, 'total_size': varsize, 'count': quantity, 'required': required, 'default_value': default_value}
 
 		if varnum in self.configs:
 			raise DataError("Attempted to add the same config variable twice", variable_name=varname, id_number=varnum, defined_variables=self.configs.keys())
