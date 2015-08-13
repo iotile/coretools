@@ -46,6 +46,7 @@ class MIBProxyObject (object):
 
 		parsed = {'ints':[], 'buffer':"", 'error': 'No Error', 'is_error': False}
 		parsed['status'] = status
+		parsed['return_value'] = status & 0b00111111
 
 		#Check for protocol defined errors
 		if not status & (1<<6):

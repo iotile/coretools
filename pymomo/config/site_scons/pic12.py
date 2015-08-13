@@ -99,6 +99,7 @@ def build_module(name, arch):
 	env.AppendENVPath('PATH','../../tools/bin')
 	env['ARCH'] = arch
 	env['MODULE'] = name
+	env['BUILDDIR'] = builddir
 
 	#Load in all of the xc8 configuration from build_settings
 	configure_env_for_xc8(env)
