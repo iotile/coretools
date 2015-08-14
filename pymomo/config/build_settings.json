@@ -3,7 +3,7 @@
 	{
 		"default_settings" :
 		{
-			"executive_rom": [0, 959],
+			"executive_rom": [0, 975],
 			"executive_ram": [[32, 63], [110,113]],
 			"total_rom": 2048,
 			"flash_row_words": 16,
@@ -36,11 +36,14 @@
 				"gpsim_sda": "portb1",
 				"gpsim_scl": "portb4",
 
+
 				"defines":
 				{
 					"kMultipageDevice": 1,
 					"kModuleHWType": "kMIBPic16lf1847",
-					"__PIC16LF1847__": 1
+					"__PIC16LF1847__": 1,
+					"I2CDATA": "B1",
+					"I2CCLOCK": "B4"
 				}
 			},
 
@@ -51,11 +54,14 @@
 				"gpsim_sda": "portc1",
 				"gpsim_scl": "portc0",
 				"total_ram": 128,
+				
 
 				"defines":
 				{
 					"kModuleHWType": "kMIBPic16lf1823",
-					"__PIC16LF1823__": 1
+					"__PIC16LF1823__": 1,
+					"I2CDATA": "C1",
+					"I2CCLOCK": "C0"
 				}
 			},
 
@@ -65,12 +71,15 @@
 				"gpsim_proc": "p12f1822",
 				"gpsim_sda": "porta2",
 				"gpsim_scl": "porta1",
+				
 				"total_ram": 128,
 
 				"defines":
 				{
 					"kModuleHWType": "kMIBPic12lf1822",
-					"__PIC12LF1822__": 1
+					"__PIC12LF1822__": 1,
+					"I2CDATA": "A2",
+					"I2CCLOCK": "A1"
 				}
 			},
 
