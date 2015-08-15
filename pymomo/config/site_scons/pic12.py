@@ -72,8 +72,9 @@ def configure_env_for_xc8(env, **kwargs):
 
 		flags += ['--codeoffset=%x' % (exec_range[1]+1)]
 
-		mibstart = proc.mib_range[0]
-		lnk_cmd = '-L-Pmibblock=%xh' % mibstart
+		#Put the mib block in the last row of the first page of ROM
+		#make sure it takes up an entire row.
+		lnk_cmd = '-L-Pmibblock=%xh' % proc.mib_page_start
 		flags += [lnk_cmd]
 
 		#MIB12 Executive takes all ram in first 

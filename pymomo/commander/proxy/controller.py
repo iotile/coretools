@@ -77,6 +77,10 @@ class MIBController (proxy.MIBProxyObject):
 
 		self.rpc(42,0x23)
 
+	@param("enabled", "bool", desc="Enable safe mode")
+	def safe_mode(self, enabled):
+		self.rpc(42, 0x29, int(enabled))
+
 	@annotated
 	def read_log(self):
 		"""
@@ -1018,3 +1022,19 @@ class MIBController (proxy.MIBProxyObject):
 		Instruct the controller to reset all internal state to "factory defaults."  Use with caution.
 		"""
 		self.rpc(42, 0x10)
+
+@context("ConfigManager")
+class ControllerConfigManager:
+	def __init__(self, proxy):
+		self._proxy = proxy
+
+	@annotated
+	def count_entries(self):
+		"""
+		Count the total number of configuration entries in use
+
+		This does not distinguish between valid and invalid configuration variables
+		"""
+
+		res = self._proxy.rpc(61, 0, result_type=(1,0))
+		return res['ints'][0]

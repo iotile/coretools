@@ -25,6 +25,16 @@ global ${var.name}_default
 
 ;High memory command structure for processing mib slave endpoints
 PSECT mibblock,global,class=CONST,delta=2
+
+\#if kFlashRowSize == 32
+;On 32 word pages, make sure the rest of the mib block page is filled.
+#for $i in $xrange(0,16)
+retlw 0x00
+#end for
+\#elif kFlashRowSize != 16
+\#error "The flash row size must be either 32 or 16 for the command_map template to work"
+\#endif
+
 ;Module information
 retlw 	kModuleHWType		;The HW type that this application module runs on
 retlw 	$api_version[0]	;Compatible Exectuive API Major Version

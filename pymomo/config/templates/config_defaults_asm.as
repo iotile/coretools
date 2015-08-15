@@ -1,6 +1,6 @@
 \#include <xc.inc>
 
-PSECT config_defaults, global, class=CONST, delta=2
+PSECT config_defaults,global,class=CONST,delta=2
 
 #for $variable in $configvars.itervalues()
 #if not $variable.required

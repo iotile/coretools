@@ -28,6 +28,8 @@ class MIB12Processor:
 		self.total_prog_mem = self.settings['total_rom']
 		self.first_app_page = self.app_rom[0] / self.row_size
 
+		self.mib_page_start = (self.mib_range[0]/self.row_size) * self.row_size
+
 	def _build_ram(self, total):
 		"""
 		Build the set of intervals that correspond to the GPR in 

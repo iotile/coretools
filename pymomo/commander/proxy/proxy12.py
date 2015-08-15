@@ -273,11 +273,11 @@ class MIB12ProxyObject (proxy.MIBProxyObject):
 @context("MIB12ConfigManager")
 class MIB12ConfigManager:
 	def __init__(self, proxy):
-		self.proxy = proxy
+		self._proxy = proxy
 
 	def get_config_variable(self, index):
-		metadata 	= self.proxy._read_appinfo_table(MIBConfigurationMetadataIndex, index)
-		addresses 	= self.proxy._read_appinfo_table(MIBConfigurationAddressIndex, index)
+		metadata 	= self._proxy._read_appinfo_table(MIBConfigurationMetadataIndex, index)
+		addresses 	= self._proxy._read_appinfo_table(MIBConfigurationAddressIndex, index)
 
 		id, flags, length = struct.unpack("<HBB", metadata)
 		ramloc,defaultloc = struct.unpack("<HH", addresses)
@@ -336,7 +336,7 @@ class MIB12ConfigManager:
 			if var['required']:
 				reqstring = 'required'
 
-			curlen = self.proxy.readram(var['address'])
+			curlen = self._proxy.readram(var['address'])
 
 			desc = "0x%X: length (%d used of %d), %s" % (var['id'], curlen, var['length'], reqstring)
 			out.append(desc)
@@ -354,7 +354,7 @@ class MIB12ConfigManager:
 
 		for i in xrange(0, len(value), 16):
 			chunk = value[i:i+16]
-			res = self.proxy.rpc(0, 7, id, i, chunk)
+			res = self._proxy.rpc(0, 7, id, i, chunk)
 			if res['return_value'] == 1:
 				raise RPCError("Unknown configuration variable", id=id)
 			elif res['return_value'] == 2:
