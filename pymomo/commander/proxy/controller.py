@@ -1028,13 +1028,44 @@ class ControllerConfigManager:
 	def __init__(self, proxy):
 		self._proxy = proxy
 
-	@annotated
+	@return_type("integer")
 	def count_entries(self):
 		"""
 		Count the total number of configuration entries in use
 
-		This does not distinguish between valid and invalid configuration variables
+		This does not distinguish between valid and obselete configuration variables,
+		but merel returns the total of both.  
 		"""
 
 		res = self._proxy.rpc(61, 0, result_type=(1,0))
 		return res['ints'][0]
+
+	@param("match", "string", desc="description of modules this config variable applies to")
+	@param("id", "integer", desc="the variable ID (a 16-bit number)")
+	@param("type", "string", desc="the type of the variable, supported are: string, (u)int8_t, (u)int16_t, (u)int32_t")
+	@param("value", "string", desc="the value to set this config variable to encoded as a string")
+	def set_variable(self, match, id, type, value):
+		"""
+		Push a config variable to the controller
+
+		This function stores a config variable on the controller to be used to configure an 
+		attached module upon module registration.  The match parameter tells the controller how
+		to identify which modules this variable applies to.  The ID parameter is the 2-byte
+		variable name, type is a string containing the variable type and value is the value of the
+		variable encoded as a string.
+		"""
+
+		int_types = {'uint8_t': 'B', 'int8_t': 'b', 'uint16_t': 'H', 'int16_t': 'h', 'uint32_t': 'L', 'int32_t': 'l'}
+
+		type = type.lower()
+		if type not in int_type and type != 'string':
+			raise ValidationError('Type must be a known integer type or string', known_integers=int_type.keys(), actual_type=type)
+
+		if type in int_types:
+			value = int(value, 0)
+			bytevalue = struct.pack("<%s" % int_types[type], value)
+		else:
+			#value should be passed as a string
+			bytevalue = bytearray(value)
+
+		
