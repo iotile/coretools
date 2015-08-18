@@ -37,8 +37,8 @@ retlw 0x00
 
 ;Module information
 retlw 	kModuleHWType		;The HW type that this application module runs on
-retlw 	$api_version[0]	;Compatible Exectuive API Major Version
-retlw   $api_version[1] ;Compatible Exectuive API Minor Version
+retlw 	$api_version[0]	;Compatible Executive API Major Version
+retlw   $api_version[1] ;Compatible Executive API Minor Version
 
 ;Module Name (must be exactly 6 characters long)
 ;The following instructions ascii-encode this name: '$name'

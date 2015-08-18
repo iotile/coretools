@@ -141,6 +141,9 @@ class MIBController (proxy.MIBProxyObject):
 		self.clear_firmware_cache()
 		bucket = self.push_firmware(hexfile, 0)
 
+		#We need to be in safe mode so the controller does not try to send a command to
+		#the PIC while it's reflashing since the i2c circuitry gets confused when this happens
+		self.safe_mode(True)
 		mod.rpc(0, 5, 8, bucket)
 		mod.reset()
 
@@ -164,6 +167,7 @@ class MIBController (proxy.MIBProxyObject):
 		iprint("\nReflash complete.")
 
 		sleep(0.5)
+		self.safe_mode(False)
 
 		if not noreset: 
 			iprint("Resetting the bus...")
@@ -724,26 +728,6 @@ class MIBController (proxy.MIBProxyObject):
 		else:
 			raise RuntimeError("Invalid result returned from 'attached' command: %s" % resp)
 
-	def sensor_log( self, stream, meta, value):
-		res = self.rpc( 70, 0, stream, meta, struct.pack( 'Q', value ) );
-
-	def sensor_log_read( self ):
-		res = self.rpc( 70, 0x1, result_type=(0, True) )
-		return SensorEvent( res['buffer'] )
-
-	def sensor_log_count( self ):
-		res = self.rpc( 70, 0x2, result_type=(0, True) )
-		(count, ) = struct.unpack('I', res['buffer'])
-		return count
-
-	def sensor_log_clear( self ):
-		res = self.rpc( 70, 0x3 )
-
-	def sensor_log_debug( self ):
-		res = self.rpc( 70, 0x4, result_type=(0, True) )
-		(min, max, start, end) = struct.unpack('IIII', res['buffer'])
-		return (min,max,start,end)
-
 	@return_type('string')
 	def get_report_interval(self):
 		intervals = {4: '10 minutes', 5: '1 hour', 6: '1 day'}
@@ -1023,13 +1007,97 @@ class MIBController (proxy.MIBProxyObject):
 		"""
 		self.rpc(42, 0x10)
 
+	@annotated
+	def config_manager(self):
+		return ControllerConfigManager(self)
+
+	@annotated
+	def sensor_log(self):
+		return SensorLog(self)
+
+@context("SensorLog")
+class SensorLog:
+	def __init__(self, proxy):
+		self._proxy = proxy
+
+	@param("value", "integer", desc="value to push to the sensor log")
+	@param("n", "integer", "positive", desc="Number of copies to push")
+	def push(self, value, n=1):
+		res = self._proxy.rpc( 70, 0, n, struct.pack('<L', value), timeout=120.0)
+
+	@return_type("map(string, integer)")
+	def pop(self):
+		res = self._proxy.rpc(70, 0x1, 1, result_type=(0, True))
+
+		error = ord(res['buffer'][len(res['buffer']) - 1])
+		if error == 0:
+			timestamp, value, error = struct.unpack("<LLB", res['buffer'])
+			return {'timestamp': timestamp, 'value': value, 'error': error}
+
+		return {'timestamp': 0, 'value': 0, 'error': error}
+
+	@return_type("list(string)")
+	def read_all(self):
+		vals = []
+
+		error = 0
+		count = self.count()
+
+		pb = ProgressBar("Reading %d sensor readings" % count, count)
+		pb.start()
+
+		i = 0
+		while error == 0:
+			res = self._proxy.rpc(70, 0x1, 2, result_type=(0, True))
+
+			error = ord(res['buffer'][len(res['buffer']) - 1])
+			
+			data = res['buffer'][:-1]
+			length = len(data)
+
+			while length > 0:
+				timestamp, value = struct.unpack("<LL", data[:8])
+				vals.append((timestamp, value))
+				
+				length -= 8
+				data = data[8:]
+				pb.progress(i)
+
+				i += 1
+
+		pb.end()
+		
+		return ["%d, %d" % (x[0], x[1]) for x in vals]
+
+	@return_type("integer")
+	def count(self):
+		res = self._proxy.rpc(70, 0x2, result_type=(0, True))
+		count, = struct.unpack('<L', res['buffer'])
+		return count
+
+	@annotated
+	def clear(self):
+		res = self._proxy.rpc(70, 0x3)
+
+
 @context("ConfigManager")
 class ControllerConfigManager:
+	NoError = 0
+	InvalidEntryError = 1
+	ObsoleteEntryError = 2
+	InvalidIndexError = 3
+	InvalidSequenceIDError = 4
+	InvalidEntryLengthError = 5
+	NoEntryInProgressError = 6
+	OverrodePreviousEntryError = 7
+	DataWouldOverflowError = 8
+	InvalidDataOffsetError = 9
+
 	def __init__(self, proxy):
 		self._proxy = proxy
 
 	@return_type("integer")
-	def count_entries(self):
+	def count_variables(self):
 		"""
 		Count the total number of configuration entries in use
 
@@ -1039,6 +1107,46 @@ class ControllerConfigManager:
 
 		res = self._proxy.rpc(61, 0, result_type=(1,0))
 		return res['ints'][0]
+
+	def _convert_to_bytes(self, type, value):
+		int_types = {'uint8_t': 'B', 'int8_t': 'b', 'uint16_t': 'H', 'int16_t': 'h', 'uint32_t': 'L', 'int32_t': 'l'}
+
+		type = type.lower()
+		if type not in int_types and type != 'string':
+			raise ValidationError('Type must be a known integer type or string', known_integers=int_types.keys(), actual_type=type)
+
+		if type in int_types:
+			value = int(value, 0)
+			bytevalue = struct.pack("<%s" % int_types[type], value)
+		else:
+			#value should be passed as a string
+			bytevalue = bytearray(value)
+
+		return bytevalue
+
+	def _convert_module_match(self, match):
+		if len(match) < 6:
+			raise ValidationError("Match string must include a 6 character module name", match_string=match)
+
+		modname = match[:6]
+		version = match[6:]
+
+		if len(version) != 0:
+			raise ValidationError("Matching version information is not yet suppoted", version_match_string=version)	
+
+		#Match name exactly, minor and major are don't care, uuid is don't care
+		match_flags = (0 << 0) | (0 << 3) | (1 << 6) < (0 << 7)
+
+		return struct.pack('<6sBBB', modname, 0, 0, match_flags)
+
+	def _unpack_module_match(self, packed_match):
+		if len(packed_match) != 9:
+			raise DataError("Module match structure must be length 9", actual_length=len(packed_match))
+
+		name,major,minor,flags = struct.unpack("<6sBBB", packed_match)
+
+		output = {"Module Name": name, "Major Version": major, "Minor Version": minor, "Flags": flags}
+		return output
 
 	@param("match", "string", desc="description of modules this config variable applies to")
 	@param("id", "integer", desc="the variable ID (a 16-bit number)")
@@ -1055,17 +1163,134 @@ class ControllerConfigManager:
 		variable encoded as a string.
 		"""
 
-		int_types = {'uint8_t': 'B', 'int8_t': 'b', 'uint16_t': 'H', 'int16_t': 'h', 'uint32_t': 'L', 'int32_t': 'l'}
+		bytevalue = self._convert_to_bytes(type, value)
+		match_data = self._convert_module_match(match)
 
-		type = type.lower()
-		if type not in int_type and type != 'string':
-			raise ValidationError('Type must be a known integer type or string', known_integers=int_type.keys(), actual_type=type)
+		res = self._proxy.rpc(61, 1, id, match_data, result_type=(2, False))
+		error = res['ints'][0]
+		seq = res['ints'][1]
 
-		if type in int_types:
-			value = int(value, 0)
-			bytevalue = struct.pack("<%s" % int_types[type], value)
+		#Allow overriding previous entries since we don't want to lock up if there's ever a dangling entry
+		if error == ControllerConfigManager.OverrodePreviousEntryError:
+			iprint("WARNING: Overrode a previous entry in progress, data is not corrupted but you should verify that the config settings are all correct.")
+		elif error != 0:
+			raise RPCError("Could not set config variable, error starting new entry", error_code=error)
+
+		for i in xrange(0, len(bytevalue), 16):
+			chunk = bytevalue[i:i+16]
+
+			res = self._proxy.rpc(61, 2, seq, chunk, result_type=(1, False))
+			error = res['ints'][0]
+
+			if error != 0:
+				raise RPCError("Error adding data to config variable", error_code=res['ints'][0])
+
+		res = self._proxy.rpc(61, 3, seq, result_type=(1, False))
+		error = res['ints'][0]
+
+		if error != 0:
+			raise RPCError("Error commiting config variable changes", error_code=error)
+
+	def get_variable(self, index, with_data=True):
+		"""
+		Get the variable at the given index
+
+		If with_data is passed, also fetch and return the variable contents
+		"""
+
+		res = self._proxy.rpc(61, 0x05, index, result_type=(0, True))
+
+		error = ord(res['buffer'][0])
+		if error != ControllerConfigManager.NoError and error != ControllerConfigManager.ObsoleteEntryError:
+			raise RPCError("Error getting variable by index", index=index, error_code=error)
+
+		matchbytes = res['buffer'][7:-1]
+		match_data = self._unpack_module_match(matchbytes)
+
+		magic, offset, length, valid = struct.unpack("<xHHH9xB", res['buffer'])
+
+		if with_data:
+			id, contents = self._get_variable_contents(index, length)
+
+		output = {}
+		output['data_offset'] = offset
+		output['data_length'] = length
+		output['obsolete'] = (valid != 0xFF)
+		output['magic'] = magic
+		output['match_data'] = match_data
+
+		if with_data:
+			output['id'] = id
+			output['value'] = contents
 		else:
-			#value should be passed as a string
-			bytevalue = bytearray(value)
+			output['id'] = None
+			output['value'] = None
 
-		
+		return output
+
+	def _get_variable_contents(self, index, length):
+		"""
+		Get the contents of a variable given a dictionary describing it
+		"""
+
+		data = bytearray()
+
+		while len(data) < length:
+			res = self._proxy.rpc(61, 0x04, index, len(data), result_type=(0, True))
+
+			err = ord(res['buffer'][0])
+			if err != ControllerConfigManager.NoError and err != ControllerConfigManager.ObsoleteEntryError:
+				raise RPCError("Error retrieving variable data", error_code=err)
+
+			data += res['buffer'][1:]
+
+		if len(data) <= 2:
+			raise RPCError("Invalid data length from module, must be > 2 since a 2 byte id is prepended", actual_length=len(data))
+
+		contents = data[2:]
+		id, = struct.unpack("<H", data[:2])
+
+		return id, contents
+
+	@param("index", "integer", "positive", desc="Index of variable to get (starts at 1)")
+	@return_type("map(string, string)")
+	def describe_variable(self, index):
+		"""
+		Describe the variable at the given index
+		"""
+
+		data = self.get_variable(index)
+		return data
+
+	@param("index", "integer", "positive", desc="Index of variable to get (starts at 1)")
+	def invalidate_variable(self, index):
+		res = self._proxy.rpc(61, 7, index, result_type=(1, False))
+
+		if res['ints'][0] != 0:
+			raise RPCError("Could not invalidate entry", error_code=res['ints'][0])
+
+	@return_type("list(string)")
+	@param("with_old", "bool", desc="Include obsolete entries as well")
+	def list_variables(self, with_old=False):
+		vars = []
+		for i in xrange(1, self.count_variables()+1):
+			var = self.get_variable(i)
+
+			obstring = ''
+			if var['obsolete']:
+				obstring = " (OBSOLETE)"
+			desc = "%d.%s 0x%X: %s, matches %s" % (i, obstring, var['id'], repr(var['value']), var['match_data']['Module Name'])
+
+			vars.append(desc)
+
+		return vars
+
+	@annotated
+	def clear_all(self):
+		"""
+		Clear all variables from flash and reinitialize the control structures
+
+		This provides a completely fresh start for the config manager.
+		"""
+
+		self._proxy.rpc(61, 0x06)
