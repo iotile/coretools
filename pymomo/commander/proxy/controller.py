@@ -1036,6 +1036,17 @@ class SensorLog:
 
 		return {'timestamp': 0, 'value': 0, 'error': error}
 
+	@return_type("string")
+	def pop_temp(self):
+		"""
+		Tule Specific temperature reading function.
+
+		Returns the oldest temperature on the log in degrees C.
+		"""
+
+		data = self.pop()
+		return '%.2f C' % (data['value'] * 2**-16,)
+
 	@return_type("list(string)")
 	def read_all(self):
 		vals = []
@@ -1047,27 +1058,55 @@ class SensorLog:
 		pb.start()
 
 		i = 0
-		while error == 0:
-			res = self._proxy.rpc(70, 0x1, 2, result_type=(0, True))
 
-			error = ord(res['buffer'][len(res['buffer']) - 1])
-			
-			data = res['buffer'][:-1]
-			length = len(data)
+		try:
+			while error == 0:
+				res = self._proxy.rpc(70, 0x1, 2, result_type=(0, True))
 
-			while length > 0:
-				timestamp, value = struct.unpack("<LL", data[:8])
-				vals.append((timestamp, value))
+				error = ord(res['buffer'][len(res['buffer']) - 1])
 				
-				length -= 8
-				data = data[8:]
-				pb.progress(i)
+				data = res['buffer'][:-1]
+				length = len(data)
 
-				i += 1
+				while length > 0:
+					timestamp, value = struct.unpack("<LL", data[:8])
+					vals.append((timestamp, value))
+					
+					length -= 8
+					data = data[8:]
+					pb.progress(i)
 
+					i += 1
+
+				#If people are putting new entries into the log, make sure
+				#we don't loop forever reading them, just read the ones
+				#that were there when we started and possibly at most 1 more
+				if i >= count:
+					break
+
+		except KeyboardInterrupt:
+			pass
+		except:
+			pass
+		
 		pb.end()
 		
-		return ["%d, %d" % (x[0], x[1]) for x in vals]
+		return ["%d, %f" % (x[0], x[1]*2**-16) for x in vals]
+
+	@param("filename", "path", "writeable", desc="Path of file to save")
+	def download(self, filename):
+		"""
+		Download all entries in the sensor log, appending them to a file
+		"""
+
+		values = []
+
+		with open(filename, 'a') as f:
+			try:
+				values = self.read_all()
+			finally:
+				for value in values:
+					f.write(value + '\n')
 
 	@return_type("integer")
 	def count(self):

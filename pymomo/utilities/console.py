@@ -52,7 +52,10 @@ class ProgressBar:
 
             timestring = "%.1f %s %s" % (time_left, units, comment)
 
-        x = int(self.prog * 40 // self.count)
+        if self.count > 0:
+            x = int(self.prog * 40 // self.count)
+        else:
+            x = 0
 
         update_string = "%s: [%s%s] %s" % (self.title, '#'*x, '-'*(40-x), timestring)
         if len(update_string) < len(self.last_update):
@@ -68,7 +71,7 @@ class ProgressBar:
     def progress(self, x):
         self.current_time = time()
 
-        if self.current_time > self.start_time:
+        if self.current_time > self.start_time and self.count > 0:
             self.velocity = (float(x)/self.count) / (self.current_time - self.start_time)
 
         self.prog = x
