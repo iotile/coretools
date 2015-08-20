@@ -1087,7 +1087,7 @@ class SensorLog:
 		except KeyboardInterrupt:
 			pass
 		except:
-			pass
+			print "Error occurred during transmission, check the unit for functionality"
 		
 		pb.end()
 		
