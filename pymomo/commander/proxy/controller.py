@@ -192,8 +192,13 @@ class MIBController (proxy.MIBProxyObject):
 
 		try:
 			sleep(0.5)
+			print("Slept and checking if alarm asserted")
+			sys.stdout.flush()
 			if not self.alarm_asserted():
 				raise HardwareError("Could not reflash controller", reason="Controller reflash NOT DETECTED.  You may need to try the recovery procedure.")
+
+			print("done checking")
+			sys.stdout.flush()
 
 			iprint("Reflash in progress")
 
@@ -926,7 +931,7 @@ class MIBController (proxy.MIBProxyObject):
 		if type is not None:
 			return typedargs.type_system.convert_to_type(buf, type)
 
-		return buf
+		return repr(buf)
 
 	@return_type("integer")
 	def scheduler_map(self):
@@ -1086,8 +1091,11 @@ class SensorLog:
 
 		except KeyboardInterrupt:
 			pass
-		except:
+		except RPCError as e:
 			print "Error occurred during transmission, check the unit for functionality"
+			print str(e)
+			
+
 		
 		pb.end()
 		
