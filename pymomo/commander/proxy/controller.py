@@ -46,6 +46,25 @@ class MIBController (proxy.MIBProxyObject):
 		super(MIBController, self).__init__(stream, address)
 		self.name = 'Controller'
 
+	@return_type("map(string, integer)")
+	def mib_statistics():
+		"""
+		Get statistics about MIB bus performance since last reset
+		"""
+
+		res = self.rpc(42, 0x34, result_type=(0, False))
+
+		collisions, checksum_errors, no_slave, sent, received = struct.unpack("<LLLLL", res['buffer'])
+
+		out = {}
+		out['collisions'] = collisions
+		out['checksum_errors'] = checksum_errors
+		out['no_slave_errors'] = no_slave_errors
+		out['rpcs_sent'] = sent
+		out['rpcs_received'] = received
+
+		return out
+
 	@returns(desc='number of attached module', data=True)
 	def count_modules(self):
 		"""
