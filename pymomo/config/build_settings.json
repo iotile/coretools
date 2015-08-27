@@ -186,7 +186,9 @@
 					"kI2CBaud": 157,
 					"kClockspeed": "16000000L",
 					"SDA": "B9", 
-					"SCL": "B8"
+					"SCL": "B8",
+					"RPC_QUEUE_SIZE": 4,
+					"kNumMIBBuffers": 2
 				},
 
 				"chip": "24f16ka101"
@@ -200,7 +202,9 @@
 					"kI2CBaud": 39,
 					"kClockspeed": "4000000L",
 					"SDA": "G3", 
-					"SCL": "G2"
+					"SCL": "G2",
+					"RPC_QUEUE_SIZE": 8,
+					"kNumMIBBuffers": 4
 				},
 
 				"chip": "24fj64ga306"
