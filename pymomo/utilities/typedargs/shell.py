@@ -281,6 +281,17 @@ class HierarchicalShell:
 			if path.endswith(key):
 				for cmd in cmds:
 					line = shlex.split(cmd, posix=posix_lex)
+
+					#Automatically remove enclosing double quotes on windows since they are not removed by shlex in nonposix mode
+					def remove_quotes(x):
+						if len(x) > 0 and x.startswith(("'", '"')) and x[0] == x[-1]:
+							return x[1:-1]
+
+						return x
+
+					if not posix_lex:
+						line = map(remove_quotes, line)
+
 					self.invoke(line)
 
 		type_system.interactive = old_interactive

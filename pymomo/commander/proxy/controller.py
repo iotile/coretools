@@ -211,12 +211,10 @@ class MIBController (proxy.MIBProxyObject):
 
 		try:
 			sleep(0.5)
-			print("Slept and checking if alarm asserted")
 			sys.stdout.flush()
 			if not self.alarm_asserted():
 				raise HardwareError("Could not reflash controller", reason="Controller reflash NOT DETECTED.  You may need to try the recovery procedure.")
 
-			print("done checking")
 			sys.stdout.flush()
 
 			iprint("Reflash in progress")
