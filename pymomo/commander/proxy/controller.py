@@ -1044,30 +1044,24 @@ class SensorLog:
 
 	@param("value", "integer", desc="value to push to the sensor log")
 	@param("n", "integer", "positive", desc="Number of copies to push")
-	def push(self, value, n=1):
-		res = self._proxy.rpc( 70, 0, n, struct.pack('<L', value), timeout=120.0)
+	@param("stream", "integer", "nonnegative", desc="Sensor stream")
+	def push(self, value, stream, n=1):
+		"""
+		Push N copies of a sensor reading to the indicated stream
+		"""
+
+		res = self._proxy.rpc( 70, 0, n, stream, struct.pack('<L', value), timeout=max(0.005*n, 10.0))
 
 	@return_type("map(string, integer)")
 	def pop(self):
-		res = self._proxy.rpc(70, 0x1, 1, result_type=(0, True))
+		res = self._proxy.rpc(70, 0x1, result_type=(0, True))
 
 		error = ord(res['buffer'][len(res['buffer']) - 1])
 		if error == 0:
-			timestamp, value, error = struct.unpack("<LLB", res['buffer'])
-			return {'timestamp': timestamp, 'value': value, 'error': error}
+			timestamp, stream, value, error = struct.unpack("<LB3xL4xB", res['buffer'])
+			return {'timestamp': timestamp, 'value': value, 'stream': stream, 'error': error}
 
-		return {'timestamp': 0, 'value': 0, 'error': error}
-
-	@return_type("string")
-	def pop_temp(self):
-		"""
-		Tule Specific temperature reading function.
-
-		Returns the oldest temperature on the log in degrees C.
-		"""
-
-		data = self.pop()
-		return '%.2f C' % (data['value'] * 2**-16,)
+		return {'timestamp': 0, 'value': 0, 'error': error, 'stream': 0}
 
 	@return_type("list(string)")
 	def read_all(self):
@@ -1083,26 +1077,20 @@ class SensorLog:
 
 		try:
 			while error == 0:
-				res = self._proxy.rpc(70, 0x1, 2, result_type=(0, True))
+				reading = self.pop()
+				error = reading['error']
 
-				error = ord(res['buffer'][len(res['buffer']) - 1])
+				if error != 0:
+					break
 				
-				data = res['buffer'][:-1]
-				length = len(data)
+				vals.append((reading['timestamp'], reading['stream'], reading['value']))
 
-				while length > 0:
-					timestamp, value = struct.unpack("<LL", data[:8])
-					vals.append((timestamp, value))
-					
-					length -= 8
-					data = data[8:]
-					pb.progress(i)
-
-					i += 1
+				pb.progress(i)
+				i += 1
 
 				#If people are putting new entries into the log, make sure
 				#we don't loop forever reading them, just read the ones
-				#that were there when we started and possibly at most 1 more
+				#that were there when we started
 				if i >= count:
 					break
 
@@ -1111,12 +1099,10 @@ class SensorLog:
 		except RPCError as e:
 			print "Error occurred during transmission, check the unit for functionality"
 			print str(e)
-			
-
 		
 		pb.end()
 		
-		return ["%d, %f" % (x[0], x[1]*2**-16) for x in vals]
+		return ["%d, %d, %d" % (x[0], x[1], x[2]) for x in vals]
 
 	@param("filename", "path", "writeable", desc="Path of file to save")
 	def download(self, filename):
@@ -1143,6 +1129,39 @@ class SensorLog:
 	def clear(self):
 		res = self._proxy.rpc(70, 0x3)
 
+	@param("stream", "integer", description="stream to iterate over")
+	def start_walker(self, stream):
+		self._proxy.rpc(70, 0x4, stream)
+
+	@annotated
+	def stop_walker(self):
+		self._proxy.rpc(70, 0x5)
+
+	@return_type("map(string, string)")
+	def next_walker(self):
+		res = self._proxy.rpc(70, 0x6, result_type=(0, True), timeout=5.)
+
+		error = ord(res['buffer'][len(res['buffer']) - 1])
+		if error == 0:
+			timestamp, stream, value, error = struct.unpack("<LB3xL4xB", res['buffer'])
+			return {'timestamp': timestamp, 'value': value, 'stream': stream, 'error': error}
+
+		return {'timestamp': 0, 'value': 0, 'error': error, 'stream': 0}
+
+	@return_type("map(string, string)")
+	def inspect_walker(self):
+		res = self._proxy.rpc(70, 0x7, result_type=(0, True))
+
+		offset, queue, nextptr, prevptr, stream = struct.unpack("<LHHHBx", res['buffer'])
+
+		out = {}
+		out['offset'] = offset
+		out['queue'] = queue
+		out['next'] = nextptr
+		out['prev'] = prevptr
+		out['stream'] = stream
+
+		return out
 
 @context("ConfigManager")
 class ControllerConfigManager:
@@ -1358,3 +1377,4 @@ class ControllerConfigManager:
 		"""
 
 		self._proxy.rpc(61, 0x06)
+
