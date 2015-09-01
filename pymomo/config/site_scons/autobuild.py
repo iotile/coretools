@@ -6,6 +6,7 @@ import pic24
 import pic12
 import unit_test
 import unit_test12
+import unit_test24
 from SCons.Script import *
 import os.path
 import sys
@@ -43,6 +44,8 @@ def autobuild_pic24(module, test_dir='test', modulefile=None, postprocess_hex=No
 	try:
 		family = utilities.get_family('mib24', modulefile=modulefile)
 		family.for_all_targets(module, lambda x: pic24.build_module(module, x, postprocess_hex=postprocess_hex))
+
+		unit_test.build_units(test_dir, family.targets(module))
 
 		Alias('release', os.path.join('build', 'output'))
 		Alias('test', os.path.join('build', 'test', 'output'))
