@@ -1141,6 +1141,9 @@ class SensorLog:
 	def next_walker(self):
 		res = self._proxy.rpc(70, 0x6, result_type=(0, True), timeout=5.)
 
+		x = [ord(y) for y in res['buffer']]
+		print x
+
 		error = ord(res['buffer'][len(res['buffer']) - 1])
 		if error == 0:
 			timestamp, stream, value, error = struct.unpack("<LB3xL4xB", res['buffer'])
@@ -1152,7 +1155,7 @@ class SensorLog:
 	def inspect_walker(self):
 		res = self._proxy.rpc(70, 0x7, result_type=(0, True))
 
-		offset, queue, nextptr, prevptr, stream = struct.unpack("<LHHHBx", res['buffer'])
+		offset, queue, nextptr, prevptr, immedptr, stream = struct.unpack("<LHHHHBx", res['buffer'])
 
 		out = {}
 		out['offset'] = offset
@@ -1160,8 +1163,64 @@ class SensorLog:
 		out['next'] = nextptr
 		out['prev'] = prevptr
 		out['stream'] = stream
+		out['immediate'] = immedptr
 
 		return out
+
+	@param("value", "integer", desc="value to push to the sensor log")
+	@param("stream", "integer", "nonnegative", desc="Sensor stream")
+	@return_type("integer")
+	def push_reading(self, stream, value):
+		res = self._proxy.rpc(70, 0x9, stream, struct.pack('<L', value), result_type=(1,False))
+
+		err = res['ints'][0]
+		return err	
+
+	@param("id", "integer", "nonnegative", desc="node id")
+	@param("stream", "integer", "nonnegative", desc="Sensor stream")
+	@param("buffered", "bool", desc="Buffer all sensor readings through flash log")
+	@return_type("integer")
+	def graph_add_input(self, id, stream, buffered):
+		res = self._proxy.rpc(70, 0x08, id, stream, int(buffered), result_type=(1, False))
+
+		return res['ints'][0]
+
+	@param("online", "bool", desc="whether the graph is connected to inputs or not")
+	@return_type("integer")
+	def graph_set_online(self, online):
+		res = self._proxy.rpc(70, 0x0a, int(online), result_type=(1, False))
+
+		return res['ints'][0]
+
+	@param("inputA", "integer", "nonnegative", desc="input A channel connection")
+	@param("triggerA", "integer", "positive", desc="number of samples to accumulate before triggering")
+	@param("node", "integer", "nonnegative", desc="node index to create")
+	def graph_add_node(self, node, inputA, triggerA):
+		"""
+		Add a sample node that copies channel A into the output every N times channel A is triggered
+		"""
+
+		samplesA = triggerA
+		samplesB = 1
+		opA = 0
+		opB = 1
+
+		inputA = inputA
+		inputB = 0xFF
+
+		func = 0
+		buffered = 1
+		stream = node
+
+		data = struct.pack("<BBLLBBBBBB", node, func, samplesA, samplesB, inputA, inputB, opA, opB, buffered, stream)
+
+		res = self._proxy.rpc(70, 0xb, data, result_type=(2, False))
+
+		error = res['ints'][0]
+		states = res['ints'][1]
+
+		print error
+		print states
 
 @context("ConfigManager")
 class ControllerConfigManager:
