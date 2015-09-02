@@ -727,13 +727,31 @@ class MIBController (proxy.MIBProxyObject):
 
 		return res['ints'][0]
 
-	@param("address", "integer", desc="Address of Comm Module to test")
-	def test_comm_streaming(self, address):
+	@annotated
+	def bt_reset(self):
 		"""
-		Stream a test message to the specified comm module
+		Reset the ble module in case it has entered some kind of error state
 		"""
 
-		res = self.rpc(60, 0x15, address)
+		res = self.rpc(42, 0x35, result_type=(2, False))
+
+		adv_error = res['ints'][0]
+		reset_error = res['ints'][1]
+
+		if adv_error != 0 and adv_error != 6:
+			raise HardwareError("Could not enabled btle advertising on rn4020 module, try a hard reset on the device twice (wait 5 seconds between each attempt)")
+
+	@param("address", "integer", desc="Address of Comm Module to test")
+	@param("stream", "integer", "nonnegative", desc="data stream to send")
+	def test_comm_streaming(self, address, stream):
+		"""
+		Stream a list of null readings to the specified comm module
+
+		This function tests the data streaming feature of the controller
+		allowing you to stream data to a comm module.
+		"""
+
+		res = self.rpc(60, 0x15, address, stream)
 
 	def momo_attached(self):
 		resp, result = self.stream.send_cmd("attached")
