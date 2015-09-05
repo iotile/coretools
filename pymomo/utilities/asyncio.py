@@ -65,3 +65,57 @@ class AsyncLineBuffer:
 			self.items.release()
 
 		return self.queue.get()
+
+class AsyncPacketBuffer:
+	def __init__(self, file, header_length, length_function):
+		"""
+		Given an underlying file like object, syncronously read from it 
+		in a separate thread and communicate the data back to the buffer
+		one packet at a time.
+		"""
+
+		self.queue = Queue()
+		self.items = Condition()
+		self.thread = Thread(target=AsyncPacketBuffer.ReaderThread, args=(self.queue, file, self.items, header_length, length_function))
+		self.thread.daemon = True
+		self.thread.start()
+
+	@staticmethod
+	def ReaderThread(queue, file, items, header_length, length_function):
+		while True:
+			header = bytearray(file.read(header_length))
+			if len(header) == 0:
+				continue
+
+			remaining_length = length_function(header)
+			remaining = bytearray(file.read(remaining_length))
+
+			packet = header + remaining
+
+			items.acquire()
+			queue.put(packet)
+			items.notify()
+			items.release()
+
+	def available(self):
+		"""
+		Return the number of available lines in the buffer
+		"""
+		
+		return self.queue.qsize()
+
+	def read_packet(self, timeout=3.0):
+		"""
+		read one packet, timeout if one packet is not available in the timeout period
+		"""
+
+		self.items.acquire()
+		if self.available() == 0:
+			self.items.wait(timeout)
+			if self.available() == 0:
+				self.items.release()
+				raise TimeoutError("Asynchronous Read timed out waiting for a packet to be read")
+
+			self.items.release()
+
+		return self.queue.get()
