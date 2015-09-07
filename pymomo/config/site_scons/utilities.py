@@ -13,6 +13,7 @@ import StringIO
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from pymomo.utilities import build
+from pymomo.utilities.paths import MomoPaths
 from pymomo.mib.config12 import MIB12Processor
 
 def find_files(dirname, pattern):
@@ -57,6 +58,20 @@ def build_staticlibs(libs, chip):
 			processed.append(proclib)
 
 	return ['-l%s' % x for x in processed]
+
+def process_path(path):
+	"""
+	Allow specifying paths relative to the MOMOPATH root rather than absolute or relative to
+	a given module's root directory.
+	"""
+
+	if path[0] == '!':
+		path = path[1:]
+
+		basepaths = MomoPaths()
+		return os.path.join(basepaths.base, path)
+
+	return path
 
 def build_defines(defines):
 	return ['-D%s=%s' % (x,str(y)) for x,y in defines.iteritems()]
