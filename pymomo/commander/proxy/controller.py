@@ -1194,15 +1194,6 @@ class SensorLog:
 		err = res['ints'][0]
 		return err	
 
-	@param("id", "integer", "nonnegative", desc="node id")
-	@param("stream", "integer", "nonnegative", desc="Sensor stream")
-	@param("buffered", "bool", desc="Buffer all sensor readings through flash log")
-	@return_type("integer")
-	def graph_add_input(self, id, stream, buffered):
-		res = self._proxy.rpc(70, 0x08, id, stream, int(buffered), result_type=(1, False))
-
-		return res['ints'][0]
-
 	@param("online", "bool", desc="whether the graph is connected to inputs or not")
 	@return_type("integer")
 	def graph_set_online(self, online):
