@@ -1052,50 +1052,49 @@ class MIBController (proxy.MIBProxyObject):
 		return ControllerConfigManager(self)
 
 	@annotated
-	def sensor_log(self):
-		return SensorLog(self)
+	def sensor_graph(self):
+		return SensorGraph(self)
 
-@context("SensorLog")
-class SensorLog:
+@context("SensorGraph")
+class SensorGraph:
 	def __init__(self, proxy):
 		self._proxy = proxy
 
 	@param("value", "integer", desc="value to push to the sensor log")
 	@param("n", "integer", "positive", desc="Number of copies to push")
-	@param("stream", "integer", "nonnegative", desc="Sensor stream")
-	def push(self, value, stream, n=1):
+	@param("stream", "fw_stream", desc="Sensor stream")
+	def push_reading(self, value, stream, n=1):
 		"""
 		Push N copies of a sensor reading to the indicated stream
+
+		In general, you should not do this but instead call input to present a new
+		reading to the current sensor graph.  This bypasses the sensor graph and directly
+		pushes readings to the raw_sensor_log.  It is useful for initializing constant streams
+		during sensor graph creation and debugging.
 		"""
 
-		res = self._proxy.rpc( 70, 0, n, stream, struct.pack('<L', value), timeout=max(0.005*n, 10.0))
-
-	@return_type("map(string, integer)")
-	def pop(self):
-		res = self._proxy.rpc(70, 0x1, result_type=(0, True))
-
-		error = ord(res['buffer'][len(res['buffer']) - 1])
-		if error == 0:
-			timestamp, stream, value, error = struct.unpack("<LB3xL4xB", res['buffer'])
-			return {'timestamp': timestamp, 'value': value, 'stream': stream, 'error': error}
-
-		return {'timestamp': 0, 'value': 0, 'error': error, 'stream': 0}
+		res = self._proxy.rpc(70, 0, n, stream.id, struct.pack('<L', value), timeout=max(0.005*n, 10.0))
 
 	@return_type("list(string)")
-	def read_all(self):
-		vals = []
+	@param("stream", "fw_stream", "buffered", desc="Stream to download")
+	def dump_stream(self, stream):
+		"""
+		Read all of the readings in the named stream
+		"""
 
+
+		vals = []
+		count = self.start_walker(stream)
 		error = 0
-		count = self.count()
+		i = 0
 
 		pb = ProgressBar("Reading %d sensor readings" % count, count)
 		pb.start()
 
-		i = 0
 
 		try:
 			while error == 0:
-				reading = self.pop()
+				reading = self.next_walker()
 				error = reading['error']
 
 				if error != 0:
@@ -1118,14 +1117,18 @@ class SensorLog:
 			print "Error occurred during transmission, check the unit for functionality"
 			print str(e)
 		
+		self.stop_walker()
 		pb.end()
 		
 		return ["%d, %d, %d" % (x[0], x[1], x[2]) for x in vals]
 
 	@param("filename", "path", "writeable", desc="Path of file to save")
-	def download(self, filename):
+	@param("stream", "fw_stream", "buffered", desc="Stream to download")
+	def download(self, stream, filename):
 		"""
-		Download all entries in the sensor log, appending them to a file
+		Download sensor stream values, appending them to a file
+
+		This is nondestructive so the values stored on the device are unaffected
 		"""
 
 		values = []
@@ -1137,58 +1140,66 @@ class SensorLog:
 				for value in values:
 					f.write(value + '\n')
 
-	@return_type("integer")
+	@return_type("map(string,integer)")
 	def count(self):
+		"""
+		Count the number of entries in both the storage and output portions of the sensor log
+
+		Returns a dictionary with 'storage' and 'streaming' keys listing the number of entries
+		in each portion of the log.
+		"""
+
+
 		res = self._proxy.rpc(70, 0x2, result_type=(0, True))
-		count, = struct.unpack('<L', res['buffer'])
-		return count
+		storage,streaming = struct.unpack('<LL', res['buffer'])
+
+		return {'storage': storage, 'streaming': streaming}
 
 	@annotated
 	def clear(self):
 		res = self._proxy.rpc(70, 0x3)
 
-	@param("stream", "integer", description="stream to iterate over")
+	@param("stream", "fw_stream", description="stream to iterate over")
+	@return_type("integer")
 	def start_walker(self, stream):
-		self._proxy.rpc(70, 0x4, stream)
+		"""
+		Create a walker that iterates over a specific stream
+
+		Returns the number of values available in that stream
+		"""
+
+		res = self._proxy.rpc(70, 0x4, stream.id, result_type=(0, True), timeout=10.0)
+		count, = struct.unpack('<L', res['buffer'])
+
+		return count
 
 	@annotated
 	def stop_walker(self):
 		self._proxy.rpc(70, 0x5)
 
-	@return_type("map(string, string)")
+	@return_type("map(string, integer)")
 	def next_walker(self):
 		res = self._proxy.rpc(70, 0x6, result_type=(0, True), timeout=5.)
 
 		x = [ord(y) for y in res['buffer']]
-		print x
 
 		error = ord(res['buffer'][len(res['buffer']) - 1])
 		if error == 0:
-			timestamp, stream, value, error = struct.unpack("<LB3xL4xB", res['buffer'])
+			timestamp, stream, value, error = struct.unpack("<LH2xL4xB", res['buffer'])
 			return {'timestamp': timestamp, 'value': value, 'stream': stream, 'error': error}
 
 		return {'timestamp': 0, 'value': 0, 'error': error, 'stream': 0}
 
-	@return_type("map(string, string)")
-	def inspect_walker(self):
-		res = self._proxy.rpc(70, 0x7, result_type=(0, True))
-
-		offset, queue, nextptr, prevptr, immedptr, stream = struct.unpack("<LHHHHBx", res['buffer'])
-
-		out = {}
-		out['offset'] = offset
-		out['queue'] = queue
-		out['next'] = nextptr
-		out['prev'] = prevptr
-		out['stream'] = stream
-		out['immediate'] = immedptr
-
-		return out
-
 	@param("value", "integer", desc="value to push to the sensor log")
 	@param("stream", "integer", "nonnegative", desc="Sensor stream")
 	@return_type("integer")
-	def push_reading(self, stream, value):
+	def graph_input(self, stream, value):
+		"""
+		Present a new input reading to the sensor graph for processing
+
+		Returns the error code returned from the sensor graph.
+		"""
+
 		res = self._proxy.rpc(70, 0x9, stream, struct.pack('<L', value), result_type=(1,False))
 
 		err = res['ints'][0]
@@ -1196,7 +1207,7 @@ class SensorLog:
 
 	@param("online", "bool", desc="whether the graph is connected to inputs or not")
 	@return_type("integer")
-	def graph_set_online(self, online):
+	def set_online(self, online):
 		res = self._proxy.rpc(70, 0x0a, int(online), result_type=(1, False))
 
 		return res['ints'][0]
