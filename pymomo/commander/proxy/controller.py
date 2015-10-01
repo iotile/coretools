@@ -1063,7 +1063,7 @@ class SensorGraph:
 	@param("value", "integer", desc="value to push to the sensor log")
 	@param("n", "integer", "positive", desc="Number of copies to push")
 	@param("stream", "fw_stream", desc="Sensor stream")
-	def push_reading(self, value, stream, n=1):
+	def push_stream(self, value, stream, n=1):
 		"""
 		Push N copies of a sensor reading to the indicated stream
 
@@ -1192,7 +1192,7 @@ class SensorGraph:
 
 	@param("value", "integer", desc="value to push to the sensor log")
 	@param("stream", "integer", "nonnegative", desc="Sensor stream")
-	@return_type("integer")
+	@return_type("fw_sgerror")
 	def graph_input(self, stream, value):
 		"""
 		Present a new input reading to the sensor graph for processing
@@ -1206,41 +1206,55 @@ class SensorGraph:
 		return err	
 
 	@param("online", "bool", desc="whether the graph is connected to inputs or not")
-	@return_type("integer")
+	@return_type("fw_sgerror")
 	def set_online(self, online):
 		res = self._proxy.rpc(70, 0x0a, int(online), result_type=(1, False))
 
 		return res['ints'][0]
 
-	@param("inputA", "integer", "nonnegative", desc="input A channel connection")
-	@param("triggerA", "integer", "positive", desc="number of samples to accumulate before triggering")
-	@param("node", "integer", "nonnegative", desc="node index to create")
-	def graph_add_node(self, node, inputA, triggerA):
+	@param("destination", "string", desc="name of module to stream to (6 characters)")
+	@param("stream", "fw_stream", desc="Stream to send to the communication module")
+	@param("automatic", "bool", desc="Should this streamer fire every time new data is available?")
+	@return_type("fw_sgerror")
+	def add_streamer(self, destination, stream, automatic):
 		"""
-		Add a sample node that copies channel A into the output every N times channel A is triggered
+		Add a streamer to the sensor graph
 		"""
 
-		samplesA = triggerA
-		samplesB = 1
-		opA = 0
-		opB = 1
+		if len(destination) != 6:
+			raise ValidationError("You must pass a module name with length 6", destination=destination)
 
-		inputA = inputA
-		inputB = 0xFF
+		res = self._proxy.rpc(70, 0xc, stream.id, int(automatic), destination, result_type=(1, False))
 
-		func = 0
-		buffered = 1
-		stream = node
+		return res['ints'][0]
 
-		data = struct.pack("<BBLLBBBBBB", node, func, samplesA, samplesB, inputA, inputB, opA, opB, buffered, stream)
+	@param("node", "fw_graphnode", desc="graph node to create")
+	@return_type("fw_sgerror")
+	def add_node(self, node):
+		"""
+		Add a node to the sensor graph
+
+		Takes a SensorGraphNode or a string description of one and
+		adds it to the sensor graph on the attached momo controller
+		"""
+
+		#Sensor graph add node RPC takes the following parameters:
+		#00 trigger A: uint32
+		#04 trigger B: uint32
+		#08 stream   : uint16
+		#10 stream A : uint16
+		#12 stream B : uint16
+		#14 processor: uint8
+		#15 cond A   : uint8
+		#16 cond B   : uint8
+		#17 AND/OR   : uint8
+
+		data = struct.pack("<LLHHHBBBB", node.triggerA[1], node.triggerB[1], node.stream.id, node.inputA.id, node.inputB.id, node.processor, node.triggerA[0], node.triggerB[0], node.trigger_combiner)
 
 		res = self._proxy.rpc(70, 0xb, data, result_type=(2, False))
 
 		error = res['ints'][0]
-		states = res['ints'][1]
-
-		print error
-		print states
+		return error
 
 @context("ConfigManager")
 class ControllerConfigManager:

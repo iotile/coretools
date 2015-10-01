@@ -47,7 +47,7 @@ class SensorStream:
 
 		typemap = {	'input': (SensorStream.InputBit | SensorStream.UnbufferedBit), 'output': 0, 'buffered node': (SensorStream.NodeBit), 
 					'unbuffered node': (SensorStream.NodeBit | SensorStream.UnbufferedBit), 'constant': (SensorStream.UnbufferedBit | SensorStream.ConstantBit),
-					'counter': (SensorStream.UnbufferedBit | SensorStream.CounterBit) }
+					'counter node': (SensorStream.NodeBit | SensorStream.UnbufferedBit | SensorStream.CounterBit) }
 
 		typename,sep,idnumber = desc.rpartition(' ')
 
