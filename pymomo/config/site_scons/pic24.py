@@ -118,7 +118,7 @@ def build_moduletest(test, arch):
 
 	#Link the test, run it and build a status file
 	unit_env.xc16_ld(elffile, objs)
-	unit_env.Command(outlog, elffile, action=unit_env.Action(r"momo-picunit %s '%s' '%s'" % (arch.property('simulator_model'), elffile[1:], outlog[1:]), "Running unit test")) 
+	unit_env.Command(outlog, elffile, action=unit_env.Action(r'momo-picunit %s "%s" "%s"' % (arch.property('simulator_model'), elffile[1:], outlog[1:]), "Running unit test")) 
 	unit_env.Command(statusfile, outlog, action=unit_env.Action(process_log, 'Processing log file'))
 
 	return statusfile
@@ -170,8 +170,16 @@ def build_moduletest_main(target, source, env):
 		f.write(script)
 
 def process_log(target, source, env):
+	import platform
+
+	#file ends with OK followed by a newline for successful tests, but newlines are two characters on Windows
+	if platform.system() == 'Windows':
+		seeknum = -4
+	else:
+		seeknum = -3
+
 	with open(str(source[0]), "r") as log:
-		log.seek(-3, os.SEEK_END)
+		log.seek(seeknum, os.SEEK_END)
 		status = log.read(2)
 	
 	with open(str(target[0]), "w") as statfile:

@@ -38,7 +38,7 @@ class I2CAnalyzer:
 	StopCondition 		  = 3
 	UnclassifiedCondition = 4
 
-	def __init__(self, states):
+	def __init__(self, states, ignore_errors=False):
 		"""
 		Take in a list of tuples of the form (cycle, clock, data) where
 		cycle is a monotonically increasing cycle counter (time measured
@@ -60,9 +60,19 @@ class I2CAnalyzer:
 		states = self.processed_states
 		self.bus_events = []
 
-		while len(states) > 0:
-			trans, states = self._process_transaction(states)
-			self.bus_events.extend(trans)
+		try:
+			while len(states) > 0:
+				trans, states = self._process_transaction(states, ignore_errors=ignore_errors)
+
+				if len(trans) == 0:
+					break
+
+				self.bus_events.extend(trans)
+		except InternalError:
+			if ignore_errors:
+				print "Error processing some states, using states until error occurred."
+			else:
+				raise
 
 	def _is_byte_transmission(self, states):
 		if len(states) != 9:
@@ -92,7 +102,7 @@ class I2CAnalyzer:
 
 		return AddressByte(start, end, addr, write, acked)
 
-	def _process_transaction(self, states):
+	def _process_transaction(self, states, ignore_errors=False):
 		"""
 		Process a Start, [Byte...], [Repeated Start...], Stop Series
 		"""
@@ -125,13 +135,13 @@ class I2CAnalyzer:
 			if states[i][0] == self.StopCondition:
 				trans.append(StopCondition(states[i][1]))
 				i += 1
-			elif states[i][0] == self.ClockRisingEdge and states[i+1][0] == self.StartCondition:
+			elif states[i][0] == self.ClockRisingEdge and (i+1) < len(states) and states[i+1][0] == self.StartCondition:
 				trans.append(RepeatedStartCondition(states[i+1][1]))
 				i += 2
 			elif states[i][0] == self.StartCondition:
 				trans.append(RepeatedStartCondition(states[i][1]))
 				i += 1
-			elif states[i][0] == self.ClockRisingEdge and states[i+1][0] == self.StopCondition:
+			elif states[i][0] == self.ClockRisingEdge and (i+1) < len(states) and states[i+1][0] == self.StopCondition:
 				trans.append(StopCondition(states[i+1][1]))
 				i += 2
 				break
@@ -140,12 +150,15 @@ class I2CAnalyzer:
 				i += i
 				break
 			else:
+				if ignore_errors:
+					break
+
 				raise InternalError("Invalid I2C State", state=states[i])
 
-		if not isinstance(trans[-1], StopCondition):
+		if not ignore_errors and not isinstance(trans[-1], StopCondition):
 			raise InternalError("I2C Transaction did not end with a STOP", last_state=trans[-1])
 
-		return trans, states[i:]	
+		return trans, states[i:]
 
 	def _classify_state(self, last, state):
 		"""
@@ -171,23 +184,35 @@ class I2CAnalyzer:
 
 		return I2CAnalyzer.UnclassifiedCondition 
 
-	def _format_start(self, ev):
+	def _format_start(self, ev, short):
+		if short:
+			return "S"
+
 		return "%d) Start" % ev.cycle
 
-	def _format_repeated_start(self, ev):
+	def _format_repeated_start(self, ev, short):
+		if short:
+			return "RS"
+
 		return "%d) Repeated Start" % ev.cycle
 
-	def _format_stop(self, ev):
+	def _format_stop(self, ev, short):
+		if short:
+			return "P"
+
 		return "%d) Stop" % ev.cycle
 	
-	def _format_data(self, ev):
+	def _format_data(self, ev, short):
 		a = 'NACK'
 		if ev.acked:
 			a = 'ACK'
 
+		if short:
+			return "0x%x/%s" % (ev.value, a[0])
+
 		return "%d) 0x%x %s" % (ev.start_cycle, ev.value, a)
 
-	def _format_address(self, ev):
+	def _format_address(self, ev, short):
 		a = 'NACK'
 		if ev.acked:
 			a = 'ACK'
@@ -196,23 +221,26 @@ class I2CAnalyzer:
 		if ev.is_write:
 			d = 'WRITE to'
 
+		if short:
+			return "0x%x/%s%s" % (ev.address, d[0], a[0])
+
 		return "%d) %s 0x%x %s" % (ev.start_cycle, d, ev.address, a)
 
-	def _format_event(self, ev):
+	def _format_event(self, ev, **kwargs):
 		if isinstance(ev, StartCondition):
-			return self._format_start(ev)
+			return self._format_start(ev, **kwargs)
 		elif isinstance(ev, StopCondition):
-			return self._format_stop(ev)
+			return self._format_stop(ev, **kwargs)
 		elif isinstance(ev, DataByte):
-			return self._format_data(ev)
+			return self._format_data(ev, **kwargs)
 		elif isinstance(ev, AddressByte):
-			return self._format_address(ev)
+			return self._format_address(ev, **kwargs)
 		elif isinstance(ev, RepeatedStartCondition):
-			return self._format_repeated_start(ev)
+			return self._format_repeated_start(ev, **kwargs)
 		
 		raise InternalError("Unknown event type in i2c log, cannot format", event=ev)
 
-	def format(self):
+	def format(self, short=False):
 		"""
 		Format this i2c log for printing
 		"""
@@ -220,14 +248,18 @@ class I2CAnalyzer:
 		log = []
 
 		for ev in self.bus_events:
-			log.append(self._format_event(ev))
+			log.append(self._format_event(ev, short=short))
 
+		if short:
+			return ", ".join(log)
+		
 		return "\n".join(log)
 
 	@classmethod
 	@param("clock_path", "path", "readable", desc="Path to GPSIM log of i2c clock signal")
 	@param("data_path", "path", "readable", desc="Path to GPSIM log of i2c data signal")
-	def FromGPSIMLogs(cls, clock_path, data_path):
+	@param("ignore_errors", "bool", desc="If the stream is not valid, parse only the valid part")
+	def FromGPSIMLogs(cls, clock_path, data_path, ignore_errors=False):
 		with open(clock_path, "r") as f:
 			clk = f.readlines()
 			clk = [x.rstrip().lstrip() for x in clk if x.rstrip().lstrip() != ""]
@@ -272,4 +304,4 @@ class I2CAnalyzer:
 				sample = (cycle, curr_clock, curr_data)
 				processed.append(sample)
 
-		return I2CAnalyzer(processed)
+		return I2CAnalyzer(processed, ignore_errors=ignore_errors)

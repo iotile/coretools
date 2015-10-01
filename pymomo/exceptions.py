@@ -143,3 +143,15 @@ class EnvironmentError(MoMoException):
 	"""
 
 	pass
+
+class HardwareError(MoMoException):
+	"""
+	There was an issue communicating with or controlling a MoMo hardware module.  This
+	exception anchors a range of exceptions that refer to specific kinds of hardware issues.
+
+	By catching this exception, you will catch any sort of hardware failure.  If you are
+	interested in specific kinds of hardware errors, you can look for or catch subclasses
+	of this exception.
+	"""
+
+	pass

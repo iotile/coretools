@@ -35,7 +35,7 @@ def build_unittest(test, arch, summary_env, cmds=None):
 		orig_name = 'mib12_executive_symbols'
 		env['ARCH'] = arch.retarget(remove=['exec'], add=['app'])
 		pic12.configure_env_for_xc8(env, force_app=True)
-		test_harness = ['../test/pic12/exec_harness/mib12_exec_unittest.c', '../test/pic12/exec_harness/mib12_api.as', '../test/pic12/exec_harness/mib12_exec_unittest_startup.as', '../test/pic12/gpsim_logging/test_log.as', '../test/pic12/gpsim_logging/test_mib.as']
+		test_harness = ['../test/pic12/exec_harness/mib12_exec_unittest.c', '../test/pic12/exec_harness/mib12_api.as', '../test/pic12/gpsim_logging/test_log.as', '../test/pic12/gpsim_logging/test_mib.as']
 	elif type == "application":
 		orig_name = "mib12_app_module_symbols"
 
@@ -84,6 +84,12 @@ def build_unittest(test, arch, summary_env, cmds=None):
 	#Must do this in 1 statement so we don't modify test_files
 	srcfiles = test_files + test_harness
 
+	#If we are compiling a special mib block, add it in
+	if test.mibfile is not None:
+		cmdmap = pic12.compile_mib(env, test.mibfile, testdir)
+		config_h, config_c, config_as = pic12.compile_config_variables(env, test.mibfile, testdir)
+		srcfiles += cmdmap + [config_c, config_as]
+
 	apphex = env.xc8(os.path.join(testdir, name + '_unit.hex'), srcfiles)
 	env.Depends(apphex[0], symfile)
 
@@ -95,10 +101,12 @@ def build_unittest(test, arch, summary_env, cmds=None):
 		#and to avoid triggering any bugs in the executive code since these are unit tests.
 		#for specific routines.
 		if type == "executive_integration":
+			#Patch in the application checksum that's appropriate here
+			highhex = env.Command(os.path.join(testdir, name + '_unit_checksummed.hex'), apphex[0], action=env.Action(pic12.checksum_insertion_action, "Patching Application Checksum"))
 			lowhex = os.path.join(builddir, 'mib12_executive_patched.hex')
 		else:
 			lowhex = env.Command(os.path.join(testdir, 'mib12_executive_local.hex'), os.path.join(builddir, 'mib12_executive_patched.hex'), action='python ../../tools/scripts/patch_start.py %d $SOURCE $TARGET' % app_start)
-		highhex = apphex[0]
+			highhex = apphex[0]
 	else:
 		lowhex = apphex[0]
 		highhex = env.Command(os.path.join(testdir, 'mib12_app_module_local.hex'), os.path.join(builddir, 'mib12_app_module.hex'), Copy("$TARGET", "$SOURCE"))
@@ -108,9 +116,25 @@ def build_unittest(test, arch, summary_env, cmds=None):
 	outscript = env.Command([os.path.join(outdir, 'test.stc')], [outhex], action=env.Action(build_unittest_script, "Building test script"))
 
 	raw_log_path = os.path.join(outdir, build_logfile_name(env))
-
 	raw_results = env.gpsim_run(raw_log_path, [outscript, outhex]) #include outhex so that scons knows to rerun this command when the hex changes
-	formatted_log = env.Command([build_formatted_log_name(env), build_status_name(env)], [raw_results, symtab], action=env.Action(process_unittest_log, 
+
+	#Copy over any addition files that might be needed
+	for src, dst in test.copy_files:
+		add_file = Command(os.path.join(outdir, dst), src, Copy("$TARGET", "$SOURCE"))
+		env.Clean(raw_results, add_file)
+		env.Depends(raw_results, add_file)
+
+	#Make sure that the test results explicitly depend on all the additional files that we included
+	for src in test.files:
+		env.Depends(raw_results, src)
+
+	for dep in test.extra_depends:
+		dep_path = os.path.join(outdir, dep)
+		env.Depends(raw_results, dep_path)
+
+	#Make the log and status files depend on the contents of all of the test sources so that if we change part of the
+	#header, which changes what tests are run, the logs are regenerated.
+	formatted_log = env.Command([build_formatted_log_name(env), build_status_name(env)], [raw_results, symtab] + srcfiles, action=env.Action(process_unittest_log, 
 		"Processing test log"))
 
 	#Add this unit test to the unit test summary command
@@ -145,6 +169,11 @@ def build_unittest_script(target, source, env):
 
 	sim = env['TESTCHIP']
 	name = env['TESTNAME']
+	test = env['TEST']
+	arch = env['ARCH']
+
+	sda = arch.property('gpsim_sda')
+	scl = arch.property('gpsim_scl')
 
 	extracmds = None
 
@@ -158,13 +187,36 @@ def build_unittest_script(target, source, env):
 		f.write('break w 0x291, reg(0x291) == 0x00\n')
 		f.write('log w %s.ccpr1l\n' % sim)
 		f.write('log w %s.ccpr1h\n' % sim)
-		f.write("log on '%s'\n" % logfile)
+		f.write("log on '%s'\n\n" % logfile)
+		f.write("BreakOnReset = false\n\n")
+		
+		#Add in all required libraries
+		for lib in test.script_additions['libraries']:
+			f.write('module library %s\n' % lib)
+
+		#Add in all required modules
+		for module,type in test.script_additions['modules'].iteritems():
+			f.write('module load %s %s\n' % (type, module))
+
+		#Add in all setup lines:
+		for module in test.script_additions['setup_lines'].keys():
+			f.write('\n')
+			for line in test.script_additions['setup_lines'][module]:
+				f.write(line + '\n')
+
+		#Add in sda, scl nodes
+		f.write('node sda\n')
+		f.write('node scl\n')
+
+		f.write('attach scl %s %s\n' % (scl, ' '.join(test.script_additions['scl_node'])))
+		f.write('attach sda %s %s\n' % (sda, ' '.join(test.script_additions['sda_node'])))
+
 		if extracmds is not None:
 			for cmd in extracmds:
 				f.write(cmd)
-		else:
-			f.write('run\n')
-
+			
+		#Always run the test and qui when we are done
+		f.write('run\n')
 		f.write('quit\n')
 
 def process_unittest_log(target, source, env):

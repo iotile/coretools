@@ -36,7 +36,7 @@ setup(
     install_requires=[
         "beautifulsoup4==4.3.2",
         "Cheetah==2.4.4",
-        "cmdln==1.1.2",
+        "cmdln>=1.1.2",
         "colorama==0.3.3",
         "decorator==3.4.0",
         "Markdown==2.5.2",
@@ -48,7 +48,8 @@ setup(
         "pytest==2.6.4",
         "six==1.9.0",
         "xlsxwriter>=0.6.7",
-        "pint>=0.6"
+        "pint>=0.6",
+        "interval>=1.0.0",
     ],
     package_data={ #This could be better
         'pymomo': list_data_files()

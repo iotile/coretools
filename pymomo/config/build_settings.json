@@ -3,16 +3,10 @@
 	{
 		"default_settings" :
 		{
-			"executive_rom": [0, 959],
-			"application_ram": [ [32, 120] ],
-			"executive_ram": [ [121,127], [160, 191] ],
+			"executive_rom": [0, 975],
+			"executive_ram": [[32, 63], [110,113]],
 			"total_rom": 2048,
 			"flash_row_words": 16,
-
-			"defines":
-			{
-				"kExecutiveSerialNumber": 2
-			},
 
 			"includes":
 			[
@@ -36,14 +30,20 @@
 				"executive_rom": [0, 1119],
 				"flash_row_words": 32,
 				"total_rom": 8192,
+				"total_ram": 1024,
 				"xc8_target": "16F1847",
 				"gpsim_proc": "p16f1847",
+				"gpsim_sda": "portb1",
+				"gpsim_scl": "portb4",
+
 
 				"defines":
 				{
 					"kMultipageDevice": 1,
 					"kModuleHWType": "kMIBPic16lf1847",
-					"__PIC16LF1847__": 1
+					"__PIC16LF1847__": 1,
+					"I2CDATA": "B1",
+					"I2CCLOCK": "B4"
 				}
 			},
 
@@ -51,11 +51,17 @@
 			{
 				"xc8_target": "16F1823",
 				"gpsim_proc": "p16f1823",
+				"gpsim_sda": "portc1",
+				"gpsim_scl": "portc0",
+				"total_ram": 128,
+				
 
 				"defines":
 				{
 					"kModuleHWType": "kMIBPic16lf1823",
-					"__PIC16LF1823__": 1
+					"__PIC16LF1823__": 1,
+					"I2CDATA": "C1",
+					"I2CCLOCK": "C0"
 				}
 			},
 
@@ -63,23 +69,29 @@
 			{
 				"xc8_target": "12F1822",
 				"gpsim_proc": "p12f1822",
+				"gpsim_sda": "porta2",
+				"gpsim_scl": "porta1",
+				
+				"total_ram": 128,
 
 				"defines":
 				{
 					"kModuleHWType": "kMIBPic12lf1822",
-					"__PIC12LF1822__": 1
+					"__PIC12LF1822__": 1,
+					"I2CDATA": "A2",
+					"I2CCLOCK": "A1"
 				}
 			},
 
 			"exec":
 			{
-				"extra_xc8_flags": ["--runtime=default,+clear,+keep,+init,-no_startup,-osccal,-resetbits,-download,-stackcall,-clib"],
+				"extra_xc8_flags": ["--runtime=default,+clear,+keep,+init,-no_startup,-osccal,-resetbits,-download,-stackcall"],
 				"is_exec": true
 			},
 
 			"app":
 			{
-				"extra_xc8_flags": ["--runtime=-init,+no_startup,-osccal,-clear,+clib,-plib,+download"],
+				"extra_xc8_flags": ["--runtime=+init,-no_startup,-osccal,+clear,+clib,-plib,+download"],
 				"is_exec": false
 			}
 		},
@@ -152,14 +164,16 @@
 				{
 					"24f16ka101":
 					{
-						"linker": "../../test/pic24/sim_24f16ka101.gld",
-						"simulator_model": "pic24super"
+						"linker": "!momo_modules/test/pic24/sim_24f16ka101.gld",
+						"simulator_model": "pic24super",
+						"libraries": []
 					},
 
 					"24fj64ga306":
 					{
-						"linker": "../../test/pic24/sim_24fj64ga306.gld",
-						"simulator_model": "pic24fpsuper"
+						"linker": "!momo_modules/test/pic24/sim_24fj64ga306.gld",
+						"simulator_model": "pic24fpsuper",
+						"libraries": []
 					}
 				}
 			},
@@ -172,7 +186,11 @@
 					"__NO_PERF__": 1,
 					"__NO_FLASH__": 1,
 					"kI2CBaud": 157,
-					"kClockspeed": "16000000L" 
+					"kClockspeed": "16000000L",
+					"SDA": "B9", 
+					"SCL": "B8",
+					"RPC_QUEUE_SIZE": 4,
+					"kNumMIBBuffers": 2
 				},
 
 				"chip": "24f16ka101"
@@ -184,7 +202,11 @@
 				{
 					"__PIC24FJ64GA306__": 1,
 					"kI2CBaud": 39,
-					"kClockspeed": "4000000L"
+					"kClockspeed": "4000000L",
+					"SDA": "G3", 
+					"SCL": "G2",
+					"RPC_QUEUE_SIZE": 8,
+					"kNumMIBBuffers": 4
 				},
 
 				"chip": "24fj64ga306"

@@ -18,7 +18,11 @@ def parse_args(fmt, args):
 		arg = None
 
 		if c == 'i':
-			arg = int(argstr, 0)
+			if isinstance(argstr, basestring):
+				arg = int(argstr, 0)
+			else:
+				arg = int(argstr)
+
 			if arg >= 256:
 				raise ValueError("8-bit integer argument too large: %d" % arg)
 		elif c == 'a':

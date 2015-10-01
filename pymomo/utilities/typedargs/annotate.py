@@ -82,7 +82,7 @@ def _parse_validators(type, valids):
 		name = "validate_%s" % str(val)
 
 		if not hasattr(type, name):
-			raise AttributeError("Cannot resolve validator")
+			raise ValidationError("Cannot resolve validator", typename=str(type), method_name=name, methods=dir(type))
 
 		func = getattr(type, name)
 		outvals.append((func, args))

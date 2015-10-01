@@ -17,6 +17,8 @@ class UnitTest (object):
 		self.desc = ''
 		self.targets = None
 		self.patch = {}
+		self.copy_files = []
+		self.extra_depends = []
 
 		self.ignore_extra_attributes = ignore_extra_attributes
 		self.basedir = os.path.dirname(files[0])
@@ -26,6 +28,15 @@ class UnitTest (object):
 		self._check_files()
 
 		self.status = "Unknown"
+
+	def result_depends(self, filename):
+		"""
+		Record that the result of this unit test depends on the file filename,
+		which is assumed to be located in the unit test's generated folder,
+		put there via copy_file, for example.
+		"""
+
+		self.extra_depends.append(filename)
 	
 	def show(self):
 		print "#Unit Test#"
@@ -158,6 +169,18 @@ class UnitTest (object):
 			canonical_targets.append(self._parse_target(t))
 
 		self.targets = canonical_targets
+
+	def copy_file(self, src_file, dst_name):
+		"""
+		Copy a specified file into the unit test object directory
+
+		Subclasses can use this routine to add files that are necessary
+		for the unit test to run.  It is up to each unit test subclass
+		to implement the actual copying in whatever way is appropriate,
+		this call just sets that a file should be copied.
+		"""
+
+		self.copy_files.append((src_file, dst_name))
 
 	def find_support_file(self, support_name, target):
 		"""
@@ -298,8 +321,8 @@ def find_units(parent):
 	#ignore hidden files
 	files = filter(lambda x: x[0] != '.', files)
 
-	#ignore files that start with support_
-	files = filter(lambda x: not x.startswith("support_"), files)
+	#only look for files that start with test_
+	files = filter(lambda x: x.startswith("test_"), files)
 
 	files = [os.path.join(parent, f) for f in files]
 
@@ -354,4 +377,5 @@ def build_summary_name():
 	return os.path.join('build', 'test', 'output', 'results.txt')
 
 def build_summary(env):
-	env.Command([build_summary_name()], env['TESTS'], action=env.Action(test_summary.build_summary_cmd, "Creating test summary"))
+	summary = env.Command([build_summary_name()], env['TESTS'], action=env.Action(test_summary.build_summary_cmd, "Creating test summary"))
+	env.AlwaysBuild(summary)

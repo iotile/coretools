@@ -1,4 +1,6 @@
 from pymomo.utilities import intelhex
+import instructions
+from decode import decode_retlw
 
 def parse_symtab(path):
 	lines = [line.strip() for line in open(path)]
@@ -51,3 +53,31 @@ def patch_goto(ih, address, old, new):
 	ih[address*2 + 1] = new_high
 
 	return True
+
+def patch_retlw(ih, address, old, new):
+	"""
+	Given an address in words, patch the retlw instruction there
+
+	Check that ih[address] corresponds with a retlw instruction and that it has
+	the value old and then patches it to contain the value new.
+
+	NB. ih must be an IntelHex16bit object
+	"""
+
+	try:
+		stored_val = decode_retlw(ih, address)
+	except ValueError:
+		return False
+
+	if stored_val != old:
+		return False
+
+	new_retlw = instructions.RetlwInstruction((new,))
+	ih[address] = new_retlw.encode()
+
+	#Sanity check
+	new_val = decode_retlw(ih, address)
+	assert(new_val == new)
+
+	return True
+

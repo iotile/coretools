@@ -1,0 +1,203 @@
+{
+	"mib12" : 
+	{
+		"default_settings" :
+		{
+			"executive_rom": [0, 959],
+			"executive_ram": [ [32, 120] ],
+			"application_ram": [ [121,127], [160, 191] ],
+			"total_rom": 2048,
+			"flash_row_words": 16,
+
+			"defines":
+			{
+				"kExecutiveSerialNumber": 2
+			},
+
+			"includes":
+			[
+				"shared/pic12/src",
+				"shared/pic12/src/peripheral",
+				"shared/portable/core",
+				"shared/portable/mib",
+				"shared/portable/mib/slave",
+				"shared/portable/mib/master",
+				"shared/portable/util"
+			],
+
+			"test_includes": ["../test/pic12/gpsim_logging"],
+			"xc8_flags": ["-G", "--addrqual=require", "--summary=default,+psect,-class,+mem,-hex,-file", "--output=default,-inhx032", "--asmlist", "-P", "--mode=pro", "--opt=all,-asmfile" ]
+		},
+
+		"architectures" :
+		{
+			"16lf1847":
+			{
+				"executive_rom": [0, 1119],
+				"flash_row_words": 32,
+				"total_rom": 8192,
+				"total_ram": 1024,
+				"xc8_target": "16F1847",
+				"gpsim_proc": "p16f1847",
+				"gpsim_sda": "portb1",
+				"gpsim_scl": "portb4",
+
+				"defines":
+				{
+					"kMultipageDevice": 1,
+					"kModuleHWType": "kMIBPic16lf1847",
+					"__PIC16LF1847__": 1
+				}
+			},
+
+			"16lf1823" :
+			{
+				"xc8_target": "16F1823",
+				"gpsim_proc": "p16f1823",
+				"gpsim_sda": "portc1",
+				"gpsim_scl": "portc0",
+				"total_ram": 128,
+
+				"defines":
+				{
+					"kModuleHWType": "kMIBPic16lf1823",
+					"__PIC16LF1823__": 1
+				}
+			},
+
+			"12lf1822" :
+			{
+				"xc8_target": "12F1822",
+				"gpsim_proc": "p12f1822",
+				"gpsim_sda": "porta2",
+				"gpsim_scl": "porta1",
+				"total_ram": 128,
+
+				"defines":
+				{
+					"kModuleHWType": "kMIBPic12lf1822",
+					"__PIC12LF1822__": 1
+				}
+			},
+
+			"exec":
+			{
+				"extra_xc8_flags": ["--runtime=default,+clear,+keep,+init,-no_startup,-osccal,-resetbits,-download,-stackcall,-clib"],
+				"is_exec": true
+			},
+
+			"app":
+			{
+				"extra_xc8_flags": ["--runtime=-init,+no_startup,-osccal,-clear,+clib,-plib,+download"],
+				"is_exec": false
+			}
+		},
+
+		"mib" :
+		{
+			"current_version": 1,
+			"base_address": 2032
+		}
+	},
+
+	"reference" :
+	{
+		"portable_dirs": 
+		[
+			"momo_modules/shared/portable"
+		],
+		
+		"pic24_dirs":
+		[
+			"momo_modules/shared/pic24/src"
+		]
+	},
+
+	"mib24" :
+	{
+		"default_settings":
+		{
+			"cflags": ["-Wall", "-O1"],
+			"asflags": ["-Wall", "--no-relax"],
+			"ldflags": ["-Wl","--check-sections","--data-init","--pack-data","--handles","--isr","--gc-sections","--fill-upper=0","--stackguard=16","--no-force-link","--smart-io"],
+			"libdirs": ["../shared/pic24/build/output"],
+			"includes":
+			[
+				"shared/portable/core",
+				"shared/portable/mib",
+				"shared/portable/mib/slave",
+				"shared/portable/mib/master",
+				"shared/portable/util",
+				"shared/pic24/src/util",
+				"shared/pic24/src/modules",
+				"shared/pic24/src/core",
+				"shared/pic24/src/mib/master",
+				"shared/pic24/src/mib",
+				"shared/pic24/src/mib/slave",
+				"shared/pic24/src/mib/slave/commands"
+			]
+		},
+
+		"architectures":
+		{
+			"test":
+			{
+				"defines":
+				{
+					"__TEST__": 1,
+					"__NO_FLASH__": 1,
+					"UNITY_POINTER_WIDTH": 16,
+					"UNITY_INT_WIDTH": 16
+				},
+
+				"test_includes":
+				[
+				"test/pic24/unity"
+				],
+
+				"test_sources": ["test/pic24/unity/unity.c"],
+
+				"overlays" :
+				{
+					"24f16ka101":
+					{
+						"linker": "../../test/pic24/sim_24f16ka101.gld",
+						"simulator_model": "pic24super"
+					},
+
+					"24fj64ga306":
+					{
+						"linker": "../../test/pic24/sim_24fj64ga306.gld",
+						"simulator_model": "pic24fpsuper"
+					}
+				}
+			},
+
+			"24f16ka101":
+			{
+				"defines":
+				{
+					"__PIC24F16KA101__": 1,
+					"__NO_PERF__": 1,
+					"__NO_FLASH__": 1,
+					"kI2CBaud": 39,
+					"kClockspeed": "4000000L" 
+				},
+
+				"chip": "24f16ka101"
+			},
+
+			"24fj64ga306":
+			{
+				"defines":
+				{
+					"__PIC24FJ64GA306__": 1,
+					"kI2CBaud": 39,
+					"kClockspeed": "4000000L"
+				},
+
+				"chip": "24fj64ga306"
+			}
+		}
+	}
+}
