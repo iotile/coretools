@@ -6,7 +6,7 @@ from pymomo.exceptions import *
 
 number = Regex('((0x[a-fA-F0-9]+)|[0-9]+)').setParseAction(lambda s,l,t: [int(t[0], 0)])
 combiner = (Literal('&&') | Literal('||')).setParseAction(lambda s,l,t: [t[0] == '||']) # True when disjunction
-symbol = Regex('[_a-zA-Z][_a-zA-Z0-9]*')
+symbol = oneOf("copyA averageA").setParseAction(lambda s,l,t: [processor_list[t[0]]])
 
 stream_type = Literal('input') | Literal('output') | Literal('buffered node') | Literal("unbuffered node") | Literal("constant") | Literal("counter node")
 stream = stream_type + number
@@ -22,12 +22,13 @@ inputdesc2 = Literal('(').suppress() + inputstring('inputA') + combiner('combine
 inputdesc1 = Literal('(').suppress() + inputstring('inputA') + Literal(')').suppress()
 
 inputdesc = inputdesc1('input1') | inputdesc2('input2')
-graph_node = inputdesc + Literal('=>').suppress() + stream('node') + Literal('using').suppress() + symbol('')
+graph_node = inputdesc + Literal('=>').suppress() + stream('node') + Literal('using').suppress() + symbol('processor')
 
 # Example
 # (buffered node 0x100 when value >= 1 || buffered node 0x101 when count >= 5) => buffered node 0x102 using copyA
 
 trigger_ops = {'>': 0, '<': 1, '>=': 2, '<=': 3, '=': 4, 'always': 5}
+processor_list = {'copyA': 0, 'averageA': 1}
 
 class SensorGraphNode:
 	def __init__(self, desc):
@@ -54,7 +55,7 @@ class SensorGraphNode:
 			self.triggerB = self._process_trigger(data['inputB'])
 
 		self.stream = SensorStream(" ".join(map(str, data['node'][:2])))
-		self.processor = 0
+		self.processor = data['processor']
 
 	def _process_trigger(self, inputdesc):
 		"""
