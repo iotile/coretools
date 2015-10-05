@@ -7,19 +7,28 @@ import os.path
 from pymomo.utilities import build, template
 from pymomo.hex8.decode import *
 from pymomo.utilities import intelhex
+from pymomo.exceptions import *
+from config12 import MIB12Processor
 
 block_size = 16
 
 hw_offset = 0
-type_offset = 1
-info_offset = 2
+major_api_offset = 1
+minor_api_offset = 2
 name_offset = 3
-num_feature_offset = 10
-features_offset = 11
-cmds_offset = 12
-specs_offset = 13
-handlers_offset = 14
-magic_offset = 15
+major_version_offset = 9
+minor_version_offset = 10
+patch_version_offset = 11
+checksum_offset = 12
+magic_offset = 13
+app_information_offset = 14
+reserved = 15
+
+# Indices into the app_information_table
+cmd_map_index = 0
+interface_list_index = 1
+config_list_index = 2
+reserved_index = 3
 
 known_hwtypes = {
 	2: "12lf1822",
@@ -31,8 +40,8 @@ class MIBBlock:
 	"""
 	The block in program memory describing a MoMo application module.  The MIB block
 	contains information on the application module and a sparse matrix representation
-	of a jump table containing all of the feature, command combinations that the 
-	module knows how to respond to.
+	of a jump table containing all of the command ids and interfaces that the module 
+	knows how to respond to.
 	"""
 
 	TemplateName = 'command_map.asm'
@@ -48,114 +57,224 @@ class MIBBlock:
 
 		self.base_addr = build_settings["mib12"]["mib"]["base_address"]
 		self.curr_version = build_settings["mib12"]["mib"]["current_version"]
-		self.features = {}
+		self.commands = {}
+		self.configs = {}
+		self.interfaces = []
+
 		self.valid = True
 		self.error_msg = ""
-		self.num_features = 0
+		self.hw_type = -1
 
 		if isinstance(ih, basestring):
 			ih = intelhex.IntelHex16bit(ih)
+			ih.padding = 0x3FFF
 
 		if ih is not None:
 			try:
 				self._load_from_hex(ih)
-				self._check_consistency()
-				self._interpret_handlers()
-				self._build_feature_map()
 			except ValueError as e:
 				self.error_msg = e
 				self.valid = False
 
-	def set_variables(self, name, type, flags):
+		self._parse_hwtype()
+
+	@classmethod
+	def ParseHardwareType(cls, ih):
+		if isinstance(ih, basestring):
+			ih = intelhex.IntelHex16bit(ih)
+			ih.padding = 0x3FFF
+
+		if ih is None:
+			raise ArgumentError("Could not load intelhex file from arguement", argument=strih)
+
+		build_settings = build.load_settings()
+		base_addr = build_settings["mib12"]["mib"]["base_address"]
+		hw_type = decode_retlw(ih, base_addr + hw_offset)
+		
+		if hw_type in known_hwtypes:
+			return known_hwtypes[hw_type]
+
+		raise DataError("Unknown Hardware Type", hw_type=hw_type)
+
+	def set_api_version(self, major, minor):
+		"""
+		Set the API version this module was designed for.
+
+		Each module must declare the mib12 API version it was compiled with as a
+		2 byte major.minor number.  This information is used by the pic12_executive
+		to decide whether the application is compatible.
+		"""
+
+		if major > 255 or major < 0 or minor > 255 or minor < 0:
+			raise ArgumentError("Invalid API version number with component that does not fit in 1 byte", major=major, minor=minor)
+		
+		self.api_version = (major, minor)
+
+	def set_module_version(self, major, minor, patch):
+		"""
+		Set the module version for this module.
+
+		Each module must declare a semantic version number in the form:
+		major.minor.patch
+
+		where each component is a 1 byte number between 0 and 255.
+		"""
+
+		if major > 255 or major < 0 or minor > 255 or minor < 0 or patch > 255 or patch < 0:
+			raise ArgumentError("Invalid module version number with component that does not fit in 1 byte", major=major, minor=minor, patch=patch)
+
+		self.module_version = (major, minor, patch)
+
+	def set_name(self, name):
+		"""
+		Set the module name to a 6 byte string
+
+		If the string is too short it is appended with space characters.
+		"""
+
+		if len(name) > 6:
+			raise ArgumentError("Name must be at most 6 characters long", name=name)
+
+		if len(name) < 6:
+			name += ' '*(6 - len(name))
+
 		self.name = name
-		self.flags = flags
-		self.module_type = type
 
-	def add_command(self, feature, cmd, handler):
+	def add_interface(self, interface):
 		"""
-		Add a command to the MIBBlock.  The cmd must be sequential after
-		the last command in the feature that it is added to, i.e. you must add
-		feature 1, cmd 0 before adding feature 1 cmd 1.
+		Add an interface to the MIB Block.
+
+		The interface must be a number between 0 and 2^32 - 1, i.e. a non-negative 4 byte integer 
 		"""
 
-		if feature not in self.features:
-			self.features[feature] = []
-			self.num_features = len(self.features.keys())
+		if interface < 0 or interface >= 2**32:
+			raise ArgumentError("Interface ID is not a non-negative 4-byte number", interface=interface)
 
-		if cmd != len(self.features[feature]):
-			raise ValueError("Added noncontiguous command %d (%s) to feature %d, last command was %d" % (cmd, handler.symbol, feature, len(self.features[feature])))
+		if interface in self.interfaces:
+			raise ArgumentError("Attempted to add the same interface twice.", interface=interface, existing_interfaces=self.interfaces)
 
-		self.features[feature].append(handler)
+		self.interfaces.append(interface)
 
-	def _interpret_handlers(self):
-		self.handlers = map(lambda i: MIBHandler(self.spec_list[i], address=self.handler_addrs[i]), xrange(0, len(self.spec_list)))
+	def add_command(self, cmd_id, handler):
+		"""
+		Add a command to the MIBBlock.  
 
-	def _build_feature_map(self):
-		cmd_i  = 0
+		The cmd_id must be a non-negative 2 byte number.
+		handler should be the command handler
+		"""
 
-		self.features = {}
-		for i in xrange(0, len(self.feature_list)):
-			self.features[self.feature_list[i]] = []
-			for j in xrange(self.cmd_list[i], self.cmd_list[i+1]):
-				self.features[self.feature_list[i]].append(self.handlers[cmd_i])
+		if cmd_id < 0 or cmd_id >= 2**16:
+			raise ArgumentError("Command ID in mib block is not a non-negative 2-byte number", cmd_id=cmd_id, handler=handler)
 
-				cmd_i += 1
+		if cmd_id in self.commands:
+			raise ArgumentError("Attempted to add the same command ID twice.", cmd_id=cmd_id, existing_handler=self.commands[cmd_id],
+								new_handler=handler)
+
+		self.commands[cmd_id] = handler
+
+	def add_config(self, config_id, config_data):
+		"""
+		Add a configuration variable to the MIB block
+		"""
+
+		if config_id < 0 or config_id >= 2**16:
+			raise ArgumentError("Config ID in mib block is not a non-negative 2-byte number", config_data=config_id, data=config_data)
+
+		if config_id in self.configs:
+			raise ArgumentError("Attempted to add the same command ID twice.", config_data=config_id, old_data=self.configs[config_id],
+								new_data=config_data)
+
+		self.configs[config_id] = config_data
 
 	def _check_magic(self, ih):
 		magic_addr = self.base_addr + magic_offset
 		instr = ih[magic_addr]
 
-		#Last instruction should be retlw 0xAA for the magic number
+		#Magic Value should be a retlw 0xAA
 		if instr == 0x34AA:
 			return True
 
 		return False
 
-	def _check_consistency(self):
+	def _convert_program_address(self, addr):
 		"""
-		Check that the features, commands, handlers, and specifications are mutually consistent
+		Make sure that addr points to program memory (by having the high bit set) 
+		and then strip the high bit
 		"""
 
-		self.valid = False
+		if not addr & (1 << 15):
+			raise ValueError("Address 0x%X did not have the high bit set indicating a program memory address." % addr)
 
-		if self.num_features != len(self.feature_list):
-			raise ValueError("Mismatch between length of feature list and num_features.")
-
-		if len(self.cmd_list) != len(self.feature_list)+1:
-			raise ValueError("Command list has wrong number of entries, was %d, should be %d" % (len(cmds), len(features)+1))
-
-		if len(self.spec_list) != len(self.handler_addrs):
-			raise ValueError("There should be a 1-1 mapping between command specs and handlers. Their lengths differed (specs: %d, handlers: %d)." % (len(self.specs), len(self.handler_addrs)))
-
-		if len(self.handler_addrs) != self.cmd_list[-1]:
-			raise ValueError("Command array has invalid format.  Last entry should be the number of total handlers (total handlers: %d, cmd entry: %d)" % (len(self.handler_addrs), self.cmds[-1]))
-
-		self.valid = True
+		return addr & ~(1 << 15)
 
 	def _load_from_hex(self, ih):
 		if not self._check_magic(ih):
 			raise ValueError("Invalid magic number.")
 
-		self.num_features = decode_retlw(ih, self.base_addr + num_feature_offset)
-		self.features_addr = decode_goto(ih, self.base_addr + features_offset)
-		self.cmds_addr = decode_goto(ih, self.base_addr + cmds_offset)
-		self.specs_addr = decode_goto(ih, self.base_addr + specs_offset)
-		self.handlers_addr = decode_goto(ih, self.base_addr + handlers_offset)
+		app_info_table_addr = decode_goto(ih, self.base_addr + app_information_offset) + 1 # table contains andlw as the first instruction so get past that
+		
+		app_info_table = decode_table(ih ,app_info_table_addr, decode_goto)
 
-		self.feature_list = decode_table(ih, self.features_addr, decode_retlw)
-		self.cmd_list = decode_table(ih, self.cmds_addr, decode_retlw)
-		self.spec_list = decode_table(ih, self.specs_addr, decode_retlw)
-		self.handler_addrs = decode_table(ih, self.handlers_addr, decode_goto)
+		cmd_list_addr = decode_fsr0_loader(ih, app_info_table[cmd_map_index])
+		interfaces_list_addr = decode_fsr0_loader(ih, app_info_table[interface_list_index])
 
-		self.name = decode_string(ih, self.base_addr + name_offset, 7)
+		#Strip off the high bits indicating program memmory addresses
+		cmd_list_addr = self._convert_program_address(cmd_list_addr)
+		interfaces_list_addr = self._convert_program_address(interfaces_list_addr)
+
+		cmd_table = decode_sentinel_table(ih, cmd_list_addr, 4, [0xFF, 0xFF, 0xFF, 0xFF])
+		iface_table = decode_sentinel_table(ih, interfaces_list_addr, 4, [0xFF, 0xFF, 0xFF, 0xFF])
+
+		#Decode and add the commands to our command map
+		for entry in cmd_table:
+			cmd_id = entry[0] | (entry[1] << 8)
+			cmd_addr = entry[2] | (entry[3] << 8)
+
+			self.add_command(cmd_id, MIBHandler(address=cmd_addr))
+
+		#Decode and add the interfaces to our interface list
+		for entry in iface_table:
+			iface_id = entry[0] | (entry[1] << 8) | (entry[2] << 16) | (entry[3] << 24)
+			self.add_interface(iface_id)
+
+		self.name = decode_string(ih, self.base_addr + name_offset, 6)
+
 		self.hw_type = decode_retlw(ih, self.base_addr + hw_offset)
-		self.info = decode_retlw(ih, self.base_addr + info_offset)
-		self.module_type = decode_retlw(ih, self.base_addr + type_offset)
-
-		self.revision = self.info >> 4
-		self.flags = self.info & 0x0F
-
 		self._parse_hwtype()
+
+		api_major = decode_retlw(ih, self.base_addr + major_api_offset)
+		api_minor = decode_retlw(ih, self.base_addr + minor_api_offset)
+		self.set_api_version(api_major, api_minor)
+
+		mod_major = decode_retlw(ih, self.base_addr + major_version_offset)
+		mod_minor = decode_retlw(ih, self.base_addr + minor_version_offset)
+		mod_patch = decode_retlw(ih, self.base_addr + patch_version_offset)
+		self.set_module_version(mod_major, mod_minor, mod_patch)
+
+		self.stored_checksum = decode_retlw(ih, self.base_addr + checksum_offset)
+		self.app_checksum = self._calculate_app_checksum(ih)
+
+	def _calculate_app_checksum(self, ih):
+		"""
+		Calculate the checksum of the application module.
+
+		Automatically find the correct start and stop rows based on the information for this
+		hardware type.
+		"""
+
+		proc = MIB12Processor.FromChip(self.chip_name)
+
+		start,stop = proc.app_rom
+
+		check = 0
+		for i in xrange(start, stop+1):
+			low = ih[i] & 0xFF
+			high = ih[i] >> 8
+			high = high & 0b00111111
+			check += low + high
+
+		check = check & 0xFF
+		return check
 
 	def _parse_hwtype(self):
 		"""
@@ -165,9 +284,9 @@ class MIBBlock:
 
 		if self.hw_type not in known_hwtypes:
 			self.chip_name = "Unknown Chip (type=%d)" % self.hw_type
+			return
 
 		self.chip_name = known_hwtypes[self.hw_type]
-
 
 	def create_asm(self, folder):
 		temp = template.RecursiveTemplate(MIBBlock.TemplateName)
@@ -175,9 +294,7 @@ class MIBBlock:
 		temp.render(folder)
 
 	def __str__(self):
-		rep = "\n"
-
-		rep += "MIB Block\n"
+		rep  = "MIB Block\n"
 		rep += "---------\n"
 
 		if not self.valid:
@@ -186,19 +303,22 @@ class MIBBlock:
 
 		rep += "Block Valid\n"
 		rep += "Name: '%s'\n" % self.name
-		rep += "Type: %d\n" % self.module_type
 		rep += "Hardware: %s\n" % self.chip_name
-		rep += "MIB Revision: %d\n" % self.revision
-		rep += "Flags: %s\n" % bin(self.flags)
-		rep += "Number of Features: %d\n" % self.num_features
+		rep += "API Version: %d.%d\n" % (self.api_version[0], self.api_version[1])
+		rep += "Module Version: %d.%d.%d\n" % (self.module_version[0], self.module_version[1], self.module_version[2])
 
-		rep += "\nFeature List\n"
+		if hasattr(self, 'stored_checksum'):
+			rep += "Stored Checksum: 0x%X\n" % self.stored_checksum
+			rep += "Checksum Valid: %s" % (self.app_checksum == 0,)
+		else:
+			rep += "Checksum Valid: Unknown" 
 
+		rep += "\n# Supported Commands #"
+		for id, handler in self.commands.iteritems():
+			rep += "\n0x%X: %s" % (id, str(handler))
 
-
-		for f in self.features.keys():
-			rep += "%d:\n" % f
-			for i,h in enumerate(self.features[f]):
-				rep += "    %d: %s\n" % (i, str(h))
+		rep += "\n\n# Supported Interfaces #"
+		for id in self.interfaces:
+			rep += "\n0x%X" % id
 
 		return rep

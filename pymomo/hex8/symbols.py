@@ -175,3 +175,19 @@ class XC8SymbolTable:
 	def generate_stb_file(self, path):
 		with open(path, "w") as f:
 			json.dump({'functions': self.known_functions, 'globals': self.global_vars, 'locals': self.local_vars}, f)
+
+	def generate_rom_file(self, path):
+		"""
+		Create a text file summarizing program ROM usage
+		"""
+
+		with open(path, "w") as f:
+			funcs = sorted(self.known_functions, key=lambda x: x[2], reverse=True)
+
+			f.write("## Memory Summary ##\n")
+			f.write("Total ROM Usage: %d words\n\n" % self.total_size)
+			f.write("## Defined Functions (ranked by size) ##\n")
+			for name, addr, size in funcs:
+				f.write("%s: %d words\n" % (name, size))
+
+

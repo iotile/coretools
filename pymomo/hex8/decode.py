@@ -1,5 +1,6 @@
 #decode.py
 #Simple routines for decoding information from pic12 instructions
+from pymomo.exceptions import *
 
 def decode_goto(ih, addr):
 	"""
@@ -22,6 +23,22 @@ def decode_retlw(ih, addr):
 
 	return val & 0xFF
 
+def decode_movwf(ih, addr):
+	val = ih[addr]
+
+	if not match_high(val, 0b0000001, 7):
+		raise ValueError("Instruction at 0x%X was not a movwf instruction" % addr)
+
+	return val & 0b1111111 # 7 significant low bits are the register address
+
+def decode_return(ih, addr):
+	val = ih[addr]
+
+	if val != 0b1000:
+		raise ValueError("Instruction at 0x%X was not a return instruction" % addr)
+
+	return True
+
 def decode_brw(ih, addr):
 	val = ih[addr]
 
@@ -30,6 +47,14 @@ def decode_brw(ih, addr):
 
 	return True
 
+def decode_movlw(ih, addr):
+	val = ih[addr]
+
+	if not match_high(val, 0b110000, 6):
+		raise ValueError("Instruction at 0x%X was not a movlw instruction" % addr)
+
+	return val & 0xFF
+
 def decode_string(ih, addr, length):
 	string = ""
 
@@ -37,7 +62,75 @@ def decode_string(ih, addr, length):
 		a = addr + i
 		string += chr(ih[a] & 0xFF)
 
-	return string 
+	return string
+
+def decode_sentinel_table(ih, addr, entry_size, sentinel_value):
+	"""
+	Given a table of groups of <entry_size> entries, terminated by a group of sentinel_values,
+	decode the values and return them
+
+	#Group 1
+	<retlw value0>
+	<retlw value1>
+	...
+	<retlw valuen>
+
+	#Group 2
+	...
+
+	#Group N 
+
+	#Sentinel 
+	retlw sentinel_value
+	"""
+
+	table = []
+
+	is_sentinel = False
+	while not is_sentinel:
+		entries = []
+
+		is_sentinel = True
+		for i in xrange(0, entry_size):
+			val = decode_retlw(ih, addr + i)
+			entries.append(val)
+
+			if val != sentinel_value[i]:
+				is_sentinel = False
+
+		if not is_sentinel:
+			table.append(entries)
+
+		addr += entry_size
+
+	return table
+
+def decode_fsr0_loader(ih, func_addr):
+	"""
+	Given the address of a function that loads FSR0 with a certain value,
+	decode that value.
+
+	Function must have the form:
+	movlw XX
+	movwf FSR0L 
+	movlw YY
+	movwf FSR0H
+	return
+	"""
+
+	#Make sure it ends with a return
+	decode_return(ih, func_addr + 4)
+
+	fsr0l = decode_movwf(ih, func_addr + 1)
+	fsr0h = decode_movwf(ih, func_addr + 3)
+
+	val1 = decode_movlw(ih, func_addr + 0)
+	val2 = decode_movlw(ih, func_addr + 2)
+
+	if fsr0l != 0x04 or fsr0h != 0x05:
+		raise DataError("FSR0 loader function did not have appropriate movwf instructions to FSR0L and FSR0H in the right places")
+
+	return (val2 << 8) | val1
 
 def decode_table(ih, addr, mapper):
 	"""

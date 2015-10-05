@@ -75,74 +75,53 @@ class RPCCommand (Command):
 		if num_bufs > 1:
 			raise ValueError("You must pass at most 1 buffer. num_bufs=%d" % num_bufs)
 
-		if num_ints > 4:
-			raise ValueError("You must pass at most 4 integers. num_ints=%d" % num_ints)
-
 		if len(fmtd) > 20:
 			raise ValueError("Arguments are greater then the maximum mib packet size, size was %d" % len(fmtd))
+
+		#Calculate the command type spec
+		self.spec = len(fmtd)
 
 		if len(fmtd) < 20:
 			fmtd += bytearray(20 - len(fmtd))
 
-		#Calculate the command type spec
-		spec = 0
-
-		if num_bufs == 1:
-			spec = 1 << 7
-			spec |= buff_len & 0b11111
-
-		spec |= (num_ints&0b11) << 5
-
-		self.spec = spec
-
 		return fmtd
 
-
-	def handle_result(self, stream):
-		"""
-		rpc command on 
-		"""
-		status = ord(stream.trans.read())
-		self.status = status
-
-		if status == 254:
-			buf, term = stream.read_frame()
-			self.result = buf
-			return buf, term
-
-		if status == 0:
-			num_bytes = ord(stream.trans.read())
-			buf = stream.trans.read(num_bytes)
-			self.result = buf
-
-		seq = stream.trans.read()
-		self.status = status
-
-		return self.result, stream.parse_term(seq)
-
+	#FIXME: Update these to correspond with the new error codes
 	def parse_result(self, num_ints, buff):
-		parsed = {'ints':[], 'buffer':"", 'status': self.status, 'error': 'No Error'}
+		parsed = {'ints':[], 'buffer':"", 'error': 'No Error', 'is_error': False}
 
-		if self.status == 254:
+		status_code = self.status
+		complete_status = self.complete_status & 0b01111111
+
+		#Check for a command stream layer error
+		if self.complete_status == 254:
 			parsed['error'] = self.result
+			parsed['status'] = self.complete_status
+			parsed['is_error'] = True
+
 			return parsed
-		elif self.status != 0:
-			if self.status == 1:
-				parsed['error'] = 'Unsupported Command'
-			elif self.status == 2:
-				parsed['error'] = 'Wrong Parameter Type'
-			elif self.status == 3:
-				parsed['error'] = 'Parameter Too Long'
-			elif self.status == 4:
+
+		parsed['status'] = complete_status
+
+		#Check if the module was not found
+		if self.complete_status == 0xFF:
+			parsed['error'] = 'Module at address ' + str(self.addr) + ' not found.'
+			parsed['is_error'] = True
+			return parsed
+
+		#Check for protocol defined errors
+		if not complete_status & (1<<6):
+			#This is a protocol defined error since the App Defined bit is not set
+			if status_code == 0:
+				parsed['error'] = 'Module Busy'
+			elif status_code == 1:
 				parsed['error'] = 'Checksum Error'
-			elif self.status == 6:
-				parsed['error'] = 'Unknown Error'
-			elif self.status == 7:
-				parsed['error'] = 'Callback Error'
-			elif self.status == 0xFF:
-				parsed['error'] = 'Module at address ' + str(self.addr) + ' not found.'
+			elif status_code == 2:
+				parsed['error'] = 'Unsupported Command'
 			else:
 				parsed['error'] = 'Unrecognized MIB status code'
+
+			parsed['is_error'] = True
 			return parsed
 
 		#Otherwise, parse the results according to the type information given

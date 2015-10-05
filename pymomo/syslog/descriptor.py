@@ -120,7 +120,7 @@ class LogDefinitionMap:
 		name = os.path.basename(file)
 		name = name.replace(' ', '_').replace('.', '_')
 
-		vals = {"k"+v.name: hex(h)+"UL"  for h,v in self.entries.iteritems()}
+		vals = {"k"+v.name: "{0:#x}".format(h)+"UL"  for h,v in self.entries.iteritems()}
 
 		templ = RecursiveTemplate('logdefinitions.h')
 		templ.add({'messages': vals, 'sources': self.sources, 'name': name})

@@ -1,15 +1,16 @@
 #gpsim_runner.py
 
 import SCons.Builder
-import os
-import sys
+import platform
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
-from pymomo.utilities import config
-
+#There is no /dev/null on Windows
+if platform.system() == 'Windows':
+	action = 'gpsim -c $SOURCE -i > NUL'
+else:
+	action = 'gpsim -c $SOURCE -i > /dev/null'
 
 run_gpsim = SCons.Builder.Builder(
-	action = 'gpsim -c $SOURCE -i > /dev/null'
+	action = action
 	)
 
 def generate(env):

@@ -1,0 +1,5 @@
+#include "nonexistent_include.mib"
+
+ModuleName = "test";
+ModuleVersion = "1.2.3";
+APIVersion = "1.2";

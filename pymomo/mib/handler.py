@@ -10,7 +10,7 @@ class MIBHandler:
 	BufferSizeMask = 0b11111
 	BufferFlag = 1<<7
 
-	def __init__(self, spec, symbol=None, address=None):
+	def __init__(self, spec=None, symbol=None, address=None):
 		self.symbol = symbol
 		self.address = address
 		self.spec = spec
@@ -59,6 +59,7 @@ class MIBHandler:
 	def __str__(self):
 		name = "<unnamed> "
 		addr = "<no address>"
+		spec = "unknown signature"
 
 		if self.symbol is not None:
 			name = self.symbol + " "
@@ -66,4 +67,7 @@ class MIBHandler:
 		if self.address is not None:
 			addr = "0x%X" % self.address
 
-		return "%s@ %s (%s)" % (name, addr, self._format_spec())
+		if self.spec is not None:
+			spec = self._format_spec()
+
+		return "%s @ %s (%s)" % (name, addr, spec)

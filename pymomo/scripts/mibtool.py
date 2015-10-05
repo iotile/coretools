@@ -172,32 +172,13 @@ class MIBTool(cmdln.Cmdln):
 		#rom range.
 		try:
 			b = MIBBlock(hexfile)
-			aliases, settings = build.load_chip_info(b.chip_name)
-			info = config12.MIB12Processor('unnamed', settings)
-			
-			start,end = info.app_rom
-			print start
-			print end
 		except:
 			self.error(str(sys.exc_info()[1]))
 
-		ih = intelhex.IntelHex(hexfile)
-		ih.padding = 0xFF
-
-		check = 0
-		for i in xrange(start, end+1):
-			low = ih[i*2]
-			high = ih[i*2+1]
-			high = high & 0b00111111
-			check += low + high
-			check &= 0xFF
-
-		check = check & 0xFF
-
 		print "\nChecksum:"
-		print "hex: 0x%X" % check
-		print "dec: %d" % check
-		print "bin: %s" % bin(check)
+		print "hex: 0x%X" % b.app_checksum
+		print "dec: %d" % b.app_checksum
+		print "bin: %s" % bin(b.app_checksum)
 
 	def do_dump(self, subcmd, opts, hexfile):
 		"""${cmd_name}: Dump the MIB Block from a hex file and verify it.

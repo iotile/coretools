@@ -24,3 +24,6 @@ def validate_not_empty(arg):
 
 def default_formatter(arg, **kwargs):
 	return arg
+
+def format_repr(arg, **kwargs):
+	return repr(arg)
