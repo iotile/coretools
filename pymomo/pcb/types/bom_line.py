@@ -44,7 +44,10 @@ class BOMLine:
 		Extract the numeric part of a reference number
 		"""
 
-		return int(''.join([c for c in id if c in BOMLine.digits]))
+		try:
+			return int(''.join([c for c in id if c in BOMLine.digits]))
+		except ValueError:
+			return 0
 
 	def _extract_ref_type(self):
 		if len(self.refs) == 0:
