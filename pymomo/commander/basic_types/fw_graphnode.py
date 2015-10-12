@@ -28,7 +28,7 @@ graph_node = inputdesc + Literal('=>').suppress() + stream('node') + Literal('us
 # (buffered node 0x100 when value >= 1 || buffered node 0x101 when count >= 5) => buffered node 0x102 using copyA
 
 trigger_ops = {'>': 0, '<': 1, '>=': 2, '<=': 3, '=': 4, 'always': 5}
-processor_list = {'copyA': 0, 'averageA': 1}
+processor_list = {'copyA': 0, 'averageA': 1, 'copyAllA': 2}
 
 class SensorGraphNode:
 	def __init__(self, desc):

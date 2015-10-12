@@ -1251,7 +1251,7 @@ class SensorGraph:
 
 		data = struct.pack("<LLHHHBBBB", node.triggerA[1], node.triggerB[1], node.stream.id, node.inputA.id, node.inputB.id, node.processor, node.triggerA[0], node.triggerB[0], node.trigger_combiner)
 
-		res = self._proxy.rpc(70, 0xb, data, result_type=(2, False))
+		res = self._proxy.rpc(70, 0xb, data, result_type=(2, False), timeout=10.0)
 
 		error = res['ints'][0]
 		return error
