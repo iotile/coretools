@@ -1256,6 +1256,30 @@ class SensorGraph:
 		error = res['ints'][0]
 		return error
 
+	@annotated
+	@return_type("fw_sgerror")
+	def commit_graph(self):
+		"""
+		Commit the sensor graph in RAM to flash
+
+		The graph will then automatically be loaded upon each reset.
+		"""
+
+		res =self._proxy.rpc(70, 0xd, result_type=(1, False))
+
+		return res['ints'][0]
+
+	@annotated
+	@return_type("fw_sgerror")
+	def reset_graph(self):
+		"""
+		Clear the in-memory and flash sensor graphs
+		"""
+
+		res = self._proxy.rpc(70, 0xe, result_type=(1,False))
+		return res['ints'][0]
+
+
 @context("ConfigManager")
 class ControllerConfigManager:
 	NoError = 0
