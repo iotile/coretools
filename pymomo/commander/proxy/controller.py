@@ -1005,7 +1005,6 @@ class SensorGraph:
 		pb = ProgressBar("Reading %d sensor readings" % count, count)
 		pb.start()
 
-
 		try:
 			while error == 0:
 				reading = self.next_walker()
@@ -1130,8 +1129,10 @@ class SensorGraph:
 	@param("destination", "string", desc="name of module to stream to (6 characters)")
 	@param("stream", "fw_stream", desc="Stream to send to the communication module")
 	@param("automatic", "bool", desc="Should this streamer fire every time new data is available?")
+	@param("timebase", "integer", desc="Interval in seconds used by backoff logic in case of failure")
+	@param("backoff_strategy", "integer", desc="Backoff strategy index to use in case of failure")
 	@return_type("fw_sgerror")
-	def add_streamer(self, destination, stream, automatic):
+	def add_streamer(self, destination, stream, automatic, backoff_strategy, timebase):
 		"""
 		Add a streamer to the sensor graph
 		"""
@@ -1172,7 +1173,6 @@ class SensorGraph:
 		"""
 
 		res = self._proxy.rpc(70, 0x10, index, result_type=(1,False))
-
 		return res['ints'][0]
 
 	@param("node", "fw_graphnode", desc="graph node to create")

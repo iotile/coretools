@@ -226,6 +226,9 @@ class RN4020SerialBoard:
 	def receive_mib_response(self, timeout=3.0):
 		received = self.receive_solicited(timeout=timeout)
 
+		print "received packet:", received
+		print len(received)
+
 		if len(received) == 38:
 			if received[0] == '@':
 				received = received[1:]

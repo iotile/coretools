@@ -215,6 +215,13 @@ class HardwareManager:
 			port = port.strip()
 			mac = mac.strip()
 			return RN4020DevStream(port, mac)
+		elif self.transport == 'bled112':
+			port, mac = self.port.split(',')
+
+			port = port.strip()
+			mac = mac.strip()
+
+			return BLED112Stream(port, mac)
 		elif self.transport == 'null':
 			return FSUStream(None)
 		else:
