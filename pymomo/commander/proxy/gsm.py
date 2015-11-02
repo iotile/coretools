@@ -24,19 +24,6 @@ class GSMModule (proxy12.MIB12ProxyObject):
 		self.rx_buffer_loc = 0x21f4
 		self.rx_buffer_length = 100
 
-	@param("destination", "string", desc="URL or phone number to send messages to")
-	def set_destination(self, destination):
-		"""
-		Set the current destination of streams opened on this module
-
-
-		"""
-
-		for i in xrange(0, len(destination), 18):
-			buf = destination[i:i+18]
-			iprint("Setting Destination (offset %d): %s" % ( i, buf ))
-			self.rpc(11, 4, i, buf)
-
 	@annotated
 	@return_type("string")
 	def read_rx_buffer(self):
@@ -47,35 +34,19 @@ class GSMModule (proxy12.MIB12ProxyObject):
 
 		return buff
 
-	@param("destination", "string", desc="Stream destination")
 	@param("length", "integer", desc="Length of stream")
-	def open_stream(self, destination, length):
-		self.set_destination(destination)
-
+	def open_stream(self, length):
 		res = self.rpc(11, 0, length, result_type=(1, False), timeout=5*60.0)
 		if res['ints'][0] != 0:
 			raise HardwareError("Could not open GSM stream", result_code=res['ints'][0])
 
-	@param("destination", "string", desc="phone number or url")
 	@param("text", "string", desc="data to send")
-	def send_message(self, destination, text):
+	def send_message(self, text):
 		"""
 		Send a message to the given destination 
-
-		Destination must have one of the following two forms:
-		1. '+NUMBER' with no dashes or spaces, for example: +16506695211 in order to
-		send a text message
-
-		2. 'URL' prefixed with http:// in order to send an http post request
 		"""
 
-		apn = "m2m.tele2.com"
-
-		iprint("Sending message '%s' to %s" % ( text, destination ))
-		iprint("Setting APN: %s" % apn)
-		self.rpc(10, 9, apn)
-
-		self.set_destination(destination)
+		iprint("Sending message '%s'" % (text,))
 
 		start_time = time()
 		iprint("Opening stream with length %d" % len(text))
@@ -162,7 +133,7 @@ class GSMModule (proxy12.MIB12ProxyObject):
 		line ending is appended automatically inside the module. 
 
 		The response to the command is returned as a string without any parsing.  If the at command
-		takes longer than 5 seconds to execute, this command will timeout.  
+		takes longer than 10 seconds to execute, this command will timeout.  
 		"""
 
 		for i in xrange(0, len(cmd), 20):
@@ -178,18 +149,5 @@ class GSMModule (proxy12.MIB12ProxyObject):
 
 	def debug(self):
 		res = self.rpc(10,7, result_type=(0, True))
-
-		return res['buffer']
-
-	def set_apn(self,apn):
-		res = self.rpc(10, 9, apn)
-
-	def test_gprs(self):
-		apn = "wap.cingular"
-
-		print "> apn %s" % apn
-		self.rpc(10, 9, apn)
-		print "> testgprs"
-		res = self.rpc(10,8, result_type=(0, True))
 
 		return res['buffer']

@@ -6,7 +6,7 @@ from pymomo.exceptions import *
 
 number = Regex('((0x[a-fA-F0-9]+)|[0-9]+)').setParseAction(lambda s,l,t: [int(t[0], 0)])
 combiner = (Literal('&&') | Literal('||')).setParseAction(lambda s,l,t: [t[0] == '||']) # True when disjunction
-symbol = oneOf("copyA averageA").setParseAction(lambda s,l,t: [processor_list[t[0]]])
+symbol = oneOf("copyA averageA copyAllA sumA").setParseAction(lambda s,l,t: [processor_list[t[0]]])
 
 stream_type = Literal('input') | Literal('output') | Literal('buffered node') | Literal("unbuffered node") | Literal("constant") | Literal("counter node")
 stream = stream_type + number
@@ -28,7 +28,7 @@ graph_node = inputdesc + Literal('=>').suppress() + stream('node') + Literal('us
 # (buffered node 0x100 when value >= 1 || buffered node 0x101 when count >= 5) => buffered node 0x102 using copyA
 
 trigger_ops = {'>': 0, '<': 1, '>=': 2, '<=': 3, '=': 4, 'always': 5}
-processor_list = {'copyA': 0, 'averageA': 1, 'copyAllA': 2}
+processor_list = {'copyA': 0, 'averageA': 1, 'copyAllA': 2, 'sumA': 3}
 
 class SensorGraphNode:
 	def __init__(self, desc):
