@@ -100,6 +100,17 @@ class MIBController (proxy.MIBProxyObject):
 	def safe_mode(self, enabled):
 		self.rpc(42, 0x29, int(enabled))
 
+	@param("address", "integer", desc="Address of flash to read")
+	@return_type("string")
+	def debug_read_flash(self, address):
+		"""
+		Read 20 bytes of flash from the given address
+		"""
+
+		res = self.rpc(42, 3, address & 0xFFFF, (address >> 16) & 0xFF, result_type=(0, True))
+
+		return ":".join("{:02x}".format(ord(c)) for c in res['buffer'])
+
 	@annotated
 	def read_log(self):
 		"""
@@ -118,6 +129,8 @@ class MIBController (proxy.MIBProxyObject):
 				log.append(RawLogEntry(res['buffer']))
 			except ValidationError as e:
 				iprint("FAILED TO PARSE A LOG ENTRY, %d entries discarded" % (count - i))
+				iprint("Error was: %s" % str(e))
+				iprint("Buffer was: %s" % repr(res['buffer']))
 				break
 
 			pb.progress(i)
@@ -693,6 +706,16 @@ class MIBController (proxy.MIBProxyObject):
 		res = self.rpc(42, 0x32, result_type=(1, False))
 		return res['ints'][0]
 
+	@annotated
+	def test_fq_clearing(self):
+		res = self.rpc(42, 0x36, result_type=(0, True))
+
+		needs_clearing, index, address = struct.unpack("<HxxLL", res['buffer'])
+
+		iprint("Index: %d" % index)
+		iprint("Address: 0x%X" % address)
+		iprint("Needs Clearing: %s" % str(bool(needs_clearing)))
+
 	@param("start", 'integer')
 	@param("count", 'integer')
 	def test_fq_push_n(self, start, count):
@@ -1169,7 +1192,8 @@ class SensorGraph:
 		"""
 
 		res = self._proxy.rpc(70, 0x4, stream.id, result_type=(0, True), timeout=10.0)
-		count, = struct.unpack('<L', res['buffer'])
+
+		count,offset = struct.unpack_from('<LL', res['buffer'])
 
 		return count
 

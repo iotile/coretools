@@ -19,7 +19,7 @@ def main():
 		sim.attach_log()
 		sim.load(elf)
 		sim.execute()
-		sim.wait(10)
+		sim.wait(20)
 		logdata = sim.get_log()
 	except MoMoException as e:
 		print e.format()
