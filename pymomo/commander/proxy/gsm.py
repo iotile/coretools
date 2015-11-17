@@ -145,9 +145,9 @@ class GSMModule (proxy12.MIB12ProxyObject):
 			res = self.rpc(10, 2, buf)
 
 		res = self.rpc(10, 2, result_type=(0, True), timeout=timeout)
-		return res['buffer']
+		return str(res['buffer'])
 
 	def debug(self):
 		res = self.rpc(10,7, result_type=(0, True))
 
-		return res['buffer']
+		return str(res['buffer'])

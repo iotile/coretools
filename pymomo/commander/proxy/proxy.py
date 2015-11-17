@@ -65,8 +65,8 @@ class MIBProxyObject (object):
 			raise RPCError('Return value was not the correct size', expected_size=2*num_ints, actual_size=size, status_code=status, payload=payload)
 
 		for i in xrange(0, num_ints):
-			low = ord(payload[2*i])
-			high = ord(payload[2*i + 1])
+			low = (payload[2*i])
+			high = (payload[2*i + 1])
 			parsed['ints'].append((high << 8) | low)
 
 		if buff:

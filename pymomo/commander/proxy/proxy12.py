@@ -47,7 +47,7 @@ class MIB12ProxyObject (proxy.MIBProxyObject):
 	@returns(desc='variable contents', data=True)
 	def readram(self, location, type='uint8'):
 		res = self.rpc(0,3, location, result_type=(0,True))
-		return ord(res['buffer'][0])
+		return (res['buffer'][0])
 
 	@annotated
 	def reset(self):
@@ -87,7 +87,7 @@ class MIB12ProxyObject (proxy.MIBProxyObject):
 		for i in xrange(0, 100):
 			iface = self._read_appinfo_table(MIBInterfaceMapIndex, i)
 
-			if ord(iface[0]) == 0xFF and ord(iface[1]) == 0xFF and ord(iface[2]) == 0xFF and ord(iface[3]) == 0xFF:
+			if (iface[0]) == 0xFF and (iface[1]) == 0xFF and (iface[2]) == 0xFF and (iface[3]) == 0xFF:
 				break
 
 			iface_num, = struct.unpack('<L', iface)

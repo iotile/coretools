@@ -39,6 +39,12 @@ def size():
 	return 4
 
 def convert(arg):
+	if isinstance(arg, MIB12ExecutiveStatus):
+		return arg
+		
+	return MIB12ExecutiveStatus(arg)
+
+def convert_binary(arg):
 	return MIB12ExecutiveStatus(arg)
 
 #Formatting Functions

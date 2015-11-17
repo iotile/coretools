@@ -59,7 +59,7 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 
 		res = self.rpc(110, 1, address, result_type=(0, True))
 
-		return ord(res['buffer'][0])
+		return (res['buffer'][0])
 
 	@param("address", "integer", desc="Address of register to read")
 	@param("value", "integer", desc="Value to write")
@@ -78,9 +78,9 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 		"""
 
 		res = self.rpc(110, 5, address, result_type=(0, True))
-		lsb = ord(res['buffer'][0])
-		nsb = ord(res['buffer'][1])
-		msb = ord(res['buffer'][2])
+		lsb = (res['buffer'][0])
+		nsb = (res['buffer'][1])
+		msb = (res['buffer'][2])
 
 		return (msb << 16) | (nsb << 8) | lsb
 
@@ -94,7 +94,7 @@ class UltrasonicModule (proxy12.MIB12ProxyObject):
 
 		res = self.rpc(110, 2, address, result_type=(0, True))
 
-		return ord(res['buffer'][0])
+		return (res['buffer'][0])
 
 	@param("address", "integer", desc="Address of register to read")
 	@param("value", "integer", desc="Value to write")

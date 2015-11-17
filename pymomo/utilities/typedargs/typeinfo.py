@@ -52,10 +52,33 @@ class TypeSystem(object):
 		through to the underlying conversion function
 		"""
 
+		if isinstance(value, bytearray):
+			return self.convert_from_binary(value, type, **kwargs)
+
 		typeobj = self.get_type(type)
 
 		conv = typeobj.convert(value, **kwargs)
 		return conv
+
+	def convert_from_binary(self, binvalue, type, **kwargs):
+		"""
+		Convert binary data to type 'type'.
+
+		'type' must have a convert_binary function.  If 'type'
+		supports size checking, the size function is called to ensure
+		that binvalue is the correct size for deserialization  
+		"""
+
+		size = self.get_type_size(type)
+		if size > 0 and len(binvalue) != size:
+			raise ArgumentError("Could not convert type from binary since the data was not the correct size", required_size=size, actual_size=len(binvalue), type=type)
+
+		typeobj = self.get_type(type)
+
+		if not hasattr(typeobj, 'convert_binary'):
+			raise ArgumentError("Type does not support conversion from binary", type=type)
+
+		return typeobj.convert_binary(binvalue, **kwargs)
 
 	def get_type_size(self, type):
 		"""

@@ -109,7 +109,7 @@ class MIBController (proxy.MIBProxyObject):
 
 		res = self.rpc(42, 3, address & 0xFFFF, (address >> 16) & 0xFF, result_type=(0, True))
 
-		return ":".join("{:02x}".format(ord(c)) for c in res['buffer'])
+		return ":".join("{:02x}".format((c)) for c in res['buffer'])
 
 	@annotated
 	def read_log(self):
@@ -425,7 +425,7 @@ class MIBController (proxy.MIBProxyObject):
 			res = self.rpc(7, 4, bucket, i, result_type=(0, True))
 
 			for j in range(0, len(res['buffer'])):
-				out[i+j] = ord(res['buffer'][j])
+				out[i+j] = (res['buffer'][j])
 				if pic12 and (j%2 != 0):
 					out[i+j] &= 0x3F
 
@@ -728,7 +728,7 @@ class MIBController (proxy.MIBProxyObject):
 		if res['ints'][0] == 0:
 			return -1
 
-		out = ord(res['buffer'][0]) | (ord(res['buffer'][1]) << 8)
+		out = (res['buffer'][0]) | ((res['buffer'][1]) << 8)
 		return out
 		
 	@return_type("integer")
@@ -790,117 +790,6 @@ class MIBController (proxy.MIBProxyObject):
 			return False
 		else:
 			raise RuntimeError("Invalid result returned from 'attached' command: %s" % resp)
-
-	@return_type('string')
-	def get_report_interval(self):
-		intervals = {4: '10 minutes', 5: '1 hour', 6: '1 day'}
-
-		res = self.rpc(60, 0x04, result_type=(1,False))
-		interval = res['ints'][0]
-
-		if interval not in intervals:
-			raise HardwareError("Unknown interval number in momo", interval=interval, known_intervals=intervals.keys())
-
-		return intervals[interval]
-
-	@param("interval", "string", desc="reporting interval")
-	def set_report_interval(self, interval):
-		"""
-		Set the interval between automatic reports
-
-		Interval should be passed as a string with valid options being:
-		10 minutes
-		1 hour
-		1 day
-		"""
-
-		intervals = {'10 minutes': 4, '1 hour': 5, '1 day': 6}
-
-		interval = interval.lower()
-
-		if interval not in intervals:
-			raise ValidationError("Unknown interval string", interval=interval, known_intervals=intervals.keys())
-
-		intnumber = intervals[interval]
-
-		self.rpc(60, 3, intnumber)
-
-		value = self.get_report_interval()
-		assert value == interval
-
-	@annotated
-	def start_reporting(self):
-		"""
-		Start regular reporting
-		"""
-		self.rpc(60, 1)
-
-	@annotated
-	def stop_reporting(self):
-		"""
-		Stop regular reporting
-		"""
-		self.rpc(60, 2)
-
-	@return_type("bool")
-	def reporting_state(self):
-		"""
-		Get whether automatic reporting is enabled
-		"""
-
-		res = self.rpc(60, 14, result_type=(1, True))
-		enabled = bool(res['ints'][0])
-		return enabled
-
-	@annotated
-	def reset_reporting_config(self):
-		"""
-		Reset the reporting configuration.
-		"""
-		res = self.rpc(60,0x12)
-
-	@annotated
-	def post_single_report(self):
-		"""
-		Send a single report
-		"""
-
-		self.rpc(60, 0)
-
-	@param("index", "integer", desc="0 for primary route, 1 for secondary route")
-	@param("route", "string", desc="URL or phone number to stream data to")
-	def set_report_route(self, index, route):
-		if len(route) == 0:
-			arg = struct.unpack('H', struct.pack('BB', 0, int(index)))
-			self.rpc(60, 5, arg[0], route)
-		else:
-			for i in xrange(0, len(route), 18):
-				buf = route[i:i+18]
-				arg = struct.unpack('H', struct.pack('BB', int(i), int(index)))
-				self.rpc(60, 5, arg[0], buf)
-
-	@param("index", "integer", desc="0 for primary route, 1 for secondary route")
-	@return_type("string")
-	def get_report_route(self, index):
-		route = ""
-		i = 0
-		while True:
-			arg = struct.unpack('H', struct.pack('BB', int(i),int(index)))
-			res = self.rpc(60, 6, arg[0], result_type=(0, True))
-			if len(res['buffer']) == 0:
-				break
-			i += len(res['buffer']);
-			route += res['buffer']
-		return route
-
-	@return_type("string")
-	def get_gprs_apn(self):
-		res = self.rpc(60, 0x14, result_type=(0,True))
-		return res['buffer']
-
-	@param("apn", "string", desc='APN for gsm data connections')
-	def set_gprs_apn(self, apn):
-		res = self.rpc(60, 0x13, apn)
 
 	@annotated
 	@returns(desc="Time", data=True)
@@ -1205,9 +1094,9 @@ class SensorGraph:
 	def next_walker(self):
 		res = self._proxy.rpc(70, 0x6, result_type=(0, True), timeout=5.)
 
-		x = [ord(y) for y in res['buffer']]
+		x = [(y) for y in res['buffer']]
 
-		error = ord(res['buffer'][len(res['buffer']) - 1])
+		error = (res['buffer'][len(res['buffer']) - 1])
 		if error == 0:
 			timestamp, stream, value, error = struct.unpack("<LH2xL4xB", res['buffer'])
 			return {'timestamp': timestamp, 'value': value, 'stream': stream, 'error': error}
@@ -1249,6 +1138,35 @@ class SensorGraph:
 			raise ValidationError("You must pass a module name with length 6", destination=destination)
 
 		res = self._proxy.rpc(70, 0xc, stream.id, int(automatic), destination, result_type=(1, False))
+
+		return res['ints'][0]
+
+	@param("index", "integer", "nonnegative", desc="Index of streamer to query")
+	@return_type("fw_streamerstatus")
+	def query_streamer(self, index):
+		"""
+		Query operational status of streamer instance by index
+
+		Returns information such as the last time this streamer was successful,
+		how many attempts it has many, the last time this streamer attempted to stream
+		and whether the streamer is currently in the process of streaming
+		"""
+
+		res = self._proxy.rpc(70, 0x0f, index, result_type=(0,True))
+
+		if res['buffer'][-1] != 0:
+			raise RPCError("Error querying streamer status", error_code=res['buffer'][-1])
+
+		return res['buffer'][:-1]
+
+	@param("index", "integer", "nonnegative", desc="Index of streamer to query")
+	@return_type("fw_sgerror")
+	def trigger_streamer(self, index):
+		"""
+		Manually cause a preconfigured streamer to activate by index
+		"""
+
+		res = self._proxy.rpc(70, 0x10, index, result_type=(1,False))
 
 		return res['ints'][0]
 
@@ -1424,7 +1342,7 @@ class ControllerConfigManager:
 
 		res = self._proxy.rpc(61, 0x05, index, result_type=(0, True))
 
-		error = ord(res['buffer'][0])
+		error = (res['buffer'][0])
 		if error != ControllerConfigManager.NoError and error != ControllerConfigManager.ObsoleteEntryError:
 			raise RPCError("Error getting variable by index", index=index, error_code=error)
 
@@ -1462,7 +1380,7 @@ class ControllerConfigManager:
 		while len(data) < length:
 			res = self._proxy.rpc(61, 0x04, index, len(data), result_type=(0, True))
 
-			err = ord(res['buffer'][0])
+			err = (res['buffer'][0])
 			if err != ControllerConfigManager.NoError and err != ControllerConfigManager.ObsoleteEntryError:
 				raise RPCError("Error retrieving variable data", error_code=err)
 

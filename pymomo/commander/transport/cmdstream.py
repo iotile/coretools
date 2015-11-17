@@ -49,7 +49,7 @@ class CMDStream:
 		elif status == 0xFF:
 			raise ModuleNotFoundError(address)
 
-		return status, payload
+		return status, bytearray(payload)
 
 	def heartbeat(self):
 		if not hasattr(self, '_heartbeat'):
