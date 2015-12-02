@@ -84,7 +84,7 @@ class SystemLog:
 					if desc.type == 'integer' and data[0] == 'array':
 						disp_data = 0
 						for i in xrange(0, len(data[1])):
-							disp_data |= ord(data[1][i]) << (i*8)
+							disp_data |= data[1][i] << (i*8)
 
 					s = typedargs.type_system.format_value(disp_data, desc.type, desc.format)
 					fmt = "%s: %s" % (desc.name, s)
@@ -105,8 +105,8 @@ class SystemLog:
 		ints = []
 
 		for i in xrange(0, entry.length, 2):
-			low = ord(entry.data[i])
-			high = ord(entry.data[i+1])
+			low = entry.data[i]
+			high = entry.data[i+1]
 
 			val = ((high & 0xFF) << 8) | low
 			ints.append(('integer', val))

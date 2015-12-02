@@ -66,7 +66,10 @@ class RawLogEntry:
 		if len(buffer) != 16:
 			raise ValidationError("Buffer must be of length sizeof(GenericLogEntry) = 16 bytes", buffer=buffer)
 
-		header = ord(buffer[0])
+		#in case we were passed a string, make sure we're dealing with a bytearray so ord() calls aren't necessary
+		buffer = bytearray(buffer)
+
+		header = buffer[0]
 		self.data = buffer[1:]
 
 		self._parse_header(header)
@@ -99,6 +102,6 @@ class RawLogEntry:
 		if self.typecode == RawLogEntry.NewLogEntryType:
 			return str(MessageEntry(self.data))
 
-		dat = " ".join([format(ord(x), "02X") for x in self.data])
+		dat = " ".join([format(x, "02X") for x in self.data])
 		rep = "LogEntry type %d (%s)" % (self.typecode, dat)
 		return rep
