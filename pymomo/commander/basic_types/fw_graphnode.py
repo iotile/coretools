@@ -6,7 +6,7 @@ from pymomo.exceptions import *
 
 #Constants that need to be synced with firmware on devices
 trigger_ops = {'>': 0, '<': 1, '>=': 2, '<=': 3, '=': 4, 'always': 5}
-processor_list = {'copyA': 0, 'averageA': 1, 'copyAllA': 2, 'sumA': 3, "copyCountA": 4, "triggerStream0": 5}
+processor_list = {'copyA': 0, 'averageA': 1, 'copyAllA': 2, 'sumA': 3, "copyCountA": 4, "triggerStreamer0": 5}
 
 #DSL Language Definition
 symbol_names = " ".join(processor_list.keys())
