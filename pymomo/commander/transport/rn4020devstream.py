@@ -12,7 +12,8 @@ class RN4020DevStream (CMDStream):
 		self.board = RN4020SerialBoard(self.port)
 		
 		self.board.connect(self.mac)
-		atexit.register(self.board.disconnect)
+		self.boardopen = True
+		atexit.register(self.close)
 
 	def _send_rpc(self, address, feature, command, *args, **kwargs):
 		rpc = RPCCommand(address, feature, command, *args)
@@ -43,3 +44,9 @@ class RN4020DevStream (CMDStream):
 	def _reset(self):
 		self.board.reboot()
 		self.board.connect(self.mac)
+
+	def close(self):
+		if self.boardopen:
+			self.board.disconnect()
+			self.board.io.close()
+			self.boardopen = False

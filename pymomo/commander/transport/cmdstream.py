@@ -62,3 +62,7 @@ class CMDStream:
 			raise StreamOperationNotSupportedError(command="reset")
 
 		self._reset()
+
+	def close(self):
+		if not hasattr(self, '_close'):
+			raise StreamOperationNotSupportedError(command="close")

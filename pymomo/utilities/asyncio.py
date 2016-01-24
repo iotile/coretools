@@ -25,23 +25,27 @@ class AsyncLineBuffer:
 
 	@staticmethod
 	def ReaderThread(queue, file, items, separator, strip):
-		while True:
-			line_done = False
-			line = ''
-			while not line_done:
-				c = file.read(1)
-				line += c
+		try:
+			while True:
+				line_done = False
+				line = ''
+				while not line_done:
+					c = file.read(1)
+					line += c
 
-				if line.endswith(separator):
-					line_done = True
+					if line.endswith(separator):
+						line_done = True
 
-			if strip:
-				line = line[:-len(separator)]
+				if strip:
+					line = line[:-len(separator)]
 
-			items.acquire()
-			queue.put(line)
-			items.notify()
-			items.release()
+				items.acquire()
+				queue.put(line)
+				items.notify()
+				items.release()
+		except:
+			#Primarily we get here if the file is closed by the main thread
+			pass
 
 	def available(self):
 		"""

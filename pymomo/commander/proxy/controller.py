@@ -378,7 +378,7 @@ class MIBController (proxy.MIBProxyObject):
 
 
 		if verbose:
-			print "Sending Firmware"
+			iprint("Sending Firmware")
 			prog = ProgressBar("Transmission Progress", len(lines))
 			prog.start()
 
@@ -394,7 +394,7 @@ class MIBController (proxy.MIBProxyObject):
 
 		if verbose:
 			prog.end()
-			print "Firmware stored in bucket %d" % bucket
+			iprint("Firmware stored in bucket %d" % bucket)
 
 		return bucket
 
@@ -943,14 +943,16 @@ class MIBController (proxy.MIBProxyObject):
 		print struct.unpack('<L', guid)[0];
 		return base64.b64encode(bytes(guid)).rstrip('=')
 
-	@annotated 
+	@return_type("string") 
 	def register(self):
 		#TODO: register with the server
 		guid = uuid.uuid4()
 		guid = struct.unpack('<L', guid.bytes[-4:])[0]
-		print guid
-		print base64.b64encode(struct.pack('<L', guid)).rstrip('=')
+		iprint(guid)
+		iprint(base64.b64encode(struct.pack('<L', guid)).rstrip('='))
 		self.rpc(42, 0x14, guid & 0xFFFF, guid >> 16)
+
+		return guid
 
 	@annotated
 	def factory_reset(self):
@@ -1137,8 +1139,11 @@ class SensorGraph:
 		if len(destination) != 6:
 			raise ValidationError("You must pass a module name with length 6", destination=destination)
 
-		res = self._proxy.rpc(70, 0xc, stream.id, int(automatic), destination, result_type=(1, False))
+		strategy = 1 #Default to once per day backoff rate (1 hour, 12 hour, every 24 hours)
+		timebase = 60*60 #1 hour timebase
+		args = struct.pack("<HHsHL", stream.id, int(automatic), destination, strategy, timebase)
 
+		res = self._proxy.rpc(70, 0xc, args, result_type=(1, False))
 		return res['ints'][0]
 
 	@param("index", "integer", "nonnegative", desc="Index of streamer to query")

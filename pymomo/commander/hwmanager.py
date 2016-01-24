@@ -3,7 +3,7 @@ from pymomo.utilities.typedargs import *
 from pymomo.commander.transport import *
 from pymomo.commander.exceptions import *
 from pymomo.exceptions import *
-from pymomo.utilities.typedargs.annotate import param, return_type
+from pymomo.utilities.typedargs.annotate import param, return_type, finalizer
 from pymomo.commander.proxy.proxy import MIBProxyObject
 import serial
 from serial.tools import list_ports
@@ -95,6 +95,10 @@ class HardwareManager:
 		"""
 
 		self.stream.reset()
+
+	@finalizer
+	def close(self):
+		self.stream.close()
 
 	@param("asserted", "bool", desc="Whether alarm should be asserted or released")
 	def set_alarm(self, asserted):
