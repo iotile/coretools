@@ -23,13 +23,6 @@ class MIB12ProxyObject (proxy.MIBProxyObject):
 	#Know Configuration Variable Types
 	config_types = {6: 'array', 7: 'string'}
 
-	@returns(desc='application firmware checksum', data=True)
-	def checksum(self):
-		"""
-		Get the 8-bit application checksum.
-		"""
-		return self.rpc(0,2, result_type=(1,False))['ints'][0]
-
 	@return_type("fw_mib12_status")
 	def status(self):
 		"""
