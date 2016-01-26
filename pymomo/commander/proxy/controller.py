@@ -1141,7 +1141,7 @@ class SensorGraph:
 
 		strategy = 1 #Default to once per day backoff rate (1 hour, 12 hour, every 24 hours)
 		timebase = 60*60 #1 hour timebase
-		args = struct.pack("<HHsHL", stream.id, int(automatic), destination, strategy, timebase)
+		args = struct.pack("<HH6sHL", stream.id, int(automatic), destination, strategy, timebase)
 
 		res = self._proxy.rpc(70, 0xc, args, result_type=(1, False))
 		return res['ints'][0]

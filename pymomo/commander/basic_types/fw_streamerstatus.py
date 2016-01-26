@@ -9,7 +9,7 @@ class StreamerStatus:
 	"""
 
 	def __init__(self, binvalue):
-		last_attempt, last_success, last_status, last_error, attempt, comm = struct.unpack("<LLBBBB", binvalue)
+		last_attempt, last_success, last_status, last_error, attempt, comm, name = struct.unpack("<LLBBBB6s", binvalue)
 
 		timebase = datetime.datetime(2000, 1, 1)
 		attempt_delta = datetime.timedelta(seconds=last_attempt)
@@ -21,6 +21,7 @@ class StreamerStatus:
 		self.last_error = last_error
 		self.attempt_num = attempt
 		self.comm_status = comm
+		self.name = name
 
 	def __str__(self):
 		output  = ""
@@ -30,13 +31,14 @@ class StreamerStatus:
 		output += "Last streaming result: %d\n" % self.last_status
 		output += "Last streaming error: %d\n" % self.last_error
 		output += "Backoff attempt number: %d\n" % self.attempt_num
-		output += "Current CommStream state: %d" % self.comm_status
+		output += "Current CommStream state: %d\n" % self.comm_status
+		output += "Streaming Module Name: '%s'" % self.name
 
 		return output
 
 
 def size():
-	return 12
+	return 18
 
 def convert(arg):
 	if isinstance(arg, StreamerStatus):
