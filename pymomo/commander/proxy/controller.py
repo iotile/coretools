@@ -1226,6 +1226,25 @@ class SensorGraph:
 		res = self._proxy.rpc(70, 0xe, result_type=(1,False))
 		return res['ints'][0]
 
+	@annotated
+	@return_type("map(string, string)")
+	@param("stream", "fw_stream", desc="Stream name to check")
+	@param("input", "integer", "nonnegative", desc="Input number to inspect")
+	def inspect_node(self, stream, input):
+		res = self._proxy.rpc(70, 0x11, stream.id, input, result_type=(0, True))
+
+		data = struct.unpack("<LLLHHB", res['buffer'])
+
+		result = {}
+		result['available'] 		= data[0]
+		result['immediate'] 		= data[1]
+		result['immeiadiate_time'] 	= data[2]
+		result['stream']			= data[3]
+		result['next pointer']		= data[4]
+		result['error']				= data[5]
+
+		return result
+
 
 @context("ConfigManager")
 class ControllerConfigManager:
