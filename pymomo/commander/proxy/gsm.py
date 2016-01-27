@@ -32,7 +32,7 @@ class GSMModule (proxy12.MIB12ProxyObject):
 			res = self.rpc(0,3, i, result_type=(0,True))
 			buff += res['buffer']
 
-		return buff
+		return str(buff)
 
 	@param("length", "integer", desc="Length of stream")
 	def open_stream(self, length):
