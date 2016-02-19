@@ -1129,10 +1129,8 @@ class SensorGraph:
 	@param("destination", "string", desc="name of module to stream to (6 characters)")
 	@param("stream", "fw_stream", desc="Stream to send to the communication module")
 	@param("automatic", "bool", desc="Should this streamer fire every time new data is available?")
-	@param("timebase", "integer", desc="Interval in seconds used by backoff logic in case of failure")
-	@param("backoff_strategy", "integer", desc="Backoff strategy index to use in case of failure")
 	@return_type("fw_sgerror")
-	def add_streamer(self, destination, stream, automatic, backoff_strategy, timebase):
+	def add_streamer(self, destination, stream, automatic):
 		"""
 		Add a streamer to the sensor graph
 		"""
