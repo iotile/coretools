@@ -42,6 +42,19 @@ class MIB12ProxyObject (proxy.MIBProxyObject):
 		res = self.rpc(0,3, location, result_type=(0,True))
 		return (res['buffer'][0])
 
+	@param("filename", "path", "writeable", desc="Path of file to save")
+	@param("start", "integer", "nonnegative", desc="Starting word to read")
+	@param("end", "integer", "nonnegative", desc="Ending word to read")
+	def dump_rom(self, filename, start=0, end=8*1024):
+		data = bytearray()
+		for i in xrange(start, end, 20):
+			res = self.rpc(0, 3, (1 << 15) | i, result_type=(0, True))
+
+			data += res['buffer']
+
+		with open(filename, "w") as f:
+			f.write(data)
+
 	@annotated
 	def reset(self):
 		"""
