@@ -224,5 +224,7 @@ class HardwareManager:
 			return BLED112Stream(port, mac)
 		elif self.transport == 'null':
 			return FSUStream(None)
+		elif self.transport == 'recorded':
+			return RecordedStream(self.port)
 		else:
 			raise ArgumentError("unknown connection method specified in HardwareManager", transport=self.transport)
