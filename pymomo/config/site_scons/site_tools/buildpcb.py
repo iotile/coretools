@@ -6,6 +6,7 @@ from time import strftime, gmtime
 
 from pymomo.pcb.board import CircuitBoard
 from pymomo.pcb.production import ProductionFileGenerator
+from pymomo.exceptions import BuildError
 
 def build_pcb(target, source, env):
 	"""

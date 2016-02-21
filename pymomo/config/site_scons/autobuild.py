@@ -16,7 +16,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from pymomo.exceptions import *
 import pymomo
 
-def autobuild_pic12(module, test_dir='test', modulefile=None):
+def autobuild_pic12(module, test_dir='test', modulefile=None, boardfile=None):
 	"""
 	Build the given module for all targets and build all unit tests.
 	targets are determined from /config/build_settings.json using
@@ -29,6 +29,9 @@ def autobuild_pic12(module, test_dir='test', modulefile=None):
 		family.for_all_targets(module, lambda x: pic12.build_module(module, x))
 		
 		unit_test.build_units(test_dir, family.targets(module))
+
+		if boardfile is not None:
+			autobuild_pcb(module, boardfile)
 
 		Alias('release', os.path.join('build', 'output'))
 		Alias('test', os.path.join('build', 'test', 'output'))
