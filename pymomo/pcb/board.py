@@ -266,7 +266,7 @@ class CircuitBoard:
 		prod.build_fab(output)
 
 	@param("output", "path", desc="Output directory for production files")
-	@param("varaint", "string", desc="Assembly variant to process")
+	@param("variant", "string", desc="Assembly variant to process")
 	def generate_production(self, output, variant=None):
 		"""
 		Create Gerber files, BOMs and assembly drawings for this board.

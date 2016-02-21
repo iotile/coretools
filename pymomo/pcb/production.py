@@ -15,12 +15,16 @@ class ProductionFileGenerator:
 	Helpful routines for building production files for PCB fabrication and assembly
 	"""
 
-	def __init__(self, board):
+	def __init__(self, board, dry_run=False):
 		config = MomoPaths().config
 		
 		template_file = os.path.join(config, 'pcb', board.fab_engine + ".json")
 		self.template = self._load_template(template_file, board.fab_template)
 		self.board = board
+		self.dry_run = dry_run
+
+		#Keep track of all of the files that we write in case anyone cares (like the pcb build process)
+		self.created_files = []
 
 	def save_readme(self, path):
 		"""
@@ -30,26 +34,31 @@ class ProductionFileGenerator:
 
 		basename = self._basename()
 
-		with open(path, "w") as f:
-			f.write("PCB Fabrication Files\n")
-			f.write("%s\n" % self.board.company)
-			f.write("Name: %s\n" % self.board.part)
-			f.write("Revision: %s\n" % self.board.revision)
-			f.write("Dimensions: %sx%s %s\n" % (self.board.width, self.board.height, self.board.units))
-			f.write("Date Created: %s\n\n" % str(date.today()))
-			f.write("Folder Contents:\n")
+		if not self.dry_run:
+			with open(path, "w") as f:
+				f.write("PCB Fabrication Files\n")
+				f.write("%s\n" % self.board.company)
+				f.write("Name: %s\n" % self.board.part)
+				f.write("Revision: %s\n" % self.board.revision)
+				f.write("Dimensions: %sx%s %s\n" % (self.board.width, self.board.height, self.board.units))
+				f.write("Date Created: %s\n\n" % str(date.today()))
+				f.write("Folder Contents:\n")
 
-			for name, layer in self.template['layers'].iteritems():
-				f.write("%s.%s: %s\n" % (basename, layer['extension'], name))
+				for name, layer in self.template['layers'].iteritems():
+					f.write("%s.%s: %s\n" % (basename, layer['extension'], name))
+
+		self.created_files.append(path)
 
 	def _build_production(self, outdir, layer):
 		basename = self._basename()
 		path = os.path.join(outdir, "%s.%s" %(basename, layer['extension']))
 
+		if not self.dry_run:
+			self.board.board.build_production_file(path, layer['program_layers'], layer['type'])
+		
+		self.created_files.append(path)
 
-		self.board.board.build_production_file(path, layer['program_layers'], layer['type'])
-
-		if 'remove' in layer:
+		if 'remove' in layer and not self.dry_run:
 			remname = "%s.%s" % (basename, layer['remove'])
 			os.remove(os.path.join(outdir, remname))
 
@@ -58,14 +67,18 @@ class ProductionFileGenerator:
 		Create production Gerber and Excellon files for pcb fabrication
 		"""
 
-		self._ensure_dir_exists(fab_dir)
+		if not self.dry_run:
+			self._ensure_dir_exists(fab_dir)
+
 		self.save_readme(os.path.join(fab_dir, 'README.txt'))
 		
 		for name, layer in self.template['layers'].iteritems():
 			self._build_production(fab_dir, layer)
 
 	def build_assembly(self, ass_dir):
-		self._ensure_dir_exists(ass_dir) 
+		if not self.dry_run:
+			self._ensure_dir_exists(ass_dir) 
+		
 		self._build_production(ass_dir, self.template['assembly'])
 
 	def build_production(self, variant, output_dir):
@@ -83,7 +96,10 @@ class ProductionFileGenerator:
 
 		#Create BOM
 		bompath = os.path.join(ass_dir, "BOM_%s.xlsx" % basename)
-		self.board.export_bom(bompath, variant, format='excel')
+		self.created_files.append(bompath)
+		
+		if not self.dry_run:
+			self.board.export_bom(bompath, variant, format='excel')
 
 	def _basename(self):
 		return self.board.part.replace(' ', '_').lower()
@@ -117,9 +133,14 @@ class ProductionFileGenerator:
 		with the same name as output containing all of the files in path. 
 		"""
 
-		zip = zipfile.ZipFile(output+'.zip', 'w', zipfile.ZIP_DEFLATED)
-		for root, dirs, files in os.walk(path):
-			for file in files:
-				zip.write(os.path.join(root, file), os.path.join(os.path.basename(output), file))
+		outpath = output+'.zip'
 
-		zip.close()
+		if not self.dry_run:
+			zip = zipfile.ZipFile(outpath, 'w', zipfile.ZIP_DEFLATED)
+			for root, dirs, files in os.walk(path):
+				for file in files:
+					zip.write(os.path.join(root, file), os.path.join(os.path.basename(output), file))
+
+			zip.close()
+
+		self.created_files.append(outpath)

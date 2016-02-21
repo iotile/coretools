@@ -9,6 +9,7 @@ import unit_test12
 import unit_test24
 from SCons.Script import *
 import os.path
+import os
 import sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -36,7 +37,7 @@ def autobuild_pic12(module, test_dir='test', modulefile=None):
 		print e.format()
 		sys.exit(1)
 
-def autobuild_pic24(module, test_dir='test', modulefile=None, postprocess_hex=None):
+def autobuild_pic24(module, test_dir='test', modulefile=None, postprocess_hex=None, boardfile=None):
 	"""
 	Build the given pic24 module for all targets.
 	"""
@@ -47,9 +48,23 @@ def autobuild_pic24(module, test_dir='test', modulefile=None, postprocess_hex=No
 
 		unit_test.build_units(test_dir, family.targets(module))
 
+		if boardfile is not None:
+			autobuild_pcb(module, boardfile)
+
 		Alias('release', os.path.join('build', 'output'))
 		Alias('test', os.path.join('build', 'test', 'output'))
+
 		Default('release')
 	except MoMoException as e:
 		print e.format()
 		sys.exit(1)
+
+def autobuild_pcb(module, boardfile):
+	pcbpath = os.path.join('build', 'output', 'pcb')
+
+	boardpath = os.path.join('#pcb', boardfile)
+	env = Environment(tools=["buildpcb"], ENV = os.environ)
+
+	Alias('pcb', pcbpath)
+
+	env.build_pcb(os.path.join(pcbpath, '.timestamp'), boardpath)
