@@ -93,7 +93,7 @@ def build_module(name, arch):
 	dirs = arch.build_dirs()
 
 	builddir = dirs['build']
-	VariantDir(builddir, 'src', duplicate=0)
+	VariantDir(builddir, os.path.join('firmware', 'src'), duplicate=0)
 
 	env = Environment(tools=['xc8_compiler', 'patch_mib12', 'xc8_symbols'], ENV = os.environ)
 	env.AppendENVPath('PATH','../../tools/scripts')
@@ -131,7 +131,7 @@ def compile_mib(env, mibname=None, outdir=None):
 		outdir = dirs['build']
 
 	if mibname is None: 
-		mibname = os.path.join('src', 'mib', env["MODULE"] + ".mib")
+		mibname = os.path.join('firmware', 'src', 'mib', env["MODULE"] + ".mib")
 
 	cmdmap_path = os.path.join(outdir, 'command_map.asm')
 
@@ -150,7 +150,7 @@ def compile_config_variables(env, mibname=None, outdir=None):
 		outdir = dirs['build']
 
 	if mibname is None: 
-		mibname = os.path.join('src', 'mib', env["MODULE"] + ".mib")
+		mibname = os.path.join('firmware', 'src', 'mib', env["MODULE"] + ".mib")
 
 	config_h = os.path.join(outdir, 'config_variables.h')
 	config_c = os.path.join(outdir, 'config_variables.c')
