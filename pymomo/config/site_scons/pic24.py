@@ -21,7 +21,7 @@ def build_module(module_name, chip, postprocess_hex):
 	output_hex = '%s.hex' % (chip.output_name(),)
 	postproc_hex = '%s_postprocessed.hex' % (chip.output_name(),)
 
-	VariantDir(dirs['build'], 'src', duplicate=0)
+	VariantDir(dirs['build'], os.path.join('firmware', 'src'), duplicate=0)
 
 	env = Environment(tools=['xc16_compiler', 'xc16_assembler', 'xc16_linker', 'ldf_compiler'], ENV = os.environ)
 	env.AppendENVPath('PATH','../../tools/scripts')

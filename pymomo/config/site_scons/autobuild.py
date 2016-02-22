@@ -16,7 +16,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from pymomo.exceptions import *
 import pymomo
 
-def autobuild_pic12(module, test_dir='test', modulefile=None, boardfile=None):
+def autobuild_pic12(module, test_dir=os.path.join('firmware', 'test'), modulefile=None, boardfile=None):
 	"""
 	Build the given module for all targets and build all unit tests.
 	targets are determined from /config/build_settings.json using
@@ -40,7 +40,7 @@ def autobuild_pic12(module, test_dir='test', modulefile=None, boardfile=None):
 		print e.format()
 		sys.exit(1)
 
-def autobuild_pic24(module, test_dir='test', modulefile=None, postprocess_hex=None, boardfile=None):
+def autobuild_pic24(module, test_dir=os.path.join('firmware', 'test'), modulefile=None, postprocess_hex=None, boardfile=None):
 	"""
 	Build the given pic24 module for all targets.
 	"""
@@ -63,6 +63,10 @@ def autobuild_pic24(module, test_dir='test', modulefile=None, postprocess_hex=No
 		sys.exit(1)
 
 def autobuild_pcb(module, boardfile):
+	"""
+	Generate production CAM, assembly and BOM data for a circuitboard.
+	"""
+
 	pcbpath = os.path.join('build', 'output', 'pcb')
 
 	boardpath = os.path.join('#pcb', boardfile)
