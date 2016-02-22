@@ -188,7 +188,15 @@ class TargetSettings:
 		incs = [y for x,y in self.settings.iteritems() if x.endswith('includes')]
 		includes = itertools.chain(*incs)
 
-		fullpaths = [os.path.normpath(os.path.join(base, x)) for x in includes]
+		processed_incs = []
+
+		for inc in includes:
+			if isinstance(inc, basestring):
+				processed_incs.append(inc)
+			else:
+				processed_incs.append(os.path.join(*inc))
+		
+		fullpaths = [os.path.normpath(os.path.join(base, x)) for x in processed_incs]
 		fullpaths.append(os.path.normpath(os.path.abspath(self.build_dirs()['build'])))
 
 		return fullpaths

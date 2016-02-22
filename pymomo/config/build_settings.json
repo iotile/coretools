@@ -10,13 +10,11 @@
 
 			"includes":
 			[
-				"shared/pic12/src",
-				"shared/pic12/src/peripheral",
-				"shared/portable/core",
-				"shared/portable/mib",
-				"shared/portable/mib/slave",
-				"shared/portable/mib/master",
-				"shared/portable/util"
+				["shared", "pic12", "src"],
+				["shared", "pic12", "src", "peripheral"],
+				["shared", "portable", "core"],
+				["shared", "portable", "mib"],
+				["shared", "portable", "util"]
 			],
 
 			"test_includes": ["../test/pic12/gpsim_logging"],
@@ -105,15 +103,7 @@
 
 	"reference" :
 	{
-		"portable_dirs": 
-		[
-			"momo_modules/shared/portable"
-		],
-		
-		"pic24_dirs":
-		[
-			"momo_modules/shared/pic24/src"
-		]
+
 	},
 
 	"mib24" :
@@ -128,8 +118,6 @@
 			[
 				"shared/portable/core",
 				"shared/portable/mib",
-				"shared/portable/mib/slave",
-				"shared/portable/mib/master",
 				"shared/portable/util",
 				"shared/pic24/src/util",
 				"shared/pic24/src/modules",
