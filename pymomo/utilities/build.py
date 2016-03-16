@@ -28,7 +28,7 @@ def build(args):
 
 	site_path = os.path.abspath(paths.site_tools)
 
-	all_args = ['momo', '--site-dir=%s' % site_path]
+	all_args = ['momo', '--site-dir=%s' % site_path, '-Q']
 	sys.argv = all_args + list(args)
 	SCons.Script.main()
 
@@ -177,6 +177,25 @@ class TargetSettings:
 
 		raise ArgumentError("property %s not found for target '%s' and no default given" % (name, self.name))
 
+	def combined_properties(self, suffix):
+		"""
+		Get the value of all properties whose name ends with suffix and join them
+		together into a list.
+		"""
+
+		props = [y for x,y in self.settings.iteritems() if x.endswith(suffix)]
+		properties = itertools.chain(*props)
+
+		processed_props = []
+
+		for prop in properties:
+			if isinstance(prop, basestring):
+				processed_props.append(prop)
+			else:
+				processed_props.append(os.path.join(*prop))
+
+		return processed_props
+
 	def includes(self):
 		"""
 		Return all of the include directories for this chip as a list.
@@ -185,16 +204,7 @@ class TargetSettings:
 		paths = MomoPaths()
 		base = paths.modules
 		
-		incs = [y for x,y in self.settings.iteritems() if x.endswith('includes')]
-		includes = itertools.chain(*incs)
-
-		processed_incs = []
-
-		for inc in includes:
-			if isinstance(inc, basestring):
-				processed_incs.append(inc)
-			else:
-				processed_incs.append(os.path.join(*inc))
+		processed_incs = self.combined_properties('includes')
 		
 		fullpaths = [os.path.normpath(os.path.join(base, x)) for x in processed_incs]
 		fullpaths.append(os.path.normpath(os.path.abspath(self.build_dirs()['build'])))

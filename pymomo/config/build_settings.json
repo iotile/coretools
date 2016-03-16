@@ -200,5 +200,24 @@
 				"chip": "24fj64ga306"
 			}
 		}
+	},
+
+	"cortex-m0+":
+	{
+		"default_settings":
+		{
+			"cflags": ["-mthumb", "-Wall", "-Os"],
+			"asflags": ["-Wall"],
+			"ldflags": ["-Wl"],
+			"cpu": "cortex-m0plus"
+		},
+
+		"architectures":
+		{
+			"lpc824":
+			{
+				"chip": "lpc824"
+			}
+		}
 	}
 }
