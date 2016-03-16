@@ -186,14 +186,7 @@ class TargetSettings:
 		props = [y for x,y in self.settings.iteritems() if x.endswith(suffix)]
 		properties = itertools.chain(*props)
 
-		processed_props = []
-
-		for prop in properties:
-			if isinstance(prop, basestring):
-				processed_props.append(prop)
-			else:
-				processed_props.append(os.path.join(*prop))
-
+		processed_props = [x for x in properties]
 		return processed_props
 
 	def includes(self):
@@ -204,7 +197,14 @@ class TargetSettings:
 		paths = MomoPaths()
 		base = paths.modules
 		
-		processed_incs = self.combined_properties('includes')
+		incs = self.combined_properties('includes')
+
+		processed_incs = []
+		for prop in incs:
+			if isinstance(prop, basestring):
+				processed_incs.append(prop)
+			else:
+				processed_incs.append(os.path.join(*prop))
 		
 		fullpaths = [os.path.normpath(os.path.join(base, x)) for x in processed_incs]
 		fullpaths.append(os.path.normpath(os.path.abspath(self.build_dirs()['build'])))

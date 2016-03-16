@@ -206,17 +206,26 @@
 	{
 		"default_settings":
 		{
-			"cflags": ["-mthumb", "-Wall", "-Os"],
+			"cflags": ["-mthumb", "-Wall", "-Os", "-fno-builtin", "-ffunction-sections", "-fdata-sections"],
 			"asflags": ["-Wall"],
-			"ldflags": ["-Wl"],
-			"cpu": "cortex-m0plus"
+			"ldflags": ["-mthumb", "-Xlinker", "--gc-sections"],
+			"cpu": "cortex-m0plus",
+
+			"defines":
+			{
+				"CORE_M0PLUS": 1
+			}
 		},
 
 		"architectures":
 		{
 			"lpc824":
 			{
-				"chip": "lpc824"
+				"chip": "lpc824",
+				"defines":
+				{
+					"LPC824": 1
+				}
 			}
 		}
 	}

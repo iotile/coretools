@@ -3,6 +3,37 @@ from SCons.Environment import Environment
 import sys
 import os.path
 from pymomo.utilities.paths import MomoPaths
+import utilities
+
+def build_program(name, chip):
+	"""
+	Build an ARM cortex executable
+	"""
+
+	dirs = chip.build_dirs()
+
+	output_name = '%s.elf' % (chip.output_name(),)
+	map_name = '%s.map' % (chip.output_name(),)
+
+	VariantDir(dirs['build'], os.path.join('firmware', 'src'), duplicate=0)
+
+	prog_env = setup_environment(chip)
+	prog_env['OUTPUT'] = output_name
+
+	#Setup specific linker flags for building a program
+	##Specify the linker script
+	ldscript = utilities.join_path(chip.property('linker'))
+	prog_env['LINKFLAGS'].append('-T"%s"' % ldscript)
+	##Specify the output map file
+	prog_env['LINKFLAGS'].extend(['-Xlinker', '-Map="%s"' % os.path.join(dirs['build'], map_name)])
+	Clean(os.path.join(dirs['build'], output_name), [os.path.join(dirs['build'], map_name)])
+
+	SConscript(os.path.join(dirs['build'], 'SConscript'), exports='prog_env')
+
+	prog_env.InstallAs(os.path.join(dirs['output'], output_name), os.path.join(dirs['build'], output_name))
+	prog_env.InstallAs(os.path.join(dirs['output'], map_name), os.path.join(dirs['build'], map_name))
+
+	return os.path.join(dirs['output'], output_name)
 
 def build_library(name, chip):
 	"""
@@ -15,34 +46,47 @@ def build_library(name, chip):
 
 	VariantDir(dirs['build'], 'src', duplicate=0)
 
-	library_env = Environment(tools=['default', 'ldf_compiler'], ENV = os.environ)
-	library_env.AppendENVPath('PATH','../../tools/scripts')
-
-	library_env['ARCH'] = chip
+	library_env = setup_environment(chip)
 	library_env['OUTPUT'] = output_name
-	library_env['CPPPATH'] = chip.includes()
-
-	#Setup Cross Compiler
-	library_env['CC'] 		= 'arm-none-eabi-gcc'
-	library_env['AS'] 		= 'arm-none-eabi-as'
-	library_env['LD'] 		= 'arm-none-eabi-gcc'
-	library_env['AR'] 		= 'arm-none-eabi-ar'
-	library_env['RANLIB']	= 'arm-none-eabi-ranlib'
-
-	#Setup Nice Display Strings
-	library_env['CCCOMSTR'] = "Compiling $TARGET"
-	library_env['ARCOMSTR'] = "Building static library $TARGET"
-	library_env['RANLIBCOMSTR'] = "Indexing static library $TARGET"
-
-	#Setup Compiler Flags
-	library_env['CCFLAGS'] = chip.combined_properties('cflags')
-	library_env['LDFLAGS'] = chip.combined_properties('ldflags')
-	library_env['ARFLAGS'].append(chip.combined_properties('arflags')) #There are default ARFLAGS that are necessary to keep
-
-	#Setup Target Architecture
-	library_env['CCFLAGS'].append('-mcpu=%s' % chip.property('cpu'))
 
 	SConscript(os.path.join(dirs['build'], 'SConscript'), exports='library_env')
 
-	libfile = library_env.InstallAs(os.path.join(dirs['output'], output_name), os.path.join(dirs['build'], output_name))
+	library_env.InstallAs(os.path.join(dirs['output'], output_name), os.path.join(dirs['build'], output_name))
 	return os.path.join(dirs['output'], output_name)
+
+def setup_environment(chip):
+	"""
+	Setup the SCons environment for compiling arm cortex code
+	"""
+
+	env = Environment(tools=['default', 'ldf_compiler'], ENV = os.environ)
+
+	env['CPPPATH'] = chip.includes()
+	env['ARCH'] = chip
+
+	#Setup Cross Compiler
+	env['CC'] 		= 'arm-none-eabi-gcc'
+	env['AS'] 		= 'arm-none-eabi-as'
+	env['LINK'] 		= 'arm-none-eabi-gcc'
+	env['AR'] 		= 'arm-none-eabi-ar'
+	env['RANLIB']	= 'arm-none-eabi-ranlib'
+
+	#Setup Nice Display Strings
+	#env['CCCOMSTR'] = "Compiling $TARGET"
+	#env['ARCOMSTR'] = "Building static library $TARGET"
+	#env['RANLIBCOMSTR'] = "Indexing static library $TARGET"
+
+	#Setup Compiler Flags
+	env['CCFLAGS'] = chip.combined_properties('cflags')
+	env['LINKFLAGS'] = chip.combined_properties('ldflags')
+	env['ARFLAGS'].append(chip.combined_properties('arflags')) #There are default ARFLAGS that are necessary to keep
+
+	#Add in compile tile definitions
+	defines = utilities.build_defines(chip.property('defines', {}))
+	env['CCFLAGS'].append(defines)
+
+	#Setup Target Architecture
+	env['CCFLAGS'].append('-mcpu=%s' % chip.property('cpu'))
+	env['LINKFLAGS'].append('-mcpu=%s' % chip.property('cpu'))
+
+	return env

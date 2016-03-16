@@ -73,6 +73,17 @@ def process_path(path):
 
 	return path
 
+def join_path(path):
+	"""
+	If given a string, return it, otherwise combine a list into a string
+	using os.path.join
+	"""
+
+	if isinstance(path, basestring):
+		return path
+	
+	return os.path.join(*path)
+
 def build_defines(defines):
 	return ['-D%s=%s' % (x,str(y)) for x,y in defines.iteritems()]
 
