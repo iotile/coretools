@@ -208,7 +208,7 @@
 		{
 			"cflags": ["-mthumb", "-Wall", "-Os", "-fno-builtin", "-ffunction-sections", "-fdata-sections"],
 			"asflags": ["-Wall"],
-			"ldflags": ["-mthumb", "-Xlinker", "--gc-sections"],
+			"ldflags": ["-mthumb", "-Xlinker", "--gc-sections", "--specs=nano.specs", "-lc", "-lnosys", "-nostartfiles"],
 			"cpu": "cortex-m0plus",
 
 			"defines":
@@ -225,7 +225,15 @@
 				"defines":
 				{
 					"LPC824": 1
-				}
+				},
+
+				"shared_includes":
+				[
+					["shared", "lpc824", "src", "chip_8xx"],
+					["shared", "lpc824", "src", "chip_8xx", "config_82x"],
+					["shared", "lpc824", "src", "chip_common"],
+					["shared", "lpc824", "src", "cmsis"]
+				]
 			}
 		}
 	}

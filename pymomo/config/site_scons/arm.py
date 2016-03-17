@@ -30,6 +30,8 @@ def build_program(name, chip):
 
 	SConscript(os.path.join(dirs['build'], 'SConscript'), exports='prog_env')
 
+	prog_env.Depends(os.path.join(dirs['build'], output_name), [ldscript])
+
 	prog_env.InstallAs(os.path.join(dirs['output'], output_name), os.path.join(dirs['build'], output_name))
 	prog_env.InstallAs(os.path.join(dirs['output'], map_name), os.path.join(dirs['build'], map_name))
 
@@ -88,5 +90,10 @@ def setup_environment(chip):
 	#Setup Target Architecture
 	env['CCFLAGS'].append('-mcpu=%s' % chip.property('cpu'))
 	env['LINKFLAGS'].append('-mcpu=%s' % chip.property('cpu'))
+
+	#Setup any linked in libraries
+	libdirs, libnames = utilities.process_libaries(chip.combined_properties('libraries'), chip)
+	env['LIBPATH'] = libdirs
+	env['LIBS'] = libnames
 
 	return env

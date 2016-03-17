@@ -59,6 +59,38 @@ def build_staticlibs(libs, chip):
 
 	return ['-l%s' % x for x in processed]
 
+def process_libaries(libs, chip):
+	"""
+	Newer libary processing function used in ARM build system to
+	create -L and -l statements for linking executables to static
+	libraries.
+
+	libs should a list of 2 tuples specifying a path relative to momo_modules/shared
+	and the name of the library with an optional '#' to indicate that the libary should
+	not have an architecture name appended to it.  The library name should not start
+	with 'lib' (that will be prepended automatically)
+	"""
+
+	basepath = os.path.join(MomoPaths().modules, 'shared')
+
+	processed_names = []
+	processed_folders = []
+	for proj, lib in libs:
+		#Allow specifying absolute libraries that don't get architectures
+		#appended
+		if lib[0] == '#':
+			lib = lib[1:]
+		else:
+			#Append chip type and suffix
+			lib = "%s_%s" % (lib, chip.arch_name())
+		
+		path = os.path.join(basepath, proj, 'build', 'output')
+
+		processed_names.append(lib)
+		processed_folders.append(path)
+
+	return processed_folders, processed_names
+
 def process_path(path):
 	"""
 	Allow specifying paths relative to the MOMOPATH root rather than absolute or relative to
