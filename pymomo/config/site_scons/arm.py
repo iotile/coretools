@@ -1,6 +1,7 @@
 from SCons.Script import *
 from SCons.Environment import Environment
 import sys
+import platform
 import os.path
 from pymomo.utilities.paths import MomoPaths
 import utilities
@@ -61,8 +62,14 @@ def setup_environment(chip):
 	Setup the SCons environment for compiling arm cortex code
 	"""
 
-	env = Environment(tools=['default', 'ldf_compiler'], ENV = os.environ)
+	#Make sure we never get MSVC settings for windows since that has the wrong command line flags for gcc
+	if platform.system() == 'Windows':
+		env = Environment(tools=['mingw', 'ldf_compiler'], ENV = os.environ)
+	else:
+		env = Environment(tools=['default', 'ldf_compiler'], ENV = os.environ)
 
+	env['INCPREFIX'] = '-I"'
+	env['INCSUFFIX'] = '"'
 	env['CPPPATH'] = chip.includes()
 	env['ARCH'] = chip
 

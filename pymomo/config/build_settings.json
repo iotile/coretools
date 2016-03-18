@@ -206,7 +206,7 @@
 	{
 		"default_settings":
 		{
-			"cflags": ["-mthumb", "-Wall", "-Os", "-fno-builtin", "-ffunction-sections", "-fdata-sections"],
+			"cflags": ["-mthumb", "-Wall", "-Os", "-g", "-fno-builtin", "-ffunction-sections", "-fdata-sections"],
 			"asflags": ["-Wall"],
 			"ldflags": ["-mthumb", "-Xlinker", "--gc-sections", "--specs=nano.specs", "-lc", "-lnosys", "-nostartfiles"],
 			"cpu": "cortex-m0plus",
