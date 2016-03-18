@@ -59,12 +59,20 @@
 					"program_layers": ["Drills", "Holes"],
 					"type": "excellon",
 					"remove": "dri"
+				},
+
+				"Outline Layer":
+				{
+					"extension": "dim",
+					"program_layers": ["Dimension"],
+					"type": "gerber",
+					"remove": "gpi"
 				}
 			},
 
 			"assembly":
 			{
-				"program_layers": ["tPlace", "tNames", "tDocu", "Document", "Reference","Dimension"],
+				"program_layers": ["Dimension", "tDocu", "Dimension"],
 				"type": "drawing",
 				"extension": "ps"
 			},
