@@ -16,7 +16,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from pymomo.exceptions import *
 import pymomo
 
-def autobuild_pic12(module, test_dir=os.path.join('firmware', 'test'), modulefile=None, boardfile=None):
+def autobuild_pic12(module, test_dir=os.path.join('firmware', 'test'), modulefile=None, boardfile=None, jigfile=None):
 	"""
 	Build the given module for all targets and build all unit tests.
 	targets are determined from /config/build_settings.json using
@@ -32,6 +32,8 @@ def autobuild_pic12(module, test_dir=os.path.join('firmware', 'test'), modulefil
 
 		if boardfile is not None:
 			autobuild_pcb(module, boardfile)
+		if jigfile is not None:
+			autobuild_pcb(module, jigfile)
 
 		Alias('release', os.path.join('build', 'output'))
 		Alias('test', os.path.join('build', 'test', 'output'))
@@ -40,7 +42,7 @@ def autobuild_pic12(module, test_dir=os.path.join('firmware', 'test'), modulefil
 		print e.format()
 		sys.exit(1)
 
-def autobuild_pic24(module, test_dir=os.path.join('firmware', 'test'), modulefile=None, postprocess_hex=None, boardfile=None):
+def autobuild_pic24(module, test_dir=os.path.join('firmware', 'test'), modulefile=None, postprocess_hex=None, boardfile=None, jigfile=None):
 	"""
 	Build the given pic24 module for all targets.
 	"""
@@ -53,6 +55,8 @@ def autobuild_pic24(module, test_dir=os.path.join('firmware', 'test'), modulefil
 
 		if boardfile is not None:
 			autobuild_pcb(module, boardfile)
+		if jigfile is not None:
+			autobuild_pcb(module, jigfile)
 
 		Alias('release', os.path.join('build', 'output'))
 		Alias('test', os.path.join('build', 'test', 'output'))
@@ -74,4 +78,4 @@ def autobuild_pcb(module, boardfile):
 
 	Alias('pcb', pcbpath)
 
-	env.build_pcb(os.path.join(pcbpath, '.timestamp'), boardpath)
+	env.build_pcb(os.path.join(pcbpath, '%s.timestamp' % boardfile), boardpath)

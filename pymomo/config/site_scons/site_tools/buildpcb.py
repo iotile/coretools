@@ -24,7 +24,12 @@ def build_pcb(target, source, env):
 		print "WARNING: (pcb build process) %s" % warning
 
 	basedir = os.path.dirname(str(target[0]))
-	board.generate_production(basedir)
+
+	if len(board.part) == 0:
+		raise BuildError("Cannot build pcb without a part name")
+
+	outdir = os.path.join(basedir, board.part)
+	board.generate_production(outdir)
 
 	with open(str(target[0]), 'w') as f:
 		f.write("Build Timestamp: %s" % strftime("%a, %d %b %Y %H:%M:%S +0000", gmtime()))
@@ -38,7 +43,11 @@ def pcb_emit_int_files(target, source, env):
 	prod = ProductionFileGenerator(board, dry_run=True)
 
 	basedir = os.path.dirname(str(target[0]))
-	prod.build_production(None, basedir)
+	if len(board.part) == 0:
+		raise BuildError("Cannot build pcb without a part name")
+
+	outdir = os.path.join(basedir, board.part)
+	board.generate_production(outdir)
 
 	created = prod.created_files
 	
