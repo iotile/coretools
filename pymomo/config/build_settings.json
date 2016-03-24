@@ -206,7 +206,7 @@
 	{
 		"default_settings":
 		{
-			"cflags": ["-mthumb", "-Wall", "-Os", "-g", "-fno-builtin", "-ffunction-sections", "-fdata-sections"],
+			"cflags": ["-mthumb", "-Wall", "-pedantic", "-Wextra", "-Wshadow", "-Os", "-g", "-fno-builtin", "-ffunction-sections", "-fdata-sections"],
 			"asflags": ["-Wall"],
 			"ldflags": ["-mthumb", "-Xlinker", "--gc-sections", "--specs=nano.specs", "-lc", "-lnosys", "-nostartfiles"],
 			"cpu": "cortex-m0plus",
@@ -232,7 +232,9 @@
 					["shared", "lpc824", "src", "chip_8xx"],
 					["shared", "lpc824", "src", "chip_8xx", "config_82x"],
 					["shared", "lpc824", "src", "chip_common"],
-					["shared", "lpc824", "src", "cmsis"]
+					["shared", "lpc824", "src", "cmsis"],
+					["shared", "common", "src"],
+					["shared", "common", "src", "cdb"]
 				]
 			}
 		}
