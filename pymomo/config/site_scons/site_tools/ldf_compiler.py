@@ -7,9 +7,6 @@ import os.path
 import sys
 import utilities
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
-from pymomo.utilities.paths import convert_path
-
 def ldf_generator(source, target, env, for_signature):
 	"""
 	Create an command line to drive the LDF compiler using the parameter defined in 

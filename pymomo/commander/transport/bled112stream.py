@@ -30,7 +30,10 @@ class BLED112Stream (CMDStream):
 			status = ord(response[0])
 
 			#Only read the length of the packet if the has data bit is set
-			if (status & 1 << 7):
+			#If no one responds, the length is 0 as well
+			if status == 0xFF and ord(response[1]) == 0xFF:
+				length = 0
+			elif (status & 1 << 7):
 				length = ord(response[3])
 			else:
 				length = 0

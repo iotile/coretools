@@ -44,8 +44,9 @@ class MIBBlock:
 	knows how to respond to.
 	"""
 
-	TemplateName = 'command_map.asm'
-
+	TemplateName 		= 'command_map.asm'
+	CTemplateName 		= 'command_map_c.c'
+	CTemplateNameHeader = 'command_map_c.h'
 	def __init__(self, ih=None):
 		"""
 		Given an intelhex object, extract the MIB block information
@@ -290,6 +291,19 @@ class MIBBlock:
 
 	def create_asm(self, folder):
 		temp = template.RecursiveTemplate(MIBBlock.TemplateName)
+		temp.add(self)
+		temp.render(folder)
+
+	def create_c(self, folder):
+		"""
+		Create a C file that contains a map of all of the mib commands defined in this block
+		"""
+
+		temp = template.RecursiveTemplate(MIBBlock.CTemplateName)
+		temp.add(self)
+		temp.render(folder)
+
+		temp = template.RecursiveTemplate(MIBBlock.CTemplateNameHeader)
 		temp.add(self)
 		temp.render(folder)
 

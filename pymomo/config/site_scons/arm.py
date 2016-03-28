@@ -5,6 +5,8 @@ import platform
 import os.path
 from pymomo.utilities.paths import MomoPaths
 import utilities
+import pyparsing
+from pymomo.mib.descriptor import MIBDescriptor
 
 def build_program(name, chip):
 	"""
@@ -20,14 +22,19 @@ def build_program(name, chip):
 
 	prog_env = setup_environment(chip)
 	prog_env['OUTPUT'] = output_name
+	prog_env['MODULE'] = name
 
 	#Setup specific linker flags for building a program
 	##Specify the linker script
 	ldscript = utilities.join_path(chip.property('linker'))
 	prog_env['LINKFLAGS'].append('-T"%s"' % ldscript)
+
 	##Specify the output map file
 	prog_env['LINKFLAGS'].extend(['-Xlinker', '-Map="%s"' % os.path.join(dirs['build'], map_name)])
 	Clean(os.path.join(dirs['build'], output_name), [os.path.join(dirs['build'], map_name)])
+
+	#Compile the CDB command definitions
+	compile_mib(prog_env)
 
 	SConscript(os.path.join(dirs['build'], 'SConscript'), exports='prog_env')
 
@@ -104,3 +111,37 @@ def setup_environment(chip):
 	env['LIBS'] = libnames
 
 	return env
+
+def compile_mib(env, mibname=None, outdir=None):
+	"""
+	Given a path to a *.mib file, use mibtool to process it and return a command_map.asm file
+	return the path to that file.
+	"""
+
+	if outdir is None:
+		dirs = env["ARCH"].build_dirs()
+		outdir = dirs['build']
+
+	if mibname is None: 
+		mibname = os.path.join('firmware', 'src', 'cdb', env["MODULE"] + ".cdb")
+
+	cmdmap_c_path = os.path.join(outdir, 'command_map_c.c')
+	cmdmap_h_path = os.path.join(outdir, 'command_map_c.h')
+
+	env['MIBFILE'] = '#' + cmdmap_c_path
+
+	return env.Command([cmdmap_c_path, cmdmap_h_path], mibname, action=env.Action(mib_compilation_action, "Compiling MIB definitions"))
+
+def mib_compilation_action(target, source, env):
+	"""
+	Compile mib file into a .h/.c pair for compilation into an ARM object
+	"""
+
+	try:
+		d = MIBDescriptor(str(source[0]))
+	except pyparsing.ParseException as e:
+		raise BuildError("Could not parse mib file", parsing_exception=e, )
+
+	#Build a MIB block from the mib file
+	block = d.get_block()
+	block.create_c(os.path.dirname(str(target[0])))
