@@ -33,7 +33,8 @@ reserved_index = 3
 known_hwtypes = {
 	2: "12lf1822",
 	3: "16lf1823",
-	4: "16lf1847"
+	4: "16lf1847",
+	10: "NXP LPC824 (Cortex M0+)"
 }
 
 class MIBBlock:

@@ -3,6 +3,13 @@
 
 \#include <stdint.h>
 
+\#define kAPIMajorVersion		$api_version[0]
+\#define kAPIMinorVersion		$api_version[1]
+
+\#define kModuleMajorVersion	$module_version[0]
+\#define kModuleMinorVersion	$module_version[1]
+\#define kModulePatchVersion	$module_version[2]
+
 \#define kNumCDBCommands		($len($commands))
 
 typedef uint8_t (*cdb_slave_handler)(uint8_t *buffer, unsigned int length, uint8_t *out_buffer, unsigned int *out_length);
