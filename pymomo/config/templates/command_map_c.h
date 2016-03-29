@@ -10,6 +10,8 @@
 \#define kModuleMinorVersion	$module_version[1]
 \#define kModulePatchVersion	$module_version[2]
 
+\#define kModuleName			"$name"
+
 \#define kNumCDBCommands		($len($commands))
 
 typedef uint8_t (*cdb_slave_handler)(uint8_t *buffer, unsigned int length, uint8_t *out_buffer, unsigned int *out_length);
