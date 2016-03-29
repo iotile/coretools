@@ -48,6 +48,7 @@ class MIBBlock:
 	TemplateName 		= 'command_map.asm'
 	CTemplateName 		= 'command_map_c.c'
 	CTemplateNameHeader = 'command_map_c.h'
+	
 	def __init__(self, ih=None):
 		"""
 		Given an intelhex object, extract the MIB block information

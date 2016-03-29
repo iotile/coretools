@@ -88,9 +88,10 @@ def setup_environment(chip):
 	env['RANLIB']	= 'arm-none-eabi-ranlib'
 
 	#Setup Nice Display Strings
-	#env['CCCOMSTR'] = "Compiling $TARGET"
-	#env['ARCOMSTR'] = "Building static library $TARGET"
-	#env['RANLIBCOMSTR'] = "Indexing static library $TARGET"
+	env['CCCOMSTR'] = "Compiling $TARGET"
+	env['ARCOMSTR'] = "Building static library $TARGET"
+	env['RANLIBCOMSTR'] = "Indexing static library $TARGET"
+	env['LINKCOMSTR'] = "Linking $TARGET"
 
 	#Setup Compiler Flags
 	env['CCFLAGS'] = chip.combined_properties('cflags')
