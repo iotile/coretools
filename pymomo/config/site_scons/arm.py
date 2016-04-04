@@ -16,12 +16,19 @@ def build_program(name, chip):
 	dirs = chip.build_dirs()
 
 	output_name = '%s.elf' % (chip.output_name(),)
+	output_binname = '%s.bin' % (chip.output_name(),)
+	patched_name = '%s_patched.elf' % (chip.output_name(),)
+	patchfile_name = '%s_patchcommand.txt' % (chip.output_name(),)
 	map_name = '%s.map' % (chip.output_name(),)
 
 	VariantDir(dirs['build'], os.path.join('firmware', 'src'), duplicate=0)
 
 	prog_env = setup_environment(chip)
 	prog_env['OUTPUT'] = output_name
+	prog_env['OUTPUTBIN'] = os.path.join(dirs['build'], output_binname)
+	prog_env['PATCHED'] = os.path.join(dirs['build'], patched_name)
+	prog_env['PATCH_FILE'] = os.path.join(dirs['build'], patchfile_name)
+	prog_env['PATCH_FILENAME'] = patchfile_name
 	prog_env['MODULE'] = name
 
 	#Setup specific linker flags for building a program
@@ -36,11 +43,27 @@ def build_program(name, chip):
 	#Compile the CDB command definitions
 	compile_mib(prog_env)
 
-	SConscript(os.path.join(dirs['build'], 'SConscript'), exports='prog_env')
+	#Compile an elf for the firmware image
+	objs = SConscript(os.path.join(dirs['build'], 'SConscript'), exports='prog_env')
+	outfile = prog_env.Program(os.path.join(dirs['build'], prog_env['OUTPUT']), objs)
+
+	#Create a patched ELF including a proper checksum
+	## First create a binary dump of the program flash
+	outbin = prog_env.Command(prog_env['OUTPUTBIN'], os.path.join(dirs['build'], prog_env['OUTPUT']), "arm-none-eabi-objcopy -O binary $SOURCES $TARGET")
+
+	## Now create a command file containing the linker command needed to patch the elf
+	outhex = prog_env.Command(prog_env['PATCH_FILE'], outbin, action=prog_env.Action(checksum_creation_action, "Generating checksum file"))
+	
+	## Next relink a new version of the binary using that patch file to define the image checksum
+	patch_env = prog_env.Clone()
+	patch_env['LINKFLAGS'].append(['-Xlinker', '@%s' % patch_env['PATCH_FILE']])
+
+	patched_file = patch_env.Program(prog_env['PATCHED'], objs)
+	patch_env.Depends(patched_file, [os.path.join(dirs['build'], output_name), patch_env['PATCH_FILE']])
 
 	prog_env.Depends(os.path.join(dirs['build'], output_name), [ldscript])
 
-	prog_env.InstallAs(os.path.join(dirs['output'], output_name), os.path.join(dirs['build'], output_name))
+	prog_env.InstallAs(os.path.join(dirs['output'], output_name), os.path.join(dirs['build'], patched_name))
 	prog_env.InstallAs(os.path.join(dirs['output'], map_name), os.path.join(dirs['build'], map_name))
 
 	return os.path.join(dirs['output'], output_name)
@@ -146,3 +169,18 @@ def mib_compilation_action(target, source, env):
 	#Build a MIB block from the mib file
 	block = d.get_block()
 	block.create_c(os.path.dirname(str(target[0])))
+
+def checksum_creation_action(target, source, env):
+	"""
+	Create a linker command file for patching an application checksum into a firmware image
+	"""
+
+	import binascii
+
+	with open(str(source[0]), 'r') as f:
+		data = f.read()
+
+		checksum = binascii.crc32(data, 0xFFFFFFFF)
+
+	with open(str(target[0]), 'w') as f:
+		f.write("--defsym=__image_checksum=%s\n" % hex(checksum))
