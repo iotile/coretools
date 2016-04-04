@@ -180,6 +180,7 @@ def checksum_creation_action(target, source, env):
 	with open(str(source[0]), 'r') as f:
 		data = f.read()
 
+		#ARM chip seeds the crc32 with a specific value
 		checksum = binascii.crc32(data, 0xFFFFFFFF)
 
 	with open(str(target[0]), 'w') as f:
