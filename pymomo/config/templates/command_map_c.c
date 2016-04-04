@@ -18,6 +18,8 @@ const cdb_slave_entry cdb_command_map[kNumCDBCommands] =
 #end for
 };
 
+extern void __image_checksum(void) __attribute__ ((weak));
+
 const CDBApplicationInfoBlock __attribute__((section (".block.appinfo"))) app_info = {
 	//Hardware and API compatibility information
 	kModuleHardwareType,
@@ -46,5 +48,5 @@ const CDBApplicationInfoBlock __attribute__((section (".block.appinfo"))) app_in
 	kCDBMagicNumber,
 
 	//Reserved for firmware checksum image to be patched in
-	0
+	(uint32_t)&__image_checksum
 };
