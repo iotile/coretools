@@ -44,7 +44,7 @@ setup(
         "py==1.4.26",
         "pycparser==2.10",
         "pyparsing==2.0.3",
-        "pyserial==2.7",
+        "pyserial>=2.7",
         "pytest==2.6.4",
         "six==1.9.0",
         "xlsxwriter>=0.6.7",
@@ -57,15 +57,9 @@ setup(
     entry_points={
         'console_scripts': [
             'momo = pymomo.scripts.momo:main',
-            'momo-mod = pymomo.scripts.modtool:main',
-            'momo-gsm = pymomo.scripts.gsmtool:main',
-            'momo-pcb = pymomo.scripts.pcbtool:main',
             'momo-hex = pymomo.scripts.hextool:main',
             'momo-mib = pymomo.scripts.mibtool:main',
-            'momo-reportinator = pymomo.scripts.reportinator:main',
             'momo-picunit = pymomo.scripts.picunit:main',
-            'momo-multisensor = pymomo.scripts.multisensor:main',
-            'momo-sensor = pymomo.scripts.momosensor:main'
         ]
     },
     description = "WellDone Mobile Monitor (MoMo) Interaction Library",
