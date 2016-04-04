@@ -9,6 +9,7 @@ import pyparsing
 from pymomo.mib.descriptor import MIBDescriptor
 import struct
 from pymomo.exceptions import BuildError
+import os
 
 
 def build_program(name, chip):
@@ -180,7 +181,7 @@ def checksum_creation_action(target, source, env):
 
 	import binascii
 
-	with open(str(source[0]), 'r') as f:
+	with open(str(source[0]), 'rb') as f:
 		data = f.read()
 
 		#Ignore the last four bytes of the file since that is where the checksum will go
