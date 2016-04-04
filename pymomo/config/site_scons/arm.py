@@ -7,6 +7,9 @@ from pymomo.utilities.paths import MomoPaths
 import utilities
 import pyparsing
 from pymomo.mib.descriptor import MIBDescriptor
+import struct
+from pymomo.exceptions import BuildError
+
 
 def build_program(name, chip):
 	"""
@@ -179,6 +182,16 @@ def checksum_creation_action(target, source, env):
 
 	with open(str(source[0]), 'r') as f:
 		data = f.read()
+
+		#Ignore the last four bytes of the file since that is where the checksum will go
+		data = data[:-4]
+
+		#Make sure the magic number is correct so that we're dealing with an actual firmware image
+		magicbin = data[-4:]
+		magic, = struct.unpack('<L', magicbin)
+
+		if magic != 0xBAADDAAD:
+			raise BuildError("Attempting to patch a file that is not a CDB binary (invalid magic number", actual_magic=magic, desired_magic=0xBAADDAAD)
 
 		#ARM chip seeds the crc32 with a specific value
 		checksum = binascii.crc32(data, 0xFFFFFFFF)
