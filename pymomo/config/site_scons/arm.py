@@ -53,7 +53,7 @@ def build_program(name, chip):
 
 	#Create a patched ELF including a proper checksum
 	## First create a binary dump of the program flash
-	outbin = prog_env.Command(prog_env['OUTPUTBIN'], os.path.join(dirs['build'], prog_env['OUTPUT']), "arm-none-eabi-objcopy -O binary $SOURCES $TARGET")
+	outbin = prog_env.Command(prog_env['OUTPUTBIN'], os.path.join(dirs['build'], prog_env['OUTPUT']), "arm-none-eabi-objcopy --gap-fill 0xFF -O binary $SOURCES $TARGET")
 
 	## Now create a command file containing the linker command needed to patch the elf
 	outhex = prog_env.Command(prog_env['PATCH_FILE'], outbin, action=prog_env.Action(checksum_creation_action, "Generating checksum file"))
@@ -196,6 +196,8 @@ def checksum_creation_action(target, source, env):
 
 		#ARM chip seeds the crc32 with a specific value
 		checksum = binascii.crc32(data, 0xFFFFFFFF)
+
+		print hex(checksum)
 
 	with open(str(target[0]), 'w') as f:
 		f.write("--defsym=__image_checksum=%s\n" % hex(checksum))
