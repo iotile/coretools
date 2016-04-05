@@ -53,7 +53,7 @@ def build_program(name, chip):
 
 	#Create a patched ELF including a proper checksum
 	## First create a binary dump of the program flash
-	outbin = prog_env.Command(prog_env['OUTPUTBIN'], os.path.join(dirs['build'], prog_env['OUTPUT']), "arm-none-eabi-objcopy --gap-fill 0xFF -O binary $SOURCES $TARGET")
+	outbin = prog_env.Command(prog_env['OUTPUTBIN'], os.path.join(dirs['build'], prog_env['OUTPUT']), "arm-none-eabi-objcopy -O binary $SOURCES $TARGET")
 
 	## Now create a command file containing the linker command needed to patch the elf
 	outhex = prog_env.Command(prog_env['PATCH_FILE'], outbin, action=prog_env.Action(checksum_creation_action, "Generating checksum file"))
@@ -179,7 +179,15 @@ def checksum_creation_action(target, source, env):
 	Create a linker command file for patching an application checksum into a firmware image
 	"""
 
-	import binascii
+	# Important Notes:
+	# There are apparently many ways to calculate a CRC-32 checksum with the following options
+	# Initial seed value prepended to the input: 0xFFFFFFFF
+	# Whether the input is fed in least-significant bit or most-significant first: LSB
+	# Whether the final CRC value is bit inverted: No
+	# *These settings must agree between the executive and this function*
+
+	import crcmod
+	crc32_func = crcmod.mkCrcFun(0x104C11DB7, initCrc=0xFFFFFFFF, rev=False, xorOut=0)
 
 	with open(str(source[0]), 'rb') as f:
 		data = f.read()
@@ -194,10 +202,13 @@ def checksum_creation_action(target, source, env):
 		if magic != 0xBAADDAAD:
 			raise BuildError("Attempting to patch a file that is not a CDB binary (invalid magic number", actual_magic=magic, desired_magic=0xBAADDAAD)
 
-		#ARM chip seeds the crc32 with a specific value
-		checksum = binascii.crc32(data, 0xFFFFFFFF)
-
-		print hex(checksum)
+		#Calculate CRC32 in the same way as its done in the target microcontroller
+		checksum = crc32_func(data) & 0xFFFFFFFF
 
 	with open(str(target[0]), 'w') as f:
-		f.write("--defsym=__image_checksum=%s\n" % hex(checksum))
+		# hex strings end with L on windows and possibly some other systems
+		checkhex = hex(checksum)
+		if checkhex[-1] == 'L':
+			checkhex = checkhex[:-1]
+
+		f.write("--defsym=__image_checksum=%s\n" % checkhex)
