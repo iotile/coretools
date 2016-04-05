@@ -180,10 +180,11 @@ def checksum_creation_action(target, source, env):
 	"""
 
 	# Important Notes:
-	# There are apparently many ways to calculate a CRC-32 checksum with the following options
+	# There are apparently many ways to calculate a CRC-32 checksum, we use the following options
 	# Initial seed value prepended to the input: 0xFFFFFFFF
-	# Whether the input is fed in least-significant bit or most-significant first: LSB
-	# Whether the final CRC value is bit inverted: No
+	# Whether the input is fed into the shift register least-significant bit or most-significant bit first: LSB
+	# Whether each data word is inverted: No
+	# Whether the final CRC value is inverted: No
 	# *These settings must agree between the executive and this function*
 
 	import crcmod
@@ -200,7 +201,7 @@ def checksum_creation_action(target, source, env):
 		magic, = struct.unpack('<L', magicbin)
 
 		if magic != 0xBAADDAAD:
-			raise BuildError("Attempting to patch a file that is not a CDB binary (invalid magic number", actual_magic=magic, desired_magic=0xBAADDAAD)
+			raise BuildError("Attempting to patch a file that is not a CDB binary or has the wrong size", reason="invalid magic number found", actual_magic=magic, desired_magic=0xBAADDAAD)
 
 		#Calculate CRC32 in the same way as its done in the target microcontroller
 		checksum = crc32_func(data) & 0xFFFFFFFF
