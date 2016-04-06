@@ -50,6 +50,7 @@ setup(
         "xlsxwriter>=0.6.7",
         "pint>=0.6",
         "interval>=1.0.0",
+        "crcmod>=1.7.0"
     ],
     package_data={ #This could be better
         'pymomo': list_data_files()
