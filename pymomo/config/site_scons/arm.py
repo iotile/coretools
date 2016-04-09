@@ -10,6 +10,7 @@ from pymomo.mib.descriptor import MIBDescriptor
 import struct
 from pymomo.exceptions import BuildError
 import os
+from dependencies import build_dependencies
 
 
 def build_program(name, chip):
@@ -29,11 +30,21 @@ def build_program(name, chip):
 
 	prog_env = setup_environment(chip)
 	prog_env['OUTPUT'] = output_name
+	prog_env['OUTPUT_PATH'] = os.path.join(dirs['build'], output_name)
 	prog_env['OUTPUTBIN'] = os.path.join(dirs['build'], output_binname)
 	prog_env['PATCHED'] = os.path.join(dirs['build'], patched_name)
 	prog_env['PATCH_FILE'] = os.path.join(dirs['build'], patchfile_name)
 	prog_env['PATCH_FILENAME'] = patchfile_name
 	prog_env['MODULE'] = name
+
+	#Setup all of our dependencies and make sure our output depends on them being built
+	dependencies = chip.property('depends', {})
+	dep_nodes = build_dependencies(dependencies, prog_env)
+	prog_env.Depends(prog_env['OUTPUT_PATH'], dep_nodes)
+
+	#Add in all include directories from dependencies
+	dep_incs = reduce(lambda x,y:x+y, [x.include_directories() for x in prog_env['DEPENDENCIES']])
+	prog_env['CPPPATH'] += dep_incs
 
 	#Setup specific linker flags for building a program
 	##Specify the linker script

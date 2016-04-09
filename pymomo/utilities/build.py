@@ -13,6 +13,8 @@ from copy import deepcopy
 import itertools
 import os
 from paths import MomoPaths
+import subprocess
+from cStringIO import StringIO
 
 @takes_cmdline
 def build(args):
@@ -31,6 +33,42 @@ def build(args):
 	all_args = ['momo', '--site-dir=%s' % site_path, '-Q']
 	sys.argv = all_args + list(args)
 	SCons.Script.main()
+
+@param('directory', 'string')
+@param('artifacts', 'list(string)')
+@return_type('integer')
+def build_other(directory, artifacts=[]):
+	"""
+	Invoke SCons to build a project in another directory. 
+
+	All output is suppressed by default.
+	"""
+
+	old_cwd = os.getcwd()
+
+	try:
+		os.chdir(directory)
+
+		if isinstance(artifacts, basestring):
+			if artifacts == "":
+				artifacts = []
+			else:
+				artifacts = [artifacts]
+
+		artifact_paths = [os.path.join('build', 'output', x) for x in artifacts]
+
+		paths = MomoPaths()
+		site_path = os.path.abspath(paths.site_tools)
+		all_args = ['momo', 'build'] + artifact_paths
+		
+		#Call this in a subprocess since SCons can't do repeated calls into SCons.Script.main()
+		#because it sets global state about what nodes are present
+		p = subprocess.Popen(all_args, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+		output, output_err = p.communicate()
+
+		return p.returncode, output, output_err
+	finally:
+		os.chdir(old_cwd)
 
 def load_settings(filename=None):
 	local_file = True
@@ -206,7 +244,8 @@ class TargetSettings:
 			else:
 				processed_incs.append(os.path.join(*prop))
 		
-		fullpaths = [os.path.normpath(os.path.join(base, x)) for x in processed_incs]
+		#All inclue paths are relative to base directory of the 
+		fullpaths = [os.path.normpath(os.path.join('.', x)) for x in processed_incs]
 		fullpaths.append(os.path.normpath(os.path.abspath(self.build_dirs()['build'])))
 
 		return fullpaths

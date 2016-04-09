@@ -225,17 +225,7 @@
 				"defines":
 				{
 					"LPC824": 1
-				},
-
-				"shared_includes":
-				[
-					["shared", "lpc824", "src", "chip_8xx"],
-					["shared", "lpc824", "src", "chip_8xx", "config_82x"],
-					["shared", "lpc824", "src", "chip_common"],
-					["shared", "lpc824", "src", "cmsis"],
-					["shared", "common", "src"],
-					["shared", "common", "src", "cdb"]
-				]
+				}
 			}
 		}
 	}
