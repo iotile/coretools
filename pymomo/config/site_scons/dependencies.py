@@ -2,6 +2,7 @@ from pymomo.exceptions import *
 import pymomo
 from pymomo.dev.registry import ComponentRegistry
 from SCons.Environment import Environment
+import os
 
 def build_dependency(target, source, env):
 	env['TILE'].build()
@@ -22,9 +23,10 @@ def build_dependencies(dep_dict, build_env):
 
 		env = Environment()
 		env['TILE'] = tile
-		targets = env.Command("__virtual__target__" + module, [], action=env.Action(build_dependency, "Building dependency %s" % tile.name))
+		target = os.path.join(build_env['BUILD_DIR'], "__virtual__target__" + module.replace('/', '_'))
+		targets = env.Command(target, [], action=env.Action(build_dependency, "Checking dependency %s" % tile.name))
 
 		build_env['DEPENDENCIES'].append(tile)
-		dep_targets.append(targets[0])
+		dep_targets.append(target)
 
 	return dep_targets

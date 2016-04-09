@@ -65,6 +65,33 @@ class IOTile:
 
 		return []
 
+	@return_type("list(string)")
+	def libraries(self):
+		"""
+		Return a list of all libraries produced by this IOTile that could be provided to other tiles
+		"""
+
+		libs = [x[0] for x in self.products.iteritems() if x[1] == 'library']
+
+		if self.filter_prods:
+			libs = [x for x in libs if x in self.desired_prods]
+
+		badlibs = filter(lambda x: not x.startswith('lib'), libs)
+		if len(badlibs) > 0:
+			raise DataError("A library product was listed in a module's products without the name starting with lib", bad_libraries=badlibs)
+
+		#Remove the prepended lib from each library name
+		return [x[3:] for x in libs]
+
+	@return_type("list(string)")
+	def library_directories(self):
+		libs = self.libraries()
+
+		if len(libs) > 0:
+			return [os.path.join(self.folder, 'build', 'output')]
+
+		return []
+
 	def filter_products(self, desired_prods):
 		"""
 		When asked for a product that this iotile produces, filter only those on this list

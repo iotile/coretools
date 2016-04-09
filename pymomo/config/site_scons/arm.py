@@ -30,6 +30,7 @@ def build_program(name, chip):
 
 	prog_env = setup_environment(chip)
 	prog_env['OUTPUT'] = output_name
+	prog_env['BUILD_DIR'] = dirs['build']
 	prog_env['OUTPUT_PATH'] = os.path.join(dirs['build'], output_name)
 	prog_env['OUTPUTBIN'] = os.path.join(dirs['build'], output_binname)
 	prog_env['PATCHED'] = os.path.join(dirs['build'], patched_name)
@@ -42,9 +43,14 @@ def build_program(name, chip):
 	dep_nodes = build_dependencies(dependencies, prog_env)
 	prog_env.Depends(prog_env['OUTPUT_PATH'], dep_nodes)
 
-	#Add in all include directories from dependencies
+	## Add in all include directories, library directories and libraries from dependencies
 	dep_incs = reduce(lambda x,y:x+y, [x.include_directories() for x in prog_env['DEPENDENCIES']])
+	lib_dirs = reduce(lambda x,y:x+y, [x.library_directories() for x in prog_env['DEPENDENCIES']])
+	libs = reduce(lambda x,y:x+y, [x.libraries() for x in prog_env['DEPENDENCIES']])
 	prog_env['CPPPATH'] += dep_incs
+	prog_env['LIBPATH'] += lib_dirs
+	prog_env['LIBS'] += libs
+	
 
 	#Setup specific linker flags for building a program
 	##Specify the linker script
