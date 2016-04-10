@@ -31,6 +31,13 @@ class KeyValueStore(object):
 		self.cursor.execute(query)
 		return self.cursor.fetchone()[0]
 
+	def get_all(self):
+		query = 'select key, value from KVStore'
+		self.cursor.execute(query)
+
+		vals = self.cursor.fetchall()
+		return vals
+		
 	def get(self, id):
 		query = 'select value from KVStore where key is ?'
 		self.cursor.execute(query, (id,))

@@ -38,11 +38,12 @@ class IOTile:
 		modname = settings['modules'].keys()[0]
 		modsettings = settings['modules'][modname]
 
+		#Name is converted to all lowercase to canonicalize it
 		prepend = ''
 		if 'domain' in modsettings:
 			prepend = modsettings['domain'].lower() + '/'
 
-		key = prepend + modname
+		key = prepend + modname.lower()
 
 		self.name = key
 

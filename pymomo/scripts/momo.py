@@ -28,7 +28,6 @@ def main():
 		
 	shell.root_add("build", "pymomo.utilities.build,build")
 	shell.root_add("dev", "pymomo.dev")
-	shell.root_add("build_other", "pymomo.utilities.build,build_other")
 	shell.root_add("SystemLog", "pymomo.syslog")
 	shell.root_add("pcb", "pymomo.pcb")
 	shell.root_add('ControllerBlock', "pymomo.hex,ControllerBlock")

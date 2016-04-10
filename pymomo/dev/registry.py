@@ -37,7 +37,7 @@ class ComponentRegistry:
 	def find(self, key, domain=""):
 		try:
 			if domain is not "":
-				key = domain.lower() + '/' + key
+				key = domain.lower() + '/' + key.lower()
 
 			return IOTile(self.kvstore.get(key))
 		except KeyError:
@@ -59,3 +59,13 @@ class ComponentRegistry:
 		"""
 
 		self.kvstore.clear()
+
+	@return_type("list(string)")
+	def list(self):
+		"""
+		List all of the registered component names
+		"""
+
+		items = self.kvstore.get_all()
+
+		return [x[0] for x in items]
