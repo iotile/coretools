@@ -54,7 +54,23 @@ def build_program(name, chip):
 
 	#Setup specific linker flags for building a program
 	##Specify the linker script
-	ldscript = utilities.join_path(chip.property('linker'))
+	###We can find a linker script in one of two places, either in a dependency or in an explicit 'linker' property
+	###First check for a linker script in our dependencies
+	ldscripts = reduce(lambda x,y:x+y, [x.linker_scripts() for x in prog_env['DEPENDENCIES']], [])
+
+	# Make sure we don't have multiple linker scripts coming in from dependencies
+	if len(ldscripts) > 1:
+		raise BuildError("Multiple linker scripts included from dependencies, at most one may be included", linker_scripts=ldscripts)
+
+	#Make sure we don't have a linker script from a dependency and explicity specified
+	if len(ldscripts) == 1 and chip.property('linker', None) != None:
+		raise BuildError("Linker script specified in dependency and explicitly in module_settings", explicit_script=chip.property('linker'), dependency_script=ldscripts[0])
+	
+	if len(ldscripts) == 1:
+		ldscript = ldscripts[0]
+	else:
+		ldscript = utilities.join_path(chip.property('linker'))
+
 	prog_env['LINKFLAGS'].append('-T"%s"' % ldscript)
 
 	##Specify the output map file
@@ -62,7 +78,7 @@ def build_program(name, chip):
 	Clean(os.path.join(dirs['build'], output_name), [os.path.join(dirs['build'], map_name)])
 
 	#Compile the CDB command definitions
-	compile_mib(prog_env)
+	compile_cdb(prog_env)
 
 	#Compile an elf for the firmware image
 	objs = SConscript(os.path.join(dirs['build'], 'SConscript'), exports='prog_env')
@@ -98,14 +114,41 @@ def build_library(name, chip):
 
 	output_name = '%s.a' % (chip.output_name(),)
 
-	VariantDir(dirs['build'], 'src', duplicate=0)
+	#Support both firmware/src and just src locations for source code
+	if os.path.exists('firmware'):
+		VariantDir(dirs['build'], os.path.join('firmware', 'src'), duplicate=0)
+	else:
+		VariantDir(dirs['build'], 'src', duplicate=0)
 
 	library_env = setup_environment(chip)
 	library_env['OUTPUT'] = output_name
+	library_env['OUTPUT_PATH'] = os.path.join(dirs['build'], output_name)
+	library_env['BUILD_DIR'] = dirs['build']
+
+	# Check for any dependencies this library has
+	dependencies = chip.property('depends', {})
+	dep_nodes = build_dependencies(dependencies, library_env)
+	library_env.Depends(library_env['OUTPUT_PATH'], dep_nodes)
+
+	## Add in all include directories, library directories and libraries from dependencies
+	dep_incs = reduce(lambda x,y:x+y, [x.include_directories() for x in library_env['DEPENDENCIES']], [])
+	lib_dirs = reduce(lambda x,y:x+y, [x.library_directories() for x in library_env['DEPENDENCIES']], [])
+	libs = reduce(lambda x,y:x+y, [x.libraries() for x in library_env['DEPENDENCIES']], [])
+	library_env['CPPPATH'] += dep_incs
+	library_env['LIBPATH'] += lib_dirs
+	library_env['LIBS'] += libs
+	
 
 	SConscript(os.path.join(dirs['build'], 'SConscript'), exports='library_env')
 
 	library_env.InstallAs(os.path.join(dirs['output'], output_name), os.path.join(dirs['build'], output_name))
+
+	#See if we should copy any files over to the output:
+	for src,dst in chip.property('copy_files', []):
+		srcpath = os.path.join(*src)
+		destpath = os.path.join(dirs['output'], dst)
+		library_env.InstallAs(destpath, srcpath)
+
 	return os.path.join(dirs['output'], output_name)
 
 def setup_environment(chip):
@@ -157,10 +200,9 @@ def setup_environment(chip):
 
 	return env
 
-def compile_mib(env, mibname=None, outdir=None):
+def compile_cdb(env, mibname=None, outdir=None):
 	"""
-	Given a path to a *.mib file, use mibtool to process it and return a command_map.asm file
-	return the path to that file.
+	Given a path to a *.cdb file, process it and generate c tables containing the information.
 	"""
 
 	if outdir is None:
@@ -172,10 +214,12 @@ def compile_mib(env, mibname=None, outdir=None):
 
 	cmdmap_c_path = os.path.join(outdir, 'command_map_c.c')
 	cmdmap_h_path = os.path.join(outdir, 'command_map_c.h')
+	config_c_path = os.path.join(outdir, 'config_variables_c.c')
+	config_h_path = os.path.join(outdir, 'config_variables_c.h')
 
 	env['MIBFILE'] = '#' + cmdmap_c_path
 
-	return env.Command([cmdmap_c_path, cmdmap_h_path], mibname, action=env.Action(mib_compilation_action, "Compiling MIB definitions"))
+	return env.Command([cmdmap_c_path, cmdmap_h_path, config_c_path, config_h_path], mibname, action=env.Action(mib_compilation_action, "Compiling CDB commnds and config variables"))
 
 def mib_compilation_action(target, source, env):
 	"""

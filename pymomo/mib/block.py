@@ -45,9 +45,11 @@ class MIBBlock:
 	knows how to respond to.
 	"""
 
-	TemplateName 		= 'command_map.asm'
-	CTemplateName 		= 'command_map_c.c'
-	CTemplateNameHeader = 'command_map_c.h'
+	TemplateName 				= 'command_map.asm'
+	CTemplateName 				= 'command_map_c.c'
+	CTemplateNameHeader 		= 'command_map_c.h'
+	ConfigTemplateName			= 'config_variables_c.c'
+	ConfigTemplateNameHeader	= 'config_variables_c.h'
 	
 	def __init__(self, ih=None):
 		"""
@@ -299,6 +301,8 @@ class MIBBlock:
 	def create_c(self, folder):
 		"""
 		Create a C file that contains a map of all of the mib commands defined in this block
+
+		Also create config files containing definitions for all of the required config variables. 
 		"""
 
 		temp = template.RecursiveTemplate(MIBBlock.CTemplateName)
@@ -306,6 +310,14 @@ class MIBBlock:
 		temp.render(folder)
 
 		temp = template.RecursiveTemplate(MIBBlock.CTemplateNameHeader)
+		temp.add(self)
+		temp.render(folder)
+
+		temp = template.RecursiveTemplate(MIBBlock.ConfigTemplateName)
+		temp.add(self)
+		temp.render(folder)
+
+		temp = template.RecursiveTemplate(MIBBlock.ConfigTemplateNameHeader)
 		temp.add(self)
 		temp.render(folder)
 

@@ -11,9 +11,34 @@ from SCons.Script import *
 import os.path
 import os
 import sys
+import arm
 
 from pymomo.exceptions import *
 import pymomo
+
+def autobuild_arm_program(module, family, test_dir=os.path.join('firmware', 'test'), modulefile=None, boardfile=None, jigfile=None):
+	"""
+	Build the an ARM module for all targets and build all unit tests. If pcb files are given, also build those.
+	"""
+
+	try:
+		family = utilities.get_family(family, modulefile=modulefile)
+		family.for_all_targets(module, lambda x: arm.build_program(module, x))
+		
+		unit_test.build_units(test_dir, family.targets(module))
+
+		if boardfile is not None:
+			autobuild_pcb(module, boardfile)
+		if jigfile is not None:
+			autobuild_pcb(module, jigfile)
+
+		Alias('release', os.path.join('build', 'output'))
+		Alias('test', os.path.join('build', 'test', 'output'))
+		Default('release')
+	except MoMoException as e:
+		print e.format()
+		sys.exit(1)
+
 
 def autobuild_pic12(module, test_dir=os.path.join('firmware', 'test'), modulefile=None, boardfile=None, jigfile=None):
 	"""

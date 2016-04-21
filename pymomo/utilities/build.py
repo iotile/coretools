@@ -15,6 +15,8 @@ import os
 from paths import MomoPaths
 import subprocess
 from cStringIO import StringIO
+import re
+import os
 
 @takes_cmdline
 def build(args):
@@ -23,8 +25,14 @@ def build(args):
 	the scons tool had been invoked. 
 	"""
 
-	import pymomo.utilities.invoke
-	import SCons.Script
+	# Do some sluething work to find scons if it's not installed into an importable
+	# place, as it is usually not.
+	try:
+		import pymomo.utilities.invoke
+		import SCons.Script
+	except ImportError:
+		find_scons()
+		import SCons.Script
 
 	paths = MomoPaths()
 
@@ -33,6 +41,29 @@ def build(args):
 	all_args = ['momo', '--site-dir=%s' % site_path, '-Q']
 	sys.argv = all_args + list(args)
 	SCons.Script.main()
+
+def find_scons():
+	"""
+	Find the installed scons directory and add it to sys.path so we can import it
+	"""
+
+	try:
+		p = subprocess.Popen(['scons', '--version'], stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+		output, output_err = p.communicate()
+	except OSError:
+		raise BuildError("Could not find an installed version of SCons.  SCons is required for the build system to work.")
+
+	match = re.search("engine path: \['(.*)'\]", output)
+	if match is None:
+		raise BuildError("SCons version unsupported, it returned an unknown format for scons --version", output=output)
+
+	install_dir = match.group(1)
+	if not os.path.isdir(install_dir):
+		raise BuildError("scons --version output invalid, listed engine directory does not exist", output=output, engine_dir=install_dir)
+
+	libpath = os.path.dirname(install_dir)
+	sys.path = sys.path + [libpath]
+
 
 @param('directory', 'string')
 @param('artifacts', 'list(string)')

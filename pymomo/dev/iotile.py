@@ -26,8 +26,11 @@ class IOTile:
 	def _load_settings(self):
 		modfile = os.path.join(self.folder, 'module_settings.json')
 
-		with open(modfile, "r") as f:
-			settings = json.load(f)
+		try:
+			with open(modfile, "r") as f:
+				settings = json.load(f)
+		except IOError:
+			raise EnvironmentError("Could not load module_settings.json file, make sure this directory is an IOTile component", path=self.folder)
 
 		#Figure out the modules name
 		if 'modules' not in settings or len(settings['modules']) == 0:
@@ -83,6 +86,50 @@ class IOTile:
 
 		#Remove the prepended lib from each library name
 		return [x[3:] for x in libs]
+
+	@return_type("list(string)")
+	def type_packages(self):
+		"""
+		Return a list of the python type packages that are provided by this tile
+		"""
+
+		libs = [x[0] for x in self.products.iteritems() if x[1] == 'type_package']
+
+		if self.filter_prods:
+			libs = [x for x in libs if x in self.desired_prods]
+
+		libs = [os.path.join(self.folder, x) for x in libs]
+
+		return libs
+
+	@return_type("list(string)")
+	def linker_scripts(self):
+		"""
+		Return a list of the linker scripts that are provided by this tile
+		"""
+
+		ldscripts = [x[0] for x in self.products.iteritems() if x[1] == 'linker_script']
+
+		if self.filter_prods:
+			ldscripts = [x for x in ldscripts if x in self.desired_prods]
+
+		# Now append the whole path so that the above comparison works based on the name of the product only
+		ldscripts = [os.path.join(self.folder, 'build', 'output', x) for x in ldscripts]
+		return ldscripts
+
+	@return_type("list(string)")
+	def proxy_modules(self):
+		"""
+		Return a list of the python proxy modules that are provided by this tile
+		"""
+
+		libs = [x[0] for x in self.products.iteritems() if x[1] == 'proxy_module']
+
+		if self.filter_prods:
+			libs = [x for x in libs if x in self.desired_prods]
+
+		libs = [os.path.join(self.folder, x) for x in libs]
+		return libs
 
 	@return_type("list(string)")
 	def library_directories(self):

@@ -5,12 +5,14 @@ from pymomo.commander.exceptions import *
 from pymomo.exceptions import *
 from pymomo.utilities.typedargs.annotate import param, return_type, finalizer
 from pymomo.commander.proxy.proxy import MIBProxyObject
+from pymomo.dev.registry import ComponentRegistry
 import serial
 from serial.tools import list_ports
 import re
 import inspect
 import os.path
 import imp
+import sys
 
 @context("HardwareManager")
 class HardwareManager:
@@ -47,6 +49,21 @@ class HardwareManager:
 		self.stream = self._create_stream()
 		self.proxies = {}
 		self.name_map = {}
+
+		self._setup_proxies()
+
+	def _setup_proxies(self):
+		"""
+		Load in proxy module objects for all of the registered components on this system
+		"""
+
+		# Find all of the registered IOTile components and see if we need to add any proxies for them
+		reg = ComponentRegistry()
+		modules = reg.list()
+
+		proxies = reduce(lambda x,y: x+y, [reg.find(x).proxy_modules() for x in modules], [])
+		for prox in proxies:
+			self.add_proxies(prox)
 
 	@param("address", "integer", "positive", desc="numerical address of module to get")
 	@param("check", "bool", desc="make sure this module exists and is the right type")
@@ -136,15 +153,20 @@ class HardwareManager:
 
 		try:
 			fileobj,pathname,description = imp.find_module(p, [d])
-			mod = imp.load_module(p, fileobj, pathname, description)
+
+			#Don't load modules twice
+			if p in sys.modules:
+				mod = sys.modules[p]
+			else:
+				mod = imp.load_module(p, fileobj, pathname, description)
 		except ImportError as e:
 			raise ArgumentError("could not import module in order to load external proxy modules", module_path=path, parent_directory=d, module_name=p, error=str(e))
 
 		num_added = 0
 		for obj in filter(lambda x: inspect.isclass(x) and issubclass(x, MIBProxyObject) and x != MIBProxyObject, mod.__dict__.itervalues()):
 			if obj.__name__ in self.proxies:
-				raise ArgumentError("already imported a proxy object with the same name", name=obj.__name__, imported_proxies=self.proxies.keys())
-			
+				continue #Don't readd proxies that we already know about
+
 			self.proxies[obj.__name__] = obj
 
 			#Check if this object matches a specific shortened name so that we can 

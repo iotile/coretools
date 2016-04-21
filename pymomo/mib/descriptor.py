@@ -45,7 +45,7 @@ include = Literal("#include") + quote + filename("filename") + quote
 interface_def = Literal('interface') + number('interface') + ';'
 
 reqconfig = number("confignum") + colon + Literal('required').suppress() + Literal('config').suppress() + valid_type('type') + symbol('configvar') + Optional(leftB + number('length') + rightB) + ';'
-optconfig = number("confignum") + colon + Literal('optional').suppress() + Literal('config').suppress() + valid_type('type') + symbol('configvar') + Optional(leftB + number('length') + rightB) + "=" + (number('value') | QuotedString(quoteChar='"', unquoteResults=True)('value')) + ';'
+optconfig = number("confignum") + colon + Literal('optional').suppress() + Literal('config').suppress() + valid_type('type') + symbol('configvar') + Optional(leftB + number('length') + rightB) + "=" + (number('value') | QuotedString(quoteChar='"', unquoteResults=False)('value')) + ';'
 
 statement = include | cmd_def | comment | assignment_def | interface_def | reqconfig | optconfig
 
@@ -185,8 +185,10 @@ class MIBDescriptor:
 
 		if 'length' in match:
 			quantity = match['length']
+			array = True
 		else:
 			quantity = 1
+			array = False
 
 		if 'value' in match:
 			default_value = self._convert_value_to_bytes(match['value'], match['type'])
@@ -209,7 +211,7 @@ class MIBDescriptor:
 			flags |= (1 << 6)
 
 
-		config = {'name': varname, 'flags': flags, 'type': vartype, 'total_size': varsize, 'count': quantity, 'required': required, 'default_value': default_value}
+		config = {'name': varname, 'flags': flags, 'type': vartype, 'array': array, 'total_size': varsize, 'count': quantity, 'required': required, 'default_value': default_value}
 
 		if varnum in self.configs:
 			raise DataError("Attempted to add the same config variable twice", variable_name=varname, id_number=varnum, defined_variables=self.configs.keys())

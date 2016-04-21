@@ -4,6 +4,7 @@ import sys
 import os.path
 from utilities import BufferedSpawn
 from cfileparser import ParsedCFile
+from dependencies import build_dependencies
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from pymomo.utilities.paths import MomoPaths
@@ -27,7 +28,21 @@ def build_module(module_name, chip, postprocess_hex):
 	env.AppendENVPath('PATH','../../tools/scripts')
 	env['ARCH'] = chip
 	env['OUTPUT'] = output_name
+	env['OUTPUT_PATH'] = os.path.join(dirs['build'], output_name)
+	env['BUILD_DIR'] = dirs['build']
 	env['CPPPATH'] = chip.includes()
+
+	dependencies = chip.property('depends', {})
+	dep_nodes = build_dependencies(dependencies, env)
+	env.Depends(env['OUTPUT_PATH'], dep_nodes)
+
+	## Add in all include directories, library directories and libraries from dependencies
+	dep_incs = reduce(lambda x,y:x+y, [x.include_directories() for x in env['DEPENDENCIES']], [])
+	lib_dirs = reduce(lambda x,y:x+y, [x.library_directories() for x in env['DEPENDENCIES']], [])
+	libs = reduce(lambda x,y:x+y, [x.libraries() for x in env['DEPENDENCIES']], [])
+	env['CPPPATH'] += dep_incs
+	#env['LIBPATH'] += lib_dirs
+	#env['LIBS'] += libs
 
 	Export('env')
 
@@ -71,8 +86,25 @@ def build_library(name, chip):
 	library_env.AppendENVPath('PATH','../../tools/scripts')
 	library_env['ARCH'] = chip
 	library_env['OUTPUT'] = output_name
+	library_env['OUTPUT_PATH'] = os.path.join(builddir, output_name)
+	library_env['BUILD_DIR'] = builddir
 	library_env['CPPPATH'] = chip.includes()
+	library_env['LIBPATH'] = []
+	library_env['LIBS'] = []
 	
+	dependencies = chip.property('depends', {})
+	dep_nodes = build_dependencies(dependencies, library_env)
+	library_env.Depends(library_env['OUTPUT_PATH'], dep_nodes)
+
+	## Add in all include directories, library directories and libraries from dependencies
+	dep_incs = reduce(lambda x,y:x+y, [x.include_directories() for x in library_env['DEPENDENCIES']], [])
+	lib_dirs = reduce(lambda x,y:x+y, [x.library_directories() for x in library_env['DEPENDENCIES']], [])
+	libs = reduce(lambda x,y:x+y, [x.libraries() for x in library_env['DEPENDENCIES']], [])
+
+	library_env['CPPPATH'] += dep_incs
+	library_env['LIBPATH'] += lib_dirs
+	library_env['LIBS'] += libs
+
 	SConscript(os.path.join(builddir, 'SConscript'), exports='library_env')
 
 	libfile = library_env.InstallAs(os.path.join(outdir, output_name), os.path.join(builddir, output_name))
@@ -98,7 +130,20 @@ def build_moduletest(test, arch):
 	tester_env = Environment(tools=['xc16_compiler' ], ENV = os.environ)
 	unit_env['ARCH'] = arch
 	tester_env['ARCH'] = arch
+	tester_env['CPPPATH'] = arch.includes()
+
+
 	unit_env['OUTPUT'] = '%s.elf' % test.name
+	unit_env['BUILD_DIR'] = objdir
+	unit_env['OUTPUT_PATH'] = os.path.join(objdir, unit_env['OUTPUT'])
+
+	unit_env['CPPPATH'] = arch.includes()
+
+	dependencies = arch.property('depends', {})
+	dep_nodes = build_dependencies(dependencies, unit_env)
+	dep_incs = reduce(lambda x,y:x+y, [x.include_directories() for x in unit_env['DEPENDENCIES']], [])
+	tester_env['CPPPATH'] += dep_incs
+	unit_env['CPPPATH'] += dep_incs
 
 	objs = []
 	for src in test.files + arch.extra_sources():

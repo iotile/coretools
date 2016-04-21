@@ -24,7 +24,8 @@ def xc16_generator(source, target, env, for_signature):
 	args.extend(['-c'])
 	args.append('"%s"' % str(source[0]))
 	args.extend(['-o %s' % (str(target[0]))])
-	args.extend(utilities.build_includes(arch.includes()))
+
+	args.extend(utilities.build_includes(env['CPPPATH']))
 	args.extend(utilities.build_defines(arch.property('defines', default={})))
 	args.extend(arch.property('cflags', default=[]))
 
