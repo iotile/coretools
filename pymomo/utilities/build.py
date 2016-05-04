@@ -48,7 +48,7 @@ def find_scons():
 	"""
 
 	try:
-		p = subprocess.Popen(['scons', '--version'], stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+		p = subprocess.Popen(['scons', '--version'], stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True)
 		output, output_err = p.communicate()
 	except OSError:
 		raise BuildError("Could not find an installed version of SCons.  SCons is required for the build system to work.")
@@ -262,9 +262,6 @@ class TargetSettings:
 		"""
 		Return all of the include directories for this chip as a list.
 		"""
-
-		paths = MomoPaths()
-		base = paths.modules
 		
 		incs = self.combined_properties('includes')
 
@@ -287,6 +284,7 @@ class TargetSettings:
 		those source files.
 		"""
 
+		raise BuildError("Extra sources no longer supported")
 		paths = MomoPaths()
 		base = paths.modules
 		

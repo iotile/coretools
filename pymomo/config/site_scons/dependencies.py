@@ -21,7 +21,7 @@ def build_dependencies(dep_dict, build_env):
 		except ArgumentError:
 			raise BuildError("Could not find required dependency", name=module)
 
-		env = Environment()
+		env = Environment(tools=[])
 		env['TILE'] = tile
 		target = os.path.join(build_env['BUILD_DIR'], "__virtual__target__" + module.replace('/', '_'))
 		targets = env.Command(target, [], action=env.Action(build_dependency, "Checking dependency %s" % tile.name))

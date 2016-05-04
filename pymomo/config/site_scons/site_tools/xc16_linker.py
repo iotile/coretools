@@ -34,7 +34,7 @@ def xc16_generator(source, target, env, for_signature):
 
 	linker_script = arch.property('linker', default=None)
 	if linker_script is not None:
-		args.append('-T%s' % utilities.process_path(linker_script)) 	#Allow for specifying linker scripts relative to MOMOROOT
+		args.append('-T%s' % linker_script)
 
 	return SCons.Action.Action(" ".join(args), "Linking %s" % str(target[0]))
 

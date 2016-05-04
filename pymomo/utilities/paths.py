@@ -18,14 +18,8 @@ class MissingConfigError(Exception):
 class MomoPaths:
 	def __init__(self):
 		self.config = resource_filename(Requirement.parse("pymomo"), "pymomo/config")
-		self.base = os.environ.get('MOMOPATH')
 
-		if self.base == None:
-			raise MissingConfigError('MOMOPATH')
-
-		self.modules = os.path.join(self.base, 'momo_modules')
 		self.templates = os.path.join(self.config, 'templates')
-		self.pcb = os.path.join(self.base, 'pcb')
 		self.site_tools = os.path.join(self.config, 'site_scons')
 		self.settings = self._find_settings_dir()
 

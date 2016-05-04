@@ -193,10 +193,9 @@ def setup_environment(chip):
 	env['CCFLAGS'].append('-mcpu=%s' % chip.property('cpu'))
 	env['LINKFLAGS'].append('-mcpu=%s' % chip.property('cpu'))
 
-	#Setup any linked in libraries
-	libdirs, libnames = utilities.process_libaries(chip.combined_properties('libraries'), chip)
-	env['LIBPATH'] = libdirs
-	env['LIBS'] = libnames
+	#Initialize library paths (all libraries are added via dependencies)
+	env['LIBPATH'] = []
+	env['LIBS'] = []
 
 	return env
 

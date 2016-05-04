@@ -74,9 +74,8 @@ def build_library(name, chip):
 
 	dirs = chip.build_dirs()
 
-	libdir = os.path.join(MomoPaths().modules, 'shared', 'pic24')
-	builddir = os.path.join(libdir, dirs['build'])
-	outdir = os.path.join(libdir, dirs['output'])
+	builddir = dirs['build']
+	outdir = dirs['output']
 
 	output_name = '%s.a' % (chip.output_name(),)
 
@@ -146,7 +145,7 @@ def build_moduletest(test, arch):
 	unit_env['CPPPATH'] += dep_incs
 
 	objs = []
-	for src in test.files + arch.extra_sources():
+	for src in test.files:
 		name,ext = os.path.splitext(os.path.basename(src))
 		target = os.path.join(objdir, name + '.o')
 

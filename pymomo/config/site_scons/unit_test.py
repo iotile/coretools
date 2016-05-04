@@ -365,7 +365,7 @@ def find_sources(src_dir, patterns=('*.c', '*.as', '*.asm')):
 def build_units(parent, targets):
 	tests = find_units(parent)
 
-	summary_env = Environment()
+	summary_env = Environment(tools=[])
 	summary_env['TESTS'] = []
 
 	for test in tests:
