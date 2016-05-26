@@ -11,6 +11,10 @@
 # - when using a virtualenv, readline is not properly installed into the virtualenv
 #   and cannot be imported.  You need to install it using easy_install as described here
 #   http://calvinx.com/tag/readline/
+#
+# NB There is a required manual post-install step to register iotilebuild with the iotile command
+# so that you can use the iotile build command.  Run
+# > iotile registry add_plugin build iotilebuild.build.build,build
 
 from setuptools import setup, find_packages
 
@@ -36,6 +40,8 @@ def list_data_files():
         for filename in files:
             result.append( os.path.join( root, filename )[len(dirname)+1:] )
     return result
+
+
 
 setup(
     name = "iotilebuild",
