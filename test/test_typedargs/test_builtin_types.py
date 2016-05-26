@@ -1,7 +1,15 @@
-from pymomo.utilities.typedargs import type_system
-from pymomo.utilities import typedargs
+# This file is adapted from python code released by WellDone International
+# under the terms of the LGPLv3.  WellDone International's contact information is
+# info@welldone.org
+# http://welldone.org
+#
+# Modifications to this file from the original created at WellDone International 
+# are copyright Arch Systems Inc.
+
+from iotilecore.utilities.typedargs import type_system
+from iotilecore.utilities import typedargs
 from nose.tools import *
-from pymomo.exceptions import *
+from iotilecore.exceptions import *
 
 def test_builtins_exist():
 	builtin = ['integer', 'path', 'string']

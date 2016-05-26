@@ -1,10 +1,18 @@
+# This file is adapted from python code released by WellDone International
+# under the terms of the LGPLv3.  WellDone International's contact information is
+# info@welldone.org
+# http://welldone.org
+#
+# Modifications to this file from the original created at WellDone International 
+# are copyright Arch Systems Inc.
+
 import unittest
 import os.path
 import os
 from nose.tools import *
-from pymomo.exceptions import *
-from pymomo.pcb import CircuitBoard
-import pymomo.pcb.partcache
+from iotilecore.exceptions import *
+from iotilecore.pcb import CircuitBoard
+import iotilecore.pcb.partcache
 import tempfile
 import shutil
 import atexit
@@ -44,12 +52,12 @@ class TestBOMCreation(unittest.TestCase):
 		return hasher.hexdigest()
 
 	def setUp(self):
-		self.srcbrd = self._create_tempfile(os.path.join(os.path.dirname(__file__), 'eagle', 'controller_missing_attrs.brd'))
+		self.srcbrd = self._create_tempfile(os.path.join(os.path.dirname(__file__), 'eagle', 'controller_complete.brd'))
 		cachefile = self._create_tempfile(os.path.join(os.path.dirname(__file__), 'eagle', 'pcb_part_cache.db'))
 		
 		#Make sure we use our cache file and don't let it expire so we don't delete all of the entries
-		pymomo.pcb.partcache.default_cachefile(cachefile)
-		pymomo.pcb.partcache.default_noexpire(True)
+		iotilecore.pcb.partcache.default_cachefile(cachefile)
+		iotilecore.pcb.partcache.default_noexpire(True)
 		self.board = CircuitBoard(self.srcbrd)
 		self.board.set_match_engine("CacheOnlyMatcher")
 
@@ -80,8 +88,8 @@ class TestBOMCreation(unittest.TestCase):
 		print part.manu
 		print part.desc
 
-		assert part.mpn == 'M25PX80-VMN6TP'
-		assert part.manu == 'MICRON'
+		assert part.mpn == 'W25Q16DVSSIG'
+		assert part.manu == 'WINBOND'
 
 	def test_update_all_metadata(self):
 		self.board.update_all_metadata()

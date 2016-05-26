@@ -1,13 +1,21 @@
+# This file is adapted from python code released by WellDone International
+# under the terms of the LGPLv3.  WellDone International's contact information is
+# info@welldone.org
+# http://welldone.org
+#
+# Modifications to this file from the original created at WellDone International 
+# are copyright Arch Systems Inc.
+
 import unittest
 import os.path
 import os
 from nose.tools import *
 from nose.plugins.skip import SkipTest
-from pymomo.exceptions import *
-from pymomo.pcb import CircuitBoard
-from pymomo.pcb.production import ProductionFileGenerator
+from iotilecore.exceptions import *
+from iotilecore.pcb import CircuitBoard
+from iotilecore.pcb.production import ProductionFileGenerator
 from distutils.spawn import find_executable
-import pymomo
+import iotilecore
 import tempfile
 import shutil
 import atexit
@@ -48,8 +56,8 @@ class TestProductionFileGeneration(unittest.TestCase):
 		cachefile = self._create_tempfile(os.path.join(os.path.dirname(__file__), 'eagle', 'pcb_part_cache.db'))
 		
 		#Make sure we use our cache file and don't let it expire so we don't delete all of the entries
-		pymomo.pcb.partcache.default_cachefile(cachefile)
-		pymomo.pcb.partcache.default_noexpire(True)
+		iotilecore.pcb.partcache.default_cachefile(cachefile)
+		iotilecore.pcb.partcache.default_noexpire(True)
 		self.board = CircuitBoard(self.srcbrd)
 		self.board.set_match_engine("CacheOnlyMatcher")
 

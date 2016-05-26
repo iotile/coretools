@@ -1,9 +1,17 @@
-from pymomo.utilities import typedargs
-from pymomo.utilities.typedargs import type_system
+# This file is adapted from python code released by WellDone International
+# under the terms of the LGPLv3.  WellDone International's contact information is
+# info@welldone.org
+# http://welldone.org
+#
+# Modifications to this file from the original created at WellDone International 
+# are copyright Arch Systems Inc.
+
+from iotilecore.utilities import typedargs
+from iotilecore.utilities.typedargs import type_system
 import unittest
 from nose.tools import *
 import os.path
-from pymomo.exceptions import *
+from iotilecore.exceptions import *
 
 def test_splitting():
 	base, is_complex, subs = type_system.split_type('map(string, integer)')
