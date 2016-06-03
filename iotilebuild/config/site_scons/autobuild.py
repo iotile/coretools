@@ -24,14 +24,14 @@ import arm
 from iotilecore.exceptions import *
 import iotilecore
 
-def autobuild_arm_program(module, family, test_dir=os.path.join('firmware', 'test'), modulefile=None, boardfile=None, jigfile=None):
+def autobuild_arm_program(module, family, test_dir=os.path.join('firmware', 'test'), modulefile=None, boardfile=None, jigfile=None, patch=True):
 	"""
 	Build the an ARM module for all targets and build all unit tests. If pcb files are given, also build those.
 	"""
 
 	try:
 		family = utilities.get_family(family, modulefile=modulefile)
-		family.for_all_targets(module, lambda x: arm.build_program(module, x))
+		family.for_all_targets(module, lambda x: arm.build_program(module, x, patch=patch))
 		
 		unit_test.build_units(test_dir, family.targets(module))
 

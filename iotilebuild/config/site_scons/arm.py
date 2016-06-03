@@ -15,7 +15,7 @@ import os
 from dependencies import build_dependencies
 
 
-def build_program(name, chip):
+def build_program(name, chip, patch=True):
 	"""
 	Build an ARM cortex executable
 	"""
@@ -73,6 +73,10 @@ def build_program(name, chip):
 	else:
 		ldscript = utilities.join_path(chip.property('linker'))
 
+	#Find the linker script directory in case it includes other linker scripts in the same directory
+	lddir = os.path.abspath(os.path.dirname(ldscript))
+	prog_env['LIBPATH'] += [lddir]
+
 	prog_env['LINKFLAGS'].append('-T"%s"' % ldscript)
 
 	##Specify the output map file
@@ -86,23 +90,27 @@ def build_program(name, chip):
 	objs = SConscript(os.path.join(dirs['build'], 'SConscript'), exports='prog_env')
 	outfile = prog_env.Program(os.path.join(dirs['build'], prog_env['OUTPUT']), objs)
 
-	#Create a patched ELF including a proper checksum
-	## First create a binary dump of the program flash
-	outbin = prog_env.Command(prog_env['OUTPUTBIN'], os.path.join(dirs['build'], prog_env['OUTPUT']), "arm-none-eabi-objcopy -O binary $SOURCES $TARGET")
+	if patch:
+		#Create a patched ELF including a proper checksum
+		## First create a binary dump of the program flash
+		outbin = prog_env.Command(prog_env['OUTPUTBIN'], os.path.join(dirs['build'], prog_env['OUTPUT']), "arm-none-eabi-objcopy -O binary $SOURCES $TARGET")
 
-	## Now create a command file containing the linker command needed to patch the elf
-	outhex = prog_env.Command(prog_env['PATCH_FILE'], outbin, action=prog_env.Action(checksum_creation_action, "Generating checksum file"))
+		## Now create a command file containing the linker command needed to patch the elf
+		outhex = prog_env.Command(prog_env['PATCH_FILE'], outbin, action=prog_env.Action(checksum_creation_action, "Generating checksum file"))
+		
+		## Next relink a new version of the binary using that patch file to define the image checksum
+		patch_env = prog_env.Clone()
+		patch_env['LINKFLAGS'].append(['-Xlinker', '@%s' % patch_env['PATCH_FILE']])
+
+		patched_file = patch_env.Program(prog_env['PATCHED'], objs)
+		patch_env.Depends(patched_file, [os.path.join(dirs['build'], output_name), patch_env['PATCH_FILE']])
+
+		prog_env.Depends(os.path.join(dirs['build'], output_name), [ldscript])
+
+		prog_env.InstallAs(os.path.join(dirs['output'], output_name), os.path.join(dirs['build'], patched_name))
+	else:
+		prog_env.InstallAs(os.path.join(dirs['output'], output_name), outfile)
 	
-	## Next relink a new version of the binary using that patch file to define the image checksum
-	patch_env = prog_env.Clone()
-	patch_env['LINKFLAGS'].append(['-Xlinker', '@%s' % patch_env['PATCH_FILE']])
-
-	patched_file = patch_env.Program(prog_env['PATCHED'], objs)
-	patch_env.Depends(patched_file, [os.path.join(dirs['build'], output_name), patch_env['PATCH_FILE']])
-
-	prog_env.Depends(os.path.join(dirs['build'], output_name), [ldscript])
-
-	prog_env.InstallAs(os.path.join(dirs['output'], output_name), os.path.join(dirs['build'], patched_name))
 	prog_env.InstallAs(os.path.join(dirs['output'], map_name), os.path.join(dirs['build'], map_name))
 
 	return os.path.join(dirs['output'], output_name)
@@ -171,11 +179,14 @@ def setup_environment(chip):
 
 	#Setup Cross Compiler
 	env['CC'] 		= 'arm-none-eabi-gcc'
-	env['AS'] 		= 'arm-none-eabi-as'
-	env['LINK'] 		= 'arm-none-eabi-gcc'
+	env['AS'] 		= 'arm-none-eabi-gcc'
+	env['LINK'] 	= 'arm-none-eabi-gcc'
 	env['AR'] 		= 'arm-none-eabi-ar'
 	env['RANLIB']	= 'arm-none-eabi-ranlib'
 
+	#AS command line is by default setup for call as directly so we need to modify it to call via *-gcc to allow for preprocessing
+	env['ASCOM'] = "$AS $ASFLAGS -o $TARGET -c $SOURCES"
+	
 	#Setup Nice Display Strings
 	env['CCCOMSTR'] = "Compiling $TARGET"
 	env['ARCOMSTR'] = "Building static library $TARGET"
@@ -186,6 +197,7 @@ def setup_environment(chip):
 	env['CCFLAGS'] = chip.combined_properties('cflags')
 	env['LINKFLAGS'] = chip.combined_properties('ldflags')
 	env['ARFLAGS'].append(chip.combined_properties('arflags')) #There are default ARFLAGS that are necessary to keep
+	env['ASFLAGS'].append(chip.combined_properties('asflags'))
 
 	#Add in compile tile definitions
 	defines = utilities.build_defines(chip.property('defines', {}))

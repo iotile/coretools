@@ -215,5 +215,51 @@
 				}
 			}
 		}
+	},
+
+	"cortex-m4":
+	{
+		"default_settings":
+		{
+			"cflags": ["-mthumb", "-mabi=aapcs", "--std=gnu99", "-Wall", "-Werror", "-O3", "-g3", "-mfloat-abi=hard", "-mfpu=fpv4-sp-d16", "-ffunction-sections", "-fdata-sections", "-fno-strict-aliasing", "-fno-builtin", "--short-enums"],
+			"asflags": ["-Wall", "-x", "assembler-with-cpp"],
+			"ldflags": ["-mthumb", "-Xlinker", "--gc-sections", "--specs=nano.specs", "-lc", "-lnosys", "-mfloat-abi=hard", "-mfpu=fpv4-sp-d16"],
+			"cpu": "cortex-m4"
+		},
+
+		"architectures":
+		{
+			"nrf52832": 
+			{
+				"defines":
+				{
+					"__STACK_SIZE": 2048,
+					"NRF52": 1,
+					"SOFTDEVICE_PRESENT": 1,
+					"BOARD_PCA10040": 1,
+					"__HEAP_SIZE": 1024,
+					"NRF52_PAN_12": 1,
+					"NRF52_PAN_15": 1,
+					"NRF52_PAN_58": 1,
+					"NRF52_PAN_55": 1,
+					"NRF52_PAN_54": 1,
+					"NRF52_PAN_31": 1,
+					"NRF52_PAN_30": 1,
+					"NRF52_PAN_51": 1,
+					"NRF52_PAN_36": 1,
+					"NRF52_PAN_53": 1,
+					"NRF_LOG_USES_UART": 1,
+					"FREERTOS": 1,
+					"S132": 1,
+					"CONFIG_GPIO_AS_PINRESET": 1,
+					"BLE_STACK_SUPPORT_REQD": 1,
+					"NRF52_PAN_20": 1,
+					"NRF52_PAN_64": 1,
+					"NRF52_PAN_62": 1,
+					"NRF52_PAN_63": 1,
+					"kModuleHardwareType": "kNRF52832HardwareType"
+				}
+			}
+		}
 	}
 }
