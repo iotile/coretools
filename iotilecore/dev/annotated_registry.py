@@ -2,7 +2,7 @@
 # A wrapper to make the IOTile component registry accessible in the iotile
 # tool.  Since the registry is used internally in the type system it cannot 
 # itself make use of typedargs annotations
-from iotilecore.utilities.typedargs import annotated, param, return_type, context
+from iotilecore.utilities.typedargs import annotated, param, return_type, context, iprint
 
 _name_ = "Developer"
 
@@ -88,3 +88,11 @@ class AnnotatedRegistry:
 		"""
 
 		return self.reg.list_components()
+
+	@return_type("map(string, string)")
+	def check_components(self):
+		"""
+		Checks to see if all registered components are up-to-date git repositories
+		"""
+
+		return self.reg.check_components()

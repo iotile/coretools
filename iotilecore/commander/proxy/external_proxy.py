@@ -6,18 +6,19 @@
 
 from iotilecore.dev.registry import ComponentRegistry
 from proxy import MIBProxyObject
+from plugin import TileBusProxyPlugin
 from iotilecore.exceptions import *
 import os
 import imp
 import inspect
 import sys
 
-def find_proxy(component, proxy_name=None):
+def find_proxy(component, proxy_name=None, obj_type=MIBProxyObject):
 	"""
-	Search through the registered component data base for a proxy module provided by
+	Search through the registered component data base for a proxy or proxy plugin module provided by
 	a specific component optionally having a specific name.  
 
-	Proxy modules must inherit from MIBProxyObject. 
+	Proxy modules must inherit from MIBProxyObject. Proxy plugin modules must inherit from TileBusProxyPlugin
 	"""
 
 	# Find all of the registered IOTile components and see if we need to add any proxies for them
@@ -30,7 +31,7 @@ def find_proxy(component, proxy_name=None):
 
 	proxy_mod = proxies[0]
 
-	proxy_objs = import_proxy(proxy_mod)
+	proxy_objs = import_proxy(proxy_mod, obj_type)
 
 	if len(proxy_objs) == 0:
 		raise DataError("Specified component did not define any proxies but said that it did provide them", component=component)
@@ -45,11 +46,31 @@ def find_proxy(component, proxy_name=None):
 
 	raise DataError("Named proxy could not be found", component=component, proxies=proxy_objs, desired_name=proxy_name)
 
-def import_proxy(path):
+def find_proxy_plugin(component, plugin_name):
+	"""
+	Search through the registered component database for a proxy plugin object provided by a specific component and having a specific name.
+	"""
+
+	reg = ComponentRegistry()
+	comp = reg.find_component(component)
+
+	plugins = comp.proxy_plugins()
+
+	found_plugin = None
+
+	for plugin in plugins:
+		objs = import_proxy(plugin, TileBusProxyPlugin)
+		for obj in objs:
+			if obj.__name__ == plugin_name:
+				return obj
+
+	raise DataError("Could not find proxy plugin module in registered components", component=component, name=plugin_name)
+
+def import_proxy(path, obj_type):
 	"""
 	Add all proxy objects defined in the python module located at path.
 
-	The module is loaded and all classes that inherit from MIBProxyObject
+	The module is loaded and all classes that inherit from the given object type
 	are loaded and can be used to interact later with modules of that type.
 
 	Returns the total number of proxies added.
@@ -66,11 +87,11 @@ def import_proxy(path):
 
 		#Don't import twice if we've already imported this module
 		if p in sys.modules:
-			mod = p
+			mod = sys.modules[p]
 		else:
 			mod = imp.load_module(p, fileobj, pathname, description)
 	except ImportError as e:
 		raise ArgumentError("could not import module in order to load external proxy modules", module_path=path, parent_directory=d, module_name=p, error=str(e))
 
 	num_added = 0
-	return [obj for obj in filter(lambda x: inspect.isclass(x) and issubclass(x, MIBProxyObject) and x != MIBProxyObject, mod.__dict__.itervalues())]
+	return [obj for obj in filter(lambda x: inspect.isclass(x) and issubclass(x, obj_type) and x != obj_type, mod.__dict__.itervalues())]

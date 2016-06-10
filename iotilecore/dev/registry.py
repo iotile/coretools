@@ -87,3 +87,50 @@ class ComponentRegistry:
 		items = self.kvstore.get_all()
 
 		return [x[0] for x in items]
+
+	def check_components(self):
+		"""
+		Check where all registered components are up-to-date git repositories
+		
+		Returns a map listing all of the components that are not in a clean state,
+		either with uncommitted changes or with their master branch not in sync with
+		origin.
+		"""
+
+		comps = self.kvstore.get_all()
+
+		from git import Repo
+		import git
+
+		stati = {}
+
+		for name, folder in comps:
+			try:
+				repo = Repo(folder)
+			except git.exc.InvalidGitRepositoryError:
+				stati[name] = "not a git repo"
+				continue
+
+			try:
+				origin = repo.remotes['origin']
+			except IndexError:
+				stati[name] = "does not have a remote origin configured"
+				continue
+
+			origin.fetch()
+
+			#Check status if we're up to date with remote
+			count_ahead = sum(1 for c in repo.iter_commits('master..origin/master'))
+			count_behind = sum(1 for c in repo.iter_commits('origin/master..master'))
+
+			if count_ahead > 0 or count_behind > 0:
+				stati[name] = "not in sync with remote (%d ahead, %d behind"
+				continue
+
+			dirty_files = list(repo.index.diff(None))
+			untracked = len(repo.untracked_files)
+			if len(dirty_files) > 0 or untracked > 0:
+				stati[name] = "has %d files with uncommitted changes and %d untracked files" % (len(dirty_files), untracked)
+
+			#Otherwise don't add it to the list of dirty repositories 
+		return stati

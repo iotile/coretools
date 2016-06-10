@@ -38,8 +38,13 @@ class BLED112Dongle:
 	#FIXME: There's an endianness issue here where the byte order of the uuid's seem wrong in LSB positions
 	MLDPService = uuid.UUID('3a0003000812021add07e658035b0300')
 	MLDPDataCharacteristic = uuid.UUID('3a0003010812021add07e658035b0300')
+	TileBusService = uuid.UUID('0ff60f63-132c-e611-ba53-f73f00200000')
+	TileBusSendHeaderCharacteristic = uuid.UUID('fb349b5f-8000-0080-0010-000000000320')
+	TileBusSendPayloadCharacteristic = uuid.UUID('fb349b5f-8000-0080-0010-000000000420')
+	TileBusReceiveHeaderCharacteristic = uuid.UUID('fb349b5f-8000-0080-0010-000000000120')
+	TileBusReceivePayloadCharacteristic = uuid.UUID('fb349b5f-8000-0080-0010-000000000220')
 
-	def __init__(self, port):
+	def __init__(self, port, ):
 		self.io = serial.Serial(port=port, timeout=None, rtscts=True)
 		self.io.flushInput()
 
@@ -244,7 +249,7 @@ class BLED112Dongle:
 
 		return filtered_events
 
-	def connect(self, address, address_type=0, timeout=4.0):
+	def connect(self, address, timeout=4.0):
 		latency = 0
 		conn_interval_min = 6
 		conn_interval_max = 100
@@ -253,6 +258,14 @@ class BLED112Dongle:
 		if isinstance(address, basestring) and len(address) > 6:
 			address = address.replace(':', '')
 			address = str(bytearray.fromhex(address)[::-1])
+
+		#Allow simple determination of whether a device has a public or private address
+		#This is not foolproof
+		private_bits = ord(address[-1]) >> 6
+		if private_bits == 0b11:
+			address_type = 1
+		else:
+			address_type = 0
 
 		payload = struct.pack("<6sBHHHH", address, address_type, conn_interval_min, conn_interval_max, int(timeout*100.0), latency)
 		response = self._send_command(6, 3, payload)
@@ -263,7 +276,6 @@ class BLED112Dongle:
 			raise HardwareError("Could not start connection", error_code=result)
 
 		event = self._wait_for_event(0x03, 0, timeout)
-		
 		handle, flags, address, type, interval, timeout, latency, bonding = struct.unpack("<BB6sBHHHB", event.payload)
 
 		connection = {
@@ -402,6 +414,13 @@ class BLED112Dongle:
 
 		return att_type, bytearray(value)
 
+	def _process_notification(self, event):
+		length = len(event.payload) - 5
+		conn, att_handle, att_type, act_length, value = struct.unpack("<BHBB%ds" % length, event.payload)
+
+		assert act_length == length
+		return att_handle, bytearray(value)
+
 	def read_handle(self, conn, handle, timeout=5.0):
 		payload = struct.pack("<BH", conn['handle'], handle)
 		response = self._send_command(4, 4, payload)
@@ -416,16 +435,22 @@ class BLED112Dongle:
 
 		return self._process_read_data(end)
 
-	def write_handle(self, conn, handle, value, timeout=5.0):
+	def write_handle(self, conn, handle, value, timeout=5.0, wait_ack=True):
 		payload = struct.pack("<BHB%ds" % len(value), conn['handle'], handle, len(value), value)
-		response = self._send_command(4, 5, payload)
+
+		if wait_ack:
+			response = self._send_command(4, 5, payload)
+		else:
+			response = self._send_command(4, 6, payload)
+
 		handle, result = struct.unpack("<BH", response.payload)
 
 		if result != 0:
 			raise HardwareError("Could not enumerate handles", handle=handle, error_code=result)
 
-		events, end = self._accumulate_until(4, 1, timeout)
-		assert len(events) == 0
+		if wait_ack:
+			events, end = self._accumulate_until(4, 1, timeout)
+			assert len(events) == 0
 
 	def probe_device(self, conn, timeout=5.0):
 		services = self._enumerate_gatt_services(conn, "primary", timeout)
@@ -475,10 +500,52 @@ class BLED112Dongle:
 		if version not in ['v1', 'v2']:
 			raise ArgumentError("Unknown MLDP version", version=version, known_versions=['v1', 'v2'])
 
-		#if version == 'v1':
-		#	self.set_indication(conn, char, True)
-		#else:
-		#	self.set_notification(conn, char, True)
+	def send_tilebus_packet(self, conn, services, address, feature, cmd, payload, **kwargs):
+		header_char = services[BLED112Dongle.TileBusService]['characteristics'][BLED112Dongle.TileBusSendHeaderCharacteristic]
+		payload_char = services[BLED112Dongle.TileBusService]['characteristics'][BLED112Dongle.TileBusSendPayloadCharacteristic]
+
+		length = len(payload)
+
+		if len(payload) < 20:
+			payload += '\x00'*(20 - len(payload))
+
+		if len(payload) > 20:
+			raise ArgumentError("Payload is too long, must be at most 20 bytes", payload=payload, length=len(payload))
+
+		header = chr(length) + chr(0) + chr(cmd) + chr(feature) + chr(address)
+
+		if length > 0:
+			self.write_handle(conn, payload_char['handle'], str(payload), wait_ack=False)
+		
+		self.write_handle(conn, header_char['handle'], str(header), wait_ack=False)
+		
+		timeout = 3.0
+		if "timeout" in kwargs:
+			timeout = kwargs['timeout']
+
+		return self.receive_tilebus_response(conn, services, timeout)
+
+	def receive_tilebus_response(self, conn, services, timeout=3.0):
+		#Result of TileBus command is notified to us so wait for the notification
+		events, end = self._accumulate_until(4, 5, timeout)
+		assert len(events) == 0
+
+		handle, value = self._process_notification(end)
+
+		status = value[0]
+		length = value[3]
+
+		if length > 0:
+			payload_char = services[BLED112Dongle.TileBusService]['characteristics'][BLED112Dongle.TileBusReceivePayloadCharacteristic]
+			events, end = self._accumulate_until(4, 5, timeout)
+			assert len(events) == 0
+			handle, payload = self._process_notification(end)
+			assert handle == payload_char['handle']
+		else:
+			payload = '\x00'*20
+
+		complete_response = bytearray(value) + bytearray(payload) + bytearray('\x00') #Append a dummy checksum
+		return str(complete_response)
 
 	def send_mib_packet(self, conn, services, address, feature, cmd, payload, **kwargs):
 		char = services[BLED112Dongle.MLDPService]['characteristics'][BLED112Dongle.MLDPDataCharacteristic]

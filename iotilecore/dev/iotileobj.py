@@ -123,6 +123,35 @@ class IOTile:
 		libs = [os.path.join(self.folder, x) for x in libs]
 		return libs
 
+	def proxy_plugins(self):
+		"""
+		Return a list of the python proxy plugins that are provided by this tile
+		"""
+
+		libs = [x[0] for x in self.products.iteritems() if x[1] == 'proxy_plugin']
+
+		if self.filter_prods:
+			libs = [x for x in libs if x in self.desired_prods]
+
+		libs = [os.path.join(self.folder, x) for x in libs]
+		return libs
+
+
+	def tilebus_definitions(self):
+		"""
+		Return a list of all tilebus definitions that this IOTile could provide other tiles
+		"""
+
+		#Only return include directories if we're returning everything or we were asked for it 
+		if self.filter_prods and 'tilebus_definitions' not in self.desired_prods:
+			return []
+
+		if 'tilebus_definitions' in self.products:
+			joined_dirs = [os.path.join(self.folder, *x) for x in self.products['tilebus_definitions']]
+			return joined_dirs
+
+		return []
+
 	def library_directories(self):
 		libs = self.libraries()
 

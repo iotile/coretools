@@ -19,12 +19,20 @@ class BLED112Stream (CMDStream):
 		self.mac = mac
 		self.dongle = BLED112Dongle(self.port)
 		
-		self.conn = self.dongle.connect(self.mac)
+		self.conn = self.dongle.connect(self.mac, timeout=6.0)
+		self.boardopen = True
+
 		self.services = self.dongle.probe_device(self.conn)
 
-		self.dongle.start_mldp(self.conn, self.services, version="v1")
-
-		self.boardopen = True
+		#Check and see if we're using a new style btle protocol or the old mldp based one
+		if self.dongle.TileBusService in self.services:
+			self.protocol = "tilebus"
+			self.dongle.set_notification(self.conn, self.services[self.dongle.TileBusService]['characteristics'][self.dongle.TileBusReceiveHeaderCharacteristic], True)
+			self.dongle.set_notification(self.conn, self.services[self.dongle.TileBusService]['characteristics'][self.dongle.TileBusReceivePayloadCharacteristic], True)
+		else:
+			self.protocol = "mldp"
+			self.dongle.start_mldp(self.conn, self.services, version="v1")
+		
 		atexit.register(self.close)
 
 	def _send_rpc(self, address, feature, command, *args, **kwargs):
@@ -34,7 +42,11 @@ class BLED112Stream (CMDStream):
 		payload = payload[:rpc.spec]
 
 		try:
-			response = self.dongle.send_mib_packet(self.conn, self.services, address, feature, command, payload, **kwargs)
+			if self.protocol == "mldp":
+				response = self.dongle.send_mib_packet(self.conn, self.services, address, feature, command, payload, **kwargs)
+			else:
+				response = self.dongle.send_tilebus_packet(self.conn, self.services, address, feature, command, payload, **kwargs)
+			
 			status = ord(response[0])
 
 			#Only read the length of the packet if the has data bit is set

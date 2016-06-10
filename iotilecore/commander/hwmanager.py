@@ -101,7 +101,7 @@ class HardwareManager:
 		Find an attached MoMo controller board and attempt to connect to it.
 		"""
 
-		con = self._create_proxy('MIBController', 8) #Controllers always have address 8
+		con = self._create_proxy('NRF52832Controller', 8) #Controllers always have address 8
 		con.hwmanager = self
 		return con
 
