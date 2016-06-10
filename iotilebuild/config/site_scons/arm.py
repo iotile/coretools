@@ -45,10 +45,12 @@ def build_program(name, chip, patch=True):
 	dep_nodes = build_dependencies(dependencies, prog_env)
 	prog_env.Depends(prog_env['OUTPUT_PATH'], dep_nodes)
 
-	## Add in all include directories, library directories and libraries from dependencies
+	## Add in all include directories, library directories, tilebus definitions and libraries from dependencies
 	dep_incs = reduce(lambda x,y:x+y, [x.include_directories() for x in prog_env['DEPENDENCIES']], [])
 	lib_dirs = reduce(lambda x,y:x+y, [x.library_directories() for x in prog_env['DEPENDENCIES']], [])
 	libs = reduce(lambda x,y:x+y, [x.libraries() for x in prog_env['DEPENDENCIES']], [])
+	tilebus_defs = reduce(lambda x,y:x+y, [x.tilebus_definitions() for x in prog_env['DEPENDENCIES']], [])
+
 	prog_env['CPPPATH'] += dep_incs
 	prog_env['LIBPATH'] += lib_dirs
 	prog_env['LIBS'] += libs
@@ -84,7 +86,7 @@ def build_program(name, chip, patch=True):
 	Clean(os.path.join(dirs['build'], output_name), [os.path.join(dirs['build'], map_name)])
 
 	#Compile the CDB command definitions
-	compile_cdb(prog_env)
+	compile_cdb(tilebus_defs, prog_env)
 
 	#Compile an elf for the firmware image
 	objs = SConscript(os.path.join(dirs['build'], 'SConscript'), exports='prog_env')
@@ -213,7 +215,7 @@ def setup_environment(chip):
 
 	return env
 
-def compile_cdb(env, mibname=None, outdir=None):
+def compile_cdb(deps, env, mibname=None, outdir=None):
 	"""
 	Given a path to a *.cdb file, process it and generate c tables containing the information.
 	"""
@@ -232,15 +234,19 @@ def compile_cdb(env, mibname=None, outdir=None):
 
 	env['MIBFILE'] = '#' + cmdmap_c_path
 
-	return env.Command([cmdmap_c_path, cmdmap_h_path, config_c_path, config_h_path], mibname, action=env.Action(mib_compilation_action, "Compiling CDB commnds and config variables"))
+	tbfiles = deps + [mibname]
+
+	return env.Command([cmdmap_c_path, cmdmap_h_path, config_c_path, config_h_path], tbfiles, action=env.Action(mib_compilation_action, "Compiling CDB commnds and config variables"))
 
 def mib_compilation_action(target, source, env):
 	"""
 	Compile mib file into a .h/.c pair for compilation into an ARM object
 	"""
 
+	files = [str(x) for x in source]
+
 	try:
-		d = MIBDescriptor(str(source[0]))
+		d = MIBDescriptor(files)
 	except pyparsing.ParseException as e:
 		raise BuildError("Could not parse mib file", parsing_exception=e, )
 

@@ -68,7 +68,7 @@ class MIBDescriptor:
 	for that architecture.
 	"""
 
-	def __init__(self, filename, include_dirs=[]):
+	def __init__(self, source, include_dirs=[]):
 		self.variables = {}
 		self.commands = {}
 		self.interfaces = []
@@ -76,7 +76,12 @@ class MIBDescriptor:
 
 		self.include_dirs = include_dirs + [resource_filename(Requirement.parse("iotilebuild"), "iotilebuild/config")]
 
-		self._parse_file(filename)
+		if isinstance(source, basestring):
+			source = [source]
+
+		for filename in source:
+			self._parse_file(filename)
+		
 		self._validate_information()
 	def _parse_file(self, filename):
 		with open(filename, "r") as f:

@@ -257,7 +257,8 @@
 					"NRF52_PAN_64": 1,
 					"NRF52_PAN_62": 1,
 					"NRF52_PAN_63": 1,
-					"kModuleHardwareType": "kNRF52832HardwareType"
+					"kModuleHardwareType": "kNRF52832HardwareType",
+					"ENABLE_SWO": 1
 				}
 			}
 		}
