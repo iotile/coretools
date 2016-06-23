@@ -43,13 +43,38 @@ class BLED112Dongle:
 	TileBusSendPayloadCharacteristic = uuid.UUID('fb349b5f-8000-0080-0010-000000000420')
 	TileBusReceiveHeaderCharacteristic = uuid.UUID('fb349b5f-8000-0080-0010-000000000120')
 	TileBusReceivePayloadCharacteristic = uuid.UUID('fb349b5f-8000-0080-0010-000000000220')
+	TileBusStreamingCharacteristic = uuid.UUID('fb349b5f-8000-0080-0010-000000000520')
+
 
 	def __init__(self, port, ):
 		self.io = serial.Serial(port=port, timeout=None, rtscts=True)
 		self.io.flushInput()
 
-		self.stream = AsyncPacketBuffer(self.io, header_length=4, length_function=packet_length)
+		self.stream = AsyncPacketBuffer(self.io, header_length=4, length_function=packet_length, oob_function=self._check_process_streaming_data)
 		self.events = deque()
+		self.stream_enabled = False
+
+	def _get_streaming_queue(self):
+		"""
+		Get the queue that will contained any streamed readings that have been sent
+		"""
+
+		return self.stream.oob_queue
+
+	def _check_process_streaming_data(self, response_data):
+		packet = BGAPIPacket(is_event=(response_data[0] == 0x80), command_class=response_data[2], command=response_data[3], payload=response_data[4:])
+
+		if not self.stream_enabled:
+			return None
+
+		if packet.is_event and packet.command_class == 4 and packet.command == 5:
+			handle, value = self._process_notification(packet)
+			#FIXME: this hardcored value should instead be read once the device is probed so that it is correct 
+			#if the GATT server db ever changes
+			if handle == 21:
+				return value
+
+		return None
 
 	def _send_command(self, cmd_class, command, payload, timeout=3.0, force_length=None, print_packet=False):
 		"""

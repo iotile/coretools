@@ -59,6 +59,12 @@ class CMDStream:
 
 		return status, bytearray(payload)
 
+	def enable_streaming(self):
+		if not hasattr(self, '_enable_streaming'):
+			raise StreamOperationNotSupportedError(command="enable_streaming")
+
+		return self._enable_streaming()
+
 	def heartbeat(self):
 		if not hasattr(self, '_heartbeat'):
 			raise StreamOperationNotSupportedError(command="heartbeat")

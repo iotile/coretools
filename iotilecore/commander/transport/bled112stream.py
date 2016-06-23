@@ -68,6 +68,15 @@ class BLED112Stream (CMDStream):
 			else:
 				raise HardwareError("Timeout waiting for a response from the remote BTLE module", address=address, feature=feature, command=command)
 
+	def _enable_streaming(self):
+		if self.protocol == 'tilebus':
+			self.dongle.set_notification(self.conn, self.services[self.dongle.TileBusService]['characteristics'][self.dongle.TileBusStreamingCharacteristic], True)
+			self.dongle.stream_enabled = True
+
+			return self.dongle._get_streaming_queue()
+		else:
+			raise HardwareError("Transport protocol does not support streaming")
+
 	def _reset(self):
 		self.board.reboot()
 		self.board.connect(self.mac)

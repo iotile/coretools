@@ -79,7 +79,7 @@ class AsyncLineBuffer:
 		return self.queue.get()
 
 class AsyncPacketBuffer:
-	def __init__(self, file, header_length, length_function):
+	def __init__(self, file, header_length, length_function, oob_function=None):
 		"""
 		Given an underlying file like object, syncronously read from it 
 		in a separate thread and communicate the data back to the buffer
@@ -87,13 +87,14 @@ class AsyncPacketBuffer:
 		"""
 
 		self.queue = Queue()
+		self.oob_queue = Queue()
 		self.items = Condition()
-		self.thread = Thread(target=AsyncPacketBuffer.ReaderThread, args=(self.queue, file, self.items, header_length, length_function))
+		self.thread = Thread(target=AsyncPacketBuffer.ReaderThread, args=(self.queue, file, self.items, header_length, length_function, oob_function, self.oob_queue))
 		self.thread.daemon = True
 		self.thread.start()
 
 	@staticmethod
-	def ReaderThread(queue, file, items, header_length, length_function):
+	def ReaderThread(queue, file, items, header_length, length_function, oob_function, oob_queue):
 		while True:
 			header = bytearray(file.read(header_length))
 			if len(header) == 0:
@@ -103,6 +104,14 @@ class AsyncPacketBuffer:
 			remaining = bytearray(file.read(remaining_length))
 
 			packet = header + remaining
+
+			#Allow the user to pass a function that flags out of band data and
+			#does something special with it immediately
+			if oob_function is not None:
+				value = oob_function(packet)
+				if value is not None:
+					oob_queue.put(value)
+					continue
 
 			items.acquire()
 			queue.put(packet)

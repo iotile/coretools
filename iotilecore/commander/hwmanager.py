@@ -21,6 +21,7 @@ import inspect
 import os.path
 import imp
 import sys
+import atexit
 
 @context("HardwareManager")
 class HardwareManager:
@@ -55,6 +56,7 @@ class HardwareManager:
 			self.port = arg
 
 		self.stream = self._create_stream()
+		self._stream_queue = None
 		self.proxies = {}
 		self.name_map = {}
 
@@ -102,7 +104,8 @@ class HardwareManager:
 		"""
 
 		con = self._create_proxy('NRF52832Controller', 8) #Controllers always have address 8
-		con.hwmanager = self
+		con._hwmanager = self
+		
 		return con
 
 	@return_type("bool")
@@ -112,6 +115,21 @@ class HardwareManager:
 		"""
 
 		return self.stream.heartbeat()
+
+	@annotated
+	def enable_streaming(self):
+		"""
+		Enable streaming of sensor graph data over this interface
+		"""
+
+		self._stream_queue = self.stream.enable_streaming()
+
+	@return_type("integer")
+	def count_readings(self):
+		if self._stream_queue is None:
+			return 0
+
+		return self._stream_queue.qsize()
 
 	@annotated
 	def reset(self):
