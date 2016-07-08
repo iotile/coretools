@@ -16,6 +16,7 @@ import time
 import struct
 import itertools
 import uuid
+from iotilecore.utilities.packed import unpack
 
 def packet_length(header):
 	"""
@@ -223,7 +224,7 @@ class BLED112Dongle:
 		if length < 0:
 			raise HardwareError("Invalid scan response packet length", length=len(payload), min_length=10)
 
-		rssi, packet_type, sender, addr_type, bond, data = struct.unpack("<bB6sBB%ds" % length, payload)
+		rssi, packet_type, sender, addr_type, bond, data = unpack("<bB6sBB%ds" % length, payload)
 
 		parsed ={}
 		parsed['rssi'] = rssi
@@ -295,13 +296,19 @@ class BLED112Dongle:
 		payload = struct.pack("<6sBHHHH", address, address_type, conn_interval_min, conn_interval_max, int(timeout*100.0), latency)
 		response = self._send_command(6, 3, payload)
 
-		result, handle = struct.unpack("<HB", response.payload)
+		try:
+			result, handle = unpack("<HB", response.payload)
+		except:
+			print type(response.payload)
+			print response.payload
+			print len(response.payload)
+			raise
 
 		if result != 0:
 			raise HardwareError("Could not start connection", error_code=result)
 
 		event = self._wait_for_event(0x03, 0, timeout)
-		handle, flags, address, type, interval, timeout, latency, bonding = struct.unpack("<BB6sBHHHB", event.payload)
+		handle, flags, address, typevar, interval, timeout, latency, bonding = unpack("<BB6sBHHHB", event.payload)
 
 		connection = {
 		"handle": handle,
@@ -319,7 +326,7 @@ class BLED112Dongle:
 		payload = struct.pack('<B', connection['handle'])
 		response = self._send_command(3, 0, payload)
 
-		handle, result = struct.unpack("<BH", response.payload)
+		handle, result = unpack("<BH", response.payload)
 
 		if result != 0:
 			raise HardwareError("Could not disconnect connection handle", handle=handle, error_code=result)
@@ -339,7 +346,7 @@ class BLED112Dongle:
 		payload = struct.pack('<BHHBH', connection['handle'], 1, 0xFFFF, 2, code)
 		response = self._send_command(4, 1, payload)
 
-		handle, result = struct.unpack("<BH", response.payload)
+		handle, result = unpack("<BH", response.payload)
 
 		if result != 0:
 			raise HardwareError("Could not enumerate gatt", handle=handle, error_code=result)
@@ -360,7 +367,7 @@ class BLED112Dongle:
 		payload = struct.pack("<BHH", connection['handle'], start_handle, end_handle)
 		response = self._send_command(4, 3, payload)
 
-		handle, result = struct.unpack("<BH", response.payload)
+		handle, result = unpack("<BH", response.payload)
 
 		if result != 0:
 			raise HardwareError("Could not enumerate handles", handle=handle, error_code=result)
@@ -375,7 +382,7 @@ class BLED112Dongle:
 
 	def _process_attribute(self, attributes, event):
 		length = len(event.payload) - 3
-		handle, chrhandle, uuid = struct.unpack("<BH%ds" % length, event.payload)
+		handle, chrhandle, uuid = unpack("<BH%ds" % length, event.payload)
 		uuid = self._process_uuid(uuid)
 		
 		attributes[chrhandle] = {'uuid': uuid}
@@ -401,7 +408,7 @@ class BLED112Dongle:
 	def _process_gatt_service(self, services, event):
 		length = len(event.payload) - 5
 
-		handle, start, end, uuid = struct.unpack('<BHH%ds' % length, event.payload)
+		handle, start, end, uuid = unpack('<BHH%ds' % length, event.payload)
 
 		uuid = self._process_uuid(uuid)
 		services[uuid] = {'uuid_raw': uuid, 'start_handle': start, 'end_handle': end}
@@ -416,7 +423,7 @@ class BLED112Dongle:
 		else:
 			raise ArgumentError("Value has improper length for ble characteristic definition", value_length=length, expected=[5, 19])
 
-		propval, handle, uuid = struct.unpack("<BH%ds" % uuid_len, value)
+		propval, handle, uuid = unpack("<BH%ds" % uuid_len, value)
 
 
 		#Process the properties
@@ -433,7 +440,7 @@ class BLED112Dongle:
 
 	def _process_read_data(self, event):
 		length = len(event.payload) - 5
-		conn, att_handle, att_type, act_length, value = struct.unpack("<BHBB%ds" % length, event.payload)
+		conn, att_handle, att_type, act_length, value = unpack("<BHBB%ds" % length, event.payload)
 
 		assert act_length == length
 
@@ -441,7 +448,7 @@ class BLED112Dongle:
 
 	def _process_notification(self, event):
 		length = len(event.payload) - 5
-		conn, att_handle, att_type, act_length, value = struct.unpack("<BHBB%ds" % length, event.payload)
+		conn, att_handle, att_type, act_length, value = unpack("<BHBB%ds" % length, event.payload)
 
 		assert act_length == length
 		return att_handle, bytearray(value)
@@ -450,7 +457,7 @@ class BLED112Dongle:
 		payload = struct.pack("<BH", conn['handle'], handle)
 		response = self._send_command(4, 4, payload)
 
-		handle, result = struct.unpack("<BH", response.payload)
+		handle, result = unpack("<BH", response.payload)
 
 		if result != 0:
 			raise HardwareError("Could not enumerate handles", handle=handle, error_code=result)
@@ -468,7 +475,7 @@ class BLED112Dongle:
 		else:
 			response = self._send_command(4, 6, payload)
 
-		handle, result = struct.unpack("<BH", response.payload)
+		handle, result = unpack("<BH", response.payload)
 
 		if result != 0:
 			raise HardwareError("Could not enumerate handles", handle=handle, error_code=result)
@@ -499,7 +506,7 @@ class BLED112Dongle:
 
 					att_type, value = self.read_handle(conn, handle, timeout)
 					assert len(value) == 2
-					value, = struct.unpack("<H", value)
+					value, = unpack("<H", value)
 
 					last_char['client_configuration'] = {'handle': handle, 'value': value}
 
