@@ -179,7 +179,7 @@ class HardwareManager:
 			sleep(1.0)
 			if connflag[0] == True:
 				reading = self._stream_queue.get()
-				
+
 				fmt, unused, stream, uid, time_sent, time_taken, value = unpack("<BBHLLLL", reading)
 				print "Reading: %d @ %d" % (value, time_taken)
 				payload = {
