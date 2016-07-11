@@ -22,6 +22,8 @@ import os.path
 import imp
 import sys
 import atexit
+from iotilecore.utilities.packed import unpack
+from datetime import datetime
 
 @context("HardwareManager")
 class HardwareManager:
@@ -131,16 +133,19 @@ class HardwareManager:
 		import paho.mqtt.client as paho
 		from time import sleep
 
-		connflag = False 
+		#To allow the closure to access this variable in python 2
+		connflag = [False] 
 		def on_connect(client, userdata, flags, rc):
-			connflag = True
-			print "Connection returned result: " + str(rc)
+			connflag[0] = True
+			#print "Connection returned result: " + str(rc)
 
 		def on_message(client, userdata, msg):
-			print msg.topic+" "+str(msg.payload)
+			pass
+			#print msg.topic+" "+str(msg.payload)
 
 		def on_log(client, userdata, level, buf):
-			print str(level)+" "+str(buf)
+			pass
+			#print str(level)+" "+str(buf)
 
 		mqttc = paho.Client()
 		mqttc.on_connect = on_connect
@@ -172,9 +177,18 @@ class HardwareManager:
 
 		while True:
 			sleep(1.0)
-        	if connflag == True:
+			if connflag[0] == True:
 				reading = self._stream_queue.get()
-				print "got a reading"
+				
+				fmt, unused, stream, uid, time_sent, time_taken, value = unpack("<BBHLLLL", reading)
+				print "Reading: %d @ %d" % (value, time_taken)
+				payload = {
+                'streamid': '0000-AAAAAAAA-0005',
+                'timestamp': datetime.utcnow().isoformat(),
+                'value': value
+                }
+
+				mqttc.publish("int-stream", json.dumps(payload), qos=1)
 
 	@return_type("integer")
 	def count_readings(self):
