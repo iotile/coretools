@@ -124,6 +124,58 @@ class HardwareManager:
 
 		self._stream_queue = self.stream.enable_streaming()
 
+	@param("device", "string", desc="device id in format: XXXX-YYYYYYYY")
+	def demo_gateway(self, device):
+		import json
+		import ssl
+		import paho.mqtt.client as paho
+		from time import sleep
+
+		connflag = False 
+		def on_connect(client, userdata, flags, rc):
+			connflag = True
+			print "Connection returned result: " + str(rc)
+
+		def on_message(client, userdata, msg):
+			print msg.topic+" "+str(msg.payload)
+
+		def on_log(client, userdata, level, buf):
+			print str(level)+" "+str(buf)
+
+		mqttc = paho.Client()
+		mqttc.on_connect = on_connect
+		mqttc.on_log = on_log
+		mqttc.on_message = on_message
+
+		awshost = "AYHM07ZF32OUN.iot.us-east-1.amazonaws.com"
+		awsport = 8883
+		clientId = "device1"
+		thingName = "device1"
+		caPath = "./certs/root-CA.crt"
+		certPath = "./certs/%s-certificate.pem.crt" % device
+		keyPath = "./certs/%s-private.pem.key" % device
+
+		print "Starting Gateway"
+
+		mqttc.tls_set(caPath,
+		              certfile=certPath,
+		              keyfile=keyPath,
+		              cert_reqs=ssl.CERT_REQUIRED,
+		              tls_version=ssl.PROTOCOL_TLSv1_2,
+		              ciphers=None)
+
+		mqttc.connect(awshost, awsport, keepalive=60)
+		mqttc.loop_start()
+
+		print "Enabling Streaming"
+		self.enable_streaming()
+
+		while True:
+			sleep(1.0)
+        	if connflag == True:
+				reading = self._stream_queue.get()
+				print "got a reading"
+
 	@return_type("integer")
 	def count_readings(self):
 		if self._stream_queue is None:
