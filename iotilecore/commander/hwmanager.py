@@ -21,7 +21,6 @@ import inspect
 import os.path
 import imp
 import sys
-import atexit
 from iotilecore.utilities.packed import unpack
 from datetime import datetime
 
