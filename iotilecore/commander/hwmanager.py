@@ -136,7 +136,7 @@ class HardwareManager:
 		connflag = [False] 
 		def on_connect(client, userdata, flags, rc):
 			connflag[0] = True
-			#print "Connection returned result: " + str(rc)
+			print "Connection returned result: " + str(rc)
 
 		def on_message(client, userdata, msg):
 			pass
