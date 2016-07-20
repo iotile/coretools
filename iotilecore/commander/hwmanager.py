@@ -58,7 +58,7 @@ class HardwareManager:
 
 		self.stream = self._create_stream()
 		self._stream_queue = None
-		self.proxies = {}
+		self.proxies = {'MIBProxyObject': MIBProxyObject}
 		self.name_map = {}
 
 		self._setup_proxies()
@@ -104,7 +104,16 @@ class HardwareManager:
 		Find an attached MoMo controller board and attempt to connect to it.
 		"""
 
-		con = self._create_proxy('NRF52832Controller', 8) #Controllers always have address 8
+		con = self._create_proxy('MIBProxyObject', 8) #Controllers always have address 8
+		name = con.tile_name()
+
+		# Check for none
+		# Now create the appropriate proxy object based on the name of the tile 
+		con_type = self.get_proxy(name)
+		if con_type is None:
+			raise HardwareError("Could not find controller proxy object for connected controller device", name=name)
+		
+		con = con_type(self.stream, 8)		
 		con._hwmanager = self
 		
 		return con
@@ -159,7 +168,7 @@ class HardwareManager:
 		certPath = "./certs/%s-certificate.pem.crt" % device
 		keyPath = "./certs/%s-private.pem.key" % device
 
-		print "Starting Gateway"
+		#print "Starting Gateway"
 
 		mqttc.tls_set(caPath,
 		              certfile=certPath,
@@ -168,26 +177,28 @@ class HardwareManager:
 		              tls_version=ssl.PROTOCOL_TLSv1_2,
 		              ciphers=None)
 
-		mqttc.connect(awshost, awsport, keepalive=60)
-		mqttc.loop_start()
+		#mqttc.connect(awshost, awsport, keepalive=60)
+		#mqttc.loop_start()
 
 		print "Enabling Streaming"
 		self.enable_streaming()
 
 		while True:
 			sleep(1.0)
+			
+			connflag[0] = True
 			if connflag[0] == True:
 				reading = self._stream_queue.get()
 
 				fmt, unused, stream, uid, time_sent, time_taken, value = unpack("<BBHLLLL", reading)
 				print "Reading: %d @ %d" % (value, time_taken)
-				payload = {
-                'streamid': '0000-AAAAAAAA-0005',
-                'timestamp': datetime.utcnow().isoformat(),
-                'value': value
-                }
+				#payload = {
+                #'streamid': '0000-AAAAAAAA-0005',
+                #'timestamp': datetime.utcnow().isoformat(),
+                #'value': value
+                #}
 
-				mqttc.publish("int-stream", json.dumps(payload), qos=1)
+				#mqttc.publish("int-stream", json.dumps(payload), qos=1)
 
 	@return_type("integer")
 	def count_readings(self):

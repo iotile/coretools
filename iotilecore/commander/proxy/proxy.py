@@ -10,7 +10,9 @@
 
 from iotilecore.commander.commands import RPCCommand
 from iotilecore.commander.exceptions import *
+from iotilecore.utilities.typedargs import return_type
 from time import sleep
+from iotilecore.utilities.packed import unpack
 
 class MIBProxyObject (object):
 	def __init__(self, stream, address):
@@ -27,13 +29,21 @@ class MIBProxyObject (object):
 
 		status, payload = self.stream.send_rpc(self.addr, feature, cmd, *args, **kw)
 
+		unpack_flag = False
 		if "result_type" in kw:
 			res_type = kw['result_type']
+		elif "result_format" in kw:
+			unpack_flag = True
+			res_type = (0, True)
 		else:
 			res_type = (0, False)
 
 		try:
-			return self._parse_rpc_result(status, payload, *res_type)
+			res = self._parse_rpc_result(status, payload, *res_type)
+			if unpack_flag:
+				return unpack("<%s" % kw["result_format"], res['buffer'])
+
+			return res
 		except ModuleBusyError:
 			pass
 
@@ -46,6 +56,35 @@ class MIBProxyObject (object):
 
 			sleep(0.1)
 			return self.rpc(feature, cmd, *args, **kw)
+
+	def status(self):
+		"""
+		Query the status of an IOTile including its name and version
+		"""
+
+		hw_type, name, major, minor, patch, status = self.rpc(0x00, 0x04, result_format="H6sBBBB")
+
+		status = {
+			'hw_type': hw_type,
+			'name': name,
+			'version': (major, minor, patch),
+			'status': status
+		}
+
+		return status
+
+	@return_type("string")
+	def tile_name(self):
+		stat = self.status()
+
+		return stat['name']
+
+	@return_type("list(integer)")
+	def tile_version(self):
+		stat = self.status()
+
+		return stat['version']
+
 
 	def _parse_rpc_result(self, status, payload, num_ints, buff):
 		"""
