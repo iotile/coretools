@@ -30,8 +30,9 @@ class BLED112Stream (CMDStream):
 		if self.connected:
 			raise HardwareError("Cannot connect to device when we are already connected")
 
+		self.conn = self.dongle.connect(mac, timeout=6.0)			
+
 		self.mac = mac
-		self.conn = self.dongle.connect(self.mac, timeout=6.0)
 		self.connected = True
 
 		self.services = self.dongle.probe_device(self.conn)
@@ -94,12 +95,6 @@ class BLED112Stream (CMDStream):
 			return self.dongle._get_streaming_queue()
 		else:
 			raise HardwareError("Transport protocol does not support streaming")
-
-	def _reset(self):
-		self.board.reboot()
-
-		if self.mac is not None:
-			self.board.connect(self.mac)
 
 	def close(self):
 		if self.boardopen:

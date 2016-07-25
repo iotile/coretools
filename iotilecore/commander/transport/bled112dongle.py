@@ -285,6 +285,8 @@ class BLED112Dongle:
 		conn_interval_min = 6
 		conn_interval_max = 100
 
+		orig_address = address
+
 		#Allow passing either a binary address or a hex string
 		if isinstance(address, basestring) and len(address) > 6:
 			address = address.replace(':', '')
@@ -312,8 +314,13 @@ class BLED112Dongle:
 		if result != 0:
 			raise HardwareError("Could not start connection", error_code=result)
 
-		event = self._wait_for_event(0x03, 0, timeout)
-		handle, flags, address, typevar, interval, timeout, latency, bonding = unpack("<BB6sBHHHB", event.payload)
+		try:
+			event = self._wait_for_event(0x03, 0, timeout)
+			handle, flags, address, typevar, interval, timeout, latency, bonding = unpack("<BB6sBHHHB", event.payload)
+		except TimeoutError as e:
+			#Stop the connection attempt
+			response = self._send_command(6, 4, [])
+			raise HardwareError("Could not connect to device with given MAC address", address=orig_address)
 
 		connection = {
 		"handle": handle,
