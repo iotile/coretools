@@ -232,7 +232,12 @@ class BLED112Dongle:
 		parsed['address_raw'] = sender
 		parsed['address'] = ':'.join([format(ord(x), "02X") for x in sender[::-1]])
 		parsed['address_type'] = addr_type 
-		parsed['scan_data'] = data
+		
+		#Scan data is prepended with a length
+		if len(data)  > 0:
+			parsed['scan_data'] = bytearray(data[1:])
+		else:
+			parsed['scan_data'] = bytearray([])
 
 		return parsed
 

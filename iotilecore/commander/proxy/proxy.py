@@ -79,7 +79,7 @@ class MIBProxyObject (object):
 
 		return stat['name']
 
-	@return_type("list(integer)")
+	@return_type("list(integer)", formatter="compact")
 	def tile_version(self):
 		stat = self.status()
 

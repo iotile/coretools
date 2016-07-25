@@ -36,3 +36,11 @@ class list(object):
 			lines.append(line)
 
 		return "\n".join(lines)
+
+	def format_compact(self, value, **kwargs):
+		lines = []
+		for x in value:
+			line = self.type_system.format_value(x, self.valuetype, **kwargs)
+			lines.append(line)
+
+		return "[" + ", ".join(lines) + "]"

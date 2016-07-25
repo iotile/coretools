@@ -11,16 +11,28 @@ from iotilecore.commander.transport.cmdstream import CMDStream
 from iotilecore.commander.commands import RPCCommand
 from iotilecore.exceptions import *
 from iotilecore.commander.exceptions import *
+from iotilecore.utilities.packed import unpack
 import atexit 
+import uuid
 
 class BLED112Stream (CMDStream):
-	def __init__(self, port, mac):
+	def __init__(self, port, mac=None):
 		self.port = port
 		self.mac = mac
+		self.connected = False
 		self.dongle = BLED112Dongle(self.port)
-		
-		self.conn = self.dongle.connect(self.mac, timeout=6.0)
 		self.boardopen = True
+		
+		if mac is not None:
+			self.connect_mac(mac)
+
+	def connect_mac(self, mac):
+		if self.connected:
+			raise HardwareError("Cannot connect to device when we are already connected")
+
+		self.mac = mac
+		self.conn = self.dongle.connect(self.mac, timeout=6.0)
+		self.connected = True
 
 		self.services = self.dongle.probe_device(self.conn)
 
@@ -36,6 +48,9 @@ class BLED112Stream (CMDStream):
 		atexit.register(self.close)
 
 	def _send_rpc(self, address, feature, command, *args, **kwargs):
+		if not self.connected:
+			raise HardwareError("Cannot send an RPC until we are connected to a device")
+
 		rpc = RPCCommand(address, feature, command, *args)
 
 		payload = rpc._format_args()
@@ -69,6 +84,9 @@ class BLED112Stream (CMDStream):
 				raise HardwareError("Timeout waiting for a response from the remote BTLE module", address=address, feature=feature, command=command)
 
 	def _enable_streaming(self):
+		if not self.connected:
+			raise HardwareError("Cannot enable streaming until we are connected to a device")
+
 		if self.protocol == 'tilebus':
 			self.dongle.set_notification(self.conn, self.services[self.dongle.TileBusService]['characteristics'][self.dongle.TileBusStreamingCharacteristic], True)
 			self.dongle.stream_enabled = True
@@ -79,10 +97,42 @@ class BLED112Stream (CMDStream):
 
 	def _reset(self):
 		self.board.reboot()
-		self.board.connect(self.mac)
+
+		if self.mac is not None:
+			self.board.connect(self.mac)
 
 	def close(self):
 		if self.boardopen:
 			self.dongle.disconnect(self.conn)
 			self.dongle.io.close()
 			self.boardopen = False
+
+	def _scan(self):
+		found_devs = self.dongle.scan()
+
+		iotile_devs = {}
+
+		#filter devices based on which ones have the iotile service characteristic
+		for dev in found_devs:
+			scan_data = dev['scan_data']
+
+			if len(scan_data) < 29:
+				continue
+
+			#Make sure the scan data comes back with an incomplete UUID list
+			if scan_data[0] != 17 or scan_data[1] != 6:
+				continue
+
+			uuid_buf = scan_data[2:18]
+			assert(len(uuid_buf) == 16)
+			service = uuid.UUID(bytes_le=str(uuid_buf))
+
+			if service == self.dongle.TileBusService:
+				#Now parse out the manufacturer specific data
+				manu_data = scan_data[18:]
+				assert (len(manu_data) == 11)
+
+				length, datatype, manu_id, device_uuid, voltage, flags = unpack("<BBHLHB", manu_data)
+				iotile_devs[device_uuid] = dev['address'] 
+
+		return iotile_devs

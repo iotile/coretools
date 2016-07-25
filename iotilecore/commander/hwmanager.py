@@ -134,72 +134,6 @@ class HardwareManager:
 
 		self._stream_queue = self.stream.enable_streaming()
 
-	@param("device", "string", desc="device id in format: XXXX-YYYYYYYY")
-	def demo_gateway(self, device):
-		import json
-		import ssl
-		import paho.mqtt.client as paho
-		from time import sleep
-
-		#To allow the closure to access this variable in python 2
-		connflag = [False] 
-		def on_connect(client, userdata, flags, rc):
-			connflag[0] = True
-			print "Connection returned result: " + str(rc)
-
-		def on_message(client, userdata, msg):
-			pass
-			#print msg.topic+" "+str(msg.payload)
-
-		def on_log(client, userdata, level, buf):
-			pass
-			#print str(level)+" "+str(buf)
-
-		mqttc = paho.Client()
-		mqttc.on_connect = on_connect
-		mqttc.on_log = on_log
-		mqttc.on_message = on_message
-
-		awshost = "AYHM07ZF32OUN.iot.us-east-1.amazonaws.com"
-		awsport = 8883
-		clientId = "device1"
-		thingName = "device1"
-		caPath = "./certs/root-CA.crt"
-		certPath = "./certs/%s-certificate.pem.crt" % device
-		keyPath = "./certs/%s-private.pem.key" % device
-
-		#print "Starting Gateway"
-
-		mqttc.tls_set(caPath,
-		              certfile=certPath,
-		              keyfile=keyPath,
-		              cert_reqs=ssl.CERT_REQUIRED,
-		              tls_version=ssl.PROTOCOL_TLSv1_2,
-		              ciphers=None)
-
-		#mqttc.connect(awshost, awsport, keepalive=60)
-		#mqttc.loop_start()
-
-		print "Enabling Streaming"
-		self.enable_streaming()
-
-		while True:
-			sleep(1.0)
-			
-			connflag[0] = True
-			if connflag[0] == True:
-				reading = self._stream_queue.get()
-
-				fmt, unused, stream, uid, time_sent, time_taken, value = unpack("<BBHLLLL", reading)
-				print "Reading: %d @ %d" % (value, time_taken)
-				#payload = {
-                #'streamid': '0000-AAAAAAAA-0005',
-                #'timestamp': datetime.utcnow().isoformat(),
-                #'value': value
-                #}
-
-				#mqttc.publish("int-stream", json.dumps(payload), qos=1)
-
 	@return_type("integer")
 	def count_readings(self):
 		if self._stream_queue is None:
@@ -218,22 +152,6 @@ class HardwareManager:
 	@finalizer
 	def close(self):
 		self.stream.close()
-
-	@param("asserted", "bool", desc="Whether alarm should be asserted or released")
-	def set_alarm(self, asserted):
-		"""
-		Assert or release the alarm line
-		"""
-
-		self.stream.set_alarm(asserted)
-
-	@return_type("bool")
-	def check_alarm(self):
-		"""
-		Check whether the alarm line is asserted
-		"""
-
-		return self.stream.check_alarm()
 
 	@param("path", "path", "readable", desc="path to module to load")
 	@return_type("integer")
@@ -283,6 +201,14 @@ class HardwareManager:
 			num_added += 1
 
 		return num_added
+
+	@return_type("map(integer, string)")
+	def scan(self):
+		"""
+		Scan for available devices and return a list of UUIDs and their associated connection strings
+		"""
+
+		return self.stream.scan()
 
 	def _get_serial_ports(self):
 		return list_ports.comports()
@@ -340,11 +266,14 @@ class HardwareManager:
 			mac = mac.strip()
 			return RN4020DevStream(port, mac)
 		elif self.transport == 'bled112':
-			port, mac = self.port.split(',')
+			if "," not in self.port:
+				port = self.port
+				mac = None
+			else:
+				port, mac = self.port.split(',')
+				mac = mac.strip()
 
 			port = port.strip()
-			mac = mac.strip()
-
 			return BLED112Stream(port, mac)
 		elif self.transport == 'null':
 			return FSUStream(None)
