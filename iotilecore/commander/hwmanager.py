@@ -202,13 +202,18 @@ class HardwareManager:
 
 		return num_added
 
-	@return_type("map(integer, string)")
+	@annotated
 	def scan(self):
 		"""
-		Scan for available devices and return a list of UUIDs and their associated connection strings
+		Scan for available devices and print a dictionary of information about them
 		"""
 
-		return self.stream.scan()
+		devices = self.stream.scan()
+		
+		for dev in devices:
+			print dev
+
+		#FIXME: Support returning information about devices by having a custom type for printing the dictionary
 
 	def _get_serial_ports(self):
 		return list_ports.comports()

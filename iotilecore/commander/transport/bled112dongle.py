@@ -253,7 +253,7 @@ class BLED112Dongle:
 		# 1: generic and limited discoverable devices
 		# 2: all devices regardless of discoverability
 
-		self._set_scan_parameters(active=False)
+		self._set_scan_parameters(active=True)
 
 		response = self._send_command(6, 2, [2])
 		if response.payload[0] != 0:
@@ -268,15 +268,16 @@ class BLED112Dongle:
 			raise HardwareError("Could not stop scanning for ble devices", error_code=response.payload[0], response=response)
 
 		#Remove duplicate entries
-		addrs = set()
+		seen = set()
 
 		filtered_events = []
 		for x in scan_events:
-			if x['address'] in addrs:
+			packet_id = (x['address'], x['type'])
+			if packet_id in seen:
 				continue
 
 			filtered_events.append(x)
-			addrs.add(x['address'])
+			seen.add(packet_id)
 
 		return filtered_events
 

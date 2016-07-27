@@ -109,25 +109,45 @@ class BLED112Stream (CMDStream):
 
 		#filter devices based on which ones have the iotile service characteristic
 		for dev in found_devs:
-			scan_data = dev['scan_data']
+			#If this is an advertisement response, see if its an IOTile device
+			if dev['type'] == 0:
+				scan_data = dev['scan_data']
 
-			if len(scan_data) < 29:
-				continue
+				if len(scan_data) < 29:
+					continue
 
-			#Make sure the scan data comes back with an incomplete UUID list
-			if scan_data[0] != 17 or scan_data[1] != 6:
-				continue
+				#Skip BLE flags
+				scan_data = scan_data[3:]
 
-			uuid_buf = scan_data[2:18]
-			assert(len(uuid_buf) == 16)
-			service = uuid.UUID(bytes_le=str(uuid_buf))
+				#Make sure the scan data comes back with an incomplete UUID list
+				if scan_data[0] != 17 or scan_data[1] != 6:
+					continue
 
-			if service == self.dongle.TileBusService:
-				#Now parse out the manufacturer specific data
-				manu_data = scan_data[18:]
-				assert (len(manu_data) == 11)
+				uuid_buf = scan_data[2:18]
+				assert(len(uuid_buf) == 16)
+				service = uuid.UUID(bytes_le=str(uuid_buf))
 
-				length, datatype, manu_id, device_uuid, voltage, flags = unpack("<BBHLHB", manu_data)
-				iotile_devs[device_uuid] = dev['address'] 
+				if service == self.dongle.TileBusService:
+					#Now parse out the manufacturer specific data
+					manu_data = scan_data[18:]
+					assert (len(manu_data) == 10)
 
-		return iotile_devs
+					length, datatype, manu_id, device_uuid, flags = unpack("<BBHLH", manu_data)
+					iotile_devs[dev['address']] = {'connection_string': dev['address'], 'uuid': device_uuid}
+			elif dev['type'] == 4 and dev['address'] in iotile_devs:
+				#Check if this is a scan response packet from an iotile based device
+				scan_data = dev['scan_data']
+
+				if len(scan_data) != 31:
+					continue
+
+				length, datatype, manu_id, voltage, stream, reading, reading_time, curr_time = unpack("<BBHHHLLL11x", scan_data)
+				
+				info = iotile_devs[dev['address']]
+				info['voltage'] = voltage / 256.0
+				info['current_time'] = curr_time
+
+				if stream != 0xFFFF:
+					info['visible_readings'] = [(stream, reading_time, reading),]
+
+		return iotile_devs.values()
