@@ -17,7 +17,7 @@ from iotilecore.exceptions import *
 import block
 import shutil
 from pkg_resources import resource_filename, Requirement
-from iotilecore.utilities.template import RecursiveTemplate
+from iotilebuild.utilities.template import RecursiveTemplate
 import struct
 
 #DSL for mib definitions

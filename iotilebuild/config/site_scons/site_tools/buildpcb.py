@@ -12,11 +12,6 @@ from iotilecore.pcb.production import ProductionFileGenerator
 from iotilecore.exceptions import BuildError
 
 def build_pcb(target, source, env):
-	"""
-	Given two source files, the first being the mib12_executive and the second
-	being an application hex, merge the two into a complete application hex
-	"""
-
 	board = CircuitBoard(str(source[0]))
 
 	errors = board.get_errors()

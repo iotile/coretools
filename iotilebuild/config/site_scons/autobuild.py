@@ -20,6 +20,7 @@ import os.path
 import os
 import sys
 import arm
+import platform
 
 from iotilecore.exceptions import *
 import iotilecore
@@ -43,6 +44,13 @@ def autobuild_arm_program(module, family, test_dir=os.path.join('firmware', 'tes
 		Alias('release', os.path.join('build', 'output'))
 		Alias('test', os.path.join('build', 'test', 'output'))
 		Default('release')
+
+		if os.path.exists(os.path.join('doc', 'doxygen.txt')):
+			autobuild_doxygen(module)
+
+		if os.path.exists('doc'):
+			autobuild_documentation(module)
+
 	except IOTileException as e:
 		print e.format()
 		sys.exit(1)
@@ -111,3 +119,46 @@ def autobuild_pcb(module, boardfile):
 	Alias('pcb', pcbpath)
 
 	env.build_pcb(os.path.join(pcbpath, '%s.timestamp' % boardfile), boardpath)
+
+def autobuild_doxygen(module):
+	"""
+	Generate documentation for firmware in this module using doxygen
+	"""
+
+	doxyfile = os.path.join('#doc', 'doxygen.txt')
+	doxydir = os.path.join('build', 'doc')
+	outfile = os.path.join(doxydir, '%s.timestamp' % module)
+	env = Environment()
+
+	#There is no /dev/null on Windows
+	if platform.system() == 'Windows':
+		action = 'doxygen %s > NUL' % doxyfile[1:]
+	else:
+		action = 'doxygen %s > /dev/null' % doxyfile[1:]
+
+	Alias('doxygen', doxydir)
+	env.Clean(outfile, doxydir)
+	env.Command(outfile, doxyfile, action=env.Action(action, "Building Firmware Documentation"))
+
+def autobuild_documentation(module):
+	"""
+	Generate documentation for this module using a combination of sphinx and breathe
+	"""
+
+	docdir = os.path.join('#doc')
+	docfile = os.path.join(docdir, 'conf.py')
+	outdir = os.path.join('build', 'output', 'doc')
+	outfile = os.path.join(outdir, '%s.timestamp' % module)
+
+	env = Environment()
+
+	#There is no /dev/null on Windows
+	if platform.system() == 'Windows':
+		action = 'sphinx-build -b html %s %s > NUL' % (docdir[1:], outdir)
+	else:
+		action = 'sphinx-build -b html %s %s > /dev/null' % (docdir[1:], outdir)
+
+	env.Command(outfile, docfile, action=env.Action(action, "Building Component Documentation"))
+	Alias('documentation', outdir)
+	env.Depends(outfile, 'doxygen')
+	env.Clean(outfile, outdir)
