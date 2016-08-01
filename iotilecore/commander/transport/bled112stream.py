@@ -89,8 +89,11 @@ class BLED112Stream (CMDStream):
 			raise HardwareError("Cannot enable streaming until we are connected to a device")
 
 		if self.protocol == 'tilebus':
-			self.dongle.set_notification(self.conn, self.services[self.dongle.TileBusService]['characteristics'][self.dongle.TileBusStreamingCharacteristic], True)
+			#NB we must set stream_enabled before enabling notification
+			#or there will be a race if the device starts streaming data
+			#to us immediately
 			self.dongle.stream_enabled = True
+			self.dongle.set_notification(self.conn, self.services[self.dongle.TileBusService]['characteristics'][self.dongle.TileBusStreamingCharacteristic], True)
 
 			return self.dongle._get_streaming_queue()
 		else:
@@ -132,8 +135,18 @@ class BLED112Stream (CMDStream):
 					manu_data = scan_data[18:]
 					assert (len(manu_data) == 10)
 
+					
+					#FIXME: Move flag parsing code flag definitions somewhere else
 					length, datatype, manu_id, device_uuid, flags = unpack("<BBHLH", manu_data)
-					iotile_devs[dev['address']] = {'connection_string': dev['address'], 'uuid': device_uuid}
+					
+					pending = False
+					low_voltage = False
+					if flags & (1 << 0):
+						pending = True
+					if flags & (1 << 1):
+						low_voltage = True
+
+					iotile_devs[dev['address']] = {'connection_string': dev['address'], 'uuid': device_uuid, 'pending_data': pending, 'low_voltage': low_voltage}
 			elif dev['type'] == 4 and dev['address'] in iotile_devs:
 				#Check if this is a scan response packet from an iotile based device
 				scan_data = dev['scan_data']
