@@ -77,43 +77,33 @@ class HardwareManager:
 			self.add_proxies(prox)
 
 	@param("address", "integer", "positive", desc="numerical address of module to get")
-	@param("check", "bool", desc="make sure this module exists and is the right type")
-	@param("type", "string", desc="module type")
-	def get(self, address, type, check=True):
+	def get(self, address):
 		"""
-		Create a proxy object for a MoMo module directly by address. 
+		Create a proxy object for a tile by address. 
 
-		This routine does not talk to a momo controller and so type must be specified explicitly
-		since it currently cannot be inferred automatically by just communicating with the module
-		itself.
-
-		If check is True (the default), then messages will be sent to the module to make 
-		sure that it exists and is working.
+		The correct proxy object is determined by asking the tile for its status information
+		and looking up the appropriate proxy in our list of installed proxy objects
 		"""
 
-		proxy = self._create_proxy(type, address)
+		tile = self._create_proxy('MIBProxyObject', address)
+		name = tile.tile_name()
 
-		if check:
-			proxy.status()
-
-		return proxy
+		# Check for none
+		# Now create the appropriate proxy object based on the name of the tile 
+		tile_type = self.get_proxy(name)
+		if tile_type is None:
+			raise HardwareError("Could not find proxy object for tile", name=name)
+		
+		tile = tile_type(self.stream, address)		
+		return tile
 
 	@annotated
 	def controller(self):
 		"""
-		Find an attached MoMo controller board and attempt to connect to it.
+		Find an attached IOTile controller and attempt to connect to it.
 		"""
 
-		con = self._create_proxy('MIBProxyObject', 8) #Controllers always have address 8
-		name = con.tile_name()
-
-		# Check for none
-		# Now create the appropriate proxy object based on the name of the tile 
-		con_type = self.get_proxy(name)
-		if con_type is None:
-			raise HardwareError("Could not find controller proxy object for connected controller device", name=name)
-		
-		con = con_type(self.stream, 8)		
+		con = self.get(8)		
 		con._hwmanager = self
 		
 		return con
@@ -213,6 +203,7 @@ class HardwareManager:
 		for dev in devices:
 			print dev
 
+		#FIXME: Use dictionary format in bled112stream to document information returned about devices
 		#FIXME: Support returning information about devices by having a custom type for printing the dictionary
 
 	def _get_serial_ports(self):
