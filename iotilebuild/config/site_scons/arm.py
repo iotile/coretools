@@ -207,6 +207,7 @@ def setup_environment(chip):
 
 	#Setup Target Architecture
 	env['CCFLAGS'].append('-mcpu=%s' % chip.property('cpu'))
+	env['ASFLAGS'].append('-mcpu=%s' % chip.property('cpu'))
 	env['LINKFLAGS'].append('-mcpu=%s' % chip.property('cpu'))
 
 	#Initialize library paths (all libraries are added via dependencies)

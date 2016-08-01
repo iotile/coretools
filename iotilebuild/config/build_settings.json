@@ -222,7 +222,7 @@
 		"default_settings":
 		{
 			"cflags": ["-mthumb", "-mabi=aapcs", "--std=gnu99", "-Wall", "-Werror", "-O3", "-g3", "-mfloat-abi=hard", "-mfpu=fpv4-sp-d16", "-ffunction-sections", "-fdata-sections", "-fno-strict-aliasing", "-fno-builtin", "--short-enums"],
-			"asflags": ["-Wall", "-x", "assembler-with-cpp"],
+			"asflags": ["-mthumb", "-Wall", "-x", "assembler-with-cpp"],
 			"ldflags": ["-mthumb", "-Xlinker", "--gc-sections", "--specs=nano.specs", "-lc", "-lnosys", "-mfloat-abi=hard", "-mfpu=fpv4-sp-d16"],
 			"cpu": "cortex-m4"
 		},
