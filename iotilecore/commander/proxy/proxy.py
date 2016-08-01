@@ -85,6 +85,26 @@ class MIBProxyObject (object):
 
 		return stat['version']
 
+	@return_type("map(string, bool)")
+	def tile_status(self):
+		"""	
+		Get the current status of this tile
+
+		Returns a 
+		"""
+		stat = self.status()
+
+		flags = stat['status']
+
+		#FIXME: This needs to stay in sync with lib_common: cdb_status.h
+		status = {}
+		status['debug_mode'] = bool(flags & (1 << 3))
+		status['configured'] = bool(flags & (1 << 1))
+		status['app_running'] = bool(flags & (1 << 0))
+		status['trapped'] = bool(flags & (1 << 2))
+
+		return status
+
 
 	def _parse_rpc_result(self, status, payload, num_ints, buff):
 		"""
