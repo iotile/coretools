@@ -159,6 +159,7 @@ def autobuild_documentation(module):
 
 	env = Environment(ENV = os.environ)
 
+	#Only build doxygen documentation if we have C firmware to build from
 	if os.path.exists('firmware'):
 		autobuild_doxygen(module)
 		env.Depends(outfile, 'doxygen')
