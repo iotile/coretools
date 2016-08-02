@@ -21,9 +21,11 @@ import os
 import sys
 import arm
 import platform
+from docbuild import *
 
 from iotilecore.exceptions import *
 import iotilecore
+from iotilecore.dev.iotileobj import IOTile
 
 def autobuild_arm_program(module, family, test_dir=os.path.join('firmware', 'test'), modulefile=None, boardfile=None, jigfile=None, patch=True):
 	"""
@@ -44,9 +46,6 @@ def autobuild_arm_program(module, family, test_dir=os.path.join('firmware', 'tes
 		Alias('release', os.path.join('build', 'output'))
 		Alias('test', os.path.join('build', 'test', 'output'))
 		Default('release')
-
-		if os.path.exists(os.path.join('doc', 'doxygen.txt')):
-			autobuild_doxygen(module)
 
 		if os.path.exists('doc'):
 			autobuild_documentation(module)
@@ -125,19 +124,27 @@ def autobuild_doxygen(module):
 	Generate documentation for firmware in this module using doxygen
 	"""
 
-	doxyfile = os.path.join('#doc', 'doxygen.txt')
+	iotile = IOTile('.')
+
 	doxydir = os.path.join('build', 'doc')
+	doxyfile = os.path.join(doxydir, 'doxygen.txt')
+
 	outfile = os.path.join(doxydir, '%s.timestamp' % module)
-	env = Environment()
+	env = Environment(ENV = os.environ)
+	env['IOTILE'] = iotile
 
 	#There is no /dev/null on Windows
 	if platform.system() == 'Windows':
-		action = 'doxygen %s > NUL' % doxyfile[1:]
+		action = 'doxygen %s > NUL' % doxyfile
 	else:
-		action = 'doxygen %s > /dev/null' % doxyfile[1:]
+		action = 'doxygen %s > /dev/null' % doxyfile
 
 	Alias('doxygen', doxydir)
 	env.Clean(outfile, doxydir)
+
+	inputfile = doxygen_source_path()
+
+	env.Command(doxyfile, inputfile, action=env.Action(lambda target, source, env: generate_doxygen_file(str(target[0]), iotile), "Creating Doxygen Config File"))
 	env.Command(outfile, doxyfile, action=env.Action(action, "Building Firmware Documentation"))
 
 def autobuild_documentation(module):
@@ -150,7 +157,11 @@ def autobuild_documentation(module):
 	outdir = os.path.join('build', 'output', 'doc')
 	outfile = os.path.join(outdir, '%s.timestamp' % module)
 
-	env = Environment()
+	env = Environment(ENV = os.environ)
+
+	if os.path.exists('firmware'):
+		autobuild_doxygen(module)
+		env.Depends(outfile, 'doxygen')
 
 	#There is no /dev/null on Windows
 	if platform.system() == 'Windows':
@@ -160,5 +171,4 @@ def autobuild_documentation(module):
 
 	env.Command(outfile, docfile, action=env.Action(action, "Building Component Documentation"))
 	Alias('documentation', outdir)
-	env.Depends(outfile, 'doxygen')
 	env.Clean(outfile, outdir)
