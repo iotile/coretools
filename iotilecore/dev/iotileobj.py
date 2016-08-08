@@ -38,6 +38,8 @@ class IOTile:
 		modname = settings['modules'].keys()[0]
 		modsettings = settings['modules'][modname]
 
+		self.settings = modsettings
+
 		#Name is converted to all lowercase to canonicalize it
 		prepend = ''
 		if 'domain' in modsettings:
@@ -45,7 +47,22 @@ class IOTile:
 
 		key = prepend + modname.lower()
 
+		#Copy over some key properties that we want easy access to
 		self.name = key
+		self.short_name = modname
+
+		self.full_name = "Undefined"
+		if "full_name" in self.settings:
+			self.full_name = self.settings['full_name']
+
+		#FIXME: make sure this is a list
+		self.authors = []
+		if "authors" in self.settings:
+			self.authors = self.settings['authors']
+
+		self.version = "0.0.0"
+		if "version" in self.settings:
+			self.version = self.settings['version']
 
 		#Load all of the build products that can be created by this IOTile
 		self.products = modsettings.get('products', {})

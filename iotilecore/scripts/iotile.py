@@ -96,6 +96,11 @@ def main():
 		try:
 			while True:
 				linebuf = raw_input("(%s) " % shell.context_name())
+
+				# Skip comments automatically
+				if len(linebuf) > 0 and linebuf[0] == '#':
+					continue
+
 				line = shlex.split(linebuf, posix=posix_lex)
 
 				#Automatically remove enclosing double quotes on windows since they are not removed by shlex in nonposix mode
