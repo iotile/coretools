@@ -193,18 +193,21 @@ class HardwareManager:
 		return num_added
 
 	@annotated
+	@return_type("string")
 	def scan(self):
 		"""
 		Scan for available devices and print a dictionary of information about them
 		"""
 
 		devices = self.stream.scan()
-		
-		for dev in devices:
-			print dev
 
 		#FIXME: Use dictionary format in bled112stream to document information returned about devices
-		#FIXME: Support returning information about devices by having a custom type for printing the dictionary
+		#FIXME: Support printing information about devices by having a custom device information type
+		if type_system.interactive:
+			for dev in devices:
+				print dev
+
+		return devices
 
 	def _get_serial_ports(self):
 		return list_ports.comports()
@@ -245,7 +248,7 @@ class HardwareManager:
 
 	def _create_stream(self):
 		stream = None
-
+		
 		if self.transport == 'fsu':
 			serial_port = self.port
 			if serial_port == None:

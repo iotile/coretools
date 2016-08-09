@@ -28,6 +28,12 @@ def packet_length(header):
 
 	return (highbits << 8) | lowbits
 
+def open_serial(port_string):
+	import serial
+	ser = serial.Serial(port=port_string, timeout=0.1, rtscts=True)
+	ser.flushInput()
+	return ser
+
 BGAPIPacket = namedtuple("BGAPIPacket", ["is_event", "command_class", "command", "payload"])
 CharacteristicProperties = namedtuple("CharacteristicProperties", ["broadcast", "read", "write_no_response", "write", "notify", "indicate", "write_authenticated", "extended"])
 
@@ -47,13 +53,9 @@ class BLED112Dongle:
 	TileBusStreamingCharacteristic = uuid.UUID('fb349b5f-8000-0080-0010-000000000520')
 
 
-	def __init__(self, port, ):
-		self.io = serial.Serial(port=port, timeout=None, rtscts=True)
-		self.io.flushInput()
-
-		self.stream = AsyncPacketBuffer(self.io, header_length=4, length_function=packet_length, oob_function=self._check_process_streaming_data)
+	def __init__(self, port):
+		self.stream = AsyncPacketBuffer(open_serial, port, header_length=4, length_function=packet_length, oob_function=self._check_process_streaming_data)
 		self.events = deque()
-		self.stream_enabled = False
 
 	def _get_streaming_queue(self):
 		"""
@@ -64,9 +66,6 @@ class BLED112Dongle:
 
 	def _check_process_streaming_data(self, response_data):
 		packet = BGAPIPacket(is_event=(response_data[0] == 0x80), command_class=response_data[2], command=response_data[3], payload=response_data[4:])
-
-		if not self.stream_enabled:
-			return None
 
 		if packet.is_event and packet.command_class == 4 and packet.command == 5:
 			handle, value = self._process_notification(packet)
@@ -99,7 +98,7 @@ class BLED112Dongle:
 		if print_packet:
 			print ':'.join([format(x, "02X") for x in packet])
 		
-		self.io.write(packet)
+		self.stream.write(packet)
 
 		#Every command has a response so wait for the response here
 		response = self._receive_packet(timeout)

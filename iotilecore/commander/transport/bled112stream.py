@@ -21,8 +21,10 @@ class BLED112Stream (CMDStream):
 		self.mac = mac
 		self.connected = False
 		self.dongle = BLED112Dongle(self.port)
-		self.boardopen = True
-		
+		self.dongle_open = True
+
+		atexit.register(self.close)
+
 		if mac is not None:
 			self.connect_mac(mac)
 
@@ -45,8 +47,6 @@ class BLED112Stream (CMDStream):
 		else:
 			self.protocol = "mldp"
 			self.dongle.start_mldp(self.conn, self.services, version="v1")
-		
-		atexit.register(self.close)
 
 	def _send_rpc(self, address, feature, command, *args, **kwargs):
 		if not self.connected:
@@ -89,10 +89,6 @@ class BLED112Stream (CMDStream):
 			raise HardwareError("Cannot enable streaming until we are connected to a device")
 
 		if self.protocol == 'tilebus':
-			#NB we must set stream_enabled before enabling notification
-			#or there will be a race if the device starts streaming data
-			#to us immediately
-			self.dongle.stream_enabled = True
 			self.dongle.set_notification(self.conn, self.services[self.dongle.TileBusService]['characteristics'][self.dongle.TileBusStreamingCharacteristic], True)
 
 			return self.dongle._get_streaming_queue()
@@ -100,10 +96,13 @@ class BLED112Stream (CMDStream):
 			raise HardwareError("Transport protocol does not support streaming")
 
 	def close(self):
-		if self.boardopen:
+		if self.connected:
 			self.dongle.disconnect(self.conn)
-			self.dongle.io.close()
-			self.boardopen = False
+			self.connected = False
+
+		if self.dongle_open:
+			self.dongle.stream.stop()
+			self.dongle_open = False
 
 	def _scan(self):
 		found_devs = self.dongle.scan()
