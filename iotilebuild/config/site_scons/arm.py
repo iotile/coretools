@@ -161,6 +161,10 @@ def build_library(name, chip):
 		destpath = os.path.join(dirs['output'], dst)
 		library_env.InstallAs(destpath, srcpath)
 
+	import autobuild
+	if os.path.exists('doc'):
+		autobuild.autobuild_documentation(name)
+
 	return os.path.join(dirs['output'], output_name)
 
 def setup_environment(chip):
