@@ -121,7 +121,7 @@ class AsyncPacketBuffer:
 				self.items.release()
 				raise TimeoutError("Asynchronous Read timed out waiting for a packet to be read")
 
-			self.items.release()
+		self.items.release()
 
 		return self.queue.get()
 
