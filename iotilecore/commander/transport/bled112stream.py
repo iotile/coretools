@@ -97,7 +97,11 @@ class BLED112Stream (CMDStream):
 
 	def close(self):
 		if self.connected:
-			self.dongle.disconnect(self.conn)
+			try:
+				self.dongle.disconnect(self.conn)
+			except HardwareError as e:
+				pass
+
 			self.connected = False
 
 		if self.dongle_open:
