@@ -109,9 +109,6 @@ class CMDStream (object):
 			call = "{0},{1},{2},{3}".format(address, feature, command, binascii.hexlify(call_payload))
 			response = "{0},{1}".format(status, binascii.hexlify(payload))
 
-			print call
-			print response
-
 			self._recording[self.connection_string].append((call, response))
 
 		if status == 0:
