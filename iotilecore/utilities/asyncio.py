@@ -12,6 +12,7 @@
 #way without potentially blocking forever.
 
 from threading import Thread
+import threading
 from Queue import Queue, Empty
 import os
 from iotilecore.exceptions import *
@@ -26,7 +27,7 @@ class AsyncLineBuffer:
 		one byte at a time.
 		"""
 
-		self.queue = threading.Queue()
+		self.queue = Queue()
 		self.items = threading.Condition()
 		self.thread = Thread(target=AsyncLineBuffer.ReaderThread, args=(self.queue, file, self.items, separator, strip))
 		self.thread.daemon = True
@@ -126,19 +127,32 @@ class AsyncPacketBuffer:
 		return self.queue.get()
 
 
-def WriterThread(queue, file, stop):
+def WriterThread(queue, file, stop, trace):
 	while not stop.is_set():
 		try:
 			value = queue.get(True, 0.1)
 			file.write(value)
+
+			if trace is not None:
+				import binascii
+				trace.write('<<<' + binascii.hexlify(value[:4]) + ' ' + binascii.hexlify(value[4:]) + '\n')
+				trace.flush()
 		except Empty:
 			pass
 
 def ReaderMain(connstring, queue, write_queue, open_function, items, header_length, length_function, oob_function, oob_queue, stop):
 	file = open_function(connstring)
 	stop_flag = False
+
+	# FIXME: This is tracing code that should be removed completely once it is no longer needed
+	do_trace = False
+	if do_trace:
+		trace = open("./bled112.txt", "w")
+	else:
+		trace = None
+
 	with file:
-		write_thread = Thread(target=WriterThread, args=(write_queue, file, stop))
+		write_thread = Thread(target=WriterThread, args=(write_queue, file, stop, trace))
 		write_thread.start()
 
 		while not stop_flag:
@@ -157,6 +171,11 @@ def ReaderMain(connstring, queue, write_queue, open_function, items, header_leng
 			if stop_flag:
 				break
 			
+			if trace is not None:
+				import binascii
+				trace.write('>>>' + binascii.hexlify(header) + ' ')
+				trace.flush()
+				
 			remaining_length = length_function(header)
 
 			remaining = bytearray()
@@ -170,6 +189,10 @@ def ReaderMain(connstring, queue, write_queue, open_function, items, header_leng
 
 			if stop.is_set():
 				break
+
+			if trace is not None:
+				trace.write(binascii.hexlify(remaining) + '\n')
+				trace.flush()
 
 			#We have a complete packet now, process it
 			packet = header + remaining

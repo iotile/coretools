@@ -55,7 +55,8 @@ setup(
         "six==1.9.0",
         "xlsxwriter>=0.6.7",
         "interval>=1.0.0",
-        "crcmod>=1.7.0"
+        "crcmod>=1.7.0",
+        "pint>=0.6.0"
     ],
     package_data={ #This could be better
         'iotilecore': list_data_files()

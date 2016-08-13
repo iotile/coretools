@@ -12,41 +12,35 @@ from iotilecore.commander.commands import RPCCommand
 from iotilecore.exceptions import *
 from iotilecore.commander.exceptions import *
 from iotilecore.utilities.packed import unpack
-import atexit 
 import uuid
 
 class BLED112Stream (CMDStream):
-	def __init__(self, port, mac=None):
-		self.port = port
-		self.mac = mac
-		self.connected = False
-		self.dongle = BLED112Dongle(self.port)
+	def __init__(self, port, connection_string, record=None):
+		self.dongle = BLED112Dongle(port)
 		self.dongle_open = True
 
-		atexit.register(self.close)
+		super(BLED112Stream, self).__init__(port, connection_string, record=record)
 
-		if mac is not None:
-			self.connect_mac(mac)
+	def _close(self):
+		try:
+			if self.connected:
+				self.disconnect()
+		finally:
+			if self.dongle_open:
+				self.dongle.stream.stop()
+				self.dongle_open = False
 
-	def connect_mac(self, mac):
-		if self.connected:
-			raise HardwareError("Cannot connect to device when we are already connected")
-
-		self.conn = self.dongle.connect(mac, timeout=6.0)			
-
-		self.mac = mac
-		self.connected = True
-
+	def _connect(self, connection_string):
+		self.conn = self.dongle.connect(connection_string, timeout=6.0)			
 		self.services = self.dongle.probe_device(self.conn)
 
-		#Check and see if we're using a new style btle protocol or the old mldp based one
+		#Check to make sure we support the right ble services like an IOTile device should
 		if self.dongle.TileBusService in self.services:
 			self.protocol = "tilebus"
 			self.dongle.set_notification(self.conn, self.services[self.dongle.TileBusService]['characteristics'][self.dongle.TileBusReceiveHeaderCharacteristic], True)
 			self.dongle.set_notification(self.conn, self.services[self.dongle.TileBusService]['characteristics'][self.dongle.TileBusReceivePayloadCharacteristic], True)
 		else:
-			self.protocol = "mldp"
-			self.dongle.start_mldp(self.conn, self.services, version="v1")
+			raise HardwareError("Attempted to connect to device that does not have the appropriate bluetooth service", services=self.services.keys())
 
 	def _send_rpc(self, address, feature, command, *args, **kwargs):
 		if not self.connected:
@@ -85,9 +79,6 @@ class BLED112Stream (CMDStream):
 				raise HardwareError("Timeout waiting for a response from the remote BTLE module", address=address, feature=feature, command=command)
 
 	def _enable_streaming(self):
-		if not self.connected:
-			raise HardwareError("Cannot enable streaming until we are connected to a device")
-
 		if self.protocol == 'tilebus':
 			self.dongle.set_notification(self.conn, self.services[self.dongle.TileBusService]['characteristics'][self.dongle.TileBusStreamingCharacteristic], True)
 
@@ -95,18 +86,11 @@ class BLED112Stream (CMDStream):
 		else:
 			raise HardwareError("Transport protocol does not support streaming")
 
-	def close(self):
-		if self.connected:
-			try:
-				self.dongle.disconnect(self.conn)
-			except HardwareError as e:
-				pass
-
-			self.connected = False
-
-		if self.dongle_open:
-			self.dongle.stream.stop()
-			self.dongle_open = False
+	def _disconnect(self):
+		try:
+			self.dongle.disconnect(self.conn)
+		except HardwareError as e:
+			pass
 
 	def _scan(self):
 		found_devs = self.dongle.scan()

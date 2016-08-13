@@ -20,7 +20,7 @@ class TestHardwareManager(unittest.TestCase):
 	"""
 
 	def setUp(self):
-		self.hw = HardwareManager('null')
+		self.hw = HardwareManager('none')
 
 	def tearDown(self):
 		pass

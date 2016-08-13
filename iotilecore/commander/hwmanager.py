@@ -14,16 +14,14 @@ from iotilecore.exceptions import *
 from iotilecore.utilities.typedargs.annotate import param, return_type, finalizer
 from iotilecore.commander.proxy.proxy import MIBProxyObject
 from iotilecore.dev.registry import ComponentRegistry
-import serial
-from serial.tools import list_ports
 import re
 import inspect
 import os.path
 import imp
 import sys
 from iotilecore.utilities.packed import unpack
-from datetime import datetime
 
+#FIXME: Update the docstring for this class
 @context("HardwareManager")
 class HardwareManager:
 	"""
@@ -47,8 +45,9 @@ class HardwareManager:
 	  actual hardware device will fail.  This is primarily/only useful for unit testing.
 	"""
 
-	@param("port", "string", desc="connection string to use (for a serial port, the path to the port or COMX name")
-	def __init__(self, port="fsu"):
+	@param("port", "string", desc="transport method to use in the format transport[:port[,connection_string]]")
+	@param("record", "path", desc="Optional file to record all RPC calls and responses made on this HardwareManager")
+	def __init__(self, port="none", record=None):
 		transport, delim, arg = port.partition(':')
 
 		self.transport = transport
@@ -56,6 +55,8 @@ class HardwareManager:
 		if arg != "":
 			self.port = arg
 
+		self.record = record
+		
 		self.stream = self._create_stream()
 		self._stream_queue = None
 		self.proxies = {'MIBProxyObject': MIBProxyObject}
@@ -107,6 +108,20 @@ class HardwareManager:
 		con._hwmanager = self
 		
 		return con
+
+	@param("connection_string", "string", desc="Port specific connection string identifying a device")
+	def connect(self, connection_string):
+		"""Attempt to connect to a device 
+		"""
+
+		self.stream.connect(connection_string)
+
+	@annotated
+	def disconnect(self):
+		"""Attempt to disconn from a device 
+		"""
+
+		self.stream.disconnect()
 
 	@return_type("bool")
 	def heartbeat(self):
@@ -209,9 +224,6 @@ class HardwareManager:
 
 		return devices
 
-	def _get_serial_ports(self):
-		return list_ports.comports()
-
 	def get_proxy(self, short_name):
 		"""
 		Find a proxy type given its short name.
@@ -223,16 +235,6 @@ class HardwareManager:
 			return None
 
 		return self.name_map[short_name][0]
-
-	def _find_momo_serial(self):
-		"""
-		Iterate over all connected COM devices and return the first
-		one that matches FTDI's Vendor ID (403)
-		"""
-
-		for port, desc, hwid in self._get_serial_ports():
-			if (re.match( r"USB VID:PID=0?403:6015", hwid) != None) or (re.match( r".*VID_0?403.PID_6015", hwid) != None):
-				return port
 
 	def _create_proxy(self, proxy, address):
 		"""
@@ -248,35 +250,22 @@ class HardwareManager:
 
 	def _create_stream(self):
 		stream = None
-		
-		if self.transport == 'fsu':
-			serial_port = self.port
-			if serial_port == None:
-				serial_port = self._find_momo_serial()
-			if serial_port == None:
-				raise NoSerialConnectionException(available_ports=[x for x in self._get_serial_ports()])
 
-			stream = SerialTransport(serial_port)
-			return FSUStream(stream)
-		elif self.transport == 'rn4020':
-			port,mac = self.port.split(',')
-			
-			port = port.strip()
-			mac = mac.strip()
-			return RN4020DevStream(port, mac)
-		elif self.transport == 'bled112':
-			if "," not in self.port:
-				port = self.port
-				mac = None
-			else:
-				port, mac = self.port.split(',')
-				mac = mac.strip()
+		conn_string = None
+		port = self.port
+		if port is not None and "," in port:
+			port, conn_string = port.split(',')
 
+		if port is not None:
 			port = port.strip()
-			return BLED112Stream(port, mac)
-		elif self.transport == 'null':
-			return FSUStream(None)
+		if conn_string is not None:
+			conn_string = conn_string.strip()
+
+		if self.transport == 'bled112':
+			return BLED112Stream(port, conn_string, record=self.record)
+		elif self.transport == 'none':
+			return CMDStream(None, None, record=self.record)
 		elif self.transport == 'recorded':
-			return RecordedStream(self.port)
+			return RecordedStream(port, conn_string, record=self.record)
 		else:
 			raise ArgumentError("unknown connection method specified in HardwareManager", transport=self.transport)
