@@ -13,15 +13,18 @@ import atexit
 import json
 import binascii
 
-def do_final_close(stream):
+open_streams = set()
+
+def do_final_close():
 	"""
 	Make sure that all streams are properly closed at shutdown
 	"""
 
-	try:
+	for stream in open_streams:
 		stream.close()
-	except StreamOperationNotSupportedError:
-		pass
+
+atexit.register(do_final_close)
+
 
 class CMDStream (object):
 	"""
@@ -42,10 +45,10 @@ class CMDStream (object):
 		self.record = record
 		self.opened = True
 
+		open_streams.add(self)
+
 		if self.record is not None:
 			self._recording = {}
-		
-		atexit.register(do_final_close, self)
 
 		if self.connection_string != None:
 			self.connect(self.connection_string)
@@ -153,6 +156,7 @@ class CMDStream (object):
 			#Make sure that no matter what happens we save this recording out
 			self._save_recording()
 			self.opened = False
+			open_streams.remove(self)
 
 	def _save_recording(self):
 		if not self.record:
