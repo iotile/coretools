@@ -20,7 +20,9 @@ def do_final_close():
 	Make sure that all streams are properly closed at shutdown
 	"""
 
-	for stream in open_streams:
+	#Make a copy since stream.close will remove the stream from the master set
+	streams = open_streams.copy()
+	for stream in streams:
 		stream.close()
 
 atexit.register(do_final_close)
