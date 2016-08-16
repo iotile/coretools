@@ -174,9 +174,9 @@ def setup_environment(chip):
 
 	#Make sure we never get MSVC settings for windows since that has the wrong command line flags for gcc
 	if platform.system() == 'Windows':
-		env = Environment(tools=['mingw', 'ldf_compiler'], ENV = os.environ)
+		env = Environment(tools=['mingw'], ENV = os.environ)
 	else:
-		env = Environment(tools=['default', 'ldf_compiler'], ENV = os.environ)
+		env = Environment(tools=['default'], ENV = os.environ)
 
 	env['INCPREFIX'] = '-I"'
 	env['INCSUFFIX'] = '"'

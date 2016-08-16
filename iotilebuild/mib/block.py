@@ -14,10 +14,8 @@ import sys
 import os.path
 from iotilebuild.utilities import template
 from iotilebuild.build import build
-from iotilecore.hex8.decode import *
 from iotilecore.utilities import intelhex
 from iotilecore.exceptions import *
-from config12 import MIB12Processor
 from pkg_resources import resource_filename, Requirement
 
 block_size = 16
@@ -41,9 +39,6 @@ config_list_index = 2
 reserved_index = 3
 
 known_hwtypes = {
-	2: "12lf1822",
-	3: "16lf1823",
-	4: "16lf1847",
 	10: "NXP LPC824 (Cortex M0+)"
 }
 
@@ -61,17 +56,13 @@ class MIBBlock:
 	ConfigTemplateName			= 'config_variables_c.c'
 	ConfigTemplateNameHeader	= 'config_variables_c.h'
 	
-	def __init__(self, ih=None):
+	def __init__(self):
 		"""
 		Given an intelhex object, extract the MIB block information
 		from it or raise an exception if a MIBBlock cannot be found
 		at the right location.
 		"""
 
-		build_settings = build.load_settings()
-
-		self.base_addr = build_settings["mib12"]["mib"]["base_address"]
-		self.curr_version = build_settings["mib12"]["mib"]["current_version"]
 		self.commands = {}
 		self.configs = {}
 		self.interfaces = []
@@ -79,17 +70,6 @@ class MIBBlock:
 		self.valid = True
 		self.error_msg = ""
 		self.hw_type = -1
-
-		if isinstance(ih, basestring):
-			ih = intelhex.IntelHex16bit(ih)
-			ih.padding = 0x3FFF
-
-		if ih is not None:
-			try:
-				self._load_from_hex(ih)
-			except ValueError as e:
-				self.error_msg = e
-				self.valid = False
 
 		self._parse_hwtype()
 
@@ -222,53 +202,6 @@ class MIBBlock:
 
 		return addr & ~(1 << 15)
 
-	def _load_from_hex(self, ih):
-		if not self._check_magic(ih):
-			raise ValueError("Invalid magic number.")
-
-		app_info_table_addr = decode_goto(ih, self.base_addr + app_information_offset) + 1 # table contains andlw as the first instruction so get past that
-		
-		app_info_table = decode_table(ih ,app_info_table_addr, decode_goto)
-
-		cmd_list_addr = decode_fsr0_loader(ih, app_info_table[cmd_map_index])
-		interfaces_list_addr = decode_fsr0_loader(ih, app_info_table[interface_list_index])
-
-		#Strip off the high bits indicating program memmory addresses
-		cmd_list_addr = self._convert_program_address(cmd_list_addr)
-		interfaces_list_addr = self._convert_program_address(interfaces_list_addr)
-
-		cmd_table = decode_sentinel_table(ih, cmd_list_addr, 4, [0xFF, 0xFF, 0xFF, 0xFF])
-		iface_table = decode_sentinel_table(ih, interfaces_list_addr, 4, [0xFF, 0xFF, 0xFF, 0xFF])
-
-		#Decode and add the commands to our command map
-		for entry in cmd_table:
-			cmd_id = entry[0] | (entry[1] << 8)
-			cmd_addr = entry[2] | (entry[3] << 8)
-
-			self.add_command(cmd_id, MIBHandler(address=cmd_addr))
-
-		#Decode and add the interfaces to our interface list
-		for entry in iface_table:
-			iface_id = entry[0] | (entry[1] << 8) | (entry[2] << 16) | (entry[3] << 24)
-			self.add_interface(iface_id)
-
-		self.name = decode_string(ih, self.base_addr + name_offset, 6)
-
-		self.hw_type = decode_retlw(ih, self.base_addr + hw_offset)
-		self._parse_hwtype()
-
-		api_major = decode_retlw(ih, self.base_addr + major_api_offset)
-		api_minor = decode_retlw(ih, self.base_addr + minor_api_offset)
-		self.set_api_version(api_major, api_minor)
-
-		mod_major = decode_retlw(ih, self.base_addr + major_version_offset)
-		mod_minor = decode_retlw(ih, self.base_addr + minor_version_offset)
-		mod_patch = decode_retlw(ih, self.base_addr + patch_version_offset)
-		self.set_module_version(mod_major, mod_minor, mod_patch)
-
-		self.stored_checksum = decode_retlw(ih, self.base_addr + checksum_offset)
-		self.app_checksum = self._calculate_app_checksum(ih)
-
 	def _calculate_app_checksum(self, ih):
 		"""
 		Calculate the checksum of the application module.
@@ -302,11 +235,6 @@ class MIBBlock:
 			return
 
 		self.chip_name = known_hwtypes[self.hw_type]
-
-	def create_asm(self, folder):
-		temp = template.RecursiveTemplate(MIBBlock.TemplateName)
-		temp.add(self)
-		temp.render(folder)
 
 	def create_c(self, folder):
 		"""

@@ -75,36 +75,6 @@ def test_hexvalues():
 	assert 0x12ab in desc.commands
 	assert 64000 in desc.commands
 
-def test_config_h():
-	desc = _load_mib("configvariables.mib")
-
-	test = _create_tempfile()
-	desc.generate_config_h(test)
-
-	with open(test, "r") as f:
-		for line in f:
-			print line.rstrip()
-
-def test_config_c():
-	desc = _load_mib("configvariables.mib")
-
-	test = _create_tempfile()
-	desc.generate_config_c(test)
-
-	with open(test, "r") as f:
-		for line in f:
-			print line.rstrip()
-
-def test_config_default_as():
-	desc = _load_mib("configvariables.mib")
-
-	test = _create_tempfile()
-	desc.generate_config_defaults_as(test)
-
-	with open(test, "r") as f:
-		for line in f:
-			print line.rstrip()
-
 def test_parse_configs():
 	desc = _load_mib("configvariables.mib")
 

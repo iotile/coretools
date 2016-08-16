@@ -1,3 +1,0 @@
-import autobuild
-
-autobuild.autobuild_pic12('${module.name}', test_dir='test')

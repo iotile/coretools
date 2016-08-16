@@ -15,7 +15,6 @@ import fnmatch
 import json as json
 import sys
 import os.path
-import pic12
 import StringIO
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -82,27 +81,3 @@ def build_defines(defines):
 
 def get_family(fam, modulefile=None):
 	return build.ChipFamily(fam, modulefile=modulefile)
-
-class BufferedSpawn:
-	def __init__(self, env, logfile):
-		self.env = env
-		self.logfile = logfile
-
-		self.stderr = StringIO.StringIO()
-		self.stdout = StringIO.StringIO()
-
-	def spawn(self, sh, escape, cmd, args, env):
-		cmd_string = " ".join(args)
-
-		print cmd_string
-		self.stdout.write(cmd_string)
-		
-		try:
-			retval = self.env['PSPAWN'](sh, escape, cmd, args, env, sys.stdout, sys.stderr)
-		except OSError, x:
-			if x.errno != 10:
-				raise x
-
-			print 'OSError Ignored on command: %s' % cmd_string
-
-		return retval
