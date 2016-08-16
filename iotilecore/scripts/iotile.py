@@ -36,11 +36,7 @@ def main():
 	shell = HierarchicalShell('iotile', no_rc=norc)
 		
 	shell.root_add("registry", "iotilecore.dev.annotated_registry,registry")
-	shell.root_add("SystemLog", "iotilecore.syslog")
 	shell.root_add("pcb", "iotilecore.pcb")
-	shell.root_add('ControllerBlock', "iotilecore.hex,ControllerBlock")
-	shell.root_add('HexFile', "iotilecore.hex,HexFile")
-	shell.root_add('Simulator', "iotilecore.sim,Simulator")
 	shell.root_add('hw', "iotilecore.commander.hwmanager,HardwareManager")
 
 	# Search for and allow plugins to come in and add new behavior

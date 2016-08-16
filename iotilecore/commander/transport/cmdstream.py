@@ -149,11 +149,11 @@ class CMDStream (object):
 			print("close called twice on the same stream")
 			return
 
+		# Do not raise an error if no internal _close routine is found, that
+		# just means that no stream specific close operations are required
 		try:
-			if not hasattr(self, '_close'):
-				raise StreamOperationNotSupportedError(command="close")
-
-			self._close()
+			if hasattr(self, '_close'):
+				self._close()
 		finally:
 			#Make sure that no matter what happens we save this recording out
 			self._save_recording()

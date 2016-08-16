@@ -6,4 +6,4 @@
 # Modifications to this file from the original created at WellDone International 
 # are copyright Arch Systems Inc.
 
-__version__ = "2.0.0"
+__version__ = "2.1.0"
