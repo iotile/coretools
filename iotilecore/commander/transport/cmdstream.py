@@ -165,6 +165,6 @@ class CMDStream (object):
 			return
 
 		with open(self.record, "w") as f:
-			json.dump(self._recording, f)
+			json.dump(self._recording, f, indent=4)
 
 		self.record = False
