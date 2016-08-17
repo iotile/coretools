@@ -50,7 +50,8 @@ setup(
     license = "LGPLv3",
     install_requires=[
         "iotilecore>=2.0.0",
-        "sphinx>=1.3.1"
+        "sphinx>=1.3.1",
+        "scons>=2.3.5"
     ],
     package_data={ 
         'iotilebuild': list_data_files()
