@@ -54,10 +54,13 @@ def find_scons():
 	"""
 
 	try:
-		p = subprocess.Popen(['scons', '--version'], stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True)
+		p = subprocess.Popen(['scons', '--version'], stderr=subprocess.PIPE, stdout=subprocess.PIPE)
 		output, output_err = p.communicate()
 	except OSError:
 		raise BuildError("Could not find an installed version of SCons.  SCons is required for the build system to work.")
+
+	res = output.decode()
+	print res
 
 	match = re.search("engine path: \['(.*)'\]", output)
 	if match is None:

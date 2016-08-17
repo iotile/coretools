@@ -49,7 +49,8 @@ setup(
     version = parse_version(),
     license = "LGPLv3",
     install_requires=[
-        "iotilecore>=2.0.0"
+        "iotilecore>=2.0.0",
+        "sphinx>=1.3.1"
     ],
     package_data={ 
         'iotilebuild': list_data_files()
