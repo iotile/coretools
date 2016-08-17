@@ -54,7 +54,6 @@ setup(
         "pytest==2.6.4",
         "six==1.9.0",
         "xlsxwriter>=0.6.7",
-        "interval>=1.0.0",
         "crcmod>=1.7.0",
         "pint>=0.6.0"
     ],
@@ -66,10 +65,10 @@ setup(
             'iotile = iotilecore.scripts.iotile:main',
         ]
     },
-    description = "IOTile Core ",
+    description = "IOTile Core Tools",
     author = "Arch",
     author_email = "info@arch-iot.com",
-    url = "http://github.com/iotile/lib_iotilecore",
+    url = "http://github.com/iotile/py_iotilecore",
     keywords = ["iotile", "arch", "embedded", "hardware"],
     classifiers = [
         "Programming Language :: Python",
