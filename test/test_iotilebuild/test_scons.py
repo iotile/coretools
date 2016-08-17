@@ -10,11 +10,23 @@ from nose.tools import *
 import unittest
 import os.path
 import subprocess
+from iotilecore.dev.registry import ComponentRegistry
 
 def test_iotiletool():
 	err = subprocess.check_call(["iotile" , "quit"])
 
 	assert err == 0
+
+def test_build_command():
+	"""
+	Make sure iotilebuild has been properly registered as a plugin
+	"""
+
+	reg = ComponentRegistry()
+
+	plugs = reg.list_plugins()
+	
+	assert 'build' in plugs
 
 def test_iotiletool_build():
 	olddir = os.getcwd()
