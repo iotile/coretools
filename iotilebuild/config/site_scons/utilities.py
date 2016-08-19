@@ -20,7 +20,6 @@ import StringIO
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from iotilebuild.build import build
-from iotilebuild.mib.config12 import MIB12Processor
 
 def find_files(dirname, pattern):
 	"""
