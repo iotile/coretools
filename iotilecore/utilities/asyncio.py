@@ -6,79 +6,11 @@
 # Modifications to this file from the original created at WellDone International 
 # are copyright Arch Systems Inc.
 
-#A threaded implementaton of asyncronous line oriented
-#IO.  This allows a python to program to read from a
-#pipe that is not seekable or peekable in a cross-platform
-#way without potentially blocking forever.
-
 from threading import Thread
-import threading
 from Queue import Queue, Empty
 import os
 from iotilecore.exceptions import *
-import sys
 import multiprocessing
-
-class AsyncLineBuffer:
-	def __init__(self, file, separator='\n', strip=True):
-		"""
-		Given an underlying file like object, syncronously read from it 
-		in a separate thread and communicate the data back to the buffer
-		one byte at a time.
-		"""
-
-		self.queue = Queue()
-		self.items = threading.Condition()
-		self.thread = Thread(target=AsyncLineBuffer.ReaderThread, args=(self.queue, file, self.items, separator, strip))
-		self.thread.daemon = True
-		self.thread.start()
-
-	@staticmethod
-	def ReaderThread(queue, file, items, separator, strip):
-		try:
-			while True:
-				line_done = False
-				line = ''
-				while not line_done:
-					c = file.read(1)
-					line += c
-
-					if line.endswith(separator):
-						line_done = True
-
-				if strip:
-					line = line[:-len(separator)]
-
-				items.acquire()
-				queue.put(line)
-				items.notify()
-				items.release()
-		except:
-			#Primarily we get here if the file is closed by the main thread
-			pass
-
-	def available(self):
-		"""
-		Return the number of available lines in the buffer
-		"""
-		
-		return self.queue.qsize()
-
-	def readline(self, timeout=3.0):
-		"""
-		read one line, timeout if one line is not available in the timeout period
-		"""
-
-		self.items.acquire()
-		if self.available() == 0:
-			self.items.wait(timeout)
-			if self.available() == 0:
-				self.items.release()
-				raise TimeoutError("Asynchronous Read timed out waiting for a line to be read")
-
-			self.items.release()
-
-		return self.queue.get()
 
 class AsyncPacketBuffer:
 	def __init__(self, open_function, connstring, header_length, length_function, oob_function=None):
@@ -91,17 +23,9 @@ class AsyncPacketBuffer:
 		self.queue = multiprocessing.Queue()
 		self.write_queue = multiprocessing.Queue()
 		self.oob_queue = multiprocessing.Queue()
-		self.items = multiprocessing.Condition()
 		self._stop = multiprocessing.Event()
-		self.process = multiprocessing.Process(target=ReaderMain, args=(connstring, self.queue, self.write_queue, open_function, self.items, header_length, length_function, oob_function, self.oob_queue, self._stop))
+		self.process = multiprocessing.Process(target=ReaderMain, args=(connstring, self.queue, self.write_queue, open_function, header_length, length_function, oob_function, self.oob_queue, self._stop))
 		self.process.start()
-
-	def available(self):
-		"""
-		Return the number of available lines in the buffer
-		"""
-		
-		return self.queue.qsize()
 
 	def write(self, value):
 		self.write_queue.put(value)
@@ -115,17 +39,10 @@ class AsyncPacketBuffer:
 		read one packet, timeout if one packet is not available in the timeout period
 		"""
 
-		self.items.acquire()
-		if self.available() == 0:
-			self.items.wait(timeout)
-			if self.available() == 0:
-				self.items.release()
-				raise TimeoutError("Asynchronous Read timed out waiting for a packet to be read")
-
-		self.items.release()
-
-		return self.queue.get()
-
+		try:
+			return self.queue.get(timeout=timeout)
+		except Empty:
+			raise TimeoutError("Timeout waiting for packet in AsyncPacketBuffer")
 
 def WriterThread(queue, file, stop, trace):
 	while not stop.is_set():
@@ -140,7 +57,7 @@ def WriterThread(queue, file, stop, trace):
 		except Empty:
 			pass
 
-def ReaderMain(connstring, queue, write_queue, open_function, items, header_length, length_function, oob_function, oob_queue, stop):
+def ReaderMain(connstring, queue, write_queue, open_function, header_length, length_function, oob_function, oob_queue, stop):
 	file = open_function(connstring)
 	stop_flag = False
 
@@ -181,7 +98,6 @@ def ReaderMain(connstring, queue, write_queue, open_function, items, header_leng
 			remaining = bytearray()
 			while len(remaining) < remaining_length:
 				chunk = bytearray(file.read(remaining_length - len(remaining)))
-
 				remaining += chunk
 				if stop.is_set():
 					stop_flag = True
@@ -205,9 +121,6 @@ def ReaderMain(connstring, queue, write_queue, open_function, items, header_leng
 					oob_queue.put(value)
 					continue
 
-			items.acquire()
 			queue.put(packet)
-			items.notify()
-			items.release()
 
 		write_thread.join()
