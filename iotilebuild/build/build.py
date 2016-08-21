@@ -58,9 +58,6 @@ def find_scons():
 	except OSError:
 		raise BuildError("Could not find an installed version of SCons.  SCons is required for the build system to work.")
 
-	res = output.decode()
-	print res
-
 	match = re.search("engine path: \['(.*)'\]", output)
 	if match is None:
 		raise BuildError("SCons version unsupported, it returned an unknown format for scons --version", output=output)

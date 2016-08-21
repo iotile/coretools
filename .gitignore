@@ -55,3 +55,6 @@ target/
 # Vagrant
 .vagrant
 .cached_downloads
+
+# SCons
+.sconsign.*
