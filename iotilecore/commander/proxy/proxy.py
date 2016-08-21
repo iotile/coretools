@@ -140,10 +140,3 @@ class MIBProxyObject (object):
 			parsed['buffer'] = payload[2*num_ints:]
 
 		return parsed
-
-	def verbose_printer(self, verbose):
-		def print_verb(str):
-			if verbose:
-				print str
-
-		return print_verb
