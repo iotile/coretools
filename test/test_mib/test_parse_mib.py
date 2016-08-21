@@ -101,7 +101,7 @@ def test_config_defaults():
 	print len(testvar4['default_value'])
 	print len("test string")
 	print testvar4['default_value']
-	assert len(testvar4['default_value']) == len("test string")
+	assert len(testvar4['default_value']) == (len("test string") + 2) #Include the quotes
 	
 
 def test_value_convesion():
