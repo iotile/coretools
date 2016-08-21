@@ -34,7 +34,6 @@ def build(args):
 	# Do some sluething work to find scons if it's not installed into an importable
 	# place, as it is usually not.
 	try:
-		import iotilecore.utilities.invoke
 		import SCons.Script
 	except ImportError:
 		find_scons()
