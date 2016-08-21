@@ -51,7 +51,7 @@ setup(
     install_requires=[
         "iotilecore>=2.0.0",
         "sphinx>=1.3.1",
-        "scons>=2.3.5"
+        "scons==2.5.0"
     ],
     package_data={ 
         'iotilebuild': list_data_files()
