@@ -17,14 +17,13 @@ import os
 import shlex
 import sphinx.util.nodes
 import iotilebuild.doc
+from iotilecore.dev.registry import ComponentRegistry
 
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 
-# TODO: pull version information from module_settings.json
-# TODO: pull author information from module_settings.json
 # TODO: pull module name from module_settings.json
 
 if os.path.exists(os.path.join('..', 'python')):
@@ -37,7 +36,7 @@ def configure_iotile_specific(iotile, namespace):
   namespace['project'] = iotile.short_name
   namespace['author'] = ", ".join(iotile.authors)
   namespace['release'] = iotile.version
-  namespace['version'] = iotile.version.rsplit(".", 1)
+  namespace['version'] = ".".join(iotile.version.rsplit(".", 1))
 
   man_pages = [
     (master_doc, iotile.short_name, u'%s Documentation' % iotile.short_name,
@@ -52,6 +51,14 @@ def configure_iotile_specific(iotile, namespace):
 
   namespace["man_pages"] = man_pages
   namespace["texinfo_documents"] = texinfo_documents
+
+  # Find the path to all installed dependencies
+  reg = ComponentRegistry()
+
+  dep_paths = {reg.find_component(x).short_name: (os.path.join(reg.find_component(x).folder, 'build', 'output', 'doc'), None) for x in iotile.dependencies.iterkeys()}
+  reldep_paths = {x: (os.path.relpath(y[0], start="build/output/doc"), os.path.join(y[0], 'objects.inv')) for x,y in dep_paths.iteritems()}
+
+  namespace['intersphinx_mapping'] = reldep_paths
 
 
 # -- General configuration ------------------------------------------------
