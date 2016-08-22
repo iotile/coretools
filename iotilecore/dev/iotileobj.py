@@ -67,6 +67,10 @@ class IOTile:
 		#Load all of the build products that can be created by this IOTile
 		self.products = modsettings.get('products', {})
 
+		self.dependencies = {}
+		if 'depends' in self.settings:
+			self.dependencies = self.settings['depends']
+
 	def include_directories(self):
 		"""
 		Return a list of all include directories that this IOTile could provide other tiles
