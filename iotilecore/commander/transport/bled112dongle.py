@@ -125,14 +125,14 @@ class BLED112Dongle:
 		Wait for any events that might occur in a fixed period of time
 		"""
 
-		start = time.clock()
+		start = time.time()
 		end = start + timeout
 
 		events = []
 
 		try:
 			while True:
-				remaining = end - time.clock()
+				remaining = end - time.time()
 
 				if remaining < 0:
 					break
@@ -156,13 +156,13 @@ class BLED112Dongle:
 		If the final event does not happen in the timeout window, raise a TimeoutError
 		"""
 
-		start = time.clock()
+		start = time.time()
 		end = start + timeout
 
 		events = []
 
 		while True:
-			remaining = end - time.clock()
+			remaining = end - time.time()
 
 			if remaining < 0:
 				break
@@ -179,11 +179,11 @@ class BLED112Dongle:
 				events.append(response)
 
 	def _wait_for_event(self, cmdclass, method, timeout=5.0):
-		start = time.clock()
+		start = time.time()
 		end = start + timeout
 
 		while True:
-			remaining = end - time.clock()
+			remaining = end - time.time()
 
 			if remaining < 0:
 				raise TimeoutError()
