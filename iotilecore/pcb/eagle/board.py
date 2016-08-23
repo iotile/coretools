@@ -247,7 +247,7 @@ class EagleBoard:
 			#http://stackoverflow.com/questions/1283664/python-get-wrong-value-for-os-environprogramfiles-on-64bit-vista
 		else:
 			#Otherwise assume that Eagle will be in $PATH
-			eagle = find_executable('EAGLECON')
+			eagle = find_executable('eagle')
 			if eagle is not None:
 				return eagle
 
