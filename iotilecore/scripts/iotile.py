@@ -39,12 +39,10 @@ def main():
 	shell.root_add("pcb", "iotilecore.pcb")
 	shell.root_add('hw', "iotilecore.commander.hwmanager,HardwareManager")
 
-	# Search for and allow plugins to come in and add new behavior
-	registry = ComponentRegistry()
-	plugins = registry.list_plugins()
-
-	for name, value in plugins.iteritems():
-		shell.root_add(name, value)
+	reg = ComponentRegistry()
+	plugins = reg.list_plugins()
+	for k,v in plugins.iteritems():
+		shell.root_add(k, v)
 
 	finished = False
 

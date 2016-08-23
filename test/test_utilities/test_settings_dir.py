@@ -24,7 +24,7 @@ class TestSettingsDirectory:
 
 	@unittest.skipIf(platform.system() != 'Linux', 'Linux specific test')
 	def test_settings_linix(self):
-		settings_dir = os.path.abspath(os.path.join(self.confdir, 'WellDone-MoMo'))
+		settings_dir = os.path.abspath(os.path.join(self.confdir, 'IOTile-Core'))
 
 		assert settings_dir == self.settings_dir
 

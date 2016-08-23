@@ -37,23 +37,6 @@ class AnnotatedRegistry:
 
 		self.reg.add_component(component)
 
-	@param("name", "string", desc="iotile context name to add")
-	@param("package", "string", desc="python package and function/object to call")
-	def add_plugin(self, name, package):
-		"""
-		Register a plugin into the iotile tool to add additional functionality.
-		"""
-
-		self.reg.add_plugin(name, package)
-
-	@param("name", "string", desc="iotile context name to remove")
-	def remove_plugin(self, name):
-		"""
-		Remove a plugin from the iotile based on its name.
-		"""
-
-		self.reg.remove_plugin(name)
-
 	@return_type("map(string, string)")
 	def list_plugins(self):
 		"""

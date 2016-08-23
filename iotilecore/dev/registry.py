@@ -6,6 +6,8 @@ from iotilecore.exceptions import *
 import json
 import os.path
 from iotileobj import IOTile
+import pkg_resources
+import imp
 
 class ComponentRegistry:
 	"""
@@ -18,7 +20,25 @@ class ComponentRegistry:
 
 	def __init__(self):
 		self.kvstore = KeyValueStore('component_registry.db')
-		self.plugins = KeyValueStore('iotile_plugins.db')
+		self.plugins = {}
+		for value in (pkg_resources.working_set):
+			value = str(value)
+			if value.startswith("iotile") and not value.startswith("iotilecore"):
+				name = str.split(str(value))[0]
+				f, filename, description = imp.find_module(name)
+				try:
+					parent = imp.load_module(name,f,filename,description)
+				finally:
+					if f is not None:
+						f.close()
+				f,filename,description = imp.find_module('plugin',parent.__path__)
+				try:
+					submod = imp.load_module(name+'.plugin',f,filename,description)
+				finally:
+					if f is not None:
+						f.close()
+				[name,value] = submod.setup_plugin()
+				self.plugins[name] = value
 
 	def add_component(self, component):
 		"""
@@ -33,26 +53,12 @@ class ComponentRegistry:
 
 		self.kvstore.set(tile.name, value)
 
-	def add_plugin(self, name, package):
-		"""
-		Register a plugin into the iotile tool to add additional functionality.
-		"""
-
-		self.plugins.set(name, package)
-
-	def remove_plugin(self, name):
-		"""
-		Remove a plugin from the iotile based on its name.
-		"""
-
-		self.plugins.remove(name)
-
 	def list_plugins(self):
 		"""
 		List all of the plugins that have been registerd for the iotile program on this computer
 		"""
 
-		vals = self.plugins.get_all()
+		vals = self.plugins.items()
 
 		return {x: y for x,y in vals}
 
