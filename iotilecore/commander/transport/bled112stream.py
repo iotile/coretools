@@ -6,17 +6,33 @@
 # Modifications to this file from the original created at WellDone International 
 # are copyright Arch Systems Inc.
 
-from iotilecore.commander.transport.bled112dongle import BLED112Dongle
+import iotilecore.commander.transport.bled112dongle
+#from iotilecore.commander.transport.bled112dongle import BLED112Dongle
 from iotilecore.commander.transport.cmdstream import CMDStream
 from iotilecore.commander.commands import RPCCommand
 from iotilecore.exceptions import *
 from iotilecore.commander.exceptions import *
 from iotilecore.utilities.packed import unpack
 import uuid
+import serial.tools.list_ports
 
 class BLED112Stream (CMDStream):
 	def __init__(self, port, connection_string, record=None):
-		self.dongle = BLED112Dongle(port)
+		if port == '<auto>' or port == None:
+			auto_port = None
+			ports = serial.tools.list_ports.comports()
+			for p in ports:
+				#Check if the device matches the BLED112's PID/VID combination
+				if (p.pid == 1 and p.vid == 9304):
+					auto_port = p.device
+					break
+
+			if auto_port == None:
+				raise HardwareError("No valid bled 112 device found and automatic port selection specified")
+
+			port = auto_port
+
+		self.dongle = iotilecore.commander.transport.bled112dongle.BLED112Dongle(port)
 		self.dongle_open = True
 
 		super(BLED112Stream, self).__init__(port, connection_string, record=record)
