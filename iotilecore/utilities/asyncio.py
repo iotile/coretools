@@ -11,6 +11,7 @@ from Queue import Queue, Empty
 import os
 from iotilecore.exceptions import *
 import multiprocessing
+import signal
 
 class AsyncPacketBuffer:
 	def __init__(self, open_function, connstring, header_length, length_function, oob_function=None):
@@ -24,7 +25,13 @@ class AsyncPacketBuffer:
 		self.write_queue = multiprocessing.Queue()
 		self.oob_queue = multiprocessing.Queue()
 		self._stop = multiprocessing.Event()
+
+		#Make sure that we never block the parent proces from quitting
+		self.queue.cancel_join_thread()
+		self.oob_queue.cancel_join_thread()
+
 		self.process = multiprocessing.Process(target=ReaderMain, args=(connstring, self.queue, self.write_queue, open_function, header_length, length_function, oob_function, self.oob_queue, self._stop))
+		self.process.daemon = True
 		self.process.start()
 
 	def write(self, value):
@@ -44,32 +51,22 @@ class AsyncPacketBuffer:
 		except Empty:
 			raise TimeoutError("Timeout waiting for packet in AsyncPacketBuffer")
 
-def WriterThread(queue, file, stop, trace):
+def WriterThread(queue, file, stop):
 	while not stop.is_set():
 		try:
 			value = queue.get(True, 0.1)
 			file.write(value)
-
-			if trace is not None:
-				import binascii
-				trace.write('<<<' + binascii.hexlify(value[:4]) + ' ' + binascii.hexlify(value[4:]) + '\n')
-				trace.flush()
 		except Empty:
 			pass
 
 def ReaderMain(connstring, queue, write_queue, open_function, header_length, length_function, oob_function, oob_queue, stop):
+	signal.signal(signal.SIGINT, signal.SIG_IGN)
+
 	file = open_function(connstring)
 	stop_flag = False
 
-	# FIXME: This is tracing code that should be removed completely once it is no longer needed
-	do_trace = False
-	if do_trace:
-		trace = open("./bled112.txt", "w")
-	else:
-		trace = None
-
 	with file:
-		write_thread = Thread(target=WriterThread, args=(write_queue, file, stop, trace))
+		write_thread = Thread(target=WriterThread, args=(write_queue, file, stop))
 		write_thread.start()
 
 		while not stop_flag:
@@ -87,11 +84,6 @@ def ReaderMain(connstring, queue, write_queue, open_function, header_length, len
 
 			if stop_flag:
 				break
-			
-			if trace is not None:
-				import binascii
-				trace.write('>>>' + binascii.hexlify(header) + ' ')
-				trace.flush()
 				
 			remaining_length = length_function(header)
 
@@ -105,10 +97,6 @@ def ReaderMain(connstring, queue, write_queue, open_function, header_length, len
 
 			if stop.is_set():
 				break
-
-			if trace is not None:
-				trace.write(binascii.hexlify(remaining) + '\n')
-				trace.flush()
 
 			#We have a complete packet now, process it
 			packet = header + remaining

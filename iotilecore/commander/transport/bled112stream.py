@@ -68,10 +68,7 @@ class BLED112Stream (CMDStream):
 		payload = payload[:rpc.spec]
 
 		try:
-			if self.protocol == "mldp":
-				response = self.dongle.send_mib_packet(self.conn, self.services, address, feature, command, payload, **kwargs)
-			else:
-				response = self.dongle.send_tilebus_packet(self.conn, self.services, address, feature, command, payload, **kwargs)
+			response = self.dongle.send_tilebus_packet(self.conn, self.services, address, feature, command, payload, **kwargs)
 			
 			status = ord(response[0])
 
@@ -93,6 +90,21 @@ class BLED112Stream (CMDStream):
 				raise ModuleNotFoundError(address)
 			else:
 				raise HardwareError("Timeout waiting for a response from the remote BTLE module", address=address, feature=feature, command=command)
+
+	def _send_highspeed(self, data):
+		"""
+		Send highspeed data using unacknowledged writes to the device
+		"""
+
+		hs_char = self.services[self.dongle.TileBusService]['characteristics'][self.dongle.TileBusHighSpeedCharacteristic]['handle']
+
+		for i in xrange(0, len(data), 20):
+			chunk_size = len(data) - i
+			if chunk_size > 20:
+				chunk_size = 20
+
+			chunk = data[i:i+chunk_size]
+			self.dongle.write_handle(self.conn, hs_char, str(chunk), wait_ack=False)
 
 	def _enable_streaming(self):
 		if self.protocol == 'tilebus':

@@ -154,6 +154,13 @@ class HardwareManager:
 
 		self.stream.reset()
 
+	def __enter__(self):
+		return self
+
+	def __exit__(self, exc_type, exc_value, traceback):
+		self.stream.close()
+		return False
+
 	@finalizer
 	def close(self):
 		self.stream.close()
@@ -208,7 +215,7 @@ class HardwareManager:
 		return num_added
 
 	@annotated
-	@return_type("string")
+	@return_type("list(basic_dict)")
 	def scan(self):
 		"""
 		Scan for available devices and print a dictionary of information about them
@@ -217,11 +224,6 @@ class HardwareManager:
 		devices = self.stream.scan()
 
 		#FIXME: Use dictionary format in bled112stream to document information returned about devices
-		#FIXME: Support printing information about devices by having a custom device information type
-		if type_system.interactive:
-			for dev in devices:
-				print dev
-
 		return devices
 
 	def get_proxy(self, short_name):

@@ -76,7 +76,12 @@ class CMDStream (object):
 		if not hasattr(self, '_connect'):
 			raise StreamOperationNotSupportedError(command="connect")
 
-		self._connect(connection_string)
+		try:
+			self._connect(connection_string)
+		except:
+			self._disconnect()
+			raise
+			
 		self.connected = True
 		self.connection_string = connection_string
 
@@ -91,7 +96,6 @@ class CMDStream (object):
 
 		self._disconnect()
 		self.connected = False
-
 
 	def send_rpc(self, address, feature, command, *args, **kwargs):
 		if not self.connected:
@@ -131,6 +135,15 @@ class CMDStream (object):
 			raise StreamOperationNotSupportedError(command="enable_streaming")
 
 		return self._enable_streaming()
+
+	def send_highspeed(self, data):
+		if not self.connected:
+			raise HardwareError("Cannot send highspeed data if we are not in a connected state")
+
+		if not hasattr(self, '_send_highspeed'):
+			raise StreamOperationNotSupportedError(command="send_highspeed")
+
+		return self._send_highspeed(data)
 
 	def heartbeat(self):
 		if not hasattr(self, '_heartbeat'):

@@ -2,7 +2,7 @@
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
 from iotilecore.commander.exceptions import *
-from iotilecore.exceptions import HardwareError, TimeoutError, ArgumentError
+from iotilecore.exceptions import HardwareError, TimeoutError, ArgumentError, InternalError
 from cmdstream import CMDStream
 from iotilecore.utilities.asyncio import AsyncPacketBuffer
 from iotilecore.commander.commands import RPCCommand
@@ -43,15 +43,13 @@ class BLED112Dongle:
 	"""
 
 	#FIXME: There's an endianness issue here where the byte order of the uuid's seem wrong in LSB positions
-	MLDPService = uuid.UUID('3a0003000812021add07e658035b0300')
-	MLDPDataCharacteristic = uuid.UUID('3a0003010812021add07e658035b0300')
 	TileBusService = uuid.UUID('0ff60f63-132c-e611-ba53-f73f00200000')
 	TileBusSendHeaderCharacteristic = uuid.UUID('fb349b5f-8000-0080-0010-000000000320')
 	TileBusSendPayloadCharacteristic = uuid.UUID('fb349b5f-8000-0080-0010-000000000420')
 	TileBusReceiveHeaderCharacteristic = uuid.UUID('fb349b5f-8000-0080-0010-000000000120')
 	TileBusReceivePayloadCharacteristic = uuid.UUID('fb349b5f-8000-0080-0010-000000000220')
 	TileBusStreamingCharacteristic = uuid.UUID('fb349b5f-8000-0080-0010-000000000520')
-
+	TileBusHighSpeedCharacteristic = uuid.UUID('fb349b5f-8000-0080-0010-000000000620')
 
 	def __init__(self, port):
 		self.stream = AsyncPacketBuffer(open_serial, port, header_length=4, length_function=packet_length, oob_function=self._check_process_streaming_data)
@@ -254,17 +252,18 @@ class BLED112Dongle:
 
 		self._set_scan_parameters(active=True)
 
-		response = self._send_command(6, 2, [2])
-		if response.payload[0] != 0:
-			raise HardwareError("Could not initiate scan for ble devices", error_code=response.payload[0], response=response)
+		try:
+			response = self._send_command(6, 2, [2])
+			if response.payload[0] != 0:
+				raise HardwareError("Could not initiate scan for ble devices", error_code=response.payload[0], response=response)
 
-		
-		scan_events = self._accumulate_events(timeout)
-		scan_events = map(self._parse_scan_response, scan_events)
-
-		response = self._send_command(6, 4, [])
-		if response.payload[0] != 0:
-			raise HardwareError("Could not stop scanning for ble devices", error_code=response.payload[0], response=response)
+			
+			scan_events = self._accumulate_events(timeout)
+			scan_events = map(self._parse_scan_response, scan_events)
+		finally:
+			response = self._send_command(6, 4, [])
+			if response.payload[0] != 0:
+				raise HardwareError("Could not stop scanning for ble devices", error_code=response.payload[0], response=response)
 
 		#Remove duplicate entries
 		seen = set()
@@ -524,26 +523,6 @@ class BLED112Dongle:
 
 		return services
 
-	def check_mldp(self, services):
-		if BLED112Dongle.MLDPService not in services:
-			return False
-
-		mldp = services[BLED112Dongle.MLDPService]
-
-		if BLED112Dongle.MLDPDataCharacteristic not in mldp['characteristics']:
-			return False
-
-		return True
-
-	def start_mldp(self, conn, services, version="v1"):
-		if self.check_mldp(services) != True:
-			raise HardwareError("MLDP does not exist on remote device")
-
-		char = services[BLED112Dongle.MLDPService]['characteristics'][BLED112Dongle.MLDPDataCharacteristic]
-
-		if version not in ['v1', 'v2']:
-			raise ArgumentError("Unknown MLDP version", version=version, known_versions=['v1', 'v2'])
-
 	def send_tilebus_packet(self, conn, services, address, feature, cmd, payload, **kwargs):
 		header_char = services[BLED112Dongle.TileBusService]['characteristics'][BLED112Dongle.TileBusSendHeaderCharacteristic]
 		payload_char = services[BLED112Dongle.TileBusService]['characteristics'][BLED112Dongle.TileBusSendPayloadCharacteristic]
@@ -590,74 +569,6 @@ class BLED112Dongle:
 
 		complete_response = bytearray(value) + bytearray(payload) + bytearray('\x00') #Append a dummy checksum
 		return str(complete_response)
-
-	def send_mib_packet(self, conn, services, address, feature, cmd, payload, **kwargs):
-		char = services[BLED112Dongle.MLDPService]['characteristics'][BLED112Dongle.MLDPDataCharacteristic]
-
-		length = len(payload)
-
-		if len(payload) < 20:
-			payload += '\x00'*(20 - len(payload))
-
-		if len(payload) > 20:
-			raise ArgumentError("Payload is too long, must be at most 20 bytes", payload=payload, length=len(payload))
-
-		#Send checksum as well
-		out_data = chr(address) + chr(length) + chr(0) + chr(cmd) + chr(feature) + payload
-		checksum = 0
-
-		for i in xrange(0, len(out_data)):
-			checksum += out_data[i]
-
-		checksum %= 256
-		checksum = (256 - checksum) % 256
-
-		out_buffer = '@' + out_data + chr(checksum) + '!'
-		assert len(out_buffer) == 28
-
-		out_buffer = str(out_buffer)
-
-		self.write_handle(conn, char['handle'], out_buffer[:20])
-		self.write_handle(conn, char['handle'], out_buffer[20:])
-		#self.write_handle(conn, char['handle'], out_buffer[21:])
-
-		timeout = 3.0
-		if "timeout" in kwargs:
-			timeout = kwargs['timeout']
-
-		return self.receive_mib_response(timeout)
-
-	def receive_mib_response(self, timeout=3.0):
-		received = ""
-		while len(received) < 40:
-			events, end1 = self._accumulate_until(2, 0, timeout)
-			assert len(events) == 0
-
-			data = str(end1.payload[7:])
-			received += data
-
-		#Chomp the \r\n from the end of the response
-		if received[-2:] == '\r\n':
-			received = received[:-2]
-
-		if len(received) == 38:
-			if received[0] == '@':
-				received = received[1:]
-			else:
-				raise HardwareError("Corrupted MIB packet received from MoMo device", received_packet=received, length=len(received), expected_first_character='@')
-		elif len(received) != 37:
-			raise HardwareError("Corrupted MIB packet (invalid length) received from MoMo device", received_packet=received, length=len(received))
-
-		if received[-1] != '!':
-			raise HardwareError("Corrupted MIB packet (invalid termination character) received from MoMo device", received_packet=received)
-
-		received = received[:-1]
-		assert len(received) == 36
-
-		unpacked = base64.decodestring(received)
-		assert len(unpacked) == 25
-
-		return unpacked
 
 	def set_notification(self, conn, char, enabled, timeout=5.0):
 		if 'client_configuration' not in char:
