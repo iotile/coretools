@@ -74,10 +74,22 @@ class BLED112Dongle:
 
 		return None
 
+	def check_disconnected(self):
+		if not self.stream.has_packet():
+			return False
+
+		packet_data = self.stream.read_packet(timeout=0.0)
+		packet = BGAPIPacket(is_event=(packet_data[0] == 0x80), command_class=packet_data[2], command=packet_data[3], payload=packet_data[4:])
+		if packet.is_event and packet.command_class == 0x3 and packet.command == 0x4:
+			return True
+
+		return False
+
 	def _send_command(self, cmd_class, command, payload, timeout=3.0, force_length=None, print_packet=False):
 		"""
 		Send a BGAPI packet to the dongle and return the response
 		"""
+
 
 		if len(payload) > 60:
 			return DataError("Attempting to send a BGAPI packet with length > 60 is not allowed", actual_length=len(payload), command=command, command_class=cmd_class)
@@ -471,7 +483,7 @@ class BLED112Dongle:
 		handle, result = unpack("<BH", response.payload)
 
 		if result != 0:
-			raise HardwareError("Could not enumerate handles", handle=handle, error_code=result)
+			raise HardwareError("Could not read handle", handle=handle, error_code=result)
 
 		events, end = self._accumulate_until(4, 5, timeout)
 		assert len(events) == 0
@@ -489,7 +501,7 @@ class BLED112Dongle:
 		handle, result = unpack("<BH", response.payload)
 
 		if result != 0:
-			raise HardwareError("Could not enumerate handles", handle=handle, error_code=result)
+			raise HardwareError("Could not write handle", handle=handle, error_code=result)
 
 		if wait_ack:
 			events, end = self._accumulate_until(4, 1, timeout)

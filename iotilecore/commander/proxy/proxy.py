@@ -10,7 +10,7 @@
 
 from iotilecore.commander.commands import RPCCommand
 from iotilecore.commander.exceptions import *
-from iotilecore.utilities.typedargs import return_type
+from iotilecore.utilities.typedargs import return_type, annotated, param
 from time import sleep
 from iotilecore.utilities.packed import unpack
 
@@ -57,6 +57,7 @@ class MIBProxyObject (object):
 			sleep(0.1)
 			return self.rpc(feature, cmd, *args, **kw)
 
+	@return_type("basic_dict")
 	def status(self):
 		"""
 		Query the status of an IOTile including its name and version
@@ -72,6 +73,18 @@ class MIBProxyObject (object):
 		}
 
 		return status
+
+	@param("wait", "float", desc="Time to wait after reset for tile to boot up to a usable state")
+	def reset(self, wait=1.0):
+		"""
+		Immediately reset this tile.
+		"""
+		try:
+			self.rpc(0x00, 0x01)
+		except ModuleNotFoundError:
+			pass
+
+		sleep(wait)
 
 	@return_type("string")
 	def tile_name(self):

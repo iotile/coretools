@@ -47,7 +47,7 @@ class BLED112Stream (CMDStream):
 				self.dongle_open = False
 
 	def _connect(self, connection_string):
-		self.conn = self.dongle.connect(connection_string, timeout=6.0)			
+		self.conn = self.dongle.connect(connection_string, timeout=6.0)
 		self.services = self.dongle.probe_device(self.conn)
 
 		#Check to make sure we support the right ble services like an IOTile device should
@@ -61,6 +61,13 @@ class BLED112Stream (CMDStream):
 	def _send_rpc(self, address, feature, command, *args, **kwargs):
 		if not self.connected:
 			raise HardwareError("Cannot send an RPC until we are connected to a device")
+
+		if self.dongle.check_disconnected():
+			try:
+				self._connect(self.connection_string)
+			except HardwareError:
+				self.connected = False
+				raise HardwareError("Connection was disconnected before RPC could be sent and the attempt to reconnect failed")
 
 		rpc = RPCCommand(address, feature, command, *args)
 

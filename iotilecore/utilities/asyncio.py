@@ -41,6 +41,13 @@ class AsyncPacketBuffer:
 		self._stop.set()
 		self.process.join()
 
+	def has_packet(self):
+		"""
+		return True if there is a packet waiting in the queue.
+		"""
+		
+		return not self.queue.empty()
+
 	def read_packet(self, timeout=3.0):
 		"""
 		read one packet, timeout if one packet is not available in the timeout period
