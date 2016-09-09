@@ -11,5 +11,11 @@ def convert(arg, **kwargs):
 	
 	raise TypeError("Unknown argument type")
 
+def _json_formatter(arg):
+	if isinstance(arg, bytearray):
+		return repr(arg)
+
+	return str(arg)
+	
 def default_formatter(arg, **kwargs):
-	return json.dumps(arg, sort_keys=True, indent=4, separators=(',', ': '))
+	return json.dumps(arg, sort_keys=True, indent=4, separators=(',', ': '), default=_json_formatter)

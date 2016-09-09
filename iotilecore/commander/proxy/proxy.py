@@ -10,14 +10,21 @@
 
 from iotilecore.commander.commands import RPCCommand
 from iotilecore.commander.exceptions import *
-from iotilecore.utilities.typedargs import return_type, annotated, param
+from iotilecore.utilities.typedargs import return_type, annotated, param, context
 from time import sleep
 from iotilecore.utilities.packed import unpack
+import struct
+from iotilecore.exceptions import *
 
 class MIBProxyObject (object):
 	def __init__(self, stream, address):
 		self.stream = stream
 		self.addr = address
+		self._config_manager = ConfigManager(self)
+
+	@annotated
+	def config_manager(self):
+		return self._config_manager
 
 	def rpc(self, feature, cmd, *args, **kw):
 		"""
@@ -153,3 +160,97 @@ class MIBProxyObject (object):
 			parsed['buffer'] = payload[2*num_ints:]
 
 		return parsed
+
+
+@context("ConfigManager")
+class ConfigManager(object):
+	"""
+	Manager Proxy for configuration variables on IOTiles
+
+	Handles querying what config variables are defined, setting and getting
+	their values.  Note that config variables should not change when application
+	code is running so set_config_variables should not be called once an application
+	is launched.
+	"""
+
+	def __init__(self, parent):
+		self._proxy = parent
+
+	@return_type('list(integer)')
+	def list_variables(self):
+		"""
+		List all of the configuration variables defined by this tile
+		"""
+
+		offset = 0
+		ids = []
+
+		while True:
+			resp = self._proxy.rpc(0, 10, offset, result_type=(1, True))
+			count = resp['ints'][0]
+
+			if count == 0:
+				break
+
+			fmt = "<%dH" % count
+			id_chuck = struct.unpack(fmt, resp['buffer'][:2*count])
+
+			ids += id_chuck
+
+			if count != 9:
+				break
+
+		return ids
+
+	@return_type("fw_config_variable")
+	@param("id", "integer", desc="Variable ID to describe")
+	def describe_variable(self, id):
+		"""
+		Describe a configuration variable 
+		"""
+
+		resp = self._proxy.rpc(0, 11, id, result_type =(2, True))
+
+		err = resp['ints'][0]
+		if err != 0:
+			raise HardwareError("Error finding config variable by id", id=id, error_code=err)
+
+		return resp['buffer']
+
+	@return_type("bytes", "repr")
+	@param("id", "integer", desc="Variable ID to fetch")
+	def get_variable(self, id):
+		"""
+		Get value stored in a config variable
+		"""
+
+		offset = 0
+		resp = self._proxy.rpc(0, 13, id, offset, result_type=(0, True))
+		if len(resp['buffer']) == 0:
+			return bytearray()
+
+		retval = resp['buffer']
+
+		while len(resp['buffer']) > 0:
+			offset = len(retval)
+			resp = self._proxy.rpc(0, 13, id, offset, result_type=(0, True))
+
+			retval += resp['buffer']
+
+		return retval
+
+	@param("id", "integer", desc="Variable ID to set")
+	@param("value", "bytes", desc="hexadecimal byte value to set")
+	def set_variable(self, id, value):
+		"""
+		Set the value stored in a config variable
+		"""
+
+		for offset in xrange(0, len(value), 16):
+			remaining = len(value) - offset
+			if remaining > 16:
+				remaining = 16
+			
+			resp = self._proxy.rpc(0, 12, id, offset, value[offset:offset+remaining], result_type=(1, False))
+			if resp['ints'][0] != 0:
+				raise HardwareError("Error setting config variable", id=id, error_code=resp['ints'][0])

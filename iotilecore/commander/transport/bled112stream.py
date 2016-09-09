@@ -123,7 +123,12 @@ class BLED112Stream (CMDStream):
 
 	def _disconnect(self):
 		try:
-			self.dongle.disconnect(self.conn)
+			#If we were interrupted in the process of connecting, we may not have a valid conn object, so 
+			#try to disconnect the first connection of the dongle.
+			if not hasattr(self, 'conn'):
+				self.dongle.disconnect(0)
+			else:
+				self.dongle.disconnect(self.conn)
 		except HardwareError as e:
 			pass
 
