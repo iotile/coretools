@@ -3,6 +3,7 @@
 
 \#include <stdint.h>
 \#include <stdbool.h>
+\#include "cdb_application.h"
 
 \#define kNumRequiredConfigs	($len($filter(lambda x: x['required'], $configs.itervalues())))
 \#define kNumTotalConfigs 		($len($configs))

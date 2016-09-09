@@ -203,8 +203,10 @@ class MIBDescriptor:
 			quantity = 1
 			array = False
 
+		#FIXME: Properly handle all of the different cases here for arrays, strings and bare values
 		if 'value' in match:
-			default_value = self._convert_value_to_bytes(match['value'], match['type'])
+			default_bytevalue = self._convert_value_to_bytes(match['value'], match['type'])
+			default_value = match['value']
 			required = False
 		else:
 			default_value = None
