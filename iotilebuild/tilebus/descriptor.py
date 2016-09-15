@@ -10,7 +10,7 @@
 #Define a Domain Specific Language for specifying MIB endpoints
 
 from pyparsing import Word, Regex, nums, hexnums, Literal, Optional, Group, oneOf, QuotedString
-from handler import MIBHandler
+from handler import TBHandler
 import sys
 import os.path
 from iotilecore.exceptions import *
@@ -61,7 +61,7 @@ statement = include | cmd_def | comment | assignment_def | interface_def | reqco
 type_lengths = {'uint8_t': 1, 'char': 1, 'int8_t': 1, 'uint16_t': 2, 'int16_t':2, 'uint32_t': 4, 'int32_t': 4} 
 type_codes = {'uint8_t': 'B', 'char': 'B', 'int8_t': 'b', 'uint16_t': 'H', 'int16_t': 'h', 'uint32_t': 'L', 'int32_t': 'l'} 
 
-class MIBDescriptor:
+class TBDescriptor:
 	"""
 	Class that parses a .mib file which contains a DSL specifying the valid MIB endpoints
 	in a MIB12 module and can output an asm file containing the proper MIB command map
@@ -73,6 +73,7 @@ class MIBDescriptor:
 		self.commands = {}
 		self.interfaces = []
 		self.configs = {}
+		self.valid = False
 
 		self.include_dirs = include_dirs + [resource_filename(Requirement.parse("iotilebuild"), "iotilebuild/config")]
 
@@ -81,8 +82,7 @@ class MIBDescriptor:
 
 		for filename in source:
 			self._parse_file(filename)
-		
-		self._validate_information()
+
 	def _parse_file(self, filename):
 		with open(filename, "r") as f:
 			for l in f:
@@ -123,7 +123,7 @@ class MIBDescriptor:
 		raise ArgumentError("Could not find included mib file", filename=filename, search_dirs=self.include_dirs)
 
 	def _add_cmd(self, num, symbol, num_ints, has_buffer):
-		handler = MIBHandler.Create(symbol=symbol, ints=num_ints, has_buffer=has_buffer)
+		handler = TBHandler.Create(symbol=symbol, ints=num_ints, has_buffer=has_buffer)
 		
 		if num in self.commands:
 			raise DataError("Attempted to add the same command number twice", number=num, old_handler=self.commands[num], new_handler=handler)
@@ -274,6 +274,8 @@ class MIBDescriptor:
 		self.variables['APIVersion'] = self._convert_api_version(self.variables["APIVersion"])
 		self.variables["ModuleName"] = self.variables["ModuleName"].ljust(6)
 
+		self.valid = True
+
 	def _convert_version(self, version_string):
 		vals = [int(x) for x in version_string.split(".")]
 
@@ -297,24 +299,28 @@ class MIBDescriptor:
 
 		return vals		
 
-	def get_block(self):
+	def get_block(self, config_only=False):
 		"""
-		Create a MIB Block based on the information in this descriptor
+		Create a TileBus Block based on the information in this descriptor
 		"""
 
-		mib = block.MIBBlock()
-
-		for key, val in self.commands.iteritems():
-			mib.add_command(key, val)
-
-		for interface in self.interfaces:
-			mib.add_interface(interface)
+		mib = block.TBBlock()
 
 		for id, config in self.configs.iteritems():
 			mib.add_config(id, config)
 
-		mib.set_api_version(*self.variables["APIVersion"])
-		mib.set_module_version(*self.variables["ModuleVersion"])
-		mib.set_name(self.variables["ModuleName"])
+		if not config_only:
+			for key, val in self.commands.iteritems():
+				mib.add_command(key, val)
+
+			for interface in self.interfaces:
+				mib.add_interface(interface)
+
+			if not self.valid:
+				self._validate_information()
+			
+			mib.set_api_version(*self.variables["APIVersion"])
+			mib.set_module_version(*self.variables["ModuleVersion"])
+			mib.set_name(self.variables["ModuleName"])
 
 		return mib

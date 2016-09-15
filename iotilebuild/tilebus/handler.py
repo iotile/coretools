@@ -10,7 +10,7 @@ import sys
 import os.path
 from iotilebuild.build import build
 
-class MIBHandler:
+class TBHandler:
 	"""
 	A class representing a MIB callback routine suitable for processing those found in mib blocks
 	pulled from hex files or for creating those blocks based on descriptions of the handlers.
@@ -28,9 +28,9 @@ class MIBHandler:
 	@classmethod
 	def Create(cls, symbol, ints=0, has_buffer=False):
 		if ints > 4:
-			raise ValueError("Invalid MIBHandler Spec: too many int parameters. (value = %d"  % ints)
+			raise ValueError("Invalid TBHandler Spec: too many int parameters. (value = %d"  % ints)
 		if ints < 0:
-			raise ValueError("Invalid MIBHandler Spec: negative number of int parameters. (value = %d)" % ints)
+			raise ValueError("Invalid TBHandler Spec: negative number of int parameters. (value = %d)" % ints)
 
 		spec = 0
 
@@ -39,17 +39,17 @@ class MIBHandler:
 
 		spec |= (ints&0b11) << 5
 
-		return MIBHandler(spec, symbol)
+		return TBHandler(spec, symbol)
 
 	def num_ints(self):
 		return (self.spec >> 5) & 0b11
 
 	def has_buffer(self):
-		return self.spec & MIBHandler.BufferFlag
+		return self.spec & TBHandler.BufferFlag
 
 	def _validate(self):
 		if self.symbol is None and self.address is None:
-			raise ValueError("You must pass either a symbol or an address to MIBHandler")
+			raise ValueError("You must pass either a symbol or an address to TBHandler")
 
 	def _format_spec(self):
 		ints = self.num_ints()

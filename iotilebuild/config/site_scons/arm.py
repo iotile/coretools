@@ -8,9 +8,10 @@ import platform
 import os.path
 import utilities
 import pyparsing
-from iotilebuild.mib.descriptor import MIBDescriptor
+from iotilebuild.tilebus.descriptor import TBDescriptor
 import struct
 from iotilecore.exceptions import BuildError
+from iotilecore.dev.iotileobj import IOTile
 import os
 from dependencies import build_dependencies
 
@@ -85,8 +86,9 @@ def build_program(name, chip, patch=True):
 	prog_env['LINKFLAGS'].extend(['-Xlinker', '-Map="%s"' % os.path.join(dirs['build'], map_name)])
 	Clean(os.path.join(dirs['build'], output_name), [os.path.join(dirs['build'], map_name)])
 
-	#Compile the CDB command definitions
-	compile_cdb(tilebus_defs, prog_env)
+	#Compile the TileBus command and config variable definitions
+	tbname = os.path.join('firmware', 'src', 'cdb', prog_env["MODULE"] + ".cdb")
+	compile_tilebus(tilebus_defs + [tbname], prog_env)
 
 	#Compile an elf for the firmware image
 	objs = SConscript(os.path.join(dirs['build'], 'SConscript'), exports='prog_env')
@@ -146,11 +148,18 @@ def build_library(name, chip):
 	dep_incs = reduce(lambda x,y:x+y, [x.include_directories() for x in library_env['DEPENDENCIES']], [])
 	lib_dirs = reduce(lambda x,y:x+y, [x.library_directories() for x in library_env['DEPENDENCIES']], [])
 	libs = reduce(lambda x,y:x+y, [x.libraries() for x in library_env['DEPENDENCIES']], [])
+	tilebus_defs = reduce(lambda x,y:x+y, [x.tilebus_definitions() for x in library_env['DEPENDENCIES']], [])
+
+	#Create header files for all tilebus config variables and commands that are defined in ourselves
+	#or in our dependencies
+	library_tile = IOTile('.')
+	tilebus_defs += library_tile.tilebus_definitions()
+	compile_tilebus(tilebus_defs, library_env, header_only=True)
+
 	library_env['CPPPATH'] += dep_incs
 	library_env['LIBPATH'] += lib_dirs
 	library_env['LIBS'] += libs
 	
-
 	SConscript(os.path.join(dirs['build'], 'SConscript'), exports='library_env')
 
 	library_env.InstallAs(os.path.join(dirs['output'], output_name), os.path.join(dirs['build'], output_name))
@@ -220,44 +229,55 @@ def setup_environment(chip):
 
 	return env
 
-def compile_cdb(deps, env, mibname=None, outdir=None):
+def compile_tilebus(files, env, outdir=None, header_only=False):
 	"""
-	Given a path to a *.cdb file, process it and generate c tables containing the information.
+	Given a path to a *.cdb file, process it and generate c tables and/or headers containing the information.
 	"""
 
 	if outdir is None:
 		dirs = env["ARCH"].build_dirs()
 		outdir = dirs['build']
 
-	if mibname is None: 
-		mibname = os.path.join('firmware', 'src', 'cdb', env["MODULE"] + ".cdb")
-
 	cmdmap_c_path = os.path.join(outdir, 'command_map_c.c')
 	cmdmap_h_path = os.path.join(outdir, 'command_map_c.h')
 	config_c_path = os.path.join(outdir, 'config_variables_c.c')
 	config_h_path = os.path.join(outdir, 'config_variables_c.h')
 
-	env['MIBFILE'] = '#' + cmdmap_c_path
+	if header_only:
+		return env.Command([cmdmap_h_path, config_h_path], files, action=env.Action(tb_h_file_creation, "Creating header files from TileBus definitiosn"))
+	else:
+		env['MIBFILE'] = '#' + cmdmap_c_path		
+		return env.Command([cmdmap_c_path, cmdmap_h_path, config_c_path, config_h_path], files, action=env.Action(tb_c_file_creation, "Compiling TileBus commands and config variables"))
 
-	tbfiles = deps + [mibname]
-
-	return env.Command([cmdmap_c_path, cmdmap_h_path, config_c_path, config_h_path], tbfiles, action=env.Action(mib_compilation_action, "Compiling CDB commnds and config variables"))
-
-def mib_compilation_action(target, source, env):
+def tb_c_file_creation(target, source, env):
 	"""
-	Compile mib file into a .h/.c pair for compilation into an ARM object
+	Compile tilebus file into a .h/.c pair for compilation into an ARM object
 	"""
 
 	files = [str(x) for x in source]
 
 	try:
-		d = MIBDescriptor(files)
+		d = TBDescriptor(files)
 	except pyparsing.ParseException as e:
-		raise BuildError("Could not parse mib file", parsing_exception=e, )
+		raise BuildError("Could not parse tilebus file", parsing_exception=e)
 
-	#Build a MIB block from the mib file
 	block = d.get_block()
 	block.create_c(os.path.dirname(str(target[0])))
+
+def tb_h_file_creation(target, source, env):
+	"""
+	Compile tilebus file into only .h files corresponding to config variables for inclusion in a library
+	"""
+
+	files = [str(x) for x in source]
+
+	try:
+		d = TBDescriptor(files)
+	except pyparsing.ParseException as e:
+		raise BuildError("Could not parse tilebus file", parsing_exception=e)
+
+	block = d.get_block(config_only=True)
+	block.create_config_headers(os.path.dirname(str(target[0])))
 
 def checksum_creation_action(target, source, env):
 	"""

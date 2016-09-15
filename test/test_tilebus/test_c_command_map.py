@@ -2,7 +2,7 @@
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
 import os.path
-from iotilebuild.mib.descriptor import MIBDescriptor
+from iotilebuild.tilebus.descriptor import TBDescriptor
 import unittest
 from nose.tools import *
 from iotilecore.exceptions import *
@@ -21,7 +21,7 @@ def _create_tempfolder():
 
 def _load_mib(filename):
 	path = os.path.join(os.path.dirname(__file__), filename)
-	return MIBDescriptor(path, include_dirs=[os.path.dirname(__file__)])
+	return TBDescriptor(path, include_dirs=[os.path.dirname(__file__)])
 
 def test_c_file_generation():
 	mib = _load_mib('configvariables.mib')

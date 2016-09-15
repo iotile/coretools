@@ -16,7 +16,7 @@ from iotilecore.utilities import build
 from config12 import MIB12Processor
 from iotilecore.utilities import intelhex
 
-class MIBAPI:
+class TBAPI:
 	def __init__(self, hexfile, chip):
 		with open(hexfile, "r"):
 			self.hf = intelhex.IntelHex16bit(hexfile)

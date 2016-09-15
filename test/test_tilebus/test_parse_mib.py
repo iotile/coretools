@@ -7,7 +7,7 @@
 # are copyright Arch Systems Inc.
 
 import os.path
-from iotilebuild.mib.descriptor import MIBDescriptor
+from iotilebuild.tilebus.descriptor import TBDescriptor
 import unittest
 from nose.tools import *
 from iotilecore.exceptions import *
@@ -36,7 +36,9 @@ def _create_tempfile(src=None):
 
 def _load_mib(filename):
 	path = os.path.join(os.path.dirname(__file__), filename)
-	return MIBDescriptor(path, include_dirs=[os.path.dirname(__file__)])
+	tb = TBDescriptor(path, include_dirs=[os.path.dirname(__file__)])
+	tb._validate_information()
+	return tb
 
 @raises(pyparsing.ParseException)
 def test_syntax_error():

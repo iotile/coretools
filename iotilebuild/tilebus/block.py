@@ -7,9 +7,9 @@
 # are copyright Arch Systems Inc.
 
 #block.py
-#An object representing a MIBBlock
+#An object representing a TBBlock
 
-from handler import MIBHandler
+from handler import TBHandler
 import sys
 import os.path
 from iotilebuild.utilities import template
@@ -42,7 +42,7 @@ known_hwtypes = {
 	10: "NXP LPC824 (Cortex M0+)"
 }
 
-class MIBBlock:
+class TBBlock:
 	"""
 	The block in program memory describing a MoMo application module.  The MIB block
 	contains information on the application module and a sparse matrix representation
@@ -59,7 +59,7 @@ class MIBBlock:
 	def __init__(self):
 		"""
 		Given an intelhex object, extract the MIB block information
-		from it or raise an exception if a MIBBlock cannot be found
+		from it or raise an exception if a TBBlock cannot be found
 		at the right location.
 		"""
 
@@ -152,7 +152,7 @@ class MIBBlock:
 
 	def add_command(self, cmd_id, handler):
 		"""
-		Add a command to the MIBBlock.  
+		Add a command to the TBBlock.  
 
 		The cmd_id must be a non-negative 2 byte number.
 		handler should be the command handler
@@ -243,19 +243,26 @@ class MIBBlock:
 		Also create config files containing definitions for all of the required config variables. 
 		"""
 
-		temp = template.RecursiveTemplate(MIBBlock.CTemplateName, resource_filename(Requirement.parse("iotilebuild"), "iotilebuild/config/templates"))
+		temp = template.RecursiveTemplate(TBBlock.CTemplateName, resource_filename(Requirement.parse("iotilebuild"), "iotilebuild/config/templates"))
 		temp.add(self)
 		temp.render(folder)
 
-		temp = template.RecursiveTemplate(MIBBlock.CTemplateNameHeader, resource_filename(Requirement.parse("iotilebuild"), "iotilebuild/config/templates"))
+		temp = template.RecursiveTemplate(TBBlock.ConfigTemplateName, resource_filename(Requirement.parse("iotilebuild"), "iotilebuild/config/templates"))
 		temp.add(self)
 		temp.render(folder)
 
-		temp = template.RecursiveTemplate(MIBBlock.ConfigTemplateName, resource_filename(Requirement.parse("iotilebuild"), "iotilebuild/config/templates"))
+		temp = template.RecursiveTemplate(TBBlock.CTemplateNameHeader, resource_filename(Requirement.parse("iotilebuild"), "iotilebuild/config/templates"))
 		temp.add(self)
 		temp.render(folder)
 
-		temp = template.RecursiveTemplate(MIBBlock.ConfigTemplateNameHeader, resource_filename(Requirement.parse("iotilebuild"), "iotilebuild/config/templates"))
+		self.create_config_headers(folder)
+
+	def create_config_headers(self, folder):
+		"""
+		Create C headers for config variables defined in this block
+		"""
+
+		temp = template.RecursiveTemplate(TBBlock.ConfigTemplateNameHeader, resource_filename(Requirement.parse("iotilebuild"), "iotilebuild/config/templates"))
 		temp.add(self)
 		temp.render(folder)
 
