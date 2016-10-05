@@ -55,6 +55,12 @@ def autobuild_pcb(module, boardfile):
 	Generate production CAM, assembly and BOM data for a circuitboard.
 	"""
 
+	try:
+		import iotilepcb
+	except ImportError:
+		print "(WARNING) Not building pcb since iotilepcb is not installed"
+		return
+	
 	pcbpath = os.path.join('build', 'output', 'pcb')
 
 	boardpath = os.path.join('#pcb', boardfile)
