@@ -19,6 +19,7 @@ from copy import deepcopy
 import itertools
 import os
 import subprocess
+import platform
 from cStringIO import StringIO
 import re
 import os
@@ -53,7 +54,9 @@ def find_scons():
 	"""
 
 	try:
-		p = subprocess.Popen(['scons', '--version'], stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+		scons_path = find_executable('scons')
+
+		p = subprocess.Popen([sys.executable, scons_path, '--version'], stderr=subprocess.PIPE, stdout=subprocess.PIPE)
 		output, output_err = p.communicate()
 	except OSError:
 		raise BuildError("Could not find an installed version of SCons.  SCons is required for the build system to work.")
@@ -68,6 +71,29 @@ def find_scons():
 
 	libpath = os.path.dirname(install_dir)
 	sys.path = sys.path + [libpath]
+
+def find_executable(name):
+	ext = ['.py', '']
+
+	if platform.system()== 'Windows':
+		ext += ['.exe']
+
+	pathvars = os.environ['PATH']
+
+	if platform.system() == 'Windows':
+		sep = ';'
+	else:
+		sep = ':'
+
+	paths = pathvars.split(sep)
+
+	for p in paths:
+		for e in ext:
+			binpath = os.path.abspath(os.path.join(p, name + e))
+			if os.path.exists(binpath):
+				return binpath
+
+	raise BuildError("Could not find an installed version of SCons.  SCons is required for the build system to work.", searched_paths = os.environ['PATH'])
 
 def build_other(directory, artifacts=[]):
 	"""
