@@ -21,7 +21,7 @@ class ComponentRegistry:
 	def __init__(self):
 		self.kvstore = KeyValueStore('component_registry.db')
 		self.plugins = {}
-		for value in (pkg_resources.working_set):
+		for value in pkg_resources.working_set:
 			value = str(value)
 			if value.startswith("iotile") and not value.startswith("iotilecore"):
 				name = str.split(str(value))[0]
@@ -31,14 +31,19 @@ class ComponentRegistry:
 				finally:
 					if f is not None:
 						f.close()
+
 				f,filename,description = imp.find_module('plugin',parent.__path__)
 				try:
 					submod = imp.load_module(name+'.plugin',f,filename,description)
 				finally:
 					if f is not None:
 						f.close()
-				[name,value] = submod.setup_plugin()
-				self.plugins[name] = value
+
+				if hasattr(submod, 'setup_plugin'):
+					links = submod.setup_plugin()
+
+					for name,value in links:
+						self.plugins[name] = value
 
 	def add_component(self, component):
 		"""

@@ -28,15 +28,6 @@ def parse_version():
     else:
         raise RuntimeError("Unable to find version string in %s." % (VERSIONFILE,))
 
-def list_data_files():
-    result = [ ]
-    dirname = os.path.join(os.path.dirname(__file__), 'iotilecore')
-    print dirname
-    for root, dirs, files in os.walk(os.path.join(dirname, 'config')):
-        for filename in files:
-            result.append( os.path.join( root, filename )[len(dirname)+1:] )
-    return result
-
 setup(
     name = "iotilecore",
     packages = find_packages(),
@@ -57,9 +48,6 @@ setup(
         "crcmod>=1.7.0",
         "pint>=0.6.0"
     ],
-    package_data={ #This could be better
-        'iotilecore': list_data_files()
-    },
     entry_points={
         'console_scripts': [
             'iotile = iotilecore.scripts.iotile:main',

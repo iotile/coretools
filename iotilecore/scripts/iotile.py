@@ -36,7 +36,6 @@ def main():
 	shell = HierarchicalShell('iotile', no_rc=norc)
 		
 	shell.root_add("registry", "iotilecore.dev.annotated_registry,registry")
-	shell.root_add("pcb", "iotilecore.pcb")
 	shell.root_add('hw', "iotilecore.commander.hwmanager,HardwareManager")
 
 	reg = ComponentRegistry()

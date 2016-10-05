@@ -10,9 +10,6 @@
 
 import os
 import json
-from iotilecore.utilities.paths import config_directory
-
-conf_dir = config_directory()
 
 class ConfigFile:
 	"""
@@ -20,11 +17,9 @@ class ConfigFile:
 	the local version always overrides the global version.
 	"""
 
-	def __init__(self, name, require_local=False):
-		
-
-		localpath = os.path.join(conf_dir, name +'.local.json')
-		globalpath = os.path.join(conf_dir, name + '.global.json')
+	def __init__(self, base_dir, name, require_local=False):
+		localpath = os.path.join(base_dir, name +'.local.json')
+		globalpath = os.path.join(base_dir, name + '.global.json')
 
 		conf = {}
 		localconf = None
