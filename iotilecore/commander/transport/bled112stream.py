@@ -140,7 +140,7 @@ class BLED112Stream (CMDStream):
 		#filter devices based on which ones have the iotile service characteristic
 		for dev in found_devs:
 			#If this is an advertisement response, see if its an IOTile device
-			if dev['type'] == 0:
+			if dev['type'] == 0 or dev['type'] == 6:
 				scan_data = dev['scan_data']
 
 				if len(scan_data) < 29:
@@ -168,12 +168,15 @@ class BLED112Stream (CMDStream):
 					
 					pending = False
 					low_voltage = False
+					user_connected = False
 					if flags & (1 << 0):
 						pending = True
 					if flags & (1 << 1):
 						low_voltage = True
+					if flags & (1 << 2):
+						user_connected = True
 
-					iotile_devs[dev['address']] = {'connection_string': dev['address'], 'uuid': device_uuid, 'pending_data': pending, 'low_voltage': low_voltage}
+					iotile_devs[dev['address']] = {'user_connected': user_connected, 'connection_string': dev['address'], 'uuid': device_uuid, 'pending_data': pending, 'low_voltage': low_voltage}
 			elif dev['type'] == 4 and dev['address'] in iotile_devs:
 				#Check if this is a scan response packet from an iotile based device
 				scan_data = dev['scan_data']
