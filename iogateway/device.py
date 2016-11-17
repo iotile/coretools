@@ -33,6 +33,8 @@ class DeviceManager(object):
         self.adapters[adapter_id] = man
         man.set_manager(self, adapter_id)
 
+        man.add_callback('on_scan', self.device_found_callback)
+        man.add_callback('on_discconect', self.device_disconnected_callback)
         tornado.ioloop.PeriodicCallback(man.periodic_callback, 1000, self._loop).start()
 
     def stop(self):
@@ -227,6 +229,19 @@ class DeviceManager(object):
         devs = self._scanned_devices
 
         return devs[uuid][adapter_id]['connection_string']
+
+    def device_disconnected_callback(self, adapter, connection_id):
+        """Called when an adapter has had an unexpected device disconnection
+
+        Args:
+            adapter (int): The id of the adapter that was disconnected
+            connection_id (int): The id of the connection that has been disconnected
+        """
+        
+        def sync_device_disconnected_callback(self, adapter, connection_id):
+            pass
+
+        self._loop.add_callback(sync_device_disconnected_callback, self, adapter, connection_id)
         
     def device_found_callback(self, ad, inf, exp):
         """Add or update a device record in scanned_devices
@@ -314,6 +329,28 @@ class DeviceAdapter (object):
         self.manager = None
         self.id = -1
 
+        self.callbacks = {}
+        self.callbacks['on_scan'] = set()
+        self.callbacks['on_disconnect'] = set()
+        
     def set_manager(self, man, adapter_id):
         self.manager = man
         self.id = adapter_id
+
+    def add_callback(self, name, func):
+        """Add a callback when Device events happen
+        
+        Args:
+            name (str): currently support 'on_scan' and 'on_disconnect'
+            func (callable): the function that should be called
+        """
+
+        if name not in self.callbacks:
+            raise ValueError("Unknown callback name: %s" % name)
+
+        self.callbacks[name].add(func)
+
+    def _trigger_callback(self, name, *args, **kwargs):
+        for func in self.callbacks[name]:
+            func(*args, **kwargs)
+

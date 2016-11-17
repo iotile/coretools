@@ -12,7 +12,7 @@ import uuid
 import copy
 import serial
 from iotilecore.utilities.packed import unpack
-from async_packet import AsyncPacketBuffer
+from async_packet import AsyncPacketBuffer, TimeoutError
 
 import device
 from bgapi_structures import process_gatt_service, process_attribute, process_read_handle
@@ -44,7 +44,7 @@ class BLED112CommandProcessor(threading.Thread):
         while not self._stop.is_set():
             try:
                 self._process_events()
-                cmdargs, callback, sync, context = self._commands.get(timeout=0.01)
+                cmdargs, callback, _, context = self._commands.get(timeout=0.01)
                 cmd = cmdargs[0]
 
                 if len(cmdargs) > 0:
@@ -84,9 +84,14 @@ class BLED112CommandProcessor(threading.Thread):
 
         payload = struct.pack("<HHB", interval_num, window_num, active_num)
 
-        response = self._send_command(6, 7, payload)
-        if response.payload[0] != 0:
-            raise ValueError("Could not set scanning parameters", error_code=response.payload[0], response=response)
+        try:
+            response = self._send_command(6, 7, payload)
+            if response.payload[0] != 0:
+                return False, {'reason': "Could not set scanning parameters", 'error': response.payload[0]}
+        except TimeoutError:
+            return False, {'reason': 'Timeout waiting for response'}
+
+        return True, None
 
     def _query_systemstate(self):
         """Query the maximum number of connections supported by this adapter
@@ -98,8 +103,11 @@ class BLED112CommandProcessor(threading.Thread):
 
             return False
 
-        response = self._send_command(0, 6, [])
-        maxconn, = unpack("<B", response.payload)
+        try:
+            response = self._send_command(0, 6, [])
+            maxconn, = unpack("<B", response.payload)
+        except TimeoutError:
+            return False, {'reason': 'Timeout waiting for command response'}
 
         events = self._wait_process_events(0.5, status_filter_func, lambda x: False)
 
@@ -116,15 +124,17 @@ class BLED112CommandProcessor(threading.Thread):
         """Begin scanning forever
         """
 
-        self._set_scan_parameters(active=active)
+        success, retval = self._set_scan_parameters(active=active)
+        if not success:
+            return success, retval
 
         try:
             response = self._send_command(6, 2, [2])
             if response.payload[0] != 0:
-                raise ValueError("Could not initiate scan for ble devices, error_code=%d, response=%s" % (response.payload[0], response))
-        except ValueError as err:
-            self._logger.error('Error scanning for devices: ' + str(err))
-            return False, None
+                self._logger.error('Error starting scan for devices, error=%d', response.payload[0])
+                return False, {'reason': "Could not initiate scan for ble devices, error_code=%d, response=%s" % (response.payload[0], response)}
+        except TimeoutError:
+            return False, {'reason': "Timeout waiting for response"}
 
         return True, None
 
@@ -135,10 +145,10 @@ class BLED112CommandProcessor(threading.Thread):
         try:
             response = self._send_command(6, 4, [])
             if response.payload[0] != 0:
-                raise ValueError("Could not stop scan for ble devices")
-        except ValueError as err:
-            self._logger.error('Error scanning for devices: ' + str(err))
-            return False, None
+                self._logger.error('Error stopping scan for devices, error=%d', response.payload[0])
+                return False, {'reason': "Could not stop scan for ble devices"}
+        except TimeoutError:
+            return False, {'reason': "Timeout waiting for response"}
 
         return True, None
 
@@ -430,6 +440,7 @@ class BLED112CommandProcessor(threading.Thread):
     def sync_command(self, cmd):
         done_event = threading.Event()
         results = []
+
         def done_callback(result):
             results.append(result)
             done_event.set()
@@ -438,10 +449,12 @@ class BLED112CommandProcessor(threading.Thread):
 
         done_event.wait()
 
-        if len(results) == 0:
-            return None
+        success = results[0]['result']
+        retval = results[0]['return_value']
+        if not success:
+            raise RuntimeError("Error executing command %s" % cmd)
 
-        return results[0]
+        return retval
 
     def async_command(self, cmd, callback, context):
         self._commands.put((cmd, callback, False, context))
@@ -513,8 +526,14 @@ class BLED112Manager(device.DeviceAdapter):
     TileBusStreamingCharacteristic = uuid.UUID('fb349b5f-8000-0080-0010-000000000520')
     TileBusHighSpeedCharacteristic = uuid.UUID('fb349b5f-8000-0080-0010-000000000620')
 
-    def __init__(self, port):
+    def __init__(self, port, on_scan=None, on_disconnect=None, passive=True):
         super (BLED112Manager, self).__init__()
+
+        if on_scan is not None:
+            self.add_callback('on_scan', on_scan)
+        
+        if on_disconnect is not None:
+            self.add_callback('on_disconnect', on_disconnect)
 
         self._serial_port = serial.Serial(port, 256000, timeout=0.01, rtscts=True)
         self._stream = AsyncPacketBuffer(self._serial_port, header_length=4, length_function=packet_length)
@@ -533,8 +552,15 @@ class BLED112Manager(device.DeviceAdapter):
         self._logger = logging.getLogger('ble.manager')
         self._command_task._logger.setLevel(logging.WARNING)
 
-        self.initialize_system_sync()
-        self.start_scan()
+        self.scanning = False
+        self._active_scan = not passive
+
+        try:
+            self.initialize_system_sync()
+            self.start_scan(self._active_scan)
+        except:
+            self.stop()
+            raise
 
     def can_connect(self):
         """Check if this adapter can take another connection
@@ -545,7 +571,7 @@ class BLED112Manager(device.DeviceAdapter):
 
         return len(self._connections) < self.maximum_connections
 
-    def _handle_event(self, event):
+    def _handle_event(self, event):        
         if event.command_class == 6 and event.command == 0:
             #Handle scan response events
             self._parse_scan_response(event)
@@ -594,7 +620,7 @@ class BLED112Manager(device.DeviceAdapter):
         parsed['type'] = packet_type
         parsed['address_raw'] = sender
         parsed['address'] = ':'.join([format(ord(x), "02X") for x in sender[::-1]])
-        parsed['address_type'] = addr_type 
+        parsed['address_type'] = addr_type
         
         #Scan data is prepended with a length
         if len(data)  > 0:
@@ -606,6 +632,9 @@ class BLED112Manager(device.DeviceAdapter):
         if parsed['type'] == 0 or parsed['type'] == 6:
             scan_data = parsed['scan_data']
 
+            self._logger.info(repr(scan_data))
+            self._logger.info(len(scan_data))
+
             if len(scan_data) < 29:
                 return #FIXME: Log an error here
 
@@ -615,6 +644,8 @@ class BLED112Manager(device.DeviceAdapter):
             #Make sure the scan data comes back with an incomplete UUID list
             if scan_data[0] != 17 or scan_data[1] != 6:
                 return #FIXME: Log an error here
+            
+            self._logger.info(scan_data)
 
             uuid_buf = scan_data[2:18]
             assert len(uuid_buf) == 16
@@ -638,9 +669,14 @@ class BLED112Manager(device.DeviceAdapter):
                 if flags & (1 << 2):
                     user_connected = True
 
-                self.partial_scan_responses[parsed['address']] = {  'user_connected': user_connected, 'connection_string': parsed['address'], 
-                                                                    'uuid': device_uuid, 'pending_data': pending, 'low_voltage': low_voltage, 
-                                                                    'signal_strength': parsed['rssi']}
+                info = {'user_connected': user_connected, 'connection_string': parsed['address'], 
+                        'uuid': device_uuid, 'pending_data': pending, 'low_voltage': low_voltage, 
+                        'signal_strength': parsed['rssi']}
+
+                if not self._active_scan:
+                    self._trigger_callback('on_scan', self.id, info, self.ExpirationTime)
+                else:
+                    self.partial_scan_responses[parsed['address']] = info
         elif parsed['type'] == 4 and parsed['address'] in self.partial_scan_responses:
             #Check if this is a scan response packet from an iotile based device
             scan_data = parsed['scan_data']
@@ -658,7 +694,7 @@ class BLED112Manager(device.DeviceAdapter):
                 info['visible_readings'] = [(stream, reading_time, reading),]
 
             del self.partial_scan_responses[parsed['address']]
-            self.manager.device_found_callback(self.id, info, self.ExpirationTime)
+            self._trigger_callback('on_scan', self.id, info, self.ExpirationTime)
 
     def stop(self):
         """Safely stop this BLED112 instance without leaving it in a weird state
@@ -681,7 +717,7 @@ class BLED112Manager(device.DeviceAdapter):
         self._command_task.sync_command(['_stop_scan'])
         self.scanning = False
 
-    def start_scan(self, active=True):
+    def start_scan(self, active):
         self._command_task.sync_command(['_start_scan', active])
         self.scanning = True
 
@@ -712,7 +748,7 @@ class BLED112Manager(device.DeviceAdapter):
 
         with self.count_lock:
             self.connecting_count += 1
-        
+
         self._command_task.async_command(['_connect', connection_string],
                                          self._on_connection_finished, context)
 
@@ -721,17 +757,18 @@ class BLED112Manager(device.DeviceAdapter):
 
         Args:
             handle (int): a handle to the connection on the BLED112 dongle
-            conn_id (int): a unique identifier for this connection on the DeviceManager 
+            conn_id (int): a unique identifier for this connection on the DeviceManager
                 that owns this adapter.
             callback (callable): Callback to be called when this procedure finishes
         """
 
-        self._command_task.async_command(['_probe_services', handle], callback, {'connection_id': conn_id, 'handle': handle})
+        self._command_task.async_command(['_probe_services', handle], callback,
+                                         {'connection_id': conn_id, 'handle': handle})
 
     def probe_characteristics(self, conn_id, handle, services):
         """Probe a device for all characteristics defined in its GATT table
 
-        This routine muts be called after probe_services and passed the services dictionary
+        This routine must be called after probe_services and passed the services dictionary
         produced by that method.
 
         Args:
@@ -742,15 +779,14 @@ class BLED112Manager(device.DeviceAdapter):
         """
         self._command_task.async_command(['_probe_characteristics', handle, services],
             self._probe_characteristics_finished, {'connection_id': conn_id, 'handle': handle, 
-            'services': services})
+                                                   'services': services})
 
     def initialize_system_sync(self):
         """Remove all active connections and query the maximum number of supported connections
         """
 
-        result = self._command_task.sync_command(['_query_systemstate'])
-        _, retval, _ = self._parse_return(result)
-
+        retval = self._command_task.sync_command(['_query_systemstate'])
+        
         self.maximum_connections = retval['max_connections']
 
         for conn in retval['active_connections']:
@@ -981,5 +1017,5 @@ class BLED112Manager(device.DeviceAdapter):
         #Check if we should start scanning again
         if not self.scanning and len(self._connections) == 0 and self.connecting_count == 0:
             self._logger.info("Restarting scan for devices")
-            self.start_scan()
+            self.start_scan(self._active_scan)
             self._logger.info("Finished restarting scan for devices")
