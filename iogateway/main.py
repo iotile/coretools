@@ -1,7 +1,7 @@
 import tornado.ioloop
 import signal
 import logging
-import bled112
+from adapters.bled112.bled112 import BLED112Adapter
 import device
 import serial.tools.list_ports
 from wshandler import WebSocketHandler
@@ -68,7 +68,7 @@ if __name__ == '__main__':
     #Take control of all BLED112 devices attached to this computer
     devs = find_bled112_devices()
     for dev in devs:
-        bled_wrapper = bled112.BLED112Manager(dev)
+        bled_wrapper = bled112.BLED112Adapter(dev)
         device_manager.add_adapter(bled_wrapper)
 
     loop.start()

@@ -31,10 +31,10 @@ class DeviceManager(object):
     def add_adapter(self, man):
         adapter_id = len(self.adapters)
         self.adapters[adapter_id] = man
-        man.set_manager(self, adapter_id)
+        man.set_id(adapter_id)
 
         man.add_callback('on_scan', self.device_found_callback)
-        man.add_callback('on_discconect', self.device_disconnected_callback)
+        man.add_callback('on_disconnect', self.device_disconnected_callback)
         tornado.ioloop.PeriodicCallback(man.periodic_callback, 1000, self._loop).start()
 
     def stop(self):
@@ -164,7 +164,7 @@ class DeviceManager(object):
 
     def _get_connection_id(self):
         """Get a unique connection ID
-        
+
         Returns:
             int: the unique id for this connection
         """
@@ -223,7 +223,7 @@ class DeviceManager(object):
 
         Returns:
             string: the appropriate connection string that can be passed to the given adapter to
-                connect to this device. 
+                connect to this device.
         """
 
         devs = self._scanned_devices
@@ -237,7 +237,7 @@ class DeviceManager(object):
             adapter (int): The id of the adapter that was disconnected
             connection_id (int): The id of the connection that has been disconnected
         """
-        
+
         def sync_device_disconnected_callback(self, adapter, connection_id):
             pass
 
@@ -290,12 +290,12 @@ class DeviceManager(object):
         """
 
         if uuid not in self._scanned_devices:
-            self._logger.warn('Device lost called for UUID %d but device was not in scanned_devices list' % uuid)
+            self._logger.warn('Device lost called for UUID %d but device was not in scanned_devices list', uuid)
             return
 
         devrecord = self._scanned_devices[uuid]
         if adapter not in devrecord:
-            self._logger.warn('Device lost called for UUID %d but device was not registered for the adapter that lost it (adapter id=%d)' % (adapter, uuid))
+            self._logger.warn('Device lost called for UUID %d but device was not registered for the adapter that lost it (adapter id=%d)', adapter, uuid)
             return
 
         del devrecord[adapter]
@@ -322,35 +322,3 @@ class DeviceManager(object):
 
         if expired > 0:
             self._logger.info('Expired %d devices' % expired)
-
-
-class DeviceAdapter (object):
-    def __init__(self):
-        self.manager = None
-        self.id = -1
-
-        self.callbacks = {}
-        self.callbacks['on_scan'] = set()
-        self.callbacks['on_disconnect'] = set()
-        
-    def set_manager(self, man, adapter_id):
-        self.manager = man
-        self.id = adapter_id
-
-    def add_callback(self, name, func):
-        """Add a callback when Device events happen
-        
-        Args:
-            name (str): currently support 'on_scan' and 'on_disconnect'
-            func (callable): the function that should be called
-        """
-
-        if name not in self.callbacks:
-            raise ValueError("Unknown callback name: %s" % name)
-
-        self.callbacks[name].add(func)
-
-    def _trigger_callback(self, name, *args, **kwargs):
-        for func in self.callbacks[name]:
-            func(*args, **kwargs)
-

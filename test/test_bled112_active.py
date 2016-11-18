@@ -3,11 +3,11 @@ from nose.tools import *
 import serial
 from test.util.mock_bled112 import MockBLED112
 from test.util.ble_device import MockIOTileDevice
-from iogateway.bled112 import BLED112Manager
+from iogateway.adapters.bled112.bled112 import BLED112Adapter
 import test.util.dummy_serial
 import threading
 
-class TestBLED112Manager(unittest.TestCase):
+class TestBLED112AdapterActive(unittest.TestCase):
     """
     Test to make sure that the BLED112Manager is working correctly
     """
@@ -23,7 +23,7 @@ class TestBLED112Manager(unittest.TestCase):
         self._scanned_devices_seen = threading.Event()
         self.num_scanned_devices = 0
         self.scanned_devices = []
-        self.bled = BLED112Manager('test', self._on_scan_callback, 
+        self.bled = BLED112Adapter('test', self._on_scan_callback, 
                                    self._on_disconnect_callback, passive=False)
 
     def tearDown(self):

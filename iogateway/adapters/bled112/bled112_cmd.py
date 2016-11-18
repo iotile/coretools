@@ -1,0 +1,551 @@
+from collections import namedtuple
+import time
+import struct
+import threading
+import logging
+import datetime
+import uuid
+from Queue import Empty
+import copy
+import serial
+from iotilecore.utilities.packed import unpack
+
+import iogateway.adapters.adapter
+from iogateway.adapters.bled112.bgapi_structures import process_gatt_service, process_attribute, process_read_handle
+from iogateway.adapters.bled112.bgapi_structures import parse_characteristic_declaration
+
+BGAPIPacket = namedtuple("BGAPIPacket", ["is_event", "command_class", "command", "payload"])
+
+class BLED112CommandProcessor(threading.Thread):
+    def __init__(self, stream, commands):
+        super(BLED112CommandProcessor, self).__init__()
+
+        self._stream = stream
+        self._commands = commands
+        self._stop = threading.Event()
+        self._logger = logging.getLogger('server.ble.raw')
+        self.event_handler = None
+
+    def run(self):
+        while not self._stop.is_set():
+            try:
+                self._process_events()
+                cmdargs, callback, _, context = self._commands.get(timeout=0.01)
+                cmd = cmdargs[0]
+
+                if len(cmdargs) > 0:
+                    args = cmdargs[1:]
+                else:
+                    args = []
+
+                self._logger.info('Started command: ' + cmd)
+                if hasattr(self, cmd):
+                    result, retval = getattr(self, cmd)(*args)
+                else:
+                    pass #FIXME: Log an error for an invalid command
+                self._logger.info('Finished command: ' + cmd)
+
+                result_obj = {}
+                result_obj['command'] = cmd
+                result_obj['result'] = bool(result)
+                result_obj['return_value'] = retval
+                result_obj['context'] = context
+
+                if callback:
+                    callback(result_obj)
+            except Empty:
+                pass
+
+    def _set_scan_parameters(self, interval=2100, window=2100, active=False):
+        """
+        Set the scan interval and window in units of ms and set whether active scanning is performed
+        """
+
+        active_num = 0
+        if bool(active):
+            active_num = 1
+
+        interval_num = int(interval*1000/625)
+        window_num = int(window*1000/625)
+
+        payload = struct.pack("<HHB", interval_num, window_num, active_num)
+
+        try:
+            response = self._send_command(6, 7, payload)
+            if response.payload[0] != 0:
+                return False, {'reason': "Could not set scanning parameters", 'error': response.payload[0]}
+        except TimeoutError:
+            return False, {'reason': 'Timeout waiting for response'}
+
+        return True, None
+
+    def _query_systemstate(self):
+        """Query the maximum number of connections supported by this adapter
+        """
+
+        def status_filter_func(event):
+            if event.command_class == 3 and event.command == 0:
+                return True
+
+            return False
+
+        try:
+            response = self._send_command(0, 6, [])
+            maxconn, = unpack("<B", response.payload)
+        except TimeoutError:
+            return False, {'reason': 'Timeout waiting for command response'}
+
+        events = self._wait_process_events(0.5, status_filter_func, lambda x: False)
+
+        conns = []
+        for event in events:
+            handle, flags, addr, addr_type, interval, timeout, lat, bond = unpack("<BB6sBHHHB", event.payload)
+            
+            if flags != 0:
+                conns.append(handle)
+
+        return True, {'max_connections': maxconn, 'active_connections': conns}
+        
+    def _start_scan(self, active):
+        """Begin scanning forever
+        """
+
+        success, retval = self._set_scan_parameters(active=active)
+        if not success:
+            return success, retval
+
+        try:
+            response = self._send_command(6, 2, [2])
+            if response.payload[0] != 0:
+                self._logger.error('Error starting scan for devices, error=%d', response.payload[0])
+                return False, {'reason': "Could not initiate scan for ble devices, error_code=%d, response=%s" % (response.payload[0], response)}
+        except TimeoutError:
+            return False, {'reason': "Timeout waiting for response"}
+
+        return True, None
+
+    def _stop_scan(self):
+        """Stop scanning for BLE devices
+        """
+
+        try:
+            response = self._send_command(6, 4, [])
+            if response.payload[0] != 0:
+                self._logger.error('Error stopping scan for devices, error=%d', response.payload[0])
+                return False, {'reason': "Could not stop scan for ble devices"}
+        except TimeoutError:
+            return False, {'reason': "Timeout waiting for response"}
+
+        return True, None
+
+    def _probe_services(self, handle):
+        """Probe for all primary services and characteristics in those services
+
+        Args:
+            handle (int): the connection handle to probe
+        """
+
+        code = 0x2800
+
+        def event_filter_func(event):
+            if (event.command_class == 4 and event.command == 2):
+                event_handle, = unpack("B", event.payload[0:1])
+                return event_handle == handle
+            
+            return False
+
+        def end_filter_func(event):
+            if (event.command_class == 4 and event.command == 1):
+                event_handle, = unpack("B", event.payload[0:1])
+                return event_handle == handle
+            
+            return False
+
+        payload = struct.pack('<BHHBH', handle, 1, 0xFFFF, 2, code)
+        response = self._send_command(4, 1, payload)
+
+        handle, result = unpack("<BH", response.payload)
+        if result != 0:
+            return False, None
+
+        events = self._wait_process_events(0.5, event_filter_func, end_filter_func)
+        gatt_events = filter(event_filter_func, events)
+        end_events = filter(end_filter_func, events)
+
+        if len(end_events) == 0:
+            return False, None
+
+        #Make sure we successfully probed the gatt table
+        end_event = end_events[0]
+        _, result, _ = unpack("<BHH", end_event.payload)
+        if result != 0:
+            self._logger.warn("Error enumerating GATT table, protocol error code = %d (0x%X)" % (result, result))
+            return False, None
+
+        services = {}
+        for event in gatt_events:
+            process_gatt_service(services, event)
+
+        return True, {'services': services}
+
+    def _probe_characteristics(self, conn, services, timeout=5.0):
+        """Probe gatt services for all associated characteristics in a BLE device
+
+        Args:
+            conn (int): the connection handle to probe
+            services (dict): a dictionary of services produced by probe_services()
+            timeout (float): the maximum number of seconds to spend in any single task
+        """
+
+        for service in services.itervalues():
+            success, result = self._enumerate_handles(conn, service['start_handle'], 
+                                                      service['end_handle'])
+
+            if not success:
+                return False, None
+
+            attributes = result['attributes']
+
+            service['characteristics'] = {}
+
+            last_char = None
+            for handle, attribute in attributes.iteritems():
+                if attribute['uuid'].hex[-4:] == '0328':
+                    success, result = self._read_handle(conn, handle, timeout)
+                    if not success:
+                        return False, None
+
+                    value = result['data']
+                    char = parse_characteristic_declaration(value)
+                    service['characteristics'][char['uuid']] = char
+                    last_char = char
+                elif attribute['uuid'].hex[-4:] == '0229':
+                    if last_char is None:
+                        return False, None
+
+                    success, result = self._read_handle(conn, handle, timeout)
+                    if not success:
+                        return False, None
+
+                    value = result['data']
+                    assert len(value) == 2
+                    value, = unpack("<H", value)
+
+                    last_char['client_configuration'] = {'handle': handle, 'value': value}
+
+        return True, {'services': services}
+
+    def _prepare_rpcs(self, conn, services, timeout=1.0):
+        """Prepare
+        """
+
+        pass
+
+    def _enumerate_handles(self, conn, start_handle, end_handle, timeout=5.0):
+        conn_handle = conn
+
+        def event_filter_func(event):
+            if event.command_class == 4 and event.command == 4:
+                event_handle, = unpack("B", event.payload[0:1])
+                return event_handle == conn_handle
+            
+            return False
+
+        def end_filter_func(event):
+            if event.command_class == 4 and event.command == 1:
+                event_handle, = unpack("B", event.payload[0:1])
+                return event_handle == conn_handle
+            
+            return False
+
+        payload = struct.pack("<BHH", conn_handle, start_handle, end_handle)
+        response = self._send_command(4, 3, payload)
+
+        handle, result = unpack("<BH", response.payload)
+
+        if result != 0:
+            return False, None
+
+        events = self._wait_process_events(timeout, event_filter_func, end_filter_func)
+        handle_events = filter(event_filter_func, events)
+
+        attrs = {}
+        for event in handle_events:
+            process_attribute(attrs, event)
+
+        return True, {'attributes': attrs}
+
+    def _read_handle(self, conn, handle, timeout=1.0):
+        conn_handle = conn
+        payload = struct.pack("<BH", conn_handle, handle)
+        response = self._send_command(4, 4, payload)
+
+        ignored_handle, result = unpack("<BH", response.payload)
+
+        if result != 0:
+            self._logger.warn("Error reading handle %d, result=%d" % (handle, result))
+            return False, None
+
+        def handle_value_func(event):
+            if (event.command_class == 4 and event.command == 5):
+                event_handle, = unpack("B", event.payload[0:1])
+                return event_handle == conn_handle
+
+        def handle_error_func(event):
+            if (event.command_class == 4 and event.command == 1):
+                event_handle, = unpack("B", event.payload[0:1])
+                return event_handle == conn_handle 
+
+        events = self._wait_process_events(5.0, lambda x: False, lambda x: handle_value_func(x) or handle_error_func(x))
+        if len(events) != 1:
+            return False, None
+
+        if handle_error_func(events[0]):
+            return False, None
+
+        handle_event = events[0]
+        handle_type, handle_data = process_read_handle(handle_event)
+
+        return True, {'type': handle_type, 'data': handle_data}
+
+    def _write_handle(self, conn, handle, ack, value, timeout=1.0):
+        """Write to a BLE device characteristic by its handle
+        
+        Args:
+            conn (int): The connection handle for the device we should read from
+            handle (int): The characteristics handle we should read
+            ack (bool): Should this be an acknowledges write or unacknowledged
+            timeout (float): How long to wait before failing
+            value (bytearray): The value that we should write
+        """
+
+        conn_handle = conn
+        char_handle = handle
+
+        def write_handle_acked(event):
+            if event.command_class == 4 and event.command == 1:
+                conn, _, char = unpack("BHH", event.payload)
+
+                return conn_handle == conn and char_handle == char
+
+        data_len = len(value)
+        if data_len > 20:
+            return False, {'reason': 'Data too long to write'}
+
+        payload = struct.pack("<BHB%ds" % data_len, conn_handle, char_handle, data_len, value)
+
+        if ack:
+            response = self._send_command(4, 5, payload)
+        else:
+            response = self._send_command(4, 6, payload)
+
+        _, result = struct.unpack("<BH", response)
+        if result != 0:
+            return False, {'reason': 'Error writing to handle', 'error_code': result}
+
+        if ack:
+            events = self._wait_process_events(timeout, lambda x: False, write_handle_acked)
+
+            if len(events) == 0:
+                return False, {'reason': 'Timeout waiting for acknowledge on write'}
+
+            _, result, _ = unpack("BHH", events[0].payload)
+            if result != 0:
+                return False, {'reason': 'Error received during write to handle', 'error_code': result}
+
+        return True, None
+
+    def _connect(self, address):
+        """Connect to a device given its uuid
+        """
+
+        latency = 0
+        conn_interval_min = 6
+        conn_interval_max = 100
+        timeout = 1.0
+
+        #Allow passing either a binary address or a hex string
+        if isinstance(address, basestring) and len(address) > 6:
+            address = address.replace(':', '')
+            address = str(bytearray.fromhex(address)[::-1])
+
+        #Allow simple determination of whether a device has a public or private address
+        #This is not foolproof
+        private_bits = ord(address[-1]) >> 6
+        if private_bits == 0b11:
+            address_type = 1
+        else:
+            address_type = 0
+
+        payload = struct.pack("<6sBHHHH", address, address_type, conn_interval_min,
+                              conn_interval_max, int(timeout*100.0), latency)
+        response = self._send_command(6, 3, payload)
+
+        result, handle = unpack("<HB", response.payload)
+        if result != 0:
+            return False, None
+
+        #Now wait for the connection event that says we connected or kill the attempt after timeout
+        def conn_succeeded(event):
+            if event.command_class == 3 and event.command == 0:
+                event_handle, = unpack("B", event.payload[0:1])
+                return event_handle == handle
+
+        #FIXME Hardcoded timeout
+        events = self._wait_process_events(4.0, lambda x: False, conn_succeeded)
+        if len(events) != 1:
+            self._stop_scan()
+            return False, None
+
+        handle, _, addr, _, interval, timeout, latency, _ = unpack("<BB6sBHHHB", events[0].payload)
+        formatted_addr = ":".join(["%02X" % ord(x) for x in addr])
+        self._logger.info('Connected to device %s with interval=%d, timeout=%d, latency=%d',
+                          formatted_addr, interval, timeout, latency)
+
+        connection = {"handle": handle}
+        return True, connection
+
+    def _disconnect(self, handle):
+        """Disconnect from a device that we have previously connected to
+        """
+
+        payload = struct.pack('<B', handle)
+        response = self._send_command(3, 0, payload)
+
+        conn_handle, result = unpack("<BH", response.payload)
+        if result != 0:
+            self._logger.info("Disconnection failed result=%d", result)
+            return False, None
+
+        assert conn_handle == handle
+
+        def disconnect_succeeded(event):
+            if event.command_class == 3 and event.command == 4:
+                event_handle, = unpack("B", event.payload[0:1])
+                return event_handle == handle
+
+            return False
+
+        #FIXME Hardcoded timeout
+        events = self._wait_process_events(3.0, lambda x: False, disconnect_succeeded)
+        if len(events) != 1:
+            return False, None
+
+        return True, {'handle': handle}
+
+    def _send_command(self, cmd_class, command, payload, timeout=3.0):
+        """
+        Send a BGAPI packet to the dongle and return the response
+        """
+
+        if len(payload) > 60:
+            return ValueError("Attempting to send a BGAPI packet with length > 60 is not allowed", actual_length=len(payload), command=command, command_class=cmd_class)
+
+        header = bytearray(4)
+        header[0] = 0
+        header[1] = len(payload)
+        header[2] = cmd_class
+        header[3] = command
+
+        packet = header + bytearray(payload)
+        self._logger.info('Sending: ' + ':'.join([format(x, "02X") for x in packet]))
+        self._stream.write(packet)
+
+        #Every command has a response so wait for the response here
+        response = self._receive_packet(timeout)
+        return response
+
+    def _receive_packet(self, timeout=3.0):
+        """
+        Receive a response packet to a command
+        """
+
+        while True:
+            response_data = self._stream.read_packet(timeout=timeout)
+            response = BGAPIPacket(is_event=(response_data[0] == 0x80), command_class=response_data[2], command=response_data[3], payload=response_data[4:])
+
+            if response.is_event:
+                if self.event_handler is not None:
+                    self.event_handler(response)
+                
+                continue
+
+            return response
+
+    def stop(self):
+        self._stop.set()
+        self.join()
+
+    def sync_command(self, cmd):
+        done_event = threading.Event()
+        results = []
+
+        def done_callback(result):
+            results.append(result)
+            done_event.set()
+
+        self._commands.put((cmd, done_callback, True, None))
+
+        done_event.wait()
+
+        success = results[0]['result']
+        retval = results[0]['return_value']
+        if not success:
+            raise RuntimeError("Error executing command %s" % cmd)
+
+        return retval
+
+    def async_command(self, cmd, callback, context):
+        self._commands.put((cmd, callback, False, context))
+
+    def _process_events(self, return_filter=None):
+        to_return = []
+
+        try:
+            while True:
+                event_data = self._stream.queue.get_nowait()
+                event = BGAPIPacket(is_event=(event_data[0] == 0x80), command_class=event_data[2],
+                                    command=event_data[3], payload=event_data[4:])
+
+                if not event.is_event:
+                    self._logger.error('Received response when we should have only received events:' + str(event))
+                elif return_filter is not None and return_filter(event):
+                    to_return.append(event)
+                elif self.event_handler is not None:
+                    self.event_handler(event)
+        except Empty:
+            pass
+
+        return to_return
+
+    def _wait_process_events(self, total_time, return_filter, end_filter):
+        """Synchronously process events until a specific event is found or we timeout
+
+        Args:
+            total_time (float): The aproximate maximum number of seconds we should wait for the end event
+            return_filter (callable): A function that returns True for events we should return and not process
+                normally via callbacks to the IOLoop
+            end_filter (callable): A function that returns True for the end event that we are looking for to
+                stop processing.
+
+        Returns:
+            list: A list of events that matched return_filter or end_filter
+        """
+        acc = []
+
+        delta = 0.01
+        curr_time = 0.0
+        
+        while curr_time < total_time:
+            events = self._process_events(lambda x: return_filter(x) or end_filter(x))
+            acc += events
+
+            for event in events:
+                if end_filter(event):
+                    return acc
+
+            time.sleep(delta)
+
+            curr_time += delta
+
+        return acc
