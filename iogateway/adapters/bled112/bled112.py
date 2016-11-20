@@ -1,8 +1,7 @@
 # This file is copyright Arch Systems, Inc.
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
-from collections import namedtuple
-from Queue import Queue, Empty
+from Queue import Queue
 import time
 import struct
 import threading
@@ -12,9 +11,10 @@ import uuid
 import copy
 import serial
 from iotilecore.utilities.packed import unpack
-from iogateway.adapters.async_packet import AsyncPacketBuffer, TimeoutError
-import iogateway.adapters.adapter
-from iogateway.adapters.bled112.bled112_cmd import BLED112CommandProcessor
+from ..async_packet import AsyncPacketBuffer
+from ..adapter import DeviceAdapter
+from bled112_cmd import BLED112CommandProcessor
+from tilebus import *
 
 def packet_length(header):
     """
@@ -26,26 +26,18 @@ def packet_length(header):
 
     return (highbits << 8) | lowbits
 
-class BLED112Adapter(iogateway.adapters.adapter.DeviceAdapter):
+class BLED112Adapter(DeviceAdapter):
     """Callback based BLED112 wrapper supporting multiple simultaneous connections
     """
 
     ExpirationTime = 60 #Expire devices 60 seconds after seeing them
-
-    TileBusService = uuid.UUID('0ff60f63-132c-e611-ba53-f73f00200000')
-    TileBusSendHeaderCharacteristic = uuid.UUID('fb349b5f-8000-0080-0010-000000000320')
-    TileBusSendPayloadCharacteristic = uuid.UUID('fb349b5f-8000-0080-0010-000000000420')
-    TileBusReceiveHeaderCharacteristic = uuid.UUID('fb349b5f-8000-0080-0010-000000000120')
-    TileBusReceivePayloadCharacteristic = uuid.UUID('fb349b5f-8000-0080-0010-000000000220')
-    TileBusStreamingCharacteristic = uuid.UUID('fb349b5f-8000-0080-0010-000000000520')
-    TileBusHighSpeedCharacteristic = uuid.UUID('fb349b5f-8000-0080-0010-000000000620')
 
     def __init__(self, port, on_scan=None, on_disconnect=None, passive=True):
         super(BLED112Adapter, self).__init__()
 
         if on_scan is not None:
             self.add_callback('on_scan', on_scan)
-        
+
         if on_disconnect is not None:
             self.add_callback('on_disconnect', on_disconnect)
 
@@ -135,7 +127,7 @@ class BLED112Adapter(iogateway.adapters.adapter.DeviceAdapter):
         parsed['address_raw'] = sender
         parsed['address'] = ':'.join([format(ord(x), "02X") for x in sender[::-1]])
         parsed['address_type'] = addr_type
-        
+
         #Scan data is prepended with a length
         if len(data)  > 0:
             parsed['scan_data'] = bytearray(data[1:])
@@ -160,7 +152,7 @@ class BLED112Adapter(iogateway.adapters.adapter.DeviceAdapter):
             assert len(uuid_buf) == 16
             service = uuid.UUID(bytes_le=str(uuid_buf))
 
-            if service == self.TileBusService:
+            if service == TileBusService:
                 #Now parse out the manufacturer specific data
                 manu_data = scan_data[18:]
                 assert len(manu_data) == 10
@@ -261,6 +253,25 @@ class BLED112Adapter(iogateway.adapters.adapter.DeviceAdapter):
         self._command_task.async_command(['_connect', connection_string],
                                          self._on_connection_finished, context)
 
+    def enable_rpcs(self, conn_id, callback):
+        """Enable RPC interface for this IOTile device
+
+        Args:
+            conn_id (int): the unique identifier for the connection
+            callback (callback): Callback to be called when this command finishes
+        """
+
+        handle = self._find_handle(conn_id)
+        services = self._connections[handle]['services']
+
+        self._command_task.async_command(['_enable_rpcs', handle, services], self._enable_rpcs_finished, {'connection_id': conn_id, 'callback': callback})
+
+    def _enable_rpcs_finished(self, result):
+        success, retval, context = self._parse_return(result)
+        callback = context['callback']
+
+        callback(success, retval)
+
     def probe_services(self, handle, conn_id, callback):
         """Given a connected device, probe for its GATT services and characteristics
 
@@ -289,23 +300,6 @@ class BLED112Adapter(iogateway.adapters.adapter.DeviceAdapter):
         self._command_task.async_command(['_probe_characteristics', handle, services],
             self._probe_characteristics_finished, {'connection_id': conn_id, 'handle': handle, 
                                                    'services': services})
-
-    def prepare_rpcs(self, conn_id, handle, services):
-        """Prepare the remote device to send TileBus RPCs over BLE
-
-        This function must be called after probe_characteristics and passed the services dictionary
-        produced by that method
-
-        Args:
-            handle (int): a handle to the connection on the BLED112 dongle
-            conn_id (int): a unique identifier for this connection on the DeviceManager
-                that owns this adapter.
-            services (dict): A dictionary of GATT services produced by probe_characteristics()
-        """
-
-        self._command_task.async_command(['_prepare_rpcs', handle, services],
-            self._prepare_rpcs_finished, {'connection_id': conn_id, 'handle': handle,
-                                          'services': services})
 
     def initialize_system_sync(self):
         """Remove all active connections and query the maximum number of supported connections
@@ -388,6 +382,13 @@ class BLED112Adapter(iogateway.adapters.adapter.DeviceAdapter):
 
         return success, return_value, context
 
+    def _find_handle(self, conn_id):
+        for handle, data in self._connections.iteritems():
+            if data['connection_id'] == conn_id:
+                return handle
+
+        raise ValueError("connection id not found: %d" % conn_id)
+
     def _get_connection(self, handle, expect_state=None):
         """Get a connection object, logging an error if its in an unexpected state
         """
@@ -402,7 +403,7 @@ class BLED112Adapter(iogateway.adapters.adapter.DeviceAdapter):
     def _on_connection_finished(self, result):
         """Callback when the connection attempt to a BLE device has finished
 
-        This function if called by the event_handler when a new connection event is seen
+        This function if called when a new connection is successfully completed
 
         Args:
             event (BGAPIPacket): Connection event
@@ -515,7 +516,7 @@ class BLED112Adapter(iogateway.adapters.adapter.DeviceAdapter):
 
         #Validate that this is a proper IOTile device
         services = result['return_value']['services']
-        if self.TileBusService not in services:
+        if TileBusService not in services:
             conndata['failed'] = True
             conndata['failure_reason'] = 'TileBus service not present in GATT services'
             self.disconnect(conn_id, self._on_connection_failed)
@@ -526,6 +527,8 @@ class BLED112Adapter(iogateway.adapters.adapter.DeviceAdapter):
         char_time = conndata['chars_done_time'] - conndata['services_done_time']
         total_time = service_time + char_time
         conndata['state'] = 'connected'
+        conndata['services'] = services
+
         del conndata['disconnect_handler']
 
         with self.count_lock:

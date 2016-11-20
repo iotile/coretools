@@ -122,6 +122,34 @@ class DeviceManager(object):
         self.adapters[adapter_id].connect(connstring, conn_id, self._on_connection_finished)
         return result
 
+    def enable_rpc_interface(self, connection_id):
+        """Asynchronously attempt to enable the RPC interface on a connected device
+        """
+
+        result = Future()
+
+        if connection_id not in self.connections:
+            result.set_result({'success': False, 'reason': 'Could not find connection ID'})
+            return result
+
+        self._update_connection_data(connection_id, 'future', result)
+        self._update_connection_state()
+        adapter = self.connections[connection_id]['adapter']
+
+        def _sync_enable_rpcs_finished(success, retval):
+            passback = {}
+            passback['sucess'] = success
+
+            if 'reason' in retval:
+                passback['reason'] = retval['reason']
+
+            result.set_result(passback)
+
+        def _enable_rpcs_finished(self, success, retval):
+            self._loop.add_callback(_sync_enable_rpcs_finished, success, retval)
+
+        self.adapters[adapter].enable_rpcs(connection_id, self._enable_rpcs_finished)
+
     def disconnect(self, connection_id):
         """Disconnect from a current connection
         

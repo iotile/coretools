@@ -26,6 +26,10 @@ class BGAPIPacket(object):
         make_command(3, 0): ["B", ["handle"]],
         make_event(3, 4): ["BH", ["handle", "reason"]], #disconnected event
 
+        #Connect
+        make_command(6, 3): ["XBHHHH", ["address", "address_type", "interval_min", "interval_max", "timeout", "latency"]],
+        make_resp(6, 3): ["HB", ["result", "handle"]],
+
         #Set scan parameters
         make_command(6, 7): ["HHB", ["interval", "window", "active"]],
         make_resp(6, 7): ["H", ["result"]],
@@ -140,6 +144,7 @@ class MockBLED112(object):
         self._register_handlers()
         self.devices = {}
         self.max_connections = max_connections
+        self.connections =[]
         self.active_scan = False
         self.scanning = False
         self.connecting = False
@@ -154,6 +159,7 @@ class MockBLED112(object):
         self.handlers[make_command(6, 7)] = self._handle_set_scan_parameters
         self.handlers[make_command(6, 2)] = self._start_scan
         self.handlers[make_command(6, 4)] = self._end_procedure
+        self.handlers[make_command(6, 3)] = self._connect
     
     def generate_response(self, packetdata):
         try:
@@ -186,6 +192,31 @@ class MockBLED112(object):
 
         resp = {'type': bgapi_resp(6, 7), 'result': 0}
         return [resp]
+
+    def _connect(self, payload):
+        packets = []
+
+        addr = payload['address']
+
+        #If we're already connecting, fail
+        if self.connecting:
+            resp = {'type': bgapi_resp(6, 3), 'result': 0x181, 'handle': 0}
+            return [resp]
+
+        #Otherwise try to connect
+        resp = {'type': bgapi_resp(6, 3), 'result': 0, 'handle': len(self.connections)}
+        self.connecting = True
+        
+        packets.append(resp)
+        
+        if addr in self.devices:
+            event = {'handle': len(self.connections), 'flags': 0xFF, 'address': addr, 'address_type': payload['addr_type'],
+                     'interval': payload['interval_min'], 'timeout': payload['timeout'], latency: payload['latency'], 'bonding': 0xFF}
+
+            self.connections.append(addr)
+            packets.append(event)
+
+        return packets
 
     def _start_scan(self, payload):
         if self.scanning is True:
@@ -227,8 +258,6 @@ class MockBLED112(object):
             packet['bond'] = 0xFF #No bond
             packet['data'] = dev.advertisement()
 
-            self._logger.info(str(packet))
-
             packets.append(packet)
 
             if self.active_scan:
@@ -236,6 +265,5 @@ class MockBLED112(object):
                 response['data'] = dev.scan_response()
                 response['adv_type'] = dev.ScanResponsePacket
                 packets.append(response)
-                self._logger.info(str(response))
         
         return packets

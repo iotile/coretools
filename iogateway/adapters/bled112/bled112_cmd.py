@@ -9,10 +9,10 @@ from Queue import Empty
 import copy
 import serial
 from iotilecore.utilities.packed import unpack
-
-import iogateway.adapters.adapter
-from iogateway.adapters.bled112.bgapi_structures import process_gatt_service, process_attribute, process_read_handle
-from iogateway.adapters.bled112.bgapi_structures import parse_characteristic_declaration
+from tilebus import *
+from bgapi_structures import process_gatt_service, process_attribute, process_read_handle
+from bgapi_structures import parse_characteristic_declaration
+from ..async_packet import TimeoutError
 
 BGAPIPacket = namedtuple("BGAPIPacket", ["is_event", "command_class", "command", "payload"])
 
@@ -354,6 +354,51 @@ class BLED112CommandProcessor(threading.Thread):
                 return False, {'reason': 'Error received during write to handle', 'error_code': result}
 
         return True, None
+
+    def _set_notification(self, conn, char, enabled, timeout=1.0):
+        """Enable/disable notifications on a GATT characteristic
+
+        Args:
+            conn (int): The connection handle for the device we should interact with
+            char (dict): The characteristic we should modify
+            enabled (bool): Should we enable or disable notifications
+            timeout (float): How long to wait before failing
+        """
+
+        if 'client_configuration' not in char:
+            return False, {'reason': 'Cannot enable notification without a client configuration attribute for characteristic'}
+
+        props = char['properties']
+        if not props.notify:
+            return False, {'reason': 'Cannot enable notification on a characteristic that does not support it'}
+
+        value = char['client_configuration']['value']
+
+        #Check if we don't have to do anything
+        current_state = bool(value & (1 << 0))
+        if current_state == enabled:
+            return
+
+        if enabled:
+            value |= 1 << 0
+        else:
+            value &= ~(1 << 0)
+
+        char['client_configuration']['value'] = value
+
+        valarray = struct.pack("<H", value)
+        return self._write_handle(conn, char['client_configuration']['handle'], True, valarray, timeout)
+
+    def _enable_rpcs(self, conn, services):
+        """Enable the TileBus RPC interface over BLE 
+        """
+
+        result, context = self._set_notification(conn, services[TileBusService][TileBusReceiveHeaderCharacteristic], True)
+        if not result:
+            return result, context
+
+        result, context = self._set_notification(conn, services[TileBusService][TileBusReceiveHeaderCharacteristic], True)
+        return result, context
 
     def _connect(self, address):
         """Connect to a device given its uuid
