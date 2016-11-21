@@ -14,9 +14,9 @@ class DeviceManager(object):
 
     ConnectionIdleState = 0
     ConnectionRequestedState = 1
-    ConnectionStartedState = 2
     ConnectedState = 3
     DisconnectionStartedState = 4
+    DisconnectedState = 5
 
     def __init__(self, loop):
         self._scanned_devices = {}
@@ -85,19 +85,25 @@ class DeviceManager(object):
 
         return devs
 
+    @tornado.gen.coroutine
     def connect(self, uuid):
-        """Asynchronously attempt to connect to a device by its UUID
+        """Coroutine to attempt to connect to a device by its UUID
+
+        Args:
+            uuid (uuid): the IOTile UUID of the device that we're trying to connect to
 
         Returns:
-            Future: the result of the connection as a dict
+            a dictionary containg two keys: 
+                'success': bool with whether the attempt was sucessful
+                'reason': failure_reason as a string if the attempt failed
+                'connection_id': int with the id for the connection if the attempt was successful
         """
 
         devs = self.scanned_devices
-        result = Future()
 
         if uuid not in devs:
-            result.set_result({'success': False, 'reason': 'Could not find UUID'})
-            return result
+            raise tornado.gen.Return({'success': False, 'reason': 'Could not find UUID'})
+            
 
         adapter_id = None
         #Find the best adapter to use based on the first adapter with an open connection spot
@@ -107,88 +113,104 @@ class DeviceManager(object):
                 break
 
         if adapter_id is None:
-            result.set_result({'success': False, 'reason': "No room on any adapter that sees this device for more connections"})
-            return result
+            raise tornado.gen.Return({'success': False, 'reason': "No room on any adapter that sees this device for more connections"})
 
         conn_id = self._get_connection_id()
         self._logger.info('UUID found, starting connection process (assigned id: %d)', conn_id)
 
         connstring = self._get_connection_string(uuid, adapter_id)
 
-        self._update_connection_data(conn_id, 'future', result)
         self._update_connection_data(conn_id, 'adapter', adapter_id)
         self._update_connection_state(conn_id, self.ConnectionRequestedState)
 
-        self.adapters[adapter_id].connect(connstring, conn_id, self._on_connection_finished)
-        return result
+        result = yield tornado.gen.Task(self.adapters[adapter_id].connect_async, conn_id, connstring)
+        conn_id, adapter_id, success, failure_reason = result.args
 
-    def enable_rpc_interface(self, connection_id):
-        """Asynchronously attempt to enable the RPC interface on a connected device
+        resp = {}
+        resp['success'] = success
+
+        if success:
+            self._update_connection_state(conn_id, self.ConnectedState)
+            resp['connection_id'] = conn_id
+        else:
+            del self.connections[conn_id]
+            if 'failure_reason' is not None:
+                resp['reason'] = failure_reason
+            else:
+                resp['reason'] = 'Unknown failure reason'
+
+        raise tornado.gen.Return(resp)
+
+    @tornado.gen.coroutine
+    def open_interface(self, connection_id, interface):
+        """Coroutine to attempt to enable a particular interface on a connected device
+
+        Args:
+            connection_id (int): The id of a previously opened connection
+            interface (string): The name of the interface that we are trying to enable
+
+        Returns:
+            a dictionary containg two keys: 
+                'success': bool with whether the attempt was sucessful
+                'reason': failure_reason as a string if the attempt failed
         """
 
-        result = Future()
-
         if connection_id not in self.connections:
-            result.set_result({'success': False, 'reason': 'Could not find connection ID'})
-            return result
+            raise tornado.gen.Return({'success': False, 'reason': 'Could not find connection id %d' % connection_id})
 
-        self._update_connection_data(connection_id, 'future', result)
-        self._update_connection_state()
-        adapter = self.connections[connection_id]['adapter']
+        adapter = self._get_connection_data(connection_id, 'adapter')
 
-        def _sync_enable_rpcs_finished(success, retval):
-            passback = {}
-            passback['sucess'] = success
+        result = yield tornado.gen.Task(self.adapters[adapter].open_interface_async, connection_id, interface)
 
-            if 'reason' in retval:
-                passback['reason'] = retval['reason']
+        _, _, success, failure_reason = result.args
 
-            result.set_result(passback)
+        resp = {}
+        resp['success'] = success
 
-        def _enable_rpcs_finished(self, success, retval):
-            self._loop.add_callback(_sync_enable_rpcs_finished, success, retval)
+        if not success:
+            if 'failure_reason' is not None:
+                resp['reason'] = failure_reason
+            else:
+                resp['reason'] = 'Unknown failure reason'
 
-        self.adapters[adapter].enable_rpcs(connection_id, self._enable_rpcs_finished)
+        raise tornado.gen.Return(resp)
 
+    @tornado.gen.coroutine
     def disconnect(self, connection_id):
         """Disconnect from a current connection
-        
+
         Args:
             connection_id (int): The connection id returned from a previous call to connect()
 
         Returns:
-            Future: the result of the disconnection as a dict
+            a dictionary containing two keys:
+                'success': bool with whether the attempt was sucessful
+                'reason': failure_reason as a string if the attempt failed
         """
 
-        result = Future()
-
         if connection_id not in self.connections:
-            result.set_result({'success': False, 'reason': 'Unknown connection ID'})
-            return result
+            raise tornado.gen.Return({'success': False, 'reason': 'Could not find connection id %d' % connection_id})
 
         if self.connections[connection_id]['state'] != self.ConnectedState:
-            result.set_result({'success': False, 'reason': 'Cannot disconnect from device not in connected state'})
-            return result
+            raise tornado.gen.Return({'success': False, 'reason': 'Connection id %d is not in the right state' % connection_id})
 
         adapter_id = self.connections[connection_id]['context']['adapter']
-        self._update_connection_data(connection_id, 'future', result)
 
-        self.adapters[adapter_id].disconnect(connection_id, self._on_disconnection)
-        return result
+        result = yield tornado.gen.Task(self.adapters[adapter_id].disconnect_async, connection_id)
+        _, _, success, failure_reason = result.args
 
-    def _on_disconnection(self, conn, handle, succ, reas):
-        def _sync_on_disconnection(self, connection_id, adapter_handle, success, reason):
-            future = self.connections[connection_id]['context']['future']
+        resp = {}
+        resp['success'] = success
 
-            if not success:    
-                future.set_result({'success': False, 'reason': 'Could not start disconnection'})
-                return
-            else:
-                future.set_result({'success': True})
-
+        if success:
             del self.connections[connection_id]
+        else:
+            if 'failure_reason' is not None:
+                resp['reason'] = failure_reason
+            else:
+                resp['reason'] = 'Unknown failure reason'
 
-        self._loop.add_callback(_sync_on_disconnection, self, conn, handle, succ, reas)
+        raise tornado.gen.Return(resp)
 
     def _get_connection_id(self):
         """Get a unique connection ID
@@ -209,6 +231,12 @@ class DeviceManager(object):
 
         self.connections[conn_id]['context'][key] = value
 
+    def _get_connection_data(self, conn_id, key):
+        if conn_id not in self.connections:
+            raise ValueError("Unknown conn_id")
+
+        return self.connections[conn_id]['context'][key]
+
     def _update_connection_state(self, conn_id, new_state):
         """Update the connection state for this connection
 
@@ -221,30 +249,6 @@ class DeviceManager(object):
             raise ValueError("Unknown conn_id")
 
         self.connections[conn_id]['state'] = new_state
-
-    def _on_connection_finished(self, conn_id, result, value):
-        """Callback after the adapter has finished its attempt to connect to the device
-
-        This callback is called asynchronously from another thread, so it synchronizes
-        itself to the event loop before performing any actions.
-        """
-
-        def _sync_on_connection_finished(self, conn_id, result, value):
-            """Synchronized version of _on_connection_finished
-            """
-
-            conndata = self.connections[conn_id]
-            future = conndata['context']['future']
-            del conndata['context']['future']
-
-            if result:
-                self._update_connection_state(conn_id, self.ConnectedState)
-                future.set_result({'success': True, 'connection_id': conn_id})
-            else:
-                del self.connections[conn_id]
-                future.set_result({'success': False, 'reason': value})
-
-        self._loop.add_callback(_sync_on_connection_finished, self, conn_id, result, value)
 
     def _get_connection_string(self, uuid, adapter_id):
         """Return the connection string appropriate to connect to a device using a given adapter

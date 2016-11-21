@@ -44,7 +44,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             devs = self.manager.scanned_devices
             self.send_response({'success': True, 'devices': devs.values()})
         elif cmdcode == 'connect':
-            resp = yield self._connect(cmd)
+            resp = yield self.manager.connect(cmd['uuid'])
 
             if resp['success']:
                 self.connection = resp['connection_id']
@@ -52,7 +52,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             self.send_response(resp)
         elif cmdcode == 'disconnect':
             if self.connection is not None:
-                resp = yield self._disconnect(self.connection)
+                resp = yield self.manager.disconnect(self.connection)
 
                 if resp['success']:
                     self.connection = None
@@ -60,20 +60,15 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
                 self.send_response(resp)
             else:
                 self.send_error('Disconnection when there was no connection')
+        elif cmdcode == 'open_interface':
+            if self.connection is not None:
+                resp = yield self.manager.open_interface(self.connection, cmd['interface'])
+                self.send_response(resp)
+            else:
+                self.send_error('Attempt to open IOTile interface when there was no connection')
+
         else:
             self.send_error('Command %s not supported' % cmdcode)
-
-    def _connect(self, msg):
-        """Connect to an IOTile device by its uuid
-        """
-
-        return self.manager.connect(msg['uuid'])
-
-    def _disconnect(self, conn):
-        """Disconnect from the currently connected IOTile device
-        """
-
-        return self.manager.disconnect(conn)
 
     def send_response(self, obj):
         msg = msgpack.packb(obj, default=self.encode_datetime)
@@ -94,7 +89,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
     @tornado.gen.coroutine
     def on_close(self):
         if self.connection is not None:
-            resp = yield self._disconnect(self.connection)
+            resp = yield self.manager.disconnect(self.connection)
             self.connection = None
 
         self._logger.info('Client disconnected')

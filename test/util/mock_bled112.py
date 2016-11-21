@@ -63,7 +63,12 @@ class BGAPIPacket(object):
         #Read Handles
         make_command(4, 4): ["BH", ["handle", "char_handle"]],
         make_resp(4, 4): ["BH", ["handle", "result"]],
-        make_event(4, 5): ["BHBA", ["handle", "char_handle", "att_type", "value"]]
+        make_event(4, 5): ["BHBA", ["handle", "char_handle", "att_type", "value"]],
+
+        #Write Handles
+        make_command(4, 5): ["BHA", ["handle", "char_handle", "value"]],
+        make_resp(4, 5): ["BH", ["handle", "result"]]
+
     }
 
     def __init__(self, packet, response):
@@ -181,6 +186,7 @@ class MockBLED112(object):
         self.handlers[make_command(3, 0)] = self._disconnect
         self.handlers[make_command(4, 3)] = self._enumerate_handles
         self.handlers[make_command(4, 4)] = self._read_handle
+        self.handlers[make_command(4, 5)] = self._write_handle
     
     def generate_response(self, packetdata):
         try:
@@ -223,6 +229,36 @@ class MockBLED112(object):
         packets.append(event)
 
         #FIXME If we can't read the handle value then send a different completed event
+        return packets
+
+    def _write_handle(self, payload):
+        handle = payload['handle']
+
+        if handle > len(self.connections):
+            resp = {'type': bgapi_resp(4, 5), 'handle': handle, 'result': 0x186} #0x186 is handle not connected
+            return [resp]
+
+        packets = []
+        resp = {'type': bgapi_resp(4, 5), 'handle': handle, 'result': 0}
+        packets.append(resp)
+
+        dev = self.devices[self.connections[handle]]
+
+        char_handle = payload['char_handle']
+
+        success = dev.write_handle(char_handle, payload['value'])
+
+        event = {}
+        event['type'] = bgapi_event(4, 1)
+        event['handle'] = handle
+        event['end_char'] = char_handle
+        
+        if success:
+            event['result'] = 0
+        else:
+            event['result'] = 0x0401
+
+        packets.append(event)
         return packets
 
     def _enumerate_handles(self, payload):

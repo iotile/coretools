@@ -119,13 +119,13 @@ class MockBLEDevice (object):
     def write_handle(self, handle, value):
         if handle in self.values:
             self.values[handle] = value
-            return
+            return True
 
         handle_id = self.find_uuid(handle)
-        self._handle_write(uuid, value)
+        return self._handle_write(handle_id, value)
 
-    def notifications_enabled(self, uuid):
-        handle = self.find_handle(uuid, 'config')
+    def notifications_enabled(self, handle_id):
+        handle = self.find_handle(handle_id, 'config')
         value, = struct.unpack("<H", self.values[handle])
 
         if value & 0b1:

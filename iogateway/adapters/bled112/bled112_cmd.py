@@ -243,11 +243,24 @@ class BLED112CommandProcessor(threading.Thread):
         """Prepare this device to receive RPCs
         """
 
-        success, result = self._set_notification(conn, services[tilebus.TileBusService][tilebus.TileBusReceiveHeaderCharacteristic], True, timeout)
+        #FIXME: Check for characteristic existence in a try/catch and return failure if not found
+
+        success, result = self._set_notification(conn, services[TileBusService]['characteristics'][TileBusReceiveHeaderCharacteristic], True, timeout)
         if not success:
             return success, result
 
-        return self._set_notification(conn, services[tilebus.TileBusService][tilebus.TileBusReceivePayloadCharacteristic], True, timeout)
+        return self._set_notification(conn, services[TileBusService]['characteristics'][TileBusReceivePayloadCharacteristic], True, timeout)
+
+    def _disable_rpcs(self, conn, services, timeout=1.0):
+        """Prevent this device from receiving more RPCs
+
+        """
+        success, result = self._set_notification(conn, services[TileBusService]['characteristics'][TileBusReceiveHeaderCharacteristic], False, timeout)
+        if not success:
+            return success, result
+
+        return self._set_notification(conn, services[TileBusService]['characteristics'][TileBusReceivePayloadCharacteristic], False, timeout)
+
 
     def _enumerate_handles(self, conn, start_handle, end_handle, timeout=1.0):
         conn_handle = conn
@@ -322,31 +335,6 @@ class BLED112CommandProcessor(threading.Thread):
 
         return True, {'type': handle_type, 'data': handle_data}
 
-    def _set_notification(self, conn, char, enabled, timeout=1.0):
-        if 'client_configuration' not in char:
-            return False, None
-
-        props = char['properties']
-        if not props.notify:
-            return False, None
-
-        value = char['client_configuration']['value']
-
-        #Check if we don't have to do anything
-        current_state = bool(value & (1 << 0))
-        if current_state == enabled:
-            return True, None
-
-        if enabled:
-            value |= 1 << 0
-        else:
-            value &= ~(1 << 0)
-
-        char['client_configuration']['value'] = value
-
-        valarray = struct.pack("<H", value)
-        return self._write_handle(conn, char['client_configuration']['handle'], valarray, True, timeout)
-
     def _write_handle(self, conn, handle, ack, value, timeout=1.0):
         """Write to a BLE device characteristic by its handle
         
@@ -363,7 +351,7 @@ class BLED112CommandProcessor(threading.Thread):
 
         def write_handle_acked(event):
             if event.command_class == 4 and event.command == 1:
-                conn, _, char = unpack("BHH", event.payload)
+                conn, _, char = unpack("<BHH", event.payload)
 
                 return conn_handle == conn and char_handle == char
 
@@ -373,12 +361,15 @@ class BLED112CommandProcessor(threading.Thread):
 
         payload = struct.pack("<BHB%ds" % data_len, conn_handle, char_handle, data_len, value)
 
-        if ack:
-            response = self._send_command(4, 5, payload)
-        else:
-            response = self._send_command(4, 6, payload)
+        try:
+            if ack:
+                response = self._send_command(4, 5, payload)
+            else:
+                response = self._send_command(4, 6, payload)
+        except TimeoutError:
+            return False, {'reason': 'Timeout waiting for response to command in _write_handle'}
 
-        _, result = struct.unpack("<BH", response)
+        _, result = struct.unpack("<BH", response.payload)
         if result != 0:
             return False, {'reason': 'Error writing to handle', 'error_code': result}
 
@@ -388,7 +379,7 @@ class BLED112CommandProcessor(threading.Thread):
             if len(events) == 0:
                 return False, {'reason': 'Timeout waiting for acknowledge on write'}
 
-            _, result, _ = unpack("BHH", events[0].payload)
+            _, result, _ = unpack("<BHH", events[0].payload)
             if result != 0:
                 return False, {'reason': 'Error received during write to handle', 'error_code': result}
 
@@ -427,17 +418,6 @@ class BLED112CommandProcessor(threading.Thread):
 
         valarray = struct.pack("<H", value)
         return self._write_handle(conn, char['client_configuration']['handle'], True, valarray, timeout)
-
-    def _enable_rpcs(self, conn, services):
-        """Enable the TileBus RPC interface over BLE 
-        """
-
-        result, context = self._set_notification(conn, services[TileBusService][TileBusReceiveHeaderCharacteristic], True)
-        if not result:
-            return result, context
-
-        result, context = self._set_notification(conn, services[TileBusService][TileBusReceiveHeaderCharacteristic], True)
-        return result, context
 
     def _connect(self, address):
         """Connect to a device given its uuid

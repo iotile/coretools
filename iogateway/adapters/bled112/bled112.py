@@ -77,6 +77,125 @@ class BLED112Adapter(DeviceAdapter):
 
         return len(self._connections) < self.maximum_connections
 
+    def stop(self):
+        """Safely stop this BLED112 instance without leaving it in a weird state
+
+        """
+
+        if self.scanning:
+            self.stop_scan()
+
+        #Make a copy since this will change size as we disconnect
+        con_copy = copy.copy(self._connections)
+
+        for _, context in con_copy.iteritems():
+            self.disconnect_sync(context['connection_id'])
+
+        self._command_task.stop()
+        self._stream.stop()
+
+    def stop_scan(self):
+        self._command_task.sync_command(['_stop_scan'])
+        self.scanning = False
+
+    def start_scan(self, active):
+        self._command_task.sync_command(['_start_scan', active])
+        self.scanning = True
+
+    def connect_async(self, connection_id, connection_string, callback):
+        """Connect to a device by its connection_string
+
+        This function asynchronously connects to a device by its BLE address passed in the
+        connection_string parameter and calls callback when finished.  Callback is called
+        on either success or failure with the signature:
+
+        callback(conn_id: int, result: bool, value: None)
+
+        Args:
+            connection_string (string): A BLE address is XX:YY:ZZ:AA:BB:CC format
+            connection_id (int): A unique integer set by the caller for referring to this connection
+                once created
+            callback (callable): A callback function called when the connection has succeeded or
+                failed
+        """
+
+        context = {}
+        context['connection_id'] = connection_id
+        context['callback'] = callback
+
+        #Don't scan while we attempt to connect to this device
+        if self.scanning:
+            self.stop_scan()
+
+        with self.count_lock:
+            self.connecting_count += 1
+
+        self._command_task.async_command(['_connect', connection_string],
+                                         self._on_connection_finished, context)
+
+    def disconnect_async(self, conn_id, callback):
+        """Asynchronously disconnect from a device that has previously been connected
+
+        Args:
+            conn_id (int): a unique identifier for this connection on the DeviceManager
+                that owns this adapter.
+            callback (callable): A function called as callback(conn_id, adapter_id, success, failure_reason)
+            when the disconnection finishes.  Disconnection can only either succeed or timeout.
+        """
+
+        found_handle = None
+        #Find the handle by connection id
+        for handle, conn in self._connections.iteritems():
+            if conn['connection_id'] == conn_id:
+                found_handle = handle
+
+        if found_handle is None:
+            callback(conn_id, 0, False, 'Invalid connection_id')
+            return
+
+        self._command_task.async_command(['_disconnect', found_handle], self._on_disconnect,
+                                         {'connection_id': conn_id, 'handle': found_handle,
+                                          'callback': callback})
+
+    def _open_rpc_interface(self, conn_id, callback):
+        """Enable RPC interface for this IOTile device
+
+        Args:
+            conn_id (int): the unique identifier for the connection
+            callback (callback): Callback to be called when this command finishes
+                callback(conn_id, adapter_id, success, failure_reason)
+        """
+
+        handle = self._find_handle(conn_id)
+        services = self._connections[handle]['services']
+
+        self._command_task.async_command(['_enable_rpcs', handle, services], self._on_interface_finished, {'connection_id': conn_id, 'callback': callback})
+
+    def _close_rpc_interface(self, conn_id, callback):
+        """Disable RPC interface for this IOTile device
+
+        Args:
+            conn_id (int): the unique identifier for the connection
+            callback (callback): Callback to be called when this command finishes
+                callback(conn_id, adapter_id, success, failure_reason)
+        """
+
+        handle = self._find_handle(conn_id)
+        services = self._connections[handle]['services']
+
+        self._command_task.async_command(['_disable_rpcs', handle, services], self._on_interface_finished, {'connection_id': conn_id, 'callback': callback})
+
+    def _on_interface_finished(self, result):
+        success, retval, context = self._parse_return(result)
+        callback = context['callback']
+
+        if retval is not None and 'failure_reason' in retval:
+            failure = retval['failure_reason']
+        else:
+            failure = None
+
+        callback(context['connection_id'], self.id, success, failure)
+
     def _handle_event(self, event):        
         if event.command_class == 6 and event.command == 0:
             #Handle scan response events
@@ -197,81 +316,6 @@ class BLED112Adapter(DeviceAdapter):
             del self.partial_scan_responses[parsed['address']]
             self._trigger_callback('on_scan', self.id, info, self.ExpirationTime)
 
-    def stop(self):
-        """Safely stop this BLED112 instance without leaving it in a weird state
-
-        """
-
-        if self.scanning:
-            self.stop_scan()
-
-        #Make a copy since this will change size as we disconnect
-        con_copy = copy.copy(self._connections)
-
-        for _, context in con_copy.iteritems():
-            self.disconnect_sync(context['connection_id'])
-
-        self._command_task.stop()
-        self._stream.stop()
-
-    def stop_scan(self):
-        self._command_task.sync_command(['_stop_scan'])
-        self.scanning = False
-
-    def start_scan(self, active):
-        self._command_task.sync_command(['_start_scan', active])
-        self.scanning = True
-
-    def connect(self, connection_string, conn_id, callback):
-        """Connect to a device by its connection_string
-
-        This function asynchronously connects to a device by its BLE address passed in the
-        connection_string parameter and calls callback when finished.  Callback is called
-        on either success or failure with the signature:
-
-        callback(conn_id: int, result: bool, value: None)
-
-        Args:
-            connection_string (string): A BLE address is XX:YY:ZZ:AA:BB:CC format
-            conn_id (int): A unique integer set by the caller for referring to this connection
-                once created
-            callback (callable): A callback function called when the connection has succeeded or
-                failed
-        """
-
-        context = {}
-        context['connection_id'] = conn_id
-        context['callback'] = callback
-
-        #Don't scan while we attempt to connect to this device
-        if self.scanning:
-            self.stop_scan()
-
-        with self.count_lock:
-            self.connecting_count += 1
-
-        self._command_task.async_command(['_connect', connection_string],
-                                         self._on_connection_finished, context)
-
-    def enable_rpcs(self, conn_id, callback):
-        """Enable RPC interface for this IOTile device
-
-        Args:
-            conn_id (int): the unique identifier for the connection
-            callback (callback): Callback to be called when this command finishes
-        """
-
-        handle = self._find_handle(conn_id)
-        services = self._connections[handle]['services']
-
-        self._command_task.async_command(['_enable_rpcs', handle, services], self._enable_rpcs_finished, {'connection_id': conn_id, 'callback': callback})
-
-    def _enable_rpcs_finished(self, result):
-        success, retval, context = self._parse_return(result)
-        callback = context['callback']
-
-        callback(success, retval)
-
     def probe_services(self, handle, conn_id, callback):
         """Given a connected device, probe for its GATT services and characteristics
 
@@ -315,42 +359,6 @@ class BLED112Adapter(DeviceAdapter):
 
         self._logger.critical("BLED112 adapter supports %d connections", self.maximum_connections)
 
-    def disconnect(self, conn_id, callback):
-        """Disconnect from a device that has previously been connected
-
-        Args:
-            conn_id (int): a unique identifier for this connection on the DeviceManager
-                that owns this adapter.
-            callback (callable): A function called as callback(conn_id, handle, success, reason)
-            when the disconnection finishes.  Disconnection can only either succeed or timeout.
-        """
-
-        found_handle = None
-        #Find the handle by connection id
-        for handle, conn in self._connections.iteritems():
-            if conn['connection_id'] == conn_id:
-                found_handle = handle
-
-        if found_handle is None:
-            callback(conn_id, 0, False, 'Invalid connection_id')
-            return
-
-        self._command_task.async_command(['_disconnect', found_handle], self._on_disconnect,
-                                         {'connection_id': conn_id, 'handle': found_handle,
-                                          'callback': callback})
-
-    def disconnect_sync(self, conn_id):
-        """Synchronously disconnect from a connected device
-
-        """
-        done = threading.Event()
-
-        def disconnect_done(conn_id, handle, status, reason):
-            done.set()
-
-        self.disconnect(conn_id, disconnect_done)
-        done.wait()
-
     def _on_disconnect(self, result):
         """Callback called when disconnection command finishes
 
@@ -364,7 +372,7 @@ class BLED112Adapter(DeviceAdapter):
         connection_id = context['connection_id']
         handle = context['handle']
 
-        callback(connection_id, handle, success, "No reason given")
+        callback(connection_id, self.id, success, "No reason given")
         del self._connections[handle] #NB Cleanup connection after callback in case it needs the connection info
 
     @classmethod
@@ -413,7 +421,8 @@ class BLED112Adapter(DeviceAdapter):
         callback = context['callback']
 
         if success is False:
-            callback(conn_id, False, 'Timeout openning connection id %d' % conn_id)
+            callback(conn_id, self.id, False, 'Timeout opening connection')
+
             with self.count_lock:
                 self.connecting_count -= 1
             return
@@ -439,7 +448,7 @@ class BLED112Adapter(DeviceAdapter):
         callback = conndata['callback']
         conn_id = conndata['connection_id']
         failure_reason = conndata['failure_reason']
-        callback(conn_id, False, failure_reason)
+        callback(conn_id, self.id, False, failure_reason)
 
         del self._connections[handle]
 
@@ -516,7 +525,7 @@ class BLED112Adapter(DeviceAdapter):
             self.connecting_count -= 1
 
         self._logger.info("Total time to connect to device: %.3f (%.3f enumerating services, %.3f enumerating chars)", total_time, service_time, char_time)
-        callback(conndata['connection_id'], True, None)
+        callback(conndata['connection_id'], self.id, True, None)
 
     def periodic_callback(self):
         """Periodic cleanup tasks to maintain this adapter, should be called every second
