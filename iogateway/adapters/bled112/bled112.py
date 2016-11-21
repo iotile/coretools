@@ -364,9 +364,8 @@ class BLED112Adapter(DeviceAdapter):
         connection_id = context['connection_id']
         handle = context['handle']
 
-        del self._connections[handle]
-
         callback(connection_id, handle, success, "No reason given")
+        del self._connections[handle] #NB Cleanup connection after callback in case it needs the connection info
 
     @classmethod
     def _parse_return(cls, result):
@@ -471,24 +470,6 @@ class BLED112Adapter(DeviceAdapter):
         else:
             conndata['services_done_time'] = time.time()
             self.probe_characteristics(result['context']['connection_id'], result['context']['handle'], result['return_value']['services'])
-
-    def _on_disconnect_started(self, result):
-        """Callback called when an attempt to disconnect from a device has been initiated
-        """
-
-        handle = result['context']['handle']
-        callback = result['context']['callback']
-        conn_id = result['context']['connection_id']
-        conndata = self._get_connection(handle)
-
-        if result['result'] is False:
-            self._logger.error('Could not disconnect cleanly from device handle=%d', handle)
-            callback(conn_id, handle, False, 'Could not initiate disconnection proces from device')
-            conndata['state'] = 'zombie'
-            return
-
-        #We have started the disconnection process
-        conndata['disconnecting'] = True
 
     def _probe_characteristics_finished(self, result):
         """Callback when BLE adapter has finished probing services and characteristics for a device 

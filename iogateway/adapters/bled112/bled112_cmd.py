@@ -162,7 +162,11 @@ class BLED112CommandProcessor(threading.Thread):
             return False
 
         payload = struct.pack('<BHHBH', handle, 1, 0xFFFF, 2, code)
-        response = self._send_command(4, 1, payload)
+
+        try:
+            response = self._send_command(4, 1, payload)
+        except TimeoutError:
+            return False, {'reason': 'Timeout waiting for command response'}
 
         handle, result = unpack("<BH", response.payload)
         if result != 0:
@@ -235,13 +239,17 @@ class BLED112CommandProcessor(threading.Thread):
 
         return True, {'services': services}
 
-    def _prepare_rpcs(self, conn, services, timeout=1.0):
-        """Prepare
+    def _enable_rpcs(self, conn, services, timeout=1.0):
+        """Prepare this device to receive RPCs
         """
 
-        pass
+        success, result = self._set_notification(conn, services[tilebus.TileBusService][tilebus.TileBusReceiveHeaderCharacteristic], True, timeout)
+        if not success:
+            return success, result
 
-    def _enumerate_handles(self, conn, start_handle, end_handle, timeout=5.0):
+        return self._set_notification(conn, services[tilebus.TileBusService][tilebus.TileBusReceivePayloadCharacteristic], True, timeout)
+
+    def _enumerate_handles(self, conn, start_handle, end_handle, timeout=1.0):
         conn_handle = conn
 
         def event_filter_func(event):
@@ -259,9 +267,12 @@ class BLED112CommandProcessor(threading.Thread):
             return False
 
         payload = struct.pack("<BHH", conn_handle, start_handle, end_handle)
-        response = self._send_command(4, 3, payload)
 
-        handle, result = unpack("<BH", response.payload)
+        try:
+            response = self._send_command(4, 3, payload)
+            handle, result = unpack("<BH", response.payload)
+        except TimeoutError:
+            return False, {'reason': "Timeout enumerating handles"}
 
         if result != 0:
             return False, None
@@ -278,9 +289,12 @@ class BLED112CommandProcessor(threading.Thread):
     def _read_handle(self, conn, handle, timeout=1.0):
         conn_handle = conn
         payload = struct.pack("<BH", conn_handle, handle)
-        response = self._send_command(4, 4, payload)
 
-        ignored_handle, result = unpack("<BH", response.payload)
+        try:
+            response = self._send_command(4, 4, payload)
+            ignored_handle, result = unpack("<BH", response.payload)
+        except TimeoutError:
+            return False, {'reason': 'Timeout sending read handle command'}
 
         if result != 0:
             self._logger.warn("Error reading handle %d, result=%d" % (handle, result))
@@ -307,6 +321,31 @@ class BLED112CommandProcessor(threading.Thread):
         handle_type, handle_data = process_read_handle(handle_event)
 
         return True, {'type': handle_type, 'data': handle_data}
+
+    def _set_notification(self, conn, char, enabled, timeout=1.0):
+        if 'client_configuration' not in char:
+            return False, None
+
+        props = char['properties']
+        if not props.notify:
+            return False, None
+
+        value = char['client_configuration']['value']
+
+        #Check if we don't have to do anything
+        current_state = bool(value & (1 << 0))
+        if current_state == enabled:
+            return True, None
+
+        if enabled:
+            value |= 1 << 0
+        else:
+            value &= ~(1 << 0)
+
+        char['client_configuration']['value'] = value
+
+        valarray = struct.pack("<H", value)
+        return self._write_handle(conn, char['client_configuration']['handle'], valarray, True, timeout)
 
     def _write_handle(self, conn, handle, ack, value, timeout=1.0):
         """Write to a BLE device characteristic by its handle

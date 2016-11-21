@@ -28,21 +28,40 @@ class TestBLED112Connections(unittest.TestCase):
         self.bled.stop()
         serial.Serial = self.old_serial
 
-    def test_connect_but_noresponse(self):
+    def test_connect_but_nodevice(self):
         start = time.time()
-        self.bled.connect("00:11:22:33:44:55", 0, self._on_connection)
+        self.bled.connect("00:11:22:33:44:56", 0, self._on_connection)
         self._connected.wait()
         end = time.time()
 
-        print end - start
-        assert self._result
+        assert self._conn_id == 0
+        assert self._result is False
+
+    def test_connection_succeeds(self):
+        start = time.time()
+        self.bled.connect("00:11:22:33:44:55", 1, self._on_connection)
+        self._connected.wait()
+        end = time.time()
+
+        assert self._conn_id == 1
+        assert self._result is True
+
+    def test_enable_rpcs(self):
+        self.bled.connect("00:11:22:33:44:55", 1, self._on_connection)
+        self._connected.wait()
+
+        self._connected.clear()
+        self.bled.enable_rpcs(1, self._on_connection)
+        self._connected.wait()
+
+        assert self._result is True
 
     def _on_connection(self, conn_id, result, value):
-        self._connected.set()
-
         self._result = result
         self._conn_id = conn_id
         self._value = value
+
+        self._connected.set()
 
     def _on_scan_callback(self, ad_id, info, expiry):
         pass

@@ -41,7 +41,12 @@ def find_bled112_devices():
     #Look for BLED112 dongles on this computer and start an instance on each one
     ports = serial.tools.list_ports.comports()
     for p in ports:
+        print p
+        if not hasattr(p, 'pid') or not hasattr(p, 'vid'):
+            continue
+
         #Check if the device matches the BLED112's PID/VID combination
+        #FIXME: This requires a newer version of pyserial that has pid and vid exposed
         if (p.pid == 1 and p.vid == 9304):
             found_devs.append(p.device)
 

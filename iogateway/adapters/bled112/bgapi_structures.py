@@ -62,7 +62,7 @@ def parse_characteristic_declaration(value):
     elif length == 19:
         uuid_len = 16
     else:
-        raise ValueError("Value has improper length for ble characteristic definition")
+        raise ValueError("Value has improper length for ble characteristic definition, length was %d" % len(value))
 
     propval, handle, uuid = unpack("<BH%ds" % uuid_len, value)
 

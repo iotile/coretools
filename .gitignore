@@ -56,3 +56,6 @@ target/
 # Vagrant
 .vagrant
 .cached_downloads
+
+#PyCharm
+.idea
