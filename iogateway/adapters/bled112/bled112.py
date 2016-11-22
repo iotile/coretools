@@ -206,9 +206,15 @@ class BLED112Adapter(DeviceAdapter):
 
         if success:
             status = retval['status']
-            length = retval['length']
-            payload = retval['payload'][:length]
 
+            if status == 0xFF:
+                length = 0
+            elif status & (1 << 7):
+                length = retval['length']
+            else:
+                length = 0
+
+            payload = retval['payload'][:length]
 
         callback(context['connection_id'], self.id, success, failure, status, payload)
 

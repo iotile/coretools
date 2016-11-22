@@ -212,6 +212,41 @@ class DeviceManager(object):
 
         raise tornado.gen.Return(resp)
 
+    @tornado.gen.coroutine
+    def send_rpc(self, connection_id, address, feature, command, payload, timeout):
+        """Send an RPC to an IOTile device
+
+        Args:
+            connection_id (int): The connection id returned from a previous call to connect()
+            address (int): the address of the tile that you want to talk to
+            feature (int): the high byte of the rpc id
+            command (int): the low byte of the rpc id
+            payload (string): the payload to send (up to 20 bytes)
+            timeout (float): the maximum amount of time to wait for a response 
+        """
+
+        if connection_id not in self.connections:
+            raise tornado.gen.Return({'success': False, 'reason': 'Could not find connection id %d' % connection_id})
+
+        if self.connections[connection_id]['state'] != self.ConnectedState:
+            raise tornado.gen.Return({'success': False, 'reason': 'Connection id %d is not in the right state' % connection_id})
+
+        rpc_id = (feature << 8) | command
+        adapter_id = self.connections[connection_id]['context']['adapter']
+        result = yield tornado.gen.Task(self.adapters[adapter_id].send_rpc_async, connection_id, address, rpc_id, payload, timeout)
+        _, _, success, failure_reason, status, payload = result.args
+
+        resp = {}
+        resp['success'] = success
+
+        if success:
+            resp['status'] = status
+            resp['payload'] = str(payload)
+        else:
+            resp['reason'] = failure_reason
+
+        raise tornado.gen.Return(resp)
+
     def _get_connection_id(self):
         """Get a unique connection ID
 

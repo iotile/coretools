@@ -66,7 +66,12 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
                 self.send_response(resp)
             else:
                 self.send_error('Attempt to open IOTile interface when there was no connection')
-
+        elif cmdcode == 'send_rpc':
+            if self.connection is not None:
+                resp = yield self.manager.send_rpc(self.connection, cmd['rpc_address'], cmd['rpc_feature'], cmd['rpc_command'], bytearray(cmd['rpc_payload']), cmd['rpc_timeout'])
+                self.send_response(resp)
+            else:
+                self.send_error('Attempt to send an RPC when there was no connection')
         else:
             self.send_error('Command %s not supported' % cmdcode)
 

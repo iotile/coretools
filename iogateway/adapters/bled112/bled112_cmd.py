@@ -619,7 +619,7 @@ class BLED112CommandProcessor(threading.Thread):
     def async_command(self, cmd, callback, context):
         self._commands.put((cmd, callback, False, context))
 
-    def _process_events(self, return_filter=None):
+    def _process_events(self, return_filter=None, max_events=0):
         to_return = []
 
         try:
@@ -634,6 +634,9 @@ class BLED112CommandProcessor(threading.Thread):
                     to_return.append(event)
                 elif self.event_handler is not None:
                     self.event_handler(event)
+
+                if max_events > 0 and len(to_return) == max_events:
+                    return to_return
         except Empty:
             pass
 
@@ -658,7 +661,7 @@ class BLED112CommandProcessor(threading.Thread):
         curr_time = 0.0
         
         while curr_time < total_time:
-            events = self._process_events(lambda x: return_filter(x) or end_filter(x))
+            events = self._process_events(lambda x: return_filter(x) or end_filter(x), max_events=1)
             acc += events
 
             for event in events:
