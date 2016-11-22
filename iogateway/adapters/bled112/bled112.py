@@ -192,6 +192,48 @@ class BLED112Adapter(DeviceAdapter):
                                          {'connection_id': conn_id, 'handle': found_handle,
                                           'callback': callback})
 
+    def send_script_async(self, conn_id, data, progress_callback, callback):
+        """Asynchronously send a a script to this IOTile device
+
+        Args:
+            conn_id (int): A unique identifer that will refer to this connection
+            data (string): the script to send to the device
+            progress_callback (callable): A function to be called with status on our progress, called as:
+                progress_callback(done_count, total_count)
+            callback (callable): A callback for when we have finished sending the script.  The callback will be called as" 
+                callback(connection_id, adapter_id, success, failure_reason)
+                'connection_id': the connection id
+                'adapter_id': this adapter's id
+                'success': a bool indicating whether we received a response to our attempted RPC
+                'failure_reason': a string with the reason for the failure if success == False
+        """
+
+        found_handle = None
+        #Find the handle by connection id
+        for handle, conn in self._connections.iteritems():
+            if conn['connection_id'] == conn_id:
+                found_handle = handle
+
+        if found_handle is None:
+            callback(conn_id, self.id, False, 'Invalid connection_id')
+            return
+
+        services = self._connections[found_handle]['services']
+
+        self._command_task.async_command(['_send_script', found_handle, services, data, 0, progress_callback], self._send_script_finished, {'connection_id': conn_id,
+                                        'callback': callback})
+
+    def _send_script_finished(self, result):
+        success, retval, context = self._parse_return(result)
+        callback = context['callback']
+
+        if retval is not None and 'reason' in retval:
+            failure = retval['reason']
+        else:
+            failure = None
+
+        callback(context['connection_id'], self.id, success, failure)
+
     def _send_rpc_finished(self, result):
         success, retval, context = self._parse_return(result)
         callback = context['callback']
@@ -231,6 +273,25 @@ class BLED112Adapter(DeviceAdapter):
         services = self._connections[handle]['services']
 
         self._command_task.async_command(['_enable_rpcs', handle, services], self._on_interface_finished, {'connection_id': conn_id, 'callback': callback})
+
+    def _open_script_interface(self, conn_id, callback):
+        """Enable script streaming interface for this IOTile device
+
+        Args:
+            conn_id (int): the unique identifier for the connection
+            callback (callback): Callback to be called when this command finishes
+                callback(conn_id, adapter_id, success, failure_reason)
+        """
+
+        handle = self._find_handle(conn_id)
+        services = self._connections[handle]['services']
+
+        success = TileBusHighSpeedCharacteristic in services[TileBusService]['characteristics']
+        reason = None
+        if not success:
+            reason = 'Could not find high speed streaming characteristic'
+
+        callback(conn_id, self.id, success, reason)
 
     def _close_rpc_interface(self, conn_id, callback):
         """Disable RPC interface for this IOTile device

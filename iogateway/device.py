@@ -103,7 +103,6 @@ class DeviceManager(object):
 
         if uuid not in devs:
             raise tornado.gen.Return({'success': False, 'reason': 'Could not find UUID'})
-            
 
         adapter_id = None
         #Find the best adapter to use based on the first adapter with an open connection spot

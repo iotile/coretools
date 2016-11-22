@@ -23,6 +23,8 @@ class TestBLED112Connections(unittest.TestCase):
 
         self.scanned_devices = []
         self.bled = BLED112Adapter('test', self._on_scan_callback, self._on_disconnect_callback)
+        self._current = None
+        self._total = None
 
     def tearDown(self):
         self.bled.stop()
@@ -36,6 +38,23 @@ class TestBLED112Connections(unittest.TestCase):
         assert result['success'] is True
         assert result['status'] == 0xFF
         assert len(result['payload']) == 0
+
+    def test_send_script(self):
+        result = self.bled.connect_sync(1, "00:11:22:33:44:55")
+        assert result['success'] is True
+        
+        result = self.bled.open_interface_sync(1, 'script')
+        assert result['success'] is True
+
+        result = self.bled.send_script_sync(1, '\0'*1027, self._script_progress)
+
+        assert result['success'] is True
+        assert self._current == self._total
+        assert self._total == (1027/20 + 1)
+
+    def _script_progress(self, current, total):
+        self._current = current
+        self._total = total
 
     def _on_scan_callback(self, ad_id, info, expiry):
         pass

@@ -155,6 +155,8 @@ class DeviceAdapter(object):
 
         if interface == "rpc":
             self._open_rpc_interface(conn_id, callback)
+        elif interface == 'script':
+            self._open_script_interface(conn_id, callback)
         else:
             callback(conn_id, self.id, False, "interface not supported yet")
 
@@ -211,7 +213,7 @@ class DeviceAdapter(object):
         """Synchronously send an RPC to this IOTile device
 
         Args:
-             conn_id (int): A unique identifer that will refer to this connection
+            conn_id (int): A unique identifer that will refer to this connection
             address (int): the addres of the tile that we wish to send the RPC to
             rpc_id (int): the 16-bit id of the RPC we want to call
             payload (bytearray): the payload of the command
@@ -237,6 +239,53 @@ class DeviceAdapter(object):
             done.set()
 
         self.send_rpc_async(conn_id, address, rpc_id, payload, timeout, send_rpc_done)
+        done.wait()
+
+        return result
+
+    def send_script_async(self, conn_id, data, progress_callback, callback):
+        """Asynchronously send a a script to this IOTile device
+
+        Args:
+            conn_id (int): A unique identifer that will refer to this connection
+            data (string): the script to send to the device
+            progress_callback (callable): A function to be called with status on our progress, called as:
+                progress_callback(done_count, total_count)
+            callback (callable): A callback for when we have finished sending the script.  The callback will be called as" 
+                callback(connection_id, adapter_id, success, failure_reason)
+                'connection_id': the connection id
+                'adapter_id': this adapter's id
+                'success': a bool indicating whether we received a response to our attempted RPC
+                'failure_reason': a string with the reason for the failure if success == False
+        """
+
+        callback(conn_id, self.id, False, 'Sending scripts is not supported by this device adapter')
+
+    def send_script_sync(self, conn_id, data, progress_callback):
+        """Asynchronously send a a script to this IOTile device
+
+        Args:
+            conn_id (int): A unique identifer that will refer to this connection
+            data (string): the script to send to the device
+            progress_callback (callable): A function to be called with status on our progress, called as:
+                progress_callback(done_count, total_count)
+
+        Returns:
+            dict: a dict with the following two entries set
+                'success': a bool indicating whether we received a response to our attempted RPC
+                'failure_reason': a string with the reason for the failure if success == False
+        """
+
+        done = threading.Event()
+        result = {}
+
+        def send_script_done(conn_id, adapter_id, status, reason):
+            result['success'] = status
+            result['failure_reason'] = reason
+
+            done.set()
+
+        self.send_script_async(conn_id, data, progress_callback, send_script_done)
         done.wait()
 
         return result

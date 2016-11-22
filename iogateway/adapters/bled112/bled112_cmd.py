@@ -25,6 +25,8 @@ class BLED112CommandProcessor(threading.Thread):
         self._stop = threading.Event()
         self._logger = logging.getLogger('server.ble.raw')
         self.event_handler = None
+        self._current_context = None
+        self._current_callback = None
 
     def run(self):
         while not self._stop.is_set():
@@ -38,12 +40,18 @@ class BLED112CommandProcessor(threading.Thread):
                 else:
                     args = []
 
+                self._current_context = context
+                self._current_callback = callback
+
                 self._logger.info('Started command: ' + cmd)
                 if hasattr(self, cmd):
                     result, retval = getattr(self, cmd)(*args)
                 else:
                     pass #FIXME: Log an error for an invalid command
                 self._logger.info('Finished command: ' + cmd)
+
+                self._current_context = None
+                self._current_callback = None
 
                 result_obj = {}
                 result_obj['command'] = cmd
@@ -382,6 +390,34 @@ class BLED112CommandProcessor(threading.Thread):
             _, result, _ = unpack("<BHH", events[0].payload)
             if result != 0:
                 return False, {'reason': 'Error received during write to handle', 'error_code': result}
+
+        return True, None
+
+    def _send_script(self, conn, services, data, curr_loc, progress_callback):
+        hschar = services[TileBusService]['characteristics'][TileBusHighSpeedCharacteristic]['handle']
+
+        chunk_size = 20
+        if len(data) - curr_loc < 20:
+            chunk_size = len(data) - curr_loc
+
+        print curr_loc
+        print conn
+
+        chunk = data[curr_loc:curr_loc+chunk_size]
+        success, reason = self._write_handle(conn, hschar, False, chunk)
+
+        if not success:
+            if 'error_code' in reason and reason['error_code'] == 0x182: #If we are streaming too fast, back off and try again
+                time.sleep(0.1)
+                self.async_command(['_send_script', conn, services, data, curr_loc, progress_callback], self._current_callback, self._current_context)
+                return
+            else:
+                return False, reason
+
+        progress_callback(curr_loc/20, len(data)/20)
+
+        if curr_loc + chunk_size != len(data):
+            self.async_command(['_send_script', conn, services, data, curr_loc+chunk_size, progress_callback], self._current_callback, self._current_context)
 
         return True, None
 
