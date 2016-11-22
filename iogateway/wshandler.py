@@ -1,9 +1,9 @@
-import tornado.websocket
 import logging
-import msgpack
 import datetime
+import tornado.websocket
 import tornado.gen
 from tornado.concurrent import Future
+import msgpack
 
 class WebSocketHandler(tornado.websocket.WebSocketHandler):
     _logger = logging.getLogger('ws.handler')
@@ -56,7 +56,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
                 if resp['success']:
                     self.connection = None
-                    
+
                 self.send_response(resp)
             else:
                 self.send_error('Disconnection when there was no connection')

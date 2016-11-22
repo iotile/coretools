@@ -67,7 +67,11 @@ class BGAPIPacket(object):
 
         #Write Handles
         make_command(4, 5): ["BHA", ["handle", "char_handle", "value"]],
-        make_resp(4, 5): ["BH", ["handle", "result"]]
+        make_resp(4, 5): ["BH", ["handle", "result"]],
+
+        #Write Command
+        make_command(4,6): ["BHA", ["handle", "char_handle", "value"]],
+        make_resp(4, 6): ["BH", ["handle", "result"]]
 
     }
 
@@ -187,6 +191,7 @@ class MockBLED112(object):
         self.handlers[make_command(4, 3)] = self._enumerate_handles
         self.handlers[make_command(4, 4)] = self._read_handle
         self.handlers[make_command(4, 5)] = self._write_handle
+        self.handlers[make_command(4, 6)] = self._write_command
     
     def generate_response(self, packetdata):
         try:
@@ -246,7 +251,7 @@ class MockBLED112(object):
 
         char_handle = payload['char_handle']
 
-        success = dev.write_handle(char_handle, payload['value'])
+        success, notifications = dev.write_handle(char_handle, payload['value'])
 
         event = {}
         event['type'] = bgapi_event(4, 1)
@@ -259,6 +264,46 @@ class MockBLED112(object):
             event['result'] = 0x0401
 
         packets.append(event)
+
+        #If this write triggered any notifications, inject them
+        for notification_handle, value in notifications:
+            event = {}
+            event['type'] = bgapi_event(4, 5)
+            event['handle'] = handle
+            event['char_handle'] = notification_handle
+            event['att_type'] = 1 # Notified
+            event['value'] = value
+            packets.append(event)
+
+        return packets
+
+    def _write_command(self, payload):
+        handle = payload['handle']
+
+        if handle > len(self.connections):
+            resp = {'type': bgapi_resp(4, 6), 'handle': handle, 'result': 0x186} #0x186 is handle not connected
+            return [resp]
+
+        packets = []
+        resp = {'type': bgapi_resp(4, 6), 'handle': handle, 'result': 0}
+        packets.append(resp)
+
+        dev = self.devices[self.connections[handle]]
+
+        char_handle = payload['char_handle']
+
+        success, notifications = dev.write_handle(char_handle, payload['value'])
+
+        #If this write triggered any notifications, inject them
+        for notification_handle, value in notifications:
+            event = {}
+            event['type'] = bgapi_event(4, 5)
+            event['handle'] = handle
+            event['char_handle'] = notification_handle
+            event['att_type'] = 1 # Notified
+            event['value'] = value
+            packets.append(event)
+
         return packets
 
     def _enumerate_handles(self, payload):

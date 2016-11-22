@@ -150,12 +150,67 @@ class BLED112Adapter(DeviceAdapter):
                 found_handle = handle
 
         if found_handle is None:
-            callback(conn_id, 0, False, 'Invalid connection_id')
+            callback(conn_id, self.id, False, 'Invalid connection_id')
             return
 
         self._command_task.async_command(['_disconnect', found_handle], self._on_disconnect,
                                          {'connection_id': conn_id, 'handle': found_handle,
                                           'callback': callback})
+
+    def send_rpc_async(self, conn_id, address, rpc_id, payload, timeout, callback):
+        """Asynchronously send an RPC to this IOTile device
+
+        Args:
+            conn_id (int): A unique identifer that will refer to this connection
+            address (int): the addres of the tile that we wish to send the RPC to
+            rpc_id (int): the 16-bit id of the RPC we want to call
+            payload (bytearray): the payload of the command
+            timeout (float): the number of seconds to wait for the RPC to execute
+            callback (callable): A callback for when we have finished the RPC.  The callback will be called as" 
+                callback(connection_id, adapter_id, success, failure_reason, status, payload)
+                'connection_id': the connection id
+                'adapter_id': this adapter's id
+                'success': a bool indicating whether we received a response to our attempted RPC
+                'failure_reason': a string with the reason for the failure if success == False
+                'status': the one byte status code returned for the RPC if success == True else None
+                'payload': a bytearray with the payload returned by RPC if success == True else None
+        """
+
+        found_handle = None
+        #Find the handle by connection id
+        for handle, conn in self._connections.iteritems():
+            if conn['connection_id'] == conn_id:
+                found_handle = handle
+
+        if found_handle is None:
+            callback(conn_id, self.id, False, 'Invalid connection_id', None, None)
+            return
+
+        services = self._connections[found_handle]['services']
+
+        self._command_task.async_command(['_send_rpc', found_handle, services, address, rpc_id, payload, timeout], self._send_rpc_finished,
+                                         {'connection_id': conn_id, 'handle': found_handle,
+                                          'callback': callback})
+
+    def _send_rpc_finished(self, result):
+        success, retval, context = self._parse_return(result)
+        callback = context['callback']
+
+        status = None
+        payload = None
+
+        if retval is not None and 'reason' in retval:
+            failure = retval['reason']
+        else:
+            failure = None
+
+        if success:
+            status = retval['status']
+            length = retval['length']
+            payload = retval['payload'][:length]
+
+
+        callback(context['connection_id'], self.id, success, failure, status, payload)
 
     def _open_rpc_interface(self, conn_id, callback):
         """Enable RPC interface for this IOTile device

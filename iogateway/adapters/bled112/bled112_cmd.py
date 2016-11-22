@@ -10,7 +10,7 @@ import copy
 import serial
 from iotilecore.utilities.packed import unpack
 from tilebus import *
-from bgapi_structures import process_gatt_service, process_attribute, process_read_handle
+from bgapi_structures import process_gatt_service, process_attribute, process_read_handle, process_notification
 from bgapi_structures import parse_characteristic_declaration
 from ..async_packet import TimeoutError
 
@@ -369,7 +369,7 @@ class BLED112CommandProcessor(threading.Thread):
         except TimeoutError:
             return False, {'reason': 'Timeout waiting for response to command in _write_handle'}
 
-        _, result = struct.unpack("<BH", response.payload)
+        _, result = unpack("<BH", response.payload)
         if result != 0:
             return False, {'reason': 'Error writing to handle', 'error_code': result}
 
@@ -384,6 +384,63 @@ class BLED112CommandProcessor(threading.Thread):
                 return False, {'reason': 'Error received during write to handle', 'error_code': result}
 
         return True, None
+
+    def _send_rpc(self, conn, services, address, rpc_id, payload, timeout=5.0):
+        header_char = services[TileBusService]['characteristics'][TileBusSendHeaderCharacteristic]
+        payload_char = services[TileBusService]['characteristics'][TileBusSendPayloadCharacteristic]
+        receive_header = services[TileBusService]['characteristics'][TileBusReceiveHeaderCharacteristic]['handle']
+        receive_payload = services[TileBusService]['characteristics'][TileBusReceivePayloadCharacteristic]['handle']
+
+        length = len(payload)
+
+        if len(payload) < 20:
+            payload += '\x00'*(20 - len(payload))
+
+        if len(payload) > 20:
+            return False, {'reason': 'Payload is too long, must be at most 20 bytes'}
+
+        header = chr(length) + chr(0) + chr(rpc_id & 0xFF) + chr((rpc_id >> 8) & 0xFF) + chr(address)
+
+        if length > 0:
+            result, value = self._write_handle(conn, payload_char['handle'], False, str(payload))
+            if result is False:
+                return result, value
+
+        result, value = self._write_handle(conn, header_char['handle'], False, str(header))
+        if result is False:
+            return result, value
+
+        #Now receive the tilebus response which is notified to us on two characteristics
+        def notified_header(event):
+            if event.command_class == 4 and event.command == 5:
+                event_handle, att_handle = unpack("<BH", event.payload[0:3])
+                return event_handle == conn and att_handle == receive_header
+
+        def notified_payload(event):
+            if event.command_class == 4 and event.command == 5:
+                event_handle, att_handle = unpack("<BH", event.payload[0:3])
+                return event_handle == conn and att_handle == receive_payload
+
+        events = self._wait_process_events(timeout, lambda x: False, notified_header)
+        if len(events) == 0:
+            return False, {'reason': 'Timeout waiting for notified RPC response header'}
+
+        #Process the received RPC header
+        _, resp_header = process_notification(events[0])
+
+        status = resp_header[0]
+        length = resp_header[3]
+
+        if length > 0:
+            events = self._wait_process_events(timeout, lambda x: False, notified_payload)
+            if len(events) == 0:
+                return False, {'reason': 'Timeout waiting for notified RPC response payload'}
+
+            _, resp_payload = process_notification(events[0])
+        else:
+            resp_payload = '\x00'*20
+
+        return True, {'status': status, 'length': length, 'payload': resp_payload}
 
     def _set_notification(self, conn, char, enabled, timeout=1.0):
         """Enable/disable notifications on a GATT characteristic

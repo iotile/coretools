@@ -119,7 +119,7 @@ class MockBLEDevice (object):
     def write_handle(self, handle, value):
         if handle in self.values:
             self.values[handle] = value
-            return True
+            return True, []
 
         handle_id = self.find_uuid(handle)
         return self._handle_write(handle_id, value)
@@ -151,6 +151,8 @@ class MockIOTileDevice(MockBLEDevice):
         self.pending_data = False
         self.user_connected = False
         self.iotile_id = iotile_id
+
+        self.rpc_payload = bytearray(20)
 
         self.add_char(self.TBService, self.TBSendHeaderChar, False)
         self.add_char(self.TBService, self.TBSendPayloadChar, False)
@@ -189,3 +191,26 @@ class MockIOTileDevice(MockBLEDevice):
         assert len(response) == 31
 
         return response
+
+    def _handle_rpc(self, address, rpc_id, payload):
+        return 0xFF, bytearray()
+
+    def _handle_write(self, char_id, value):
+        if char_id == self.TBSendPayloadChar:
+            self.rpc_payload = value
+            return True, []
+
+        #Check if we should trigger an RPC
+        if char_id == self.TBSendHeaderChar:
+            length, _, cmd, feature, address = struct.unpack("<BBBBB", str(value))
+            rpc_id = (feature << 8) |  cmd
+
+            resp_status, resp_payload = self._handle_rpc(address, rpc_id, self.rpc_payload[:length])
+            resp_header = struct.pack("<BBBB", resp_status, 0, len(resp_payload), 0)
+
+            if len(resp_payload) > 0:
+                return True, [(self.find_handle(self.TBReceivePayloadChar), resp_payload), (self.find_handle(self.TBReceiveHeaderChar), resp_header)]
+            else:
+                return True, [(self.find_handle(self.TBReceiveHeaderChar), resp_header)]
+
+        return False, []

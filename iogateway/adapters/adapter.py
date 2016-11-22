@@ -185,3 +185,58 @@ class DeviceAdapter(object):
         done.wait()
 
         return result
+
+    def send_rpc_async(self, conn_id, address, rpc_id, payload, timeout, callback):
+        """Asynchronously send an RPC to this IOTile device
+
+        Args:
+            conn_id (int): A unique identifer that will refer to this connection
+            address (int): the addres of the tile that we wish to send the RPC to
+            rpc_id (int): the 16-bit id of the RPC we want to call
+            payload (bytearray): the payload of the command
+            timeout (float): the number of seconds to wait for the RPC to execute
+            callback (callable): A callback for when we have finished the RPC.  The callback will be called as" 
+                callback(connection_id, adapter_id, success, failure_reason, status, payload)
+                'connection_id': the connection id
+                'adapter_id': this adapter's id
+                'success': a bool indicating whether we received a response to our attempted RPC
+                'failure_reason': a string with the reason for the failure if success == False
+                'status': the one byte status code returned for the RPC if success == True else None
+                'payload': a bytearray with the payload returned by RPC if success == True else None
+        """
+
+        callback(conn_id, self.id, False, 'RPCs are not supported on this adapter', None, None)
+
+    def send_rpc_sync(self, conn_id, address, rpc_id, payload, timeout):
+        """Synchronously send an RPC to this IOTile device
+
+        Args:
+             conn_id (int): A unique identifer that will refer to this connection
+            address (int): the addres of the tile that we wish to send the RPC to
+            rpc_id (int): the 16-bit id of the RPC we want to call
+            payload (bytearray): the payload of the command
+            timeout (float): the number of seconds to wait for the RPC to execute
+
+        Returns:
+            dict: A dictionary with four elements
+                'success': a bool indicating whether we received a response to our attempted RPC
+                'failure_reason': a string with the reason for the failure if success == False
+                'status': the one byte status code returned for the RPC if success == True else None
+                'payload': a bytearray with the payload returned by RPC if success == True else None
+        """
+
+        done = threading.Event()
+        result = {}
+
+        def send_rpc_done(conn_id, adapter_id, status, reason, rpc_status, resp_payload):
+            result['success'] = status
+            result['failure_reason'] = reason
+            result['status'] = rpc_status
+            result['payload'] = resp_payload
+
+            done.set()
+
+        self.send_rpc_async(conn_id, address, rpc_id, payload, timeout, send_rpc_done)
+        done.wait()
+
+        return result

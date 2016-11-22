@@ -78,3 +78,10 @@ def parse_characteristic_declaration(value):
     char['handle'] = handle
 
     return char
+
+def process_notification(event):
+    length = len(event.payload) - 5
+    conn, att_handle, att_type, act_length, value = unpack("<BHBB%ds" % length, event.payload)
+
+    assert act_length == length
+    return att_handle, bytearray(value)
