@@ -246,6 +246,29 @@ class DeviceManager(object):
 
         raise tornado.gen.Return(resp)
 
+    @tornado.gen.coroutine
+    def send_script(self, connection_id, data, progress_callback):
+        """
+        """
+
+        if connection_id not in self.connections:
+            raise tornado.gen.Return({'success': False, 'reason': 'Could not find connection id %d' % connection_id})
+
+        if self.connections[connection_id]['state'] != self.ConnectedState:
+            raise tornado.gen.Return({'success': False, 'reason': 'Connection id %d is not in the right state' % connection_id})
+
+        adapter_id = self.connections[connection_id]['context']['adapter']
+        result = yield tornado.gen.Task(self.adapters[adapter_id].send_script_async, connection_id, data, progress_callback)
+        _, _, success, failure_reason = result.args
+
+        resp = {}
+        resp['success'] = success
+
+        if not success:
+            resp['reason'] = failure_reason
+
+        raise tornado.gen.Return(resp)
+
     def _get_connection_id(self):
         """Get a unique connection ID
 

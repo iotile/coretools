@@ -415,7 +415,7 @@ class BLED112CommandProcessor(threading.Thread):
             if 'error_code' in reason and reason['error_code'] == 0x182: #If we are streaming too fast, back off and try again
                 time.sleep(0.1)
                 self.async_command(['_send_script', conn, services, data, curr_loc, progress_callback], self._current_callback, self._current_context)
-                return
+                return True, None, True
             else:
                 return False, reason
 

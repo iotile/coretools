@@ -72,8 +72,20 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
                 self.send_response(resp)
             else:
                 self.send_error('Attempt to send an RPC when there was no connection')
+        elif cmdcode == 'send_script':
+            if self.connection is not None:
+                resp = yield self.manager.send_script(self.connection, cmd['data'], lambda x,y:self._notify_progress_async(tornado.ioloop.IOLoop.current(), x, y))
+                self.send_response(resp)
+            else:
+                self.send_error('Attempt to send an RPC when there was no connection')
         else:
             self.send_error('Command %s not supported' % cmdcode)
+
+    def _notify_progress_async(self, loop, current, total):
+        loop.add_callback(self._notify_progress_sync, current, total)
+
+    def _notify_progress_sync(self, current, total):
+        self.send_response({'type':'progress', 'current': current, 'total':total})
 
     def send_response(self, obj):
         msg = msgpack.packb(obj, default=self.encode_datetime)
