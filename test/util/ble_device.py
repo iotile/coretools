@@ -151,6 +151,7 @@ class MockIOTileDevice(MockBLEDevice):
         self.pending_data = False
         self.user_connected = False
         self.iotile_id = iotile_id
+        self.script = ""
 
         self.rpc_payload = bytearray(20)
 
@@ -213,4 +214,6 @@ class MockIOTileDevice(MockBLEDevice):
             else:
                 return True, [(self.find_handle(self.TBReceiveHeaderChar), resp_header)]
 
+        if char_id == self.TBHighSpeedChar:
+            self.script += value
         return False, []

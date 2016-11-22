@@ -46,11 +46,11 @@ class TestBLED112Connections(unittest.TestCase):
         result = self.bled.open_interface_sync(1, 'script')
         assert result['success'] is True
 
-        result = self.bled.send_script_sync(1, '\0'*1027, self._script_progress)
+        script = '\xab'*1027
+        result = self.bled.send_script_sync(1, script, self._script_progress)
 
-        print(self._current)
-        print(self._total)
-        print(1027/20)
+        assert len(self.dev1.script) == len(script)
+        assert self.dev1.script == script
         assert result['success'] is True
         assert self._current == self._total
         assert self._total == (1027/20)

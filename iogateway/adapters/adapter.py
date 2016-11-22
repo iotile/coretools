@@ -3,7 +3,14 @@ import threading
 class DeviceAdapter(object):
     """Classes that encapsulate access to IOTile devices over a particular communication channel
 
-    The interface to a DeviceAdapter is very simple:
+    Subclasses of DeviceAdapter implement concrete access channels over which IOTile devices
+    can be controlled and send data. Examples area a bluetooth low energy communication channel
+    or USB.  In order to fit into the rest of the IOTile tooling systems, only a few functions
+    need to be implemented in a DeviceAdapter as shown below.  At its core, DeviceAdapters need
+    to be able to connect/discconect from a device, open/close an interface on the device, send RPCs
+    and send scripts.
+
+    The interface to a DeviceAdapter is therefore very simple:
     connect_async
     connect_sync
 
@@ -21,6 +28,10 @@ class DeviceAdapter(object):
 
     send_script_async
     send_script_sync
+
+    Subclasses only need to override the '_async' versions of each call.  The synchronous versions will
+    be automatically functional using the '_async' versions provided that the '_async' version not use
+    multiprocessing to invoke its callback. 
 
     Additionally you can register callbacks that will be called in the following circumstances:
 
@@ -40,7 +51,7 @@ class DeviceAdapter(object):
     def set_id(self, adapter_id):
         """Set an ID that this adapater uses to identify itself when making callbacks
         """
-        
+
         self.id = adapter_id
 
     def add_callback(self, name, func):
@@ -91,12 +102,12 @@ class DeviceAdapter(object):
         calldone = threading.Event()
         results = {}
 
-        def connection_callback(callback_connid, callback_adapterid, callback_success, failure_reason):
+        def connect_done(callback_connid, callback_adapterid, callback_success, failure_reason):
             calldone.set()
             results['success'] = callback_success
             results['failure_reason'] = failure_reason
 
-        self.connect_async(connection_id, connection_string, connection_callback)
+        self.connect_async(connection_id, connection_string, connect_done)
         calldone.wait()
 
         return results
