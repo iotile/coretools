@@ -288,13 +288,6 @@ class MockBLED112(object):
         resp = {'type': bgapi_resp(4, 6), 'handle': handle, 'result': 0}
         packets.append(resp)
 
-        print self.devices
-        print handle
-        print self.connections
-
-        import sys
-        sys.stdout.flush()
-
         dev = self.devices[self.connections[handle]]
         char_handle = payload['char_handle']
 

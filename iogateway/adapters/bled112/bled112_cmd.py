@@ -45,9 +45,17 @@ class BLED112CommandProcessor(threading.Thread):
 
                 self._logger.info('Started command: ' + cmd)
                 if hasattr(self, cmd):
-                    result, retval = getattr(self, cmd)(*args)
+                    res = getattr(self, cmd)(*args)
                 else:
                     pass #FIXME: Log an error for an invalid command
+                
+                inprogress = False
+
+                if len(res) == 2:
+                    result, retval = res
+                else:
+                    result, retval, inprogress = res
+
                 self._logger.info('Finished command: ' + cmd)
 
                 self._current_context = None
@@ -59,7 +67,7 @@ class BLED112CommandProcessor(threading.Thread):
                 result_obj['return_value'] = retval
                 result_obj['context'] = context
 
-                if callback:
+                if callback and inprogress is not True:
                     callback(result_obj)
             except Empty:
                 pass
@@ -400,9 +408,6 @@ class BLED112CommandProcessor(threading.Thread):
         if len(data) - curr_loc < 20:
             chunk_size = len(data) - curr_loc
 
-        print curr_loc
-        print conn
-
         chunk = data[curr_loc:curr_loc+chunk_size]
         success, reason = self._write_handle(conn, hschar, False, chunk)
 
@@ -418,6 +423,7 @@ class BLED112CommandProcessor(threading.Thread):
 
         if curr_loc + chunk_size != len(data):
             self.async_command(['_send_script', conn, services, data, curr_loc+chunk_size, progress_callback], self._current_callback, self._current_context)
+            return True, None, True
 
         return True, None
 
