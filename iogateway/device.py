@@ -57,14 +57,16 @@ class DeviceManager(object):
             best_adapter = None
 
             for adapter_id, devinfo in adapters.iteritems():
+                connstring = "{0}/{1}".format(adapter_id, devinfo['connection_string'])
                 if dev is None:
                     dev = copy.deepcopy(devinfo)
+                    del dev['connection_string']
 
                 if 'adapters' not in dev:
-                    dev['adapters'] = [(adapter_id, devinfo['signal_strength'])]
+                    dev['adapters'] = []
                     best_adapter = adapter_id
-                else:
-                    dev['adapters'].append((adapter_id, devinfo['signal_strength']))
+
+                dev['adapters'].append((adapter_id, devinfo['signal_strength'], connstring))
 
                 if max_signal is None:
                     max_signal = devinfo['signal_strength']
@@ -93,10 +95,12 @@ class DeviceManager(object):
             uuid (uuid): the IOTile UUID of the device that we're trying to connect to
 
         Returns:
-            a dictionary containg two keys: 
+            a dict containing: 
                 'success': bool with whether the attempt was sucessful
                 'reason': failure_reason as a string if the attempt failed
-                'connection_id': int with the id for the connection if the attempt was successful
+                'connection_id': int with the id for the connection if the attempt was successful,
+                'connection_string': a string that can be used to reconnect to this exact device in the 
+                    future on success
         """
 
         devs = self.scanned_devices
@@ -105,20 +109,50 @@ class DeviceManager(object):
             raise tornado.gen.Return({'success': False, 'reason': 'Could not find UUID'})
 
         adapter_id = None
+        connection_string = None
         #Find the best adapter to use based on the first adapter with an open connection spot
-        for adapter, signal in devs[uuid]['adapters']:
+        for adapter, signal, connstring in devs[uuid]['adapters']:
             if self.adapters[adapter].can_connect():
                 adapter_id = adapter
+                connection_string = connstring
                 break
 
         if adapter_id is None:
             raise tornado.gen.Return({'success': False, 'reason': "No room on any adapter that sees this device for more connections"})
 
+        result = yield self.connect_direct(connection_string)
+        if result['success']:
+            result['connection_string'] = connection_string
+
+        raise tornado.gen.Return(result)
+
+    @tornado.gen.coroutine
+    def connect_direct(self, connection_string):
+        """Directly connect to a device using its connection string
+
+        Connection strings are opaque strings returned by DeviceAdapter objects that allow direct
+        connection to a unique IOTile device accessible via that adapter.  The DeviceManager prepends
+        an adapter id to the connection string, separating both with a '/' so that you can directly
+        address any device on any DeviceAdapter using a combined connection_string.
+
+        Args:
+            connection_string (string): A connection string that specifies a combination of an adapter and
+                a device on that adapter.
+
+        Returns:
+            a dict containing: 
+                'success': bool with whether the attempt was sucessful
+                'reason': failure_reason as a string if the attempt failed
+                'connection_id': int with the id for the connection if the attempt was successful
+        """
+
+        adapter_id, _, connstring = connection_string.partition('/')
+        adapter_id = int(adapter_id)
+
+        if adapter_id not in self.adapters:
+            raise tornado.gen.Return({'success': False, 'reason': "Adapter ID not found in connection string"})
+
         conn_id = self._get_connection_id()
-        self._logger.info('UUID found, starting connection process (assigned id: %d)', conn_id)
-
-        connstring = self._get_connection_string(uuid, adapter_id)
-
         self._update_connection_data(conn_id, 'adapter', adapter_id)
         self._update_connection_state(conn_id, self.ConnectionRequestedState)
 

@@ -50,6 +50,12 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
                 self.connection = resp['connection_id']
 
             self.send_response(resp)
+        elif cmdcode == 'connect_direct':
+            resp = yield self.manager.connect_direct(cmd['connection_string'])
+            if resp['success']:
+                self.connection = resp['connection_id']
+
+            self.send_response(resp)
         elif cmdcode == 'disconnect':
             if self.connection is not None:
                 resp = yield self.manager.disconnect(self.connection)
