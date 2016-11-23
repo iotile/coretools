@@ -10,7 +10,7 @@
 
 def test_required_packages():
 	"""
-	Make sure that the required dependencies of iotilecore are installed
+	Make sure that the required dependencies of iotile.core are installed
 	"""
 
 	import decorator
@@ -18,7 +18,7 @@ def test_required_packages():
 
 def test_import_iotilecore():
 	"""
-	Make sure iotilecore is accessible for import
+	Make sure iotile.core is accessible for import
 	"""
 
-	import iotilecore
+	import iotile.core

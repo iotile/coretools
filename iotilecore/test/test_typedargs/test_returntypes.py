@@ -6,10 +6,10 @@
 # Modifications to this file from the original created at WellDone International 
 # are copyright Arch Systems Inc.
 
-from iotilecore.utilities.typedargs import type_system
-from iotilecore.utilities import typedargs
+from iotile.core.utilities.typedargs import type_system
+from iotile.core.utilities import typedargs
 from nose.tools import *
-from iotilecore.exceptions import *
+from iotile.core.exceptions import *
 
 def test_simplereturntype():
 	@typedargs.return_type("string")

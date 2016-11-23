@@ -6,12 +6,12 @@
 # Modifications to this file from the original created at WellDone International 
 # are copyright Arch Systems Inc.
 
-from iotilecore.utilities import typedargs
-from iotilecore.utilities.typedargs import type_system
+from iotile.core.utilities import typedargs
+from iotile.core.utilities.typedargs import type_system
 import unittest
 from nose.tools import *
 import os.path
-from iotilecore.exceptions import *
+from iotile.core.exceptions import *
 
 def test_type_injection():
 	import extra_type_package.extra_type as typeobj

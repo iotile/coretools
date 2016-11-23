@@ -6,8 +6,8 @@
 # Modifications to this file from the original created at WellDone International 
 # are copyright Arch Systems Inc.
 
-import iotilecore.commander.transport
-from iotilecore.exceptions import *
+import iotile.core.commander.transport
+from iotile.core.exceptions import *
 import unittest
 import os.path
 import os
@@ -40,12 +40,12 @@ class TestBTAutoPort(unittest.TestCase):
 		wrongCom = testCom(1234,2,"WRONG")
 		rightCom = testCom(9304,1,"RIGHT")
 		serial.tools.list_ports.comports = lambda: [wrongCom,rightCom]
-		iotilecore.commander.transport.bled112dongle.BLED112Dongle = lambda port: testDongle()
-		x = iotilecore.commander.transport.bled112stream.BLED112Stream(None, None, None)
+		iotile.core.commander.transport.bled112dongle.BLED112Dongle = lambda port: testDongle()
+		x = iotile.core.commander.transport.bled112stream.BLED112Stream(None, None, None)
 
 	@raises(HardwareError)
 	def testWrong(self):
 		wrongCom = testCom(1234,2,"WRONG")
 		wrong2Com = testCom(5678,1,"WRONG")
 		serial.tools.list_ports.comports = lambda: [wrongCom, wrong2Com]
-		x = iotilecore.commander.transport.bled112stream.BLED112Stream(None, None, None)
+		x = iotile.core.commander.transport.bled112stream.BLED112Stream(None, None, None)

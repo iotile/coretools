@@ -2,8 +2,8 @@ from nose.tools import *
 import unittest
 import os.path
 import os
-from iotilecore.exceptions import *
-from iotilecore.utilities.asyncio import AsyncPacketBuffer
+from iotile.core.exceptions import *
+from iotile.core.utilities.asyncio import AsyncPacketBuffer
 import tempfile
 import atexit
 

@@ -6,7 +6,7 @@
 # Modifications to this file from the original created at WellDone International 
 # are copyright Arch Systems Inc.
 
-from iotilecore.commander.proxy.proxy import MIBProxyObject
+from iotile.core.commander.proxy.proxy import MIBProxyObject
 
 class EmptyProxy (MIBProxyObject):
 	def random_method(self):

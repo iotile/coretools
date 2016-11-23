@@ -11,8 +11,8 @@ import unittest
 import os.path
 import os
 import platform
-from iotilecore.exceptions import *
-from iotilecore.utilities.paths import settings_directory
+from iotile.core.exceptions import *
+from iotile.core.utilities.paths import settings_directory
 
 class TestSettingsDirectory:
 	def setUp(self):

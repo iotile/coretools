@@ -1,4 +1,4 @@
-from  iotilecore.dev.iotileobj import IOTile
+from  iotile.core.dev.iotileobj import IOTile
 import os
 
 def load_tile(name):
