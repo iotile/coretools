@@ -22,7 +22,8 @@ class ComponentRegistry:
         self.kvstore = KeyValueStore('component_registry.db')
         self.plugins = {}
         
-        for plugin in pkg_resources.iter_entry_points('iotile.plugin'):
+        for entry in pkg_resources.iter_entry_points('iotile.plugin'):
+                plugin = entry.load()
                 links = plugin()
                 for name,value in links:
                     self.plugins[name] = value
