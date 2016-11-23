@@ -16,20 +16,12 @@ import re
 
 from setuptools import setup, find_packages
 
-def parse_version():
-    VERSIONFILE = "iotilecore/__version__.py"
-    verstrline = open(VERSIONFILE, "rt").read()
-    VSRE = r"^__version__ = ['\"]([^'\"]*)['\"]"
-    mo = re.search(VSRE, verstrline, re.M)
-    if mo:
-        return mo.group(1)
-    else:
-        raise RuntimeError("Unable to find version string in %s." % (VERSIONFILE,))
+version = "3.0.0"
 
 setup(
     name="iotilecore",
     packages=find_packages(),
-    version=parse_version(),
+    version=version,
     license="LGPLv3",
     install_requires=[
         "beautifulsoup4==4.3.2",
@@ -54,7 +46,7 @@ setup(
     description="IOTile Core Tools",
     author="Arch",
     author_email="info@arch-iot.com",
-    url="http://github.com/iotile/py_iotilecore",
+    url="http://github.com/iotile/coretools/iotilecore",
     keywords=["iotile", "arch", "embedded", "hardware"],
     classifiers=[
         "Programming Language :: Python",
