@@ -40,7 +40,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'iotile = iotile.core.scripts.iotile:main',
+            'iotile = iotile.core.scripts.iotile_script:main',
         ]
     },
     description="IOTile Core Tools",
