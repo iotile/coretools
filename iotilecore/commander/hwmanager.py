@@ -109,16 +109,16 @@ class HardwareManager:
 		
 		return con
 
-	@param("connection_string", "string", desc="Port specific connection string identifying a device")
-	def connect(self, connection_string):
-		"""Attempt to connect to a device 
+	@param("device_uuid", "integer", desc="UUID of the device we would like to connect to")
+	def connect(self, device_uuid):
+		"""Attempt to connect to a device by its UUID
 		"""
 
-		self.stream.connect(connection_string)
+		self.stream.connect(device_uuid)
 
 	@annotated
 	def disconnect(self):
-		"""Attempt to disconn from a device 
+		"""Attempt to disconnect from a device 
 		"""
 
 		self.stream.disconnect()
@@ -267,6 +267,8 @@ class HardwareManager:
 			return BLED112Stream(port, conn_string, record=self.record)
 		elif self.transport == 'none':
 			return CMDStream(None, None, record=self.record)
+		elif self.transport == 'ws':
+			return WebSocketStream(port, conn_string, record=self.record)
 		elif self.transport == 'recorded':
 			return RecordedStream(port, conn_string, record=self.record)
 		else:

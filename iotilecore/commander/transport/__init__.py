@@ -6,6 +6,6 @@
 # Modifications to this file from the original created at WellDone International 
 # are copyright Arch Systems Inc.
 
-from bled112stream import BLED112Stream
 from recordedstream import RecordedStream
 from cmdstream import CMDStream
+from websocketstream import WebSocketStream

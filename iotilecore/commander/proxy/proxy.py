@@ -202,7 +202,7 @@ class ConfigManager(object):
 
 		return ids
 
-	@return_type("fw_config_variable")
+	@return_type("basic_dict")
 	@param("id", "integer", desc="Variable ID to describe")
 	def describe_variable(self, id):
 		"""
@@ -215,7 +215,19 @@ class ConfigManager(object):
 		if err != 0:
 			raise HardwareError("Error finding config variable by id", id=id, error_code=err)
 
-		return resp['buffer']
+		addr, id, flags = struct.unpack("<LHH", binvalue)
+
+		maxsize = (flags & ~(1 << 15)) & 0xFFFF
+		variable_size = bool(flags >> 15)
+		
+		info = {
+			'address': addr,
+			'id': id,
+			'max_size': maxsize,
+			'variable_size': variable_size
+		}
+
+		return info
 
 	@return_type("bytes", "repr")
 	@param("id", "integer", desc="Variable ID to fetch")
