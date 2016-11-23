@@ -1,0 +1,55 @@
+{
+	"modules":
+	{
+		"lib_lpc824":
+		{
+			"lpc824_includes": 
+			[
+				["cdb"],
+				["chip_8xx"],
+				["chip_8xx", "config_82x"],
+				["chip_common"],
+				["cmsis"]
+			],
+
+			"products":
+			{
+				"include_directories": 
+				[
+					["src", "chip_8xx"],
+					["src", "chip_8xx", "config_82x"],
+					["src", "chip_common"],
+					["src", "cmsis"],
+					["src", "driver"]
+				],
+
+				"liblpc824_lpc824.a": "library"
+			},
+
+			"domain": "iotile_standard_library"
+		}
+	},
+
+	"module_targets" :
+	{
+		"lib_lpc824": ["lpc824"]
+	},
+
+	"architectures":
+	{
+		"lpc824":
+		{
+			"chip": "lpc824",
+			"defines":
+			{
+				"LPC824": 1,
+				"CORE_M0PLUS": 1
+			},
+
+			"cflags": ["-mthumb", "-Wall", "-pedantic", "-Wextra", "-Wshadow", "-Os", "-g", "-fno-builtin", "-ffunction-sections", "-fdata-sections"],
+			"asflags": ["-Wall"],
+			"ldflags": ["-mthumb", "-Xlinker", "--gc-sections", "--specs=nano.specs", "-lc", "-lnosys", "-nostartfiles"],
+			"cpu": "cortex-m0plus"
+		}
+	}
+}

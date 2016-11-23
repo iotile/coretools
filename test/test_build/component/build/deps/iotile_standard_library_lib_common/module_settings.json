@@ -1,0 +1,18 @@
+{
+	"modules":
+	{
+		"common":
+		{
+			"products": 
+			{
+				"include_directories": 
+				[
+					["src", "cdb"], 
+					["src"]
+				]
+			},
+
+			"domain": "iotile_standard_library"
+		}
+	}
+}

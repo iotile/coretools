@@ -54,9 +54,18 @@ def configure_iotile_specific(iotile, namespace):
 
   # Find the path to all installed dependencies
   reg = ComponentRegistry()
+  
+  reldep_paths = {}
 
-  dep_paths = {reg.find_component(x).short_name: (os.path.join(reg.find_component(x).folder, 'build', 'output', 'doc'), None) for x in iotile.dependencies.iterkeys()}
-  reldep_paths = {x: (os.path.relpath(y[0], start="build/output/doc"), os.path.join(y[0], 'objects.inv')) for x,y in dep_paths.iteritems()}
+  for dep in iotile.dependencies:
+    deppath = os.path.join(iotile.folder, 'build', 'deps', dep['unique_id'], 'doc', dep['unique_id'])
+    reldep_path = os.path.join('..', '..', dep['unique_id']) #FIXME: It's not clear why we need ../../ here but we do
+    relobjects = os.path.join(os.path.abspath(deppath), 'objects.inv')
+
+    if not os.path.exists(relobjects):
+      continue
+
+    reldep_paths[dep['name']] = (reldep_path, relobjects)
 
   namespace['intersphinx_mapping'] = reldep_paths
 

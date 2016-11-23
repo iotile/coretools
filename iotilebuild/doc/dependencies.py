@@ -6,6 +6,8 @@ import json
 import sphinx
 from docutils.statemachine import ViewList
 
+#TODO: Modify this to not list whether the dependency is installed or not
+
 class DependenciesDirective (Directive):
 	"""Directive for adding a list of all dependencies used by this component
 

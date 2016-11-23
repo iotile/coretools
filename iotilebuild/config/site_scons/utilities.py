@@ -16,23 +16,8 @@ import json as json
 import sys
 import os.path
 import StringIO
-
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
 from iotilebuild.build import build
 
-def find_files(dirname, pattern):
-	"""
-	Recursively find all files matching pattern under path dirname
-	"""
-
-	matches = []
-	for root, dirnames, filenames in os.walk(dirname, followlinks=True):
-		print dirnames, filenames
-		for filename in fnmatch.filter(filenames, pattern):
-			matches.append(os.path.join(root,filename))
-
-	return matches
 
 def build_includes(includes):
 	if isinstance(includes, basestring):
@@ -78,5 +63,5 @@ def join_path(path):
 def build_defines(defines):
 	return ['-D%s=%s' % (x,str(y)) for x,y in defines.iteritems()]
 
-def get_family(fam, modulefile=None):
-	return build.ChipFamily(fam, modulefile=modulefile)
+def get_family(modulefile):
+	return build.ArchitectureGroup(modulefile)

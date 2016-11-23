@@ -13,21 +13,21 @@ import struct
 from iotilecore.exceptions import BuildError
 from iotilecore.dev.iotileobj import IOTile
 import os
-from dependencies import build_dependencies
+from dependencies import load_dependencies
 
 
-def build_program(name, chip, patch=True):
+def build_program(tile, elfname, chip, patch=True):
 	"""
 	Build an ARM cortex executable
 	"""
 
 	dirs = chip.build_dirs()
 
-	output_name = '%s.elf' % (chip.output_name(),)
-	output_binname = '%s.bin' % (chip.output_name(),)
-	patched_name = '%s_patched.elf' % (chip.output_name(),)
-	patchfile_name = '%s_patchcommand.txt' % (chip.output_name(),)
-	map_name = '%s.map' % (chip.output_name(),)
+	output_name = '%s_%s.elf' % (elfname, chip.arch_name(),)
+	output_binname = '%s_%s.bin' % (elfname, chip.arch_name(),)
+	patched_name = '%s_%s_patched.elf' % (elfname, chip.arch_name(),)
+	patchfile_name = '%s_%s_patchcommand.txt' % (elfname, chip.arch_name(),)
+	map_name = '%s_%s.map' % (elfname, chip.arch_name(),)
 
 	VariantDir(dirs['build'], os.path.join('firmware', 'src'), duplicate=0)
 
@@ -39,23 +39,10 @@ def build_program(name, chip, patch=True):
 	prog_env['PATCHED'] = os.path.join(dirs['build'], patched_name)
 	prog_env['PATCH_FILE'] = os.path.join(dirs['build'], patchfile_name)
 	prog_env['PATCH_FILENAME'] = patchfile_name
-	prog_env['MODULE'] = name
+	prog_env['MODULE'] = elfname
 
 	#Setup all of our dependencies and make sure our output depends on them being built
-	dependencies = chip.property('depends', {})
-	dep_nodes = build_dependencies(dependencies, prog_env)
-	prog_env.Depends(prog_env['OUTPUT_PATH'], dep_nodes)
-
-	## Add in all include directories, library directories, tilebus definitions and libraries from dependencies
-	dep_incs = reduce(lambda x,y:x+y, [x.include_directories() for x in prog_env['DEPENDENCIES']], [])
-	lib_dirs = reduce(lambda x,y:x+y, [x.library_directories() for x in prog_env['DEPENDENCIES']], [])
-	libs = reduce(lambda x,y:x+y, [x.libraries() for x in prog_env['DEPENDENCIES']], [])
-	tilebus_defs = reduce(lambda x,y:x+y, [x.tilebus_definitions() for x in prog_env['DEPENDENCIES']], [])
-
-	prog_env['CPPPATH'] += dep_incs
-	prog_env['LIBPATH'] += lib_dirs
-	prog_env['LIBS'] += libs
-	
+	tilebus_defs = setup_dependencies(tile, prog_env)
 
 	#Setup specific linker flags for building a program
 	##Specify the linker script
@@ -87,7 +74,11 @@ def build_program(name, chip, patch=True):
 	Clean(os.path.join(dirs['build'], output_name), [os.path.join(dirs['build'], map_name)])
 
 	#Compile the TileBus command and config variable definitions
-	tbname = os.path.join('firmware', 'src', 'cdb', prog_env["MODULE"] + ".cdb")
+	#Try to use the modern 'tilebus' directory or the old 'cdb' directory
+	tbname = os.path.join('firmware', 'src', 'tilebus', prog_env["MODULE"] + ".bus")
+	if not os.path.exists(tbname):
+		tbname = os.path.join('firmware', 'src', 'cdb', prog_env["MODULE"] + ".cdb")
+
 	compile_tilebus(tilebus_defs + [tbname], prog_env)
 
 	#Compile an elf for the firmware image
@@ -119,14 +110,14 @@ def build_program(name, chip, patch=True):
 
 	return os.path.join(dirs['output'], output_name)
 
-def build_library(name, chip):
+def build_library(tile, libname, chip):
 	"""
 	Build a static ARM cortex library
 	"""
 
 	dirs = chip.build_dirs()
 
-	output_name = '%s.a' % (chip.output_name(),)
+	output_name = '%s_%s.a' % (libname, chip.arch_name())
 
 	#Support both firmware/src and just src locations for source code
 	if os.path.exists('firmware'):
@@ -140,25 +131,12 @@ def build_library(name, chip):
 	library_env['BUILD_DIR'] = dirs['build']
 
 	# Check for any dependencies this library has
-	dependencies = chip.property('depends', {})
-	dep_nodes = build_dependencies(dependencies, library_env)
-	library_env.Depends(library_env['OUTPUT_PATH'], dep_nodes)
-
-	## Add in all include directories, library directories and libraries from dependencies
-	dep_incs = reduce(lambda x,y:x+y, [x.include_directories() for x in library_env['DEPENDENCIES']], [])
-	lib_dirs = reduce(lambda x,y:x+y, [x.library_directories() for x in library_env['DEPENDENCIES']], [])
-	libs = reduce(lambda x,y:x+y, [x.libraries() for x in library_env['DEPENDENCIES']], [])
-	tilebus_defs = reduce(lambda x,y:x+y, [x.tilebus_definitions() for x in library_env['DEPENDENCIES']], [])
+	tilebus_defs = setup_dependencies(tile, library_env)
 
 	#Create header files for all tilebus config variables and commands that are defined in ourselves
 	#or in our dependencies
-	library_tile = IOTile('.')
-	tilebus_defs += library_tile.tilebus_definitions()
+	tilebus_defs += tile.tilebus_definitions()
 	compile_tilebus(tilebus_defs, library_env, header_only=True)
-
-	library_env['CPPPATH'] += dep_incs
-	library_env['LIBPATH'] += lib_dirs
-	library_env['LIBS'] += libs
 	
 	SConscript(os.path.join(dirs['build'], 'SConscript'), exports='library_env')
 
@@ -169,10 +147,6 @@ def build_library(name, chip):
 		srcpath = os.path.join(*src)
 		destpath = os.path.join(dirs['output'], dst)
 		library_env.InstallAs(destpath, srcpath)
-
-	import autobuild
-	if os.path.exists('doc'):
-		autobuild.autobuild_documentation(name)
 
 	return os.path.join(dirs['output'], output_name)
 
@@ -228,6 +202,46 @@ def setup_environment(chip):
 	env['LIBS'] = []
 
 	return env
+
+def toposort_dependencies(env):
+	from toposort import toposort
+	liborder = {x.name: set(map(lambda x: x['name'], x.dependencies)) for x in env['DEPENDENCIES']}
+	liborder = list(toposort(liborder))
+	
+	sorted_deps = {}
+	sort_count = 0
+	for stage in liborder:
+		for obj in stage:
+			sorted_deps[obj] = sort_count
+			sort_count += 1
+
+	return sorted_deps
+
+def setup_dependencies(tile, env):
+	# Check for any dependencies this library has
+	dep_nodes = load_dependencies(tile, env)
+	env.Depends(env['OUTPUT_PATH'], dep_nodes)
+
+	## Add in all include directories, library directories and libraries from dependencies
+	dep_incs = reduce(lambda x,y:x+y, [x.include_directories() for x in env['DEPENDENCIES']], [])
+	lib_dirs = reduce(lambda x,y:x+y, [x.library_directories() for x in env['DEPENDENCIES']], [])
+	tilebus_defs = reduce(lambda x,y:x+y, [x.tilebus_definitions() for x in env['DEPENDENCIES']], [])
+
+	env['CPPPATH'] += map(lambda x: '#' + x, dep_incs)
+	env['LIBPATH'] += lib_dirs
+
+	#We need to add libraries in reverse dependency order so that gcc resolves symbols among the libraries
+	#correctly
+	lib_order = toposort_dependencies(env)
+	libs = [(x.name, x.libraries()) for x in env['DEPENDENCIES']]
+
+	libs.sort(key=lambda x: lib_order[x[0]], reverse=True)
+
+
+	for lib_parent, lib_list in libs:
+		env['LIBS'] += lib_list
+
+	return tilebus_defs
 
 def compile_tilebus(files, env, outdir=None, header_only=False):
 	"""

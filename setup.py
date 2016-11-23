@@ -52,7 +52,8 @@ setup(
         "iotilecore>=2.0.0",
         "sphinx>=1.3.1",
         "scons==2.5.0",
-        "breathe==4.2.0"
+        "breathe==4.2.0",
+        "pygtrie>=2.0.0"
     ],
     package_data={ 
         'iotilebuild': list_data_files()

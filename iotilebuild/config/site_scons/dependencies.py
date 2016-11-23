@@ -5,32 +5,31 @@ from iotilecore.exceptions import *
 import iotilecore
 from iotilebuild.build.build import build_iotile
 from iotilecore.dev.registry import ComponentRegistry
+from iotilecore.dev.iotileobj import IOTile
 from SCons.Environment import Environment
 import os
 
-def build_dependency(target, source, env):
-	build_iotile(env['TILE'])
+def load_dependencies(tile, build_env):
+	"""Load all tile dependencies and filter only the products from each that we use
+	"""
 
-def build_dependencies(dep_dict, build_env):
 	reg = ComponentRegistry()
 
-	dep_targets = []
 	if 'DEPENDENCIES' not in build_env:
 		build_env['DEPENDENCIES'] = []
 
-	for module, products in dep_dict.iteritems():
+	dep_targets = []
+
+	for dep in tile.dependencies:
 		try:
-			tile = reg.find_component(module)
-			tile.filter_products(products)
+			tile = IOTile(os.path.join('build', 'deps', dep['unique_id']))
+			tile.filter_products(dep['products'])
 		except ArgumentError:
 			raise BuildError("Could not find required dependency", name=module)
 
-		env = Environment(tools=[])
-		env['TILE'] = tile
-		target = os.path.join(build_env['BUILD_DIR'], "__virtual__target__" + module.replace('/', '_'))
-		targets = env.Command(target, [], action=env.Action(build_dependency, "Checking dependency %s" % tile.name))
-
 		build_env['DEPENDENCIES'].append(tile)
+
+		target = os.path.join(tile.folder, 'module_settings.json')
 		dep_targets.append(target)
 
 	return dep_targets
