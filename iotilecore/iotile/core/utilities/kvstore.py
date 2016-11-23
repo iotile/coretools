@@ -2,7 +2,7 @@
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
 #Sqlite3 textual key value store
-from iotilecore.utilities.paths import settings_directory
+from iotile.core.utilities.paths import settings_directory
 import sqlite3
 import os.path
 

@@ -6,20 +6,20 @@
 # Modifications to this file from the original created at WellDone International 
 # are copyright Arch Systems Inc.
 
-from iotilecore.utilities.typedargs import *
+from iotile.core.utilities.typedargs import *
 
-from iotilecore.commander.transport import *
-from iotilecore.commander.exceptions import *
-from iotilecore.exceptions import *
-from iotilecore.utilities.typedargs.annotate import param, return_type, finalizer
-from iotilecore.commander.proxy.proxy import MIBProxyObject
-from iotilecore.dev.registry import ComponentRegistry
+from iotile.core.commander.transport import *
+from iotile.core.commander.exceptions import *
+from iotile.core.exceptions import *
+from iotile.core.utilities.typedargs.annotate import param, return_type, finalizer
+from iotile.core.commander.proxy.proxy import MIBProxyObject
+from iotile.core.dev.registry import ComponentRegistry
 import re
 import inspect
 import os.path
 import imp
 import sys
-from iotilecore.utilities.packed import unpack
+from iotile.core.utilities.packed import unpack
 
 #FIXME: Update the docstring for this class
 @context("HardwareManager")

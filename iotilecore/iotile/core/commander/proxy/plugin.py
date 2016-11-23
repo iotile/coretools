@@ -1,5 +1,5 @@
-from iotilecore.commander.commands import RPCCommand
-from iotilecore.commander.exceptions import *
+from iotile.core.commander.commands import RPCCommand
+from iotile.core.commander.exceptions import *
 from time import sleep
 import proxy
 

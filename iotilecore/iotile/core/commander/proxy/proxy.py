@@ -8,13 +8,13 @@
 
 #MIB Proxy Objects
 
-from iotilecore.commander.commands import RPCCommand
-from iotilecore.commander.exceptions import *
-from iotilecore.utilities.typedargs import return_type, annotated, param, context
+from iotile.core.commander.commands import RPCCommand
+from iotile.core.commander.exceptions import *
+from iotile.core.utilities.typedargs import return_type, annotated, param, context
 from time import sleep
-from iotilecore.utilities.packed import unpack
+from iotile.core.utilities.packed import unpack
 import struct
-from iotilecore.exceptions import *
+from iotile.core.exceptions import *
 
 class MIBProxyObject (object):
 	def __init__(self, stream, address):

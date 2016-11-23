@@ -4,10 +4,10 @@
 # external_proxy.py
 # Routines for importing proxy modules from registered components on your computer
 
-from iotilecore.dev.registry import ComponentRegistry
+from iotile.core.dev.registry import ComponentRegistry
 from proxy import MIBProxyObject
 from plugin import TileBusProxyPlugin
-from iotilecore.exceptions import *
+from iotile.core.exceptions import *
 import os
 import imp
 import inspect

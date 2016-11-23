@@ -1,8 +1,8 @@
 # This file is copyright Arch Systems, Inc.  
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
-from iotilecore.utilities.kvstore import KeyValueStore
-from iotilecore.exceptions import *
+from iotile.core.utilities.kvstore import KeyValueStore
+from iotile.core.exceptions import *
 import json
 import os.path
 from iotileobj import IOTile
@@ -23,7 +23,7 @@ class ComponentRegistry:
 		self.plugins = {}
 		for value in pkg_resources.working_set:
 			value = str(value)
-			if value.startswith("iotile") and not value.startswith("iotilecore"):
+			if value.startswith("iotile") and not value.startswith("iotile.core"):
 				name = str.split(str(value))[0]
 				f, filename, description = imp.find_module(name)
 				try:

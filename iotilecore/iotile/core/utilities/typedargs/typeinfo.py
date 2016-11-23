@@ -14,7 +14,7 @@
 #- Extend the type system to use a recursive parser to allow complex
 #  types to be built from other complex types.
 
-from iotilecore.exceptions import *
+from iotile.core.exceptions import *
 import types
 import os.path
 import imp
@@ -310,7 +310,7 @@ class TypeSystem(object):
 		"""
 
 		# Find all of the registered IOTile components and see if we need to add any type libraries for them
-		from iotilecore.dev.registry import ComponentRegistry
+		from iotile.core.dev.registry import ComponentRegistry
 
 		reg = ComponentRegistry()
 		modules = reg.list_components()

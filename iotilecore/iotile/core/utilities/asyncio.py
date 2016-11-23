@@ -9,7 +9,7 @@
 from threading import Thread
 from Queue import Queue, Empty
 import os
-from iotilecore.exceptions import *
+from iotile.core.exceptions import *
 import multiprocessing
 import signal
 

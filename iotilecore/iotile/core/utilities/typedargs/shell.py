@@ -10,12 +10,12 @@
 #Given a command line string, attempt to map it to a function and fill in 
 #the parameters based on that function's annotated type information.
 
-from iotilecore.exceptions import *
+from iotile.core.exceptions import *
 import annotate
 import inspect
 import shlex
 from typeinfo import type_system
-from iotilecore.utilities.rcfile import RCFile
+from iotile.core.utilities.rcfile import RCFile
 import os.path
 import platform
 import importlib

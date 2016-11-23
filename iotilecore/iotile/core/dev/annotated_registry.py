@@ -2,7 +2,7 @@
 # A wrapper to make the IOTile component registry accessible in the iotile
 # tool.  Since the registry is used internally in the type system it cannot 
 # itself make use of typedargs annotations
-from iotilecore.utilities.typedargs import annotated, param, return_type, context, iprint
+from iotile.core.utilities.typedargs import annotated, param, return_type, context, iprint
 
 _name_ = "Developer"
 

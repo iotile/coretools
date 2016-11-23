@@ -8,7 +8,7 @@
 
 #annotate.py
 from decorator import decorator
-from iotilecore.exceptions import *
+from iotile.core.exceptions import *
 import inspect
 from typeinfo import type_system
 from collections import namedtuple

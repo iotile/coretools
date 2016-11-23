@@ -6,9 +6,9 @@
 # Modifications to this file from the original created at WellDone International 
 # are copyright Arch Systems Inc.
 
-from iotilecore.commander.exceptions import *
-from iotilecore.exceptions import *
-from iotilecore.commander.commands import RPCCommand
+from iotile.core.commander.exceptions import *
+from iotile.core.exceptions import *
+from iotile.core.commander.commands import RPCCommand
 import atexit
 import json
 import binascii

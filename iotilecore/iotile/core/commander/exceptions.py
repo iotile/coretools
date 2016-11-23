@@ -8,14 +8,14 @@
 
 #exceptions.py
 
-import iotilecore.exceptions
+import iotile.core.exceptions
 
 class TimeoutException:
 	def __init__(self, where):
 		self.message = "Timeout occured in %s" % where
 		self.where = where
 
-class RPCError (iotilecore.exceptions.HardwareError):
+class RPCError (iotile.core.exceptions.HardwareError):
 	pass
 
 class ModuleBusyError(RPCError):
@@ -38,9 +38,9 @@ class StreamOperationNotSupportedError(RPCError):
 	def __init__(self, **kwargs):
 		super(StreamOperationNotSupportedError, self).__init__("Underlying command stream does not support the required operation", **kwargs)
 
-class NoSerialConnectionException (iotilecore.exceptions.EnvironmentError):
+class NoSerialConnectionException (iotile.core.exceptions.EnvironmentError):
 	def __init__(self, **kwargs):
 		super(NoSerialConnectionException, self).__init__("No usual serial connection found to MoMo device", **kwargs)
 
-class UnknownModuleTypeError (iotilecore.exceptions.TypeSystemError):
+class UnknownModuleTypeError (iotile.core.exceptions.TypeSystemError):
 	pass

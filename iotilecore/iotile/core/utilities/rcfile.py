@@ -13,7 +13,7 @@
 
 import os.path
 from paths import settings_directory
-from iotilecore.exceptions import *
+from iotile.core.exceptions import *
 
 class RCFile:
 	"""

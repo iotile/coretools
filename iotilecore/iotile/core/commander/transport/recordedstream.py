@@ -1,10 +1,10 @@
 # This file is copyright Arch Systems, Inc.  
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
-from iotilecore.commander.transport.cmdstream import CMDStream
-from iotilecore.commander.commands import RPCCommand
-from iotilecore.exceptions import *
-from iotilecore.commander.exceptions import *
+from iotile.core.commander.transport.cmdstream import CMDStream
+from iotile.core.commander.commands import RPCCommand
+from iotile.core.exceptions import *
+from iotile.core.commander.exceptions import *
 import hashlib
 import json
 

@@ -10,11 +10,11 @@ import sys
 import os
 import shlex
 
-from iotilecore.utilities.typedargs.shell import HierarchicalShell, posix_lex
-from iotilecore.exceptions import *
-from iotilecore.utilities.typedargs import annotate, type_system
-from iotilecore.utilities.rcfile import RCFile
-from iotilecore.dev.registry import ComponentRegistry
+from iotile.core.utilities.typedargs.shell import HierarchicalShell, posix_lex
+from iotile.core.exceptions import *
+from iotile.core.utilities.typedargs import annotate, type_system
+from iotile.core.utilities.rcfile import RCFile
+from iotile.core.dev.registry import ComponentRegistry
 
 from multiprocessing import freeze_support
 import traceback
@@ -35,8 +35,8 @@ def main():
 
 	shell = HierarchicalShell('iotile', no_rc=norc)
 		
-	shell.root_add("registry", "iotilecore.dev.annotated_registry,registry")
-	shell.root_add('hw', "iotilecore.commander.hwmanager,HardwareManager")
+	shell.root_add("registry", "iotile.core.dev.annotated_registry,registry")
+	shell.root_add('hw', "iotile.core.commander.hwmanager,HardwareManager")
 
 	reg = ComponentRegistry()
 	plugins = reg.list_plugins()
