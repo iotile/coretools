@@ -7,8 +7,8 @@ import sys
 import os.path
 import utilities
 import struct
-from iotilecore.exceptions import BuildError
-from iotilecore.dev.iotileobj import IOTile
+from iotile.core.exceptions import BuildError
+from iotile.core.dev.iotileobj import IOTile
 import os
 import datetime
 import json

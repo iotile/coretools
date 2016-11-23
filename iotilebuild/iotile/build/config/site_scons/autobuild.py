@@ -19,9 +19,9 @@ import arm
 import platform
 from docbuild import *
 from release import *
-from iotilecore.exceptions import *
-import iotilecore
-from iotilecore.dev.iotileobj import IOTile
+from iotile.core.exceptions import *
+import iotile.core
+from iotile.core.dev.iotileobj import IOTile
 
 def autobuild_arm_library(libname):
 	try:

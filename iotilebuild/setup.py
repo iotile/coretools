@@ -19,59 +19,48 @@
 from setuptools import setup, find_packages
 
 import os
-from os.path import basename
 
-import re
-def parse_version():
-    VERSIONFILE="iotilebuild/__version__.py"
-    verstrline = open(VERSIONFILE, "rt").read()
-    VSRE = r"^__version__ = ['\"]([^'\"]*)['\"]"
-    mo = re.search(VSRE, verstrline, re.M)
-    if mo:
-        return mo.group(1)
-    else:
-        raise RuntimeError("Unable to find version string in %s." % (VERSIONFILE,))
+version = "2.0.0"
 
 def list_data_files():
-    result = [ ]
-    dirname = os.path.join(os.path.dirname(__file__), 'iotilecore')
-    print dirname
-    for root, dirs, files in os.walk(os.path.join(dirname, 'config')):
+    result = []
+    dirname = os.path.join(os.path.dirname(__file__), 'iotile', 'build')
+    for root, _, files in os.walk(os.path.join(dirname, 'config')):
         for filename in files:
-            result.append( os.path.join( root, filename )[len(dirname)+1:] )
+            result.append(os.path.join(root, filename)[len(dirname)+1:])
     return result
 
 
 
 setup(
-    name = "iotilebuild",
-    packages = find_packages(),
-    version = parse_version(),
-    license = "LGPLv3",
+    name="iotilebuild",
+    packages=find_packages(),
+    version=version,
+    license="LGPLv3",
     install_requires=[
-        "iotilecore>=2.0.0",
+        "iotilecore>=3.0.0",
         "sphinx>=1.3.1",
         "scons==2.5.0",
         "breathe==4.2.0",
         "pygtrie>=2.0.0"
     ],
-    package_data={ 
+    package_data={
         'iotilebuild': list_data_files()
     },
-
-    description = "IOTile Build Support",
-    author = "Arch",
-    author_email = "info@arch-iot.com",
-    url = "http://github.com/iotile/lib_iotilecore",
-    keywords = ["iotile", "arch", "embedded", "hardware", "firmware"],
-    classifiers = [
+    entry_points={'iotile.plugin': ['.build = iotile.build.plugin:setup_plugin']},
+    description="IOTile Build Support",
+    author="Arch",
+    author_email="info@arch-iot.com",
+    url="http://github.com/iotile/lib_iotilecore",
+    keywords=["iotile", "arch", "embedded", "hardware", "firmware"],
+    classifiers=[
         "Programming Language :: Python",
         "Development Status :: 5 - Production/Stable",
         "License :: OSI Approved :: GNU Library or Lesser General Public License (LGPL)",
         "Operating System :: OS Independent",
         "Topic :: Software Development :: Libraries :: Python Modules"
         ],
-    long_description = """\
+    long_description="""\
 IOTileBuild
 ------
 

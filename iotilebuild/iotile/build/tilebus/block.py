@@ -12,10 +12,10 @@
 from handler import TBHandler
 import sys
 import os.path
-from iotilebuild.utilities import template
-from iotilebuild.build import build
-from iotilecore.utilities import intelhex
-from iotilecore.exceptions import *
+from iotile.build.utilities import template
+from iotile.build.build import build
+from iotile.core.utilities import intelhex
+from iotile.core.exceptions import *
 from pkg_resources import resource_filename, Requirement
 
 block_size = 16
@@ -243,15 +243,15 @@ class TBBlock:
 		Also create config files containing definitions for all of the required config variables. 
 		"""
 
-		temp = template.RecursiveTemplate(TBBlock.CTemplateName, resource_filename(Requirement.parse("iotilebuild"), "iotilebuild/config/templates"))
+		temp = template.RecursiveTemplate(TBBlock.CTemplateName, resource_filename(Requirement.parse("iotilebuild"), "iotile/build/config/templates"))
 		temp.add(self)
 		temp.render(folder)
 
-		temp = template.RecursiveTemplate(TBBlock.ConfigTemplateName, resource_filename(Requirement.parse("iotilebuild"), "iotilebuild/config/templates"))
+		temp = template.RecursiveTemplate(TBBlock.ConfigTemplateName, resource_filename(Requirement.parse("iotilebuild"), "iotile/build/config/templates"))
 		temp.add(self)
 		temp.render(folder)
 
-		temp = template.RecursiveTemplate(TBBlock.CTemplateNameHeader, resource_filename(Requirement.parse("iotilebuild"), "iotilebuild/config/templates"))
+		temp = template.RecursiveTemplate(TBBlock.CTemplateNameHeader, resource_filename(Requirement.parse("iotilebuild"), "iotile/build/config/templates"))
 		temp.add(self)
 		temp.render(folder)
 
@@ -262,7 +262,7 @@ class TBBlock:
 		Create C headers for config variables defined in this block
 		"""
 
-		temp = template.RecursiveTemplate(TBBlock.ConfigTemplateNameHeader, resource_filename(Requirement.parse("iotilebuild"), "iotilebuild/config/templates"))
+		temp = template.RecursiveTemplate(TBBlock.ConfigTemplateNameHeader, resource_filename(Requirement.parse("iotilebuild"), "iotile/build/config/templates"))
 		temp.add(self)
 		temp.render(folder)
 

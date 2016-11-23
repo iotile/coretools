@@ -1,12 +1,12 @@
 from depresolver import DependencyResolver
-from iotilecore.exceptions import *
+from iotile.core.exceptions import *
 
 class ComponentRegistryResolver (DependencyResolver):
 	def __init__(self, settings={}):
 		pass
 
 	def resolve(self, depinfo, destdir):
-		from iotilecore.dev.registry import ComponentRegistry
+		from iotile.core.dev.registry import ComponentRegistry
 
 		reg = ComponentRegistry()
 
@@ -19,7 +19,7 @@ class ComponentRegistryResolver (DependencyResolver):
 		return {'found': True}
 
 	def check(self, depinfo, deptile, depsettings):
-		from iotilecore.dev.registry import ComponentRegistry
+		from iotile.core.dev.registry import ComponentRegistry
 
 		reg = ComponentRegistry()
 

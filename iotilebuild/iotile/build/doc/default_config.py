@@ -16,8 +16,8 @@ import sys
 import os
 import shlex
 import sphinx.util.nodes
-import iotilebuild.doc
-from iotilecore.dev.registry import ComponentRegistry
+import iotile.build.doc
+from iotile.core.dev.registry import ComponentRegistry
 
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -30,7 +30,7 @@ if os.path.exists(os.path.join('..', 'python')):
   sys.path.insert(0, os.path.abspath(os.path.join('..', 'python')))
 
 def setup(app):
-  iotilebuild.doc.setup_sphinx(app)
+  iotile.build.doc.setup_sphinx(app)
 
 def configure_iotile_specific(iotile, namespace):
   namespace['project'] = iotile.short_name

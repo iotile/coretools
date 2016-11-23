@@ -8,7 +8,7 @@
 
 import sys
 import os.path
-from iotilebuild.build import build
+from iotile.build.build import build
 
 class TBHandler:
 	"""

@@ -8,10 +8,10 @@ import platform
 import os.path
 import utilities
 import pyparsing
-from iotilebuild.tilebus.descriptor import TBDescriptor
+from iotile.build.tilebus.descriptor import TBDescriptor
 import struct
-from iotilecore.exceptions import BuildError
-from iotilecore.dev.iotileobj import IOTile
+from iotile.core.exceptions import BuildError
+from iotile.core.dev.iotileobj import IOTile
 import os
 from dependencies import load_dependencies
 

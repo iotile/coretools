@@ -16,7 +16,7 @@ import json as json
 import sys
 import os.path
 import StringIO
-from iotilebuild.build import build
+from iotile.build.build import build
 
 
 def build_includes(includes):

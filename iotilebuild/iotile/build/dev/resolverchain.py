@@ -1,5 +1,5 @@
-from iotilecore.exceptions import *
-from iotilecore.dev.iotileobj import IOTile
+from iotile.core.exceptions import *
+from iotile.core.dev.iotileobj import IOTile
 import os
 import json
 import resolvers

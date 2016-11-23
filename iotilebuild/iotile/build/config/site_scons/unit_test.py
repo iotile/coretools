@@ -13,7 +13,7 @@ import os
 from SCons.Environment import Environment
 import test_summary
 import fnmatch
-from iotilecore.exceptions import *
+from iotile.core.exceptions import *
 
 known_types = {}
 

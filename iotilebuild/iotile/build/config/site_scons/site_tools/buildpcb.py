@@ -8,7 +8,7 @@ import os.path
 from time import strftime, gmtime
 
 from iotilepcb.drivers.eagle import *
-from iotilecore.exceptions import BuildError
+from iotile.core.exceptions import BuildError
 
 #FIXME: Replace this to include the actual schematic rather than just the board file
 def build_pcb(target, source, env):

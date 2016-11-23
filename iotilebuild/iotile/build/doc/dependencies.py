@@ -1,7 +1,7 @@
 from docutils.parsers.rst import Directive
 import docutils
 import os.path
-from iotilecore.dev.registry import ComponentRegistry 
+from iotile.core.dev.registry import ComponentRegistry 
 import json
 import sphinx
 from docutils.statemachine import ViewList

@@ -10,11 +10,11 @@
 #Routines for dumping the MIB API region of a mib12 executive module and verifying
 #the contents to make sure they have not been stomped on by some other process.
 
-from iotilecore.hex8.decode import *
-from iotilecore.utilities.paths import MomoPaths
-from iotilecore.utilities import build
+from iotile.core.hex8.decode import *
+from iotile.core.utilities.paths import MomoPaths
+from iotile.core.utilities import build
 from config12 import MIB12Processor
-from iotilecore.utilities import intelhex
+from iotile.core.utilities import intelhex
 
 class TBAPI:
 	def __init__(self, hexfile, chip):

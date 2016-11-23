@@ -1,4 +1,4 @@
-from iotilecore.exceptions import *
+from iotile.core.exceptions import *
 
 class DependencyResolver (object):
 	"""An object that is capable of finding and installing a dependency

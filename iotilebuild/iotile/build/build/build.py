@@ -10,11 +10,11 @@
 #Return the build settings json file.
 
 import json as json
-from iotilecore.utilities import deprecated
-from iotilecore.dev.iotileobj import IOTile
+from iotile.core.utilities import deprecated
+from iotile.core.dev.iotileobj import IOTile
 import sys
-from iotilecore.utilities.typedargs.annotate import *
-from iotilecore.exceptions import *
+from iotile.core.utilities.typedargs.annotate import *
+from iotile.core.exceptions import *
 from collections import namedtuple
 from copy import deepcopy
 import itertools
@@ -42,7 +42,7 @@ def build(args):
         import SCons.Script
 
 
-    site_tools = os.path.join(resource_filename(Requirement.parse("iotilebuild"), "iotilebuild/config"), 'site_scons')
+    site_tools = os.path.join(resource_filename(Requirement.parse("iotilebuild"), "iotile/build/config"), 'site_scons')
     site_path = os.path.abspath(site_tools)
 
     all_args = ['iotile', '--site-dir=%s' % site_path, '-Q']
@@ -116,7 +116,7 @@ def build_other(directory, artifacts=[]):
 
         artifact_paths = [os.path.join('build', 'output', x) for x in artifacts]
 
-        site_tools = os.path.join(resource_filename(Requirement.parse("iotilebuild"), "iotilebuild/config"), 'site_scons')
+        site_tools = os.path.join(resource_filename(Requirement.parse("iotilebuild"), "iotile/build/config"), 'site_scons')
         site_path = os.path.abspath(site_tools)
         all_args = ['iotile', 'build'] + artifact_paths
         

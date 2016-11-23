@@ -1,11 +1,11 @@
 # This file is copyright Arch Systems, Inc.  
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
-from iotilecore.exceptions import *
-import iotilecore
-from iotilebuild.build.build import build_iotile
-from iotilecore.dev.registry import ComponentRegistry
-from iotilecore.dev.iotileobj import IOTile
+from iotile.core.exceptions import *
+import iotile.core
+from iotile.build.build.build import build_iotile
+from iotile.core.dev.registry import ComponentRegistry
+from iotile.core.dev.iotileobj import IOTile
 from SCons.Environment import Environment
 import os
 

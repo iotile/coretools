@@ -1,6 +1,6 @@
-from iotilecore.utilities.typedargs import context, annotated, param, return_type, iprint
-from iotilecore.dev.iotileobj import IOTile
-from iotilecore.exceptions import *
+from iotile.core.utilities.typedargs import context, annotated, param, return_type, iprint
+from iotile.core.dev.iotileobj import IOTile
+from iotile.core.exceptions import *
 from resolverchain import DependencyResolverChain
 import os
 
