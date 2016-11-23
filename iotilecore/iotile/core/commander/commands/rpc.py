@@ -7,7 +7,7 @@
 # are copyright Arch Systems Inc.
 
 from command import Command
-from iotilecore.commander.exceptions import *
+from iotile.core.commander.exceptions import *
 import base64
 
 class RPCCommand (Command):

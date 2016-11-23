@@ -12,14 +12,12 @@
 #   and cannot be imported.  You need to install it using easy_install as described here
 #   http://calvinx.com/tag/readline/
 
+import re
+
 from setuptools import setup, find_packages
 
-import os
-from os.path import basename
-
-import re
 def parse_version():
-    VERSIONFILE="iotilecore/__version__.py"
+    VERSIONFILE = "iotilecore/__version__.py"
     verstrline = open(VERSIONFILE, "rt").read()
     VSRE = r"^__version__ = ['\"]([^'\"]*)['\"]"
     mo = re.search(VSRE, verstrline, re.M)
@@ -29,10 +27,10 @@ def parse_version():
         raise RuntimeError("Unable to find version string in %s." % (VERSIONFILE,))
 
 setup(
-    name = "iotilecore",
-    packages = find_packages(),
-    version = parse_version(),
-    license = "LGPLv3",
+    name="iotilecore",
+    packages=find_packages(),
+    version=parse_version(),
+    license="LGPLv3",
     install_requires=[
         "beautifulsoup4==4.3.2",
         "Cheetah==2.4.4",
@@ -50,22 +48,22 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'iotile = iotilecore.scripts.iotile:main',
+            'iotile = iotile.core.scripts.iotile:main',
         ]
     },
-    description = "IOTile Core Tools",
-    author = "Arch",
-    author_email = "info@arch-iot.com",
-    url = "http://github.com/iotile/py_iotilecore",
-    keywords = ["iotile", "arch", "embedded", "hardware"],
-    classifiers = [
+    description="IOTile Core Tools",
+    author="Arch",
+    author_email="info@arch-iot.com",
+    url="http://github.com/iotile/py_iotilecore",
+    keywords=["iotile", "arch", "embedded", "hardware"],
+    classifiers=[
         "Programming Language :: Python",
         "Development Status :: 5 - Production/Stable",
         "License :: OSI Approved :: GNU Library or Lesser General Public License (LGPL)",
         "Operating System :: OS Independent",
         "Topic :: Software Development :: Libraries :: Python Modules"
         ],
-    long_description = """\
+    long_description="""\
 IOTileCore
 ------
 
