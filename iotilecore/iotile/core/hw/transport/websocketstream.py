@@ -1,7 +1,7 @@
 from ws4py.client.threadedclient import WebSocketClient
-from iotile.core.commander.exceptions import *
+from iotile.core.hw.exceptions import *
 from iotile.core.exceptions import *
-from iotile.core.commander.commands import RPCCommand
+from iotile.core.hw.commands import RPCCommand
 import threading
 from Queue import Queue, Empty
 from cmdstream import CMDStream 

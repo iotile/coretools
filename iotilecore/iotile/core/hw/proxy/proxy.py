@@ -8,8 +8,8 @@
 
 #MIB Proxy Objects
 
-from iotile.core.commander.commands import RPCCommand
-from iotile.core.commander.exceptions import *
+from iotile.core.hw.commands import RPCCommand
+from iotile.core.hw.exceptions import *
 from iotile.core.utilities.typedargs import return_type, annotated, param, context
 from time import sleep
 from iotile.core.utilities.packed import unpack

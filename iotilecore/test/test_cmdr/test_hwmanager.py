@@ -6,8 +6,8 @@
 # Modifications to this file from the original created at WellDone International 
 # are copyright Arch Systems Inc.
 
-from iotile.core.commander.hwmanager import HardwareManager
-from iotile.core.commander.exceptions import *
+from iotile.core.hw.hwmanager import HardwareManager
+from iotile.core.hw.exceptions import *
 from iotile.core.exceptions import *
 import unittest
 import os.path

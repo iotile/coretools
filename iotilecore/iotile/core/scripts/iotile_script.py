@@ -36,7 +36,7 @@ def main():
 	shell = HierarchicalShell('iotile', no_rc=norc)
 		
 	shell.root_add("registry", "iotile.core.dev.annotated_registry,registry")
-	shell.root_add('hw', "iotile.core.commander.hwmanager,HardwareManager")
+	shell.root_add('hw', "iotile.core.hw.hwmanager,HardwareManager")
 
 	reg = ComponentRegistry()
 	plugins = reg.list_plugins()

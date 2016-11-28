@@ -8,11 +8,11 @@
 
 from iotile.core.utilities.typedargs import *
 
-from iotile.core.commander.transport import *
-from iotile.core.commander.exceptions import *
+from iotile.core.hw.transport import *
+from iotile.core.hw.exceptions import *
 from iotile.core.exceptions import *
 from iotile.core.utilities.typedargs.annotate import param, return_type, finalizer
-from iotile.core.commander.proxy.proxy import MIBProxyObject
+from iotile.core.hw.proxy.proxy import MIBProxyObject
 from iotile.core.dev.registry import ComponentRegistry
 import re
 import inspect
