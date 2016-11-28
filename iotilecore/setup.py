@@ -24,9 +24,9 @@ setup(
     version=version,
     license="LGPLv3",
     install_requires=[
-        "beautifulsoup4==4.3.2",
+        "beautifulsoup4>=4.3.2",
         "Cheetah==2.4.4",
-        "decorator==3.4.0",
+        "decorator>=3.4.0",
         "Markdown==2.5.2",
         "nose==1.3.4",
         "pycparser==2.10",
