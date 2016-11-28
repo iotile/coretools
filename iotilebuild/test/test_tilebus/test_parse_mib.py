@@ -7,10 +7,10 @@
 # are copyright Arch Systems Inc.
 
 import os.path
-from iotilebuild.tilebus.descriptor import TBDescriptor
+from iotile.build.tilebus.descriptor import TBDescriptor
 import unittest
 from nose.tools import *
-from iotilecore.exceptions import *
+from iotile.core.exceptions import *
 import hashlib
 import tempfile
 import shutil

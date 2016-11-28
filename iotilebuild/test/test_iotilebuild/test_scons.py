@@ -10,7 +10,7 @@ from nose.tools import *
 import unittest
 import os.path
 import subprocess
-from iotilecore.dev.registry import ComponentRegistry
+from iotile.core.dev.registry import ComponentRegistry
 
 def test_iotiletool():
 	err = subprocess.check_call(["iotile" , "quit"])
@@ -19,7 +19,7 @@ def test_iotiletool():
 
 def test_build_command():
 	"""
-	Make sure iotilebuild has been properly registered as a plugin
+	Make sure iotile.build has been properly registered as a plugin
 	"""
 
 	reg = ComponentRegistry()

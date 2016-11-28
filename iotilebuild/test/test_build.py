@@ -6,11 +6,11 @@
 # Modifications to this file from the original created at WellDone International 
 # are copyright Arch Systems Inc.
 
-from iotilecore.utilities import build
+from iotile.core.utilities import build
 from nose.tools import *
 import unittest
 import os.path
-from iotilecore.exceptions import *
+from iotile.core.exceptions import *
 
 def _local_settings():
 	folder,last = os.path.split(__file__)
