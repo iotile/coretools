@@ -41,6 +41,10 @@ setup(
     entry_points={
         'console_scripts': [
             'iotile = iotile.core.scripts.iotile_script:main',
+        ],
+        'iotile.cmdstream': [
+            'ws = iotile.core.hw.transport.websocketstream:WebSocketStream',
+            'recorded = iotile.core.hw.transport.recordedstream:RecordedStream'
         ]
     },
     description="IOTile Core Tools",
