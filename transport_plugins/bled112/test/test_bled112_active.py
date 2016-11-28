@@ -3,7 +3,7 @@ from nose.tools import *
 import serial
 from test.util.mock_bled112 import MockBLED112
 from test.util.ble_device import MockIOTileDevice
-from iogateway.adapters.bled112.bled112 import BLED112Adapter
+from iotile_transport_bled112.bled112 import BLED112Adapter
 import test.util.dummy_serial
 import threading
 

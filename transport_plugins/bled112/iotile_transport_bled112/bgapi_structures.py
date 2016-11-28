@@ -1,6 +1,6 @@
 import struct
 import uuid
-from iotilecore.utilities.packed import unpack
+from iotile.core.utilities.packed import unpack
 from collections import namedtuple
 
 CharacteristicProperties = namedtuple("CharacteristicProperties", ["broadcast", "read", "write_no_response", "write", "notify", "indicate", "write_authenticated", "extended"])
