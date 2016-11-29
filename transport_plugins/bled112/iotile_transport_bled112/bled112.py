@@ -67,6 +67,8 @@ class BLED112Adapter(DeviceAdapter):
         self.maximum_connections = 0
 
         self._logger = logging.getLogger('ble.manager')
+        self._logger.addHandler(logging.NullHandler())
+        
         self._command_task._logger.setLevel(logging.WARNING)
 
         try:
