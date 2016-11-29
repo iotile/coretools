@@ -9,7 +9,8 @@ class AdapterCMDStream(CMDStream):
     """An adapter class that takes a DeviceAdapter and produces a CMDStream compatible interface
     
     DeviceAdapters have a more generic interface that is not restricted to exclusive use in an online
-    fashion by a single user at a time.  This class implements the CMDStream interface.
+    fashion by a single user at a time.  This class implements the CMDStream interface on top of a
+    DeviceAdapter.
     
     Args:
         adapter (DeviceAdapter): the DeviceAdatper that we should use to create this CMDStream
@@ -72,6 +73,7 @@ class AdapterCMDStream(CMDStream):
 
     def _disconnect(self):
         self.adapter.disconnect_sync(0)
+        self.adapter.periodic_callback()
 
     def _send_rpc(self, address, feature, cmd, payload, **kwargs):
         timeout = 3.0

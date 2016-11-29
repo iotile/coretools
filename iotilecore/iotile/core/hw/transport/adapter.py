@@ -29,10 +29,15 @@ class DeviceAdapter(object):
     send_script_async
     send_script_sync
 
+    periodic_callback
+
     Subclasses only need to override the '_async' versions of each call.  The synchronous versions will
     be automatically functional using the '_async' versions provided that the '_async' version not use
     multiprocessing to invoke its callback, i.e. it should use multithreading since the default synchronous
-    adapter fundtion needs a shared memory lock. 
+    adapter function needs a shared memory lock. 
+
+    periodic_callback should be a non-blocking callback that is invoked periodically to allow
+    the DeviceAdapter to maintain its internal state.
 
     Additionally you can register callbacks that will be called in the following circumstances:
 
