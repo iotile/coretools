@@ -3,15 +3,25 @@ import logging
 import tornado.ioloop
 from tornado.options import define, options, parse_command_line
 import serial.tools.list_ports
-from adapters.bled112.bled112 import BLED112Adapter
 from wshandler import WebSocketHandler
 from webhandler import IndexHandler
 import device
+import pkg_resources
 
 define("port", default=5120, help="run server on given port", type=int)
 
 should_close = False
 device_manager = None
+BLED112Adapter = None
+
+#Find BLED112 adapter
+for entry in pkg_resources.iter_entry_points('iotile.device_adapter', 'bled112'):
+    BLED112Adapter = entry.load()
+    break
+
+if BLED112Adapter is None:
+    raise RuntimeError("BLED112 adapter is not installed!")
+
 
 def quit_signal_handler(signum, frame):
     global should_close
