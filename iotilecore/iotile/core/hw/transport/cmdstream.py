@@ -27,7 +27,6 @@ def do_final_close():
 
 atexit.register(do_final_close)
 
-
 class CMDStream(object):
     """
     Any physical method that supports talking to an IOTile based device

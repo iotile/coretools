@@ -1,9 +1,9 @@
 """An adapter class that takes a DeviceAdapter and produces a CMDStream compatible interface
 """
 from copy import deepcopy
-from adapter import DeviceAdapter
 from cmdstream import CMDStream
 import datetime
+from iotile.core.exceptions import HardwareError
 
 class AdapterCMDStream(CMDStream):
     """An adapter class that takes a DeviceAdapter and produces a CMDStream compatible interface
@@ -26,7 +26,7 @@ class AdapterCMDStream(CMDStream):
 
         self.adapter.add_callback('on_scan', self._on_scan)
 
-        super(AdapterCMDStream, self).__init__(adapter, port, connection_string, record)
+        super(AdapterCMDStream, self).__init__(port, connection_string, record)
 
     def _on_scan(self, adapter_id, info, expiration_time):
         """Callback called when a new device is discovered on this CMDStream
@@ -56,3 +56,40 @@ class AdapterCMDStream(CMDStream):
             del self._scanned_devices[name]
 
         return self._scanned_devices.values()
+
+    def _connect(self, uuid_value):
+        if uuid_value not in self._scanned_devices:
+            raise HardwareError("Could not find device to connect to by UUID", uuid=uuid_value)
+
+        connstring = self._scanned_devices[uuid_value]['connection_string']
+        self.adapter.connect_sync(0, connstring)
+
+        try:
+            self.adapter.open_interface_sync(0, 'rpc')
+        except:
+            self.adapter.disconnect_sync(0)
+            raise
+
+    def _disconnect(self):
+        self.adapter.disconnect_sync(0)
+
+    def _send_rpc(self, address, feature, cmd, payload, **kwargs):
+        timeout = 3.0
+        if 'timeout' in kwargs:
+            timeout = float(kwargs['timeout'])
+
+        result = self.adapter.send_rpc_sync(0, address, (feature << 8) | cmd, payload, timeout)
+        success = result['success']
+        status = result['status']
+        payload = result['payload']
+
+        if not success:
+            raise HardwareError("Could not send RPC", reason=result['failure_reason'])
+
+        return status, payload
+
+    def _send_highspeed(self, data, progress_callback):
+        self.adapter.send_script_sync(0, data, progress_callback)
+
+    def _close(self):
+        self.adapter.stop()

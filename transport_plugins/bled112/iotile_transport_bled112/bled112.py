@@ -10,6 +10,7 @@ import datetime
 import uuid
 import copy
 import serial
+import serial.tools.list_ports
 from iotile.core.utilities.packed import unpack
 from async_packet import AsyncPacketBuffer
 from iotile.core.hw.transport.adapter import DeviceAdapter
@@ -41,6 +42,16 @@ class BLED112Adapter(DeviceAdapter):
         if on_disconnect is not None:
             self.add_callback('on_disconnect', on_disconnect)
 
+        if port is None or port == '<auto>':
+            devices = self.find_bled112_devices()
+            if len(devices) > 0:
+                port = devices[0]
+            else:
+                raise ValueError("Could not find any BLED112 adapters connected to this computer")
+
+        self.scanning = False
+        self._active_scan = not passive
+
         self._serial_port = serial.Serial(port, 256000, timeout=0.01, rtscts=True)
         self._stream = AsyncPacketBuffer(self._serial_port, header_length=4, length_function=packet_length)
         self._commands = Queue()
@@ -58,15 +69,28 @@ class BLED112Adapter(DeviceAdapter):
         self._logger = logging.getLogger('ble.manager')
         self._command_task._logger.setLevel(logging.WARNING)
 
-        self.scanning = False
-        self._active_scan = not passive
-
         try:
             self.initialize_system_sync()
             self.start_scan(self._active_scan)
         except:
             self.stop()
             raise
+
+    @classmethod
+    def find_bled112_devices(cls):
+        found_devs = []
+
+        #Look for BLED112 dongles on this computer and start an instance on each one
+        ports = serial.tools.list_ports.comports()
+        for p in ports:
+            if not hasattr(p, 'pid') or not hasattr(p, 'vid'):
+                continue
+
+            #Check if the device matches the BLED112's PID/VID combination
+            if p.pid == 1 and p.vid == 9304:
+                found_devs.append(p.device)
+
+        return found_devs
 
     def can_connect(self):
         """Check if this adapter can take another connection
