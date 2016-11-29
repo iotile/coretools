@@ -34,7 +34,7 @@ def list_data_files():
 
 setup(
     name="iotilebuild",
-    packages=find_packages(),
+    packages=find_packages(exclude=("test",)),
     version=version,
     license="LGPLv3",
     install_requires=[

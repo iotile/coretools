@@ -6,7 +6,7 @@ version = "1.0.0"
 
 setup(
     name="iotile_transport_bled112",
-    packages=find_packages(),
+    packages=find_packages(exclude=("test",)),
     version=version,
     license="LGPLv3",
     install_requires=[
