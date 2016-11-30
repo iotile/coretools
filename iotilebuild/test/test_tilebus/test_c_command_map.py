@@ -4,7 +4,6 @@
 import os.path
 from iotile.build.tilebus.descriptor import TBDescriptor
 import unittest
-from nose.tools import *
 from iotile.core.exceptions import *
 import hashlib
 import tempfile

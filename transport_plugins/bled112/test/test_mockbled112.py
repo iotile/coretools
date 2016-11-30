@@ -1,5 +1,4 @@
 import unittest
-from nose.tools import *
 from util.mock_bled112 import BGAPIPacket, MockBLED112
 
 def test_create_disconnect_packet():

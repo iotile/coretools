@@ -6,7 +6,6 @@
 # Modifications to this file from the original created at WellDone International 
 # are copyright Arch Systems Inc.
 
-from nose.tools import *
 import unittest
 import os.path
 import subprocess

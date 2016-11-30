@@ -1,5 +1,4 @@
 import unittest
-from nose.tools import *
 import serial
 from test.util.mock_bled112 import MockBLED112
 from test.util.ble_device import MockIOTileDevice

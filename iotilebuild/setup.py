@@ -40,8 +40,9 @@ setup(
     install_requires=[
         "iotilecore>=3.0.0",
         "sphinx>=1.3.1",
-        "scons==2.5.0",
-        "breathe==4.2.0",
+        "Cheetah>=2.4.4",
+        "scons>=2.5.0",
+        "breathe>=4.2.0",
         "pygtrie>=2.0.0"
     ],
     package_data={
@@ -64,7 +65,7 @@ setup(
 IOTileBuild
 ------
 
-A python package for build embedded firmware on IOTile based devices.  See https://www.arch-iot.com.
+A python package for building embedded firmware on IOTile based devices.  See https://www.arch-iot.com.
 
 """
 )

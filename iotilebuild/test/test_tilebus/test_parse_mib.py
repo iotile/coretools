@@ -7,9 +7,9 @@
 # are copyright Arch Systems Inc.
 
 import os.path
+import pytest
 from iotile.build.tilebus.descriptor import TBDescriptor
 import unittest
-from nose.tools import *
 from iotile.core.exceptions import *
 import hashlib
 import tempfile
@@ -40,13 +40,13 @@ def _load_mib(filename):
 	tb._validate_information()
 	return tb
 
-@raises(pyparsing.ParseException)
 def test_syntax_error():
-	_load_mib("syntax_error.mib")
+	with pytest.raises(pyparsing.ParseException):
+		_load_mib("syntax_error.mib")
 
-@raises(DataError)
 def test_incomplete():
-	desc = _load_mib("incomplete.mib")
+	with pytest.raises(DataError):
+		desc = _load_mib("incomplete.mib")
 
 def test_complete():
 	desc = _load_mib("complete.mib")
@@ -127,23 +127,21 @@ def test_value_convesion():
 	for i in xrange(0, len(buf3)):
 		assert buf3[i] == known_val[i]
 
-
-@raises(pyparsing.ParseException)
 def test_parse_badconfig1():
-	desc = _load_mib("badconfig1.mib")
+	with pytest.raises(pyparsing.ParseException):
+		desc = _load_mib("badconfig1.mib")
 
-
-@raises(pyparsing.ParseException)
 def test_parse_badconfig2():
-	desc = _load_mib("badconfig2.mib")
+	with pytest.raises(pyparsing.ParseException):
+		desc = _load_mib("badconfig2.mib")
 
-@raises(DataError)
 def test_long_name():
-	desc = _load_mib("long_name.mib")
+	with pytest.raises(DataError):
+		desc = _load_mib("long_name.mib")
 
-@raises(ArgumentError)
 def test_include_nonexistent():
-	desc = _load_mib("invalid_include.mib")
+	with pytest.raises(pyparsing.ParseException):
+		desc = _load_mib("invalid_include.mib")
 
 def test_good_include():
 	desc = _load_mib("valid_include.mib")
