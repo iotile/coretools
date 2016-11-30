@@ -8,7 +8,6 @@
 
 from iotile.core.utilities.typedargs import type_system
 from iotile.core.utilities import typedargs
-from nose.tools import *
 from iotile.core.exceptions import *
 
 def test_simplereturntype():

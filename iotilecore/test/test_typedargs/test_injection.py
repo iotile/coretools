@@ -9,7 +9,7 @@
 from iotile.core.utilities import typedargs
 from iotile.core.utilities.typedargs import type_system
 import unittest
-from nose.tools import *
+import pytest
 import os.path
 from iotile.core.exceptions import *
 
@@ -43,11 +43,11 @@ def test_external_package_injection():
 	type_system.load_external_types(path)
 	assert type_system.is_known_type('new_pkg_type')
 
-@raises(ArgumentError)
 def test_external_package_injection_failure():
 	"""
 	Test type injection raises error from nonexistant path
 	"""
 
-	path = os.path.join(os.path.dirname(__file__), 'extra_type_package_nonexistant')
-	type_system.load_external_types(path)
+	with pytest.raises(ArgumentError):
+		path = os.path.join(os.path.dirname(__file__), 'extra_type_package_nonexistant')
+		type_system.load_external_types(path)

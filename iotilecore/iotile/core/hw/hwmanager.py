@@ -263,7 +263,11 @@ class HardwareManager:
         if conn_string is not None:
             conn_string = conn_string.strip()
 
-        #First attempt to find a CMDStream that is registered for this transport type
+        #First check if this is the special none stream that creates a transport channel nowhere
+        if transport == 'none':
+            return CMDStream(port, conn_string, record=self.record)
+
+        #Next attempt to find a CMDStream that is registered for this transport type
         for stream_entry in pkg_resources.iter_entry_points('iotile.cmdstream'):
             if stream_entry.name != self.transport:
                 continue

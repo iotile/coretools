@@ -10,9 +10,9 @@ from iotile.core.hw.hwmanager import HardwareManager
 from iotile.core.hw.exceptions import *
 from iotile.core.exceptions import *
 import unittest
+import pytest
 import os.path
 import os
-from nose.tools import *
 
 class TestHardwareManager(unittest.TestCase):
 	"""
@@ -25,9 +25,9 @@ class TestHardwareManager(unittest.TestCase):
 	def tearDown(self):
 		pass
 
-	@raises(UnknownModuleTypeError)
 	def test_unknown_module(self):
-		self.hw._create_proxy('UnknownMibModule', 8)
+		with pytest.raises(UnknownModuleTypeError):
+			self.hw._create_proxy('UnknownMibModule', 8)
 
 	def test_proxy_loading(self):
 		try:
@@ -43,6 +43,6 @@ class TestHardwareManager(unittest.TestCase):
 		proxy = self.hw._create_proxy('EmptyProxy', 8)
 		assert proxy.random_method() == True
 
-	@raises(ValidationError)
 	def test_wrongpath_proxy(self):
-		self.hw.add_proxies(os.path.join(os.path.dirname(__file__), 'empty_proxy'))
+		with pytest.raises(ValidationError):
+			self.hw.add_proxies(os.path.join(os.path.dirname(__file__), 'empty_proxy'))

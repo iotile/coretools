@@ -6,9 +6,9 @@
 # Modifications to this file from the original created at WellDone International 
 # are copyright Arch Systems Inc.
 
+import pytest
 from iotile.core.utilities.typedargs import type_system
 from iotile.core.utilities import typedargs
-from nose.tools import *
 from iotile.core.exceptions import *
 
 def test_builtins_exist():
@@ -34,21 +34,21 @@ def test_annotation_correct():
 
 	function_test("hello")
 
-@raises(ArgumentError)
 def test_annotation_unknown_type():
-	@typedargs.param("string_param", "unknown_type", desc='Hello')
-	def function_test(string_param):
-		pass
+	with pytest.raises(ArgumentError):
+		@typedargs.param("string_param", "unknown_type", desc='Hello')
+		def function_test(string_param):
+			pass
 
-	function_test("hello")
+		function_test("hello")
 
-@raises(ValidationError)
 def test_annotation_validation():
-	@typedargs.param("int_param", "integer", "nonnegative", desc="No desc")
-	def function_test(int_param):
-		pass
+	with pytest.raises(ValidationError):
+		@typedargs.param("int_param", "integer", "nonnegative", desc="No desc")
+		def function_test(int_param):
+			pass
 
-	function_test(-1)
+		function_test(-1)
 
 def test_bool_valid():
 	val = type_system.convert_to_type('True', 'bool')

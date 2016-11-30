@@ -16,7 +16,7 @@ import re
 
 from setuptools import setup, find_packages
 
-version = "3.0.0"
+version = "3.0.1"
 
 setup(
     name="iotilecore",
@@ -24,19 +24,13 @@ setup(
     version=version,
     license="LGPLv3",
     install_requires=[
-        "beautifulsoup4>=4.3.2",
-        "Cheetah==2.4.4",
         "decorator>=3.4.0",
-        "Markdown==2.5.2",
-        "nose==1.3.4",
-        "pycparser==2.10",
-        "pyparsing==2.0.3",
-        "pyserial>=2.7",
-        "pytest==2.6.4",
+        "pyparsing>=2.0.3",
         "six>=1.9.0",
-        "xlsxwriter>=0.6.7",
         "crcmod>=1.7.0",
-        "pint>=0.6.0"
+        "ws4py>=0.3.5",
+        "msgpack-python>=0.4.8",
+        "python-dateutil>=2.6.0"
     ],
     entry_points={
         'console_scripts': [
@@ -50,7 +44,7 @@ setup(
     description="IOTile Core Tools",
     author="Arch",
     author_email="info@arch-iot.com",
-    url="http://github.com/iotile/coretools/iotilecore",
+    url="https://github.com/iotile/coretools/iotilecore",
     keywords=["iotile", "arch", "embedded", "hardware"],
     classifiers=[
         "Programming Language :: Python",
@@ -63,7 +57,7 @@ setup(
 IOTileCore
 ------
 
-A python library for interacting with IOTile based devices.  See https://www.arch-iot.com.
+A python package for interacting with IOTile based devices.  See https://www.arch-iot.com.
 
 """
 )

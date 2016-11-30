@@ -9,7 +9,6 @@
 from iotile.core.utilities import typedargs
 from iotile.core.utilities.typedargs import type_system
 import unittest
-from nose.tools import *
 import os.path
 from iotile.core.exceptions import *
 
