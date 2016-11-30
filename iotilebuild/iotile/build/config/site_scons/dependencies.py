@@ -11,6 +11,10 @@ import os
 
 def load_dependencies(tile, build_env):
 	"""Load all tile dependencies and filter only the products from each that we use
+
+	build_env must define the architecture that we are targeting so that we get the
+	correct dependency list and products per dependency since that may change
+	when building for different architectures
 	"""
 
 	reg = ComponentRegistry()
@@ -19,13 +23,21 @@ def load_dependencies(tile, build_env):
 		build_env['DEPENDENCIES'] = []
 
 	dep_targets = []
+	chip = build_env['ARCH']
+	arch_deps = chip.property('depends')
 
 	for dep in tile.dependencies:
 		try:
 			tile = IOTile(os.path.join('build', 'deps', dep['unique_id']))
-			tile.filter_products(dep['products'])
+
+			#Make sure we filter products using the view of module dependency products
+			#as seen in the target we are targeting.
+			if dep['name'] not in arch_deps:
+				tile.filter_products([])
+			else:
+				tile.filter_products(arch_deps[dep['name']])
 		except ArgumentError:
-			raise BuildError("Could not find required dependency", name=module)
+			raise BuildError("Could not find required dependency", name=dep['name'])
 
 		build_env['DEPENDENCIES'].append(tile)
 

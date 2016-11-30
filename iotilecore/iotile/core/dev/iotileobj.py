@@ -1,6 +1,7 @@
 # This file is copyright Arch Systems, Inc.  
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
+import itertools
 from iotile.core.utilities.kvstore import KeyValueStore
 from iotile.core.exceptions import *
 import json
@@ -44,6 +45,9 @@ class IOTile:
             raise DataError("Module name does not correspond with an entry in the modules directory", name=modname, modules=settings['modules'].keys())
         
         modsettings = settings['modules'][modname]
+        architectures = {}
+        if 'architectures' in settings:
+            architectures = settings['architectures']
 
         self.settings = modsettings
 
@@ -103,23 +107,34 @@ class IOTile:
             else:
                 self.release_date = None
 
+        #Find all of the things that this module could possibly depend on
+        #Dependencies include those defined in the module itself as well as
+        #those defined in architectures that are present in the module_settings.json
+        #file.
         self.dependencies = []
+
+        archs_with_deps = [y['depends'].iteritems() for x,y in architectures.iteritems() if 'depends' in y]
         if 'depends' in self.settings:
-            for dep, prods in self.settings['depends'].iteritems():
-                name, sep, version = dep.partition(',')
-                unique_id = name.lower().replace('/', '_')
+            archs_with_deps.append(self.settings['depends'].iteritems())
 
-                if version is '':
-                    version = "^0.0.0"
+        found_deps = set()
+        for dep, _ in itertools.chain(*archs_with_deps):
+            name, _, version = dep.partition(',')
+            unique_id = name.lower().replace('/', '_')
 
-                depdict = {
-                    'name': name,
-                    'unique_id': unique_id,
-                    'required_version': version,
-                    'products': prods
-                }
+            if version is '':
+                version = "^0.0.0"
 
+            depdict = {
+                'name': name,
+                'unique_id': unique_id,
+                'required_version': version
+            }
+
+            if name not in found_deps:
                 self.dependencies.append(depdict)
+
+            found_deps.add(name)
 
     def include_directories(self):
         """
