@@ -264,7 +264,7 @@ class HardwareManager:
             conn_string = conn_string.strip()
 
         #First check if this is the special none stream that creates a transport channel nowhere
-        if transport == 'none':
+        if self.transport == 'none':
             return CMDStream(port, conn_string, record=self.record)
 
         #Next attempt to find a CMDStream that is registered for this transport type
