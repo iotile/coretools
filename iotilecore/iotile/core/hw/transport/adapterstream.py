@@ -91,7 +91,7 @@ class AdapterCMDStream(CMDStream):
         return status, payload
 
     def _send_highspeed(self, data, progress_callback):
-        self.adapter.send_script_sync(0, data, progress_callback)
+        self.adapter.send_script_sync(0, str(data), progress_callback)
 
     def _close(self):
         self.adapter.stop()
