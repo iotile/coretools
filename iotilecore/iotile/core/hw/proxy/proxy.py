@@ -22,6 +22,10 @@ class TileBusProxyObject (object):
 		self.addr = address
 		self._config_manager = ConfigManager(self)
 
+	@classmethod
+	def ModuleName(cls):
+		return 'NO APP'
+
 	@annotated
 	def config_manager(self):
 		return self._config_manager
