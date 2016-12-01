@@ -119,6 +119,7 @@ class BLED112Adapter(DeviceAdapter):
 
         self._command_task.stop()
         self._stream.stop()
+        self._serial_port.close()
 
     def stop_scan(self):
         self._command_task.sync_command(['_stop_scan'])

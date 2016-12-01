@@ -63,7 +63,10 @@ class AdapterCMDStream(CMDStream):
             raise HardwareError("Could not find device to connect to by UUID", uuid=uuid_value)
 
         connstring = self._scanned_devices[uuid_value]['connection_string']
-        self.adapter.connect_sync(0, connstring)
+        self._connect_direct(connstring)
+
+    def _connect_direct(self, connection_string):
+        self.adapter.connect_sync(0, connection_string)
 
         try:
             self.adapter.open_interface_sync(0, 'rpc')
