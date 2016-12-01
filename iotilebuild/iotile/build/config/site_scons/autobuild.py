@@ -112,6 +112,7 @@ def autobuild_release(family):
     copy_linker_scripts(family.tile)
     copy_dependency_images(family.tile)
     copy_extra_files(family.tile)
+    copy_python(family.tile)
 
 def autobuild_arm_program(elfname, test_dir=os.path.join('firmware', 'test'), patch=True):
     """

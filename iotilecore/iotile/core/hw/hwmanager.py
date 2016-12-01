@@ -13,7 +13,7 @@ from iotile.core.hw.transport import *
 from iotile.core.hw.exceptions import *
 from iotile.core.exceptions import *
 from iotile.core.utilities.typedargs.annotate import param, return_type, finalizer
-from iotile.core.hw.proxy.proxy import MIBProxyObject
+from iotile.core.hw.proxy.proxy import TileBusProxyObject
 from iotile.core.dev.registry import ComponentRegistry
 from iotile.core.hw.transport.adapterstream import AdapterCMDStream
 import re
@@ -61,7 +61,7 @@ class HardwareManager:
         
         self.stream = self._create_stream()
         self._stream_queue = None
-        self.proxies = {'MIBProxyObject': MIBProxyObject}
+        self.proxies = {'TileBusProxyObject': TileBusProxyObject}
         self.name_map = {}
 
         self._setup_proxies()
@@ -88,11 +88,11 @@ class HardwareManager:
         and looking up the appropriate proxy in our list of installed proxy objects
         """
 
-        tile = self._create_proxy('MIBProxyObject', address)
+        tile = self._create_proxy('TileBusProxyObject', address)
         name = tile.tile_name()
+        version = tile.tile_version()
 
-        # Check for none
-        # Now create the appropriate proxy object based on the name of the tile 
+        # Now create the appropriate proxy object based on the name and version of the tile 
         tile_type = self.get_proxy(name)
         if tile_type is None:
             raise HardwareError("Could not find proxy object for tile", name=name)
@@ -173,7 +173,7 @@ class HardwareManager:
         """
         Add all proxy objects defined in the python module located at path.
 
-        The module is loaded and all classes that inherit from MIBProxyObject
+        The module is loaded and all classes that inherit from TileBusProxyObject
         are loaded and can be used to interact later with modules of that type.
 
         Returns the total number of proxies added.
@@ -197,7 +197,7 @@ class HardwareManager:
             raise ArgumentError("could not import module in order to load external proxy modules", module_path=path, parent_directory=d, module_name=p, error=str(e))
 
         num_added = 0
-        for obj in filter(lambda x: inspect.isclass(x) and issubclass(x, MIBProxyObject) and x != MIBProxyObject, mod.__dict__.itervalues()):
+        for obj in filter(lambda x: inspect.isclass(x) and issubclass(x, TileBusProxyObject) and x != TileBusProxyObject, mod.__dict__.itervalues()):
             if obj.__name__ in self.proxies:
                 continue #Don't readd proxies that we already know about
 

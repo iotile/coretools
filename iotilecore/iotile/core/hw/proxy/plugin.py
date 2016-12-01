@@ -9,7 +9,7 @@ class TileBusProxyPlugin (object):
 	"""
 
 	def __init__(self, parent):
-		if not isinstance(parent, proxy.MIBProxyObject):
+		if not isinstance(parent, proxy.TileBusProxyObject):
 			raise ArgumentError("Attempting to initialize a TileBusProxyPlugin with an invalid parent object", parent=parent)
 
 		self._proxy = parent
