@@ -6,8 +6,8 @@
 # Modifications to this file from the original created at WellDone International 
 # are copyright Arch Systems Inc.
 
-from iotile.core.hw.proxy.proxy import MIBProxyObject
+from iotile.core.hw.proxy.proxy import TileBusProxyObject
 
-class EmptyProxy (MIBProxyObject):
+class EmptyProxy (TileBusProxyObject):
 	def random_method(self):
 		return True
