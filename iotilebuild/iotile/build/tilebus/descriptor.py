@@ -75,7 +75,7 @@ class TBDescriptor:
         self.configs = {}
         self.valid = False
 
-        self.include_dirs = include_dirs + [resource_filename(Requirement.parse("iotilebuild"), "iotile/build/config")]
+        self.include_dirs = include_dirs + [resource_filename(Requirement.parse("iotile-build"), "iotile/build/config")]
 
         if isinstance(source, basestring):
             source = [source]
@@ -94,21 +94,21 @@ class TBDescriptor:
                 self._parse_line(line)
 
     def generate_config_h(self, filename):
-        templ = RecursiveTemplate('configvariables.h', resource_filename(Requirement.parse("iotilebuild"), "iotile/build/config/templates"))
+        templ = RecursiveTemplate('configvariables.h', resource_filename(Requirement.parse("iotile-build"), "iotile/build/config/templates"))
         templ.add({'configvars': self.configs})
         out = templ.format_temp()
 
         shutil.move(out, filename)
 
     def generate_config_c(self, filename):
-        templ = RecursiveTemplate('configvariables.c', resource_filename(Requirement.parse("iotilebuild"), "iotile/build/config/templates"))
+        templ = RecursiveTemplate('configvariables.c', resource_filename(Requirement.parse("iotile-build"), "iotile/build/config/templates"))
         templ.add({'configvars': self.configs})
         out = templ.format_temp()
 
         shutil.move(out, filename)
 
     def generate_config_defaults_as(self, filename):
-        templ = RecursiveTemplate('config_defaults_asm.as', resource_filename(Requirement.parse("iotilebuild"), "iotile/build/config/templates"))
+        templ = RecursiveTemplate('config_defaults_asm.as', resource_filename(Requirement.parse("iotile-build"), "iotile/build/config/templates"))
         templ.add({'configvars': self.configs})
         out = templ.format_temp()
 

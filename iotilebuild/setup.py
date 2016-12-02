@@ -33,12 +33,12 @@ def list_data_files():
 
 
 setup(
-    name="iotilebuild",
+    name="iotile-build",
     packages=find_packages(exclude=("test",)),
     version=version,
     license="LGPLv3",
     install_requires=[
-        "iotilecore>=3.0.0",
+        "iotile-core>=3.0.0",
         "sphinx>=1.3.1",
         "Cheetah>=2.4.4",
         "scons>=2.5.0",
@@ -46,7 +46,7 @@ setup(
         "pygtrie>=2.0.0"
     ],
     package_data={
-        'iotilebuild': list_data_files()
+        'iotile-build': list_data_files()
     },
     entry_points={'iotile.plugin': ['.build = iotile.build.plugin:setup_plugin']},
     description="IOTile Build Support",

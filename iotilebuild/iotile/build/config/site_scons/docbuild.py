@@ -13,7 +13,7 @@ def generate_doxygen_file(output_path, iotile):
 		iotile: An IOTile object that can be queried for information
 	"""
 
-	input_template = os.path.join(resource_filename(Requirement.parse("iotilebuild"), "iotile/build/config"), 'templates', 'doxygen.txt')
+	input_template = os.path.join(resource_filename(Requirement.parse("iotile-build"), "iotile/build/config"), 'templates', 'doxygen.txt')
 
 	with open(input_template, "r") as f:
 		temp = Template(f.read())
@@ -29,4 +29,4 @@ def generate_doxygen_file(output_path, iotile):
 		f.write(temp.safe_substitute(mapping))
 
 def doxygen_source_path():
-	return os.path.abspath(os.path.join(resource_filename(Requirement.parse("iotilebuild"), "iotile/build/config"), 'templates', 'doxygen.txt'))
+	return os.path.abspath(os.path.join(resource_filename(Requirement.parse("iotile-build"), "iotile/build/config"), 'templates', 'doxygen.txt'))

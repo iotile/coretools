@@ -19,7 +19,7 @@ from setuptools import setup, find_packages
 version = "3.0.1"
 
 setup(
-    name="iotilecore",
+    name="iotile-core",
     packages=find_packages(exclude=("test",)),
     version=version,
     license="LGPLv3",
