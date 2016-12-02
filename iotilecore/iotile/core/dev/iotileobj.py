@@ -136,6 +136,15 @@ class IOTile:
 
             found_deps.add(name)
 
+        #Setup our support package information
+        #FIXME: This will break when a version is not 1 digit long
+        self.support_distribution = "{0}_{1}".format(self.short_name, self.version[:3])
+        self.support_wheel = "{0}-{1}-py2-none-any.whl".format(self.support_distribution, self.version)
+        self.has_wheel = False
+
+        if len(self.proxy_modules()) > 0 or len(self.proxy_plugins()) > 0 or len(self.type_packages()) > 0:
+            self.has_wheel = True
+
     def include_directories(self):
         """
         Return a list of all include directories that this IOTile could provide other tiles

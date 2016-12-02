@@ -15,9 +15,11 @@ from SCons.Script import *
 import os.path
 import os
 import sys
+import itertools
 import arm
 import platform
 from docbuild import *
+from pythondist import *
 from release import *
 from iotile.core.exceptions import *
 import iotile.core
@@ -112,7 +114,8 @@ def autobuild_release(family):
     copy_linker_scripts(family.tile)
     copy_dependency_images(family.tile)
     copy_extra_files(family.tile)
-    copy_python(family.tile)
+
+    build_python_distribution(family.tile)
 
 def autobuild_arm_program(elfname, test_dir=os.path.join('firmware', 'test'), patch=True):
     """

@@ -1,6 +1,7 @@
 from string import Template
 import os
 from pkg_resources import resource_filename, Requirement
+from iotile.build.utilities.template import RecursiveTemplate
 
 def generate_doxygen_file(output_path, iotile):
 	"""Fill in our default doxygen template file with info from an IOTile

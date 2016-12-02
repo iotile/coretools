@@ -73,7 +73,7 @@ class RecursiveTemplate:
 		if self.recursive:
 			raise ValueError("Cannot call format_temp on recursive templates")
 
-		fh, outpath = tempfile.mkstemp();
+		fh, outpath = tempfile.mkstemp()
 		os.close(fh)
 
 		self.format_file(os.path.join(self.basepath, self.name), outpath)
