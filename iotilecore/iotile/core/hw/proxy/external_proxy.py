@@ -4,6 +4,7 @@
 # external_proxy.py
 # Routines for importing proxy modules from registered components on your computer
 
+import pkg_resources
 from iotile.core.dev.registry import ComponentRegistry
 from proxy import TileBusProxyObject
 from plugin import TileBusProxyPlugin
@@ -47,24 +48,41 @@ def find_proxy(component, proxy_name=None, obj_type=TileBusProxyObject):
     raise DataError("Named proxy could not be found", component=component, proxies=proxy_objs, desired_name=proxy_name)
 
 def find_proxy_plugin(component, plugin_name):
-    """
-    Search through the registered component database for a proxy plugin object provided by a specific component and having a specific name.
+    """ Attempt to find a proxy plugin provided by a specifc component
+    
+    Args:
+        component (string): The name of the component that provides the plugin
+        plugin_name (string): The name of the plugin to load
+
+    Returns:
+        TileBuxProxPlugin: The plugin, if found, otherwise raises DataError
     """
 
     reg = ComponentRegistry()
-    comp = reg.find_component(component)
 
-    plugins = comp.proxy_plugins()
+    #Try to find plugin in an installed component, otherwise look through installed
+    #packages
+    try:
+        comp = reg.find_component(component)
 
-    found_plugin = None
+        plugins = comp.proxy_plugins()
 
-    for plugin in plugins:
-        objs = import_proxy(plugin, TileBusProxyPlugin)
+        for plugin in plugins:
+            objs = import_proxy(plugin, TileBusProxyPlugin)
+            for obj in objs:
+                if obj.__name__ == plugin_name:
+                    return obj
+    except ArgumentError:
+        pass
+
+    for entry in pkg_resources.iter_entry_points('iotile.proxy_plugin'):
+        module = entry.load()
+        objs = [obj for obj in module.__dict__.itervalues() if inspect.isclass(obj) and issubclass(obj, TileBusProxyPlugin) and obj != TileBusProxyPlugin]
         for obj in objs:
             if obj.__name__ == plugin_name:
                 return obj
 
-    raise DataError("Could not find proxy plugin module in registered components", component=component, name=plugin_name)
+    raise DataError("Could not find proxy plugin module in registered components or installed distributions", component=component, name=plugin_name)
 
 def import_proxy(path, obj_type):
     """

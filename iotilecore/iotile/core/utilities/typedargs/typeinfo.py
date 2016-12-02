@@ -14,6 +14,7 @@
 #- Extend the type system to use a recursive parser to allow complex
 #  types to be built from other complex types.
 
+import pkg_resources
 from iotile.core.exceptions import *
 import types
 import os.path
@@ -281,7 +282,11 @@ class TypeSystem(object):
 
 		for name in filter(lambda x: not x.startswith('_'), dir(module)):
 			typeobj = getattr(module, name)
-			self.inject_type(name, typeobj)
+
+			try:
+				self.inject_type(name, typeobj)
+			except ArgumentError:
+				pass
 
 	def load_external_types(self, path, verbose=False):
 		"""
@@ -321,6 +326,11 @@ class TypeSystem(object):
 				lib = lib[:-2]
 
 			self.load_external_types(lib)
+
+		#Also search through install distributions for type libraries
+		for entry in pkg_resources.iter_entry_points('iotile.type_package'):
+			mod = entry.load()
+			self.load_type_module(mod) 
 
 
 #In order to support function annotations that must be resolved to types when modules

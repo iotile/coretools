@@ -7,6 +7,43 @@ from iotile.core.exceptions import *
 import json
 import os.path
 
+class SemanticVersion(object):
+    """A simple class representing a version in X.Y.Z[-prerelease] format
+    """
+
+    def __init__(self, major, minor, patch, prerelease):
+        self.major = major
+        self.minor = minor
+        self.patch = patch
+        self.prerelease = prerelease
+
+    @classmethod
+    def FromString(cls, version):
+        parts = version.split('.')
+        if len(parts) != 3:
+            raise DataError("Invalid version format in SemanticVersion, must be X.Y.Z[-prerelease]", version=version)
+
+        major = int(parts[0])
+        minor = int(parts[1])
+
+        if '-' in parts[2]:
+            patchstr, prerelease = parts[2].split('-')
+            patch = int(patchstr)
+        else:
+            patch = int(parts[2])
+            prerelease = ""
+
+        return SemanticVersion(major, minor, patch, prerelease)
+
+    def __str__(self):
+        version = "{0}.{1}.{2}".format(self.major, self.minor, self.patch)
+
+        if len(self.prerelease) > 0:
+            version += '-{0}'.format(self.prerelease)
+
+        return version
+
+
 class IOTile:
     """
     IOTile
@@ -77,6 +114,8 @@ class IOTile:
         if "version" in self.settings:
             self.version = self.settings['version']
 
+        self.parsed_version = SemanticVersion.FromString(self.version)
+
         #Load all of the build products that can be created by this IOTile
         self.products = modsettings.get('products', {})
 
@@ -138,7 +177,7 @@ class IOTile:
 
         #Setup our support package information
         #FIXME: This will break when a version is not 1 digit long
-        self.support_distribution = "{0}_{1}".format(self.short_name, self.version[:3])
+        self.support_distribution = "iotile_support_{0}_{1}".format(self.short_name, self.parsed_version.major)
         self.support_wheel = "{0}-{1}-py2-none-any.whl".format(self.support_distribution, self.version)
         self.has_wheel = False
 

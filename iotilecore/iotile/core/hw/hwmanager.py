@@ -79,6 +79,11 @@ class HardwareManager:
         for prox in proxies:
             self.add_proxies(prox)
 
+        # Find all installed proxy objects through registered entry points
+        for entry in pkg_resources.iter_entry_points('iotile.proxy'):
+            mod = entry.load()
+            self._add_proxy_module(mod)
+
     @param("address", "integer", "positive", desc="numerical address of module to get")
     def get(self, address):
         """
@@ -195,6 +200,18 @@ class HardwareManager:
                 mod = imp.load_module(p, fileobj, pathname, description)
         except ImportError as e:
             raise ArgumentError("could not import module in order to load external proxy modules", module_path=path, parent_directory=d, module_name=p, error=str(e))
+
+        return self._add_proxy_module(mod)
+
+    def _add_proxy_module(self, mod):
+        """Add a proxy module that has already been imported
+
+        Args:
+            mod (module): A python module object that may contain a TileBusProxyObject subclass
+
+        Returns:
+            integer: The number of new TilebusProxyObject classes found
+        """
 
         num_added = 0
         for obj in filter(lambda x: inspect.isclass(x) and issubclass(x, TileBusProxyObject) and x != TileBusProxyObject, mod.__dict__.itervalues()):
