@@ -10,7 +10,7 @@ setup(
     version=version,
     license="LGPLv3",
     install_requires=[
-        "iotilecore>=3.0.0",
+        "iotile-core>=3.0.0",
         "pyserial>=3.1.1"
     ],
 

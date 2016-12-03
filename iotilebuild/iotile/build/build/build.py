@@ -36,6 +36,8 @@ def build(args):
     # Do some sluething work to find scons if it's not installed into an importable
     # place, as it is usually not.
     try:
+        scons_path = os.path.join(resource_filename(Requirement.parse("iotile-build"), "iotile/build/config"), 'scons-local-2.5.1')
+        sys.path.insert(0, scons_path)
         import SCons.Script
     except ImportError:
         find_scons()

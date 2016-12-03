@@ -21,16 +21,16 @@ from setuptools import setup, find_packages
 import os
 
 version = "2.0.0"
+embedded_scons = "2.5.1"
 
 def list_data_files():
     result = []
     dirname = os.path.join(os.path.dirname(__file__), 'iotile', 'build')
     for root, _, files in os.walk(os.path.join(dirname, 'config')):
         for filename in files:
-            result.append(os.path.join(root, filename)[len(dirname)+1:])
+            if not filename.endswith('.pyc'):
+                result.append(os.path.join(root, filename)[len(dirname)+1:])
     return result
-
-
 
 setup(
     name="iotile-build",
@@ -41,7 +41,6 @@ setup(
         "iotile-core>=3.0.0",
         "sphinx>=1.3.1",
         "Cheetah>=2.4.4",
-        "scons>=2.5.0",
         "breathe>=4.2.0",
         "pygtrie>=2.0.0"
     ],

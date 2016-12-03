@@ -16,7 +16,7 @@ import re
 
 from setuptools import setup, find_packages
 
-version = "3.0.1"
+version = "3.0.2"
 
 setup(
     name="iotile-core",
@@ -30,7 +30,8 @@ setup(
         "crcmod>=1.7.0",
         "ws4py>=0.3.5",
         "msgpack-python>=0.4.8",
-        "python-dateutil>=2.6.0"
+        "python-dateutil>=2.6.0",
+        "pyreadline>=2.1.0"
     ],
     entry_points={
         'console_scripts': [
