@@ -30,10 +30,10 @@ test_script:
 artifacts:
   # bdist_wheel puts your built wheel in the dist directory
   - path: 
-    - iotilecore\dist\*
-    - iotilebuild\dist\*
-    - iotilegateway\dist\*
-    - transport_plugins\bled112\dist\*
+    - "iotilecore\\dist\\*"
+    - "iotilebuild\\dist\\*"
+    - "iotilegateway\\dist\\*"
+    - "transport_plugins\\bled112\\dist\\*"
 
 #on_success:
 #  You can use this step to upload your artifacts to a public website.
