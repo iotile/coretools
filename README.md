@@ -1,5 +1,7 @@
 ## Core IOTile Tools
 
+[![Build Status](https://travis-ci.org/iotile/coretools.svg?branch=master)](https://travis-ci.org/iotile/coretools)
+
 This repository contains the basic infrastructure needed build and interact with 
 IOTile based devices.  It is divided into a set of python packages that work 
 together to create an extensible but easy to use framework that supports any 
