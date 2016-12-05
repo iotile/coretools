@@ -1,0 +1,8 @@
+language: python
+python:
+  - "2.7"
+install:
+  - pip install -r test_requirements.txt
+script:
+  - cd iotilecore && tox && cd ..
+  - cd transport_plugins/bled112 && tox && cd ../../
