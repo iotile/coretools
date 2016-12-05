@@ -13,6 +13,10 @@ IOTile device.
 
 [![PyPI version](https://badge.fury.io/py/iotile-build.svg)](https://badge.fury.io/py/iotile-build)
 
+### IOTile-Gateway Status
+
+[![PyPI version](https://badge.fury.io/py/iotile-gateway.svg)](https://badge.fury.io/py/iotile-gateway)
+
 ### IOTile-Transport-BLED112 Status
 
 [![PyPI version](https://badge.fury.io/py/iotile-transport-bled112.svg)](https://badge.fury.io/py/iotile-transport-bled112)
