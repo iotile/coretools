@@ -20,8 +20,8 @@ build: off
 test_script:
   - "pwd"
   - "ls"
-  - "cd iotilecore; tox; cd .."
-  - "cd iotilegateay; tox; cd .."
+  - ps: "cd iotilecore; tox; cd .."
+  - ps: "cd iotilegateay; tox; cd .."
 
 #after_test:
   # This step builds your wheels.
