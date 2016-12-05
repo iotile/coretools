@@ -29,3 +29,10 @@ to provide support for specific tiles.
 
 There are currently no publicly available support packages, so please contact
 Arch to get access to private support packages.
+
+### License
+
+This software is released under the terms of the LGPL v3 license.  It includes
+pieces that are distributed under the terms of their own licenses.  A list of 
+included 3rd party software is described in the README files for each component
+of IOTile CoreTools.
