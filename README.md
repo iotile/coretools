@@ -1,3 +1,31 @@
 ## Core IOTile Tools
 
-This repository contains the basic infrastructure needed build and interact with IOTile based devices.  It is divided into a set of python packages that work together to create an extensible but easy to use framework that supports any IOTile device.
+This repository contains the basic infrastructure needed build and interact with 
+IOTile based devices.  It is divided into a set of python packages that work 
+together to create an extensible but easy to use framework that supports any 
+IOTile device.
+
+### Installation (from PyPI)
+
+The core set of tools is divided into three pip installable packages
+
+```shell
+> pip install iotile-core iotile-transport-bled112
+```
+
+If you also wish to use the IOTile build system to build IOTile components, you
+should also install IOTile-Build
+
+```shell
+> pip install iotile-build
+```
+
+### Installing Support for IOTile Based Devices
+
+CoreTools just gives you the framework to interact with IOTile based devices. 
+In order to control any given IOTile device, you need to also install a support
+package that contains support for that device.  Support packages extend CoreTools
+to provide support for specific tiles.  
+
+There are currently no publicly available support packages, so please contact
+Arch to get access to private support packages.
