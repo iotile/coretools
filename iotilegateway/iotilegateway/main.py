@@ -14,15 +14,6 @@ should_close = False
 device_manager = None
 BLED112Adapter = None
 
-#Find BLED112 adapter
-for entry in pkg_resources.iter_entry_points('iotile.device_adapter', 'bled112'):
-    BLED112Adapter = entry.load()
-    break
-
-if BLED112Adapter is None:
-    raise RuntimeError("BLED112 adapter is not installed!")
-
-
 def quit_signal_handler(signum, frame):
     global should_close
 
@@ -61,7 +52,19 @@ def find_bled112_devices():
 
     return found_devs
 
-if __name__ == '__main__':
+def main():
+    global device_manager
+    
+    log = logging.getLogger('tornado.general')
+
+    #Find BLED112 adapter
+    for entry in pkg_resources.iter_entry_points('iotile.device_adapter', 'bled112'):
+        BLED112Adapter = entry.load()
+        break
+
+    if BLED112Adapter is None:
+        raise RuntimeError("BLED112 adapter is not installed!")
+
     parse_command_line()
     loop = tornado.ioloop.IOLoop.instance()
 
@@ -86,3 +89,5 @@ if __name__ == '__main__':
         device_manager.add_adapter(bled_wrapper)
 
     loop.start()
+
+    log.critical("Done stopping loop")
