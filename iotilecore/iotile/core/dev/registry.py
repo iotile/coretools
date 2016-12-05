@@ -19,7 +19,7 @@ class ComponentRegistry:
     """
 
     def __init__(self):
-        self.kvstore = KeyValueStore('component_registry.db')
+        self.kvstore = KeyValueStore('component_registry.db', respect_venv=True)
         self.plugins = {}
         
         for entry in pkg_resources.iter_entry_points('iotile.plugin'):

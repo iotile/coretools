@@ -5,19 +5,28 @@
 from iotile.core.utilities.paths import settings_directory
 import sqlite3
 import os.path
+import sys
 
 class KeyValueStore(object):
 	"""
-	A simple string - string persistent map backed by sqlite
+	A simple string - string persistent map backed by sqlite for concurrent access
+
+	The KeyValueStore can be made to respect python virtual environments if desired
 	"""
 
 	DefaultFolder = settings_directory()
 
-	def __init__(self, name, folder=None):
+	def __init__(self, name, folder=None, respect_venv=False):
 		if folder is None:
 			folder = KeyValueStore.DefaultFolder
 
-		dbfile = os.path.join(folder, name)
+		#If we are relative to a virtual environment, prefix our name with the
+		#venv name
+		prefix = ""
+		if respect_venv and hasattr(sys, 'real_prefix'):
+			prefix = os.path.basename(sys.prefix) + '-'
+
+		dbfile = os.path.join(folder, prefix+name)
 		self.connection = sqlite3.connect(dbfile)
 		self.cursor = self.connection.cursor()
 
