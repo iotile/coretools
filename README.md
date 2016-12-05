@@ -5,6 +5,18 @@ IOTile based devices.  It is divided into a set of python packages that work
 together to create an extensible but easy to use framework that supports any 
 IOTile device.
 
+### IOTile-Core Status
+
+[![PyPI version](https://badge.fury.io/py/iotile-core.svg)](https://badge.fury.io/py/iotile-core)
+
+### IOTile-Build Status
+
+[![PyPI version](https://badge.fury.io/py/iotile-build.svg)](https://badge.fury.io/py/iotile-build)
+
+### IOTile-Transport-BLED112 Status
+
+[![PyPI version](https://badge.fury.io/py/iotile-transport-bled112.svg)](https://badge.fury.io/py/iotile-transport-bled112)
+
 ### Installation (from PyPI)
 
 The core set of tools is divided into three pip installable packages

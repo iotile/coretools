@@ -5,7 +5,7 @@ import os
 version = "1.0.0"
 
 setup(
-    name="iotile_transport_bled112",
+    name="iotile-transport-bled112",
     packages=find_packages(exclude=("test",)),
     version=version,
     license="LGPLv3",

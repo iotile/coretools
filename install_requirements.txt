@@ -1,0 +1,4 @@
+setuptools
+wheel
+pip
+twine>=1.8.1
