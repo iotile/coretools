@@ -1,7 +1,8 @@
 ## Core IOTile Tools
 
-Travis: [![Build Status](https://travis-ci.org/iotile/coretools.svg?branch=master)](https://travis-ci.org/iotile/coretools)
-AppVeyor: [![Build status](https://ci.appveyor.com/api/projects/status/yu3q8m8dm6aqoc6e/branch/master?svg=true)](https://ci.appveyor.com/project/timburke/coretools/branch/master)
+**Travis CI:** [![Build Status](https://travis-ci.org/iotile/coretools.svg?branch=master)](https://travis-ci.org/iotile/coretools)
+
+**AppVeyor:** [![Build status](https://ci.appveyor.com/api/projects/status/yu3q8m8dm6aqoc6e/branch/master?svg=true)](https://ci.appveyor.com/project/timburke/coretools/branch/master)
 
 This repository contains the basic infrastructure needed build and interact with 
 IOTile based devices.  It is divided into a set of python packages that work 
