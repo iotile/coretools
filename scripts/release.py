@@ -17,6 +17,8 @@ import os
 import requests
 import setuptools.sandbox
 import subprocess
+from twine.commands.upload import upload
+import glob
 
 comp_names = {
     'iotilecore': ['iotile-core', 'iotilecore'],
@@ -99,11 +101,15 @@ def upload_component(component):
     _, relative_compath = comp_names[component]
     distpath = os.path.join(relative_compath, 'dist', '*')
     distpath = os.path.realpath(os.path.abspath(distpath))
+    dists = glob.glob(distpath)
 
     if pypi_user is None:
-        subprocess.check_call(['twine', 'upload', distpath], shell=True)
-    else:   
-        subprocess.check_call(['twine', 'upload', distpath, '-u', pypi_user, '-p', pypi_pass], shell=True)
+        args = ['twine', 'upload', distpath]
+    else:
+        args = ['twine', 'upload', '-u', pypi_user, '-p', pypi_pass, distpath]
+
+    #Invoke upload this way since subprocess call of twine cli has cross platform issues
+    upload(dists, 'pypi', False, None, pypi_user, pypi_pass, None, None, '~/.pypirc', False, None, None, None)
 
 def main():
     component, version = get_release_component()

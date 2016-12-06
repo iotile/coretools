@@ -4,3 +4,4 @@ wheel
 pip
 twine>=1.8.1
 requests >= 2.4.2
+pkg_resources
