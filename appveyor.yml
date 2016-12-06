@@ -12,9 +12,9 @@ environment:
 
 install:
   # We need wheel installed to build wheels
-  - "%PYTHON%\\python.exe -m pip install wheel tox"
+  - "%PYTHON%\\python.exe -m pip install --upgrade -r build_requirements.txt"
   - set PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%
-
+  -
 build: off
 
 test_script:
