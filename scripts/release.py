@@ -100,6 +100,9 @@ def upload_component(component):
         pypi_pass = None
         print("No PYPI user information in environment")
 
+    print('"' + pypi_user + '"')
+    print('"' + pypi_pass + '"')
+
     _, relative_compath = comp_names[component]
     distpath = os.path.join(relative_compath, 'dist', '*')
     distpath = os.path.realpath(os.path.abspath(distpath))
