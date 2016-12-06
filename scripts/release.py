@@ -31,10 +31,10 @@ def send_slack_message(message):
     """Send a message to the slack channel #coretools
     """
 
-    if 'SLACK_WEBHOOK' not in os.environ:
-        raise EnvironmentError("Could not find SLACK_WEBHOOK environment variable")
+    if 'SLACK_WEB_HOOK' not in os.environ:
+        raise EnvironmentError("Could not find SLACK_WEB_HOOK environment variable")
 
-    webhook = os.environ['SLACK_WEBHOOK']
+    webhook = os.environ['SLACK_WEB_HOOK']
 
     r = requests.post(webhook, json={'text':message, 'username': 'Release Bot'})
     if r.status_code != 200:
