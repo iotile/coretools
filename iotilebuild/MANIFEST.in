@@ -1,1 +1,3 @@
 include version.py
+recursive-include iotile/build/config *
+recursive-exclude iotile/build/config *.pyc
