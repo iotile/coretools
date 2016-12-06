@@ -8,3 +8,5 @@ for entry in pkg_resources.iter_entry_points('iotile.builder'):
     tool_path = path_gen()
 
     SCons.Tool.DefaultToolpath.insert(0, os.path.abspath(tool_path))
+
+SCons.Defaults.DefaultEnvironment(tools=[])

@@ -10,10 +10,10 @@ import unittest
 import os.path
 import subprocess
 from iotile.core.dev.registry import ComponentRegistry
+from iotile.build.build.build import build
 
 def test_iotiletool():
 	err = subprocess.check_call(["iotile" , "quit"])
-
 	assert err == 0
 
 def test_build_command():

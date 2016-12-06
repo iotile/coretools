@@ -40,9 +40,7 @@ def build(args):
         sys.path.insert(0, scons_path)
         import SCons.Script
     except ImportError:
-        find_scons()
-        import SCons.Script
-
+        raise BuildError("Could not find internal scons packaged with iotile-build.  This is a bug that should be reported", scons_path=scons_path)
 
     site_tools = os.path.join(resource_filename(Requirement.parse("iotile-build"), "iotile/build/config"), 'site_scons')
     site_path = os.path.abspath(site_tools)
@@ -50,53 +48,6 @@ def build(args):
     all_args = ['iotile', '--site-dir=%s' % site_path, '-Q']
     sys.argv = all_args + list(args)
     SCons.Script.main()
-
-def find_scons():
-    """
-    Find the installed scons directory and add it to sys.path so we can import it
-    """
-
-    try:
-        scons_path = find_executable('scons')
-
-        p = subprocess.Popen([sys.executable, scons_path, '--version'], stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-        output, output_err = p.communicate()
-    except OSError:
-        raise BuildError("Could not find an installed version of SCons.  SCons is required for the build system to work.")
-
-    match = re.search("engine path: \['(.*)'\]", output)
-    if match is None:
-        raise BuildError("SCons version unsupported, it returned an unknown format for scons --version", output=output)
-
-    install_dir = match.group(1)
-    if not os.path.isdir(install_dir):
-        raise BuildError("scons --version output invalid, listed engine directory does not exist", output=output, engine_dir=install_dir)
-
-    libpath = os.path.dirname(install_dir)
-    sys.path = sys.path + [libpath]
-
-def find_executable(name):
-    ext = ['.py', '']
-
-    if platform.system()== 'Windows':
-        ext += ['.exe']
-
-    pathvars = os.environ['PATH']
-
-    if platform.system() == 'Windows':
-        sep = ';'
-    else:
-        sep = ':'
-
-    paths = pathvars.split(sep)
-
-    for p in paths:
-        for e in ext:
-            binpath = os.path.abspath(os.path.join(p, name + e))
-            if os.path.exists(binpath):
-                return binpath
-
-    raise BuildError("Could not find an installed version of SCons.  SCons is required for the build system to work.", searched_paths = os.environ['PATH'])
 
 def build_other(directory, artifacts=[]):
     """

@@ -23,15 +23,6 @@ import version
 
 embedded_scons = "2.5.1"
 
-def list_data_files():
-    result = []
-    dirname = os.path.join(os.path.dirname(__file__), 'iotile', 'build')
-    for root, _, files in os.walk(os.path.join(dirname, 'config')):
-        for filename in files:
-            if not filename.endswith('.pyc'):
-                result.append(os.path.join(root, filename)[len(dirname)+1:])
-    return result
-
 setup(
     name="iotile-build",
     packages=find_packages(exclude=("test",)),
@@ -44,9 +35,7 @@ setup(
         "breathe>=4.2.0",
         "pygtrie>=2.0.0"
     ],
-    package_data={
-        'iotile-build': list_data_files()
-    },
+    include_package_data=True,
     entry_points={'iotile.plugin': ['.build = iotile.build.plugin:setup_plugin']},
     description="IOTile Build Support",
     author="Arch",

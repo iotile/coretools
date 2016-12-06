@@ -140,7 +140,7 @@ def test_long_name():
 		desc = _load_mib("long_name.mib")
 
 def test_include_nonexistent():
-	with pytest.raises(pyparsing.ParseException):
+	with pytest.raises(ArgumentError):
 		desc = _load_mib("invalid_include.mib")
 
 def test_good_include():
