@@ -40,6 +40,7 @@ def build(args):
         sys.path.insert(0, scons_path)
         import SCons.Script
     except ImportError:
+        print os.listdir(scons_path)
         raise BuildError("Could not find internal scons packaged with iotile-build.  This is a bug that should be reported", scons_path=scons_path)
 
     site_tools = os.path.join(resource_filename(Requirement.parse("iotile-build"), "iotile/build/config"), 'site_scons')
