@@ -91,7 +91,6 @@ def upload_component(component):
     file or in environment variables PYPI_USER and PYPI_PASS
     """
     
-    print(os.environ.keys())
     if 'PYPI_USER' in os.environ and 'PYPI_PASS' in os.environ:
         pypi_user = os.environ['PYPI_USER']
         pypi_pass = os.environ['PYPI_PASS']
@@ -99,9 +98,6 @@ def upload_component(component):
         pypi_user = None
         pypi_pass = None
         print("No PYPI user information in environment")
-
-    print('"' + pypi_user + '"')
-    print('"' + pypi_pass + '"')
 
     _, relative_compath = comp_names[component]
     distpath = os.path.join(relative_compath, 'dist', '*')
