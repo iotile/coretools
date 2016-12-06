@@ -49,6 +49,53 @@ to provide support for specific tiles.
 There are currently no publicly available support packages, so please contact
 Arch to get access to private support packages.
 
+### Continuous Deployment
+Automatic release to pypi is handled by Travis CI every time a new tag is created
+on the master branch.  The tags must have a specific naming format:
+
+```
+<distribution_name>-<version>
+```
+
+Where `<distribution_name>` is the name of a specific component of CoreTools.  Currently,
+the known components are:
+
+```
+iotilecore
+iotilebuild
+iotilegateway
+iotile_transport_bled112
+```
+
+The version must match the version that is encoded in version.py in the corresponding python
+distribution to be released and is checked in the release.py script before attempting to release.
+
+### Manually Releasing
+
+Releasing new builds to pypi is handled by the `scripts/release.py` script.  The 
+script should be called with one argument, which is the name and version of the
+distribution being released.  
+
+First, make sure all build requirements are satisfied:
+
+```shell
+> pip install -r build_requirements.txt
+```
+
+Then, release (for example iotilecore-X.Y.Z) using
+```shell
+> python scripts/release iotilecore-X.Y.Z
+```
+
+You need to have the following environment variables set correctly with pypi and slack
+secrets:
+
+```
+PYPI_USER
+PYPI_PASS
+SLACK_WEB_HOOK
+```
+
 ### License
 
 This software is released under the terms of the LGPL v3 license.  It includes
