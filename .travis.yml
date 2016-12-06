@@ -13,6 +13,7 @@ script:
 - cd iotilecore && tox && cd ..
 - cd transport_plugins/bled112 && tox && cd ../../
 deploy:
+  skip_cleanup: true
   provider: script
   script: python scripts/release.py $TRAVIS_TAG
   on:

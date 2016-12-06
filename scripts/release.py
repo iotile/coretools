@@ -110,6 +110,7 @@ def main():
     check_version(component, version)
     build_component(component)
     upload_component(component)
+    send_slack_message('Released {} version {} to PYPI'.format(component, version))
 
 if __name__ == '__main__':
     main()
