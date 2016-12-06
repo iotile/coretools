@@ -1,13 +1,12 @@
 from setuptools import setup, find_packages
 
 import os
-
-version = "1.0.0"
+import version
 
 setup(
     name="iotile-transport-bled112",
     packages=find_packages(exclude=("test",)),
-    version=version,
+    version=version.version,
     license="LGPLv3",
     install_requires=[
         "iotile-core>=3.0.0",

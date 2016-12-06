@@ -19,8 +19,8 @@
 from setuptools import setup, find_packages
 
 import os
+import version
 
-version = "2.0.0"
 embedded_scons = "2.5.1"
 
 def list_data_files():
@@ -35,7 +35,7 @@ def list_data_files():
 setup(
     name="iotile-build",
     packages=find_packages(exclude=("test",)),
-    version=version,
+    version=version.version,
     license="LGPLv3",
     install_requires=[
         "iotile-core>=3.0.0",

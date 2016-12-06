@@ -15,13 +15,13 @@
 import re
 
 from setuptools import setup, find_packages
+import version
 
-version = "3.0.2"
 
 setup(
     name="iotile-core",
     packages=find_packages(exclude=("test",)),
-    version=version,
+    version=version.version,
     license="LGPLv3",
     install_requires=[
         "decorator>=3.4.0",

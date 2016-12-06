@@ -1,9 +1,20 @@
 language: python
+env:
+  global:
+  - secure: k/vRLDTw4Wsa22ysWsLLUUKBbMoTY+Xh6cmaTcRhc5b4do5BoHmwvEh/DWwLzS2PbrY0woENBIYhWmPih8i2YqFnKr0d/bCQt9yAcg65O5IxNLFCcUCO/at/2tQnqhT/38y3IRzwY6ojLCIdgSbKg0J8boDUWSAyyIkJTbCBzGp8BR3RQT7TL4V8G6OUVZ+FZuFVnXy9a0HyQfi1ASm4qGAtD6qqLXFLYvVObrkZUQHJY+iu7haiV+i8JUDt1SwVU+PoPc9ym4i3/5CZxRlWdWN0Rmj4awCdb4Gt6ObGFK+KPqYcNTjIerHTZbDn13kJn0A46I4IL7rT0eu7DQSYu0K7jOerxwoDBmRsvekVsb68D8RP8EsN4A79GPePUmjApimm8H1qV0WqQilTpu/LpUkVXJKxwNpRN+RUHIH0l8/tq5Er3qU0x/TGP4Sp1+6RTn5vJKWjKdsh0Rx7xutvnE7MB5ulX1fZ9Pdmefx7A9KEUFjWlxzjcnw3bc5/iyWtNMv9NWCQLWzjZTLKhWiuQ1GK8QpLTImLDIoWVfFMT/DQLiGbzeLFRyqLWMxB3iWAQmKM1PLdHwq4BD/XRH80x30/o3Zx/YjaNUUGdzaf6xNnIPxoFnus4xUh6KoTHptHXh1M+BNAlGuiypoOhY1OVy4rrFOMj0cXyJV2zwtF/MY=
+  - secure: FTffddXd46nzEQH6W0El4/TWlM+YyPDx0OSGNYXaayE79g5gYzH2bkomm5g4vywjtL6z6++LA/1CMRU7mwX76Wt7HmM0t9SfFCebEyIjf6fCThEMAIyhvYKFdJH7XMBPOvzM2V5eXwYKjaMhHMSRlJeyBbrXwYrBTeOsxb3T0Abl76rG2vUaBhHMIXjkqTbUphFK5LvPnI160M3fspTOloOAkvpgppagApFKuEz91xrbQoU5/Nio8ByK7+ESBWAhlX1HpIPnro3fBTbwaDd/LIDpG2hkVYVjhR0Ec1U2nxbki5NLWceQrGwKTbZbuVu7XoJXmiHx7x0DBSfYvQjRYUD7ig/39wBBRqCcCgYXwjaWiWvIebTprNYmSAwrcY/WHhXutsuNN4PZcM1emMXiCU2APhhE7uG8EkZAkTwgVhVMYn222DRXBFMIlkg46DtbZS4GmEe1R5RmKXRNIsDY5W1PsatXIFak6zlarUrZc7wJFF2Os5Pic6kIMtmqVT/VF7ipeH8YEVu+52VmJPGZnl6opNFkpJv0KheOifj48789zPMw4oPZo+HCzl35WxPrPmnm5MOoZUdQnS1yPnjR3Re29N5TnjXPRtdigr/BDMP1+SXTr+dJWLei+srVe0DglPQn3RaF0+GclZ9uucjmu59SijYgmVMWnla5vAlr3dI=
+  - secure: em4y2UA0V8SYLk3qYXh3mytJS5RiXYSCa6gjH1DKcNLb+WhEdwCpoG8nDPzuD7SyqV4x5naKwrma2JApr16L7P4LGCH0YW3jp+tt6/QQVfLdsIbChPXU70V8FqLmvP6uyy1cspZ5wSA4H1MbVdaiM/+5OxgdgD9gKwFE/8FcQfXhRA6kMSouHmge+j95ZPzNDQYbfoHtS9OE85G8hNCdLJ+eeD4N9GN1b5tKw6kuhQ7BEh6e/pQoh+9RB9WTC8wlWambPmqwFivUa3P7jAkwHVmW5fTiDfpaR4upRjQMoYJlCRUq9fS7PD1nDMmpVqwGfBlVExJFwD70onpxJoCfrSVs+6k3qBbSQ7elW3gBCyCjpfDSCWdXU484ytSa/XLlNQZYav3FGZPp2UGWRkwaqsdYKWxdEIBrqVy9D6EcP36YkGiC9IVZJUD0a92s3EvzUr5TfHtB7eQkA9LMU+VRwQqeEwoNZENWo2Fp1NClXb4GSCzgsduD9kJ9Jpj97X5MDc2eAqaFPMjBN7TSbH5vRB7O/EGsCMV7KlwwvGfk1eos+ZU3etf1y1LDHN8N/ObVjHW7DM/vX4JW4OstkmM0gZq58mPMTivbC3Sr2VofOTXdwJrwQeKQtrMS8tVdP22D0IXlhGhr+5rjW0YysPx2LKc6g+T3B+q1Dmymg0E2O+w=
 sudo: false
 python:
-  - "2.7"
+- '2.7'
 install:
-  - pip install -r test_requirements.txt
+- pip install -r build_requirements.txt
 script:
-  - cd iotilecore && tox && cd ..
-  - cd transport_plugins/bled112 && tox && cd ../../
+- cd iotilecore && tox && cd ..
+- cd transport_plugins/bled112 && tox && cd ../../
+deploy:
+  provider: script
+  script: python scripts/release.py $TRAVIS_TAG
+  on:
+    branch: master
+    tags: true

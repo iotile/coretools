@@ -15,13 +15,12 @@
 import re
 
 from setuptools import setup, find_packages
-
-version = "1.0.0"
+import version
 
 setup(
     name="iotile-gateway",
     packages=find_packages(exclude=("test",)),
-    version=version,
+    version=version.version,
     license="LGPLv3",
     install_requires=[
         "tornado>=4.4.0",
