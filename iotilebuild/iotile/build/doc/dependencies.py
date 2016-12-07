@@ -5,56 +5,57 @@ from iotile.core.dev.registry import ComponentRegistry
 import json
 import sphinx
 from docutils.statemachine import ViewList
+from iotile.core.exceptions import ArgumentError
 
 #TODO: Modify this to not list whether the dependency is installed or not
 
 class DependenciesDirective (Directive):
-	"""Directive for adding a list of all dependencies used by this component
+    """Directive for adding a list of all dependencies used by this component
 
-	This directive parses the module_settings.json file for the component and 
-	adds links to any installed dependencies that it finds there.
-	"""
+    This directive parses the module_settings.json file for the component and 
+    adds links to any installed dependencies that it finds there.
+    """
 
-	def run(self):
-		component = os.path.abspath('.')
-		deps = self._get_dependencies(component)
-		reg = ComponentRegistry()
+    def run(self):
+        component = os.path.abspath('.')
+        deps = self._get_dependencies(component)
+        reg = ComponentRegistry()
 
-		found = []
-		not_found = []
-		
-		for name in deps.iterkeys():
-			try:
-				tile = reg.find_component(name)
-			except ArgumentError:
-				not_found.append(name)
+        found = []
+        not_found = []
+        
+        for name in deps.iterkeys():
+            try:
+                tile = reg.find_component(name)
+            except ArgumentError:
+                not_found.append(name)
 
-			found.append(tile)
+            found.append(tile)
 
-		deplines = []
+        deplines = []
 
-		for tile in found:
-			deplines.append('- %s' % tile.name)
+        for tile in found:
+            deplines.append('- %s' % tile.name)
 
-		for name in not_found:
-			deplines.append('- %s (NOT INSTALLED)' % name)
+        for name in not_found:
+            deplines.append('- %s (NOT INSTALLED)' % name)
 
-		view = ViewList(deplines, 'dependencies-directive')
+        view = ViewList(deplines, 'dependencies-directive')
 
-		node = docutils.nodes.paragraph()
-		sphinx.util.nodes.nested_parse_with_titles(self.state, view, node)
-		return node.children
+        node = docutils.nodes.paragraph()
+        sphinx.util.nodes.nested_parse_with_titles(self.state, view, node)
+        return node.children
 
-	def _get_dependencies(self, component):		
-		module_settings = os.path.join(component, 'module_settings.json')
+    def _get_dependencies(self, component):     
+        module_settings = os.path.join(component, 'module_settings.json')
 
-		with open(module_settings, "r") as f:
-			settings = json.load(f)
+        with open(module_settings, "r") as f:
+            settings = json.load(f)
 
-		mod = settings['modules'].keys()[0]
-		mod_settings = settings['modules'][mod]
+        mod = settings['modules'].keys()[0]
+        mod_settings = settings['modules'][mod]
 
-		if 'depends' not in mod_settings:
-			return {}
+        if 'depends' not in mod_settings:
+            return {}
 
-		return mod_settings['depends']
+        return mod_settings['depends']
