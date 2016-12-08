@@ -6,7 +6,7 @@ from iotile.mock.mock_iotile import MockIOTileDevice
 
 class TestHardwareManager(unittest.TestCase):
 	def setUp(self):
-		self.dev = MockIOTileDevice('TestCN')
+		self.dev = MockIOTileDevice(0, 'TestCN')
 
 	def tearDown(self):
 		pass
