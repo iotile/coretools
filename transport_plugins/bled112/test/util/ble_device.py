@@ -117,8 +117,11 @@ class MockBLEDevice (object):
         return bytearray(20)
 
     def write_handle(self, handle, value):
+        #Check if this attribute is managed internally and if so update its value
         if handle in self.values:
+            
             self.values[handle] = value
+
             return True, []
 
         handle_id = self.find_uuid(handle)
@@ -216,4 +219,8 @@ class MockIOTileDevice(MockBLEDevice):
 
         if char_id == self.TBHighSpeedChar:
             self.script += value
+            return True, []
+
+        if char_id == self.TB
+
         return False, []

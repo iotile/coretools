@@ -174,6 +174,8 @@ class DeviceAdapter(object):
             self._open_rpc_interface(conn_id, callback)
         elif interface == 'script':
             self._open_script_interface(conn_id, callback)
+        elif interface == 'streaming':
+            self._open_streaming_interface(conn_id, callback)
         else:
             callback(conn_id, self.id, False, "interface not supported yet")
 

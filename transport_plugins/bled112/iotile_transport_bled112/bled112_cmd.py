@@ -267,6 +267,11 @@ class BLED112CommandProcessor(threading.Thread):
 
         return self._set_notification(conn, services[TileBusService]['characteristics'][TileBusReceivePayloadCharacteristic], True, timeout)
 
+    def _enable_streaming(self, conn, services, timeout=1.0):
+        success, result = self._set_notification(conn, services[TileBusService]['characteristics'][TileBusStreamingCharacteristic], True, timeout)
+        if not success:
+            return success, result
+
     def _disable_rpcs(self, conn, services, timeout=1.0):
         """Prevent this device from receiving more RPCs
 

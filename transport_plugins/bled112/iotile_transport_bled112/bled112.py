@@ -320,6 +320,20 @@ class BLED112Adapter(DeviceAdapter):
 
         callback(conn_id, self.id, success, reason)
 
+    def _open_streaming_interface(self, conn_id, callback):
+        """Enable sensor graph streaming interface for this IOTile device
+
+        Args:
+            conn_id (int): the unique identifier for the connection
+            callback (callback): Callback to be called when this command finishes
+                callback(conn_id, adapter_id, success, failure_reason)
+        """
+
+        handle = self._find_handle(conn_id)
+        services = self._connections[handle]['services']
+
+        self._command_task.async_command(['_enable_streaming', handle, services], self._on_interface_finished, {'connection_id': conn_id, 'callback': callback})
+
     def _close_rpc_interface(self, conn_id, callback):
         """Disable RPC interface for this IOTile device
 
