@@ -1,17 +1,13 @@
 language: python
 sudo: false
-
 python:
 - '2.7'
-
 install:
 - pip install --upgrade -r build_requirements.txt
-
 script:
 - cd iotilecore && tox && cd ..
 - cd iotilebuild && tox && cd ..
 - cd transport_plugins/bled112 && tox && cd ../../
-
 deploy:
   skip_cleanup: true
   provider: script
@@ -19,3 +15,9 @@ deploy:
   on:
     branch: master
     tags: true
+notifications:
+  slack:
+    secure: YRKmTONYGnOfkMgKitf64TneVJKgFnPU9Vd82NCZOSvJDlq4gkrOzXXbJ2o0CM2RwuVTJny685VaCvRokWNVj6LfCi+DdUC/pWB/zLGQ96BcDK/2+KnOTaj7N3zOMICr0nVr2JCKpA40ZqkOi4G1Bb/MfhgcWVEX4C8hylymaQvn8QCqUes9ApkXLXJ1VNCuqOm3e4bMlB0/KrgxeU0A0yFeBImaijM8WmZBlyJLPg+/XAeh0llMomDqYuaUBvmtHv+fksmT2sSdrV8XuFjQvA6oEhirm0tzqb+RKF/zcZUTfRw60dLEHWXUEqlbTW6BgYjAfyUwzuN5bsUxqAHBvfC0NFrf9ZZNMcNKlz1i4aXFWZusGeue3mCvnHSOJQINrAX9DsZr7Mhp5puzjE6596canOgybcPm9BLI12Dw8BvIGTIHHzZkbszZFW/5SvS1xdJhSRLiBJ9aIrl08sudzvYmK67SdKvHpmt+iLJCUrCgi/0JyWfJVQZCrzskBd6d2GrDe0XjipOc3qj+d+ok30+S1rLpbiXvEzS3CY8a7p+ijH4Qzi6I7DUL/dZMD0i+HifbOGM3t+5QM57XyWUcfbqY0iMeLwIH68FY2lytGJ6OE0/jDG0W0lCnAT0hoJaFaBnhWsdVsm5Zhxc+YVXa+iF/ZVKT/Ufm9NdqdHeBKNc=
+    on_success: always
+    on_failure: always
+  email: false
