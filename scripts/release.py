@@ -112,12 +112,54 @@ def upload_component(component):
     #Invoke upload this way since subprocess call of twine cli has cross platform issues
     upload(dists, 'pypi', False, None, pypi_user, pypi_pass, None, None, '~/.pypirc', False, None, None, None)
 
+def get_release_notes(component, version):
+    _, relative_compath = comp_names[component]
+    notes_path = os.path.join(relative_compath, 'RELEASE.md')
+
+    with open(notes_path, "r") as f:
+        lines = f.readlines()
+
+    release_lines = {y[2:].strip(): x for x, y in enumerate(lines) if y.startswith('##')}
+    
+    if version not in release_lines:
+        print("ERROR: Could not find release notes for current release version")
+        sys.exit(1)
+
+    start_line = release_lines[version]
+    past_releases = [x for x in release_lines.itervalues() if x > start_line]
+
+    if len(past_releases) == 0:
+        release_string = "".join(lines[start_line+1:])
+    else:
+        release_string = "".join(lines[start_line:min(past_releases)])
+
+    if len(release_string) == 0:
+        print("ERROR: Empty release notes for current release version")
+        sys.exit(1)
+
+    return release_string
+
 def main():
+    if len(sys.argv) < 2:
+        print("Usage: release.py [--check] <component_name>-<version>")
+        sys.exit(1)
+
+    dry_run = False
+    if sys.argv[-2] == '--check':
+        dry_run = True
+
     component, version = get_release_component()
     check_version(component, version)
     build_component(component)
-    upload_component(component)
-    send_slack_message('Released {} version {} to PYPI'.format(component, version))
+
+    release_notes = get_release_notes(component, version)
+
+    if dry_run:
+        print("Check Release\nName: {}\nVersion: {}".format(component, version))
+        print("Release Notes:\n" + release_notes)
+    else:
+        upload_component(component)
+        send_slack_message('## Released {} version {} to PYPI\nRelease Notes for version {}:\n{}'.format(component, version, version, release_notes))
 
 if __name__ == '__main__':
     main()

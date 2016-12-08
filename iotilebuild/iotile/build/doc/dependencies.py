@@ -23,14 +23,13 @@ class DependenciesDirective (Directive):
 
         found = []
         not_found = []
-        
+
         for name in deps.iterkeys():
             try:
                 tile = reg.find_component(name)
+                found.append(tile)
             except ArgumentError:
                 not_found.append(name)
-
-            found.append(tile)
 
         deplines = []
 
