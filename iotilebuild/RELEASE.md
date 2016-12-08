@@ -4,7 +4,7 @@ All major changes in each released version of IOTileBuild are listed here.
 
 ## 2.0.5
 
-- test
+- Improve error processing in dependencies with documentation (Issue #48)
 
 ## 2.0.4
 
