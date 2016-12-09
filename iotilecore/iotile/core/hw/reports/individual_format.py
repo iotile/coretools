@@ -41,7 +41,7 @@ class IndividualReadingReport(IOTileReport):
     def FromReadings(cls, uuid, readings):
         """Generate an instance of the report format from a list of readings and a uuid
         """
-        
+
         if len(readings) != 1:
             raise ArgumentError("IndividualReading reports must be created with exactly one reading", num_readings=len(readings))
 
