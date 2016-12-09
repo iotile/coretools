@@ -2,8 +2,11 @@
 """
 
 import datetime
+import struct
 from report import IOTileReport, IOTileReading
 from iotile.core.utilities.packed import unpack
+from iotile.core.exceptions import ArgumentError
+
 
 class IndividualReadingReport(IOTileReport):
     """Report format where every reading is packaged in a 20 byte frame
@@ -34,6 +37,18 @@ class IndividualReadingReport(IOTileReport):
 
         return 20
 
+    @classmethod
+    def FromReadings(cls, uuid, readings):
+        """Generate an instance of the report format from a list of readings and a uuid
+        """
+        
+        if len(readings) != 1:
+            raise ArgumentError("IndividualReading reports must be created with exactly one reading", num_readings=len(readings))
+
+        reading = readings[0]
+        data = struct.pack("<BBHLLLL", 0, 0, reading.stream, uuid, 0, reading.raw_time, reading.value)
+        return IndividualReadingReport(data)
+
     def decode(self):
         """Decode this report into a single reading
         """
@@ -46,4 +61,15 @@ class IndividualReadingReport(IOTileReport):
 
         reading = IOTileReading(reading_timestamp, stream, reading_value, time_base=time_base)
         self.origin = uuid
+        self.sent_timestamp = sent_timestamp
+
         return [reading]
+
+    def serialize(self):
+        """Turn this report into a serialized bytearray
+        """
+
+        reading = self.visible_readings[0]
+        data = struct.pack("<BBHLLLL", 0, 0, reading.stream, self.origin, self.sent_timestamp, reading.raw_time, reading.value)
+
+        return bytearray(data)

@@ -37,13 +37,16 @@ class IOTileReport(object):
 
     All IOTileReports must derive from this class and must implement the following interface
 
-    - class method HeaderLength(cls) 
+    - class method HeaderLength(cls)
         function returns the number of bytes that must be read before the total length of
         the report can be determined.  HeaderLength() must always be less than or equal to
         the length of the smallest version of this report.
     - class method ReportLength(cls, header):
         function that takes HeaderLength() bytes and returns the total size of the report,
         including the header.
+    - class method FromReadings(cls, uuid, readings)
+        function that creates an instance of an IOTileReport subclass from a list of readings
+        and a device uuid.
     - propery ReportType:
         The one byte type code that defines this report type
     - instance method verify(self):
@@ -52,7 +55,10 @@ class IOTileReport(object):
     - instance method decode(self):
         function that decodes a report into a series of IOTileReading objects. The function
         should return a list of readings.
-    
+    - instance method serialize(self):
+        function that should turn the report into a serialized bytearray that could be
+        decoded with decode().
+
     Args:
         rawreport (bytearray): The raw data of this report
         signed (bool): Whether this report is signed to specify who it is from
@@ -64,6 +70,7 @@ class IOTileReport(object):
     def __init__(self, rawreport, signed, encrypted, received_time=None):
         self.visible_readings = []
         self.origin = None
+        self.sent_timestamp = 0
 
         if received_time is None:
             self.received_time = datetime.datetime.utcnow()
