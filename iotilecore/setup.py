@@ -40,7 +40,10 @@ setup(
         'iotile.cmdstream': [
             'ws = iotile.core.hw.transport.websocketstream:WebSocketStream',
             'recorded = iotile.core.hw.transport.recordedstream:RecordedStream'
-        ]
+        ],
+        'iotile.report_format': [
+            'individual = iotile.core.hw.reports.individual_format:IndividualReadingReport'
+            ]
     },
     description="IOTile Core Tools",
     author="Arch",

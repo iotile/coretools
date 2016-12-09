@@ -15,34 +15,34 @@ import os.path
 import os
 
 class TestHardwareManager(unittest.TestCase):
-	"""
-	Test to make sure that the HardwareManager is working
-	"""
+    """
+    Test to make sure that the HardwareManager is working
+    """
 
-	def setUp(self):
-		self.hw = HardwareManager('none')
+    def setUp(self):
+        self.hw = HardwareManager('none')
 
-	def tearDown(self):
-		pass
+    def tearDown(self):
+        pass
 
-	def test_unknown_module(self):
-		with pytest.raises(UnknownModuleTypeError):
-			self.hw._create_proxy('UnknownMibModule', 8)
+    def test_unknown_module(self):
+        with pytest.raises(UnknownModuleTypeError):
+            self.hw._create_proxy('UnknownTileBusModule', 8)
 
-	def test_proxy_loading(self):
-		try:
-			self.hw._create_proxy('EmptyProxy', 8)
-		except UnknownModuleTypeError:
-			pass
-		except:
-			raise
+    def test_proxy_loading(self):
+        try:
+            self.hw._create_proxy('EmptyProxy', 8)
+        except UnknownModuleTypeError:
+            pass
+        except:
+            raise
 
-		num = self.hw.add_proxies(os.path.join(os.path.dirname(__file__), 'empty_proxy.py'))
-		assert num == 1
+        num = self.hw.add_proxies(os.path.join(os.path.dirname(__file__), 'empty_proxy.py'))
+        assert num == 1
 
-		proxy = self.hw._create_proxy('EmptyProxy', 8)
-		assert proxy.random_method() == True
+        proxy = self.hw._create_proxy('EmptyProxy', 8)
+        assert proxy.random_method() == True
 
-	def test_wrongpath_proxy(self):
-		with pytest.raises(ValidationError):
-			self.hw.add_proxies(os.path.join(os.path.dirname(__file__), 'empty_proxy'))
+    def test_wrongpath_proxy(self):
+        with pytest.raises(ValidationError):
+            self.hw.add_proxies(os.path.join(os.path.dirname(__file__), 'empty_proxy'))
