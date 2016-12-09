@@ -1,6 +1,7 @@
 """An adapter class that takes a DeviceAdapter and produces a CMDStream compatible interface
 """
 from copy import deepcopy
+import Queue
 from cmdstream import CMDStream
 import datetime
 from iotile.core.exceptions import HardwareError
@@ -24,8 +25,10 @@ class AdapterCMDStream(CMDStream):
     def __init__(self, adapter, port, connection_string, record=None):
         self.adapter = adapter
         self._scanned_devices = {}
+        self._reports = None
 
         self.adapter.add_callback('on_scan', self._on_scan)
+        self.adapter.add_callback('on_report', self._on_report)
 
         super(AdapterCMDStream, self).__init__(port, connection_string, record)
 
@@ -95,6 +98,18 @@ class AdapterCMDStream(CMDStream):
 
     def _send_highspeed(self, data, progress_callback):
         self.adapter.send_script_sync(0, str(data), progress_callback)
+
+    def _enable_streaming(self):
+        self._reports = Queue.Queue()
+        self.adapter.open_interface_sync(0, 'streaming')
+
+        return self._reports
+
+    def _on_report(self, report):
+        if self._reports is None:
+            return
+
+        self._reports.put(report)
 
     def _close(self):
         self.adapter.stop()

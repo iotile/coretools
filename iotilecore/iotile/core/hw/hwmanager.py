@@ -113,7 +113,7 @@ class HardwareManager:
 
         con = self.get(8)       
         con._hwmanager = self
-        
+
         return con
 
     @param("device_uuid", "integer", desc="UUID of the device we would like to connect to")
@@ -122,6 +122,13 @@ class HardwareManager:
         """
 
         self.stream.connect(device_uuid)
+
+    @param("connection_string", "string", desc="opaque connection string indicating which device")
+    def connect_direct(self, connection_string):
+        """Attempt to connect to a device using a connection string
+        """
+
+        self.stream.connect_direct(connection_string)
 
     @annotated
     def disconnect(self):
@@ -147,7 +154,7 @@ class HardwareManager:
         self._stream_queue = self.stream.enable_streaming()
 
     @return_type("integer")
-    def count_readings(self):
+    def count_reports(self):
         if self._stream_queue is None:
             return 0
 
