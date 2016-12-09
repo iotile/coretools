@@ -12,10 +12,12 @@ import copy
 import serial
 import serial.tools.list_ports
 from iotile.core.utilities.packed import unpack
+from iotile.core.hw.reports.parser import IOTileReportParser
 from async_packet import AsyncPacketBuffer
 from iotile.core.hw.transport.adapter import DeviceAdapter
 from bled112_cmd import BLED112CommandProcessor
 from tilebus import *
+import bgapi_structures
 
 def packet_length(header):
     """
@@ -70,6 +72,7 @@ class BLED112Adapter(DeviceAdapter):
         self._logger.addHandler(logging.NullHandler())
         
         self._command_task._logger.setLevel(logging.WARNING)
+        self._parser = IOTileReportParser(report_callback=self._on_report, error_callback=self._on_report_error)
 
         try:
             self.initialize_system_sync()
@@ -388,6 +391,14 @@ class BLED112Adapter(DeviceAdapter):
 
             if conn in self._connections:
                 del self._connections[conn]
+        elif event.command_class == 4 and event.command == 5:
+            #Handle notifications
+            conn = unpack("<B", event.payload[:1])
+            at_handle, value = bgapi_structures.process_notification(event)
+
+            self._logger.info("Received streamed data: %s, length: %d", repr(value), len(value))
+            #FIXME: Don't assume all notifications are streamed data
+            self._parser.add_data(value)            
         else:
             self._logger.warn('Unhandled BLE event: ' + str(event))
 
@@ -689,6 +700,15 @@ class BLED112Adapter(DeviceAdapter):
 
         self._logger.info("Total time to connect to device: %.3f (%.3f enumerating services, %.3f enumerating chars)", total_time, service_time, char_time)
         callback(conndata['connection_id'], self.id, True, None)
+
+    def _on_report(self, report):
+        self._logger.info('Received report: %s', str(report))
+        self._trigger_callback('on_report', report)
+        
+        return False
+
+    def _on_report_error(self, code, message):
+        self._logger.critical("Error receiving reports, no more reports will be processed on this adapter, code=%d, msg=%s", code, message)
 
     def periodic_callback(self):
         """Periodic cleanup tasks to maintain this adapter, should be called every second
