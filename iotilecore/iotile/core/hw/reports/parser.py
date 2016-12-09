@@ -12,11 +12,11 @@ class IOTileReportParser (object):
 
     Args:
         report_callback (callable): A function to be called every time a new report is received
-            The signature should be bool report_callback(report).  The return value is True to
+            The signature should be bool report_callback(report, context).  The return value is True to
             indicate that IOTileReportParser should also keep a copy of the report or
             False to indicate it should delete it.
         error_callback (callable): A function to be called every time an error occurs.
-            The signature should be error_callback(error_code, message).  If a fatal
+            The signature should be error_callback(error_code, message, context).  If a fatal
             error occurs, further parsing of reports will be stopped.
     """
 
@@ -42,6 +42,7 @@ class IOTileReportParser (object):
         self.current_report_parser = None
         self.current_header_size = 0
         self.current_report_size = 0
+        self.context = None
 
         self.known_formats = self._build_type_map()
         self.reports = []
@@ -68,8 +69,6 @@ class IOTileReportParser (object):
         Returns:
             bool: True if further processing is required and process_data should be
                 called again.
-
-        Side Effects
         """
 
         further_processing = False
@@ -85,7 +84,7 @@ class IOTileReportParser (object):
                 self.state = self.ErrorState
 
                 if self.error_callback:
-                    self.error_callback(self.ErrorFindingReportType, str(exc))
+                    self.error_callback(self.ErrorFindingReportType, str(exc), self.context)
                 else:
                     raise
         
@@ -98,7 +97,7 @@ class IOTileReportParser (object):
                 self.state = self.ErrorState
 
                 if self.error_callback:
-                    self.error_callback(self.ErrorParsingReportHeader, str(exc))
+                    self.error_callback(self.ErrorParsingReportHeader, str(exc), self.context)
                 else:
                     raise
 
@@ -115,7 +114,7 @@ class IOTileReportParser (object):
                 self.state = self.ErrorState
 
                 if self.error_callback:
-                    self.error_callback(self.ErrorParsingCompleteReport, str(exc))
+                    self.error_callback(self.ErrorParsingCompleteReport, str(exc), self.context)
                 else:
                     raise
 
@@ -149,7 +148,7 @@ class IOTileReportParser (object):
         keep_report = True
 
         if self.report_callback is not None:
-            keep_report = self.report_callback(report)
+            keep_report = self.report_callback(report, self.context)
 
         if keep_report:
             self.reports.append(report)
