@@ -72,7 +72,6 @@ class BLED112Adapter(DeviceAdapter):
         self._logger.addHandler(logging.NullHandler())
         
         self._command_task._logger.setLevel(logging.WARNING)
-        self._parser = IOTileReportParser(report_callback=self._on_report, error_callback=self._on_report_error)
 
         try:
             self.initialize_system_sync()
@@ -393,12 +392,16 @@ class BLED112Adapter(DeviceAdapter):
                 del self._connections[conn]
         elif event.command_class == 4 and event.command == 5:
             #Handle notifications
-            conn = unpack("<B", event.payload[:1])
+            conn, = unpack("<B", event.payload[:1])
             at_handle, value = bgapi_structures.process_notification(event)
+            
+            conndata = self._get_connection(conn)
+            parser = conndata['parser']
 
-            self._logger.info("Received streamed data: %s, length: %d", repr(value), len(value))
+            self._logger.info("Received streamed data: %s, length: %d, on conn id: %d", repr(value), len(value), conndata['connection_id'])
+            
             #FIXME: Don't assume all notifications are streamed data
-            self._parser.add_data(value)            
+            parser.add_data(value)
         else:
             self._logger.warn('Unhandled BLE event: ' + str(event))
 
@@ -692,6 +695,10 @@ class BLED112Adapter(DeviceAdapter):
         total_time = service_time + char_time
         conndata['state'] = 'connected'
         conndata['services'] = services
+        
+        #Create a report parser for this connection for when reports are streamed to us
+        conndata['parser'] = IOTileReportParser(report_callback=self._on_report, error_callback=self._on_report_error)
+        conndata['parser'].context = conn_id
 
         del conndata['disconnect_handler']
 
@@ -701,13 +708,13 @@ class BLED112Adapter(DeviceAdapter):
         self._logger.info("Total time to connect to device: %.3f (%.3f enumerating services, %.3f enumerating chars)", total_time, service_time, char_time)
         callback(conndata['connection_id'], self.id, True, None)
 
-    def _on_report(self, report):
+    def _on_report(self, report, connection_id):
         self._logger.info('Received report: %s', str(report))
-        self._trigger_callback('on_report', report)
-        
+        self._trigger_callback('on_report', connection_id, report)
+
         return False
 
-    def _on_report_error(self, code, message):
+    def _on_report_error(self, code, message, connection_id):
         self._logger.critical("Error receiving reports, no more reports will be processed on this adapter, code=%d, msg=%s", code, message)
 
     def periodic_callback(self):
