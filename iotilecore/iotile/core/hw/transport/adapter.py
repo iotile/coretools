@@ -42,7 +42,7 @@ class DeviceAdapter(object):
     Additionally you can register callbacks that will be called in the following circumstances:
 
     on_disconnect: called when the device disconnects unexpectedly
-    on_report: called when teh device has streamed a complete sensor graph report
+    on_report: called when the device has streamed a complete sensor graph report
     on_scan: called when this device is seen during a scan of this communication channel
     """
 

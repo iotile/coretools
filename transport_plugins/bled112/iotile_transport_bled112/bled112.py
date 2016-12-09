@@ -638,7 +638,7 @@ class BLED112Adapter(DeviceAdapter):
         if result['result'] is False:
             conndata['failed'] = True
             conndata['failure_reason'] = 'Could not probe GATT services'
-            self.disconnect(conn_id, self._on_connection_failed)
+            self.disconnect_async(conn_id, self._on_connection_failed)
         else:
             conndata['services_done_time'] = time.time()
             self.probe_characteristics(result['context']['connection_id'], result['context']['handle'], result['return_value']['services'])
@@ -664,7 +664,7 @@ class BLED112Adapter(DeviceAdapter):
         if result['result'] is False:
             conndata['failed'] = True
             conndata['failure_reason'] = 'Could not probe GATT characteristics'
-            self.disconnect(conn_id, self._on_connection_failed)
+            self.disconnect_async(conn_id, self._on_connection_failed)
             return
 
         #Validate that this is a proper IOTile device
@@ -672,7 +672,7 @@ class BLED112Adapter(DeviceAdapter):
         if TileBusService not in services:
             conndata['failed'] = True
             conndata['failure_reason'] = 'TileBus service not present in GATT services'
-            self.disconnect(conn_id, self._on_connection_failed)
+            self.disconnect_async(conn_id, self._on_connection_failed)
             return
 
         conndata['chars_done_time'] = time.time()

@@ -282,7 +282,6 @@ class BLED112CommandProcessor(threading.Thread):
 
         return self._set_notification(conn, services[TileBusService]['characteristics'][TileBusReceivePayloadCharacteristic], False, timeout)
 
-
     def _enumerate_handles(self, conn, start_handle, end_handle, timeout=1.0):
         conn_handle = conn
 
