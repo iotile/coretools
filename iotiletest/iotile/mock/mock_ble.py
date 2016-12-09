@@ -291,7 +291,7 @@ class MockBLEDevice(object):
         notifs = []
 
         for report in reports:
-            data = report.wire_data()
+            data = report.serialize()
             if len(data) > 20:
                 raise UnsupportedReportFormat("Report data too long to fit in one notification packet, length={}".format(len(data)))
 

@@ -87,6 +87,7 @@ class MockIOTileDevice(object):
         self.name = name
         self.iotile_id = iotile_id
         self.pending_data = False
+        self.reports = []
         self.script = bytearray()
 
         #Iterate through all of our member functions and see the ones that are
@@ -151,7 +152,7 @@ class MockIOTileDevice(object):
                 the streaming interface.
         """
 
-        return []
+        return self.reports
 
     def push_script_chunk(self, chunk):
         """Called when someone pushes a new bit of a TRUB script to this device
