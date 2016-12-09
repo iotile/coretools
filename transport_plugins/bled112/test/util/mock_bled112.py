@@ -70,7 +70,7 @@ class BGAPIPacket(object):
         make_resp(4, 5): ["BH", ["handle", "result"]],
 
         #Write Command
-        make_command(4,6): ["BHA", ["handle", "char_handle", "value"]],
+        make_command(4, 6): ["BHA", ["handle", "char_handle", "value"]],
         make_resp(4, 6): ["BH", ["handle", "result"]]
 
     }

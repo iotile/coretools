@@ -1,8 +1,10 @@
 import unittest
 import threading
 import serial
+import pytest
 from test.util.mock_bled112 import MockBLED112
-from test.util.ble_device import MockIOTileDevice
+from iotile.mock.mock_ble import MockBLEDevice
+from iotile.mock.mock_iotile import MockIOTileDevice
 import test.util.dummy_serial
 from iotile_transport_bled112.bled112 import BLED112Adapter
 import time
@@ -16,8 +18,9 @@ class TestBLED112Connections(unittest.TestCase):
         self.old_serial = serial.Serial
         serial.Serial = test.util.dummy_serial.Serial
         self.adapter = MockBLED112(3)
-        self.dev1 = MockIOTileDevice(100, "00:11:22:33:44:55", 3.3, 0)
-        self.adapter.add_device(self.dev1)
+        self.dev1 = MockIOTileDevice(100, 'TestCN')
+        self.dev1_ble = MockBLEDevice("00:11:22:33:44:55", self.dev1)
+        self.adapter.add_device(self.dev1_ble)
 
         test.util.dummy_serial.RESPONSE_GENERATOR = self.adapter.generate_response
 
@@ -33,6 +36,7 @@ class TestBLED112Connections(unittest.TestCase):
     def test_send_unhandled_rpc(self):
         result = self.bled.connect_sync(1, "00:11:22:33:44:55")
         result = self.bled.open_interface_sync(1, 'rpc')
+
         result = self.bled.send_rpc_sync(1, 120, 0xFFFF, bytearray([]), timeout=1.0)
 
         assert result['success'] is True

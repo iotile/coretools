@@ -160,7 +160,7 @@ class MockIOTileDevice(object):
             chunk (str): a buffer with the next bit of script to append
         """
 
-        script += bytearray(chunk)
+        self.script += bytearray(chunk)
 
     @rpc(8, 0x0004, "", "6s")
     def controller_name(self):

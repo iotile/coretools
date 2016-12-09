@@ -2,7 +2,8 @@ import unittest
 import threading
 import serial
 from test.util.mock_bled112 import MockBLED112
-from test.util.ble_device import MockIOTileDevice
+from iotile.mock.mock_ble import MockBLEDevice
+from iotile.mock.mock_iotile import MockIOTileDevice
 import test.util.dummy_serial
 from iotile_transport_bled112.bled112 import BLED112Adapter
 import time
@@ -16,8 +17,9 @@ class TestBLED112Connections(unittest.TestCase):
         self.old_serial = serial.Serial
         serial.Serial = test.util.dummy_serial.Serial
         self.adapter = MockBLED112(3)
-        self.dev1 = MockIOTileDevice(100, "00:11:22:33:44:55", 3.3, 0)
-        self.adapter.add_device(self.dev1)
+        self.dev1 = MockIOTileDevice(100, 'TestCN')
+        self.dev1_ble = MockBLEDevice("00:11:22:33:44:55", self.dev1)
+        self.adapter.add_device(self.dev1_ble)
 
         test.util.dummy_serial.RESPONSE_GENERATOR = self.adapter.generate_response
 
@@ -65,14 +67,14 @@ class TestBLED112Connections(unittest.TestCase):
         result = self.bled.connect_sync(1, "00:11:22:33:44:55")
         assert result['success'] is True
 
-        assert not self.dev1.notifications_enabled(self.dev1.TBReceiveHeaderChar)
-        assert not self.dev1.notifications_enabled(self.dev1.TBReceivePayloadChar)
+        assert not self.dev1_ble.notifications_enabled(self.dev1_ble.TBReceiveHeaderChar)
+        assert not self.dev1_ble.notifications_enabled(self.dev1_ble.TBReceivePayloadChar)
 
         result = self.bled.open_interface_sync(1, 'rpc')
         assert result['success'] is True
         
-        assert self.dev1.notifications_enabled(self.dev1.TBReceiveHeaderChar)
-        assert self.dev1.notifications_enabled(self.dev1.TBReceivePayloadChar)
+        assert self.dev1_ble.notifications_enabled(self.dev1_ble.TBReceiveHeaderChar)
+        assert self.dev1_ble.notifications_enabled(self.dev1_ble.TBReceivePayloadChar)
 
     def _on_connection(self, conn_id, adapter_id, result, value):
         self._result = result
