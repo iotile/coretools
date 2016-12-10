@@ -35,6 +35,8 @@ class DeviceManager(object):
 
         man.add_callback('on_scan', self.device_found_callback)
         man.add_callback('on_disconnect', self.device_disconnected_callback)
+        man.add_callback('on_report', self.report_received_callback)
+
         tornado.ioloop.PeriodicCallback(man.periodic_callback, 1000, self._loop).start()
 
     def stop(self):
@@ -154,6 +156,7 @@ class DeviceManager(object):
 
         conn_id = self._get_connection_id()
         self._update_connection_data(conn_id, 'adapter', adapter_id)
+        self._update_connection_data(conn_id, 'report_callbacks', set())
         self._update_connection_state(conn_id, self.ConnectionRequestedState)
 
         result = yield tornado.gen.Task(self.adapters[adapter_id].connect_async, conn_id, connstring)
@@ -422,6 +425,21 @@ class DeviceManager(object):
             return
 
         del devrecord[adapter]
+
+    def report_received_callback(self, connection_id, report):
+        """Callback when a report has been received for a connection
+
+        Args:
+            connection_id (int): The id of the connection for which the report was received
+            report (IOTileReport): A report streamed from a device
+        """
+
+        
+
+        if connection_id not in self.connections:
+            self._logger.warn('Dropping report for an unknown connection %d', connection_id)
+
+        conndata = self._get_connection_data(connection_id)
 
     def device_expiry_callback(self):
         """Periodic callback to remove expired devices from scanned_devices list

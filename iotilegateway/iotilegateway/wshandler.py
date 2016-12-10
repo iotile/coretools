@@ -93,6 +93,12 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
     def _notify_progress_sync(self, current, total):
         self.send_response({'type':'progress', 'current': current, 'total':total})
 
+    def _notify_report_async(self, loop, report):
+        loop.add_callback(self._notify_report_sync, report)
+
+    def _notify_report_sync(self, report):
+        self.send_response({'type':'report', 'value': report.serialize()})
+
     def send_response(self, obj):
         msg = msgpack.packb(obj, default=self.encode_datetime)
 
