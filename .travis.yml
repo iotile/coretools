@@ -8,6 +8,7 @@ script:
 - cd iotilecore && tox && cd ..
 - cd iotilebuild && tox && cd ..
 - cd iotiletest && tox && cd ..
+- cd iotilegatway && tox && cd ..
 - cd transport_plugins/bled112 && tox && cd ../../
 deploy:
   skip_cleanup: true
