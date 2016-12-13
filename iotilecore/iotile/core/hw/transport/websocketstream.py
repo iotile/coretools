@@ -115,7 +115,7 @@ class WebSocketStream(CMDStream):
             raise
 
     def _enable_streaming(self):
-        result = self.send('open_interface', {'interface': 'streaming'})
+        self.send('open_interface', {'interface': 'streaming'})
         return self._report_queue
 
     def _send_rpc(self, address, feature, cmd, payload, **kwargs):
