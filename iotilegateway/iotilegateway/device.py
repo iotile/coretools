@@ -518,10 +518,11 @@ class DeviceManager(object):
 
         del devrecord[adapter]
 
-    def report_received_callback(self, connection_id, report):
+    def report_received_callback(self, adapter_id, connection_id, report):
         """Callback when a report has been received for a connection
 
         Args:
+            adapter_id (int): The id of the adapter that sent this report
             connection_id (int): The id of the connection for which the report was received
             report (IOTileReport): A report streamed from a device
         """
