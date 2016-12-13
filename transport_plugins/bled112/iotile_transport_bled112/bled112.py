@@ -708,7 +708,7 @@ class BLED112Adapter(DeviceAdapter):
 
     def _on_report(self, report, connection_id):
         #self._logger.info('Received report: %s', str(report))
-        self._trigger_callback('on_report', self.id, connection_id, report)
+        self._trigger_callback('on_report', connection_id, report)
 
         return False
 
