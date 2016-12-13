@@ -17,34 +17,14 @@ import re
 from setuptools import setup, find_packages
 import version
 
-
 setup(
-    name="iotile-core",
+    name="iotile-test",
     packages=find_packages(exclude=("test",)),
     version=version.version,
     license="LGPLv3",
     install_requires=[
-        "decorator>=3.4.0",
-        "pyparsing>=2.0.3",
-        "six>=1.9.0",
-        "crcmod>=1.7.0",
-        "ws4py>=0.3.5",
-        "msgpack-python>=0.4.8",
-        "python-dateutil>=2.6.0",
-        "pyreadline>=2.1.0"
+        "iotile-core>=3.0.0"
     ],
-    entry_points={
-        'console_scripts': [
-            'iotile = iotile.core.scripts.iotile_script:main',
-        ],
-        'iotile.cmdstream': [
-            'ws = iotile.core.hw.transport.websocketstream:WebSocketStream',
-            'recorded = iotile.core.hw.transport.recordedstream:RecordedStream'
-        ],
-        'iotile.report_format': [
-            'individual = iotile.core.hw.reports.individual_format:IndividualReadingReport'
-            ]
-    },
     description="IOTile Core Tools",
     author="Arch",
     author_email="info@arch-iot.com",

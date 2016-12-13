@@ -4,6 +4,8 @@ import datetime
 import tornado.ioloop
 import tornado.gen
 from tornado.concurrent import Future
+import uuid
+from iotile.core.exceptions import ArgumentError
 
 class DeviceManager(object):
     """An object to manage connections to IOTile devices over one or more specific DeviceAdapters
@@ -19,6 +21,7 @@ class DeviceManager(object):
     DisconnectedState = 5
 
     def __init__(self, loop):
+        self.monitors = {}
         self._scanned_devices = {}
         self.adapters = {}
         self.connections = {}
@@ -35,11 +38,15 @@ class DeviceManager(object):
 
         man.add_callback('on_scan', self.device_found_callback)
         man.add_callback('on_disconnect', self.device_disconnected_callback)
+        man.add_callback('on_report', self.report_received_callback)
+
         tornado.ioloop.PeriodicCallback(man.periodic_callback, 1000, self._loop).start()
 
     def stop(self):
-        for adapter_id, adapter in self.adapters.iteritems():
-            adapter.stop()
+        """Stop all adapters managed by the DeviceManager
+        """
+        for _, adapter in self.adapters.iteritems():
+            adapter.stop_sync()
 
     @property
     def scanned_devices(self):
@@ -92,7 +99,7 @@ class DeviceManager(object):
         """Coroutine to attempt to connect to a device by its UUID
 
         Args:
-            uuid (uuid): the IOTile UUID of the device that we're trying to connect to
+            uuid (int): the IOTile UUID of the device that we're trying to connect to
 
         Returns:
             a dict containing: 
@@ -123,8 +130,95 @@ class DeviceManager(object):
         result = yield self.connect_direct(connection_string)
         if result['success']:
             result['connection_string'] = connection_string
+            conn_id = result['connection_id']
+            self._update_connection_data(conn_id, 'uuid', uuid)
 
         raise tornado.gen.Return(result)
+
+    def register_monitor(self, device_uuid, filter_names, callback):
+        """Register to receive callbacks when events happen on a specific device
+
+        The registered callback function will be called whenever the following events occur
+        using the given event_name:
+        - 'report': a report is received from the device
+        - 'connection': someone has connected to the device
+        - 'device_seen': a scan event has seen the device
+        - 'disconnection': someone has disconnected from the device
+
+        Args:
+            device_uuid (int): The device that we want to monitor
+            filter_name (iterable): A list of strings with the event names that the caller would wish
+                to receive
+            callback (callable): The function that should be called when an event occurs
+                callback must have the signature callback(event_name, event_arg)
+
+        Returns:
+            string: A unique string that can be used to remove or adjust this monitoring callback in the future
+        """
+
+        #FIXME: Check filter_names to make sure they contain only supported event names
+
+        monitor_uuid = uuid.uuid4()
+
+        if device_uuid not in self.monitors:
+            self.monitors[device_uuid] = {}
+
+        self.monitors[device_uuid][monitor_uuid.hex] = (set(filter_names), callback)
+
+        return "{}/{}".format(device_uuid, monitor_uuid.hex)
+
+    def adjust_monitor(self, monitor_id, add_events=None, remove_events=None):
+        """Adjust the events that this monitor wishes to receive
+
+        Args:
+            monitor_id (string): The exact string returned from a previous call to register_monitor
+            add_events (iterable): A list of events to begin receiving
+            remove_events (iterable): A list of events to stop receiving
+        """
+
+        dev_uuid, _, monitor_name = monitor_id.partition('/')
+        dev_uuid = int(dev_uuid)
+        if dev_uuid not in self.monitors or monitor_name not in self.monitors[dev_uuid]:
+            raise ArgumentError("Could not find monitor by name", monitor_id=monitor_id)
+
+        filters, callback = self.monitors[dev_uuid][monitor_name]
+
+        if add_events is not None:
+            filters.update(add_events)
+        if remove_events is not None:
+            filters.difference_update(remove_events)
+
+        self.monitors[dev_uuid][monitor_name] = (filters, callback)
+
+    def remove_monitor(self, monitor_id):
+        """Remove a previously added device event monitro
+
+        Args:
+            monitor_id (string): The exact string returned from a previous call to register_monitor
+        """
+
+        dev_uuid, _, monitor_name = monitor_id.partition('/')
+        dev_uuid = int(dev_uuid)
+
+        if dev_uuid not in self.monitors or monitor_name not in self.monitors[dev_uuid]:
+            raise ArgumentError("Could not find monitor by name", monitor_id=monitor_id)
+
+        del self.monitors[dev_uuid][monitor_name]
+
+    def call_monitor(self, device_uuid, event, *args):
+        """Call a monitoring function for an event on device
+
+        Args:
+            device_uuid (int): The UUID of the device
+            event (string): The name of the event
+            *args: Arguments to be passed to the event monitor function
+        """
+        if device_uuid not in self.monitors:
+            return
+
+        for listeners, monitor in self.monitors[device_uuid].itervalues():
+            if event in listeners:
+                monitor(device_uuid, event, *args)
 
     @tornado.gen.coroutine
     def connect_direct(self, connection_string):
@@ -154,6 +248,7 @@ class DeviceManager(object):
 
         conn_id = self._get_connection_id()
         self._update_connection_data(conn_id, 'adapter', adapter_id)
+        self._update_connection_data(conn_id, 'report_callbacks', set())
         self._update_connection_state(conn_id, self.ConnectionRequestedState)
 
         result = yield tornado.gen.Task(self.adapters[adapter_id].connect_async, conn_id, connstring)
@@ -422,6 +517,26 @@ class DeviceManager(object):
             return
 
         del devrecord[adapter]
+
+    def report_received_callback(self, connection_id, report):
+        """Callback when a report has been received for a connection
+
+        Args:
+            connection_id (int): The id of the connection for which the report was received
+            report (IOTileReport): A report streamed from a device
+        """
+
+        def sync_reported_received_callback(self, connection_id, report):
+            if connection_id not in self.connections:
+                self._logger.warn('Dropping report for an unknown connection %d', connection_id)
+
+            try:
+                dev_uuid = self._get_connection_data(connection_id, 'uuid')
+                self.call_monitor(dev_uuid, 'report', report)
+            except KeyError:
+                self._logger.warn('Dropping report for a connection that has no associated UUID %d', connection_id)
+
+        self._loop.add_callback(sync_reported_received_callback, self, connection_id, report)
 
     def device_expiry_callback(self):
         """Periodic callback to remove expired devices from scanned_devices list

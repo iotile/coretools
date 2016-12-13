@@ -70,7 +70,7 @@ class BGAPIPacket(object):
         make_resp(4, 5): ["BH", ["handle", "result"]],
 
         #Write Command
-        make_command(4,6): ["BHA", ["handle", "char_handle", "value"]],
+        make_command(4, 6): ["BHA", ["handle", "char_handle", "value"]],
         make_resp(4, 6): ["BH", ["handle", "result"]]
 
     }
@@ -174,7 +174,7 @@ class MockBLED112(object):
         self.active_scan = False
         self.scanning = False
         self.connecting = False
-        self._logger = logging.getLogger('mockbled112')
+        self._logger = logging.getLogger('mock.bled112')
 
     def add_device(self, device):
         self.devices[device.mac] = device
@@ -264,6 +264,8 @@ class MockBLED112(object):
             event['result'] = 0x0401
 
         packets.append(event)
+
+        self._logger.info("Write on handle %d triggered %d notification(s)", char_handle, len(notifications))
 
         #If this write triggered any notifications, inject them
         for notification_handle, value in notifications:

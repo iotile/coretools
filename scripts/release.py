@@ -19,13 +19,7 @@ import setuptools.sandbox
 import subprocess
 from twine.commands.upload import upload
 import glob
-
-comp_names = {
-    'iotilecore': ['iotile-core', 'iotilecore'],
-    'iotilebuild': ['iotile-build', 'iotilebuild'],
-    'iotilegateway': ['iotile-gateway', 'iotilegateway'],
-    'iotile_transport_bled112': ['iotile-transport-bled112', 'transport_plugins/bled112'] 
-}
+from components import comp_names
 
 def send_slack_message(message):
     """Send a message to the slack channel #coretools
@@ -116,8 +110,12 @@ def get_release_notes(component, version):
     _, relative_compath = comp_names[component]
     notes_path = os.path.join(relative_compath, 'RELEASE.md')
 
-    with open(notes_path, "r") as f:
-        lines = f.readlines()
+    try:
+        with open(notes_path, "r") as f:
+            lines = f.readlines()
+    except IOError:
+        print("ERROR: Could not find release notes file RELEASE.md")
+        sys.exit(1)
 
     release_lines = {y[2:].strip(): x for x, y in enumerate(lines) if y.startswith('##')}
     
@@ -159,7 +157,7 @@ def main():
         print("Release Notes:\n" + release_notes)
     else:
         upload_component(component)
-        send_slack_message('## Released {} version {} to PYPI\nRelease Notes for version {}:\n{}'.format(component, version, version, release_notes))
+        send_slack_message('*Released {} version {} to PYPI*\n\nRelease Notes for version {}:\n```\n{}```'.format(component, version, version, release_notes))
 
 if __name__ == '__main__':
     main()

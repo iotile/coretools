@@ -2,6 +2,7 @@ from ws4py.client.threadedclient import WebSocketClient
 from iotile.core.hw.exceptions import *
 from iotile.core.exceptions import *
 from iotile.core.hw.commands import RPCCommand
+from iotile.core.hw.reports.parser import IOTileReportParser
 import threading
 from Queue import Queue, Empty
 from cmdstream import CMDStream 
@@ -10,10 +11,11 @@ import datetime
 import time
 
 class WSIOTileClient(WebSocketClient):
-    def __init__(self, port):
+    def __init__(self, port, report_callback):
         super(WSIOTileClient, self).__init__(port, protocols=['iotile-ws'])
         self.connection_established = threading.Event()
         self.messages = Queue()
+        self.report_callback = report_callback
 
     def start(self):
         self.connect()
@@ -25,8 +27,29 @@ class WSIOTileClient(WebSocketClient):
     def closed(self, code, reason):
         self.connection_established.clear()
 
+    def unpack(self, msg):
+        return msgpack.unpackb(msg, object_hook=self.decode_datetime)
+
+    @classmethod
+    def decode_datetime(cls, obj):
+        if b'__datetime__' in obj:
+            obj = datetime.datetime.strptime(obj[b'as_str'].decode(), "%Y%m%dT%H:%M:%S.%f")
+        return obj
+
+    @classmethod
+    def encode_datetime(cls, obj):
+        if isinstance(obj, datetime.datetime):
+            obj = {'__datetime__': True, 'as_str': obj.strftime("%Y%m%dT%H:%M:%S.%f").encode()}
+        return obj
+
     def received_message(self, message):
-        self.messages.put(message.data)
+        unpacked_message = self.unpack(message.data)
+
+        if 'type' in unpacked_message and unpacked_message['type'] == 'report':
+            report = IOTileReportParser.DeserializeReport(unpacked_message['value'])
+            self.report_callback(report)
+        else:
+            self.messages.put(unpacked_message)
 
 
 class WebSocketStream(CMDStream):
@@ -46,7 +69,8 @@ class WebSocketStream(CMDStream):
 
     def __init__(self, port, connection_string, record=None):
         port = "ws://{0}".format(port)
-        self.client = WSIOTileClient(port)
+        self._report_queue = Queue()
+        self.client = WSIOTileClient(port, report_callback=self._report_callback)
         self.client.start()
         self._connection_id = None
 
@@ -90,6 +114,10 @@ class WebSocketStream(CMDStream):
             self._disconnect()
             raise
 
+    def _enable_streaming(self):
+        self.send('open_interface', {'interface': 'streaming'})
+        return self._report_queue
+
     def _send_rpc(self, address, feature, cmd, payload, **kwargs):
         args = {}
         args['rpc_address'] = address
@@ -113,6 +141,9 @@ class WebSocketStream(CMDStream):
     def _disconnect(self):
         self.send('disconnect')
 
+    def _report_callback(self, report):
+        self._report_queue.put(report)
+
     def send(self, command, args={}, progress=None):
         cmd = {}
         cmd['command'] = command
@@ -121,15 +152,13 @@ class WebSocketStream(CMDStream):
         self.client.send(msgpack.packb(cmd), binary=True)
 
         done = False
-        #start_time = time.time()
 
         while not done:
             try:
-                resp = self.client.messages.get(timeout=10.0)
+                result = self.client.messages.get(timeout=10.0)
             except Empty:
                 raise TimeoutError('Timeout waiting for response to %s command from websocket server' % command)
 
-            result = self.unpack(resp)
             if 'type' in result and result['type'] == 'progress':
                 total = result['total']
                 current = result['current']
@@ -140,24 +169,9 @@ class WebSocketStream(CMDStream):
                 done = True
 
         if result['success'] != True:
-            raise HardwareError("Error procesing command", reason=result['reason'])
+            raise HardwareError("Error processing command", reason=result['reason'])
 
         return result
 
     def _send_highspeed(self, data, progress_callback):
         self.send('send_script', {'data': str(data)}, progress=progress_callback)
-
-    def unpack(self, msg):
-        return msgpack.unpackb(msg, object_hook=self.decode_datetime)
-
-    @classmethod
-    def decode_datetime(cls, obj):
-        if b'__datetime__' in obj:
-            obj = datetime.datetime.strptime(obj[b'as_str'].decode(), "%Y%m%dT%H:%M:%S.%f")
-        return obj
-
-    @classmethod
-    def encode_datetime(cls, obj):
-        if isinstance(obj, datetime.datetime):
-            obj = {'__datetime__': True, 'as_str': obj.strftime("%Y%m%dT%H:%M:%S.%f").encode()}
-        return obj

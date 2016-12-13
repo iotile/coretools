@@ -12,10 +12,12 @@ import copy
 import serial
 import serial.tools.list_ports
 from iotile.core.utilities.packed import unpack
+from iotile.core.hw.reports.parser import IOTileReportParser
 from async_packet import AsyncPacketBuffer
 from iotile.core.hw.transport.adapter import DeviceAdapter
 from bled112_cmd import BLED112CommandProcessor
 from tilebus import *
+import bgapi_structures
 
 def packet_length(header):
     """
@@ -75,7 +77,7 @@ class BLED112Adapter(DeviceAdapter):
             self.initialize_system_sync()
             self.start_scan(self._active_scan)
         except:
-            self.stop()
+            self.stop_sync()
             raise
 
     @classmethod
@@ -103,7 +105,7 @@ class BLED112Adapter(DeviceAdapter):
 
         return len(self._connections) < self.maximum_connections
 
-    def stop(self):
+    def stop_sync(self):
         """Safely stop this BLED112 instance without leaving it in a weird state
 
         """
@@ -320,6 +322,20 @@ class BLED112Adapter(DeviceAdapter):
 
         callback(conn_id, self.id, success, reason)
 
+    def _open_streaming_interface(self, conn_id, callback):
+        """Enable sensor graph streaming interface for this IOTile device
+
+        Args:
+            conn_id (int): the unique identifier for the connection
+            callback (callback): Callback to be called when this command finishes
+                callback(conn_id, adapter_id, success, failure_reason)
+        """
+
+        handle = self._find_handle(conn_id)
+        services = self._connections[handle]['services']
+
+        self._command_task.async_command(['_enable_streaming', handle, services], self._on_interface_finished, {'connection_id': conn_id, 'callback': callback})
+
     def _close_rpc_interface(self, conn_id, callback):
         """Disable RPC interface for this IOTile device
 
@@ -374,6 +390,16 @@ class BLED112Adapter(DeviceAdapter):
 
             if conn in self._connections:
                 del self._connections[conn]
+        elif event.command_class == 4 and event.command == 5:
+            #Handle notifications
+            conn, = unpack("<B", event.payload[:1])
+            at_handle, value = bgapi_structures.process_notification(event)
+            
+            conndata = self._get_connection(conn)
+            parser = conndata['parser']
+            
+            #FIXME: Don't assume all notifications are streamed data
+            parser.add_data(value)
         else:
             self._logger.warn('Unhandled BLE event: ' + str(event))
 
@@ -624,7 +650,7 @@ class BLED112Adapter(DeviceAdapter):
         if result['result'] is False:
             conndata['failed'] = True
             conndata['failure_reason'] = 'Could not probe GATT services'
-            self.disconnect(conn_id, self._on_connection_failed)
+            self.disconnect_async(conn_id, self._on_connection_failed)
         else:
             conndata['services_done_time'] = time.time()
             self.probe_characteristics(result['context']['connection_id'], result['context']['handle'], result['return_value']['services'])
@@ -650,7 +676,7 @@ class BLED112Adapter(DeviceAdapter):
         if result['result'] is False:
             conndata['failed'] = True
             conndata['failure_reason'] = 'Could not probe GATT characteristics'
-            self.disconnect(conn_id, self._on_connection_failed)
+            self.disconnect_async(conn_id, self._on_connection_failed)
             return
 
         #Validate that this is a proper IOTile device
@@ -658,7 +684,7 @@ class BLED112Adapter(DeviceAdapter):
         if TileBusService not in services:
             conndata['failed'] = True
             conndata['failure_reason'] = 'TileBus service not present in GATT services'
-            self.disconnect(conn_id, self._on_connection_failed)
+            self.disconnect_async(conn_id, self._on_connection_failed)
             return
 
         conndata['chars_done_time'] = time.time()
@@ -667,6 +693,10 @@ class BLED112Adapter(DeviceAdapter):
         total_time = service_time + char_time
         conndata['state'] = 'connected'
         conndata['services'] = services
+        
+        #Create a report parser for this connection for when reports are streamed to us
+        conndata['parser'] = IOTileReportParser(report_callback=self._on_report, error_callback=self._on_report_error)
+        conndata['parser'].context = conn_id
 
         del conndata['disconnect_handler']
 
@@ -675,6 +705,16 @@ class BLED112Adapter(DeviceAdapter):
 
         self._logger.info("Total time to connect to device: %.3f (%.3f enumerating services, %.3f enumerating chars)", total_time, service_time, char_time)
         callback(conndata['connection_id'], self.id, True, None)
+
+    def _on_report(self, report, connection_id):
+        #self._logger.info('Received report: %s', str(report))
+        self._trigger_callback('on_report', connection_id, report)
+
+        return False
+
+    def _on_report_error(self, code, message, connection_id):
+        print("Report Error, message=%s" % message)
+        self._logger.critical("Error receiving reports, no more reports will be processed on this adapter, code=%d, msg=%s", code, message)
 
     def periodic_callback(self):
         """Periodic cleanup tasks to maintain this adapter, should be called every second

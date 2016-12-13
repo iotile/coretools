@@ -10,7 +10,7 @@ class DeviceAdapter(object):
     to be able to connect/discconect from a device, open/close an interface on the device, send RPCs
     and send scripts.
 
-    The interface to a DeviceAdapter is therefore very simple:
+    The interface to a DeviceAdapter is:
     connect_async
     connect_sync
 
@@ -30,6 +30,9 @@ class DeviceAdapter(object):
     send_script_sync
 
     periodic_callback
+    can_connect
+
+    stop_sync
 
     Subclasses only need to override the '_async' versions of each call.  The synchronous versions will
     be automatically functional using the '_async' versions provided that the '_async' version not use
@@ -42,8 +45,11 @@ class DeviceAdapter(object):
     Additionally you can register callbacks that will be called in the following circumstances:
 
     on_disconnect: called when the device disconnects unexpectedly
-    on_report: called when teh device has streamed a complete sensor graph report
+    on_report: called when the device has streamed a complete sensor graph report
+        Signature of on_report should be on_report(adapter_id, connection_id, report), 
+        where report is a subclass of IOTileReport.
     on_scan: called when this device is seen during a scan of this communication channel
+        Signature of on_scan should be on_scan(adapter_id, device_info, expiration_interval)
     """
 
     def __init__(self):
@@ -174,6 +180,8 @@ class DeviceAdapter(object):
             self._open_rpc_interface(conn_id, callback)
         elif interface == 'script':
             self._open_script_interface(conn_id, callback)
+        elif interface == 'streaming':
+            self._open_streaming_interface(conn_id, callback)
         else:
             callback(conn_id, self.id, False, "interface not supported yet")
 

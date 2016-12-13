@@ -219,7 +219,7 @@ class ConfigManager(object):
 		if err != 0:
 			raise HardwareError("Error finding config variable by id", id=id, error_code=err)
 
-		addr, id, flags = struct.unpack("<LHH", binvalue)
+		addr, id, flags = struct.unpack("<LHH", resp['buffer'])
 
 		maxsize = (flags & ~(1 << 15)) & 0xFFFF
 		variable_size = bool(flags >> 15)

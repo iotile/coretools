@@ -24,6 +24,7 @@ class BLED112CommandProcessor(threading.Thread):
         self._commands = commands
         self._stop = threading.Event()
         self._logger = logging.getLogger('server.ble.raw')
+        self._logger.addHandler(logging.NullHandler())
         self.event_handler = None
         self._current_context = None
         self._current_callback = None
@@ -267,16 +268,20 @@ class BLED112CommandProcessor(threading.Thread):
 
         return self._set_notification(conn, services[TileBusService]['characteristics'][TileBusReceivePayloadCharacteristic], True, timeout)
 
+    def _enable_streaming(self, conn, services, timeout=1.0):
+        self._logger.info("Attempting to enable streaming")
+        success, result = self._set_notification(conn, services[TileBusService]['characteristics'][TileBusStreamingCharacteristic], True, timeout)
+        return success, result
+
     def _disable_rpcs(self, conn, services, timeout=1.0):
         """Prevent this device from receiving more RPCs
-
         """
+
         success, result = self._set_notification(conn, services[TileBusService]['characteristics'][TileBusReceiveHeaderCharacteristic], False, timeout)
         if not success:
             return success, result
 
         return self._set_notification(conn, services[TileBusService]['characteristics'][TileBusReceivePayloadCharacteristic], False, timeout)
-
 
     def _enumerate_handles(self, conn, start_handle, end_handle, timeout=1.0):
         conn_handle = conn
@@ -391,7 +396,7 @@ class BLED112CommandProcessor(threading.Thread):
 
         if ack:
             events = self._wait_process_events(timeout, lambda x: False, write_handle_acked)
-
+            self._logger.info("Num events in _write_handle: %d", len(events))
             if len(events) == 0:
                 return False, {'reason': 'Timeout waiting for acknowledge on write'}
 
@@ -675,7 +680,10 @@ class BLED112CommandProcessor(threading.Thread):
                 elif return_filter is not None and return_filter(event):
                     to_return.append(event)
                 elif self.event_handler is not None:
+                    self._logger.info("Passing event back to calling event handler: %s", str(event))
                     self.event_handler(event)
+                else:
+                    self._logger.info("Dropping event that had no evnt handler: %s", str(event))
 
                 if max_events > 0 and len(to_return) == max_events:
                     return to_return
@@ -700,9 +708,11 @@ class BLED112CommandProcessor(threading.Thread):
         acc = []
 
         delta = 0.01
-        curr_time = 0.0
+
+        start_time = time.time()
+        end_time = start_time + total_time
         
-        while curr_time < total_time:
+        while time.time() < end_time:
             events = self._process_events(lambda x: return_filter(x) or end_filter(x), max_events=1)
             acc += events
 
@@ -710,8 +720,7 @@ class BLED112CommandProcessor(threading.Thread):
                 if end_filter(event):
                     return acc
 
-            time.sleep(delta)
-
-            curr_time += delta
+            if len(events) == 0:
+                time.sleep(delta)
 
         return acc
