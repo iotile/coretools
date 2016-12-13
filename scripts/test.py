@@ -1,11 +1,12 @@
 import os
+import time
 import subprocess
 import sys
 import cmdln
 import components
 
 
-def run_test(component, args):
+def run_test(component, args, silent=False):
     distribution, subdir = components.comp_names[component]
 
     currdir = os.getcwd()
@@ -15,7 +16,12 @@ def run_test(component, args):
 
     try:
         os.chdir(subdir)
-        output_status = subprocess.check_call(testcmd, stdout=sys.stdout, stderr=sys.stderr)
+
+        with open(os.devnull, "wb") as devnull:
+            if not silent:
+                output_status = subprocess.check_call(testcmd)
+            else:
+                output_status = subprocess.check_call(testcmd, stdout=devnull, stderr=devnull)
     except subprocess.CalledProcessError as exc:
         print("ERROR: {}\n------------------------------------\n".format(exc.returncode))
         output_status = exc.returncode
@@ -39,10 +45,19 @@ class TestProcessor(cmdln.Cmdln):
     def do_test_all(self, subcmd, opts, *args):
         failed = False
         for comp_name in components.comp_names.iterkeys():
-            status = run_test(comp_name, args)
+            start = time.time()
+            sys.stdout.write("Testing {}: ".format(comp_name))
+            sys.stdout.flush()
+            status = run_test(comp_name, args, silent=True)
+            end = time.time()
+
+            duration = end - start
 
             if status != 0:
                 failed = True
+                print("FAILED (%.1f seconds)" % duration)
+            else:
+                print("PASSED (%.1f seconds)" % duration)
 
         return int(failed)
 

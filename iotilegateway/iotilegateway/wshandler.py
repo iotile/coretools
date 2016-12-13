@@ -11,6 +11,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
     def initialize(self, manager):
         self.manager = manager
+        self.report_monitor = None
 
     def open(self, *args):
         self.stream.set_nodelay(True)
@@ -48,6 +49,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
             if resp['success']:
                 self.connection = resp['connection_id']
+                self.report_monitor = self.manager.register_monitor(cmd['uuid'], ['report'], self._notify_report_sync)
 
             self.send_response(resp)
         elif cmdcode == 'connect_direct':
@@ -62,6 +64,9 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
                 if resp['success']:
                     self.connection = None
+                    if self.report_monitor is not None:
+                        self.manager.remove_monitor(self.report_monitor)
+                        self.report_monitor = None
 
                 self.send_response(resp)
             else:
@@ -93,10 +98,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
     def _notify_progress_sync(self, current, total):
         self.send_response({'type':'progress', 'current': current, 'total':total})
 
-    def _notify_report_async(self, loop, report):
-        loop.add_callback(self._notify_report_sync, report)
-
-    def _notify_report_sync(self, report):
+    def _notify_report_sync(self, device_uuid, event_name, report):
         self.send_response({'type':'report', 'value': report.serialize()})
 
     def send_response(self, obj):
@@ -120,5 +122,9 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         if self.connection is not None:
             resp = yield self.manager.disconnect(self.connection)
             self.connection = None
+
+        if self.report_monitor is not None:
+            self.manager.remove_monitor(self.report_monitor)
+            self.report_monitor = None
 
         self._logger.info('Client disconnected')

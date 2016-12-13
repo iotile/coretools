@@ -189,6 +189,15 @@ class DeviceManager(object):
 
         self.monitors[dev_uuid][monitor_id] = (filters, callback)
 
+    def remove_monitor(self, monitor_id):
+        """Remove a previously added device event monitro
+
+        Args:
+            monitor_id (string): The exact string returned from a previous call to register_monitor
+        """
+
+        del self.monitors[monitor_id]
+
     def call_monitor(self, device_uuid, event, *args):
         """Call a monitoring function for an event on device
 
