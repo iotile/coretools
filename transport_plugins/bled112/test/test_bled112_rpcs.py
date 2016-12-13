@@ -30,7 +30,7 @@ class TestBLED112RPCs(unittest.TestCase):
         self._total = None
 
     def tearDown(self):
-        self.bled.stop()
+        self.bled.stop_sync()
         serial.Serial = self.old_serial
 
     def test_send_unhandled_rpc(self):

@@ -39,7 +39,7 @@ class TestBLED112Reports(unittest.TestCase):
         self.reports = []
 
     def tearDown(self):
-        self.bled.stop()
+        self.bled.stop_sync()
         serial.Serial = self.old_serial
 
     def test_receiving_reports(self):

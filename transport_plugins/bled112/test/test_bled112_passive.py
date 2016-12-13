@@ -29,7 +29,7 @@ class TestBLED112AdapterPassive(unittest.TestCase):
         self.bled = BLED112Adapter('test', self._on_scan_callback, self._on_disconnect_callback)
 
     def tearDown(self):
-        self.bled.stop()
+        self.bled.stop_sync()
         serial.Serial = self.old_serial
 
     def test_basic_init(self):
