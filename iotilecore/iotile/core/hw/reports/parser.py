@@ -2,6 +2,7 @@
 """
 
 import pkg_resources
+from iotile.core.exceptions import ArgumentError
 
 class IOTileReportParser (object):
     """Accumulates data from a stream and emits IOTileReports
@@ -165,3 +166,21 @@ class IOTileReportParser (object):
             formats[report_format.ReportType] = report_format
 
         return formats
+
+    @classmethod
+    def DeserializeReport(cls, serialized):
+        """Deserialize a report that has been serialized by calling report.serialize()
+
+        Args:
+            serialized (dict): A serialized report object
+        """
+
+        type_map = cls._build_type_map()
+
+        if serialized['report_format'] not in type_map:
+            raise ArgumentError("Unknown report format in DeserializeReport", format=serialized['report_format'])
+
+        report = type_map[serialized['report_format']](serialized['encoded_report'])
+        report.received_time = serialized['received_time']
+
+        return report

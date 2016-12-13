@@ -70,7 +70,6 @@ class IOTileReport(object):
     def __init__(self, rawreport, signed, encrypted, received_time=None):
         self.visible_readings = []
         self.origin = None
-        self.sent_timestamp = 0
 
         if received_time is None:
             self.received_time = datetime.datetime.utcnow()
@@ -110,6 +109,24 @@ class IOTileReport(object):
         """
 
         raise NotFoundError("IOTileReport decode needs to be overriden")
+
+    def encode(self):
+        """Encode this report into a binary blob that could be decoded by a report format's decode method
+        """
+
+        return self.raw_report
+
+    def serialize(self):
+        """Turn this report into a dictionary that encodes all information including received timestamp
+        """
+
+        info = {}
+        info['received_time'] = self.received_time
+        info['encoded_report'] = str(self.encode())
+        info['report_format'] = ord(info['encoded_report'][0]) #Report format is the first byte of the encoded report
+        info['origin'] = self.origin
+
+        return info
 
     def __str__(self):
         return "IOTile Report of length %d with %d visible readings" % (len(self.raw_report), len(self.visible_readings))

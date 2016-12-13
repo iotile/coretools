@@ -60,14 +60,14 @@ def test_parsing_bytearray():
     reading_time = received_time + datetime.timedelta(seconds=-1)
     assert reading.reading_time == reading_time
 
-def test_serialization():
+def test_encoding():
     report_data = make_report(10, 1, 2, 3, 4)
     received_time = datetime.datetime.utcnow()
 
     report_data = bytearray(report_data)
     report = IndividualReadingReport(report_data, received_time=received_time)
 
-    report_data2 = report.serialize()
+    report_data2 = report.encode()
     assert report_data2 == report_data
 
 def test_fromreadings():
@@ -87,3 +87,17 @@ def test_fromreadings():
     assert reading.value == 2
     assert reading.raw_time == 3
     assert reading.reading_time is not None
+
+def test_serialization():
+    """Make sure we can turn this report into a dictionary object without losing data
+    """
+
+    report_data = make_report(10, 1, 2, 3, 4)
+    received_time = datetime.datetime.utcnow()
+
+    report = IndividualReadingReport(report_data, received_time=received_time)
+
+    ser = report.serialize()
+    assert ser['received_time'] == received_time
+    assert ser['origin'] == 10
+    assert ser['report_format'] == IndividualReadingReport.ReportType

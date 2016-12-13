@@ -1,5 +1,6 @@
 import pytest
 import os
+import time
 from iotile.mock.mock_iotile import MockIOTileDevice
 from iotile.mock.mock_adapter import MockDeviceAdapter
 from iotile.core.hw.hwmanager import HardwareManager
@@ -120,7 +121,7 @@ class TestWebSocketInterface(AsyncWebSocketsTestCase):
         self.dev.reports = [IndividualReadingReport.FromReadings(100, [IOTileReading(0, 1, 2)])]
         self.adapter = MockDeviceAdapter()
         self.adapter.add_device('test', self.dev)
-        
+
         self.manager = DeviceManager(self.io_loop)
         self.manager.add_adapter(self.adapter)
         self.hw = None
@@ -138,7 +139,7 @@ class TestWebSocketInterface(AsyncWebSocketsTestCase):
     @tornado.gen.coroutine
     def ensure_advertised(self):
         self.adapter.advertise()
-        
+
         yield tornado.gen.sleep(0.1)
         devs = self.manager.scanned_devices
         assert len(devs) == 1
@@ -173,5 +174,8 @@ class TestWebSocketInterface(AsyncWebSocketsTestCase):
 
         assert self.hw.count_reports() == 0
         yield self.enable_streaming()
-
+        
+        #Give time for report to be processed
+        time.sleep(0.1)
+        
         assert self.hw.count_reports() == 1

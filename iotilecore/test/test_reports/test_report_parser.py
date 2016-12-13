@@ -77,3 +77,13 @@ class TestReportParser(unittest.TestCase):
         self.parser.add_data(report_data[21:])
         assert self.parser.state == self.parser.WaitingForReportType
         assert len(self.parser.reports) == 2
+
+    def test_decoding_serialized_report(self):
+        report_data1 = make_report(10, 1, 2, 3, 4)
+
+        report = IndividualReadingReport(report_data1)
+        ser = report.serialize()
+
+        report2 = IOTileReportParser.DeserializeReport(ser)
+        assert report2.origin == report.origin
+        assert report2.received_time == report.received_time

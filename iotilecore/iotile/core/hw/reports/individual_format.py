@@ -65,8 +65,8 @@ class IndividualReadingReport(IOTileReport):
 
         return [reading]
 
-    def serialize(self):
-        """Turn this report into a serialized bytearray
+    def encode(self):
+        """Turn this report into a serialized bytearray that could be decoded with a call to decode
         """
 
         reading = self.visible_readings[0]
