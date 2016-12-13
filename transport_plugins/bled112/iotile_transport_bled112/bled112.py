@@ -77,7 +77,7 @@ class BLED112Adapter(DeviceAdapter):
             self.initialize_system_sync()
             self.start_scan(self._active_scan)
         except:
-            self.stop()
+            self.stop_sync()
             raise
 
     @classmethod
@@ -105,7 +105,7 @@ class BLED112Adapter(DeviceAdapter):
 
         return len(self._connections) < self.maximum_connections
 
-    def stop(self):
+    def stop_sync(self):
         """Safely stop this BLED112 instance without leaving it in a weird state
 
         """
