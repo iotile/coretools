@@ -59,6 +59,11 @@ class TestDeviceManager(tornado.testing.AsyncTestCase):
         assert len(res['payload']) == 6
         assert res['payload'] == 'TestCN'
 
+    def test_monitors(self):
+        mon_id = self.manager.register_monitor(10, ['report'], lambda x,y: x)
+        self.manager.adjust_monitor(mon_id, add_events=['connection'], remove_events=['report'])
+        self.manager.remove_monitor(mon_id)
+
     def test_scan(self):
         devs = self.manager.scanned_devices
         assert len(devs) == 0

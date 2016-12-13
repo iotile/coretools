@@ -176,18 +176,19 @@ class DeviceManager(object):
             remove_events (iterable): A list of events to stop receiving
         """
 
-        dev_uuid, monitor_name = monitor_id.split('/')
+        dev_uuid, _, monitor_name = monitor_id.partition('/')
+        dev_uuid = int(dev_uuid)
         if dev_uuid not in self.monitors or monitor_name not in self.monitors[dev_uuid]:
             raise ArgumentError("Could not find monitor by name", monitor_id=monitor_id)
 
-        filters, callback = self.monitors[dev_uuid][monitor_id]
+        filters, callback = self.monitors[dev_uuid][monitor_name]
 
         if add_events is not None:
-            filters += set(add_events)
+            filters.update(add_events)
         if remove_events is not None:
-            filters -= set(remove_events)
+            filters.difference_update(remove_events)
 
-        self.monitors[dev_uuid][monitor_id] = (filters, callback)
+        self.monitors[dev_uuid][monitor_name] = (filters, callback)
 
     def remove_monitor(self, monitor_id):
         """Remove a previously added device event monitro
@@ -196,7 +197,13 @@ class DeviceManager(object):
             monitor_id (string): The exact string returned from a previous call to register_monitor
         """
 
-        del self.monitors[monitor_id]
+        dev_uuid, _, monitor_name = monitor_id.partition('/')
+        dev_uuid = int(dev_uuid)
+
+        if dev_uuid not in self.monitors or monitor_name not in self.monitors[dev_uuid]:
+            raise ArgumentError("Could not find monitor by name", monitor_id=monitor_id)
+
+        del self.monitors[dev_uuid][monitor_name]
 
     def call_monitor(self, device_uuid, event, *args):
         """Call a monitoring function for an event on device
