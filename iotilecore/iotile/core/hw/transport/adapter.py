@@ -31,6 +31,8 @@ class DeviceAdapter(object):
 
     periodic_callback
 
+    stop_sync
+
     Subclasses only need to override the '_async' versions of each call.  The synchronous versions will
     be automatically functional using the '_async' versions provided that the '_async' version not use
     multiprocessing to invoke its callback, i.e. it should use multithreading since the default synchronous

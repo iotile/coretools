@@ -112,4 +112,4 @@ class AdapterCMDStream(CMDStream):
         self._reports.put(report)
 
     def _close(self):
-        self.adapter.stop()
+        self.adapter.stop_sync()
