@@ -144,6 +144,12 @@ class MockIOTileDevice(object):
 
         pass
 
+    def open_script_interface(self):
+        """Called when someone opens a script interface on this device
+        """
+
+        pass
+
     def open_streaming_interface(self):
         """Called when someone opens a streaming interface to the device
 

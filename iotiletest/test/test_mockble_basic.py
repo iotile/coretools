@@ -8,7 +8,7 @@ import sys
 from iotile.mock.mock_iotile import MockIOTileDevice
 from iotile.mock.mock_ble import MockBLEDevice
 
-class TestHardwareManager(unittest.TestCase):
+class TestMockBLEBasic(unittest.TestCase):
     def setUp(self):
         self.dev = MockIOTileDevice('TestCN')
         self.ble = MockBLEDevice("AA:BB:CC:DD:EE:FF", self.dev)
