@@ -397,8 +397,6 @@ class BLED112Adapter(DeviceAdapter):
             
             conndata = self._get_connection(conn)
             parser = conndata['parser']
-
-            self._logger.info("Received streamed data: %s, length: %d, on conn id: %d", repr(value), len(value), conndata['connection_id'])
             
             #FIXME: Don't assume all notifications are streamed data
             parser.add_data(value)
