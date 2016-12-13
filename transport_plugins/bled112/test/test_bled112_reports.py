@@ -59,6 +59,6 @@ class TestBLED112Reports(unittest.TestCase):
     def _on_disconnect_callback(self, *args, **kwargs):
         pass
 
-    def _on_report_callback(self, conn_id, report):
+    def _on_report_callback(self, adapter_id, conn_id, report):
         self.reports.append(report)
         self._reports_received.set()

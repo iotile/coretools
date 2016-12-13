@@ -36,3 +36,6 @@ class TestMockBLEBasic(unittest.TestCase):
         res = self.adapter.send_rpc_sync(1, 8, 4, '', 1.0) 
         assert len(res['payload']) == 6
         assert res['payload'] == 'TestCN'
+
+    def test_advertisement(self):
+        self.adapter.advertise()

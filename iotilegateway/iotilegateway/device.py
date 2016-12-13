@@ -43,7 +43,9 @@ class DeviceManager(object):
         tornado.ioloop.PeriodicCallback(man.periodic_callback, 1000, self._loop).start()
 
     def stop(self):
-        for adapter_id, adapter in self.adapters.iteritems():
+        """Stop all adapters managed by the DeviceManager
+        """
+        for _, adapter in self.adapters.iteritems():
             adapter.stop_sync()
 
     @property
@@ -97,7 +99,7 @@ class DeviceManager(object):
         """Coroutine to attempt to connect to a device by its UUID
 
         Args:
-            uuid (uuid): the IOTile UUID of the device that we're trying to connect to
+            uuid (int): the IOTile UUID of the device that we're trying to connect to
 
         Returns:
             a dict containing: 
@@ -128,6 +130,8 @@ class DeviceManager(object):
         result = yield self.connect_direct(connection_string)
         if result['success']:
             result['connection_string'] = connection_string
+            conn_id = result['connection_id']
+            self._update_connection_data(conn_id, 'uuid', uuid)
 
         raise tornado.gen.Return(result)
 
@@ -137,7 +141,7 @@ class DeviceManager(object):
         The registered callback function will be called whenever the following events occur
         using the given event_name:
         - 'report': a report is received from the device
-        - 'conection': someone has connected to the device
+        - 'connection': someone has connected to the device
         - 'device_seen': a scan event has seen the device
         - 'disconnection': someone has disconnected from the device
 
@@ -184,6 +188,21 @@ class DeviceManager(object):
             filters -= set(remove_events)
 
         self.monitors[dev_uuid][monitor_id] = (filters, callback)
+
+    def call_monitor(self, device_uuid, event, *args):
+        """Call a monitoring function for an event on device
+
+        Args:
+            device_uuid (int): The UUID of the device
+            event (string): The name of the event
+            *args: Arguments to be passed to the event monitor function
+        """
+        if device_uuid not in self.monitors:
+            return
+
+        for listeners, monitor in self.monitors[device_uuid].itervalues():
+            if event in listeners:
+                monitor(device_uuid, event, *args)
 
     @tornado.gen.coroutine
     def connect_direct(self, connection_string):
@@ -495,7 +514,11 @@ class DeviceManager(object):
             if connection_id not in self.connections:
                 self._logger.warn('Dropping report for an unknown connection %d', connection_id)
 
-            conndata = self._get_connection_data(connection_id)
+            try:
+                dev_uuid = self._get_connection_data(connection_id, 'uuid')
+                self.call_monitor(dev_uuid, 'report', report)
+            except KeyError:
+                self._logger.warn('Dropping report for a connection that has no associated UUID %d', connection_id)
 
         self._loop.add_callback(sync_reported_received_callback, self, connection_id, report)
 

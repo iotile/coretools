@@ -16,6 +16,14 @@ class MockDeviceAdapter(DeviceAdapter):
     def add_device(self, conn_string, device):
         self.devices[conn_string] = device
 
+    def can_connect(self):
+        return True
+
+    def advertise(self):
+        for conn_string, device in self.devices.iteritems():
+            info = {'uuid': device.iotile_id, 'connection_string': conn_string, 'signal_strength': 0}
+            self._trigger_callback('on_scan', self.id, info, 0)
+
     def connect_async(self, connection_id, connection_string, callback):
         if connection_string not in self.devices:
             callback(connection_id, self.id, False, "Could not find device connection string")
@@ -32,7 +40,7 @@ class MockDeviceAdapter(DeviceAdapter):
         del self.connections[connection_id]
         callback(connection_id, self.id, True, "")
 
-    def open_rpc_interface(self, connection_id, callback):
+    def _open_rpc_interface(self, connection_id, callback):
         if connection_id not in self.connections:
             callback(connection_id, self.id, False, "Could not find connection id to disconnect")
             return
@@ -42,7 +50,7 @@ class MockDeviceAdapter(DeviceAdapter):
         
         callback(connection_id, self.id, True, "")
 
-    def open_script_interface(self, connection_id, callback):
+    def _open_script_interface(self, connection_id, callback):
         if connection_id not in self.connections:
             callback(connection_id, self.id, False, "Could not find connection id to disconnect")
             return
@@ -52,7 +60,7 @@ class MockDeviceAdapter(DeviceAdapter):
         
         callback(connection_id, self.id, True, "")
 
-    def open_streaming_interface(self, connection_id, callback):
+    def _open_streaming_interface(self, connection_id, callback):
         if connection_id not in self.connections:
             callback(connection_id, self.id, False, "Could not find connection id to disconnect")
             return
@@ -63,7 +71,7 @@ class MockDeviceAdapter(DeviceAdapter):
         callback(connection_id, self.id, True, "")
 
         for report in reports:
-            self._trigger_callback('on_report', report)
+            self._trigger_callback('on_report', connection_id, report)
 
     def send_rpc_async(self, connection_id, address, rpc_id, payload, timeout, callback):
         status = 0x00

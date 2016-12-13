@@ -105,7 +105,7 @@ class AdapterCMDStream(CMDStream):
 
         return self._reports
 
-    def _on_report(self, _, report):
+    def _on_report(self, adapter_id, conn_id, report):
         if self._reports is None:
             return
 

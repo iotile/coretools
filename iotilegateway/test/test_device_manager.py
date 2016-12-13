@@ -10,7 +10,9 @@ from iotile.mock.mock_adapter import MockDeviceAdapter
 from iotile.core.hw.reports.individual_format import IndividualReadingReport
 from iotile.core.hw.reports.report import IOTileReading
 from iotilegateway.device import DeviceManager
+import threading
 from tornado.ioloop import IOLoop
+import tornado.gen
 import tornado.testing
 
 class TestDeviceManager(tornado.testing.AsyncTestCase):
@@ -24,9 +26,19 @@ class TestDeviceManager(tornado.testing.AsyncTestCase):
         
         self.manager = DeviceManager(self.io_loop)
         self.manager.add_adapter(self.adapter)
+        self.manager.register_monitor(1, ['report'], self.on_report)
+        self.reports = []
+        self.reports_received = threading.Event()
 
     def tearDown(self):
         super(TestDeviceManager, self).tearDown()
+
+    def on_report(self, dev_uuid, event_name, report):
+        """Callback triggered when a report is received from a device on a device adapter
+        """
+
+        self.reports.append(report)
+        self.reports_received.set()
 
     @tornado.testing.gen_test
     def test_connect_direct(self):
@@ -46,3 +58,49 @@ class TestDeviceManager(tornado.testing.AsyncTestCase):
         res = yield self.manager.send_rpc(conn_id, 8, 0, 4, '', 1.0) 
         assert len(res['payload']) == 6
         assert res['payload'] == 'TestCN'
+
+    def test_scan(self):
+        devs = self.manager.scanned_devices
+        assert len(devs) == 0
+
+        self.adapter.advertise()
+
+        #Let the ioloop process the advertisements
+        try:
+            self.wait(timeout=0.1)
+        except:
+            pass
+
+        devs = self.manager.scanned_devices
+        assert len(devs) == 1
+        assert 1 in devs
+
+    @tornado.testing.gen_test
+    def test_connect(self):
+        """Make sure we can directly to a device by uuid
+        """
+
+        self.adapter.advertise()
+        
+        yield tornado.gen.sleep(0.1)
+
+        print self.manager.scanned_devices
+
+        res = yield self.manager.connect(1)
+        print res
+
+        assert res['success'] is True
+
+    @tornado.testing.gen_test
+    def test_reports(self):
+        self.adapter.advertise()
+        yield tornado.gen.sleep(0.1)
+
+        res = yield self.manager.connect(1)
+        conn_id = res['connection_id']
+
+        yield self.manager.open_interface(conn_id, 'streaming')
+        yield tornado.gen.sleep(0.1)
+
+        assert len(self.reports) == 1
+        print self.reports[0]
