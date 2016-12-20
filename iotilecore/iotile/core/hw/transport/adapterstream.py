@@ -69,14 +69,20 @@ class AdapterCMDStream(CMDStream):
         self._connect_direct(connstring)
 
     def _connect_direct(self, connection_string):
-        self.adapter.connect_sync(0, connection_string)
+        res = self.adapter.connect_sync(0, connection_string)
+        if not res['success']:
+            raise HardwareError("Could not connect to device", reason=res['failure_reason'], connection_string=connection_string)
 
         try:
-            self.adapter.open_interface_sync(0, 'rpc')
-        except:
+            res = self.adapter.open_interface_sync(0, 'rpc')
+        except Exception as exc:
             self.adapter.disconnect_sync(0)
-            raise
+            raise HardwareError("Could not open RPC interface on device due to an exception", exception=str(exc))
 
+        if not res['success']:
+            self.adapter.disconnect_sync(0)
+            raise HardwareError("Could not open RPC interface on device", reason=res['failure_reason'], connection_string=connection_string)
+    
     def _disconnect(self):
         self.adapter.disconnect_sync(0)
         self.adapter.periodic_callback()
