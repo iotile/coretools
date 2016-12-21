@@ -52,7 +52,11 @@ class CMDStream(object):
             self._recording = {}
 
         if self.connection_string != None:
-            self.connect_direct(self.connection_string)
+            try:
+                self.connect_direct(self.connection_string)
+            except:
+                self.close()
+                raise
 
     def scan(self):
         """Scan for available IOTile devices

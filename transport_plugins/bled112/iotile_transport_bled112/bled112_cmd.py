@@ -532,10 +532,13 @@ class BLED112CommandProcessor(threading.Thread):
         conn_interval_max = 100
         timeout = 1.0
 
-        #Allow passing either a binary address or a hex string
-        if isinstance(address, basestring) and len(address) > 6:
-            address = address.replace(':', '')
-            address = str(bytearray.fromhex(address)[::-1])
+        try:
+            #Allow passing either a binary address or a hex string
+            if isinstance(address, basestring) and len(address) > 6:
+                address = address.replace(':', '')
+                address = str(bytearray.fromhex(address)[::-1])
+        except ValueError:
+            return False, None
 
         #Allow simple determination of whether a device has a public or private address
         #This is not foolproof

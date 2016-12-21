@@ -127,6 +127,16 @@ class Serial():
         self._isOpen = False
         self.port = None
 
+    def inject(self, data):
+        """Inject data asynchronously into the serial port to simulate an event
+
+        Args:
+            data (string): the data to be injected into the serial port read buffer
+        """
+
+        with self._data_lock:
+            self._waiting_data += data
+
     def write(self, inputdata):
         """Write to a port on dummy_serial.
 

@@ -298,8 +298,12 @@ class BLED112Adapter(DeviceAdapter):
                 callback(conn_id, adapter_id, success, failure_reason)
         """
 
-        handle = self._find_handle(conn_id)
-        services = self._connections[handle]['services']
+        try:
+            handle = self._find_handle(conn_id)
+            services = self._connections[handle]['services']
+        except (ValueError, KeyError):
+            callback(conn_id, self.id, False, 'Connection closed unexpectedly before we could open the rpc interface')
+            return
 
         self._command_task.async_command(['_enable_rpcs', handle, services], self._on_interface_finished, {'connection_id': conn_id, 'callback': callback})
 
@@ -312,8 +316,12 @@ class BLED112Adapter(DeviceAdapter):
                 callback(conn_id, adapter_id, success, failure_reason)
         """
 
-        handle = self._find_handle(conn_id)
-        services = self._connections[handle]['services']
+        try:
+            handle = self._find_handle(conn_id)
+            services = self._connections[handle]['services']
+        except (ValueError, KeyError):
+            callback(conn_id, self.id, False, 'Connection closed unexpectedly before we could open the script interface')
+            return
 
         success = TileBusHighSpeedCharacteristic in services[TileBusService]['characteristics']
         reason = None
@@ -331,8 +339,12 @@ class BLED112Adapter(DeviceAdapter):
                 callback(conn_id, adapter_id, success, failure_reason)
         """
 
-        handle = self._find_handle(conn_id)
-        services = self._connections[handle]['services']
+        try:
+            handle = self._find_handle(conn_id)
+            services = self._connections[handle]['services']
+        except (ValueError, KeyError):
+            callback(conn_id, self.id, False, 'Connection closed unexpectedly before we could open the streaming interface')
+            return
 
         self._command_task.async_command(['_enable_streaming', handle, services], self._on_interface_finished, {'connection_id': conn_id, 'callback': callback})
 
@@ -345,8 +357,12 @@ class BLED112Adapter(DeviceAdapter):
                 callback(conn_id, adapter_id, success, failure_reason)
         """
 
-        handle = self._find_handle(conn_id)
-        services = self._connections[handle]['services']
+        try:
+            handle = self._find_handle(conn_id)
+            services = self._connections[handle]['services']
+        except (ValueError, KeyError):
+            callback(conn_id, self.id, False, 'Connection closed unexpectedly before we could close the rpc interface')
+            return
 
         self._command_task.async_command(['_disable_rpcs', handle, services], self._on_interface_finished, {'connection_id': conn_id, 'callback': callback})
 
