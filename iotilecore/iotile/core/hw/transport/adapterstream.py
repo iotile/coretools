@@ -82,7 +82,7 @@ class AdapterCMDStream(CMDStream):
         if not res['success']:
             self.adapter.disconnect_sync(0)
             raise HardwareError("Could not open RPC interface on device", reason=res['failure_reason'], connection_string=connection_string)
-    
+
     def _disconnect(self):
         self.adapter.disconnect_sync(0)
         self.adapter.periodic_callback()
@@ -107,7 +107,9 @@ class AdapterCMDStream(CMDStream):
 
     def _enable_streaming(self):
         self._reports = Queue.Queue()
-        self.adapter.open_interface_sync(0, 'streaming')
+        res = self.adapter.open_interface_sync(0, 'streaming')
+        if not res['success']:
+            raise HardwareError("Could not open streaming interface to device", reason=res['failure_reason'])
 
         return self._reports
 
