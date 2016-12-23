@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.2.0
+
+- Add support for storing config settings in per virtualenv registry
+
 ## 3.1.1
 
 - Add support for error checking in AdapterStream to catch errors connecting to a device

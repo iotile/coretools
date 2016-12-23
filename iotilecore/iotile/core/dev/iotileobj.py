@@ -48,8 +48,8 @@ class IOTile:
     """
     IOTile
 
-    A python representation of an IOTile module allowing you to inspect the products 
-    that its build produces and include it as a dependency in another build process. 
+    A python representation of an IOTile module allowing you to inspect the products
+    that its build produces and include it as a dependency in another build process.
     """
 
     def __init__(self, folder):

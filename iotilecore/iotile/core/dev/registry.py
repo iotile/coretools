@@ -9,6 +9,8 @@ from iotileobj import IOTile
 import pkg_resources
 import imp
 
+MISSING = object()
+
 class ComponentRegistry:
     """
     ComponentRegistry
@@ -80,51 +82,49 @@ class ComponentRegistry:
 
         items = self.kvstore.get_all()
 
-        return [x[0] for x in items]
+        return [x[0] for x in items if not x[0].startswith('config:')]
 
-    def check_components(self):
+    def set_config(self, key, value):
+        """Set a persistent config key to a value, stored in the registry
+
+        Args:
+            key (string): The key name
+            value (string): The key value
         """
-        Check where all registered components are up-to-date git repositories
-        
-        Returns a map listing all of the components that are not in a clean state,
-        either with uncommitted changes or with their master branch not in sync with
-        origin.
+
+        keyname = "config:" + key
+
+        self.kvstore.set(keyname, value)
+
+    def get_config(self, key, default=MISSING):
+        """Get the value of a persistent config key from the registry
+
+        If no default is specified and the key is not found ArgumentError is raised.
+
+        Args:
+            key (string): The key name to fetch
+            default (string): an optional value to be returned if key cannot be found
+
+        Returns:
+            string: the key's value
         """
 
-        comps = self.kvstore.get_all()
+        keyname = "config:" + key
 
-        from git import Repo
-        import git
+        try:
+            return self.kvstore.get(keyname)
+        except KeyError:
+            if default is MISSING:
+                raise ArgumentError("No config value found for key", key=key)
 
-        stati = {}
+            return default
 
-        for name, folder in comps:
-            try:
-                repo = Repo(folder)
-            except git.exc.InvalidGitRepositoryError:
-                stati[name] = "not a git repo"
-                continue
+    def clear_config(self, key):
+        """Remvoe a persistent config key from the registry
 
-            try:
-                origin = repo.remotes['origin']
-            except IndexError:
-                stati[name] = "does not have a remote origin configured"
-                continue
+        Args:
+            key (string): The key name
+        """
 
-            origin.fetch()
-
-            #Check status if we're up to date with remote
-            count_ahead = sum(1 for c in repo.iter_commits('master..origin/master'))
-            count_behind = sum(1 for c in repo.iter_commits('origin/master..master'))
-
-            if count_ahead > 0 or count_behind > 0:
-                stati[name] = "not in sync with remote (%d ahead, %d behind"
-                continue
-
-            dirty_files = list(repo.index.diff(None))
-            untracked = len(repo.untracked_files)
-            if len(dirty_files) > 0 or untracked > 0:
-                stati[name] = "has %d files with uncommitted changes and %d untracked files" % (len(dirty_files), untracked)
-
-            #Otherwise don't add it to the list of dirty repositories 
-        return stati
+        keyname = "config:" + key
+        self.kvstore.remove(keyname)
