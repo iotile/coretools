@@ -13,28 +13,28 @@ from iotile.core.dev.registry import ComponentRegistry
 from iotile.build.build.build import build
 
 def test_iotiletool():
-	err = subprocess.check_call(["iotile" , "quit"])
-	assert err == 0
+    err = subprocess.check_call(["iotile" , "quit"])
+    assert err == 0
 
 def test_build_command():
-	"""
-	Make sure iotile.build has been properly registered as a plugin
-	"""
+    """
+    Make sure iotile.build has been properly registered as a plugin
+    """
 
-	reg = ComponentRegistry()
+    reg = ComponentRegistry()
 
-	plugs = reg.list_plugins()
-	
-	assert 'build' in plugs
+    plugs = reg.list_plugins()
+    
+    assert 'build' in plugs
 
 def test_iotiletool_build():
-	olddir = os.getcwd()
+    olddir = os.getcwd()
 
-	builddir = os.path.join(os.path.dirname(__file__), 'blank_component')
+    builddir = os.path.join(os.path.dirname(__file__), 'blank_component')
 
-	try:
-		os.chdir(builddir)
-		err = subprocess.check_call(["iotile", "build"])
-		assert err == 0
-	finally:
-		os.chdir(olddir)
+    try:
+        os.chdir(builddir)
+        err = subprocess.check_call(["iotile", "build"])
+        assert err == 0
+    finally:
+        os.chdir(olddir)

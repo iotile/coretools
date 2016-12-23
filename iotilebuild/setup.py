@@ -33,10 +33,13 @@ setup(
         "sphinx>=1.3.1",
         "Cheetah>=2.4.4",
         "breathe>=4.2.0",
-        "pygtrie>=2.0.0"
+        "pygtrie>=2.0.0",
+        "toposort>=1.5.0"
     ],
     include_package_data=True,
-    entry_points={'iotile.plugin': ['.build = iotile.build.plugin:setup_plugin']},
+    entry_points={'iotile.plugin': ['.build = iotile.build.plugin:setup_plugin'],
+                  'iotile.build.default_depresolver': ['registry_resolver = iotile.build.dev.resolvers:DEFAULT_REGISTRY_RESOLVER'],
+                  'iotile.build.depresolver': ['registry_resolver = iotile.build.dev.resolvers.registry_resolver:ComponentRegistryResolver']},
     description="IOTile Build Support",
     author="Arch",
     author_email="info@arch-iot.com",
