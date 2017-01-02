@@ -2,10 +2,11 @@
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
 import itertools
-from iotile.core.utilities.kvstore import KeyValueStore
-from iotile.core.exceptions import *
+from collections import namedtuple
 import json
 import os.path
+from iotile.core.utilities.kvstore import KeyValueStore
+from iotile.core.exceptions import *
 
 class SemanticVersion(object):
     """A simple class representing a version in X.Y.Z[-prerelease] format
@@ -42,6 +43,9 @@ class SemanticVersion(object):
             version += '-{0}'.format(self.prerelease)
 
         return version
+
+
+ReleaseStep = namedtuple('ReleaseStep', ['provider', 'args'])
 
 
 class IOTile:
@@ -109,7 +113,6 @@ class IOTile:
         if "authors" in self.settings:
             self.authors = self.settings['authors']
 
-        #FIXME: Convert this to a SemanticVersion object
         self.version = "0.0.0"
         if "version" in self.settings:
             self.version = self.settings['version']
@@ -118,6 +121,21 @@ class IOTile:
 
         #Load all of the build products that can be created by this IOTile
         self.products = modsettings.get('products', {})
+
+        #Load in the release information telling us how to release this component
+        release_steps = modsettings.get('release_steps', [])
+        self.release_steps = []
+        self.can_release = False
+
+        for step in release_steps:
+            if 'provider' not in step:
+                raise DataError("Invalid release step that did not have a provider key", step=step)
+
+            parsed_step = ReleaseStep(provider=step['provider'], args=step.get('args', {}))
+            self.release_steps.append(parsed_step)
+
+        if len(self.release_steps) > 0:
+            self.can_release = True
 
         #If this is a release IOTile component, check for release information
         if 'release' in settings and settings['release'] is True:
@@ -176,7 +194,6 @@ class IOTile:
             found_deps.add(name)
 
         #Setup our support package information
-        #FIXME: This will break when a version is not 1 digit long
         self.support_distribution = "iotile_support_{0}_{1}".format(self.short_name, self.parsed_version.major)
         self.support_wheel = "{0}-{1}-py2-none-any.whl".format(self.support_distribution, self.version)
         self.has_wheel = False
