@@ -29,7 +29,7 @@ setup(
     version=version.version,
     license="LGPLv3",
     install_requires=[
-        "iotile-core>=3.0.0",
+        "iotile-core>=3.3.0",
         "sphinx>=1.3.1",
         "Cheetah>=2.4.4",
         "breathe>=4.2.0",
@@ -39,7 +39,8 @@ setup(
     include_package_data=True,
     entry_points={'iotile.plugin': ['.build = iotile.build.plugin:setup_plugin'],
                   'iotile.build.default_depresolver': ['registry_resolver = iotile.build.dev.resolvers:DEFAULT_REGISTRY_RESOLVER'],
-                  'iotile.build.depresolver': ['registry_resolver = iotile.build.dev.resolvers.registry_resolver:ComponentRegistryResolver']},
+                  'iotile.build.depresolver': ['registry_resolver = iotile.build.dev.resolvers.registry_resolver:ComponentRegistryResolver'],
+                  'iotile.build.release_provider': ['null = iotile.build.release.null_provider:NullReleaseProvider']},
     description="IOTile Build Support",
     author="Arch",
     author_email="info@arch-iot.com",
