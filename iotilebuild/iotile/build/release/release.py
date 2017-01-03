@@ -27,7 +27,7 @@ class DirtyReleaseFailureError(ReleaseFailureError):
 
 
 @param("component", "path", desc="Path to the iotile object that we should release")
-def release(component):
+def release(component="."):
     """Release an IOTile component using release providers
 
     Releasing an IOTile component means packaging up the products of its build process and storing 

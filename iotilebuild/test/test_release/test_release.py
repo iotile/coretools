@@ -123,5 +123,5 @@ def test_release_plugin():
     """Makes sure the release plugin works correctly in the iotile tool
     """
 
-    err = subprocess.check_call(["iotile" , "release", build_path('successful_release_comp')])
+    err = subprocess.check_call(["iotile" , "release", '--component', build_path('successful_release_comp')])
     assert err == 0

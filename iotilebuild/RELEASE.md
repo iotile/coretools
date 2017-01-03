@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.2.1
+
+- Update iotile release to make the path optional
+- Update docstring for DependencyResolver
+
 ## 2.2.0
 
 - Add entry point for inserting release providers that allow releasing IOTile components.
