@@ -49,7 +49,7 @@ def release(component):
         raise ArgumentError("Attempting to release a dev mode IOTile component that has not been built.", suggestion='Use iotile build to build the component before releasing', component=comp)
 
     if not comp.can_release:
-        raise ArgumentError("Attemping to release an IOTile component that does not specify release_steps and hence is not releasable", suggestion="Update module_settings.json to include release_steps")
+        raise ArgumentError("Attemping to release an IOTile component that does not specify release_steps and hence is not releasable", suggestion="Update module_settings.json to include release_steps", component=comp)
 
     configured_provs = []
 
