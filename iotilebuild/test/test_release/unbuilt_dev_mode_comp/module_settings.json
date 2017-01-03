@@ -1,0 +1,25 @@
+{
+	"module_name": "tile_gpio",
+	
+	"module_targets": 
+	{
+		"tile_gpio": ["lpc824"]
+	},
+
+	"modules":
+	{
+		"tile_gpio":
+		{
+			"release_steps":
+			[
+				{
+					"provider": "null"
+				},
+
+				{
+					"provider": "null"
+				}
+			]
+		}
+	}
+}

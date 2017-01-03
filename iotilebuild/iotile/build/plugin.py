@@ -5,4 +5,7 @@ def setup_plugin():
 	d = unicode('depends')
 	dv = unicode('iotile.build.dev,DependencyManager')
 
-	return [(u,v), (d,dv)]
+	b = unicode('release')
+	bv = unicode('iotile.build.release.release,release')
+
+	return [(u,v), (d,dv), (b, bv)]
