@@ -17,14 +17,19 @@ def load_dependencies(tile, build_env):
     when building for different architectures
     """
 
-    reg = ComponentRegistry()
-
     if 'DEPENDENCIES' not in build_env:
         build_env['DEPENDENCIES'] = []
 
     dep_targets = []
     chip = build_env['ARCH']
-    arch_deps = chip.property('depends')
+    raw_arch_deps = chip.property('depends')
+
+    #Properly separate out the version information from the name of the dependency
+    #The raw keys come back as name,version
+    arch_deps = {}
+    for key, value in raw_arch_deps.iteritems():
+        name,_,_ = key.partition(',')
+        arch_deps[name] = value
 
     for dep in tile.dependencies:
         try:

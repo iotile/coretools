@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.2.5
+
+- Fix bug building components that specified a version for their dependencies
+
 ## 2.2.4
 
 - Update RegistryResolver to properly check the version of the component it found in the registry
