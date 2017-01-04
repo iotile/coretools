@@ -69,13 +69,11 @@ class DependencyResolverChain(object):
             if has_version:
                 deptile = IOTile(destdir)
 
-                #If the dependency is up to date, don't do anything
-                if self._check_dep(depinfo, deptile, resolver):
-                    continue
-
-                #Otherwise remove the current dependency and reload it
-                import shutil
-                shutil.rmtree(destdir)
+                #If the dependency is not up to date, don't do anything
+                if self._check_dep(depinfo, deptile, resolver) is False:
+                    import shutil
+                    shutil.rmtree(destdir)
+                    has_version = False
 
             #Now try to resolve this dependency with the latest version
             result = resolver.resolve(depinfo, destdir)
@@ -120,6 +118,10 @@ class DependencyResolverChain(object):
 
     def _check_dep(self, depinfo, deptile, resolver):
         """Check if a dependency tile is up to date
+
+        Returns:
+            bool: True if it is up to date, False if it not and None if this resolver
+                cannot assess whether or not it is up to date.
         """
 
         try:
@@ -130,7 +132,7 @@ class DependencyResolverChain(object):
         #If this dependency was initially resolved with a different resolver, then 
         #we cannot check if it is up to date
         if settings['resolver'] != resolver.__class__.__name__:
-            return False
+            return None
 
         resolver_settings = {}
         if 'settings' in settings:

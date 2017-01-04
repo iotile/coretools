@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.2.2
+
+- Fix bug in DependencyResolverChain where checking if a component is up to date didn't work
+  if there were multiple dependency resolvers in the chain.
+
 ## 2.2.1
 
 - Update iotile release to make the path optional
