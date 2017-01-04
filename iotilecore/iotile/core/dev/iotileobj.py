@@ -95,7 +95,7 @@ class SemanticVersion(object):
         version = "{0}.{1}.{2}".format(self.major, self.minor, self.patch)
 
         if self.release_type is not 'release':
-            version += '-{0}{}'.format(self.release_type, self.prerelease_number)
+            version += '-{0}{1}'.format(self.release_type, self.prerelease_number)
 
         return version
 

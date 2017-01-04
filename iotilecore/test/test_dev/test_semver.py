@@ -81,3 +81,10 @@ def test_ordering_releases():
     patch = SemanticVersion.FromString('0.8.9')
 
     assert patch < minor < major
+
+def test_formatting():
+    ver = SemanticVersion.FromString('0.1.2-alpha2')
+    assert str(ver) == '0.1.2-alpha2'
+
+    ver = SemanticVersion.FromString('1.142.2123')
+    assert str(ver) == '1.142.2123'
