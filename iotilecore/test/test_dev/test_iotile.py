@@ -1,4 +1,4 @@
-from iotile.core.dev.iotileobj import IOTile
+from iotile.core.dev.iotileobj import IOTile, SemanticVersion
 from iotile.core.exceptions import DataError
 import pytest
 import os
@@ -51,3 +51,14 @@ def test_load_releasesteps():
 def  test_load_invalidsteps():
     with pytest.raises(DataError):
         tile = load_tile('releasesteps_invalid_component')
+
+def test_deprange_parsing():
+    tile = load_tile('dep_version_comp')
+
+    print tile.dependencies[0]['required_version_string']
+    reqver = tile.dependencies[0]['required_version']
+    print reqver._disjuncts[0][0]
+
+    assert reqver.check(SemanticVersion.FromString('1.0.0'))
+    assert reqver.check(SemanticVersion.FromString('1.1.0'))
+    assert not reqver.check(SemanticVersion.FromString('2.0.0'))

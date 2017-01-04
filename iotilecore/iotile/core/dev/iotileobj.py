@@ -7,7 +7,7 @@ import json
 import os.path
 from iotile.core.utilities.kvstore import KeyValueStore
 from iotile.core.exceptions import *
-from semver import SemanticVersion
+from semver import SemanticVersion, SemanticVersionRange
 
 ReleaseStep = namedtuple('ReleaseStep', ['provider', 'args'])
 
@@ -143,13 +143,17 @@ class IOTile(object):
             name, _, version = dep.partition(',')
             unique_id = name.lower().replace('/', '_')
 
-            if version is '':
-                version = "^0.0.0"
+            version = version.strip()
+            if version == '':
+                version = "*"
+
+            ver_range = SemanticVersionRange.FromString(version)
 
             depdict = {
                 'name': name,
                 'unique_id': unique_id,
-                'required_version': version
+                'required_version': ver_range,
+                'required_version_string': version
             }
 
             if name not in found_deps:

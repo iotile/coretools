@@ -1,0 +1,19 @@
+{
+	"module_name": "tile_gpio",
+	
+	"module_targets": 
+	{
+		"tile_gpio": ["lpc824"]
+	},
+
+	"modules":
+	{
+		"tile_gpio":
+		{	
+			"depends":
+			{
+				"iotile_standard_library/common, ^1.0.0": ["include_directories"]
+			}
+		}
+	}
+}
