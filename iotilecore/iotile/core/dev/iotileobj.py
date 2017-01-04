@@ -101,6 +101,8 @@ class IOTile(object):
         if len(self.release_steps) > 0:
             self.can_release = True
 
+        self.dependency_versions = {}
+
         #If this is a release IOTile component, check for release information
         if 'release' in settings and settings['release'] is True:
             self.release = True
@@ -111,6 +113,9 @@ class IOTile(object):
             import dateutil.parser
             self.release_date = dateutil.parser.parse(settings['release_date'])
             self.output_folder = self.folder
+
+            if 'dependency_versions' in settings:
+                self.dependency_versions = {x: SemanticVersion.FromString(y) for x,y in settings['dependency_versions'].iteritems()}
         else:
             self.release = False
             self.output_folder = os.path.join(self.folder, 'build', 'output')

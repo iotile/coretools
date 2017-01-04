@@ -62,3 +62,14 @@ def test_deprange_parsing():
     assert reqver.check(SemanticVersion.FromString('1.0.0'))
     assert reqver.check(SemanticVersion.FromString('1.1.0'))
     assert not reqver.check(SemanticVersion.FromString('2.0.0'))
+
+def test_depversion_tracking():
+    """Make sure release mode components load as-built dependency versions
+    """
+
+    tile = load_tile("releasemode_comp_depver")
+
+    assert len(tile.dependency_versions) == 3
+    assert tile.dependency_versions['iotile_standard_library_common'] == SemanticVersion.FromString('1.0.0')
+    assert tile.dependency_versions['iotile_standard_library_liblpc824'] == SemanticVersion.FromString('2.0.0')
+    assert tile.dependency_versions['iotile_standard_library_libcortexm0p_runtime'] == SemanticVersion.FromString('3.0.0')
