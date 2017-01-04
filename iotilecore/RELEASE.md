@@ -2,6 +2,13 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.5.0
+
+- Add SemanticVersionRange object that supports defining basic ranges of semantic versions
+  and checking if SemanticVersion objects are contained within them.  Currently only supports
+  ^X.Y.Z ranges and * wildcard ranges.
+- Properly parse the semantic version range specified in an IOTile component.
+
 ## 3.4.0
 
 - Add support for sorting SemanticVersion objects and explicitly allow only a finite number
