@@ -104,6 +104,8 @@ def autobuild_release(family):
     """Copy necessary files into build/output so that this component can be used by others
     """
     env = Environment(tools=[])
+    env['TILE'] = family.tile
+    
     target = env.Command(['#build/output/module_settings.json'], ['#module_settings.json'], action=env.Action(create_release_settings_action, "Creating release manifest"))
     env.AlwaysBuild(target)
 

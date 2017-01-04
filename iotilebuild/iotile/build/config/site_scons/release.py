@@ -23,6 +23,13 @@ def create_release_settings_action(target, source, env):
 
     settings['release'] = True
     settings['release_date'] = datetime.datetime.utcnow().isoformat()
+    settings['dependency_versions'] = {}
+
+    #Also insert the versions of every dependency that we used to build this component
+    for dep in env['TILE'].dependencies:
+        tile = IOTile(os.path.join('build', 'deps', dep['unique_id']))
+
+        settings['dependency_versions'][dep['unique_id']] = str(tile.parsed_version)
 
     with open(str(target[0]), "wb") as fileobj:
         json.dump(settings, fileobj, indent=4)
