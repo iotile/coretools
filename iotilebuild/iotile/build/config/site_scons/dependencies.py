@@ -51,6 +51,7 @@ def load_dependencies(orig_tile, build_env):
 
             seen_versions[tile.unique_id] = (tile.parsed_version, 'direct')
 
+            #Check for version conflicts between two included dependencies
             for inc_dep, inc_ver in tile.dependency_versions.iteritems():
                 if inc_dep in seen_versions and seen_versions[inc_dep][0] != inc_ver:
                     raise BuildError("Version conflict between component used to build two of our dependencies", 
