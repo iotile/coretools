@@ -57,8 +57,10 @@ class DependencyResolverChain(object):
 
         destdir = os.path.join(tile.folder, 'build', 'deps', depinfo['unique_id'])
         has_version = False
+        had_version = False
         if os.path.exists(destdir):
             has_version = True
+            had_version = True
 
         for priority, rule in self.rules:
             if not self._check_rule(rule, depinfo):
@@ -91,7 +93,7 @@ class DependencyResolverChain(object):
 
             self._save_depsettings(destdir, settings)
 
-            if has_version:
+            if had_version:
                 return "updated"
             else:
                 return "installed"

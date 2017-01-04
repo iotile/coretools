@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.2.3
+
+- Fix DependencyResolverChain to properly report when its updating vs installing a new component
+
 ## 2.2.2
 
 - Fix bug in DependencyResolverChain where checking if a component is up to date didn't work
