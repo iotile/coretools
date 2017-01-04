@@ -92,7 +92,7 @@ def test_formatting():
 def test_hash():
     """Make sure hashing SemanticVersions works
     """
-    
+
     ver = SemanticVersion.FromString('0.1.2-alpha2')
     ver2 = SemanticVersion.FromString('0.1.2-alpha2')
     ver3 = SemanticVersion.FromString('0.2.2')
@@ -104,3 +104,32 @@ def test_hash():
 
     version_set = set([ver, ver2, ver3])
     assert len(version_set) == 2
+
+def test_inc_nonzero():
+    """Make sure incrementing the first nonzero release component works
+    """
+
+    ver = SemanticVersion.FromString('0.0.1')
+    assert str(ver.inc_first_nonzero()) == '0.0.2'
+
+    ver = SemanticVersion.FromString('0.0.1-rc2')
+    assert str(ver.inc_first_nonzero()) == '0.0.2'
+
+    ver = SemanticVersion.FromString('0.1.2')
+    assert str(ver.inc_first_nonzero()) == '0.2.0'
+
+    ver = SemanticVersion.FromString('1.2.3')
+    assert str(ver.inc_first_nonzero()) == '2.0.0'
+
+def test_inc_patch():
+    ver = SemanticVersion.FromString('0.0.1')
+    assert str(ver.inc_release()) == '0.0.2'
+
+    ver = SemanticVersion.FromString('0.0.1-rc2')
+    assert str(ver.inc_release()) == '0.0.2'
+
+    ver = SemanticVersion.FromString('0.1.2')
+    assert str(ver.inc_release()) == '0.1.3'
+
+    ver = SemanticVersion.FromString('1.2.3')
+    assert str(ver.inc_release()) == '1.2.4'
