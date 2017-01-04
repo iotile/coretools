@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.5.1
+
+- Add the ability to specify a key function to SemanticVersionRange.filter
+
 ## 3.5.0
 
 - Add SemanticVersionRange object that supports defining basic ranges of semantic versions

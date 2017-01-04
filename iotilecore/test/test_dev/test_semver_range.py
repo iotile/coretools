@@ -90,3 +90,23 @@ def test_filtering():
     assert in1 in outset
     assert in2 in outset
     assert out1 not in outset
+
+def test_filtering_keys():
+    ver_range = SemanticVersionRange.FromString('^2.0.0-alpha2')
+
+
+    in1 = (SemanticVersion.FromString('2.0.0'), 'a')
+    in2 = (SemanticVersion.FromString('2.1.1'), 'b')
+
+    out1 = (SemanticVersion.FromString('2.0.0-alpha1'), 'c')
+
+    inlist = [in1, in2, out1]
+
+    outlist = ver_range.filter(inlist, key=lambda x: x[0])
+    outset = set(outlist)
+
+    assert len(outset) == 2
+
+    assert in1 in outset
+    assert in2 in outset
+    assert out1 not in outset

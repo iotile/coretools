@@ -235,7 +235,7 @@ class SemanticVersionRange(object):
 
         return False
 
-    def filter(self, versions):
+    def filter(self, versions, key=lambda x: x):
         """Filter all of the versions in an interable that match this version range
 
         Args:
@@ -245,7 +245,7 @@ class SemanticVersionRange(object):
             list: A list of the SemanticVersion objects that matched this range
         """
 
-        return [x for x in versions if self.check(x)]
+        return [x for x in versions if self.check(key(x))]
 
     @classmethod
     def FromString(cls, range_string):
