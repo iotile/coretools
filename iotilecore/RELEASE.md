@@ -2,6 +2,13 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.4.0
+
+- Add support for sorting SemanticVersion objects and explicitly allow only a finite number
+  of types of prereleases (build, alpha, beta and rc).  There is a total ordering of
+  SemanticVersion objects where releases are better than prereleases and prereleases are ordered
+  by build < alpha < beta < rc.  Each prerelease needs to be numbered like alpha1, rc5 etc.
+
 ## 3.3.0
 
 - Add support for storing release steps in module_settings.json and parsing release steps
