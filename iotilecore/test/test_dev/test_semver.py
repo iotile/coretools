@@ -1,4 +1,4 @@
-from iotile.core.dev.iotileobj import SemanticVersion
+from iotile.core.dev.semver import SemanticVersion
 from iotile.core.exceptions import DataError
 import pytest
 
@@ -88,3 +88,19 @@ def test_formatting():
 
     ver = SemanticVersion.FromString('1.142.2123')
     assert str(ver) == '1.142.2123'
+
+def test_hash():
+    """Make sure hashing SemanticVersions works
+    """
+    
+    ver = SemanticVersion.FromString('0.1.2-alpha2')
+    ver2 = SemanticVersion.FromString('0.1.2-alpha2')
+    ver3 = SemanticVersion.FromString('0.2.2')
+
+    assert hash(ver) == hash(ver2)
+    assert hash(ver3) != hash(ver)
+    assert ver == ver2
+    assert ver != ver3
+
+    version_set = set([ver, ver2, ver3])
+    assert len(version_set) == 2
