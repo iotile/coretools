@@ -29,7 +29,7 @@ setup(
     version=version.version,
     license="LGPLv3",
     install_requires=[
-        "iotile-core>=3.3.0",
+        "iotile-core>=3.5.0",
         "sphinx>=1.3.1",
         "Cheetah>=2.4.4",
         "breathe>=4.2.0",

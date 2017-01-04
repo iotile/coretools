@@ -72,10 +72,13 @@ class DependencyResolverChain(object):
                 deptile = IOTile(destdir)
 
                 #If the dependency is not up to date, don't do anything
-                if self._check_dep(depinfo, deptile, resolver) is False:
+                depstatus = self._check_dep(depinfo, deptile, resolver)
+                if depstatus is False:
                     import shutil
                     shutil.rmtree(destdir)
                     has_version = False
+                else:
+                    continue
 
             #Now try to resolve this dependency with the latest version
             result = resolver.resolve(depinfo, destdir)

@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.2.4
+
+- Update RegistryResolver to properly check the version of the component it found in the registry
+  to make sure that it matches.
+
 ## 2.2.3
 
 - Fix DependencyResolverChain to properly report when its updating vs installing a new component

@@ -15,6 +15,11 @@ class ComponentRegistryResolver (DependencyResolver):
         except ArgumentError:
             return {'found': False}
 
+        #Make sure the tile we found in the registry has the required version
+        reqver = depinfo['required_version']
+        if not reqver.check(comp.parsed_version):
+            return {'found': False}
+
         self._copy_folder_contents(comp.output_folder, destdir)
         return {'found': True}
 
@@ -28,8 +33,13 @@ class ComponentRegistryResolver (DependencyResolver):
         except ArgumentError:
             return True
 
+        #If the component does not have a matching version, we cannot assess up-to-date-ness
+        #FIXME: We should return that we cannot assess up to dateness, not that we are up to date
+        reqver = depinfo['required_version']
+        if not reqver.check(comp.parsed_version):
+            return True
+
         if comp.release_date is not None and comp.release_date > deptile.release_date:
             return False
 
         return True
-
