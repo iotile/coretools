@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.5.2
+
+- Add the concept of coexistence classes to SemanticVersion objects so that you 
+  can easily see which are compatible with each other in a semanic versioning sense
+
 ## 3.5.1
 
 - Add the ability to specify a key function to SemanticVersionRange.filter

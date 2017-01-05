@@ -5,6 +5,9 @@ All major changes in each released version of IOTileBuild are listed here.
 ## 2.2.5
 
 - Fix bug building components that specified a version for their dependencies
+- Add extensive test coverage of dependency resolution
+- Update with dependency check function to test and make sure all installed dependencies
+  are compatible with each other.
 
 ## 2.2.4
 
