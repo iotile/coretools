@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.2.6
+
+- Update autobuild_release to allow it to be called manually from an SConstruct file
+
 ## 2.2.5
 
 - Fix bug building components that specified a version for their dependencies

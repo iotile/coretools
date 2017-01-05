@@ -100,9 +100,18 @@ def autobuild_docproject():
         print e.format()
         Exit(1)
 
-def autobuild_release(family):
+def autobuild_release(family=None):
     """Copy necessary files into build/output so that this component can be used by others
+
+    Args:
+        family (ArchitectureGroup): The architecture group that we are targeting.  If not
+            provided, it is assumed that we are building in the current directory and the
+            module_settings.json file is read to create an ArchitectureGroup
     """
+
+    if family is None:
+        family = utilities.get_family('module_settings.json')
+
     env = Environment(tools=[])
     env['TILE'] = family.tile
     
