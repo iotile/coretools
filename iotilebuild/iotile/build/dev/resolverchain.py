@@ -3,7 +3,6 @@ from iotile.core.dev.iotileobj import IOTile
 import os
 import json
 import resolvers
-import re
 import pkg_resources
 import logging
 
@@ -39,6 +38,31 @@ class DependencyResolverChain(object):
             self.rules.append((priority, (regex, factory, settings)))
 
         self.rules.sort(key=lambda x: x[0])
+
+        self._known_resolvers = {}
+        for entry in pkg_resources.iter_entry_points('iotile.build.depresolver'):
+            factory = entry.load()
+            name = factory.__name__
+
+            if name in self._known_resolvers:
+                raise EnvironmentError("The same dependency resolver class name is provided by more than one entry point", name=name)
+            
+            self._known_resolvers[name] = factory
+
+    def instantiate_resolver(self, name, args):
+        """Directly instantiate a dependency resolver by name with the given arguments
+
+        Args:
+            name (string): The name of the class that we want to instantiate
+            args (dict): The arguments to pass to the resolver factory
+
+        Returns:
+            DependencyResolver
+        """
+        if name not in self._known_resolvers:
+            raise ArgumentError("Attempting to instantiate unknown dependency resolver", name=name)
+
+        return self._known_resolvers[name](args)
 
     def update_dependency(self, tile, depinfo):
         """Attempt to install or update a dependency to the latest version.
@@ -89,8 +113,10 @@ class DependencyResolverChain(object):
                 continue
 
             settings = {
-                'resolver': resolver.__class__.__name__
+                'resolver': resolver.__class__.__name__,
+                'factory_args': rule[2]
             }
+
             if 'settings' in result:
                 settings['settings'] = result['settings']
 
@@ -105,7 +131,6 @@ class DependencyResolverChain(object):
             return "already installed"
 
         return "not found"
-
 
     def _save_depsettings(self, destdir, settings):
         settings_file = os.path.join(destdir, 'dep_settings.json')

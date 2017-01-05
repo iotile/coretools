@@ -1,0 +1,21 @@
+{
+	"module_name": "comp5",
+	
+	"module_targets": 
+	{
+		"comp5": ["none"]
+	},
+
+	"modules":
+	{
+		"comp5":
+		{
+			"version": "1.1.0",
+			"depends": 
+			{
+				"comp1,^1.1.0": [],
+				"comp2,^1.0.0": []
+			}
+		}
+	}
+}

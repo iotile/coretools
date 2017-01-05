@@ -39,7 +39,7 @@ setup(
     include_package_data=True,
     entry_points={'iotile.plugin': ['.build = iotile.build.plugin:setup_plugin'],
                   'iotile.build.default_depresolver': ['registry_resolver = iotile.build.dev.resolvers:DEFAULT_REGISTRY_RESOLVER'],
-                  'iotile.build.depresolver': ['registry_resolver = iotile.build.dev.resolvers.registry_resolver:ComponentRegistryResolver'],
+                  'iotile.build.depresolver': ['ComponentRegistryResolver = iotile.build.dev.resolvers.registry_resolver:ComponentRegistryResolver'],
                   'iotile.build.release_provider': ['null = iotile.build.release.null_provider:NullReleaseProvider']},
     description="IOTile Build Support",
     author="Arch",

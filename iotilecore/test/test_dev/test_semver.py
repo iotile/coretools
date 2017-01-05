@@ -133,3 +133,34 @@ def test_inc_patch():
 
     ver = SemanticVersion.FromString('1.2.3')
     assert str(ver.inc_release()) == '1.2.4'
+
+def test_coexistence():
+    """Test to make sure that version coexistence determination works
+    """
+    ver = SemanticVersion.FromString('1.1.1')
+    ver2 = SemanticVersion.FromString('1.2.3')
+    ver3 = SemanticVersion.FromString('2.0.0')
+    assert ver.coexistence_class == ver2.coexistence_class
+    assert not ver3.coexistence_class == ver2.coexistence_class
+
+    ver = SemanticVersion.FromString('0.1.1')
+    ver2 = SemanticVersion.FromString('0.1.2')
+    ver3 = SemanticVersion.FromString('0.2.0')
+    ver4 = SemanticVersion.FromString('1.1.0')
+    assert ver.coexistence_class == ver2.coexistence_class
+    assert not ver3.coexistence_class == ver2.coexistence_class
+    assert not ver4.coexistence_class == ver2.coexistence_class
+
+    ver = SemanticVersion.FromString('0.0.1')
+    ver2 = SemanticVersion.FromString('0.0.1')
+    ver3 = SemanticVersion.FromString('0.1.0')
+    ver4 = SemanticVersion.FromString('1.1.0')
+    assert ver.coexistence_class == ver2.coexistence_class
+    assert not ver3.coexistence_class == ver2.coexistence_class
+    assert not ver4.coexistence_class == ver2.coexistence_class
+
+    #Make sure prereleases are compat as well
+    ver = SemanticVersion.FromString('0.1.0')
+    ver2 = SemanticVersion.FromString('0.1.1-alpha2')
+
+    assert ver.coexistence_class == ver2.coexistence_class

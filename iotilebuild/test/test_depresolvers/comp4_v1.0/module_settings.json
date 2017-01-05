@@ -1,0 +1,21 @@
+{
+	"module_name": "comp4",
+	
+	"module_targets": 
+	{
+		"comp4": ["none"]
+	},
+
+	"modules":
+	{
+		"comp4":
+		{
+			"version": "1.1.0",
+			"depends": 
+			{
+				"comp1,^1.1.0": [],
+				"comp3,^1.0.0": []
+			}
+		}
+	}
+}

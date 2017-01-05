@@ -39,6 +39,11 @@ class ComponentRegistryResolver (DependencyResolver):
         if not reqver.check(comp.parsed_version):
             return True
 
+        #If the component in the registry has a higher version or a newer release date, it should
+        #be updated
+        if comp.parsed_version > deptile.parsed_version:
+            return False
+
         if comp.release_date is not None and comp.release_date > deptile.release_date:
             return False
 

@@ -1,0 +1,18 @@
+{
+	"module_name": "comp1",
+	"release": true,
+	"release_date": "2016-10-11 02:37:21",
+	
+	"module_targets": 
+	{
+		"comp1": ["none"]
+	},
+
+	"modules":
+	{
+		"comp1":
+		{
+			"version": "1.2.0"
+		}
+	}
+}

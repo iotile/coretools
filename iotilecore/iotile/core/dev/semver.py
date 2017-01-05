@@ -49,6 +49,25 @@ class SemanticVersion(object):
 
         return SemanticVersion(*release)
 
+    @property
+    def coexistence_class(self):
+        """A tuple representing the compatibility class of this semantic version
+
+        Coexistence classes are defined as a tuple containing the release version
+        with everything except the first nonzero entry being zero.  Basically,
+        coexistence classes divide version into those that should be compatible
+        based on semantic versioning rules 
+        """
+
+        out = self.release_tuple
+
+        if out[0] == 0 and out[1] == 0:
+            return out
+        elif out[0] == 0:
+            return (out[0], out[1], 0)
+        else:
+            return (out[0], 0, 0)
+
     def inc_release(self):
         """Create a new SemanticVersion with the patch level incremented
 
