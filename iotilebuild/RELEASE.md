@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.2.7
+
+- Update build system to allow modules to specify architecture overlays, not just other
+  architectures. 
+
 ## 2.2.6
 
 - Update autobuild_release to allow it to be called manually from an SConstruct file

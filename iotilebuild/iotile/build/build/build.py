@@ -422,6 +422,10 @@ class ArchitectureGroup:
 
                 del arch_settings["overlays"]
 
+            #Allow the module to overlay included architectures as well
+            if "overlays" in mod.settings and arch in mod.settings['overlays']:
+                arch_settings = merge_dicts(arch_settings, mod.settings['overlays'][arch])
+
             settings = merge_dicts(settings, arch_settings)
 
         settings = merge_dicts(settings, mod.settings)
