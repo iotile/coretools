@@ -143,6 +143,13 @@ class IOTile(object):
         if 'depends' in self.settings:
             archs_with_deps.append(self.settings['depends'].iteritems())
 
+        #Also search through overlays to architectures that are defined in this module_settings.json file
+        #and see if those overlays contain dependencies.
+        if 'overlays' in self.settings:
+            for overlay_arch in self.settings['overlays'].itervalues():
+                if 'depends' in overlay_arch:
+                    archs_with_deps.append(overlay_arch['depends'].iteritems())
+
         found_deps = set()
         for dep, _ in itertools.chain(*archs_with_deps):
             name, _, version = dep.partition(',')

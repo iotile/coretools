@@ -73,3 +73,47 @@ def test_depversion_tracking():
     assert tile.dependency_versions['iotile_standard_library_common'] == SemanticVersion.FromString('1.0.0')
     assert tile.dependency_versions['iotile_standard_library_liblpc824'] == SemanticVersion.FromString('2.0.0')
     assert tile.dependency_versions['iotile_standard_library_libcortexm0p_runtime'] == SemanticVersion.FromString('3.0.0')
+
+def test_depfinding_basic():
+    """Make sure IOTile() finds dependencies listed with a module
+    """
+
+    tile = load_tile('comp_w_deps')
+
+    assert len(tile.dependencies) == 3
+
+    deps = set([x['name'] for x in tile.dependencies])
+    assert 'dep1' in deps
+    assert 'dep2' in deps
+    assert 'dep3' in deps
+
+def test_depfinding_archs():
+    """Make sure IOTile also finds dependencies specified in architectures
+    """
+
+    tile = load_tile('comp_w_archdeps')
+
+    assert len(tile.dependencies) == 4
+
+    deps = set([x['name'] for x in tile.dependencies])
+
+    assert 'dep1' in deps
+    assert 'dep2' in deps
+    assert 'dep3' in deps
+    assert 'dep4' in deps
+
+def test_depfinding_overlays():
+    """Make sure IOTile also finds dependencies specified in architecture overlays
+    """
+
+    tile = load_tile('comp_w_overlaydeps')
+
+    assert len(tile.dependencies) == 5
+
+    deps = set([x['name'] for x in tile.dependencies])
+    
+    assert 'dep1' in deps
+    assert 'dep2' in deps
+    assert 'dep3' in deps
+    assert 'dep4' in deps
+    assert 'dep5' in deps

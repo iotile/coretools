@@ -1,0 +1,46 @@
+{
+	"module_name": "test_comp",
+	
+	"module_targets": 
+	{
+		"test_comp": ["v1"]
+	},
+
+	"modules":
+	{
+		"test_comp":
+		{
+			"overlays":
+			{
+				"v1":
+				{
+					"depends":
+					{
+						"dep2,^1.0.0": [],
+						"dep4,^1.0.0": [],
+						"dep5,^1.0.0": []
+					}
+				}
+			},
+			
+			"depends":
+			{
+				"dep1,^1.0.0": [],
+				"dep2,^1.0.0": [],
+				"dep3,^1.0.0": []
+			}
+		}
+	},
+
+	"architectures":
+	{
+		"v1":
+		{
+			"depends":
+			{
+				"dep3,^1.0.0": [],
+				"dep4,^1.0.0": []
+			}	
+		}
+	}
+}

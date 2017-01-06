@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.5.3
+
+- Update IOTile to find component dependencies listed in architecture overlays as
+  well as those listed for a module and for an architecture.
+
 ## 3.5.2
 
 - Add the concept of coexistence classes to SemanticVersion objects so that you 
