@@ -14,9 +14,11 @@ class SimpleVirtualDevice(VirtualIOTileDevice):
     def __init__(self, args):
         super(SimpleVirtualDevice, self).__init__(1, 'Simple')
 
-    @rpc(8, 0x0004, "", "6s")
+    @rpc(8, 0x0004, "", "H6sBBBB")
     def controller_name(self):
         """Return the name of the controller as a 6 byte string
         """
 
-        return [self.name]
+        status = (1 << 1) | (1 << 0) #Configured and running
+
+        return [0xFFFF, self.name, 1, 0, 0, status]

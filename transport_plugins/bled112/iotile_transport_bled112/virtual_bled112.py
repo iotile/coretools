@@ -9,13 +9,9 @@ TileBus commands.
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
 from Queue import Queue
-import time
 import struct
-import threading
 import logging
-import datetime
-import uuid
-import copy
+import binascii
 import serial
 import serial.tools.list_ports
 from iotile.core.exceptions import EnvironmentError
@@ -247,7 +243,6 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         rpc_id = (feature << 8) |  cmd
 
         payload = self.rpc_payload[:length]
-        self._audit("RPCReceived", rpc_id=rpc_id, address=address, payload=payload)
 
         status = (1 << 6)
         try:
@@ -261,6 +256,7 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
             status = 0xFF
             response = ""
 
+        self._audit("RPCReceived", rpc_id=rpc_id, address=address, payload=binascii.hexlify(payload), status=status, response=binascii.hexlify(response))
 
         resp_header = struct.pack("<BBBB", status, 0, 0, len(response))
 
