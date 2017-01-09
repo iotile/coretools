@@ -32,6 +32,9 @@ class IndividualReportTestDevice(VirtualIOTileDevice):
     def __init__(self, args):
         iotile_id = args.get('iotile_id', 1)
 
+        if isinstance(iotile_id, basestring) or isinstance(iotile_id, unicode):
+            iotile_id = int(iotile_id, 16)
+
         generator = args.get('reading_generator', 'sequential')            
         self.num_readings = args.get('num_readings', 100)
 

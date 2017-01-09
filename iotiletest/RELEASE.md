@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 0.4.2
+
+- Allow iotile ids to be specified as hex strings or integers
+
 ## 0.4.1
 
 - Fix invidiual_reports device to respect iotile_id argument.
