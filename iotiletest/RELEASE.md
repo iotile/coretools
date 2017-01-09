@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 0.4.0
+
+- Include the ability to stream reports and create individual_reports virtual
+  test device.
+
 ## 0.3.0
 
 - Include simple virtual device and simple proxy for testing virtual device

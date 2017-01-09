@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.6.1
+
+- Provide generic implementation of report chunking and streaming.
+
 ## 3.6.0
 
 - Create a virtual device interface for serving access to virtual iotile devices that
