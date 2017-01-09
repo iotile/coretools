@@ -30,6 +30,8 @@ class VirtualIOTileInterface(object):
         self.audit_logger.addHandler(logging.NullHandler())
 
         self.actions = Queue()
+        self.reports = Queue()
+        self.in_progress_report = None
 
     def start(self, device):
         """Begin allowing connections to a virtual IOTile device
@@ -95,3 +97,54 @@ class VirtualIOTileInterface(object):
             args = []
 
         self.actions.put((action, args))
+
+    def _queue_reports(self, *reports):
+        """Queue reports for transmission over the streaming interface
+
+        The primary reason for this function is to allow for a single implementation
+        of encoding and chunking reports for streaming.
+
+        Args:
+            *reports (list): A list of IOTileReport objects that should be sent over
+                the streaming interface.
+        """
+
+        for report in reports:
+            self.reports.put(report)
+
+    def _next_streaming_chunk(self, max_size):
+        """Get the next chunk of data that should be streamed
+
+        Args:
+            max_size (int): The maximum size of the chunk to be returned
+
+        Returns:
+            bytearray: the chunk of raw data with size up to but not exceeding
+                max_size.
+        """
+
+        chunk = bytearray()
+        
+        while len(chunk) < max_size:
+            desired_size = max_size - len(chunk)
+
+            #If we don't have an in progress report at the moment, attempt to get one
+            if self.in_progress_report is None:
+                try:
+                    next_report = self.reports.get_nowait()
+                except Empty:
+                    return chunk
+
+                self._audit('ReportStreamed', report=str(next_report))
+                self.in_progress_report = bytearray(next_report.encode())
+
+            if len(self.in_progress_report) <= desired_size:
+                chunk += self.in_progress_report
+                self.in_progress_report = None
+            else:
+                remaining = self.in_progress_report[desired_size:]
+                chunk += self.in_progress_report[:desired_size]
+
+                self.in_progress_report = remaining
+
+        return chunk

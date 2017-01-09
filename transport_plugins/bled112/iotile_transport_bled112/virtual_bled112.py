@@ -216,7 +216,13 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
             elif handle == self.StreamingHandle:
                 if flags & 0b1 and not self.streaming:
                     self.streaming = True
-                    self.device.open_streaming_interface() #FIXME: Also stream back any accumulated reports here
+
+                    #If we should send any reports, queue them for sending
+                    reports = self.device.open_streaming_interface()
+                    if reports is not None:
+                        self._queue_reports(*reports)
+                        self._defer(self._stream_data)
+
                     self._audit('StreamingInterfaceOpened')
                 elif not (flags & 0b1) and self.streaming:
                     self.streaming = False
@@ -285,3 +291,14 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         """
 
         self._command_task.sync_command(['_send_notification', handle, payload])
+
+    def _stream_data(self):
+        """Stream reports to the ble client in 20 byte chunks
+        """
+
+        chunk = self._next_streaming_chunk(20)
+        if chunk is None or len(chunk) == 0:
+            return
+
+        self._send_notification(self.StreamingHandle, chunk)
+        self._defer(self._stream_data)
