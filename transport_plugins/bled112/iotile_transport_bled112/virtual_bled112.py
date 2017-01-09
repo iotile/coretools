@@ -23,6 +23,8 @@ from iotile.core.utilities.packed import unpack
 from iotile.core.hw.reports.parser import IOTileReportParser
 from async_packet import AsyncPacketBuffer
 from iotile.core.hw.virtual.virtualinterface import VirtualIOTileInterface
+from iotile.core.hw.virtual.virtualdevice import RPCInvalidIDError, RPCNotFoundError, TileNotFoundError
+import iotile.core.hw.virtual.audit as audit
 from bled112_cmd import BLED112CommandProcessor
 from tilebus import *
 import bgapi_structures
@@ -74,7 +76,7 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         self._command_task.event_handler = self._handle_event
         self._command_task.start()
 
-        self._logger = logging.getLogger('virtual_iface.bled112')
+        self._logger = logging.getLogger('virtual.bled112')
         self._logger.addHandler(logging.NullHandler())
 
         self.connected = False
@@ -189,14 +191,18 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         if event.command_class == 3 and event.command == 0:
             self.connected = True
             self._connection_handle = 0
-            self._logger.info("Client connected")
+            self._audit('ClientConnected')
 
         #Check if we're being disconnected from
         elif event.command_class == 3 and event.command == 4:
             self.connected = False
             self._connection_handle = 0
-            self._command_task.async_command(['_set_mode', 4, 2], lambda x: None, {}) #Reenable advertising
-            self._logger.info("Client disconnected, reenabling advertising")
+            self.streamer = False
+            self.header_notif = False
+            self.payload = False
+            #Reenable advertising
+            self._defer(self._command_task.sync_command, [['_set_mode', 4, 2]])
+            self._audit('ClientDisconnected')
 
         #Check for attribute writes that indicate interfaces being opened or closed
         elif event.command_class == 2 and event.command == 2:
@@ -209,17 +215,67 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
 
                 if self.header_notif and self.payload_notif:
                     self.device.open_rpc_interface()
-                    self._logger.info("RPC interface opened")
+                    self._audit("RPCInterfaceOpened")
             elif handle == self.StreamingHandle:
                 if flags & 0b1 and not self.streaming:
                     self.streaming = True
                     self.device.open_streaming_interface() #FIXME: Also stream back any accumulated reports here
-                    self._logger.info("Streaming interface opened")
+                    self._audit('StreamingInterfaceOpened')
                 elif not (flags & 0b1) and self.streaming:
                     self.streaming = False
                     self.device.close_streaming_interface()
-                    self._logger.info("Streaming interface closed")
+                    self._audit('StreamingInterfaceClosed')
 
         #Now check for RPC writes
         elif event.command_class == 2 and event.command == 0:
-            conn, reas, handle, offset, value = 
+            conn, reas, handle, offset, value_len, value = struct.unpack("<BBHHB%ds" % (len(event.payload) - 7,), event.payload)
+            if handle == self.SendPayloadHandle:
+                self.rpc_payload = bytearray(value)
+                if len(self.rpc_payload) < 20: 
+                    self.rpc_payload += bytearray(20 - len(self.rpc_payload))
+            elif handle == self.SendHeaderHandle:
+                self._call_rpc(bytearray(value))
+
+    def _call_rpc(self, header):
+        """Call an RPC given a header and possibly a previously sent payload
+        
+        Args:
+            header (bytearray): The RPC header we should call
+        """
+
+        length, _, cmd, feature, address = struct.unpack("<BBBBB", str(header))
+        rpc_id = (feature << 8) |  cmd
+
+        payload = self.rpc_payload[:length]
+        self._audit("RPCReceived", rpc_id=rpc_id, address=address, payload=payload)
+
+        status = (1 << 6)
+        try:
+            response = self.device.call_rpc(address, rpc_id, str(payload))
+            if len(response) > 0:
+                status |= (1 << 7)
+        except (RPCInvalidIDError, RPCNotFoundError):
+            status = 1 #FIXME: Insert the correct ID here
+            response = ""
+        except TileNotFoundError:
+            status = 0xFF
+            response = ""
+
+
+        resp_header = struct.pack("<BBBB", status, 0, 0, len(response))
+
+        if len(response) > 0:
+            self._defer(self._send_notification, [self.ReceiveHeaderHandle, resp_header])
+            self._defer(self._send_notification, [self.ReceivePayloadHandle, response])
+        else:
+            self._defer(self._send_notification, [self.ReceiveHeaderHandle, resp_header])
+
+    def _send_notification(self, handle, payload):
+        """Send a notification over BLE
+
+        Args:
+            handle (int): The handle to notify on
+            payload (bytearray): The value to notify
+        """
+
+        self._command_task.sync_command(['_send_notification', handle, payload])

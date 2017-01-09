@@ -2,6 +2,7 @@ import argparse
 import pkg_resources
 import sys
 import logging
+import json
 
 def main():
     """Serve access to a virtual IOTile device using a virtual iotile interface
@@ -40,20 +41,25 @@ def main():
             config = json.load(conf_file)
 
     try:
-        logger = logging.getLogger('virtual_iface')
-        logger.addHandler(logging.StreamHandler())
-        logger.setLevel(logging.DEBUG)
-
         iface = instantiate_interface(args.interface, config)
         device = instantiate_device(args.device, config)
+
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter('%(asctime)s [AUDIT %(event_name)s] %(message)s'))
+
+        iface.audit_logger.addHandler(handler)
+        iface.audit_logger.setLevel(logging.INFO)
 
         iface.start(device)
 
         print("Starting to serve virtual IOTile device")
+
+        #We need to periodically process events that are queued up in the interface
         while True:
-            pass
+            iface.process()
+
     except KeyboardInterrupt:
-        print("Cleanly exiting...")
+        print("Break received, cleanly exiting...")
     finally:
         if iface is not None:
             iface.stop()

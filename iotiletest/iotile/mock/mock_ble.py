@@ -277,7 +277,7 @@ class MockBLEDevice(object):
             status = 0xFF
             response = ""
 
-        resp_header = struct.pack("<BBBB", status, 0, len(response), 0)
+        resp_header = struct.pack("<BBBB", status, 0, 0, len(response))
 
         if len(response) > 0:
             return [(self.find_handle(self.TBReceiveHeaderChar), resp_header), (self.find_handle(self.TBReceivePayloadChar), response)]

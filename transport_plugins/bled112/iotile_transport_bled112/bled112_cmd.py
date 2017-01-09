@@ -526,6 +526,26 @@ class BLED112CommandProcessor(threading.Thread):
 
         return True, None
 
+    def _send_notification(self, handle, value):
+        """Send a notification to all connected clients on a characteristic
+
+        Args:
+            handle (int): The handle we wish to notify on
+            value (bytearray): The value we wish to send
+        """
+
+        value_len = len(value)
+        value = str(value)
+
+        payload = struct.pack("<BHB%ds" % value_len, 0xFF, handle, value_len, value)
+
+        response = self._send_command(2, 5, payload)
+        result, = unpack("<H", response.payload)
+        if result != 0:
+            return False, {'reason': 'Error code from BLED112 notifying a value', 'code': result, 'handle': handle, 'value': value}
+
+        return True, None
+
     def _set_notification(self, conn, char, enabled, timeout=1.0):
         """Enable/disable notifications on a GATT characteristic
 
@@ -632,7 +652,7 @@ class BLED112CommandProcessor(threading.Thread):
                 event_handle, = unpack("B", event.payload[0:1])
                 return event_handle == handle
 
-            return Falser
+            return False
 
         #FIXME Hardcoded timeout
         events = self._wait_process_events(3.0, lambda x: False, disconnect_succeeded)
