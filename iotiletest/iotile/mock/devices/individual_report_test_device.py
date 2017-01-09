@@ -49,7 +49,7 @@ class IndividualReportTestDevice(VirtualIOTileDevice):
         else:
             raise ArgumentError("Unknown reading generator mechanism", reading_generator=generator, known_generators=['sequential', 'random'])
 
-        super(IndividualReportTestDevice, self).__init__(1, 'Simple')
+        super(IndividualReportTestDevice, self).__init__(iotile_id, 'Simple')
 
     @rpc(8, 0x0004, "", "H6sBBBB")
     def controller_name(self):
