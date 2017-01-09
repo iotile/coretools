@@ -9,6 +9,7 @@ TileBus commands.
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
 from Queue import Queue
+import traceback
 import struct
 import logging
 import binascii
@@ -230,7 +231,7 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
                 if len(self.rpc_payload) < 20: 
                     self.rpc_payload += bytearray(20 - len(self.rpc_payload))
             elif handle == self.SendHeaderHandle:
-                self._call_rpc(bytearray(value))
+                self._defer(self._call_rpc, [bytearray(value)])
 
     def _call_rpc(self, header):
         """Call an RPC given a header and possibly a previously sent payload
@@ -250,11 +251,19 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
             if len(response) > 0:
                 status |= (1 << 7)
         except (RPCInvalidIDError, RPCNotFoundError):
-            status = 1 #FIXME: Insert the correct ID here
+            status = 2 #FIXME: Insert the correct ID here
             response = ""
         except TileNotFoundError:
             status = 0xFF
             response = ""
+        except Exception:
+            status = 3
+            response= ""
+
+            print("*** EXCEPTION OCCURRED IN RPC ***")
+            traceback.print_exc()
+            print("*** END EXCEPTION ***")
+
 
         self._audit("RPCReceived", rpc_id=rpc_id, address=address, payload=binascii.hexlify(payload), status=status, response=binascii.hexlify(response))
 

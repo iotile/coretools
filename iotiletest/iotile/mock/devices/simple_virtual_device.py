@@ -21,4 +21,6 @@ class SimpleVirtualDevice(VirtualIOTileDevice):
 
         status = (1 << 1) | (1 << 0) #Configured and running
 
+        raise Exception("Hello")
+        
         return [0xFFFF, self.name, 1, 0, 0, status]
