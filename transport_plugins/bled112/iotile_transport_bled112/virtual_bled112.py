@@ -204,7 +204,7 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         #Check for attribute writes that indicate interfaces being opened or closed
         elif event.command_class == 2 and event.command == 2:
             handle, flags = struct.unpack("<HB", event.payload)
-            if handle == self.ReceiveHeaderHandle or handle == self.ReceivePayloadHandle and flags & 0b1:
+            if (handle == self.ReceiveHeaderHandle or handle == self.ReceivePayloadHandle) and flags & 0b1:
                 if handle == self.ReceiveHeaderHandle:
                     self.header_notif = True
                 elif handle == self.ReceivePayloadHandle:
@@ -257,8 +257,9 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
             status = 0xFF
             response = ""
         except Exception:
+            #Don't allow exceptions in second thread or we will deadlock on closure
             status = 3
-            response= ""
+            response = ""
 
             print("*** EXCEPTION OCCURRED IN RPC ***")
             traceback.print_exc()
