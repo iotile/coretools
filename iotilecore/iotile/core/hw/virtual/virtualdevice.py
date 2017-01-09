@@ -160,6 +160,12 @@ class VirtualIOTileDevice(object):
 
         return self.reports
 
+    def close_streaming_interface(self):
+        """Called when someone closes the streaming interface to the device
+        """
+
+        pass
+
     def push_script_chunk(self, chunk):
         """Called when someone pushes a new bit of a TRUB script to this device
 

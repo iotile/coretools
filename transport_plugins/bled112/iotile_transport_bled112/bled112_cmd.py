@@ -489,6 +489,43 @@ class BLED112CommandProcessor(threading.Thread):
 
         return True, {'status': status, 'length': length, 'payload': resp_payload}
 
+    def _set_advertising_data(self, packet_type, data):
+        """Set the advertising data for advertisements sent out by this bled112
+
+        Args:
+            packet_type (int): 0 for advertisement, 1 for scan response
+            data (bytearray): the data to set
+        """
+
+        payload = struct.pack("<BB%ss" % (len(data)), packet_type, len(data), str(data))
+        response = self._send_command(6, 9, payload)
+
+        result, = unpack("<H", response.payload)
+        if result != 0:
+            return False, {'reason': 'Error code from BLED112 setting advertising data', 'code': result}
+
+        return True, None
+
+    def _set_mode(self, discover_mode, connect_mode):
+        """Set the mode of the BLED112, used to enable and disable advertising
+
+        To enable advertising, use 4, 2.
+        To disable advertising use 0, 0.
+
+        Args:
+            discover_mode (int): The discoverability mode, 0 for off, 4 for on (user data)
+            connect_mode (int): The connectability mode, 0 for of, 2 for undirected connectable
+        """
+
+        payload = struct.pack("<BB", discover_mode, connect_mode)
+        response = self._send_command(6, 1, payload)
+
+        result, = unpack("<H", response.payload)
+        if result != 0:
+            return False, {'reason': 'Error code from BLED112 setting mode', 'code': result}
+
+        return True, None
+
     def _set_notification(self, conn, char, enabled, timeout=1.0):
         """Enable/disable notifications on a GATT characteristic
 
@@ -595,7 +632,7 @@ class BLED112CommandProcessor(threading.Thread):
                 event_handle, = unpack("B", event.payload[0:1])
                 return event_handle == handle
 
-            return False
+            return Falser
 
         #FIXME Hardcoded timeout
         events = self._wait_process_events(3.0, lambda x: False, disconnect_succeeded)

@@ -44,6 +44,10 @@ class BGAPIPacket(object):
         make_command(6, 4): [],
         make_resp(6, 4): ["H", ["result"]],
 
+        #Set Mode
+        make_command(6, 1): ["BB", ["discover", "connect"]],
+        make_resp(6, 1): ["H", ["result"]],
+
         #Get system status
         make_command(0, 6): [],
         make_resp(0, 6): ["B", ["max_connections"]], #system status response
@@ -192,6 +196,7 @@ class MockBLED112(object):
         self.handlers[make_command(4, 4)] = self._read_handle
         self.handlers[make_command(4, 5)] = self._write_handle
         self.handlers[make_command(4, 6)] = self._write_command
+        self.handlers[make_command(6, 1)] = self._set_mode
     
     def generate_response(self, packetdata):
         try:
@@ -235,6 +240,10 @@ class MockBLED112(object):
 
         #FIXME If we can't read the handle value then send a different completed event
         return packets
+
+    def _set_mode(self, payload):
+        resp = {'type': bgapi_resp(6, 1), 'result': 0}
+        return [resp]
 
     def _write_handle(self, payload):
         handle = payload['handle']
