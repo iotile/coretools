@@ -26,6 +26,8 @@ setup(
         "iotile-core>=3.0.0"
     ],
     description="IOTile Core Tools",
+    entry_points={'iotile.virtual_device': ['simple = iotile.mock.devices.simple_virtual_device:SimpleVirtualDevice'],
+                  'iotile.proxy': ['simple = iotile.mock.devices.simple_virtual_proxy']},
     author="Arch",
     author_email="info@arch-iot.com",
     url="https://github.com/iotile/coretools/iotilecore",

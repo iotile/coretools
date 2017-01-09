@@ -13,7 +13,8 @@ setup(
         "pyserial>=3.1.1"
     ],
 
-    entry_points={'iotile.device_adapter': ['bled112 = iotile_transport_bled112.bled112:BLED112Adapter']},
+    entry_points={'iotile.device_adapter': ['bled112 = iotile_transport_bled112.bled112:BLED112Adapter'],
+                  'iotile.virtual_interface': ['bled112 = iotile_transport_bled112.virtual_bled112:BLED112VirtualInterface']},
     description="IOTile BLED112 Transport Plugin",
     author="Arch",
     author_email="info@arch-iot.com",

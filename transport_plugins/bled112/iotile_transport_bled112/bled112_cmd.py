@@ -489,6 +489,63 @@ class BLED112CommandProcessor(threading.Thread):
 
         return True, {'status': status, 'length': length, 'payload': resp_payload}
 
+    def _set_advertising_data(self, packet_type, data):
+        """Set the advertising data for advertisements sent out by this bled112
+
+        Args:
+            packet_type (int): 0 for advertisement, 1 for scan response
+            data (bytearray): the data to set
+        """
+
+        payload = struct.pack("<BB%ss" % (len(data)), packet_type, len(data), str(data))
+        response = self._send_command(6, 9, payload)
+
+        result, = unpack("<H", response.payload)
+        if result != 0:
+            return False, {'reason': 'Error code from BLED112 setting advertising data', 'code': result}
+
+        return True, None
+
+    def _set_mode(self, discover_mode, connect_mode):
+        """Set the mode of the BLED112, used to enable and disable advertising
+
+        To enable advertising, use 4, 2.
+        To disable advertising use 0, 0.
+
+        Args:
+            discover_mode (int): The discoverability mode, 0 for off, 4 for on (user data)
+            connect_mode (int): The connectability mode, 0 for of, 2 for undirected connectable
+        """
+
+        payload = struct.pack("<BB", discover_mode, connect_mode)
+        response = self._send_command(6, 1, payload)
+
+        result, = unpack("<H", response.payload)
+        if result != 0:
+            return False, {'reason': 'Error code from BLED112 setting mode', 'code': result}
+
+        return True, None
+
+    def _send_notification(self, handle, value):
+        """Send a notification to all connected clients on a characteristic
+
+        Args:
+            handle (int): The handle we wish to notify on
+            value (bytearray): The value we wish to send
+        """
+
+        value_len = len(value)
+        value = str(value)
+
+        payload = struct.pack("<BHB%ds" % value_len, 0xFF, handle, value_len, value)
+
+        response = self._send_command(2, 5, payload)
+        result, = unpack("<H", response.payload)
+        if result != 0:
+            return False, {'reason': 'Error code from BLED112 notifying a value', 'code': result, 'handle': handle, 'value': value}
+
+        return True, None
+
     def _set_notification(self, conn, char, enabled, timeout=1.0):
         """Enable/disable notifications on a GATT characteristic
 

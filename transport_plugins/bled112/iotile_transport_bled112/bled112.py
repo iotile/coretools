@@ -548,6 +548,8 @@ class BLED112Adapter(DeviceAdapter):
             self._connections[conn] = {'handle': conn, 'connection_id': len(self._connections)}
             self.disconnect_sync(0)
 
+        self._command_task.sync_command(['_set_mode', 0, 0]) #Disable advertising
+
         self._logger.critical("BLED112 adapter supports %d connections", self.maximum_connections)
 
     def _on_disconnect(self, result):
