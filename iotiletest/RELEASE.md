@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 0.3.0
+
+- Include simple virtual device and simple proxy for testing virtual device
+  interface.
+
 ## 0.2.0
 
 - Mock dependency resolver object for testing dependency resolution process

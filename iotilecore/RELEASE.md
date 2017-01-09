@@ -2,6 +2,12 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.6.0
+
+- Create a virtual device interface for serving access to virtual iotile devices that
+  let people connect to computers like you connect to any other IOTile device.
+- Add virtual_device script to make it easy to setup a virtual iotile device.
+
 ## 3.5.3
 
 - Update IOTile to find component dependencies listed in architecture overlays as
