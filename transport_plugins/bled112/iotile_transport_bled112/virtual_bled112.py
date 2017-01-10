@@ -300,5 +300,8 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         if chunk is None or len(chunk) == 0:
             return
 
-        self._send_notification(self.StreamingHandle, chunk)
-        self._defer(self._stream_data)
+        try:
+            self._send_notification(self.StreamingHandle, chunk)
+            self._defer(self._stream_data)
+        except RuntimeError, exc:
+            self._audit('ErrorStreamingReport') #If there was an error, stop streaming but don't choke

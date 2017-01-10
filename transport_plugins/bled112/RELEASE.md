@@ -2,6 +2,11 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
+## 1.3.1
+
+- Catch errors streaming reports in virtual device and don't choke, instead stop streaming reports
+  and log an audit message.
+
 ## 1.3.0
 
 - Include the ability to stream reports

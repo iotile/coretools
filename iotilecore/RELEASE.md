@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.6.2
+
+- Add audit message for error streaming report
+
 ## 3.6.1
 
 - Provide generic implementation of report chunking and streaming.

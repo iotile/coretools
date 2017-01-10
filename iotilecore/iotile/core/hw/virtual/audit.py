@@ -11,4 +11,5 @@ RPCInterfaceOpened = AuditEvent('RPCInterfaceOpened', 'A client opened the RPC i
 StreamingInterfaceOpened = AuditEvent('StreamingInterfaceOpened', 'A client opened the streaming interface on this device', frozenset(), frozenset())
 StreamingInterfaceClosed = AuditEvent('StreamingInterfaceClosed', 'A client closed the streaming interface on this device', frozenset(), frozenset())
 ReportStreamed = AuditEvent('ReportStreamed', 'The device streamed a report to the client, report=%(report)s', frozenset(['report']), frozenset())
+ErrorStreamingReport = AuditEvent('ErrorStreamingReport', 'There was an error sending a report to the client, further streaming has been stopped', frozenset(), frozenset())
 RPCReceived = AuditEvent('RPCReceived', 'An RPC has been processed (id=%(rpc_id)s, address=%(address)s, payload="%(payload)s"), status=%(status)d, response="%(response)s"', frozenset(['rpc_id', 'address', 'payload', 'status', 'response']), frozenset())
