@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 0.5.0
+
+- Update invidual_reports device to report_test device and add support for SignedList
+  report type.
+
 ## 0.4.2
 
 - Allow iotile ids to be specified as hex strings or integers

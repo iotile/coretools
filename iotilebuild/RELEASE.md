@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.2.8
+
+- Add explicit dependency on setuptools and wheel to make sure we have the bdist_wheel
+  commmand.
+
 ## 2.2.7
 
 - Update build system to allow modules to specify architecture overlays, not just other
