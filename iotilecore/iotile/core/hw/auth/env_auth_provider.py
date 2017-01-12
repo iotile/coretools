@@ -1,17 +1,49 @@
 import hashlib
 import hmac
 import struct
+import os
 from auth_provider import AuthProvider, KnownSignatureMethods
 from iotile.core.exceptions import NotFoundError
 
-class BasicAuthProvider(AuthProvider):
-    """Basic default authentication provider that can only calculate sha256 hashes
+class EnvAuthProvider(AuthProvider):
+    """Basic authentication provider that can sign and verify using user keys
+
+    Keys must be defined in environment variables with the naming scheme:
+    USER_KEY_ABCDEFGH where ABCDEFGH is the device uuid in hex prepended with 0s
+    and expressed in capital letters.  So the device with UUID 0xab would look
+    for the environment variable USER_KEY_000000AB.  
+
+    The key must be a 64 character hex string that is decoded to create a 32 byte key.
     """
+
+    @classmethod
+    def _get_key(cls, device_id):
+        """Attempt to get a user key from an environment variable
+        """
+
+        var_name = "USER_KEY_{0:08X}".format(device_id)
+
+        if var_name not in os.environ:
+            raise NotFoundError("No user key could be found for devices", device_id=device_id, expected_variable_name=var_name)
+
+        key_var = os.environ[var_name]
+        if len(key_var) != 64:
+            raise NotFoundError("User key in variable is not the correct length, should be 64 hex characters", device_id=device_id, key_value=key_var)
+
+        try:
+            key = key_var.decode('hex')
+        except ValueError:
+            raise NotFoundError("User key in variable could not be decoded from hex", device_id=device_id, key_value=key_var)
+
+        if len(key) != 32:
+            raise NotFoundError("User key in variable is not the correct length, should be 64 hex characters", device_id=device_id, key_value=key_var)
+
+        return key
 
     def sign(self, device_id, sig_method, data):
         """Sign a buffer of data on behalf of a device
 
-        This routine only supports hash only signatures
+        This routine only supports user key based signing
 
         Args:
             device_id (int): The id of the device that we should encrypt for
@@ -31,10 +63,12 @@ class BasicAuthProvider(AuthProvider):
         self._check_signature_method(sig_method)
         method_name = KnownSignatureMethods[sig_method]
 
-        if method_name == 'hash_only_sha256':
-            result = bytearray(hashlib.sha256(data).digest())
+        if method_name == 'hmac_sha256_user_key':
+            key = self._get_key(device_id)
+            hmac_calc = hmac.new(key, data, hashlib.sha256)
+            result = bytearray(hmac_calc.digest())
         else:
-            raise NotFoundError('unsupported signature method in BasicAuthProvider', method=method_name)
+            raise NotFoundError('unsupported signature method in EnvAuthProvider', method=method_name)
 
         return {'signature': result, 'method': method_name}
 
@@ -60,10 +94,12 @@ class BasicAuthProvider(AuthProvider):
         self._check_signature_method(sig_method)
         method_name = KnownSignatureMethods[sig_method]
 
-        if method_name == 'hash_only_sha256':
-            result = bytearray(hashlib.sha256(data).digest())
+        if method_name == 'hmac_sha256_user_key':
+            key = self._get_key(device_id)
+            hmac_calc = hmac.new(key, data, hashlib.sha256)
+            result = bytearray(hmac_calc.digest())
         else:
-            raise NotFoundError('unsupported signature method in BasicAuthProvider', method=method_name)
+            raise NotFoundError('unsupported signature method in EnvAuthProvider', method=method_name)
 
         if len(signature) == 0:
             verified = False

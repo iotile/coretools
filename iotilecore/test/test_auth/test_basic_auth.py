@@ -51,25 +51,5 @@ def test_methods_not_supported():
     with pytest.raises(NotFoundError):
         auth.sign(0, 2, data)
 
-def test_hmac_rfc_vector():
-    """Make sure we correctly reproduce Test Case 2 in rfc4231
-
-    https://tools.ietf.org/html/rfc4231#section-4.2
-    """
-
-    auth = BasicAuthProvider()
-    data = bytearray("what do ya want for nothing?")
-    data2 = bytearray("7768617420646f2079612077616e7420666f72206e6f7468696e673f".decode("hex"))
-    assert data == data2
-
-    uuid = 0x6566654a #Little endien encoded uint32_t 'Jefe'
-
-    packed_uuid = struct.pack("<L", uuid)
-    assert packed_uuid == 'Jefe'
-
-    known_sig = bytearray("5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843".decode('hex'))
-
-    sig = auth.sign(uuid, 1, data)
-
-    assert hmac.compare_digest(known_sig, sig['signature'])
-    assert auth.verify(uuid, 1, data, known_sig)['verified']
+    with pytest.raises(NotFoundError):
+        auth.sign(0, 1, data)

@@ -6,10 +6,14 @@ methods that it provides with their own implementations.
 
 from iotile.core.exceptions import NotFoundError
 
+HashOnlySHA256Signature = 0
+HMACSHA256UserKey = 1
+HMACSHA256FactoryKey = 2
+
 KnownSignatureMethods = {
-    0: 'hash_only_sha256',          #Data is not signed, there is simply a sha256 integrity check
-    1: 'hmac_sha256_uuid',          #Data is signed simply with HMAC using the device's uuid as the key
-    2: 'hmac_sha256_device_key'     #Data is signed with HMAC using a secret key associated with the device
+    HashOnlySHA256Signature:    'hash_only_sha256',          #Data is not signed, there is simply a sha256 integrity check
+    HMACSHA256UserKey:          'hmac_sha256_user_key',          #Data is signed simply with HMAC using a user settable key on the device
+    HMACSHA256FactoryKey:       'hmac_sha256_factory_key'     #Data is signed with HMAC using a factory set secret key associated with the device
 }
 
 class AuthProvider(object):
