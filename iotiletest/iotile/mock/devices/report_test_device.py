@@ -3,13 +3,13 @@
 
 from iotile.core.hw.virtual.virtualdevice import VirtualIOTileDevice, rpc, RPCInvalidIDError, RPCNotFoundError, TileNotFoundError
 from iotile.core.exceptions import ArgumentError
-from iotile.core.hw.reports.individual_format import IndividualReadingReport, IOTileReading
+from iotile.core.hw.reports import IndividualReadingReport, IOTileReading, SignedListReport
 
-class IndividualReportTestDevice(VirtualIOTileDevice):
+class ReportTestDevice(VirtualIOTileDevice):
     """Mock IOTileDevice that creates a sequence of reports upon connection
 
     This device can be considered a reference implementation of the individual
-    reading report format.
+    reading and signed list report formats.
 
     Args:
         args (dict): Any arguments that you want to pass to create this device.
@@ -27,6 +27,11 @@ class IndividualReportTestDevice(VirtualIOTileDevice):
                     reading_max keys (default: 0, 100)
                     sequential will sequentially generate reading values starting
                     at reading_start (default: 0)
+                format (string): The report format to package in (either individual
+                or signed_list).  (default: individual)
+                report_length (int): The maximum number of readings per report
+                    (default: 10).  The only applies to report formats that can contain
+                    multiple readings
     """
 
     def __init__(self, args):
@@ -52,7 +57,13 @@ class IndividualReportTestDevice(VirtualIOTileDevice):
         else:
             raise ArgumentError("Unknown reading generator mechanism", reading_generator=generator, known_generators=['sequential', 'random'])
 
-        super(IndividualReportTestDevice, self).__init__(iotile_id, 'Simple')
+        self.format = args.get('format', 'individual')
+        if self.format not in ['individual', 'signed_list']:
+            raise ArgumentError("Unknown report format for generator", format=self.format, known_formats=['individual', 'signed_list'])
+
+        self.report_length = args.get('report_length', 10)
+
+        super(ReportTestDevice, self).__init__(iotile_id, 'Simple')
 
     @rpc(8, 0x0004, "", "H6sBBBB")
     def controller_name(self):
@@ -64,14 +75,13 @@ class IndividualReportTestDevice(VirtualIOTileDevice):
         return [0xFFFF, self.name, 1, 0, 0, status]
 
     def _generate_sequential(self):
-        reports = []
+        readings = []
         
         for i in xrange(self.reading_start, self.num_readings+self.reading_start):
-            reading = IOTileReading(i-self.reading_start, self.stream_id, i)
-            report = IndividualReadingReport.FromReadings(self.iotile_id, [reading])
-            reports.append(report)
+            reading = IOTileReading(i-self.reading_start, self.stream_id, i, reading_id=i-self.reading_start)
+            readings.append(reading)
 
-        return reports
+        return readings
 
     def _generate_random(self):
         return []
@@ -84,5 +94,16 @@ class IndividualReportTestDevice(VirtualIOTileDevice):
                 the streaming interface.
         """
 
-        reports = self.generator()
+        readings = self.generator()
+
+        reports = []
+
+        if self.format == 'individual':
+            reports = [IndividualReadingReport.FromReadings(self.iotile_id, [reading]) for reading in readings]
+        elif self.format == 'signed_list':
+            for i in xrange(0, len(readings), self.report_length):
+                chunk = readings[i:i+self.report_length]
+                report = SignedListReport.FromReadings(self.iotile_id, chunk)
+                reports.append(report)
+
         return reports

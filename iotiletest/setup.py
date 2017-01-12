@@ -27,7 +27,7 @@ setup(
     ],
     description="IOTile Core Tools",
     entry_points={'iotile.virtual_device': ['simple = iotile.mock.devices.simple_virtual_device:SimpleVirtualDevice',
-                                            'individual_reports = iotile.mock.devices.individual_report_test_device:IndividualReportTestDevice'],
+                                            'report_test = iotile.mock.devices.report_test_device:ReportTestDevice'],
                   'iotile.proxy': ['simple = iotile.mock.devices.simple_virtual_proxy']},
     author="Arch",
     author_email="info@arch-iot.com",
