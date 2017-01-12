@@ -89,6 +89,8 @@ class SignedListReport(IOTileReport):
         self.streamer_selector = streamer_selector
         self.signature_flags = signature_flags
 
+        assert len(self.raw_report) == length
+
         remaining = self.raw_report[20:]
         assert len(remaining) >= 24
         readings = remaining[:-24]
@@ -134,7 +136,7 @@ class SignedListReport(IOTileReport):
         len_low = report_len & 0xFF
         len_high = report_len >> 8
 
-        if len(self.visible_readings) > 0:        
+        if len(self.visible_readings) > 0:
             lowest_id = min([x.reading_id for x in self.visible_readings if x.reading_id != IOTileReading.InvalidReadingID])
             highest_id = max([x.reading_id for x in self.visible_readings if x.reading_id != IOTileReading.InvalidReadingID])
 
@@ -150,5 +152,5 @@ class SignedListReport(IOTileReport):
         #FIXME: Actually calculate a footer here
         footer = struct.pack("<LL16s", lowest_id, highest_id, '\0'*16)
         footer = bytearray(footer)
-        
+
         return header + readings + footer
