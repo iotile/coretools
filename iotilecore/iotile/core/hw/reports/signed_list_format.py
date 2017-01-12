@@ -45,18 +45,39 @@ class SignedListReport(IOTileReport):
         """Generate an instance of the report format from a list of readings and a uuid
         """
 
-        if len(readings) != 1:
-            raise ArgumentError("IndividualReading reports must be created with exactly one reading", num_readings=len(readings))
+        lowest_id = IOTileReading.InvalidReadingID
+        highest_id = IOTileReading.InvalidReadingID
 
-        reading = readings[0]
-        data = struct.pack("<BBHLLLL", 0, 0, reading.stream, uuid, 0, reading.raw_time, reading.value)
+        report_len = 20 + 16*len(readings) + 24
+        len_low = report_len & 0xFF
+        len_high = report_len >> 8
+
+        unique_readings = [x.reading_id for x in readings if x.reading_id != IOTileReading.InvalidReadingID]
+        if len(unique_readings) > 0:  
+            lowest_id = min(unique_readings)
+            highest_id = max(unique_readings)
+
+        header = struct.pack("<BBHLLLBBH", cls.ReportType, len_low, len_high, uuid, 0, 0, 0, 0, 0xFFFF)
+        header = bytearray(header)
+
+        packed_readings = bytearray()
+
+        for reading in readings:
+            packed_reading = struct.pack("<HHLLL", reading.stream, 0, reading.reading_id, reading.raw_time, reading.value)
+            packed_readings += bytearray(packed_reading)
+
+        #FIXME: Actually calculate a footer here
+        footer = struct.pack("<LL16s", lowest_id, highest_id, '\0'*16)
+        footer = bytearray(footer)
+        
+        data = header + packed_readings + footer
         return SignedListReport(data)
 
     def decode(self):
         """Decode this report into a list of readings
         """
 
-        fmt, len_low, len_high, device_id, report_id, sent_timestamp, signature_flags, origin_streamer, streamer_selector = unpack("<BBHLLLBBH", self.raw_report)
+        fmt, len_low, len_high, device_id, report_id, sent_timestamp, signature_flags, origin_streamer, streamer_selector = unpack("<BBHLLLBBH", self.raw_report[:20])
 
         assert fmt == 1
         length = (len_high << 8) | len_low
@@ -106,9 +127,28 @@ class SignedListReport(IOTileReport):
         if hasattr(self, 'raw_report'):
             return self.raw_report
 
-        #
+        lowest_id = IOTileReading.InvalidReadingID
+        highest_id = IOTileReading.InvalidReadingID
 
-        reading = self.visible_readings[0]
-        data = struct.pack("<BBHLLLL", 0, 0, reading.stream, self.origin, self.sent_timestamp, reading.raw_time, reading.value)
+        report_len = 20 + 16*len(self.visible_readings) + 24
+        len_low = report_len & 0xFF
+        len_high = report_len >> 8
 
-        return bytearray(data)
+        if len(self.visible_readings) > 0:        
+            lowest_id = min([x.reading_id for x in self.visible_readings if x.reading_id != IOTileReading.InvalidReadingID])
+            highest_id = max([x.reading_id for x in self.visible_readings if x.reading_id != IOTileReading.InvalidReadingID])
+
+        header = struct.pack("<BBHLLLBBH", self.ReportType, len_low, len_high, self.origin, self.report_id, self.sent_timestamp, self.signature_flags, self.origin_streamer, self.streamer_selector)
+        header = bytearray(header)
+
+        readings = bytearray()
+
+        for reading in self.visible_readings:
+            packed_reading = struct.pack("<HHLLL", reading.stream, 0, reading.reading_id, reading.raw_time, reading.value)
+            readings += bytearray(packed_reading)
+
+        #FIXME: Actually calculate a footer here
+        footer = struct.pack("<LL16s", lowest_id, highest_id, '\0'*16)
+        footer = bytearray(footer)
+        
+        return header + readings + footer

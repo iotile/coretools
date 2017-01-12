@@ -31,6 +31,9 @@ class IOTileReading(object):
         if time_base is not None:
             self.reading_time = time_base + datetime.timedelta(seconds=raw_time)
 
+    def __eq__(self, other):
+        return self.raw_time == other.raw_time and self.stream == other.stream and self.value == other.value and self.reading_id == other.reading_id
+
     def __str__(self):
         if self.reading_time is not None:
             return "Stream {}: {} at {}".format(self.stream, self.value, self.reading_time)
@@ -120,6 +123,18 @@ class IOTileReport(object):
         """
 
         return self.raw_report
+
+    def save(self, path):
+        """Save a binary copy of this report
+
+        Args:
+            path (string): The path where we should save the binary copy of the report
+        """
+
+        data = self.encode()
+
+        with open(path, "wb") as out:
+            out.write(data)
 
     def serialize(self):
         """Turn this report into a dictionary that encodes all information including received timestamp

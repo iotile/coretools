@@ -23,7 +23,7 @@ class IOTileReportParser (object):
 
     #States for parser state machine
     WaitingForReportType = 1
-    WaitingForReportHeader = 2 
+    WaitingForReportHeader = 2
     WaitingForCompleteReport = 3
     ErrorState = 4
 
