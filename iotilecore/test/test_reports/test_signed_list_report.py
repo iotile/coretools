@@ -35,3 +35,16 @@ def test_basic_parsing():
 
     for i, reading in enumerate(report.visible_readings):
         assert reading == report2.visible_readings[i]
+
+def test_footer_calculation():
+    """
+    """
+
+    report1 = make_sequential(1, 0x1000, 10, give_ids=False)
+    report2 = make_sequential(1, 0x1000, 10, give_ids=True)
+
+    assert report1.lowest_id == 0xFFFFFFFF
+    assert report1.highest_id == 0xFFFFFFFF
+
+    assert report2.lowest_id == 0
+    assert report2.highest_id == 9
