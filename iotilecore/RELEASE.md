@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.7.0
+
+- Add SignedList report format for streaming signed lists of multiple readings in
+  a single report
+
 ## 3.6.2
 
 - Add audit message for error streaming report

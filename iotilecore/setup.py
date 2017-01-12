@@ -44,7 +44,8 @@ setup(
             'recorded = iotile.core.hw.transport.recordedstream:RecordedStream'
         ],
         'iotile.report_format': [
-            'individual = iotile.core.hw.reports.individual_format:IndividualReadingReport'
+            'individual = iotile.core.hw.reports.individual_format:IndividualReadingReport',
+            'signed_list = iotile.core.hw.reports.signed_list_format:SignedListReport'
             ]
     },
     description="IOTile Core Tools",

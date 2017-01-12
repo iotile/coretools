@@ -3,12 +3,28 @@ import os
 import pytest
 from iotile.core.exceptions import *
 from iotile.core.hw.reports.parser import IOTileReportParser
+from iotile.core.hw.reports.report import IOTileReading
 from iotile.core.hw.reports.individual_format import IndividualReadingReport
+from iotile.core.hw.reports.signed_list_format import SignedListReport
 import struct
 import datetime
 
 def make_report(uuid, stream, value, timestamp, sent_time):
     return struct.pack("<BBHLLLL", 0, 0, stream, uuid, sent_time, timestamp, value)
+
+def make_sequential(iotile_id, stream, num_readings, give_ids=False):
+    readings = []
+
+    for i in xrange(0, num_readings):
+        if give_ids:
+            reading = IOTileReading(i, stream, i, reading_id=i)
+        else:
+            reading = IOTileReading(i, stream, i)
+
+        readings.append(reading)
+        
+    report = SignedListReport.FromReadings(iotile_id, readings)
+    return report.encode()
 
 class TestReportParser(unittest.TestCase):
     """
@@ -87,3 +103,36 @@ class TestReportParser(unittest.TestCase):
         report2 = IOTileReportParser.DeserializeReport(ser)
         assert report2.origin == report.origin
         assert report2.received_time == report.received_time
+
+    def test_mixed_types(self):
+        """Make sure we can parse a mixture of different report types
+        """
+
+        report1 = make_report(10, 1, 2, 3, 4)
+        report2 = make_sequential(1, 2, 11, True)
+
+        self.parser.add_data(report1)
+        self.parser.add_data(report2)
+        self.parser.add_data(report1)
+
+        assert len(self.parser.reports) == 3
+
+        report1 = self.parser.reports[0]
+        report2 = self.parser.reports[1]
+        report3 = self.parser.reports[2]
+
+        assert isinstance(report1, IndividualReadingReport)
+        assert isinstance(report2, SignedListReport)
+        assert isinstance(report3, IndividualReadingReport)
+
+        assert len(report2.visible_readings) == 11
+        assert self.parser.state == self.parser.WaitingForReportType
+
+        #Make sure the readings in report2 are correct
+        for i in xrange(0, len(report2.visible_readings)):
+            reading = report2.visible_readings[i]
+
+            assert reading.value == i
+            assert reading.raw_time == i
+            assert reading.reading_id == i
+            assert reading.stream == 2

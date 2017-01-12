@@ -101,3 +101,21 @@ def test_serialization():
     assert ser['received_time'] == received_time
     assert ser['origin'] == 10
     assert ser['report_format'] == IndividualReadingReport.ReportType
+
+def test_save(tmpdir):
+    """Make sure we can save and load this report from a file
+    """
+    p = tmpdir.join('out.bin')
+
+    report_data = make_report(10, 1, 2, 3, 4)
+    received_time = datetime.datetime.utcnow()
+
+    report = IndividualReadingReport(report_data, received_time=received_time)
+    report.save(str(p))
+
+    data = p.read()
+
+    report2 = IndividualReadingReport(data, received_time=received_time)
+
+    assert report2.origin == report.origin
+    assert report2.sent_timestamp == report.sent_timestamp

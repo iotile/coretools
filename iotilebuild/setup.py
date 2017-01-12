@@ -34,7 +34,9 @@ setup(
         "Cheetah>=2.4.4",
         "breathe>=4.2.0",
         "pygtrie>=2.0.0",
-        "toposort>=1.5.0"
+        "toposort>=1.5.0",
+        "wheel>=0.29",
+        "setuptools>=32"
     ],
     include_package_data=True,
     entry_points={'iotile.plugin': ['.build = iotile.build.plugin:setup_plugin'],

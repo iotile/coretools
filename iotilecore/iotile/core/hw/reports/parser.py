@@ -23,7 +23,7 @@ class IOTileReportParser (object):
 
     #States for parser state machine
     WaitingForReportType = 1
-    WaitingForReportHeader = 2 
+    WaitingForReportHeader = 2
     WaitingForCompleteReport = 3
     ErrorState = 4
 
@@ -88,7 +88,7 @@ class IOTileReportParser (object):
                     self.error_callback(self.ErrorFindingReportType, str(exc), self.context)
                 else:
                     raise
-        
+
         if self.state == self.WaitingForReportHeader and len(self.raw_data) >= self.current_header_size:
             try:
                 self.current_report_size = self.calculate_report_size(self.current_type, self.raw_data[:self.current_header_size])

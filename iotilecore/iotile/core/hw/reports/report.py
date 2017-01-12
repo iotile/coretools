@@ -13,18 +13,26 @@ class IOTileReading(object):
         time_base (datetime): An optional estimate of when the device was
             last turned on so that we can calulate the actual time of the
             reading
+        reading_id (int): An optional unique identifier for this reading that allows
+            deduplication.
         stream (int): The stream that this reading is part of
         value (bytearray): the raw reading value
     """
 
-    def __init__(self, raw_time, stream, value, time_base=None):
+    InvalidReadingID = 0xFFFFFFFF
+
+    def __init__(self, raw_time, stream, value, time_base=None, reading_id=0xFFFFFFFF):
         self.raw_time = raw_time
         self.stream = stream
         self.value = value
+        self.reading_id = reading_id
 
         self.reading_time = None
         if time_base is not None:
             self.reading_time = time_base + datetime.timedelta(seconds=raw_time)
+
+    def __eq__(self, other):
+        return self.raw_time == other.raw_time and self.stream == other.stream and self.value == other.value and self.reading_id == other.reading_id
 
     def __str__(self):
         if self.reading_time is not None:
@@ -115,6 +123,18 @@ class IOTileReport(object):
         """
 
         return self.raw_report
+
+    def save(self, path):
+        """Save a binary copy of this report
+
+        Args:
+            path (string): The path where we should save the binary copy of the report
+        """
+
+        data = self.encode()
+
+        with open(path, "wb") as out:
+            out.write(data)
 
     def serialize(self):
         """Turn this report into a dictionary that encodes all information including received timestamp
