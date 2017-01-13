@@ -43,6 +43,9 @@ setup(
             'ws = iotile.core.hw.transport.websocketstream:WebSocketStream',
             'recorded = iotile.core.hw.transport.recordedstream:RecordedStream'
         ],
+        'iotile.device_adapter': [
+            'virtual = iotile.core.hw.transport.virtualadapter:VirtualDeviceAdapter'
+            ],
         'iotile.report_format': [
             'individual = iotile.core.hw.reports.individual_format:IndividualReadingReport',
             'signed_list = iotile.core.hw.reports.signed_list_format:SignedListReport'

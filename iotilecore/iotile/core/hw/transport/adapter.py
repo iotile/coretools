@@ -195,7 +195,7 @@ class DeviceAdapter(object):
             conn_id (int): A unique identifer that will refer to this connection
 
         Returns:
-            dict: A dictionary with two elements
+            dict: A dictionary with four elements
                 'success': a bool with the result of the connection attempt
                 'failure_reaon': a string with the reason for the failure if we failed
         """

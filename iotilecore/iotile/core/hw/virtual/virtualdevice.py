@@ -144,6 +144,12 @@ class VirtualIOTileDevice(object):
 
         pass
 
+    def close_rpc_interface(self):
+        """Called when someone closes an RPC interface to the device
+        """
+
+        pass
+
     def open_script_interface(self):
         """Called when someone opens a script interface on this device
         """
