@@ -12,6 +12,12 @@ All major changes in each released version of IOTileCore are listed here.
   SHA256 hashes (for integrity only) or HMAC-SHA256 using a key stored in an environment
   variable.
 
+- Add support for running virtual_devices direcly without a loopback adapter.  You can use
+  the virtual:<device_name>@path_to_config_json connection string to connect to the device
+  by its uuid.
+
+- Add test coverage for signing and verifying reports.
+
 
 ## 3.7.0
 

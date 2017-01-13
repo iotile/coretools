@@ -23,9 +23,9 @@ setup(
     version=version.version,
     license="LGPLv3",
     install_requires=[
-        "iotile-core>=3.0.0"
+        "iotile-core>=3.8.0"
     ],
-    description="IOTile Core Tools",
+    description="IOTile Test Infrastructure",
     entry_points={'iotile.virtual_device': ['simple = iotile.mock.devices.simple_virtual_device:SimpleVirtualDevice',
                                             'report_test = iotile.mock.devices.report_test_device:ReportTestDevice'],
                   'iotile.proxy': ['simple = iotile.mock.devices.simple_virtual_proxy']},
@@ -41,10 +41,11 @@ setup(
         "Topic :: Software Development :: Libraries :: Python Modules"
         ],
     long_description="""\
-IOTileCore
-------
+IOTileTest
+----------
 
-A python package for interacting with IOTile based devices.  See https://www.arch-iot.com.
+A python package for testing IOTile based infrastructure including mocks for major portions.  
 
+See https://www.arch-iot.com.
 """
 )

@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 0.5.1
+
+- Update report_test device to support SignedListReport types and report signing
+
 ## 0.5.0
 
 - Update invidual_reports device to report_test device and add support for SignedList
