@@ -23,7 +23,7 @@ setup(
     version=version.version,
     license="LGPLv3",
     install_requires=[
-        "iotile-core>=3.8.0"
+        "iotile-core>=3.0.0"
     ],
     description="IOTile Test Infrastructure",
     entry_points={'iotile.virtual_device': ['simple = iotile.mock.devices.simple_virtual_device:SimpleVirtualDevice',
