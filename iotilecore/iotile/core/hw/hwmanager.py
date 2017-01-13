@@ -23,34 +23,25 @@ import imp
 import sys
 from iotile.core.utilities.packed import unpack
 
-#FIXME: Update the docstring for this class
 @context("HardwareManager")
 class HardwareManager:
     """
-    A module for managing and interacting with MoMo Hardware
+    A module for managing and interacting with IOTile Hardware
 
     This context provides tools to configure, control, debug and program
-    any MoMo module.  Specific functionality can be implemented in dynamically
-    loaded proxy objects that should be distributed with each MoMo hardware module.
+    any IOTile module.  Specific functionality can be implemented in dynamically
+    loaded proxy objects that are designed to provide access to each IOTile.
 
     To create a HardwareManager, you need to pass a port string that describes the 
-    method to be used to connect to the MoMo hardware. The method should specify the 
+    method to be used to connect to the IOTile device. The method should specify the 
     name of the connection method optionally followed by a colon and any extra information
     possibly needed to connect using that method.
-
-    Currently supported methods are:
-    - Field Service Unit: you should pass fsu:<path to serial port or COMX on Windows>.
-      if you don't pass a serial port path, pymomo will attempt to guess it for you, which
-      usually works.  This is the default connection method if nothing is specified
-
-    - No Underlying Transport: you should pass null.  Any attempt to communicate with an
-      actual hardware device will fail.  This is primarily/only useful for unit testing.
     """
 
     @param("port", "string", desc="transport method to use in the format transport[:port[,connection_string]]")
     @param("record", "path", desc="Optional file to record all RPC calls and responses made on this HardwareManager")
     def __init__(self, port="none", record=None):
-        transport, delim, arg = port.partition(':')
+        transport, _, arg = port.partition(':')
 
         self.transport = transport
         self.port = None
@@ -62,7 +53,7 @@ class HardwareManager:
         self.stream = self._create_stream()
         self._stream_queue = None
         self.proxies = {'TileBusProxyObject': TileBusProxyObject}
-        self.name_map = {}
+        self.name_map = {TileBusProxyObject.ModuleName(): [TileBusProxyObject]}
 
         self._setup_proxies()
 
@@ -100,8 +91,8 @@ class HardwareManager:
         # Now create the appropriate proxy object based on the name and version of the tile 
         tile_type = self.get_proxy(name)
         if tile_type is None:
-            raise HardwareError("Could not find proxy object for tile", name=name)
-        
+            raise HardwareError("Could not find proxy object for tile", name="'{}'".format(name), known_names=self.name_map.keys())
+
         tile = tile_type(self.stream, address)      
         return tile
 
@@ -286,7 +277,7 @@ class HardwareManager:
 
     def _create_proxy(self, proxy, address):
         """
-        Create a python proxy object to talk to a MoMo module with the given type
+        Create a python proxy object to talk to an IOTile module with the given type
         at the given address.
         """
 
