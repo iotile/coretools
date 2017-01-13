@@ -39,6 +39,7 @@ def test_basic_parsing():
 
     assert report2.verified == True
     assert report.verified == True
+    assert report.signature_flags == 0
 
 def test_footer_calculation():
     """
@@ -65,5 +66,7 @@ def test_userkey_signing(monkeypatch):
     encoded = report1.encode()
     report2 = SignedListReport(encoded)
 
+    assert report1.signature_flags == 1
+    assert report2.signature_flags == 1
     assert report1.verified
     assert report2.verified

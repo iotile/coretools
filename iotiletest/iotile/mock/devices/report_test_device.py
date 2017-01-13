@@ -32,6 +32,10 @@ class ReportTestDevice(VirtualIOTileDevice):
                 report_length (int): The maximum number of readings per report
                     (default: 10).  The only applies to report formats that can contain
                     multiple readings
+                signing_method (int): The signature type to be applied to signed messages
+                    Common values would be 0 for a hash only signature with no origin 
+                    verification functionality or 1 for signing with a user set key.  
+                    (default: 0)
     """
 
     def __init__(self, args):
@@ -45,6 +49,8 @@ class ReportTestDevice(VirtualIOTileDevice):
 
         stream_string = args.get('stream_id', '5001')
         self.stream_id = int(stream_string, 0)
+
+        self.signing_method = args.get('signing_method', 0)
         
         #Now pull in args for the generator
         if generator == 'sequential':
@@ -78,7 +84,7 @@ class ReportTestDevice(VirtualIOTileDevice):
         readings = []
         
         for i in xrange(self.reading_start, self.num_readings+self.reading_start):
-            reading = IOTileReading(i-self.reading_start, self.stream_id, i, reading_id=i-self.reading_start)
+            reading = IOTileReading(i-self.reading_start, self.stream_id, i, reading_id=i-self.reading_start+1) #Start reading id at 1
             readings.append(reading)
 
         return readings
@@ -103,7 +109,7 @@ class ReportTestDevice(VirtualIOTileDevice):
         elif self.format == 'signed_list':
             for i in xrange(0, len(readings), self.report_length):
                 chunk = readings[i:i+self.report_length]
-                report = SignedListReport.FromReadings(self.iotile_id, chunk)
+                report = SignedListReport.FromReadings(self.iotile_id, chunk, signature_method=self.signing_method)
                 reports.append(report)
 
         return reports

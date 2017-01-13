@@ -146,7 +146,7 @@ class VirtualDeviceAdapter(DeviceAdapter):
             callback(conn_id, self.id, True, "")
         
         for report in reports:
-            self._trigger_callback('on_report', self.id, conn_id, report)
+            self._trigger_callback('on_report', conn_id, report)
 
     def _open_script_interface(self, conn_id, callback):
         """Open the script interface on a device
