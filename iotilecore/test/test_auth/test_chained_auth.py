@@ -12,19 +12,16 @@ def gen_test_data(length):
     data = bytearray([x for x in xrange(0, length)])
     return data
 
-def test_key_finding():
+def test_key_finding(monkeypatch):
     """Test to make sure we can find keys stored in environment variables
     """
 
     uuid = 1
     key1 = '0000000000000000000000000000000000000000000000000000000000000000'
-    os.environ['USER_KEY_00000001'] = key1
-    os.environ['USER_KEY_000000AB'] = 'abcd'
-    os.environ['USER_KEY_000000AC'] = 'hello world'
-
-    #Make sure there's no key 2
-    if 'USER_KEY_00000002' is os.environ:
-        del os.environ['USER_KEY_00000002']
+    monkeypatch.setenv('USER_KEY_00000001', key1)
+    monkeypatch.setenv('USER_KEY_000000AB', 'abcd')
+    monkeypatch.setenv('USER_KEY_000000AC', 'hello world')
+    monkeypatch.delenv('USER_KEY_00000002', raising=False)
 
     auth = ChainedAuthProvider()
 

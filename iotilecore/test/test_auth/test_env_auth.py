@@ -7,24 +7,23 @@ import struct
 import datetime
 import hashlib
 import hmac
+from copy import deepcopy
 
 def gen_test_data(length):
     data = bytearray([x for x in xrange(0, length)])
     return data
 
-def test_key_finding():
+def test_key_finding(monkeypatch):
     """Test to make sure we can find keys stored in environment variables
     """
 
     uuid = 1
     key1 = '0000000000000000000000000000000000000000000000000000000000000000'
-    os.environ['USER_KEY_00000001'] = key1
-    os.environ['USER_KEY_000000AB'] = 'abcd'
-    os.environ['USER_KEY_000000AC'] = 'hello world'
 
-    #Make sure there's no key 2
-    if 'USER_KEY_00000002' is os.environ:
-        del os.environ['USER_KEY_00000002']
+    monkeypatch.setenv('USER_KEY_00000001', key1)
+    monkeypatch.setenv('USER_KEY_000000AB', 'abcd')
+    monkeypatch.setenv('USER_KEY_000000AC', 'hello world')
+    monkeypatch.delenv('USER_KEY_00000002', raising=False)
 
     auth = EnvAuthProvider()
 
@@ -45,11 +44,12 @@ def test_key_finding():
     with pytest.raises(NotFoundError):
         auth.sign(2, 1, data)
 
-def test_hmac_rfc_vector():
+def test_hmac_rfc_vector(monkeypatch):
     """Make sure we correctly reproduce test cases in rfc4231
 
     https://tools.ietf.org/html/rfc4231#section-4.2
     """
+
 
     #Test Case 2
     auth = EnvAuthProvider()
@@ -57,7 +57,7 @@ def test_hmac_rfc_vector():
     data2 = bytearray("7768617420646f2079612077616e7420666f72206e6f7468696e673f".decode("hex"))
     assert data == data2
 
-    os.environ['USER_KEY_6566654A'] = '4a65666500000000000000000000000000000000000000000000000000000000'
+    monkeypatch.setenv('USER_KEY_6566654A', '4a65666500000000000000000000000000000000000000000000000000000000')
     uuid = 0x6566654a #Little endien encoded uint32_t 'Jefe'
 
     known_sig = bytearray("5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843".decode('hex'))

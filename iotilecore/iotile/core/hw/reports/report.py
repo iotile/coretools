@@ -19,9 +19,9 @@ class IOTileReading(object):
         value (bytearray): the raw reading value
     """
 
-    InvalidReadingID = 0xFFFFFFFF
+    InvalidReadingID = 0
 
-    def __init__(self, raw_time, stream, value, time_base=None, reading_id=0xFFFFFFFF):
+    def __init__(self, raw_time, stream, value, time_base=None, reading_id=0):
         self.raw_time = raw_time
         self.stream = stream
         self.value = value

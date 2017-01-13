@@ -5,8 +5,9 @@ import datetime
 import struct
 from report import IOTileReport, IOTileReading
 from iotile.core.utilities.packed import unpack
-from iotile.core.exceptions import ArgumentError
-
+from iotile.core.exceptions import ArgumentError, NotFoundError, EnvironmentError
+import iotile.core.hw.auth.auth_provider as auth_provider
+from iotile.core.hw.auth.auth_chain import ChainedAuthProvider
 
 class SignedListReport(IOTileReport):
     """A report that consists of a signed list of readings.
@@ -41,8 +42,16 @@ class SignedListReport(IOTileReport):
         return length
 
     @classmethod
-    def FromReadings(cls, uuid, readings):
+    def FromReadings(cls, uuid, readings, signature_method=auth_provider.HashOnlySHA256Signature, signer=None):
         """Generate an instance of the report format from a list of readings and a uuid
+
+        Args:
+            uuid (int): The uuid of the deviec that this report came from
+            readings (list): A list of IOTileReading objects containing the data in the report
+            signature_method (int): The method that should be used to sign the report (must be supported
+                by an auth_provider)
+            signer (AuthProvider): An optional preconfigured AuthProvider that should be used to sign this
+                report.  If no AuthProvider is provided, the default ChainedAuthProvider is used.
         """
 
         lowest_id = IOTileReading.InvalidReadingID
@@ -57,7 +66,7 @@ class SignedListReport(IOTileReport):
             lowest_id = min(unique_readings)
             highest_id = max(unique_readings)
 
-        header = struct.pack("<BBHLLLBBH", cls.ReportType, len_low, len_high, uuid, 0, 0, 0, 0, 0xFFFF)
+        header = struct.pack("<BBHLLLBBH", cls.ReportType, len_low, len_high, uuid, 0, 0, signature_method, 0, 0xFFFF)
         header = bytearray(header)
 
         packed_readings = bytearray()
@@ -66,8 +75,17 @@ class SignedListReport(IOTileReport):
             packed_reading = struct.pack("<HHLLL", reading.stream, 0, reading.reading_id, reading.raw_time, reading.value)
             packed_readings += bytearray(packed_reading)
 
-        #FIXME: Actually calculate a footer here
-        footer = struct.pack("<LL16s", lowest_id, highest_id, '\0'*16)
+        signed_data = header + packed_readings
+
+        if signer is None:
+            signer = ChainedAuthProvider()
+
+        try:
+            signature = signer.sign(uuid, signature_method, signed_data)
+        except NotFoundError:
+            raise EnvironmentError("Could not sign report because no AuthProvider supported the requested signature method for the requested device", device_id=uuid, signature_method=signature_method)
+        
+        footer = struct.pack("<LL16s", lowest_id, highest_id, str(signature['signature'][:16]))
         footer = bytearray(footer)
         
         data = header + packed_readings + footer
@@ -98,6 +116,15 @@ class SignedListReport(IOTileReport):
 
         lowest_id, highest_id, signature = unpack("<LL16s", footer)
         signature = bytearray(signature)
+
+        signed_data = self.raw_report[:-24]
+        signer = ChainedAuthProvider()
+
+        try:
+            verification = signer.verify(device_id, signature_flags, signed_data, signature)
+            self.verified = verification['verified']
+        except NotFoundError:
+            pass
 
         self.signature = signature
         self.lowest_id = lowest_id
