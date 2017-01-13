@@ -12,7 +12,6 @@ from iotile.core.exceptions import *
 def simple_hw():
     hw = HardwareManager('virtual:no_app')
     yield hw
-
     hw.disconnect()
 
 def test_finding_proxy(simple_hw):
