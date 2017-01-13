@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.8.1
+
+- Fix bug finding TileBusProxyObject when a tile does not have any application firmware installed
+  and add test coverage for this.
+
 ## 3.8.0
 
 - Add support for AuthProviders that can sign/verify/encrypt/decrypt data.  This functionality

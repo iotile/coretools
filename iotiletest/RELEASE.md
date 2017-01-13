@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 0.5.2
+
+- Add no_app test device for testing TileBusProxyObject
+
 ## 0.5.1
 
 - Update report_test device to support SignedListReport types and report signing
