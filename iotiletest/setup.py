@@ -22,9 +22,6 @@ setup(
     packages=find_packages(exclude=("test",)),
     version=version.version,
     license="LGPLv3",
-    install_requires=[
-        "iotile-core>=3.0.0"
-    ],
     description="IOTile Test Infrastructure",
     entry_points={'iotile.virtual_device': ['simple = iotile.mock.devices.simple_virtual_device:SimpleVirtualDevice',
                                             'report_test = iotile.mock.devices.report_test_device:ReportTestDevice',
