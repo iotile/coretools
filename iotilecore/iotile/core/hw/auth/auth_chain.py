@@ -1,43 +1,45 @@
-"""Auth providers are classes that can encrypt, decrypt, sign or verify data from IOTile devics
-
-All auth providers must inherit from the AuthProvider class defined in this file and override the
-methods that it provides with their own implementations.  
+"""An ordered list of authentication providers that are checked in turn to attempt a crypto operation
 """
 
 import pkg_resources
-from iotile.core.exceptions import NotFoundError, ArgumentError
+from auth_provider import AuthProvider, KnownSignatureMethods
+from iotile.core.exceptions import NotFoundError, EnvironmentError
 
-HashOnlySHA256Signature = 0
-HMACSHA256UserKey = 1
-HMACSHA256FactoryKey = 2
+class ChainedAuthProvider(AuthProvider):
+    """An AuthProvider that delegates operations to a list of subproviders
 
-KnownSignatureMethods = {
-    HashOnlySHA256Signature:    'hash_only_sha256',        #Data is not signed, there is simply a sha256 integrity check
-    HMACSHA256UserKey:          'hmac_sha256_user_key',    #Data is signed simply with HMAC using a user settable key on the device
-    HMACSHA256FactoryKey:       'hmac_sha256_factory_key'  #Data is signed with HMAC using a factory set secret key associated with the device
-}
+    Each subprovider is checked in turn and the first one able to satisfy a request
+    is used.  If no provider is available that can perform an operation, NotFoundError
+    is raised.
 
-class AuthProvider(object):
-    """Base class for all objects that provide a way to authenticate or protect data
-    
-    Args:
-        args (dict): An optional dictionary of AuthProvider specific config information
+    By default, the python entry_point group 'iotile.default_auth_providers' is used
+    to build the list of auth providers in the chain.  The entries in that group should
+    be tuples of (priority, auth_provider_class, arg_dict) where priority is an integer,
+    auth_provider_class is an AuthProvider subclass and arg_dict is a dictionary of 
+    arguments passed to the constructor of auth_provider.
     """
 
     def __init__(self, args=None):
-        if args is None:
-            args = {}
+        #FIXME: Allow overwriting default providers via args
+        self._load_installed_providers()
 
-        self.args = args
+        sub_providers = []
+        for entry in pkg_resources.iter_entry_points('iotile.default_auth_providers'):
+            priority, provider, args = entry.load()
 
-    @classmethod
-    def FindByName(self, name):
-        """
-        """
-        
+            if provider not in self._auth_factories:
+                raise EnvironmentError("Default authentication provider list references unknown auth provider", provider_name=provider, known_providers=self._auth_factories.keys())
+            configured = self._auth_factories[provider](args)
+            sub_providers.append((priority, configured))
+
+        sub_providers.sort(key=lambda x: x[0])
+        self.providers = sub_providers
+
+    def _load_installed_providers(self):
+        self._auth_factories = {}
+
         for entry in pkg_resources.iter_entry_points('iotile.auth_provider'):
-            if entry.name == name:
-                return entry.load()
+            self._auth_factories[entry.name] = entry.load()
 
     def encrypt(self, device_id, enc_method, data):
         """Encrypt a buffer of data on behalf of a device
@@ -57,7 +59,13 @@ class AuthProvider(object):
             NotFoundError: If the auth provider is not able to encrypt the data.
         """
 
-        raise NotFoundError("encrypt method is not implemented")
+        for priority, provider in self.providers:
+            try:
+                return provider.encrypt(device_id, enc_method, data)
+            except NotFoundError:
+                pass
+
+        raise NotFoundError("encrypt method is not implemented in any sub_providers")
 
     def decrypt(self, device_id, enc_method, data):
         """Decrypt a buffer of data on behalf of a device
@@ -77,7 +85,13 @@ class AuthProvider(object):
             NotFoundError: If the auth provider is not able to encrypt the data.
         """
 
-        raise NotFoundError("decrypt method is not implemented")
+        for priority, provider in self.providers:
+            try:
+                return provider.decrypt(device_id, enc_method, data)
+            except NotFoundError:
+                pass
+
+        raise NotFoundError("decrypt method is not implemented in any sub_providers")
 
     def sign(self, device_id, sig_method, data):
         """Sign a buffer of data on behalf of a device
@@ -97,7 +111,13 @@ class AuthProvider(object):
             NotFoundError: If the auth provider is not able to encrypt the data.
         """
 
-        raise NotFoundError("sign method is not implemented")
+        for priority, provider in self.providers:
+            try:
+                return provider.sign(device_id, sig_method, data)
+            except NotFoundError:
+                pass
+
+        raise NotFoundError("sign method is not implemented in any sub_providers")
 
     def verify(self, device_id, sig_method, data, signature):
         """Verify the signature attached to a buffer of data
@@ -117,10 +137,10 @@ class AuthProvider(object):
             NotFoundError: If the auth provider is not able to encrypt the data.
         """
 
-        raise NotFoundError("verify method is not implemented")
+        for priority, provider in self.providers:
+            try:
+                return provider.verify(device_id, sig_method, data, signature)
+            except NotFoundError:
+                pass
 
-    def _check_signature_method(self, sig_method):
-        if sig_method in KnownSignatureMethods:
-            return True
-
-        raise NotFoundError("unknown signature method", method=sig_method)
+        raise NotFoundError("verify method is not implemented in any sub_providers")

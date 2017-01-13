@@ -46,7 +46,16 @@ setup(
         'iotile.report_format': [
             'individual = iotile.core.hw.reports.individual_format:IndividualReadingReport',
             'signed_list = iotile.core.hw.reports.signed_list_format:SignedListReport'
-            ]
+        ],
+        'iotile.auth_provider': [
+            'BasicAuthProvider = iotile.core.hw.auth.basic_auth_provider:BasicAuthProvider',
+            'EnvAuthProvider = iotile.core.hw.auth.env_auth_provider:EnvAuthProvider',
+            'ChainedAuthProvider = iotile.core.hw.auth.auth_chain:ChainedAuthProvider'
+        ],
+        'iotile.default_auth_providers': [
+            'BasicAuthProvider = iotile.core.hw.auth.default_providers:DefaultBasicAuth',
+            'EnvAuthProvider = iotile.core.hw.auth.default_providers:DefaultEnvAuth'
+        ]
     },
     description="IOTile Core Tools",
     author="Arch",
