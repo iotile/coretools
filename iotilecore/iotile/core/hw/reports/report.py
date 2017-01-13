@@ -2,7 +2,7 @@
 """
 
 import datetime
-from iotile.core.exceptions import NotFoundError
+from iotile.core.exceptions import NotFoundError, ArgumentError
 
 class IOTileReading(object):
     """Base class for readings streamed from IOTile device
@@ -14,17 +14,21 @@ class IOTileReading(object):
             last turned on so that we can calulate the actual time of the
             reading
         reading_id (int): An optional unique identifier for this reading that allows
-            deduplication.
+            deduplication.  If no reading id is passed, InvalidReadingID is used.
         stream (int): The stream that this reading is part of
         value (bytearray): the raw reading value
     """
 
-    InvalidReadingID = 0xFFFFFFFF
+    InvalidReadingID = 0
 
-    def __init__(self, raw_time, stream, value, time_base=None, reading_id=0xFFFFFFFF):
+    def __init__(self, raw_time, stream, value, time_base=None, reading_id=None):
         self.raw_time = raw_time
         self.stream = stream
         self.value = value
+
+        if reading_id is None:
+            reading_id = IOTileReading.InvalidReadingID
+
         self.reading_id = reading_id
 
         self.reading_time = None

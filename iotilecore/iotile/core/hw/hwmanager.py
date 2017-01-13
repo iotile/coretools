@@ -8,7 +8,7 @@
 import pkg_resources
 
 from iotile.core.utilities.typedargs import *
-
+from Queue import Empty
 from iotile.core.hw.transport import *
 from iotile.core.hw.exceptions import *
 from iotile.core.exceptions import *
@@ -159,6 +159,26 @@ class HardwareManager:
             return 0
 
         return self._stream_queue.qsize()
+
+    def iter_reports(self, blocking=False):
+        """Iterate over reports that have been received
+
+        If blocking is True, this iterator will never stop.  Otherwise
+        it will iterate over all reports currently in the queue (and those
+        added during iteration)
+
+        Args:
+            blocking (bool): Whether to stop when there are no more readings or
+                block and wait for more.
+        """
+        if self._stream_queue is None:
+            return
+
+        try:
+            while True:
+                yield self._stream_queue.get(block=blocking)
+        except Empty:
+            pass
 
     @annotated
     def reset(self):

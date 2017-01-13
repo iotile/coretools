@@ -2,6 +2,17 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.8.0
+
+- Add support for AuthProviders that can sign/verify/encrypt/decrypt data.  This functionality
+  is needed for verifying the signatures on reports received from the devices and creating
+  signed reports.
+
+- Add default ChainedAuthProvider that provides report signing and verifying using either
+  SHA256 hashes (for integrity only) or HMAC-SHA256 using a key stored in an environment
+  variable.
+
+
 ## 3.7.0
 
 - Add SignedList report format for streaming signed lists of multiple readings in
