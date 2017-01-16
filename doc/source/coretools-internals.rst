@@ -105,19 +105,21 @@ how the current context changes as the result of each command::
 
 .. note::
     
-    The key idea is that every command in the ``iotile`` tool is a single python
-    function call and the arguments on the command line are arguments passed to
-    the function.  
+    The key idea to understand the iotile tools is that every command is a single 
+    python function call and the arguments on the command line are arguments passed
+    to that function.
 
-Type Conversions and Pretty-Printing
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Type Conversions
+^^^^^^^^^^^^^^^^
 
 Since ``iotile`` commands call the same python functions that you would invoke
 directly from a python script, there needs to be some mapping between the strings
 that you pass on the command line and the native python types that the API functions
 accept as parameters.  This mapping and conversion is the done by the ``typedargs`` 
 package that is part of ``iotile-core``.  See :ref:`typedargs-reference` for more
-details.
+details.  It requires that functions that you would like to call from ``iotile``
+be *annotated* with type information for their parameters and return value so
+that ``typedargs`` can appropriately convert the types to and from strings.
 
 Adding Your Own Commands to the IOTile Tool
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
