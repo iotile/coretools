@@ -2,6 +2,12 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 0.5.3
+
+- Fix device id processing to process strings as hex in report_test device and
+  add support for configuring more details about how the reports are generated.
+- Allow the creation of reports with no readings for testing.
+
 ## 0.5.2
 
 - Add no_app test device for testing TileBusProxyObject

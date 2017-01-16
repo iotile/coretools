@@ -17,10 +17,14 @@ class ReportTestDevice(VirtualIOTileDevice):
                 iotile_id (int): The UUID used for this device (default: 1)
                 num_readings (int): The number of readings to be generated every
                     time the streaming interface is opened. (default: 100)
-                start_timestamp (int): The first timestamp that should be generated
+                starting_timestamp (int): The first timestamp that should be generated
                     for the first Reading sent.  Timestamps are sequential for each
                     reading, so x, x+1, etc.
                     Default: 0
+                starting_id (int): The first reading id that should be generated
+                    for the first Reading sent.  Reading IDs will be sequential after
+                    starting_id so x, x+1, x+2.
+                    Default: 1
                 reading_generator (string): The method for generating readings. 
                     Options are: sequential, random (default: sequential)
                     random will generate random values between the reading_min and
@@ -48,9 +52,11 @@ class ReportTestDevice(VirtualIOTileDevice):
         self.num_readings = args.get('num_readings', 100)
 
         stream_string = args.get('stream_id', '5001')
-        self.stream_id = int(stream_string, 0)
+        self.stream_id = int(stream_string, 16)
 
         self.signing_method = args.get('signing_method', 0)
+        self.start_timestamp = args.get('starting_timestamp', 0)
+        self.start_id = args.get('starting_id', 1)
         
         #Now pull in args for the generator
         if generator == 'sequential':
@@ -69,6 +75,9 @@ class ReportTestDevice(VirtualIOTileDevice):
 
         self.report_length = args.get('report_length', 10)
 
+        if self.report_length == 0 and self.format != 'individual' and self.num_readings != 0:
+            raise ArgumentError("You cannot have a report length of 0 and more than 0 readings because that would be an infinite loop")
+
         super(ReportTestDevice, self).__init__(iotile_id, 'Simple')
 
     @rpc(8, 0x0004, "", "H6sBBBB")
@@ -84,7 +93,7 @@ class ReportTestDevice(VirtualIOTileDevice):
         readings = []
         
         for i in xrange(self.reading_start, self.num_readings+self.reading_start):
-            reading = IOTileReading(i-self.reading_start, self.stream_id, i, reading_id=i-self.reading_start+1) #Start reading id at 1
+            reading = IOTileReading(i-self.reading_start+self.start_timestamp, self.stream_id, i, reading_id=i-self.reading_start+self.start_id)
             readings.append(reading)
 
         return readings
@@ -107,6 +116,9 @@ class ReportTestDevice(VirtualIOTileDevice):
         if self.format == 'individual':
             reports = [IndividualReadingReport.FromReadings(self.iotile_id, [reading]) for reading in readings]
         elif self.format == 'signed_list':
+            if self.report_length == 0:
+                return [SignedListReport.FromReadings(self.iotile_id, [], signature_method=self.signing_method)]
+
             for i in xrange(0, len(readings), self.report_length):
                 chunk = readings[i:i+self.report_length]
                 report = SignedListReport.FromReadings(self.iotile_id, chunk, signature_method=self.signing_method)

@@ -1,0 +1,12 @@
+{
+	"device":
+	{
+		"iotile_id": "2",
+		"reading_start": 0,
+		"num_readings": 10,
+		"stream_id": "5001",
+		"format": "signed_list",
+		"report_length": 0,
+		"signing_method": 0
+	}
+}
