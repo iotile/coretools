@@ -20,11 +20,11 @@ import shlex
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 
-sys.path.insert(0, os.path.abspath('iotilecore'))
-sys.path.insert(0, os.path.abspath('iotilebuild'))
-sys.path.insert(0, os.path.abspath('iotilegateway'))
-sys.path.insert(0, os.path.abspath('iotiletest'))
-sys.path.insert(0, os.path.abspath(os.path.join('transport_plugins', 'bled112')))
+sys.path.append(os.path.abspath('../../iotilecore'))
+sys.path.append(os.path.abspath('../../iotilebuild'))
+sys.path.append(os.path.abspath('../../iotilegateway'))
+sys.path.append(os.path.abspath('../../iotiletest'))
+sys.path.append(os.path.abspath(os.path.join('..', '..', 'transport_plugins', 'bled112')))
 
 # -- General configuration ------------------------------------------------
 
@@ -61,7 +61,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'IOTile CoreTools'
-copyright = u'2017, Arch Systems'
+copyright = u'2017, Arch Systems Inc.'
 author = u'Arch Systems'
 
 # The version info for the project you're documenting, acts as replacement for

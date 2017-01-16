@@ -16,7 +16,7 @@ and interacting with IOTile Devices.
 
 
 Key Concepts
-============
+------------
 
 CoreTools is centered around creating and using IOTile Devices, which are 
 typically hardware devices (i.e. actual, physical IOT sensors or actuators).  
@@ -45,6 +45,9 @@ There are three main concepts that unify all IOTile Devices:
    :maxdepth: 2
 
    introduction
+   coretools-internals
+   extending-coretools
+   typedargs-reference
    building-devices
 
 
