@@ -121,6 +121,23 @@ details.  It requires that functions that you would like to call from ``iotile``
 be *annotated* with type information for their parameters and return value so
 that ``typedargs`` can appropriately convert the types to and from strings.
 
+For example, the method definition of ``__init__`` in HardwareManager uses
+decorators to specify the type conversion information::
+
+    @param("port", "string", desc="transport method to use in the format transport[:port[,connection_string]]")
+    @param("record", "path", desc="Optional file to record all RPC calls and responses made on this HardwareManager")
+    def __init__(self, port="none", record=None):
+        ...
+
+The ``@param`` decorators inform the iotile tool how to convert strings into the
+desired type for each argument and also help build help information in the tool
+itself.  Functions that return information use a similar ``@return_type`` decorator
+to specify how to display the information that they return, for example::
+
+    @return_type("integer")
+    def count_reports(self):
+        ...
+
 Adding Your Own Commands to the IOTile Tool
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
