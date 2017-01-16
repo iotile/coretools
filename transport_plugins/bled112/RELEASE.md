@@ -2,6 +2,10 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
+## 1.3.2
+
+- Fix ble backoff on notification to properly back off when the client cannot keep up with data streaming
+
 ## 1.3.1
 
 - Catch errors streaming reports in virtual device and don't choke, instead stop streaming reports

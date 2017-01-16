@@ -9,6 +9,7 @@ from Queue import Empty
 import copy
 import serial
 from iotile.core.utilities.packed import unpack
+from iotile.core.exceptions import HardwareError
 from tilebus import *
 from bgapi_structures import process_gatt_service, process_attribute, process_read_handle, process_notification
 from bgapi_structures import parse_characteristic_declaration
@@ -719,7 +720,7 @@ class BLED112CommandProcessor(threading.Thread):
         success = results[0]['result']
         retval = results[0]['return_value']
         if not success:
-            raise RuntimeError("Error executing command %s" % cmd)
+            raise HardwareError("Error executing synchronous command", command=cmd, return_value=retval)
 
         return retval
 

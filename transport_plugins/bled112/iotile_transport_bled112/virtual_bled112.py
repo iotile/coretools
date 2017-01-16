@@ -12,10 +12,11 @@ from Queue import Queue
 import traceback
 import struct
 import logging
+import time
 import binascii
 import serial
 import serial.tools.list_ports
-from iotile.core.exceptions import EnvironmentError
+from iotile.core.exceptions import EnvironmentError, HardwareError
 from iotile.core.utilities.packed import unpack
 from iotile.core.hw.reports.parser import IOTileReportParser
 from async_packet import AsyncPacketBuffer
@@ -75,6 +76,8 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
 
         self._logger = logging.getLogger('virtual.bled112')
         self._logger.addHandler(logging.NullHandler())
+
+        self._command_task._logger.setLevel(logging.WARNING)
 
         self.connected = False
         self._connection_handle = 0
@@ -303,5 +306,17 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         try:
             self._send_notification(self.StreamingHandle, chunk)
             self._defer(self._stream_data)
-        except RuntimeError, exc:
-            self._audit('ErrorStreamingReport') #If there was an error, stop streaming but don't choke
+        except HardwareError, exc:
+            retval = exc.params['return_value']
+
+            #If we're told we ran out of memory, wait and try again
+            if retval.get('code', 0) == 0x182:
+                time.sleep(.02)
+                self._defer(self._stream_data)
+            elif retval.get('code', 0) == 0x181:
+                self._audit('ErrorStreamingReport') #If there was an error, stop streaming but don't choke
+            else:
+                print("*** EXCEPTION OCCURRED STREAMING DATA ***")
+                traceback.print_exc()
+                print("*** END EXCEPTION ***")
+                self._audit('ErrorStreamingReport') #If there was an error, stop streaming but don't choke
