@@ -295,11 +295,18 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
 
         self._command_task.sync_command(['_send_notification', handle, payload])
 
-    def _stream_data(self):
+    def _stream_data(self, chunk=None):
         """Stream reports to the ble client in 20 byte chunks
+
+        Args:
+            chunk (bytearray): A chunk that should be sent instead of requesting a
+                new chunk from the pending reports.
         """
 
-        chunk = self._next_streaming_chunk(20)
+        #If we failed to transmit a chunk, we will be requeued with an argument
+        if chunk is None:
+            chunk = self._next_streaming_chunk(20)
+        
         if chunk is None or len(chunk) == 0:
             return
 
@@ -312,8 +319,8 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
             #If we're told we ran out of memory, wait and try again
             if retval.get('code', 0) == 0x182:
                 time.sleep(.02)
-                self._defer(self._stream_data)
-            elif retval.get('code', 0) == 0x181:
+                self._defer(self._stream_data, [chunk])
+            elif retval.get('code', 0) == 0x181: #Invalid state, the other side likely disconnected midstream
                 self._audit('ErrorStreamingReport') #If there was an error, stop streaming but don't choke
             else:
                 print("*** EXCEPTION OCCURRED STREAMING DATA ***")

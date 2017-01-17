@@ -2,6 +2,11 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
+## 1.3.3
+
+- BLE backoff did not properly resend chunks that had an error, instead it just dropped them, leading
+  to data corruption.
+
 ## 1.3.2
 
 - Fix ble backoff on notification to properly back off when the client cannot keep up with data streaming
