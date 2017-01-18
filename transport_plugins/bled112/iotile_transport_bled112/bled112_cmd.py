@@ -459,10 +459,16 @@ class BLED112CommandProcessor(threading.Thread):
             return result, value
 
         #Now receive the tilebus response which is notified to us on two characteristics
+        #If the device disconnected as a result of the rpc, then we will not see a notified
+        #header but instead a disconnection event so process that as well.
+
         def notified_header(event):
             if event.command_class == 4 and event.command == 5:
                 event_handle, att_handle = unpack("<BH", event.payload[0:3])
                 return event_handle == conn and att_handle == receive_header
+            elif event.command_class == 3 and event.command == 4:
+                event_handle, reason = unpack("<BH", event.payload)
+                return event_handle == conn
 
         def notified_payload(event):
             if event.command_class == 4 and event.command == 5:
@@ -472,6 +478,8 @@ class BLED112CommandProcessor(threading.Thread):
         events = self._wait_process_events(timeout, lambda x: False, notified_header)
         if len(events) == 0:
             return False, {'reason': 'Timeout waiting for notified RPC response header'}
+        elif events[0].command_class == 3 and events[0].command == 4:
+            return True, {'status': 0xFF, 'length': 0, 'payload': '\x00'*20, 'disconnected': True}
 
         #Process the received RPC header
         _, resp_header = process_notification(events[0])
@@ -488,7 +496,7 @@ class BLED112CommandProcessor(threading.Thread):
         else:
             resp_payload = '\x00'*20
 
-        return True, {'status': status, 'length': length, 'payload': resp_payload}
+        return True, {'status': status, 'length': length, 'payload': resp_payload, 'disconnected': False}
 
     def _set_advertising_data(self, packet_type, data):
         """Set the advertising data for advertisements sent out by this bled112

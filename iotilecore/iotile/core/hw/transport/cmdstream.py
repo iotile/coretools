@@ -82,6 +82,7 @@ class CMDStream(object):
 
         self._connect_direct(connection_string)
         self.connected = True
+        self.connection_string = connection_string
 
     def connect(self, uuid_value):
         """Connect to a specific device by its uuid

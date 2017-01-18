@@ -5,6 +5,7 @@ import Queue
 from cmdstream import CMDStream
 import datetime
 from iotile.core.exceptions import HardwareError
+from iotile.core.utilities.typedargs import iprint
 
 class AdapterCMDStream(CMDStream):
     """An adapter class that takes a DeviceAdapter and produces a CMDStream compatible interface
@@ -26,9 +27,11 @@ class AdapterCMDStream(CMDStream):
         self.adapter = adapter
         self._scanned_devices = {}
         self._reports = None
+        self.connection_interrupted = False
 
         self.adapter.add_callback('on_scan', self._on_scan)
         self.adapter.add_callback('on_report', self._on_report)
+        self.adapter.add_callback('on_disconnect', self._on_disconnect)
 
         super(AdapterCMDStream, self).__init__(port, connection_string, record)
 
@@ -46,6 +49,17 @@ class AdapterCMDStream(CMDStream):
 
         infocopy['expiration_time'] = datetime.datetime.now() + datetime.timedelta(seconds=expiration_time)
         self._scanned_devices[device_id] = infocopy
+
+    def _on_disconnect(self, adapter_id, connection_id):
+        """Callback when a device is disconnected unexpectedly
+
+        Args:
+            adapter_id (int): An ID for the adapter that was connected to the device
+            connection_id (int): An ID for the connection that has become disconnected
+        """
+
+        self.connection_interrupted = True
+        iprint("[Connection to device interrupted]")
 
     def _scan(self):
         to_remove = set()
@@ -67,6 +81,8 @@ class AdapterCMDStream(CMDStream):
 
         connstring = self._scanned_devices[uuid_value]['connection_string']
         self._connect_direct(connstring)
+        
+        return connstring
 
     def _connect_direct(self, connection_string):
         res = self.adapter.connect_sync(0, connection_string)
@@ -91,6 +107,13 @@ class AdapterCMDStream(CMDStream):
         timeout = 3.0
         if 'timeout' in kwargs:
             timeout = float(kwargs['timeout'])
+
+        if self.connection_interrupted:
+            self.connected = False
+            iprint("[Attempting to reconnect to device]")
+            self._connect_direct(self.connection_string)
+            self.connection_interrupted = False
+            self.connected = True
 
         result = self.adapter.send_rpc_sync(0, address, (feature << 8) | cmd, payload, timeout)
         success = result['success']

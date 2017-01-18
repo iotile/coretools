@@ -269,6 +269,7 @@ class BLED112Adapter(DeviceAdapter):
 
         status = None
         payload = None
+        disconnected = False
 
         if retval is not None and 'reason' in retval:
             failure = retval['reason']
@@ -287,6 +288,12 @@ class BLED112Adapter(DeviceAdapter):
 
             payload = retval['payload'][:length]
 
+            disconnected = retval['disconnected']
+
+        if disconnected:
+            del self._connections[context['handle']]
+            self._trigger_callback('on_disconnect', self.id, context['connection_id'])
+        
         callback(context['connection_id'], self.id, success, failure, status, payload)
 
     def _open_rpc_interface(self, conn_id, callback):

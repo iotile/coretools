@@ -45,6 +45,7 @@ class DeviceAdapter(object):
     Additionally you can register callbacks that will be called in the following circumstances:
 
     on_disconnect: called when the device disconnects unexpectedly
+        Signature of on_disconnect should be on_disconnect(adapter_id, connection_id)
     on_report: called when the device has streamed a complete sensor graph report
         Signature of on_report should be on_report(adapter_id, connection_id, report), 
         where report is a subclass of IOTileReport.
