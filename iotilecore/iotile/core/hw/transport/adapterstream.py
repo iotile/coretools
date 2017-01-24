@@ -4,6 +4,7 @@ from copy import deepcopy
 import Queue
 from cmdstream import CMDStream
 import datetime
+import time
 from iotile.core.exceptions import HardwareError
 from iotile.core.utilities.typedargs import iprint
 
@@ -33,6 +34,9 @@ class AdapterCMDStream(CMDStream):
         self.adapter.add_callback('on_report', self._on_report)
         self.adapter.add_callback('on_disconnect', self._on_disconnect)
 
+        self.start_time = time.time()
+        self.min_scan = self.adapter.get_config('minimum_scan_time', 0.0)
+
         super(AdapterCMDStream, self).__init__(port, connection_string, record)
 
     def _on_scan(self, adapter_id, info, expiration_time):
@@ -59,7 +63,6 @@ class AdapterCMDStream(CMDStream):
         """
 
         self.connection_interrupted = True
-        iprint("[Connection to device interrupted]")
 
     def _scan(self):
         to_remove = set()
@@ -76,6 +79,10 @@ class AdapterCMDStream(CMDStream):
         return self._scanned_devices.values()
 
     def _connect(self, uuid_value):
+        elapsed = time.time() - self.start_time
+        if elapsed < self.min_scan:
+            time.sleep(self.min_scan - elapsed)
+
         if uuid_value not in self._scanned_devices:
             raise HardwareError("Could not find device to connect to by UUID", uuid=uuid_value)
 
@@ -108,17 +115,26 @@ class AdapterCMDStream(CMDStream):
         if 'timeout' in kwargs:
             timeout = float(kwargs['timeout'])
 
-        if self.connection_interrupted:
-            self.connected = False
-            iprint("[Attempting to reconnect to device]")
-            self._connect_direct(self.connection_string)
-            self.connection_interrupted = False
-            self.connected = True
-
         result = self.adapter.send_rpc_sync(0, address, (feature << 8) | cmd, payload, timeout)
         success = result['success']
         status = result['status']
         payload = result['payload']
+
+        #If the rpc caused us to lose connection, we will have a connection_interrupted flag set
+        try:
+            if self.connection_interrupted:
+                self.connected = False
+                self._connect_direct(self.connection_string)
+                self.connection_interrupted = False
+                self.connected = True
+
+                #Reenable streaming interface if that was open before as well
+                if self._reports is not None:
+                    res = self.adapter.open_interface_sync(0, 'streaming')
+                    if not res['success']:
+                        raise HardwareError("Could not open streaming interface to device", reason=res['failure_reason'])
+        except HardwareError, exc:
+            raise HardwareError("Device disconnected before we received an RPC response and we could not reconnect", reconnect_error=exc)
 
         if not success:
             raise HardwareError("Could not send RPC", reason=result['failure_reason'])

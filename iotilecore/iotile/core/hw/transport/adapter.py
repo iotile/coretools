@@ -1,4 +1,7 @@
 import threading
+from iotile.core.exceptions import ArgumentError
+
+MISSING = object()
 
 class DeviceAdapter(object):
     """Classes that encapsulate access to IOTile devices over a particular communication channel
@@ -60,12 +63,43 @@ class DeviceAdapter(object):
         self.callbacks['on_scan'] = set()
         self.callbacks['on_disconnect'] = set()
         self.callbacks['on_report'] = set()
+        self.config = {}
 
     def set_id(self, adapter_id):
         """Set an ID that this adapater uses to identify itself when making callbacks
         """
 
         self.id = adapter_id
+
+    def set_config(self, name, value):
+        """Set a config value from this adapter by name
+
+        Args:
+            name (string): The name of the config variable
+            value (object): The value of the config variable
+        """
+
+        self.config[name] = value
+
+    def get_config(self, name, default=MISSING):
+        """Get a config value from this adapter by name
+
+        Args:
+            name (string): The name of the config variable
+            default (object): The default value to return if config is not found
+
+        Returns:
+            object: the value associated with the name
+        
+        Raises:
+            ArgumentError: if the name is not found and no default is supplied
+        """
+
+        res = self.config.get(name, default)
+        if res is MISSING:
+            raise ArgumentError("Could not find config value by name and no default supplied", name=name)
+
+        return res
 
     def add_callback(self, name, func):
         """Add a callback when Device events happen

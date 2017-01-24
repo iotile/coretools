@@ -38,6 +38,10 @@ class BLED112Adapter(DeviceAdapter):
     def __init__(self, port, on_scan=None, on_disconnect=None, passive=True):
         super(BLED112Adapter, self).__init__()
 
+        #Make sure that if someone tries to connect to a device immediately after creating the adapter
+        #we tell them we need time to accumulate device advertising packets first
+        self.set_config('minimum_scan_time', 2.0)
+
         if on_scan is not None:
             self.add_callback('on_scan', on_scan)
 
@@ -738,7 +742,7 @@ class BLED112Adapter(DeviceAdapter):
         return False
 
     def _on_report_error(self, code, message, connection_id):
-        print("Report Error, message=%s" % message)
+        print("Report Error, code=%d, message=%s" % (code, message))
         self._logger.critical("Error receiving reports, no more reports will be processed on this adapter, code=%d, msg=%s", code, message)
 
     def periodic_callback(self):
