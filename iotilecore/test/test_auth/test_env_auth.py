@@ -44,29 +44,6 @@ def test_key_finding(monkeypatch):
     with pytest.raises(NotFoundError):
         auth.sign(2, 1, data)
 
-def test_hmac_rfc_vector(monkeypatch):
-    """Make sure we correctly reproduce test cases in rfc4231
-
-    https://tools.ietf.org/html/rfc4231#section-4.2
-    """
-
-
-    #Test Case 2
-    auth = EnvAuthProvider()
-    data = bytearray("what do ya want for nothing?")
-    data2 = bytearray("7768617420646f2079612077616e7420666f72206e6f7468696e673f".decode("hex"))
-    assert data == data2
-
-    monkeypatch.setenv('USER_KEY_6566654A', '4a65666500000000000000000000000000000000000000000000000000000000')
-    uuid = 0x6566654a #Little endien encoded uint32_t 'Jefe'
-
-    known_sig = bytearray("5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843".decode('hex'))
-
-    sig = auth.sign(uuid, 1, data)
-
-    assert hmac.compare_digest(known_sig, sig['signature'])
-    assert auth.verify(uuid, 1, data, known_sig)['verified']
-
 def test_unsupported_methods():
     auth = EnvAuthProvider()
     data = bytearray("what do ya want for nothing?")

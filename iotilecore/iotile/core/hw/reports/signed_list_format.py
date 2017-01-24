@@ -75,7 +75,8 @@ class SignedListReport(IOTileReport):
             packed_reading = struct.pack("<HHLLL", reading.stream, 0, reading.reading_id, reading.raw_time, reading.value)
             packed_readings += bytearray(packed_reading)
 
-        signed_data = header + packed_readings
+        footer_stats = struct.pack("<LL", lowest_id, highest_id)
+        signed_data = header + packed_readings + footer_stats
 
         if signer is None:
             signer = ChainedAuthProvider()
@@ -85,10 +86,10 @@ class SignedListReport(IOTileReport):
         except NotFoundError:
             raise EnvironmentError("Could not sign report because no AuthProvider supported the requested signature method for the requested device", device_id=uuid, signature_method=signature_method)
         
-        footer = struct.pack("<LL16s", lowest_id, highest_id, str(signature['signature'][:16]))
+        footer = struct.pack("16s", str(signature['signature'][:16]))
         footer = bytearray(footer)
-        
-        data = header + packed_readings + footer
+
+        data = signed_data + footer
         return SignedListReport(data)
 
     def decode(self):
@@ -117,7 +118,7 @@ class SignedListReport(IOTileReport):
         lowest_id, highest_id, signature = unpack("<LL16s", footer)
         signature = bytearray(signature)
 
-        signed_data = self.raw_report[:-24]
+        signed_data = self.raw_report[:-16]
         signer = ChainedAuthProvider()
 
         try:

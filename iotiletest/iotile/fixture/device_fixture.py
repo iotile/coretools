@@ -16,14 +16,30 @@ def pytest_generate_tests(metafunc):
         ids = [int(x, 0) for x in metafunc.config.option.uuid]
         metafunc.parametrize("device_id", ids, scope='session')
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def device(port, device_id):
     """Return a HardwareManager instance connected to an IOTile Device
+
+    This fixture shares the same device among all tests in the same module
     """
     with HardwareManager(port=port) as hw:
         time.sleep(1)
 
         hw.connect(device_id)
+        hw.enable_streaming()
         yield hw
         hw.disconnect()
 
+@pytest.fixture(scope='function')
+def per_test_device(port, device_id):
+    """Return a HardwareManager instance connected to an IOTile Device
+
+    This fixture creates and tears down the connection for each test
+    """
+    with HardwareManager(port=port) as hw:
+        time.sleep(1)
+
+        hw.connect(device_id)
+        hw.enable_streaming()
+        yield hw
+        hw.disconnect()

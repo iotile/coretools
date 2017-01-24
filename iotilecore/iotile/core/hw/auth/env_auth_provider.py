@@ -65,7 +65,10 @@ class EnvAuthProvider(AuthProvider):
 
         if method_name == 'hmac_sha256_user_key':
             key = self._get_key(device_id)
-            hmac_calc = hmac.new(key, data, hashlib.sha256)
+
+            #We sign the SHA256 hash of the message
+            message_hash = hashlib.sha256(data).digest()
+            hmac_calc = hmac.new(key, message_hash, hashlib.sha256)
             result = bytearray(hmac_calc.digest())
         else:
             raise NotFoundError('unsupported signature method in EnvAuthProvider', method=method_name)
@@ -96,7 +99,8 @@ class EnvAuthProvider(AuthProvider):
 
         if method_name == 'hmac_sha256_user_key':
             key = self._get_key(device_id)
-            hmac_calc = hmac.new(key, data, hashlib.sha256)
+            message_hash = hashlib.sha256(data).digest()
+            hmac_calc = hmac.new(key, message_hash, hashlib.sha256)
             result = bytearray(hmac_calc.digest())
         else:
             raise NotFoundError('unsupported signature method in EnvAuthProvider', method=method_name)
