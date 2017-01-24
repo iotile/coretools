@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 0.6.1
+
+- Bug fix where uuid_range was invalid if not specified on the command line
+
 ## 0.6.0
 
 - Add pytest fixtures for running hardware tests on devices

@@ -23,7 +23,7 @@ def main():
     parser.add_argument('--device', action='append', default=[], help="Run script on device given by this connection string")
     parser.add_argument('--pause', action='store_true', help="Pause and wait for user input after finishing each device")
     parser.add_argument('--max-retries', type=int, default=5, help="Number of times to retry (up to a max of 5 times)")
-    parser.add_argument('--uuid-range', action='append', help="Process every device in a range (range should be specified as start-end and is inclusive, e.g ab-cd)")
+    parser.add_argument('--uuid-range', action='append', default=[], help="Process every device in a range (range should be specified as start-end and is inclusive, e.g ab-cd)")
     args, rest = list_parser.parse_known_args()
 
     if args.list:
