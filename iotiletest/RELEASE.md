@@ -2,6 +2,12 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 0.6.0
+
+- Add pytest fixtures for running hardware tests on devices
+- Add prepare_device script for running a script that prepares a device into a
+  known state
+
 ## 0.5.3
 
 - Fix device id processing to process strings as hex in report_test device and
