@@ -2,6 +2,13 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
+## 1.3.4
+
+- Support reconnecting to a device if it resets midconnection
+- Support a minimum scan interval before connect will work so that we always wait to receive advertisements
+  before saying we couldn't find a devie (this is mainly implemented in AdapterStream but a config setting
+  comes from the DeviceAdapter)
+
 ## 1.3.3
 
 - BLE backoff did not properly resend chunks that had an error, instead it just dropped them, leading
