@@ -2,6 +2,12 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.9.0
+
+- Fix hash calculation to include footer in SignedListReport
+- Add new functionality for waiting in AdapterStream until scanned devices are seen when
+  connect is called for the first time. 
+
 ## 3.8.1
 
 - Fix bug finding TileBusProxyObject when a tile does not have any application firmware installed
