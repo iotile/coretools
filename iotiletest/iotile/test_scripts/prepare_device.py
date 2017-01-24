@@ -28,7 +28,7 @@ def main():
 
     if args.list:
         print("\nInstalled Preparation Scripts:")
-        for entry in pkg_resources.iter_entry_points('iotile.virtual_device'):
+        for entry in pkg_resources.iter_entry_points('iotile.device_recipe'):
             print('- {}'.format(entry.name))
 
         return 0
