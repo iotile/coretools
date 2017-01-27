@@ -71,8 +71,15 @@ def main():
 def import_device_script(script_path):
     """Import a virtual device from a file rather than an installed module
 
+    script_path must point to a python file ending in .py that contains exactly one
+    VirtualIOTileDevice class definitions.  That class is loaded and executed as if it
+    were installed.
+
     Args:
         script_path (string): The path to the script to load
+
+    Returns:
+        VirtualIOTileDevice: A subclass of VirtualIOTileDevice that was loaded from script_path
     """
 
     search_dir, filename = os.path.split(script_path)
