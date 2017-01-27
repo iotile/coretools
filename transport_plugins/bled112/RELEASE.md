@@ -2,6 +2,10 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
+## 1.3.5
+
+- Send on_disconnect events when disconnects occur even outside of RPC processing
+
 ## 1.3.4
 
 - Support reconnecting to a device if it resets midconnection

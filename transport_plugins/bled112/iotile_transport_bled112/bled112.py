@@ -417,6 +417,11 @@ class BLED112Adapter(DeviceAdapter):
 
             if conn in self._connections:
                 del self._connections[conn]
+
+            #If we were not told how to handle this disconnection, report that it happened
+            if 'disconnect_handler' not in conndata:
+                self._trigger_callback('on_disconnect', self.id, conndata['connection_id'])
+
         elif event.command_class == 4 and event.command == 5:
             #Handle notifications
             conn, = unpack("<B", event.payload[:1])
