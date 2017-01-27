@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 0.6.2
+
+- Update prepare_device to default to no retries since most errors are unrecoverable
+- Update script execution to use module importing since that captures globals correctly
+
 ## 0.6.1
 
 - Bug fix where uuid_range was invalid if not specified on the command line

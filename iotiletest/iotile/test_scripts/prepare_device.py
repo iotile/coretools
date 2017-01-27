@@ -3,6 +3,8 @@ import pkg_resources
 import sys
 import logging
 import json
+import os.path
+import imp
 from iotile.core.exceptions import ArgumentError, IOTileException
 from iotile.core.hw.hwmanager import HardwareManager
 
@@ -22,7 +24,7 @@ def main():
     parser.add_argument('--uuid', action='append', default=[], help="Run script on device given by this uuid")
     parser.add_argument('--device', action='append', default=[], help="Run script on device given by this connection string")
     parser.add_argument('--pause', action='store_true', help="Pause and wait for user input after finishing each device")
-    parser.add_argument('--max-retries', type=int, default=5, help="Number of times to retry (up to a max of 5 times)")
+    parser.add_argument('--max-attempts', type=int, default=1, help="Number of times to attempt the operation (up to a max of 5 times)")
     parser.add_argument('--uuid-range', action='append', default=[], help="Process every device in a range (range should be specified as start-end and is inclusive, e.g ab-cd)")
     args, rest = list_parser.parse_known_args()
 
@@ -36,12 +38,11 @@ def main():
     args = parser.parse_args()
 
     config = {}
-    iface = None
     if args.config is not None:
         with open(args.config, "rb") as conf_file:
             config = json.load(conf_file)
 
-    script, env = instantiate_script(args.script)
+    script = instantiate_script(args.script)
 
     success = []
 
@@ -59,7 +60,7 @@ def main():
     try:
         with HardwareManager(port=args.port) as hw:
             for conntype, dev in devices:
-                for i in xrange(0, args.max_retries): 
+                for i in xrange(0, args.max_attempts):
                     try:
                         print("Configuring device %s identified by %s" % (str(dev), conntype))
                         configure_device(hw, conntype, dev, script, config)
@@ -78,6 +79,48 @@ def main():
     for conntype,conn in success:
         print("%s: %s" % (conntype, conn))
 
+
+def import_device_script(script_path):
+    """Import a main function from a script file
+
+    script_path must point to a python file ending in .py that contains exactly one
+    VirtualIOTileDevice class definitions.  That class is loaded and executed as if it
+    were installed.
+
+    Args:
+        script_path (string): The path to the script to load
+
+    Returns:
+        VirtualIOTileDevice: A subclass of VirtualIOTileDevice that was loaded from script_path
+    """
+
+    search_dir, filename = os.path.split(script_path)
+    if search_dir == '':
+        search_dir = './'
+
+    if filename == '' or not os.path.exists(script_path):
+        print("Could not find script to load virtual device, path was %s" % script_path)
+        sys.exit(1)
+
+    module_name, ext = os.path.splitext(filename)
+    if ext != '.py':
+        print("Script did not end with .py")
+        sys.exit(1)
+
+    try:
+        file = None
+        file, pathname, desc = imp.find_module(module_name, [search_dir])
+        mod = imp.load_module(module_name, file, pathname, desc)
+    finally:
+        if file is not None:
+            file.close()
+
+    if not hasattr(mod, 'main'):
+        print("Script file had no main function containing a device recipe")
+        sys.exit(1)
+
+    return getattr(mod, 'main')
+
 def configure_device(hw, conntype, conarg, script, args):
     if conntype == 'uuid':
         hw.connect(conarg)
@@ -87,7 +130,8 @@ def configure_device(hw, conntype, conarg, script, args):
     try:
         script(hw, args)
     finally:
-        hw.disconnect()
+        if hw.stream.connected:
+            hw.disconnect()
 
 def instantiate_script(device_recipe):
     """Find a device recipe by name and instantiate it
@@ -102,18 +146,12 @@ def instantiate_script(device_recipe):
     """
 
     if device_recipe.endswith('.py'):
-        env = {}
-        # Use execfile rather than importing as a module since that could collide with imported module names
-        execfile(device_recipe, env)
-
-        if 'main' not in env:
-            raise ArgumentError("Could not find main() function in passed device script", script_file=device_recipe)
-
-        return env['main'], env
+        main_func = import_device_script(device_recipe)
+        return main_func
 
     for entry in pkg_resources.iter_entry_points('iotile.device_recipe', name=device_recipe):
         dev = entry.load()
-        return dev, {}
+        return dev
 
     print("Could not find an installed device preparation script with the given name: {}".format(device_recipe))
     sys.exit(1)
