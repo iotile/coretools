@@ -5,6 +5,7 @@ import json
 import resolvers
 import pkg_resources
 import logging
+import shutil
 
 class DependencyResolverChain(object):
     """A set of rules mapping dependencies to DependencyResolver instances
@@ -64,12 +65,52 @@ class DependencyResolverChain(object):
 
         return self._known_resolvers[name](args)
 
-    def update_dependency(self, tile, depinfo):
+    def pull_release(self, name, version, destfolder=".", force=False):
+        """Download and unpack a released iotile component by name and version range
+
+        If the folder that would be created already exists, this command fails unless
+        you pass force=True
+
+        Args:
+            name (string): The name of the component to download
+            version (SemanticVersionRange): The valid versions of the component to fetch
+            destfolder (string): The folder into which to unpack the result, defaults to
+                the current working directory
+            force (bool): Forcibly overwrite whatever is currently in the folder that would
+                be fetched.
+
+        Raises:
+            EnvironmentError: If the destination folder exists and force is not specified
+            ArgumentError: If the specified component could not be found with the required version
+        """
+
+        unique_id = name.replace('/', '_')
+
+        depdict = {
+                'name': name,
+                'unique_id': unique_id,
+                'required_version': version,
+                'required_version_string': str(version)
+        }
+
+        destdir = os.path.join(destfolder, unique_id)
+        if os.path.exists(destdir):
+            if not force:
+                raise EnvironmentError("Output directory exists and force was not specified, aborting", output_directory=destdir)
+
+            shutil.rmtree(destdir)
+
+        result = self.update_dependency(None, depdict, destdir)
+        if result != "installed":
+            raise ArgumentError("Could not find component to satisfy name/version combination")
+
+    def update_dependency(self, tile, depinfo, destdir=None):
         """Attempt to install or update a dependency to the latest version.
 
         Args:
             tile (IOTile): An IOTile object describing the tile that has the dependency
             depinfo (dict): a dictionary from tile.dependencies specifying the dependency
+            destdir (string): An optional folder into which to unpack the dependency
 
         Returns:
             string: a string indicating the outcome.  Possible values are:
@@ -79,7 +120,9 @@ class DependencyResolverChain(object):
                 "not found"
         """
 
-        destdir = os.path.join(tile.folder, 'build', 'deps', depinfo['unique_id'])
+        if destdir is None:
+            destdir = os.path.join(tile.folder, 'build', 'deps', depinfo['unique_id'])
+        
         has_version = False
         had_version = False
         if os.path.exists(destdir):
@@ -98,7 +141,6 @@ class DependencyResolverChain(object):
                 #If the dependency is not up to date, don't do anything
                 depstatus = self._check_dep(depinfo, deptile, resolver)
                 if depstatus is False:
-                    import shutil
                     shutil.rmtree(destdir)
                     has_version = False
                 else:

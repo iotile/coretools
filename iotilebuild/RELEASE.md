@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.3.0
+
+- Add support for pull command and pull_release inside of DependencyResolverChain to
+  manually pull and unpack a released component version by name and version
+
 ## 2.2.8
 
 - Add explicit dependency on setuptools and wheel to make sure we have the bdist_wheel
