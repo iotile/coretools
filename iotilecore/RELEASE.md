@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.9.1
+
+- Update virtual_device to be able to find devices in python files that are not installed.
+  You just pass the path to the file rather than a name of an installed virtual device.
+
 ## 3.9.0
 
 - Fix hash calculation to include footer in SignedListReport

@@ -3,6 +3,10 @@ import pkg_resources
 import sys
 import logging
 import json
+import imp
+import os.path
+import inspect
+from iotile.core.hw.virtual.virtualdevice import VirtualIOTileDevice
 
 def main():
     """Serve access to a virtual IOTile device using a virtual iotile interface
@@ -64,12 +68,51 @@ def main():
         if iface is not None:
             iface.stop()
 
+def import_device_script(script_path):
+    """Import a virtual device from a file rather than an installed module
+
+    Args:
+        script_path (string): The path to the script to load
+    """
+
+    search_dir, filename = os.path.split(script_path)
+    if search_dir == '':
+        search_dir = './'
+
+    if filename == '' or not os.path.exists(script_path):
+        print("Could not find script to load virtual device, path was %s" % script_path)
+        sys.exit(1)
+
+    module_name, ext = os.path.splitext(filename)
+    if ext != '.py':
+        print("Script did not end with .py")
+        sys.exit(1)
+
+    try:
+        file = None
+        file, pathname, desc = imp.find_module(module_name, [search_dir])
+        mod = imp.load_module(module_name, file, pathname, desc)
+    finally:
+        if file is not None:
+            file.close()
+
+    devs = filter(lambda x: inspect.isclass(x) and issubclass(x, VirtualIOTileDevice) and x != VirtualIOTileDevice, mod.__dict__.itervalues())
+    if len(devs) == 0:
+        print("No VirtualIOTileDevice subclasses were defined in script")
+        sys.exit(1)
+    elif len(devs) > 1:
+        print("More than one VirtualIOTileDevice subclass was defined in script: %s" % str(devs))
+        sys.exit(1)
+
+    return devs[0]
+
 def instantiate_device(virtual_dev, config):
     """Find a virtual device by name and instantiate it
 
     Args:
         virtual_dev (string): The name of the pkg_resources entry point corresponding to
-            the device.  It should be in group iotile.virtual_device
+            the device.  It should be in group iotile.virtual_device.  If virtual_dev ends
+            in .py, it is interpreted as a python script and loaded directly from the script.
         config (dict): A dictionary with a 'device' key with the config info for configuring
             this virtual device.  This is optional.
 
@@ -80,6 +123,11 @@ def instantiate_device(virtual_dev, config):
     conf = {}
     if 'device' in config:
         conf = config['device']
+
+    #If we're given a path to a script, try to load and use that rather than search for an installed module 
+    if virtual_dev.endswith('.py'):
+        dev = import_device_script(virtual_dev)
+        return dev(conf)
 
     for entry in pkg_resources.iter_entry_points('iotile.virtual_device', name=virtual_dev):
         dev = entry.load()
