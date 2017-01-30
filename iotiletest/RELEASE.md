@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 0.6.3
+
+- Update prepare_device to have the correct number of successful vs total devices seen
+
 ## 0.6.2
 
 - Update prepare_device to default to no retries since most errors are unrecoverable

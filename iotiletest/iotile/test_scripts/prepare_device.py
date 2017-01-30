@@ -67,6 +67,7 @@ def main():
                         break
                     except IOTileException, exc:
                         print("--> Error on try %d: %s" % (i+1, str(exc)))
+                        continue
 
                 success.append((conntype, dev))
                 if args.pause:
@@ -79,6 +80,10 @@ def main():
     for conntype,conn in success:
         print("%s: %s" % (conntype, conn))
 
+    if len(success) != len(devices):
+        return 1
+
+    return 0
 
 def import_device_script(script_path):
     """Import a main function from a script file
