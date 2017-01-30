@@ -66,6 +66,10 @@ def main():
         cmdstream.do_final_close()
         return 1
 
+    if finished:
+        cmdstream.do_final_close()
+        return 0
+
     #Setup file path and function name completion
     #Handle special case of importing pyreadline on Windows
     #See: http://stackoverflow.com/questions/6024952/readline-functionality-on-windows-with-python-2-7
@@ -93,47 +97,46 @@ def main():
 
     readline.set_completer(complete)
 
-    #If we ended the initial command with a context, start a shell
-    if not finished:
-        try:
-            while True:
-                linebuf = raw_input("(%s) " % shell.context_name())
+    #We ended the initial command with a context, start a shell
+    try:
+        while True:
+            linebuf = raw_input("(%s) " % shell.context_name())
 
-                # Skip comments automatically
-                if len(linebuf) > 0 and linebuf[0] == '#':
-                    continue
+            # Skip comments automatically
+            if len(linebuf) > 0 and linebuf[0] == '#':
+                continue
 
-                line = shlex.split(linebuf, posix=posix_lex)
+            line = shlex.split(linebuf, posix=posix_lex)
 
-                #Automatically remove enclosing double quotes on windows since they are not removed by shlex in nonposix mode
-                def remove_quotes(x):
-                    if len(x) > 0 and x.startswith(("'", '"')) and x[0] == x[-1]:
-                        return x[1:-1]
+            #Automatically remove enclosing double quotes on windows since they are not removed by shlex in nonposix mode
+            def remove_quotes(x):
+                if len(x) > 0 and x.startswith(("'", '"')) and x[0] == x[-1]:
+                    return x[1:-1]
 
-                    return x
+                return x
 
-                if not posix_lex:
-                    line = map(remove_quotes, line)
+            if not posix_lex:
+                line = map(remove_quotes, line)
 
-                #Catch exception outside the loop so we stop invoking submethods if a parent
-                #fails because then the context and results would be unpredictable
-                try:
-                    while len(line) > 0:
-                        line, finished = shell.invoke(line)
-                except APIError as e:
-                    traceback.print_exc()
-                except IOTileException as e:
-                    print e.format()
+            #Catch exception outside the loop so we stop invoking submethods if a parent
+            #fails because then the context and results would be unpredictable
+            try:
+                while len(line) > 0:
+                    line, finished = shell.invoke(line)
+            except APIError as e:
+                traceback.print_exc()
+            except IOTileException as e:
+                print e.format()
 
-                if shell.finished():
-                    break
+            if shell.finished():
+                break
 
-        #Make sure to catch ^C and ^D so that we can cleanly dispose of subprocess resources if 
-        #there are any.
-        except EOFError:
-            print ""
-        except KeyboardInterrupt:
-            print ""
-        finally:
-            #Make sure we close any open CMDStream communication channels so that we don't lockup at exit
-            cmdstream.do_final_close()
+    #Make sure to catch ^C and ^D so that we can cleanly dispose of subprocess resources if 
+    #there are any.
+    except EOFError:
+        print ""
+    except KeyboardInterrupt:
+        print ""
+    finally:
+        #Make sure we close any open CMDStream communication channels so that we don't lockup at exit
+        cmdstream.do_final_close()
