@@ -51,11 +51,19 @@ def main():
             line, finished = shell.invoke(line)
     except APIError:
         traceback.print_exc()
+        cmdstream.do_final_close()
         return 1
     except IOTileException as e:
         print e.format()
         #if the command passed on the command line fails, then we should
         #just exit rather than drop the user into a shell.
+        cmdstream.do_final_close()
+        return 1
+    except Exception:
+        #Catch all exceptions because otherwise we won't properly close cmdstreams
+        #since the program will be said to except 'abnormally'
+        traceback.print_exc()
+        cmdstream.do_final_close()
         return 1
 
     #Setup file path and function name completion
@@ -126,6 +134,6 @@ def main():
             print ""
         except KeyboardInterrupt:
             print ""
-
-    #Make sure we close any open CMDStream communication channels so that we don't lockup at exit
-    cmdstream.do_final_close()
+        finally:
+            #Make sure we close any open CMDStream communication channels so that we don't lockup at exit
+            cmdstream.do_final_close()
