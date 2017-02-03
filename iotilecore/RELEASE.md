@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.9.3
+
+- Fix KVStore to not make a directory in user's home folder when iotile-core is installed
+  in a virtual environment.
+
 ## 3.9.2
 
 - Fix iotile script to not hang on exit if an uncaught exception happens and we are connected

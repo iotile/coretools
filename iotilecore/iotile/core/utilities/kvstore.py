@@ -6,6 +6,7 @@ from iotile.core.utilities.paths import settings_directory
 import sqlite3
 import os.path
 import sys
+import os
 
 class KeyValueStore(object):
     """
@@ -26,6 +27,9 @@ class KeyValueStore(object):
             folder = sys.prefix
         elif respect_venv and hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix:
             folder = sys.prefix
+
+        if not os.path.exists(folder):
+            os.makedirs(folder, 0755)
 
         dbfile = os.path.join(folder, name)
         self.connection = sqlite3.connect(dbfile)

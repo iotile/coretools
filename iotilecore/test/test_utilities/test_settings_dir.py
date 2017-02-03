@@ -18,9 +18,6 @@ class TestSettingsDirectory(unittest.TestCase):
         self.settings_dir = settings_directory()
         self.confdir = os.path.join(os.path.expanduser('~'), '.config')
 
-    def test_settings_dir(self):
-        assert os.path.exists(self.settings_dir)
-
     @unittest.skipIf(platform.system() != 'Linux', 'Linux specific test')
     def test_settings_linix(self):
         settings_dir = os.path.abspath(os.path.join(self.confdir, 'IOTile-Core'))

@@ -8,7 +8,6 @@
 
 
 import os.path
-import os
 import platform
 
 def settings_directory():
@@ -35,7 +34,4 @@ def settings_directory():
         basedir = os.path.join(basedir, '.config')
 
     settings_dir = os.path.abspath(os.path.join(basedir, 'IOTile-Core'))
-    if not os.path.exists(settings_dir):
-        os.makedirs(settings_dir, 0755)
-
     return settings_dir
