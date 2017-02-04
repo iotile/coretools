@@ -8,7 +8,7 @@ import os.path
 import sys
 import os
 
-class KeyValueStore(object):
+class SQLiteKVStore(object):
     """
     A simple string - string persistent map backed by sqlite for concurrent access
 
@@ -19,7 +19,7 @@ class KeyValueStore(object):
 
     def __init__(self, name, folder=None, respect_venv=False):
         if folder is None:
-            folder = KeyValueStore.DefaultFolder
+            folder = SQLiteKVStore.DefaultFolder
 
         #If we are relative to a virtual environment, place the registry into that virtual env
         #Support both virtualenv and pythnon 3 venv

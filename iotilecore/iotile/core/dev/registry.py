@@ -1,7 +1,8 @@
 # This file is copyright Arch Systems, Inc.  
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
-from iotile.core.utilities.kvstore import KeyValueStore
+from iotile.core.utilities.kvstore_sqlite import SQLiteKVStore
+from iotile.core.utilities.kvstore_json import JSONKVStore
 from iotile.core.exceptions import *
 import json
 import os.path
@@ -11,7 +12,8 @@ import imp
 
 MISSING = object()
 
-class ComponentRegistry:
+
+class ComponentRegistry(object):
     """
     ComponentRegistry
 
@@ -20,15 +22,36 @@ class ComponentRegistry:
     to manage iotile plugins.
     """
 
+    BackingType = SQLiteKVStore
+    BackingFileName = 'component_registry.db'
+
     def __init__(self):
-        self.kvstore = KeyValueStore('component_registry.db', respect_venv=True)
+        self.kvstore = self.BackingType(self.BackingFileName, respect_venv=True)
         self.plugins = {}
-        
+
         for entry in pkg_resources.iter_entry_points('iotile.plugin'):
-                plugin = entry.load()
-                links = plugin()
-                for name,value in links:
-                    self.plugins[name] = value
+            plugin = entry.load()
+            links = plugin()
+            for name, value in links:
+                self.plugins[name] = value
+
+    @classmethod
+    def SetBackingStore(cls, backing):
+        """Set the global backing type used by the ComponentRegistry from this point forward
+
+        This function must be called before any operations that use the registry are initiated
+        otherwise they will work from different registries that will likely contain different data
+        """
+
+        if backing not in ['json', 'sqlite']:
+            raise ArgumentError("Unknown backing store type that is not json or sqlite", backing=backing)
+
+        if backing == 'json':
+            cls.BackingType = JSONKVStore
+            cls.BackingFileName = 'component_registry.json'
+        else:
+            cls.BackingType = SQLiteKVStore
+            cls.BackingFileName = 'component_registry.db'
 
     def add_component(self, component):
         """
@@ -43,6 +66,14 @@ class ComponentRegistry:
 
         self.kvstore.set(tile.name, value)
 
+    def get_component(self, component):
+        try:
+            comp_path = self.kvstore.get(component)
+        except KeyError:
+            raise ArgumentError("Could not find component by name", component=component)
+
+        return IOTile(comp_path)
+
     def list_plugins(self):
         """
         List all of the plugins that have been registerd for the iotile program on this computer
@@ -50,7 +81,7 @@ class ComponentRegistry:
 
         vals = self.plugins.items()
 
-        return {x: y for x,y in vals}
+        return {x: y for x, y in vals}
 
     def find_component(self, key, domain=""):
         try:
@@ -62,22 +93,26 @@ class ComponentRegistry:
             raise ArgumentError("Unknown component name", name=key)
 
     def remove_component(self, key):
-        """
-        Remove component from registry
+        """Remove component from registry
         """
 
         return self.kvstore.remove(key)
 
     def clear_components(self):
+        """Clear all of the registered components
         """
-        Clear all of the registered components
+
+        for key in self.list_components():
+            self.remove_component(key)
+
+    def clear(self):
+        """Clear all data from the registry
         """
 
         self.kvstore.clear()
 
     def list_components(self):
-        """
-        List all of the registered component names
+        """List all of the registered component names
         """
 
         items = self.kvstore.get_all()

@@ -5,7 +5,6 @@ import itertools
 from collections import namedtuple
 import json
 import os.path
-from iotile.core.utilities.kvstore import KeyValueStore
 from iotile.core.exceptions import *
 from semver import SemanticVersion, SemanticVersionRange
 
@@ -25,7 +24,6 @@ class IOTile(object):
         self.filter_prods = False
 
         self._load_settings()
-
 
     def _load_settings(self):
         modfile = os.path.join(self.folder, 'module_settings.json')
