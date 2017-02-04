@@ -2,6 +2,12 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.9.4
+
+- Allow KVStore to be backed by a JSON file or SQLite and add test coverage to make sure
+  that ComponentRegistry, which is based on KVStore works correctly with both backing store
+  types.
+
 ## 3.9.3
 
 - Fix KVStore to not make a directory in user's home folder when iotile-core is installed
