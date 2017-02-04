@@ -20,8 +20,4 @@ build: off
 test_script:
   - "pwd"
   - "ls"
-  - ps: "cd iotilecore; tox; cd .."
-  - ps: "cd iotilebuild; tox; cd .."
-  - ps: "cd iotiletest; tox; cd .."
-  - ps: "cd iotilegatway; tox; cd .."
-  - ps: "cd transport_plugins\\bled112; tox; cd ..\\.."
+  - ps: tox -r

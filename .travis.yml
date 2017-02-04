@@ -5,11 +5,7 @@ python:
 install:
 - pip install --upgrade -r build_requirements.txt
 script:
-- cd iotilecore && tox && cd ..
-- cd iotilebuild && tox && cd ..
-- cd iotiletest && tox && cd ..
-- cd iotilegateway && tox && cd ..
-- cd transport_plugins/bled112 && tox && cd ../../
+- tox -r
 deploy:
   skip_cleanup: true
   provider: script
