@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.9.5
+
+- Make scan wait for min_scan interval before returning if a HardwareManager is immediately
+  created.  This fixes the same issue for scanning that could cause connections to fail.
+
 ## 3.9.4
 
 - Allow KVStore to be backed by a JSON file or SQLite and add test coverage to make sure

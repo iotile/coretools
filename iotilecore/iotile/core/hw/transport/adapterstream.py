@@ -65,6 +65,10 @@ class AdapterCMDStream(CMDStream):
         self.connection_interrupted = True
 
     def _scan(self):
+        elapsed = time.time() - self.start_time
+        if elapsed < self.min_scan:
+            time.sleep(self.min_scan - elapsed)
+
         to_remove = set()
 
         now = datetime.datetime.now()
