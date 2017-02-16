@@ -135,7 +135,7 @@ class BLED112Adapter(DeviceAdapter):
         self._command_task.sync_command(['_start_scan', active])
         self.scanning = True
 
-    def connect_async(self, connection_id, connection_string, callback):
+    def connect_async(self, connection_id, connection_string, callback, retries=4):
         """Connect to a device by its connection_string
 
         This function asynchronously connects to a device by its BLE address passed in the
@@ -144,19 +144,29 @@ class BLED112Adapter(DeviceAdapter):
 
         callback(conn_id: int, result: bool, value: None)
 
+        The optional retries argument specifies how many times we should retry the connection
+        if the connection fails due to an early disconnect.  Early disconnects are expected ble failure
+        modes in busy environments where the slave device misses the connection packet and the master
+        therefore fails immediately.  Retrying a few times should succeed in this case.
+
         Args:
             connection_string (string): A BLE address is XX:YY:ZZ:AA:BB:CC format
             connection_id (int): A unique integer set by the caller for referring to this connection
                 once created
             callback (callable): A callback function called when the connection has succeeded or
                 failed
+            retries (int): The number of attempts to connect to this device that can end in early disconnect
+                before we give up and report that we could not connect.  A retry count of 0 will mean that
+                we fail as soon as we receive the first early disconnect.
         """
 
         context = {}
         context['connection_id'] = connection_id
         context['callback'] = callback
+        context['retries'] = retries
+        context['connection_string'] = connection_string
 
-        #Don't scan while we attempt to connect to this device
+        # Don't scan while we attempt to connect to this device
         if self.scanning:
             self.stop_scan()
 
@@ -406,6 +416,7 @@ class BLED112Adapter(DeviceAdapter):
 
             if state == 'preparing':
                 conndata['failure_reason'] = 'Early disconnect, reason=%s' % reason
+                conndata['error_code'] = reason
             elif state == 'started':
                 pass
             elif state == 'connected':
@@ -657,9 +668,14 @@ class BLED112Adapter(DeviceAdapter):
         callback = conndata['callback']
         conn_id = conndata['connection_id']
         failure_reason = conndata['failure_reason']
-        callback(conn_id, self.id, False, failure_reason)
 
-        del self._connections[handle]
+        # If this was an early disconnect from the device, automatically retry
+        if 'error_code' in conndata and conndata['error_code'] == 0x23e and conndata['retries'] > 0:
+            del self._connections[handle]
+            self.connect_async(conn_id, conndata['connection_string'], callback, conndata['retries'] - 1)
+        else:
+            callback(conn_id, self.id, False, failure_reason)
+            del self._connections[handle]
 
     def _probe_services_finished(self, result):
         """Callback called after a BLE device has had its GATT table completely probed

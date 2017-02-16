@@ -2,6 +2,13 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
+## 1.3.6
+
+- Add error checking and automatic retry for Early Disconnect bluetooth errors.  Previously,
+  these errors were just reported to the user as if the device could not be connected to, however,
+  per the Bluetooth spec, these errors are expected 1-2% of the time so we now automatically retry
+  the connection up to 5 times.
+
 ## 1.3.5
 
 - Send on_disconnect events when disconnects occur even outside of RPC processing
