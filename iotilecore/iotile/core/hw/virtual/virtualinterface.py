@@ -31,7 +31,10 @@ class VirtualIOTileInterface(object):
 
         self.actions = Queue()
         self.reports = Queue()
+        self.traces = Queue()
+
         self.in_progress_report = None
+        self.in_progress_trace = None
 
     def start(self, device):
         """Begin allowing connections to a virtual IOTile device
@@ -112,6 +115,20 @@ class VirtualIOTileInterface(object):
         for report in reports:
             self.reports.put(report)
 
+    def _queue_traces(self, *traces):
+        """Queue tracing information for transmission over the tracing interface
+
+        The primary reason for this function is to allow for a single implementation
+        of encoding and chunking traces for tracing
+
+        Args:
+            *traces (list): A list of IOTileReport objects that should be sent over
+                the streaming interface.
+        """
+
+        for trace in traces:
+            self.traces.put(trace)
+
     def _next_streaming_chunk(self, max_size):
         """Get the next chunk of data that should be streamed
 
@@ -146,5 +163,42 @@ class VirtualIOTileInterface(object):
                 chunk += self.in_progress_report[:desired_size]
 
                 self.in_progress_report = remaining
+
+        return chunk
+
+    def _next_tracing_chunk(self, max_size):
+        """Get the next chunk of data that should be streamed
+
+        Args:
+            max_size (int): The maximum size of the chunk to be returned
+
+        Returns:
+            bytearray: the chunk of raw data with size up to but not exceeding
+                max_size.
+        """
+
+        chunk = bytearray()
+        
+        while len(chunk) < max_size:
+            desired_size = max_size - len(chunk)
+
+            #If we don't have an in progress report at the moment, attempt to get one
+            if self.in_progress_trace is None:
+                try:
+                    next_trace = self.traces.get_nowait()
+                except Empty:
+                    return chunk
+
+                self._audit('TraceSent', trace=str(next_trace))
+                self.in_progress_trace = bytearray(next_trace)
+
+            if len(self.in_progress_trace) <= desired_size:
+                chunk += self.in_progress_trace
+                self.in_progress_trace = None
+            else:
+                remaining = self.in_progress_trace[desired_size:]
+                chunk += self.in_progress_trace[:desired_size]
+
+                self.in_progress_trace = remaining
 
         return chunk

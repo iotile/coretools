@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.10.1
+
+- Add support for tracing from virtual devices over virtual interfaces
+
 ## 3.10.0
 
 - Add support for a tracing interface.  The tracing interface allows sending an unstructured

@@ -2,6 +2,10 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
+## 1.4.1
+
+- Add support for tracing from virtual bled112 interface for testing and logging from virtual devices
+
 ## 1.4.0
 
 - Add preliminary support for tracing interface.  BLED112 adapter now supports the tracing interface.  

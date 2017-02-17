@@ -52,6 +52,7 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
     ReceivePayloadHandle = 15
     StreamingHandle = 18
     HighspeedHandle = 21
+    TracingHandle = 23
 
     def __init__(self, args):
         super(BLED112VirtualInterface, self).__init__()
@@ -87,6 +88,7 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         self.payload_notif = False
         self.header_notif = False
         self.streaming = False
+        self.tracing = False
 
         self.rpc_payload = bytearray(20)
         self.rpc_header = bytearray(20)
@@ -231,6 +233,21 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
                     self.streaming = False
                     self.device.close_streaming_interface()
                     self._audit('StreamingInterfaceClosed')
+            elif handle == self.TracingHandle:
+                if flags & 0b1 and not self.tracing:
+                    self.tracing = True
+
+                    #If we should send any reports, queue them for sending
+                    traces = self.device.open_tracing_interface()
+                    if traces is not None:
+                        self._queue_traces(*traces)
+                        self._defer(self._send_trace)
+
+                    self._audit('TracingInterfaceOpened')
+                elif not (flags & 0b1) and self.tracing:
+                    self.tracing = False
+                    self.device.close_tracing_interface()
+                    self._audit('TracingInterfaceClosed')
 
         #Now check for RPC writes
         elif event.command_class == 2 and event.command == 0:
@@ -327,3 +344,36 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
                 traceback.print_exc()
                 print("*** END EXCEPTION ***")
                 self._audit('ErrorStreamingReport') #If there was an error, stop streaming but don't choke
+
+    def _send_trace(self, chunk=None):
+        """Stream tracing data to the ble client in 20 byte chunks
+
+        Args:
+            chunk (bytearray): A chunk that should be sent instead of requesting a
+                new chunk from the pending reports.
+        """
+
+        #If we failed to transmit a chunk, we will be requeued with an argument
+        if chunk is None:
+            chunk = self._next_tracing_chunk(20)
+        
+        if chunk is None or len(chunk) == 0:
+            return
+
+        try:
+            self._send_notification(self.TracingHandle, chunk)
+            self._defer(self._send_trace)
+        except HardwareError, exc:
+            retval = exc.params['return_value']
+
+            #If we're told we ran out of memory, wait and try again
+            if retval.get('code', 0) == 0x182:
+                time.sleep(.02)
+                self._defer(self._send_trace, [chunk])
+            elif retval.get('code', 0) == 0x181: #Invalid state, the other side likely disconnected midstream
+                self._audit('ErrorStreamingTrace') #If there was an error, stop streaming but don't choke
+            else:
+                print("*** EXCEPTION OCCURRED STREAMING DATA ***")
+                traceback.print_exc()
+                print("*** END EXCEPTION ***")
+                self._audit('ErrorStreamingTrace') #If there was an error, stop streaming but don't choke
