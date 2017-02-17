@@ -54,6 +54,9 @@ class DeviceAdapter(object):
         where report is a subclass of IOTileReport.
     on_scan: called when this device is seen during a scan of this communication channel
         Signature of on_scan should be on_scan(adapter_id, device_info, expiration_interval)
+    on_trace: called when the device has received tracing data, which is an unstructured string
+        of bytes.  Signature of on_trace should be on_trace(adapter_id, connection_id, trace_data),
+        where trace_data is a bytearray.
     """
 
     def __init__(self):
@@ -63,6 +66,7 @@ class DeviceAdapter(object):
         self.callbacks['on_scan'] = set()
         self.callbacks['on_disconnect'] = set()
         self.callbacks['on_report'] = set()
+        self.callbacks['on_trace'] = set()
         self.config = {}
 
     def set_id(self, adapter_id):
@@ -72,7 +76,7 @@ class DeviceAdapter(object):
         self.id = adapter_id
 
     def set_config(self, name, value):
-        """Set a config value from this adapter by name
+        """Set a config value for this adapter by name
 
         Args:
             name (string): The name of the config variable
@@ -90,7 +94,7 @@ class DeviceAdapter(object):
 
         Returns:
             object: the value associated with the name
-        
+
         Raises:
             ArgumentError: if the name is not found and no default is supplied
         """
@@ -207,7 +211,7 @@ class DeviceAdapter(object):
                 callback(conn_id, adapter_id, success, failure_reason)
         """
 
-        if interface not in set(["rpc", "script", "streaming"]):
+        if interface not in set(["rpc", "script", "streaming", "tracing"]):
             callback(conn_id, self.id, False, "invalid interface name in call to open_interface_async")
             return
 
@@ -217,6 +221,8 @@ class DeviceAdapter(object):
             self._open_script_interface(conn_id, callback)
         elif interface == 'streaming':
             self._open_streaming_interface(conn_id, callback)
+        elif interface == 'tracing':
+            self._open_tracing_interface(conn_id, callback)
         else:
             callback(conn_id, self.id, False, "interface not supported yet")
 

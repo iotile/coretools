@@ -32,6 +32,7 @@ class AdapterCMDStream(CMDStream):
 
         self.adapter.add_callback('on_scan', self._on_scan)
         self.adapter.add_callback('on_report', self._on_report)
+        self.adapter.add_callback('on_trace', self._on_trace)
         self.adapter.add_callback('on_disconnect', self._on_disconnect)
 
         self.start_time = time.time()
@@ -156,11 +157,25 @@ class AdapterCMDStream(CMDStream):
 
         return self._reports
 
+    def _enable_tracing(self):
+        self._traces = Queue.Queue()
+        res = self.adapter.open_interface_sync(0, 'tracing')
+        if not res['success']:
+            raise HardwareError("Could not open tracing interface to device", reason=res['failure_reason'])
+
+        return self._traces
+
     def _on_report(self, conn_id, report):
         if self._reports is None:
             return
 
         self._reports.put(report)
+
+    def _on_trace(self, conn_id, tracing_data):
+        if self._traces is None:
+            return
+
+        self._traces.put(tracing_data)
 
     def _close(self):
         self.adapter.stop_sync()

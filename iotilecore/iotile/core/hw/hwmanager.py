@@ -20,6 +20,7 @@ import re
 import inspect
 import os.path
 import imp
+import binascii
 import sys
 from iotile.core.utilities.packed import unpack
 
@@ -52,6 +53,8 @@ class HardwareManager:
         
         self.stream = self._create_stream()
         self._stream_queue = None
+        self._trace_queue = None
+        self._trace_data = bytearray()
         self.proxies = {'TileBusProxyObject': TileBusProxyObject}
         self.name_map = {TileBusProxyObject.ModuleName(): [TileBusProxyObject]}
 
@@ -78,7 +81,7 @@ class HardwareManager:
     @param("address", "integer", "positive", desc="numerical address of module to get")
     def get(self, address):
         """
-        Create a proxy object for a tile by address. 
+        Create a proxy object for a tile by address.
 
         The correct proxy object is determined by asking the tile for its status information
         and looking up the appropriate proxy in our list of installed proxy objects
@@ -144,12 +147,56 @@ class HardwareManager:
 
         self._stream_queue = self.stream.enable_streaming()
 
+    @annotated
+    def enable_tracing(self):
+        """Enable tracing of realtime debug information over this interface
+        """
+
+        self._trace_queue = self.stream.enable_tracing()
+
     @return_type("integer")
     def count_reports(self):
         if self._stream_queue is None:
             return 0
 
         return self._stream_queue.qsize()
+
+    @return_type("string")
+    @param("encoding", "string", desc="The encoding to use to dump the trace, either 'hex' or 'raw'")
+    def dump_trace(self, encoding):
+        """Dump all received tracing data currently received from the device to stdout
+
+        The data is encoded per the encoding parmeter which must be either
+        the string 'hex' or 'raw'.  If hex is passed, the data is printed as hex digits,
+        if raw is passed, the data is printed as received from the device.
+        """
+
+        if encoding not in ['raw', 'hex']:
+            raise ValidationError("Unknown encoding type specified in dump trace", encoding=encoding, known_encodings=['hex', 'raw'])
+
+        if self._trace_queue is None:
+            return ""
+
+        self._accumulate_trace()
+
+        if encoding == 'raw':
+            return str(self._trace_data)
+
+        return binascii.hexlify(self._trace_data)
+
+    def _accumulate_trace(self):
+        """Copy tracing data from trace queue into _trace_data
+        """
+
+        if self._trace_queue is None:
+            return
+
+        try:
+            while True:
+                blob = self._trace_queue.get(block=False)
+                self._trace_data += bytearray(blob)
+        except Empty:
+            pass
 
     def iter_reports(self, blocking=False):
         """Iterate over reports that have been received

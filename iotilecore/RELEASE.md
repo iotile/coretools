@@ -2,6 +2,12 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.10.0
+
+- Add support for a tracing interface.  The tracing interface allows sending an unstructured
+  stream of debug data from an IOTile device and dumping it to stdout or a file using the
+  iotile tool.
+
 ## 3.9.5
 
 - Make scan wait for min_scan interval before returning if a HardwareManager is immediately

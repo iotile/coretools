@@ -88,10 +88,11 @@ class VirtualIOTileDevice(object):
         self.iotile_id = iotile_id
         self.pending_data = False
         self.reports = []
+        self.traces = []
         self.script = bytearray()
 
-        #Iterate through all of our member functions and see the ones that are
-        #RPCS and add them to the RPC handler table
+        # Iterate through all of our member functions and see the ones that are
+        # RPCS and add them to the RPC handler table
         for name, value in inspect.getmembers(self, predicate=inspect.ismethod):
             if hasattr(value, 'is_rpc'):
                 self.register_rpc(value.rpc_addr, value.rpc_id, value)
@@ -165,6 +166,22 @@ class VirtualIOTileDevice(object):
         """
 
         return self.reports
+
+    def open_tracing_interface(self):
+        """Called when someone opens a tracing interface to the device
+
+        Returns:
+            list: A list of bytearray objects that should be sent out
+                the tracing interface.
+        """
+
+        return self.traces
+
+    def close_tracing_interface(self):
+        """Called when someone closes the tracing interface to the device
+        """
+
+        pass
 
     def close_streaming_interface(self):
         """Called when someone closes the streaming interface to the device

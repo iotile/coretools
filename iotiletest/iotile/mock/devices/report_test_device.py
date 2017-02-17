@@ -40,6 +40,7 @@ class ReportTestDevice(VirtualIOTileDevice):
                     Common values would be 0 for a hash only signature with no origin 
                     verification functionality or 1 for signing with a user set key.  
                     (default: 0)
+                stream_id (int): The stream that this reading should be sent out
     """
 
     def __init__(self, args):

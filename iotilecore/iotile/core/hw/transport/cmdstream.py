@@ -143,12 +143,21 @@ class CMDStream(object):
 
     def enable_streaming(self):
         if not self.connected:
-            raise HardwareError("Cannot send an RPC if we are not in a connected state")
+            raise HardwareError("Cannot enable streaming if we are not in a connected state")
 
         if not hasattr(self, '_enable_streaming'):
             raise StreamOperationNotSupportedError(command="enable_streaming")
 
         return self._enable_streaming()
+
+    def enable_tracing(self):
+        if not self.connected:
+            raise HardwareError("Cannot enable tracing if we are not in a connected state")
+
+        if not hasattr(self, '_enable_tracing'):
+            raise StreamOperationNotSupportedError(command="enable_tracing")
+
+        return self._enable_tracing()
 
     def send_highspeed(self, data, progress_callback=None):
         if not self.connected:

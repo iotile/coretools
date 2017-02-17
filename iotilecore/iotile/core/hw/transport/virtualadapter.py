@@ -144,9 +144,32 @@ class VirtualDeviceAdapter(DeviceAdapter):
 
         if callback is not None:
             callback(conn_id, self.id, True, "")
-        
+
         for report in reports:
             self._trigger_callback('on_report', conn_id, report)
+
+    def _open_tracing_interface(self, conn_id, callback):
+        """Open the tracing interface on a device
+
+        Args:
+            conn_id (int): A unique identifer that will refer to this connection
+            callback (callback): A callback that will be called as
+                callback(conn_id, adapter_id, success, failure_reason)
+        """
+
+        if conn_id not in self.connections:
+            if callback is not None:
+                callback(conn_id, self.id, False, "device had no active connection")
+            return
+
+        dev = self.connections[conn_id]
+        traces = dev.open_tracing_interface()
+
+        if callback is not None:
+            callback(conn_id, self.id, True, "")
+
+        for trace in traces:
+            self._trigger_callback('on_trace', conn_id, trace)
 
     def _open_script_interface(self, conn_id, callback):
         """Open the script interface on a device

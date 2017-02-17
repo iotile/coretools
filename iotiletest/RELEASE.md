@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 0.7.0
+
+- Add test virtual device tracing_test for testing the tracing interface of iotile-core
+
 ## 0.6.3
 
 - Update prepare_device to have the correct number of successful vs total devices seen
