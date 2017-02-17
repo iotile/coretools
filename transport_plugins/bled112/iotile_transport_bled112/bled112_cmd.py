@@ -274,6 +274,15 @@ class BLED112CommandProcessor(threading.Thread):
         success, result = self._set_notification(conn, services[TileBusService]['characteristics'][TileBusStreamingCharacteristic], True, timeout)
         return success, result
 
+    def _enable_tracing(self, conn, services, timeout=1.0):
+        self._logger.info("Attempting to enable tracing")
+        try:
+            success, result = self._set_notification(conn, services[TileBusService]['characteristics'][TileBusTracingCharacteristic], True, timeout)
+        except KeyError:
+            return False, {'failure_reason': 'Tracing characteristic was not found in remote device\'s GATT table'}
+
+        return success, result
+
     def _disable_rpcs(self, conn, services, timeout=1.0):
         """Prevent this device from receiving more RPCs
         """

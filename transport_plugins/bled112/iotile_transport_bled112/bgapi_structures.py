@@ -79,6 +79,18 @@ def parse_characteristic_declaration(value):
 
     return char
 
+def handle_to_uuid(handle, services):
+    """Find the corresponding UUID for an attribute handle
+    """
+
+    for service in services.itervalues():
+        for char_uuid, char_def in service['characteristics'].iteritems():
+            if char_def['handle'] == handle:
+                return char_uuid
+
+    raise ValueError("Handle not found in GATT table")
+
+
 def process_notification(event):
     length = len(event.payload) - 5
     conn, att_handle, att_type, act_length, value = unpack("<BHBB%ds" % length, event.payload)

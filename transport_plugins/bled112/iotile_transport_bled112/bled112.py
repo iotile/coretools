@@ -369,6 +369,24 @@ class BLED112Adapter(DeviceAdapter):
 
         self._command_task.async_command(['_enable_streaming', handle, services], self._on_interface_finished, {'connection_id': conn_id, 'callback': callback})
 
+    def _open_tracing_interface(self, conn_id, callback):
+        """Enable the debug tracing interface for this IOTile device
+
+        Args:
+            conn_id (int): the unique identifier for the connection
+            callback (callback): Callback to be called when this command finishes
+                callback(conn_id, adapter_id, success, failure_reason)
+        """
+
+        try:
+            handle = self._find_handle(conn_id)
+            services = self._connections[handle]['services']
+        except (ValueError, KeyError):
+            callback(conn_id, self.id, False, 'Connection closed unexpectedly before we could open the streaming interface')
+            return
+
+        self._command_task.async_command(['_enable_tracing', handle, services], self._on_interface_finished, {'connection_id': conn_id, 'callback': callback})
+
     def _close_rpc_interface(self, conn_id, callback):
         """Disable RPC interface for this IOTile device
 
@@ -440,9 +458,19 @@ class BLED112Adapter(DeviceAdapter):
             
             conndata = self._get_connection(conn)
             parser = conndata['parser']
-            
-            #FIXME: Don't assume all notifications are streamed data
-            parser.add_data(value)
+
+            try:
+                char_uuid = bgapi_structures.handle_to_uuid(at_handle, conndata['services'])
+            except ValueErro:
+                self._logger.warn("Notification from characteristic not in gatt table, ignoring it, handle=%d" % at_handle)
+                return
+
+            if char_uuid == TileBusStreamingCharacteristic:
+                parser.add_data(value)
+            elif char_uuid == TileBusTracingCharacteristic:
+                self._trigger_callback('on_trace', conndata['connection_id'], bytearray(value))
+            else:
+                self._logger.warn("Notification from unknown characteristic (not streaming or tracing), ignoring it, handle=%d" % at_handle)
         else:
             self._logger.warn('Unhandled BLE event: ' + str(event))
 

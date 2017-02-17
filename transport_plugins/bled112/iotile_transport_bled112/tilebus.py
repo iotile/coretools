@@ -7,5 +7,6 @@ TileBusReceiveHeaderCharacteristic = uuid.UUID('fb349b5f-8000-0080-0010-00000000
 TileBusReceivePayloadCharacteristic = uuid.UUID('fb349b5f-8000-0080-0010-000000000220')
 TileBusStreamingCharacteristic = uuid.UUID('fb349b5f-8000-0080-0010-000000000520')
 TileBusHighSpeedCharacteristic = uuid.UUID('fb349b5f-8000-0080-0010-000000000620')
+TileBusTracingCharacteristic = uuid.UUID('fb349b5f-8000-0080-0010-000000000720')
 
 ArchManuID = 0x03C0

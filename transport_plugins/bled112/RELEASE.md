@@ -2,6 +2,10 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
+## 1.4.0
+
+- Add preliminary support for tracing interface.  BLED112 adapter now supports the tracing interface.  
+
 ## 1.3.6
 
 - Add error checking and automatic retry for Early Disconnect bluetooth errors.  Previously,
