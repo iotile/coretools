@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.10.3
+
+- Remove debug print statement that got kept in released version
+
 ## 3.10.2
 
 - Add support for forcing the registry to be a specific type; either json or sqlite

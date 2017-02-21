@@ -194,7 +194,6 @@ def _check_registry_type(folder=None):
             data = data.strip()
 
             ComponentRegistry.SetBackingStore(data)
-            print(data)
     except IOError:
         pass
 
