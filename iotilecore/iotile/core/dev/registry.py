@@ -4,14 +4,15 @@
 from iotile.core.utilities.kvstore_sqlite import SQLiteKVStore
 from iotile.core.utilities.kvstore_json import JSONKVStore
 from iotile.core.exceptions import *
+from iotile.core.utilities.paths import settings_directory
 import json
 import os.path
 from iotileobj import IOTile
 import pkg_resources
 import imp
+import sys
 
 MISSING = object()
-
 
 class ComponentRegistry(object):
     """
@@ -163,3 +164,39 @@ class ComponentRegistry(object):
 
         keyname = "config:" + key
         self.kvstore.remove(keyname)
+
+
+def _check_registry_type(folder=None):
+    """Check if the user has placed a registry_type.txt file to choose the registry type
+
+    If a default registry type file is found, the DefaultBackingType and DefaultBackingFile 
+    class parameters in ComponentRegistry are updated accordingly.
+
+    Args:
+        folder (string): The folder that we should check for a default registry type
+    """
+
+    if folder is None:
+        folder = settings_directory()
+
+    #If we are relative to a virtual environment, place the registry into that virtual env
+    #Support both virtualenv and pythnon 3 venv
+    if hasattr(sys, 'real_prefix'):
+        folder = sys.prefix
+    elif hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix:
+        folder = sys.prefix
+
+    default_file = os.path.join(folder, 'registry_type.txt')
+
+    try:
+        with open(default_file, "rb") as infile:
+            data = infile.read()
+            data = data.strip()
+
+            ComponentRegistry.SetBackingStore(data)
+            print(data)
+    except IOError:
+        pass
+
+# Update our default registry backing store appropriately
+_check_registry_type()

@@ -2,6 +2,14 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.10.2
+
+- Add support for forcing the registry to be a specific type; either json or sqlite
+  are currently supported.  You can place a registry_type.txt file containing the 
+  word json or sqlite in the folder next to the component_registry.* file and it will
+  choose json or sqlite based on what you put in the file throwing an error if a random
+  word is entered.
+
 ## 3.10.1
 
 - Add support for tracing from virtual devices over virtual interfaces
