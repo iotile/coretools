@@ -2,6 +2,12 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.11.0
+
+- Add support for SparseMemory object that can use used to represent slices
+  of memory downloaded from a device.  This is the first debug feature present
+  in iotilecore.
+
 ## 3.10.3
 
 - Remove debug print statement that got kept in released version
