@@ -141,7 +141,7 @@ class VirtualIOTileInterface(object):
         """
 
         chunk = bytearray()
-        
+
         while len(chunk) < max_size:
             desired_size = max_size - len(chunk)
 

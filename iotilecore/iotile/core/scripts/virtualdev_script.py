@@ -157,8 +157,8 @@ def instantiate_interface(virtual_iface, config):
     """
 
     conf = {}
-    if 'device' in config:
-        conf = config['device']
+    if 'interface' in config:
+        conf = config['interface']
 
     for entry in pkg_resources.iter_entry_points('iotile.virtual_interface', name=virtual_iface):
         dev = entry.load()

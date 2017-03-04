@@ -76,4 +76,3 @@ class BasicAuthProvider(AuthProvider):
             verified = hmac.compare_digest(signature, result)
 
         return {'verified': verified, 'bit_length': 8*len(signature)}
- 

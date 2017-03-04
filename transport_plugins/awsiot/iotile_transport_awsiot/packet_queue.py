@@ -1,0 +1,59 @@
+"""A packet queue for reordering out of order packets
+
+TODO:
+- Add timeout
+- replace list with a priority queue
+- Add maximum out of order window
+"""
+
+
+class PacketQueue(object):
+    """A queue for reordering out-of-order messages
+
+    Args:
+        missing_timeout (int): The maximum time to wait for a missing packet
+            without triggering a timeout error
+        callback (callable): A callback function that should be called for
+            each received message with the signature:
+            callback(*args) where args is the list passed to receive
+
+    """
+    def __init__(self, missing_timeout, callback):
+        self._out_of_order = []
+        self._next_expected = None
+        self._callback = callback
+        self._missing_timeout = missing_timeout
+
+    def receive(self, sequence, args):
+        """Receive one packet
+
+        If the sequence number is one we've already seen before, it is dropped.
+
+        If it is not the next expected sequence number, it is put into the
+        _out_of_order queue to be processed once the holes in sequence number
+        are filled in.
+
+        Args:
+            sequence (int): The sequence number of the received packet
+            args (list): The list of packet contents that will be passed to callback
+                as callback(*args)
+        """
+
+        # If this packet is in the past, drop it
+        print("Received %d" % sequence)
+        if self._next_expected is not None and sequence < self._next_expected:
+            return
+
+        self._out_of_order.append((sequence, args))
+        self._out_of_order.sort(key=lambda x: x[0])
+
+        # If we have received packets, attempt to process them in order
+        while len(self._out_of_order) > 0:
+            seq, args = self._out_of_order[0]
+
+            if self._next_expected is not None and seq != self._next_expected:
+                return
+
+            self._callback(*args)
+            self._out_of_order.pop(0)
+            self._next_expected = seq+1
