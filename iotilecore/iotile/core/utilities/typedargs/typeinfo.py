@@ -60,14 +60,16 @@ class TypeSystem(object):
         modify the conversion process, **kwargs is passed
         through to the underlying conversion function
         """
+        try:
+            if isinstance(value, bytearray):
+                return self.convert_from_binary(value, type, **kwargs)
 
-        if isinstance(value, bytearray):
-            return self.convert_from_binary(value, type, **kwargs)
+            typeobj = self.get_type(type)
 
-        typeobj = self.get_type(type)
-
-        conv = typeobj.convert(value, **kwargs)
-        return conv
+            conv = typeobj.convert(value, **kwargs)
+            return conv
+        except (ValueError, TypeError) as exc:
+            raise ValidationError("Could not convert value", type=type, value=value, error_message=str(exc))
 
     def convert_from_binary(self, binvalue, type, **kwargs):
         """
