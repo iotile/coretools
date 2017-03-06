@@ -40,7 +40,6 @@ class PacketQueue(object):
         """
 
         # If this packet is in the past, drop it
-        print("Received %d" % sequence)
         if self._next_expected is not None and sequence < self._next_expected:
             return
 
@@ -57,3 +56,9 @@ class PacketQueue(object):
             self._callback(*args)
             self._out_of_order.pop(0)
             self._next_expected = seq+1
+
+    def reset(self):
+        """Reset the expected next sequence number
+        """
+
+        self._next_expected = None

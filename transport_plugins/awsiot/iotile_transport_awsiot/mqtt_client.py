@@ -1,9 +1,11 @@
 import json
-from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
+import logging
+import AWSIoTPythonSDK.MQTTLib
 from AWSIoTPythonSDK.exception import operationError
 from iotile.core.exceptions import ArgumentError, EnvironmentError, InternalError
 from packet_queue import PacketQueue
 from topic_sequencer import TopicSequencer
+
 
 class OrderedAWSIOTClient(object):
     """An MQTT based channel to connect with an IOTile Device
@@ -18,16 +20,27 @@ class OrderedAWSIOTClient(object):
         key = args.get('private_key', None)
         root = args.get('root_certificate', None)
         endpoint = args.get('endpoint', None)
+        iamkey = args.get('iam_key', None)
+        iamsecret = args.get('iam_secret', None)
+        use_websockets = args.get('use_websockets', False)
 
-        if cert is None:
-            raise EnvironmentError("Certificate for AWS IOT not passed in certificate key")
-        elif key is None:
-            raise EnvironmentError("Private key for certificate not passed in private_key key")
-        elif root is None:
+        if not use_websockets:
+            if cert is None:
+                raise EnvironmentError("Certificate for AWS IOT not passed in certificate key")
+            elif key is None:
+                raise EnvironmentError("Private key for certificate not passed in private_key key")
+        else:
+            if iamkey is None or iamsecret is None:
+                raise EnvironmentError("IAM Credentials need to be provided for websockets auth")
+
+        if root is None:
             raise EnvironmentError ("Root of certificate chain not passed in root_certificate key")
         elif endpoint is None:
             raise EnvironmentError("AWS IOT endpoint not passed in endpoint key")
 
+        self.websockets = use_websockets
+        self.iam_key = iamkey
+        self.iam_secret = iamsecret
         self.cert = cert
         self.key = key
         self.root = root
@@ -46,15 +59,21 @@ class OrderedAWSIOTClient(object):
         if self.client is not None:
             raise InternalError("Connect called on an alreaded connected MQTT client")
 
-        self.client = AWSIoTMQTTClient(client_id)
+        client = AWSIoTPythonSDK.MQTTLib.AWSIoTMQTTClient(client_id, useWebsocket=self.websockets)
 
-        self.client = AWSIoTMQTTClient(client_id)
-        self.client.configureEndpoint(self.endpoint, 8883)
-        self.client.configureCredentials(self.root, self.key, self.cert)
-        self.client.configureOfflinePublishQueueing(0)
+        if self.websockets:
+            client.configureEndpoint(self.endpoint, 443)
+            client.configureCredentials(self.root)
+            client.configureIAMCredentials(self.iam_key, self.iam_secret)
+        else:
+            client.configureEndpoint(self.endpoint, 8883)
+            client.configureCredentials(self.root, self.key, self.cert)
+        
+        client.configureOfflinePublishQueueing(0)
 
         try:
-            self.client.connect()
+            client.connect()
+            self.client = client
         except operationError, exc:
             raise InternalError("Could not connect to AWS IOT", message=exc.message)
 
@@ -86,7 +105,7 @@ class OrderedAWSIOTClient(object):
             topic (string): The MQTT topic to publish in
             message_type (string): The type of message to publish.  This is a freeform
                 string
-            message (string): The message to publish
+            message (string, dict): The message to publish
         """
 
         seq = self.sequencer.next_id(topic)
@@ -123,6 +142,26 @@ class OrderedAWSIOTClient(object):
         except operationError, exc:
             raise InternalError("Could not subscribe to topic", topic=topic, message=exc.message)
 
+    def reset_sequence(self, topic):
+        """Reset the expected sequence number for a topic
+        """
+
+        self.queues[topic].reset()
+
+    def unsubscribe(self, topic):
+        """Unsubscribe from messages on a given topic
+        
+        Args:
+            topic (string): The MQTT topic to unsubscribe from
+        """
+
+        del self.queues[topic]
+
+        try:
+            self.client.unsubscribe(topic)
+        except operationError, exc:
+            raise InternalError("Could not unsubscribe from topic", topic=topic, message=exc.message)            
+
     def _on_receive(self, client, userdata, message):
         """Callback called whenever we receive a message on a subscribed topic
 
@@ -131,8 +170,6 @@ class OrderedAWSIOTClient(object):
             userdata (string): Any user data set with the underlying MQTT client
             message (object): The mesage with a topic and payload.
         """
-
-        print("On receive")
 
         topic = message.topic
         encoded = message.payload
@@ -152,4 +189,4 @@ class OrderedAWSIOTClient(object):
             print("Received message for unknown topic: %s" % topic)
             return
 
-        self.queues[topic].receive(seq, [seq, message_type, message_data])
+        self.queues[topic].receive(seq, [seq, topic, message_type, message_data])

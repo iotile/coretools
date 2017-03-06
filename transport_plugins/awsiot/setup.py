@@ -1,6 +1,5 @@
 from setuptools import setup, find_packages
 
-import os
 import version
 
 setup(
@@ -10,10 +9,11 @@ setup(
     license="LGPLv3",
     install_requires=[
         "iotile-core>=3.6.2",
-        "AWSIoTPythonSDK"
+        "AWSIoTPythonSDK>=1.0.0"
     ],
 
-    entry_points={'iotile.virtual_interface': ['awsiot = iotile_transport_awsiot.virtual_interface:AWSIOTVirtualInterface']},
+    entry_points={'iotile.device_adapter': ['awsiot = iotile_transport_awsiot.device_adapter:AWSIOTDeviceAdapter'],
+                  'iotile.virtual_interface': ['awsiot = iotile_transport_awsiot.virtual_interface:AWSIOTVirtualInterface']},
     description="IOTile AWS IOT Transport Plugin",
     author="Arch",
     author_email="info@arch-iot.com",
