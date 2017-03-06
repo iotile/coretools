@@ -9,7 +9,7 @@
 #descriptor.py
 #Define a Domain Specific Language for specifying MIB endpoints
 
-from pyparsing import Word, Regex, nums, hexnums, Literal, Optional, Group, oneOf, QuotedString
+from pyparsing import Word, Regex, nums, hexnums, Literal, Optional, Group, oneOf, QuotedString, ParseException
 from handler import TBHandler
 import sys
 import os.path
@@ -85,13 +85,13 @@ class TBDescriptor:
 
     def _parse_file(self, filename):
         with open(filename, "r") as f:
-            for l in f:
-                line = l.lstrip().rstrip()
+            for line_no, raw_line in enumerate(f):
+                line = raw_line.lstrip().rstrip()
 
                 if line == "":
                     continue
 
-                self._parse_line(line)
+                self._parse_line(line_no+1, line)
 
     def generate_config_h(self, filename):
         templ = RecursiveTemplate('configvariables.h', resource_filename(Requirement.parse("iotile-build"), "iotile/build/config/templates"))
@@ -234,8 +234,18 @@ class TBDescriptor:
         self.configs[varnum] = config
 
 
-    def _parse_line(self, line):
-        matched = statement.parseString(line)
+    def _parse_line(self, line_no, line):
+        """Parse a line in a TileBus file
+
+        Args:
+            lineno (int): The line number for printing useful error messages
+            line (string): The line that we are trying to parse
+        """
+
+        try:
+            matched = statement.parseString(line)
+        except ParseException, exc:
+            raise DataError("Error parsing line in TileBus file", line_number=line_no, column=exc.col, contents=line)
 
         if 'symbol' in matched:
             self._parse_cmd(matched)
