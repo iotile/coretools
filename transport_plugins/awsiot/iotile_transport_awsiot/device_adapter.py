@@ -121,6 +121,42 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
 
         self.client.publish(topics.connect_topic, 'disconnect', disconn_message)
 
+    def send_rpc_async(self, conn_id, address, rpc_id, payload, timeout, callback):
+        """Asynchronously send an RPC to this IOTile device
+
+        Args:
+            conn_id (int): A unique identifer that will refer to this connection
+            address (int): the addres of the tile that we wish to send the RPC to
+            rpc_id (int): the 16-bit id of the RPC we want to call
+            payload (bytearray): the payload of the command
+            timeout (float): the number of seconds to wait for the RPC to execute
+            callback (callable): A callback for when we have finished the RPC.  The callback will be called as" 
+                callback(connection_id, adapter_id, success, failure_reason, status, payload)
+                'connection_id': the connection id
+                'adapter_id': this adapter's id
+                'success': a bool indicating whether we received a response to our attempted RPC
+                'failure_reason': a string with the reason for the failure if success == False
+                'status': the one byte status code returned for the RPC if success == True else None
+                'payload': a bytearray with the payload returned by RPC if success == True else None
+        """
+
+        try:
+            context = self.conns.get_context(conn_id)
+        except ArgumentError:
+            callback(conn_id, self.id, False, "Could not find connection information", 0xFF, bytearray())
+            return
+
+        self.conns.begin_operation(conn_id, 'rpc', callback, timeout)
+
+        topics = context['topics']
+
+        encoded_payload = binascii.hexlify(payload)
+
+        rpc_message = {'key': context['key'], 'client': self.name, 'address': address,
+                       'rpc_id': rpc_id, payload: encoded_payload}
+
+        self.client.publish(topics.rpc_topic, 'rpc', rpc_message)
+
     def _open_rpc_interface(self, conn_id, callback):
         """Enable RPC interface for this IOTile device
 
@@ -295,7 +331,7 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
         topics = context['topics']
 
         try:
-            message = topics.validate_message(['open_interface_response'], message_type, message)
+            message = topics.validate_message(['open_interface_response', 'rpc_response'], message_type, message)
 
             if message_type == 'open_interface_response':
                 success = message['success']
@@ -304,7 +340,16 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
                     self.conns.finish_operation(conn_key, True, None)
                 else:
                     self.conns.finish_operation(conn_key, False, payload['reason'])
+            elif message_type == 'rpc_response':
+                success = message['success']
+                payload = message['payload']
 
+                if success:
+                    status = payload['status']
+                    rpc_payload = payload['payload']
+                    self.conns.finish_operation(conn_key, True, None, status, rpc_payload)
+                else:
+                    self.conns.finish_operation(conn_key, True, payload['reason'], None, None)
         except IOTileException, exc:
             # Eat all exceptions here because this is a callback in another
             # thread
