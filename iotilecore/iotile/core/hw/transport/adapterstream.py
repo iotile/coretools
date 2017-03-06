@@ -105,6 +105,7 @@ class AdapterCMDStream(CMDStream):
             res = self.adapter.open_interface_sync(0, 'rpc')
         except Exception as exc:
             self.adapter.disconnect_sync(0)
+            self.adapter.periodic_callback()
             raise HardwareError("Could not open RPC interface on device due to an exception", exception=str(exc))
 
         if not res['success']:
