@@ -44,6 +44,12 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
         args['iam_key'] = iamuser
         args['iam_secret'] = iamsecret
 
+        self._logger = logging.getLogger(__name__)
+        self._logger.addHandler(logging.NullHandler())
+
+        self._logger.setLevel(logging.INFO)
+        self._logger.addHandler(logging.StreamHandler())
+
         # Port should be a topic prefix that allows us to connect
         # only to subset of IOTile devices managed by a gateway
         # rather than to directly accessible iotile devices.
@@ -153,7 +159,7 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
         encoded_payload = binascii.hexlify(payload)
 
         rpc_message = {'key': context['key'], 'client': self.name, 'address': address,
-                       'rpc_id': rpc_id, payload: encoded_payload}
+                       'rpc_id': rpc_id, 'payload': encoded_payload}
 
         self.client.publish(topics.rpc_topic, 'rpc', rpc_message)
 
@@ -274,6 +280,8 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
             message (dict): The message itself
         """
 
+        self._logger.debug("Received message on (topic=%s): %s" % (topic, str(message)))
+
         try:
             conn_key = self._find_connection(topic)
             context = self.conns.get_context(conn_key)
@@ -349,7 +357,7 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
                     rpc_payload = payload['payload']
                     self.conns.finish_operation(conn_key, True, None, status, rpc_payload)
                 else:
-                    self.conns.finish_operation(conn_key, True, payload['reason'], None, None)
+                    self.conns.finish_operation(conn_key, False, payload['reason'], None, None)
         except IOTileException, exc:
             # Eat all exceptions here because this is a callback in another
             # thread

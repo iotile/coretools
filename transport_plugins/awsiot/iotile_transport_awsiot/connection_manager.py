@@ -96,7 +96,6 @@ class ConnectionManager(threading.Thread):
                 except Queue.Empty:
                     continue
 
-                print("Action: %s" % action.action)
                 handler_name = '_{}_action'.format(action.action)
 
                 if not hasattr(self, handler_name):
@@ -231,6 +230,11 @@ class ConnectionManager(threading.Thread):
                     self.finish_connection(conn_id, False, 'Connection attempt timed out')
                 elif data['state'] == self.Disconnecting:
                     self.finish_disconnection(conn_id, False, 'Disconnection attempt timed out')
+                elif data['state'] == self.InProgress:
+                    if data['microstate'] == 'rpc':
+                        self.finish_operation(conn_id, False, 'RPC timed out without response', None, None)
+                    elif data['microstate'] == 'open_interface':
+                        self.finish_operation(conn_id, False, 'Open interface reuest timed out', None)
 
     def begin_connection(self, conn_id, internal_id, callback, context, timeout):
         """Asynchronously begin a connection attempt

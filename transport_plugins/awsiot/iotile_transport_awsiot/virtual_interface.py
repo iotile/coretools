@@ -1,6 +1,8 @@
 import logging
 import time
 import json
+import traceback
+import binascii
 from topic_validator import MQTTTopicValidator
 from iotile.core.hw.virtual.virtualinterface import VirtualIOTileInterface
 from iotile.core.hw.virtual.virtualdevice import RPCInvalidIDError, RPCNotFoundError, TileNotFoundError
@@ -36,7 +38,7 @@ class AWSIOTVirtualInterface(VirtualIOTileInterface):
         self._logger = logging.getLogger(__name__)
         self._logger.addHandler(logging.NullHandler())
 
-        self._logger.setLevel(logging.INFO)
+        self._logger.setLevel(logging.DEBUG)
         self._logger.addHandler(logging.StreamHandler())
 
         self._last_heartbeat = time.time()
@@ -214,6 +216,47 @@ class AWSIOTVirtualInterface(VirtualIOTileInterface):
         self.client.reset_sequence(self.topics.rpc_topic)
         self._publish_status('disconnection_response', {'success': True, 'client': client})
 
+    def _call_rpc(self, message):
+        """Call an RPC based on received rpc message
+
+        Args:
+            message (dict): The received MQTT message payload containing the details
+                of the call
+        """
+
+        address = message['address']
+        rpc_id = message['rpc_id']
+        payload = message['payload']
+        status = (1 << 6)
+        try:
+            response = self.device.call_rpc(address, rpc_id, str(payload))
+            if len(response) > 0:
+                status |= (1 << 7)
+        except (RPCInvalidIDError, RPCNotFoundError):
+            status = 2  # FIXME: Insert the correct ID here
+            response = ""
+        except TileNotFoundError:
+            status = 0xFF
+            response = ""
+        except Exception:
+            # Don't allow exceptions in second thread or we will deadlock on
+            status = 3
+            response = ""
+
+            print("*** EXCEPTION OCCURRED IN RPC ***")
+            traceback.print_exc()
+            print("*** END EXCEPTION ***")
+
+        self._audit("RPCReceived", rpc_id=rpc_id, address=address, payload=binascii.hexlify(payload), status=status, response=binascii.hexlify(response))
+
+
+        resp = {
+            'status': status,
+            'payload': binascii.hexlify(response)
+        }
+
+        self._publish_success_response(resp, 'rpc_response')
+
     def _on_rpc_message(self, sequence, topic, message_type, message):
         """Process a received RPC packet
 
@@ -224,15 +267,13 @@ class AWSIOTVirtualInterface(VirtualIOTileInterface):
             message (dict): The message itself
         """
 
-        if message_type != 'rpc':
-            print("Unknown RPC packet received: " % message_type)
+        try:
+            message = self.topics.validate_message(['rpc'], message_type, message)
+        except ValidationError, exc:
+            self._publish_status('invalid_message', exc.to_dict())
             return
 
-        try:
-            parsed = json.loads(message)
-        except ValueError:
-            print("Invalid RPC packet received, could not decode json")
-            return
+        self._defer(self._call_rpc, [message])
 
     def _on_interface_message(self, sequence, topic, message_type, message):
         """Process a request to open an interface

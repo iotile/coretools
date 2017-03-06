@@ -1,4 +1,5 @@
 import json
+import binascii
 from iotile.core.exceptions import ValidationError
 
 class MQTTTopicValidator(object):
@@ -123,6 +124,62 @@ class MQTTTopicValidator(object):
             message['client'] = str(message['client'])
         except ValueError:
             raise ValidationError("Could not convert message properties to string")
+
+        return message
+
+    def _validate_rpc_message(self, message):
+        """Validate that an rpc message has the right schema
+
+        Args:
+            message (dict): The message that we are validating
+
+        Returns:
+            dict: The validated message, possibly with some additional decoding
+                performed.
+        """
+
+        if 'key' not in message or 'client' not in message:
+            raise ValidationError("Missing parameter in rpc message", required=['key', 'client'], message=message)
+
+        if 'address' not in message or 'rpc_id' not in message or 'payload' not in message:
+            raise ValidationError("Missing parameter in rpc message", required=['address', 'rpc_id', 'payload'], message=message)
+
+        try:
+            message['address'] = int(message['address'])
+            message['rpc_id'] = int(message['rpc_id'])
+            message['payload'] = bytearray(binascii.unhexlify(message['payload']))
+        except ValueError, exc:
+            raise ValidationError("Could not convert rpc message to appropriate data types", message=message, error=str(exc))
+
+        return message
+
+    def _validate_rpc_response_message(self, message):
+        """Validate that an rpc response message has the right schema
+
+        Args:
+            message (dict): The message that we are validating
+
+        Returns:
+            dict: The validated message, possibly with some additional decoding
+                performed.
+        """
+
+        if 'success' not in message or 'payload' not in message:
+            raise ValidationError("Missing parameter in rpc response message", required=['success', 'payload'], message=message)
+
+        try:
+            payload = message['payload']
+
+            if 'status' not in payload or 'payload' not in payload:
+                raise ValidationError("Missing parameter in rpc response message payload", required=['status', 'payload'], message=message)
+
+            payload['payload'] = bytearray(binascii.unhexlify(payload['payload']))
+        except KeyError:
+            raise ValidationError("payload is not a dictionary in rpc_response", required_keys=['success', 'payload'], message=message)
+        except TypeError:
+            raise ValidationError("payload is not a valid dictionary in rpc_response", message=message)
+        except ValueError:
+            raise ValidationError("could not unpack response payload", message=message)
 
         return message
 
