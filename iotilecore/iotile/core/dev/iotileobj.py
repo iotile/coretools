@@ -139,6 +139,9 @@ class IOTile(object):
 
         archs_with_deps = [y['depends'].iteritems() for x,y in architectures.iteritems() if 'depends' in y]
         if 'depends' in self.settings:
+            if not isinstance(self.settings['depends'], dict):
+                raise DataError("module must have a depends key that is a dictionary", found=str(self.settings['depends']))
+
             archs_with_deps.append(self.settings['depends'].iteritems())
 
         #Also search through overlays to architectures that are defined in this module_settings.json file

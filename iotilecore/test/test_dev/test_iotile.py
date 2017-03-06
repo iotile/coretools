@@ -52,6 +52,12 @@ def  test_load_invalidsteps():
     with pytest.raises(DataError):
         tile = load_tile('releasesteps_invalid_component')
 
+def test_load_invaliddepends():
+    with pytest.raises(DataError) as excinfo:
+        tile = load_tile('comp_w_depslist')
+
+    assert excinfo.value.msg == "module must have a depends key that is a dictionary"
+
 def test_deprange_parsing():
     tile = load_tile('dep_version_comp')
 

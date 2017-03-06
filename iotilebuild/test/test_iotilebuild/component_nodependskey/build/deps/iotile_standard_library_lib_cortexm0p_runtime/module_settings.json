@@ -1,0 +1,35 @@
+{
+	"modules":
+	{
+		"lib_cortexm0p_runtime":
+		{
+			"products":
+			{
+				"include_directories": 
+				[
+					["firmware", "src"]
+				],
+
+				"libcortexm0p_runtime_lpc824.a": "library",
+				"cortex_m0p_cdb_application.ld": "linker_script"
+			},
+
+			"copy_files":
+			[
+				[["firmware", "linker", "cortex_m0p_cdb_application.ld"], "cortex_m0p_cdb_application.ld"]
+			],
+
+			"domain": "iotile_standard_library",
+			"depends": 
+			{
+				"iotile_standard_library/common": ["include_directories"],
+				"iotile_standard_library/liblpc824": ["include_directories"]
+			}
+		}
+	},
+
+	"module_targets" :
+	{
+		"lib_cortexm0p_runtime": ["lpc824"]
+	}
+}
