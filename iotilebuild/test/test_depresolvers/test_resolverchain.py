@@ -1,6 +1,7 @@
 import pytest
 import os
 import shutil
+from iotile.core.exceptions import EnvironmentError
 from iotile.build.dev.resolverchain import DependencyResolverChain
 from iotile.mock.mock_resolver import MockDependencyResolver
 from iotile.core.dev.iotileobj import IOTile
@@ -110,6 +111,44 @@ def test_registry_resolver(tmpdir):
         for dep in tile.dependencies:
             result = chain.update_dependency(tile, dep)
             assert result == 'already installed'
+    finally:
+        reg.remove_component('comp1')
+
+def test_registry_resolver_unbuilt(tmpdir):
+    """Make sure we throw an error if we are asked to install an unbuilt component
+    """
+
+    reg = ComponentRegistry()
+    chain = DependencyResolverChain()
+
+    tile = copy_comp('comp2_dev_v1.1', tmpdir.strpath)
+
+    try:
+        reg.add_component(comp_path('comp1_v1.1_unbuilt'))
+        with pytest.raises(EnvironmentError) as excinfo:
+            for dep in tile.dependencies:
+                result = chain.update_dependency(tile, dep)
+
+        assert excinfo.value.msg == 'Component found in registry but has not been built'
+    finally:
+        reg.remove_component('comp1')
+
+def test_registry_resolver_built_invalid(tmpdir):
+    """Make sure we throw an error if we are asked to install an invalid built component
+    """
+
+    reg = ComponentRegistry()
+    chain = DependencyResolverChain()
+
+    tile = copy_comp('comp2_dev_v1.1', tmpdir.strpath)
+
+    try:
+        reg.add_component(comp_path('comp1_v1.1_built_empty'))
+        with pytest.raises(EnvironmentError) as excinfo:
+            for dep in tile.dependencies:
+                result = chain.update_dependency(tile, dep)
+
+        assert excinfo.value.msg == 'Component found in registry but its build/output folder is not valid'
     finally:
         reg.remove_component('comp1')
 

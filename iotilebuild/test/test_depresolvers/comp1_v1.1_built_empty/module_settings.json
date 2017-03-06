@@ -1,0 +1,16 @@
+{
+	"module_name": "comp1",
+	
+	"module_targets": 
+	{
+		"comp1": ["none"]
+	},
+
+	"modules":
+	{
+		"comp1":
+		{
+			"version": "1.1.0"
+		}
+	}
+}

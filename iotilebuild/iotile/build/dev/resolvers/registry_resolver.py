@@ -1,7 +1,12 @@
+import os
 from depresolver import DependencyResolver
-from iotile.core.exceptions import ArgumentError
+from iotile.core.exceptions import ArgumentError, EnvironmentError, IOTileException
+from iotile.core.utilities.typedargs import iprint
+from iotile.core.dev.iotileobj import IOTile
 
 class ComponentRegistryResolver (DependencyResolver):
+    """Attempt to find a component's dependency in the local registry
+    """
     def __init__(self, settings={}):
         pass
 
@@ -15,10 +20,21 @@ class ComponentRegistryResolver (DependencyResolver):
         except ArgumentError:
             return {'found': False}
 
-        #Make sure the tile we found in the registry has the required version
+        # Make sure the tile we found in the registry has the required version
         reqver = depinfo['required_version']
         if not reqver.check(comp.parsed_version):
             return {'found': False}
+
+        # If the component is in the local registry but hasn't been built,
+        # raise an error.
+
+        if not os.path.exists(comp.output_folder):
+            raise EnvironmentError("Component found in registry but has not been built", path=comp.folder, name=comp.name, suggestion="Run iotile build on this component first")
+
+        try:
+            IOTile(comp.output_folder)
+        except IOTileException:
+            raise EnvironmentError("Component found in registry but its build/output folder is not valid", path=comp.folder, name=comp.name, suggestion="Cleanly rebuild the component")
 
         self._copy_folder_contents(comp.output_folder, destdir)
         return {'found': True}
