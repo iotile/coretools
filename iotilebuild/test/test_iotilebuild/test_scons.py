@@ -38,3 +38,15 @@ def test_iotiletool_build():
         assert err == 0
     finally:
         os.chdir(olddir)
+
+def test_iotiletool_build_nodepends():
+    olddir = os.getcwd()
+
+    builddir = os.path.join(os.path.dirname(__file__), 'component_nodependskey')
+
+    try:
+        os.chdir(builddir)
+        err = subprocess.check_call(["iotile", "build"])
+        assert err == 0
+    finally:
+        os.chdir(olddir)

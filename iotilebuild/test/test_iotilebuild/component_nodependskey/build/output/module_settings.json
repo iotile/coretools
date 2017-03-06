@@ -1,0 +1,32 @@
+{
+    "module_targets": {
+        "tile_gpio": [
+            "lpc824"
+        ]
+    }, 
+    "release": true, 
+    "release_date": "2017-03-06T22:29:13.298000", 
+    "architectures": {
+        "lpc824": {
+            "defines": {
+                "kModuleHardwareType": "kLPC824HardwareType"
+            }
+        }
+    }, 
+    "dependency_versions": {}, 
+    "module_name": "tile_gpio", 
+    "modules": {
+        "tile_gpio": {
+            "defines": {
+                "kVoltageSenseChannel2": 2, 
+                "kVoltageSourcePin1": 8, 
+                "kVoltageSensePin2": 14, 
+                "kSensePin": 6, 
+                "kSenseChannel": 1, 
+                "kVoltageControlPin": 9, 
+                "kVoltageSourcePin2": 23
+            }, 
+            "domain": "iotile_standard_library"
+        }
+    }
+}
