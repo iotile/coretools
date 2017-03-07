@@ -58,6 +58,9 @@ setup(
         'iotile.default_auth_providers': [
             'BasicAuthProvider = iotile.core.hw.auth.default_providers:DefaultBasicAuth',
             'EnvAuthProvider = iotile.core.hw.auth.default_providers:DefaultEnvAuth'
+        ],
+        'iotile.config_variables': [
+            'iotile-core = iotile.core.config_variables:get_variables'
         ]
     },
     description="IOTile Core Tools",
