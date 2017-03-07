@@ -156,7 +156,7 @@ class ComponentRegistry(object):
             return default
 
     def clear_config(self, key):
-        """Remvoe a persistent config key from the registry
+        """Remove a persistent config key from the registry
 
         Args:
             key (string): The key name

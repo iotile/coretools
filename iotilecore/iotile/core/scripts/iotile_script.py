@@ -24,7 +24,7 @@ def main():
     type_system.interactive = True
     line = sys.argv[1:]
 
-    norc=False
+    norc = False
     if len(line) > 0 and line[0] == '--norc':
         norc = True
         line = line[1:]
@@ -37,11 +37,12 @@ def main():
     shell = HierarchicalShell('iotile', no_rc=norc)
         
     shell.root_add("registry", "iotile.core.dev.annotated_registry,registry")
+    shell.root_add("config", "iotile.core.dev.config,ConfigManager")
     shell.root_add('hw', "iotile.core.hw.hwmanager,HardwareManager")
 
     reg = ComponentRegistry()
     plugins = reg.list_plugins()
-    for k,v in plugins.iteritems():
+    for k, v in plugins.iteritems():
         shell.root_add(k, v)
 
     finished = False
