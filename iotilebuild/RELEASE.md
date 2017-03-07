@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.4.0
+
+- Add support for showing build commands during builds by setting the build:show-commands
+  config variable. 
+
 ## 2.3.0
 
 - Add support for pull command and pull_release inside of DependencyResolverChain to

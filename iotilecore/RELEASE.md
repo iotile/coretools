@@ -2,6 +2,13 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.12.0
+
+- Add support for ConfigManager that supports typed configuration variables
+  that can be registered by coretools plugins.
+- Fix nuisance exceptions in iotile shell when parameters are not convertable
+  to their correct types.
+
 ## 3.11.0
 
 - Add support for SparseMemory object that can use used to represent slices
