@@ -33,7 +33,8 @@ def test_list_vars():
     man.add_variable('test2:var', 'bool', 'test variable', 'false')
     man.add_variable('test:hello', 'string', 'test variable', 'false')
 
-    assert len(man.list("*")) == 4
+    # Note that other plugins may register config vars here
+    assert len(man.list("*")) >= 4
     assert len(man.list('test:*')) == 3
     assert len(man.list('test:var*')) == 2
     assert len(man.list('test:hello')) == 1
