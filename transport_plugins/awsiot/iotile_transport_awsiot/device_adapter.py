@@ -181,7 +181,6 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
         self.conns.begin_operation(conn_id, 'open_interface', callback, self.get_config('default_timeout'))
 
         topics = context['topics']
-        print "Sending message to: %s" % topics.interface_topic
 
         open_iface_message = {'key': context['key'], 'client': self.name, 'interface': 'rpc'}
 

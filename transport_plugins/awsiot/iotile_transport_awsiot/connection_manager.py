@@ -293,6 +293,7 @@ class ConnectionManager(threading.Thread):
 
         # Make sure we are not reusing an id that is currently connected to something
         if self._get_connection_state(conn_id) != self.Disconnected:
+            print self._connections[conn_id]
             callback(conn_id, self.id, False, 'Connection ID is already in use for another connection')
             return
 
@@ -339,6 +340,8 @@ class ConnectionManager(threading.Thread):
             reason = action.data['reason']
             if reason is None:
                 reason = "No reason was given"
+
+            print "Connection failed"
 
             del self._connections[conn_id]
             del self._int_connections[int_id]

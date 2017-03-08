@@ -152,9 +152,17 @@ class OrderedAWSIOTClient(object):
 
     def reset_sequence(self, topic):
         """Reset the expected sequence number for a topic
+
+        If the topic is unknown, this does nothing.  This behaviour is
+        useful when you ahve wildcard topics that only create queues 
+        once they receive the first message matching the topic.
+
+        Args:
+            topic (string): The topic to reset the packet queue on
         """
 
-        self.queues[topic].reset()
+        if topic in self.queues:
+            self.queues[topic].reset()
 
     def unsubscribe(self, topic):
         """Unsubscribe from messages on a given topic

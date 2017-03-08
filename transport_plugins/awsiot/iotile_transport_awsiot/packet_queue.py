@@ -41,6 +41,7 @@ class PacketQueue(object):
 
         # If this packet is in the past, drop it
         if self._next_expected is not None and sequence < self._next_expected:
+            print "Dropping out of order packet, seq=%d" % sequence
             return
 
         self._out_of_order.append((sequence, args))

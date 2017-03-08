@@ -96,6 +96,23 @@ class MQTTTopicValidator(object):
 
         return self.prefix + "devices/+/control/interface"
 
+    def gateway_topic(self, slug, postfix):
+        """Return a properly prefixed gateway topic
+
+        Constructs a string of the form:
+
+        prefix/devices/<slug>/postfix
+
+        Args:
+            slug (string): The device slug we are referencing
+            postfix (string): The path after the slug, without a slash
+
+        Returns:
+            string: The fully qualified topic name
+        """
+
+        return self.prefix + 'devices/{}/{}'.format(slug, postfix)
+
     def validate_message(self, valid_types, message_type, message):
         """Validate and a message according to its type
 
