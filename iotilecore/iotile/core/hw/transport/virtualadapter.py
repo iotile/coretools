@@ -2,8 +2,12 @@ import pkg_resources
 import json
 import os
 import traceback
+<<<<<<< HEAD
 import imp
 import inspect
+=======
+import time
+>>>>>>> Update virtualadapter to be useful with gateway
 from adapter import DeviceAdapter
 from iotile.core.exceptions import ArgumentError
 from iotile.core.hw.virtual.virtualdevice import RPCInvalidIDError, TileNotFoundError, RPCNotFoundError, VirtualIOTileDevice
@@ -37,6 +41,8 @@ class VirtualDeviceAdapter(DeviceAdapter):
 
         self.devices = loaded_devs
         self.connections = {}
+        self.scan_interval = self.get_config('scan_interval', 1.0)
+        self.last_scan = None
 
     def _find_device_script(self, script_path):
         """Import a virtual device from a file rather than an installed module
@@ -111,6 +117,17 @@ class VirtualDeviceAdapter(DeviceAdapter):
 
         raise ArgumentError("Could not find virtual_device by name", name=name, known_names=seen_names)
 
+    def can_connect(self):
+        """Can this adapter have another simultaneous connection
+        
+        There is no limit on the number of simultaneous virtual connections
+        
+        Returns:
+            bool: whether another connection is allowed
+        """
+
+        return True
+
     def connect_async(self, connection_id, connection_string, callback):
         """Asynchronously connect to a device
 
@@ -127,7 +144,7 @@ class VirtualDeviceAdapter(DeviceAdapter):
             if callback is not None:
                 callback(connection_id, self.id, False, "could not find device to connect to")
             return
-        
+
         if id_number in [x.iotile_id for x in self.connections.itervalues()]:
             if callback is not None:
                 callback(connection_id, self.id, False, "device was already connected to")
@@ -295,8 +312,21 @@ class VirtualDeviceAdapter(DeviceAdapter):
         response = bytearray(response)
         callback(conn_id, self.id, True, "", status, response)
 
+    def _send_scan_event(self, device):
+        """Send a scan event from a device
+        """
+
+        info = {
+            'connection_string': str(device.iotile_id),
+            'uuid': device.iotile_id,
+            'signal_strength': 100
+        }
+        self._trigger_callback('on_scan', self.id, info, 0)
+
     def periodic_callback(self):
-        pass
+        if self.last_scan is None or time.time() > (self.scan_interval + self.last_scan):
+            for dev in self.devices.itervalues():
+                self._send_scan_event(dev)
 
     def stop_sync(self):
         pass
