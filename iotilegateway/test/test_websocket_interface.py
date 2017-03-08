@@ -168,14 +168,14 @@ class TestWebSocketInterface(AsyncWebSocketsTestCase):
     @tornado.testing.gen_test
     def test_reports(self):
         yield self.ensure_advertised()
-        
+
         self.hw = yield self.get_hwmanager()
         yield self.connect(1)
 
         assert self.hw.count_reports() == 0
         yield self.enable_streaming()
-        
+
         #Give time for report to be processed
         time.sleep(0.1)
-        
+
         assert self.hw.count_reports() == 1

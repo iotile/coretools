@@ -13,7 +13,8 @@ setup(
     ],
 
     entry_points={'iotile.device_adapter': ['awsiot = iotile_transport_awsiot.device_adapter:AWSIOTDeviceAdapter'],
-                  'iotile.virtual_interface': ['awsiot = iotile_transport_awsiot.virtual_interface:AWSIOTVirtualInterface']},
+                  'iotile.virtual_interface': ['awsiot = iotile_transport_awsiot.virtual_interface:AWSIOTVirtualInterface'],
+                  'iotile.gateway_agent': ['awsiot = iotile_transport_awsiot.gateway_agent:AWSIOTGatewayAgent']},
     description="IOTile AWS IOT Transport Plugin",
     author="Arch",
     author_email="info@arch-iot.com",

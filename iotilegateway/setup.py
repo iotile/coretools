@@ -31,9 +31,8 @@ setup(
         'console_scripts': [
             'iotile-gateway = iotilegateway.main:main',
         ],
-        'iotile.cmdstream': [
-            'ws = iotile.core.hw.transport.websocketstream:WebSocketStream',
-            'recorded = iotile.core.hw.transport.recordedstream:RecordedStream'
+        'iotile.gateway_agent': [
+            'websockets = iotilegateway.ws_agent:WebSocketGatewayAgent'
         ]
     },
     description="IOTile Core Tools",

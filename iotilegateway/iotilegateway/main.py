@@ -1,27 +1,38 @@
 import signal
 import logging
+import sys
 import tornado.ioloop
-from tornado.options import define, options, parse_command_line
+import traceback
+import json
 import serial.tools.list_ports
-from wshandler import WebSocketHandler
-from webhandler import IndexHandler
-import device
+from tornado.options import define, parse_command_line, options
 import pkg_resources
+import device
 
-define("port", default=5120, help="run server on given port", type=int)
+from iotile.core.exceptions import ArgumentError
+
 
 should_close = False
 device_manager = None
-BLED112Adapter = None
+agents = []
+
+define('config', help="Config file for defining what adapters and agents to use")
+
 
 def quit_signal_handler(signum, frame):
+    """Signal handler to catch ^C and cleanly shut down
+    """
+
     global should_close
 
     should_close = True
     log = logging.getLogger('tornado.general')
     log.critical('Received stop signal, attempting to stop')
 
+
 def try_quit():
+    """Periodic callback to attempt to cleanly shut down this gateway
+    """
     global should_close
 
     if not should_close:
@@ -29,65 +40,108 @@ def try_quit():
 
     log = logging.getLogger('tornado.general')
 
+    log.critical("Stopping Gateway Agents")
+    for agent in agents:
+        try:
+            agent.stop()
+        except Exception, exc:
+            log.error("Error stopping gateway agent: %s", str(exc))
+            traceback.print_exc()
+
     if device_manager is not None:
-        log.critical('Stopping BLE Adapters')
-        device_manager.stop()
+        log.critical('Stopping Device Adapters')
+        try:
+            device_manager.stop()
+        except Exception, exc:
+            log.error("Error stopping device adapters: %s", str(exc))
+            traceback.print_exc()
 
     tornado.ioloop.IOLoop.instance().stop()
     log.critical('Stopping event loop and shutting down')
 
-def find_bled112_devices():
-    found_devs = []
 
-    #Look for BLED112 dongles on this computer and start an instance on each one
-    ports = serial.tools.list_ports.comports()
-    for p in ports:
-        if not hasattr(p, 'pid') or not hasattr(p, 'vid'):
-            continue
+def find_entry_point(group, name):
+    """Find an entry point by name
 
-        #Check if the device matches the BLED112's PID/VID combination
-        #FIXME: This requires a newer version of pyserial that has pid and vid exposed
-        if (p.pid == 1 and p.vid == 9304):
-            found_devs.append(p.device)
+    Args:
+        group (string): The entry point group like iotile.gateway_agent
+        name (string): The name of the entry point to find
+    """
 
-    return found_devs
+    for entry in pkg_resources.iter_entry_points(group, name):
+        item = entry.load()
+        return item
+
+    raise ArgumentError("Could not find installed plugin by name and group", group=group, name=name)
+
 
 def main():
     global device_manager
     
     log = logging.getLogger('tornado.general')
 
-    #Find BLED112 adapter
-    for entry in pkg_resources.iter_entry_points('iotile.device_adapter', 'bled112'):
-        BLED112Adapter = entry.load()
-        break
-
-    if BLED112Adapter is None:
-        raise RuntimeError("BLED112 adapter is not installed!")
-
     parse_command_line()
+
+    config_file = options.config
+    if config_file is None:
+        print("You must pass a config file using --config=<path to file>")
+        sys.exit(1)
+
+    try:
+        with open(config_file, "rb") as conf:
+            args = json.load(conf)
+    except IOError, exc:
+        raise ArgumentError("Could not open required config file", path=config_file, error=str(exc))
+    except ValueError, exc:
+        raise ArgumentError("Could not parse JSON from config file", path=config_file, error=str(exc))
+    except TypeError, exc:
+        raise ArgumentError("You must pass the path to a json config file", path=config_file)
+
+    if 'agents' not in args:
+        args['agents'] = []
+        log.warn("No agents defined in arguments to iotile-gateway, this is likely not what you want")
+    elif 'adapters' not in args:
+        args['adapters'] = []
+        log.warn("No device adapters defined in arguments to iotile-gateway, this is likely not what you want")
+
     loop = tornado.ioloop.IOLoop.instance()
 
     signal.signal(signal.SIGINT, quit_signal_handler)
 
     device_manager = device.DeviceManager(loop)
 
-    app = tornado.web.Application([
-        (r'/', IndexHandler, {'manager': device_manager}),
-        (r'/iotile/v1', WebSocketHandler, {'manager': device_manager}),
-    ])
+    # Load in all of the gateway agents that are supposed to provide access to
+    # the devices in this gateway
+    for agent_info in args['agents']:
+        if 'name' not in agent_info:
+            raise ArgumentError("Invalid agent information in config file", agent_info=agent_info, missing_key='name')
 
-    app.listen(options.port)
+        agent_name = agent_info['name']
+        agent_args = agent_info.get('args', {})
+
+        log.info("Loading agent by name '%s'", agent_name)
+        agent_class = find_entry_point('iotile.gateway_agent', agent_name)
+        agent = agent_class(agent_args, device_manager, loop)
+        agent.start()
+        agents.append(agent)
+
+    # Load in all of the device adapters that provide access to actual devices
+    for adapter_info in args['adapters']:
+        if 'name' not in adapter_info:
+            raise ArgumentError("Invalid adapter information in config file", agent_info=adapter_info, missing_key='name')
+
+        adapter_name = adapter_info['name']
+        port_string = adapter_info.get('port', None)
+
+        log.info("Loading device adapter by name '%s' and port '%s'", adapter_name, port_string)
+        adapter_class = find_entry_point('iotile.device_adapter', adapter_name)
+        adapter = adapter_class(port_string)
+        device_manager.add_adapter(adapter)
+
+    # Make sure we have a way to cleanly break out of the event loop on Ctrl-C
     tornado.ioloop.PeriodicCallback(try_quit, 100).start()
-
-    logging.getLogger('server').critical("Starting websocket server on port %d" % options.port)
-
-    #Take control of all BLED112 devices attached to this computer
-    devs = find_bled112_devices()
-    for dev in devs:
-        bled_wrapper = BLED112Adapter(dev)
-        device_manager.add_adapter(bled_wrapper)
 
     loop.start()
 
+    # The loop has been closed, finish and quit
     log.critical("Done stopping loop")

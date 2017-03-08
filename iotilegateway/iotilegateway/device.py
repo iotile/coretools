@@ -27,6 +27,7 @@ class DeviceManager(object):
         self.connections = {}
         self._loop = loop
         self._logger = logging.getLogger('device.manager')
+        self._logger.setLevel(logging.DEBUG)
         self._next_conn_id = 0
 
         tornado.ioloop.PeriodicCallback(self.device_expiry_callback, 1000, self._loop).start()

@@ -234,7 +234,7 @@ class ConnectionManager(threading.Thread):
                     if data['microstate'] == 'rpc':
                         self.finish_operation(conn_id, False, 'RPC timed out without response', None, None)
                     elif data['microstate'] == 'open_interface':
-                        self.finish_operation(conn_id, False, 'Open interface reuest timed out', None)
+                        self.finish_operation(conn_id, False, 'Open interface request timed out')
 
     def begin_connection(self, conn_id, internal_id, callback, context, timeout):
         """Asynchronously begin a connection attempt

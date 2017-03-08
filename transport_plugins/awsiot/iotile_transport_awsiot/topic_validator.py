@@ -59,9 +59,16 @@ class MQTTTopicValidator(object):
 
     @property
     def rpc_topic(self):
-        """The MQTTT topic used for sending RPCs
+        """The MQTT topic used for sending RPCs
         """
         return self.prefix + "control/rpc"
+
+    @property
+    def scan_topic(self):
+        """The MQTT topic used for forcing a scan immediately
+        """
+
+        return self.prefix + "control/scan"
 
     @property
     def connect_topic(self):
@@ -74,6 +81,20 @@ class MQTTTopicValidator(object):
         """The MQTT topic used for opening and closing interfaces
         """
         return self.prefix + "control/interface"
+
+    @property
+    def gateway_connect_topic(self):
+        """The MQTT topic used for accessing devices under this gateway
+        """
+
+        return self.prefix + "devices/+/control/connect"
+
+    @property
+    def gateway_interface_topic(self):
+        """The MQTT topic used for opening and closing interfaces under this gateway
+        """
+
+        return self.prefix + "devices/+/control/interface"
 
     def validate_message(self, valid_types, message_type, message):
         """Validate and a message according to its type
@@ -125,6 +146,38 @@ class MQTTTopicValidator(object):
         except ValueError:
             raise ValidationError("Could not convert message properties to string")
 
+        return message
+
+    def _validate_scan_message(self, message):
+        """Validate that an rpc message has the right schema
+
+        There is no fixed format for scan request messages
+        Args:
+            message (dict): The message that we are validating
+
+        Returns:
+            dict: The validated message, possibly with some additional decoding
+                performed.
+        """
+
+        return message
+
+    def _validate_scan_response_message(self, message):
+        """Validate that a scan response message has the right schema
+
+        Args:
+            message (dict): The message that we are validating
+
+        Returns:
+            dict: The validated message, possibly with some additional decoding
+                performed.
+        """
+
+        if 'devices' not in message:
+            raise ValidationError("No devices key in scan response message", message=message)
+        elif not isinstance(message['devices']):
+            raise ValidationError("Devices key is not a dictionary in scan response message", message=message)
+        
         return message
 
     def _validate_rpc_message(self, message):
@@ -231,6 +284,9 @@ class MQTTTopicValidator(object):
             dict: The validated message, possibly with some additional decoding
                 performed.
         """
+
+        if 'key' not in message or 'client' not in message:
+            raise ValidationError("Missing parameter in disconnect message", required=['key', 'client'], message=message)
 
         return message
 

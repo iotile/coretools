@@ -1,6 +1,7 @@
 import json
 import logging
 import AWSIoTPythonSDK.MQTTLib
+import re
 from AWSIoTPythonSDK.exception import operationError
 from iotile.core.exceptions import ArgumentError, EnvironmentError, InternalError
 from packet_queue import PacketQueue
@@ -48,6 +49,7 @@ class OrderedAWSIOTClient(object):
         self.client = None
         self.sequencer = TopicSequencer()
         self.queues = {}
+        self.wildcard_queues = []
 
     def connect(self, client_id):
         """Connect to AWS IOT with the given client_id
@@ -129,13 +131,19 @@ class OrderedAWSIOTClient(object):
         The contents of topic should be in the format created by self.publish with a
         sequence number of message type encoded as a json string.
 
+        Wildcard topics containing + and # are allowed and 
+
         Args:
             topic (string): The MQTT topic to subscribe to
             callback (callable): The callback to call when a new mesage is received
                 The signature of callback should be callback(sequence, topic, type, message)
         """
 
-        self.queues[topic] = PacketQueue(0, callback)
+        if '+' in topic or '#' in topic:
+            regex = re.compile(topic.replace('+', '[^/]+').replace('#', '.*'))
+            self.wildcard_queues.append((topic, regex, callback))
+        else:
+            self.queues[topic] = PacketQueue(0, callback)
 
         try:
             self.client.subscribe(topic, 1, self._on_receive)
@@ -185,8 +193,18 @@ class OrderedAWSIOTClient(object):
         message_type = packet['type']
         message_data = packet['message']
 
+        # If we received a packet that does not fit into a queue, check our wildcard
+        # queues
         if topic not in self.queues:
-            print("Received message for unknown topic: %s" % topic)
-            return
+            found = False
+            for wildcard_topic, regex, callback in self.wildcard_queues:
+                if regex.match(topic):
+                    self.queues[topic] = PacketQueue(0, callback)
+                    found = True
+                    break
+
+            if not found:
+                print("Received message for unknown topic: %s" % topic)
+                return
 
         self.queues[topic].receive(seq, [seq, topic, message_type, message_data])

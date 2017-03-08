@@ -178,9 +178,11 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
             callback(conn_id, self.id, False, "Could not find connection information")
             return
 
-        self.conns.begin_operation(conn_id, 'open_rpc_interface', callback, self.get_config('default_timeout'))
+        self.conns.begin_operation(conn_id, 'open_interface', callback, self.get_config('default_timeout'))
 
         topics = context['topics']
+        print "Sending message to: %s" % topics.interface_topic
+
         open_iface_message = {'key': context['key'], 'client': self.name, 'interface': 'rpc'}
 
         self.client.publish(topics.interface_topic, 'open_interface', open_iface_message)
