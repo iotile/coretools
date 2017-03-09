@@ -3,7 +3,6 @@ import copy
 import datetime
 import tornado.ioloop
 import tornado.gen
-from tornado.concurrent import Future
 import uuid
 from iotile.core.exceptions import ArgumentError
 

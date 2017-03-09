@@ -24,6 +24,9 @@ class VirtualDeviceAdapter(DeviceAdapter):
             device_name1@<optional_config_json1;device_name2@optional_config_json2
     """
 
+    # Make devices expire after a long time only
+    ExpirationTime = 600000
+
     def __init__(self, port):
         super(VirtualDeviceAdapter, self).__init__()
 
@@ -321,7 +324,7 @@ class VirtualDeviceAdapter(DeviceAdapter):
             'uuid': device.iotile_id,
             'signal_strength': 100
         }
-        self._trigger_callback('on_scan', self.id, info, 0)
+        self._trigger_callback('on_scan', self.id, info, self.ExpirationTime)
 
     def periodic_callback(self):
         if self.last_scan is None or time.time() > (self.scan_interval + self.last_scan):
