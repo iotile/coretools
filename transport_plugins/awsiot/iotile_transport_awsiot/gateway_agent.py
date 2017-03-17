@@ -214,17 +214,17 @@ class AWSIOTGatewayAgent(object):
             self._logger.warn("Error parsing slug from rpc request (slug=%s, topic=%s)", slug, topic)
             return
 
-        address = message['address']
-        rpc = message['rpc_id']
-        payload = message['payload']
-        key = message['key']
-        timeout = message['timeout']
-
         try:
             message = self.topics.validate_message(['rpc'], message_type, message)
         except ValidationError, exc:
             self._publish_status(slug, 'invalid_message', exc.to_dict())
             return
+
+        address = message['address']
+        rpc = message['rpc_id']
+        payload = message['payload']
+        key = message['key']
+        timeout = message['timeout']
 
         if message_type == 'rpc':
             self._loop.add_callback(self._send_rpc, uuid, address, rpc, payload, timeout, key)
@@ -434,7 +434,7 @@ class AWSIOTGatewayAgent(object):
         """Process a request for scanning information
 
         Args:
-            sequence (int): The sequence number of the packet received
+            sequence (int:) The sequence number of the packet received
             topic (string): The topic this message was received on
             message_type (string): The type of the packet received
             message (dict): The message itself
