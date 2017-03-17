@@ -67,6 +67,8 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
         self.conns = ConnectionManager(self.id)
         self.conns.start()
 
+        self.client.subscribe(self.prefix + 'devices/+/data/advertisement', self._on_advertisement, ordered=False)
+
         self._deferred = Queue.Queue()
 
     def connect_async(self, connection_id, connection_string, callback):
@@ -159,7 +161,7 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
         encoded_payload = binascii.hexlify(payload)
 
         rpc_message = {'key': context['key'], 'client': self.name, 'address': address,
-                       'rpc_id': rpc_id, 'payload': encoded_payload}
+                       'rpc_id': rpc_id, 'payload': encoded_payload, 'timeout': timeout}
 
         self.client.publish(topics.rpc_topic, 'rpc', rpc_message)
 
@@ -270,6 +272,15 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
 
         slug = parts[-3]
         return slug
+
+    def _on_advertisement(self, sequence, topic, message_type, message):
+        try:
+            # FIXME: We need a global topic validator to validate these messages
+            #message = self.topics.validate_message(['advertisement'], message_type, message)
+
+            self._trigger_callback('on_scan', self.id, message, 60.) # FIXME: Get the timeout from somewhere
+        except IOTileException, exc:
+            pass
 
     def _on_status_message(self, sequence, topic, message_type, message):
         """Process a status message received

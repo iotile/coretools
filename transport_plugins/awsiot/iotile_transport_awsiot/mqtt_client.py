@@ -125,7 +125,7 @@ class OrderedAWSIOTClient(object):
         except operationError, exc:
             raise InternalError("Could not publish message", topic=topic, message=exc.message)
 
-    def subscribe(self, topic, callback):
+    def subscribe(self, topic, callback, ordered=True):
         """Subscribe to future messages in the given topic
 
         The contents of topic should be in the format created by self.publish with a
@@ -137,13 +137,15 @@ class OrderedAWSIOTClient(object):
             topic (string): The MQTT topic to subscribe to
             callback (callable): The callback to call when a new mesage is received
                 The signature of callback should be callback(sequence, topic, type, message)
+            ordered (bool): Whether messages on this topic have a sequence number that must 
+                be checked and queued to ensure that packets are received in order
         """
 
         if '+' in topic or '#' in topic:
             regex = re.compile(topic.replace('+', '[^/]+').replace('#', '.*'))
-            self.wildcard_queues.append((topic, regex, callback))
+            self.wildcard_queues.append((topic, regex, callback, ordered))
         else:
-            self.queues[topic] = PacketQueue(0, callback)
+            self.queues[topic] = PacketQueue(0, callback, ordered)
 
         try:
             self.client.subscribe(topic, 1, self._on_receive)
@@ -154,7 +156,7 @@ class OrderedAWSIOTClient(object):
         """Reset the expected sequence number for a topic
 
         If the topic is unknown, this does nothing.  This behaviour is
-        useful when you ahve wildcard topics that only create queues 
+        useful when you have wildcard topics that only create queues
         once they receive the first message matching the topic.
 
         Args:
@@ -205,9 +207,9 @@ class OrderedAWSIOTClient(object):
         # queues
         if topic not in self.queues:
             found = False
-            for wildcard_topic, regex, callback in self.wildcard_queues:
+            for _, regex, callback, ordered in self.wildcard_queues:
                 if regex.match(topic):
-                    self.queues[topic] = PacketQueue(0, callback)
+                    self.queues[topic] = PacketQueue(0, callback, ordered)
                     found = True
                     break
 

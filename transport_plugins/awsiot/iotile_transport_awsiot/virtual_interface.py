@@ -68,9 +68,9 @@ class AWSIOTVirtualInterface(VirtualIOTileInterface):
         """Subscribe to all the topics needed for interaction with this device
         """
 
-        self.client.subscribe(self.topics.rpc_topic, self._on_rpc_message)
-        self.client.subscribe(self.topics.connect_topic, self._on_connect_message)
-        self.client.subscribe(self.topics.interface_topic, self._on_interface_message)
+        self.client.subscribe(self.topics.rpc_topic, self._on_rpc_message, ordered=False)
+        self.client.subscribe(self.topics.connect_topic, self._on_connect_message, ordered=False)
+        self.client.subscribe(self.topics.interface_topic, self._on_interface_message, ordered=False)
 
     def process(self):
         """Periodic nonblocking processes

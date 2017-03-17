@@ -8,7 +8,7 @@ from iotile.core.exceptions import ArgumentError
 
 class DeviceManager(object):
     """An object to manage connections to IOTile devices over one or more specific DeviceAdapters
-    
+
     DeviceManagers aggregate all of the available devices across each DeviceAdapter and route 
     connections to the appropriate adapter as connections are requested.
     """
@@ -58,7 +58,7 @@ class DeviceManager(object):
 
         devs = {}
 
-        for uuid, adapters in self._scanned_devices.iteritems():
+        for device_id, adapters in self._scanned_devices.iteritems():
             dev = None
             max_signal = None
             best_adapter = None
@@ -81,8 +81,8 @@ class DeviceManager(object):
                     max_signal = devinfo['signal_strength']
                     best_adapter = adapter_id
 
-            #If device has been seen in no adapters, it will get expired
-            #don't return it
+            # If device has been seen in no adapters, it will get expired
+            # don't return it
             if dev is None:
                 continue
 
@@ -90,7 +90,7 @@ class DeviceManager(object):
             dev['best_adapter'] = best_adapter
             dev['signal_strength'] = max_signal
 
-            devs[uuid] = dev
+            devs[device_id] = dev
 
         return devs
 
@@ -289,6 +289,40 @@ class DeviceManager(object):
         adapter = self._get_connection_data(connection_id, 'adapter')
 
         result = yield tornado.gen.Task(self.adapters[adapter].open_interface_async, connection_id, interface)
+
+        _, _, success, failure_reason = result.args
+
+        resp = {}
+        resp['success'] = success
+
+        if not success:
+            if 'failure_reason' is not None:
+                resp['reason'] = failure_reason
+            else:
+                resp['reason'] = 'Unknown failure reason'
+
+        raise tornado.gen.Return(resp)
+
+    @tornado.gen.coroutine
+    def close_interface(self, connection_id, interface):
+        """Coroutine to attempt to disable a particular interface on a connected device
+
+        Args:
+            connection_id (int): The id of a previously opened connection
+            interface (string): The name of the interface that we are trying to disable
+
+        Returns:
+            a dictionary containg two keys:
+                'success': bool with whether the attempt was sucessful
+                'reason': failure_reason as a string if the attempt failed
+        """
+
+        if connection_id not in self.connections:
+            raise tornado.gen.Return({'success': False, 'reason': 'Could not find connection id %d' % connection_id})
+
+        adapter = self._get_connection_data(connection_id, 'adapter')
+
+        result = yield tornado.gen.Task(self.adapters[adapter].close_interface_async, connection_id, interface)
 
         _, _, success, failure_reason = result.args
 
