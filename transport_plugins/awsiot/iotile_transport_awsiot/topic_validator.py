@@ -96,6 +96,13 @@ class MQTTTopicValidator(object):
 
         return self.prefix + "devices/+/control/interface"
 
+    @property
+    def gateway_rpc_topic(self):
+        """The MQTT topic used for opening and closing interfaces under this gateway
+        """
+
+        return self.prefix + "devices/+/control/rpc"
+
     def gateway_topic(self, slug, postfix):
         """Return a properly prefixed gateway topic
 

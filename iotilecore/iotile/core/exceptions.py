@@ -50,6 +50,8 @@ class IOTileException(Exception):
         out['type'] = self.__class__.__name__
         out['params'] = self.params
 
+        return out
+
     def __str__(self):
         msg = self.format()
         return msg

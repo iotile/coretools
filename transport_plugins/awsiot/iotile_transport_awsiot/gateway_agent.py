@@ -4,11 +4,11 @@ import binascii
 import struct
 from mqtt_client import OrderedAWSIOTClient
 from topic_validator import MQTTTopicValidator
-from iotile.core.exceptions import EnvironmentError, ArgumentError
+from iotile.core.exceptions import EnvironmentError, ArgumentError, ValidationError
 
 class AWSIOTGatewayAgent(object):
     """An agent for serving access to devices over AWSIOT
-    
+
     Args:
         manager (DeviceManager): A device manager provided
             by iotile-gateway.
@@ -80,6 +80,7 @@ class AWSIOTGatewayAgent(object):
         self.client.subscribe(self.topics.scan_topic, self._on_scan_request)
         self.client.subscribe(self.topics.gateway_connect_topic, self._on_connect)
         self.client.subscribe(self.topics.gateway_interface_topic, self._on_interface)
+        self.client.subscribe(self.topics.gateway_rpc_topic, self._on_rpc)
 
     def _validate_key(self, uuid, key):
         if uuid not in self._connections:
@@ -151,6 +152,39 @@ class AWSIOTGatewayAgent(object):
         elif message_type == 'close_interface':
             self._loop.add_callback(self._close_interface, uuid, iface, key)
 
+    def _on_rpc(self, sequence, topic, message_type, message):
+        """Process a request to send an RPC to an IOTile device
+        
+        Args:
+            sequence (int): The sequence number of the packet received
+            topic (string): The topic this message was received on
+            message_type (string): The type of the packet received
+            message (dict): The message itself
+        """
+
+        try:
+            slug = None
+            parts = topic.split('/')
+            slug = parts[-3]
+            uuid = self._extract_device_uuid(slug)
+        except Exception, exc:
+            self._logger.warn("Error parsing slug from rpc request (slug=%s, topic=%s)", slug, topic)
+            return
+
+        address = message['address']
+        rpc = message['rpc_id']
+        payload = message['payload']
+        key = message['key']
+
+        try:
+            message = self.topics.validate_message(['rpc'], message_type, message)
+        except ValidationError, exc:
+            self._publish_status('invalid_message', exc.to_dict())
+            return
+
+        if message_type == 'rpc':
+            self._loop.add_callback(self._send_rpc, uuid, address, rpc, payload, key)
+
     def _on_connect(self, sequence, topic, message_type, message):
         """Process a request to connect to an IOTile device
 
@@ -192,6 +226,53 @@ class AWSIOTGatewayAgent(object):
             self._loop.add_callback(self._disconnect_from_device, uuid, key, client)
 
     @tornado.gen.coroutine
+    def _send_rpc(self, uuid, address, rpc, payload, key):
+        """Send an RPC to a connected device
+
+        Args:
+        uuid (int): The id of the device we're opening the interface on
+        address (int): The address of the tile that we want to send the RPC to
+        rpc (int): The id of the rpc that we want to send.
+        payload (bytearray): The payload of arguments that we want to send
+        key (string): The key to authenticate the caller
+        """
+
+        slug = self._build_device_slug(uuid)
+        message = {}
+
+        if uuid not in self._connections:
+            message['action'] = 'send_rpc'
+            message['failure_reason'] = 'Invalid uuid with no active connections'
+
+            self._publish_status(slug, 'invalid_message', message)
+            return
+
+        data = self._connections[uuid]
+        if key != data['key']:
+            message['action'] = 'open_interface'
+            message['failure_reason'] = 'Invalid key'
+            self._publish_status(slug, 'invalid_message', message)
+            return
+
+        conn_id = data['connection_id']
+
+        try:
+            # FIXME: Have the rpc timeout sent as part of the rpc packet 
+            resp = yield self._manager.send_rpc(conn_id, address, rpc >> 8, rpc & 0xFF, str(payload), 1.0)
+        except Exception, exc:
+            self._logger.error("Error in manager open interface: %s" % str(exc))
+            resp = {'success': False, 'reason': "Internal error: %s" % str(exc)}
+
+        payload = {}
+        if resp['success'] is False:
+            payload['failure_reason'] = resp['reason']
+        else:
+            payload['status'] = resp['status']
+            payload['payload'] = binascii.hexlify(resp['payload'])
+
+        self._publish_response(slug, 'rpc_response', resp['success'], payload)
+
+    @tornado.gen.coroutine
     def _open_interface(self, uuid, iface, key):
         """Open an interface on a connected device
 
@@ -224,7 +305,7 @@ class AWSIOTGatewayAgent(object):
         try:
             resp = yield self._manager.open_interface(conn_id, iface)
         except Exception, exc:
-            self._logger.error("Error in manager disconnect: %s" % str(exc))
+            self._logger.error("Error in manager open interface: %s" % str(exc))
             resp = {'success': False, 'reason': "Internal error: %s" % str(exc)}
 
         payload = {}
