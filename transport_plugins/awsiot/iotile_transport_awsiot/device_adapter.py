@@ -5,6 +5,7 @@ import time
 import logging
 import traceback
 import Queue
+import uuid
 from iotile.core.exceptions import IOTileException, ArgumentError, HardwareError
 from iotile.core.hw.transport.adapter import DeviceAdapter
 from iotile.core.dev.registry import ComponentRegistry
@@ -60,7 +61,7 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
             port = port + '/'
 
         self.client = OrderedAWSIOTClient(args)
-        self.name = 'test'
+        self.name = str(uuid.uuid4())
         self.client.connect(self.name)
         self.prefix = port
 

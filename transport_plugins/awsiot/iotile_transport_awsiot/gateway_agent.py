@@ -468,10 +468,12 @@ class AWSIOTGatewayAgent(object):
             message = {}
             #message['expiration_time'] = str(info['expiration_time'])
             message['uuid'] = uuid
-            if 'user_connected' in info:
+            if uuid in self._connections:
+                message['user_connected'] = True
+            elif 'user_connected' in info:
                 message['user_connected'] = info['user_connected']
             else:
-                message['user_connected'] = uuid in self._connections
+                message['user_connected'] = False
 
             message['connection_string'] = slug
 
