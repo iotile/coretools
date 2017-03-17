@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.12.1
+
+- Fix ConfigManager on tile proxy objects.  There was an infinite loop in 
+  list_variables and the other methods were poorly documented.
+
 ## 3.12.0
 
 - Add support for ConfigManager that supports typed configuration variables
