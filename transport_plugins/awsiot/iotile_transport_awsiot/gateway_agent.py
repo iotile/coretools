@@ -79,7 +79,11 @@ class AWSIOTGatewayAgent(object):
     def _prepare(self):
         self.slug = self._build_device_slug(self.iotile_id)
         self.client = OrderedAWSIOTClient(self._args)
-        self.client.connect(self.slug)
+        try:
+            self.client.connect(self.slug)
+        except Exception, exc:
+            raise EnvironmentError("Could not connect to AWS IOT", error=str(exc))
+
         self.topics = MQTTTopicValidator(self.prefix + 'devices/{}'.format(self.slug))
         self._bind_topics()
 

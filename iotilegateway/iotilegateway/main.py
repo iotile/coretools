@@ -9,7 +9,7 @@ from tornado.options import define, parse_command_line, options
 import pkg_resources
 import device
 
-from iotile.core.exceptions import ArgumentError
+from iotile.core.exceptions import ArgumentError, IOTileException
 
 
 should_close = False
@@ -76,7 +76,7 @@ def find_entry_point(group, name):
 
 
 def main():
-    global device_manager
+    global device_manager, should_close
     
     log = logging.getLogger('tornado.general')
 
@@ -121,22 +121,28 @@ def main():
 
         log.info("Loading agent by name '%s'", agent_name)
         agent_class = find_entry_point('iotile.gateway_agent', agent_name)
-        agent = agent_class(agent_args, device_manager, loop)
-        agent.start()
-        agents.append(agent)
+        try:
+            agent = agent_class(agent_args, device_manager, loop)
+            agent.start()
+            agents.append(agent)
+        except IOTileException, exc:
+            log.critical("Could not load gateway agent, quitting, error = %s", str(exc))
+            should_close = True
+            break
 
     # Load in all of the device adapters that provide access to actual devices
-    for adapter_info in args['adapters']:
-        if 'name' not in adapter_info:
-            raise ArgumentError("Invalid adapter information in config file", agent_info=adapter_info, missing_key='name')
+    if not should_close:
+        for adapter_info in args['adapters']:
+            if 'name' not in adapter_info:
+                raise ArgumentError("Invalid adapter information in config file", agent_info=adapter_info, missing_key='name')
 
-        adapter_name = adapter_info['name']
-        port_string = adapter_info.get('port', None)
+            adapter_name = adapter_info['name']
+            port_string = adapter_info.get('port', None)
 
-        log.info("Loading device adapter by name '%s' and port '%s'", adapter_name, port_string)
-        adapter_class = find_entry_point('iotile.device_adapter', adapter_name)
-        adapter = adapter_class(port_string)
-        device_manager.add_adapter(adapter)
+            log.info("Loading device adapter by name '%s' and port '%s'", adapter_name, port_string)
+            adapter_class = find_entry_point('iotile.device_adapter', adapter_name)
+            adapter = adapter_class(port_string)
+            device_manager.add_adapter(adapter)
 
     # Make sure we have a way to cleanly break out of the event loop on Ctrl-C
     tornado.ioloop.PeriodicCallback(try_quit, 100).start()
