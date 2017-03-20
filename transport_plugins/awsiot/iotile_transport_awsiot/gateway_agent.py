@@ -23,6 +23,9 @@ class AWSIOTGatewayAgent(object):
         self._manager = manager
         self._advertisement_callback = None
         self._loop = loop
+        self.client = None
+        self.slug = None
+        self.topics = None
         self._connections = {}
         self._logger = logging.getLogger(__name__)
         self._logger.addHandler(logging.NullHandler())

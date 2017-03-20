@@ -2,8 +2,8 @@ import logging
 import datetime
 import tornado.websocket
 import tornado.gen
-from tornado.concurrent import Future
 import msgpack
+
 
 class WebSocketHandler(tornado.websocket.WebSocketHandler):
     _logger = logging.getLogger('ws.handler')
@@ -85,7 +85,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
                 self.send_error('Attempt to send an RPC when there was no connection')
         elif cmdcode == 'send_script':
             if self.connection is not None:
-                resp = yield self.manager.send_script(self.connection, cmd['data'], lambda x,y:self._notify_progress_async(tornado.ioloop.IOLoop.current(), x, y))
+                resp = yield self.manager.send_script(self.connection, cmd['data'], lambda x, y:self._notify_progress_async(tornado.ioloop.IOLoop.current(), x, y))
                 self.send_response(resp)
             else:
                 self.send_error('Attempt to send an RPC when there was no connection')
@@ -111,7 +111,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
     def send_error(self, reason):
         msg = msgpack.packb({'success': False, 'reason': reason})
-        
+
         try:
             self.write_message(msg, binary=True)
         except tornado.websocket.WebSocketClosedError as err:
