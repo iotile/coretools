@@ -2,6 +2,13 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.12.2
+
+- Add the ability to load virtual devices from python modules that have not
+  been installed using pip.  Just pass the path to the python file rather than
+  the name of the pkg_resources entrypoint.  For example to load ./device.py
+  as a virtual device, using iotile hw --port=virtual:./device.py
+
 ## 3.12.1
 
 - Fix ConfigManager on tile proxy objects.  There was an infinite loop in 
