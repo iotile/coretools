@@ -16,13 +16,13 @@ from iotile.core.utilities.typedargs.annotate import param, return_type, finaliz
 from iotile.core.hw.proxy.proxy import TileBusProxyObject
 from iotile.core.dev.registry import ComponentRegistry
 from iotile.core.hw.transport.adapterstream import AdapterCMDStream
-import re
+from iotile.core.dev.config import ConfigManager
 import inspect
 import os.path
 import imp
 import binascii
 import sys
-from iotile.core.utilities.packed import unpack
+
 
 @context("HardwareManager")
 class HardwareManager:
@@ -41,7 +41,14 @@ class HardwareManager:
 
     @param("port", "string", desc="transport method to use in the format transport[:port[,connection_string]]")
     @param("record", "path", desc="Optional file to record all RPC calls and responses made on this HardwareManager")
-    def __init__(self, port="none", record=None):
+    def __init__(self, port=None, record=None):
+        if port is None:
+            try:
+                conf = ConfigManager()
+                port = conf.get('core:default-port')
+            except ArgumentError:
+                raise ArgumentError("No port given and no core:default-port config variable set", suggestion="Specify the port to use to connect to the IOTile devices")
+
         transport, _, arg = port.partition(':')
 
         self.transport = transport
@@ -50,7 +57,7 @@ class HardwareManager:
             self.port = arg
 
         self.record = record
-        
+
         self.stream = self._create_stream()
         self._stream_queue = None
         self._trace_queue = None
@@ -69,7 +76,7 @@ class HardwareManager:
         reg = ComponentRegistry()
         modules = reg.list_components()
 
-        proxies = reduce(lambda x,y: x+y, [reg.find_component(x).proxy_modules() for x in modules], [])
+        proxies = reduce(lambda x, y: x+y, [reg.find_component(x).proxy_modules() for x in modules], [])
         for prox in proxies:
             self.add_proxies(prox)
 

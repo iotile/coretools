@@ -83,10 +83,11 @@ class ConfigManager(object):
             except (ValueError, TypeError) as exc:
                 raise EnvironmentError("Error loading config function", name=name, error=str(exc))
 
-    def _format_variable(self, var):
+    def _format_variable(self, name, var):
         """Format a helpful string describing a config variable
 
         Args:
+            name (string): The prefixed name of the config variable
             var (ConfigVariable): the variable to format
 
         Returns:
@@ -94,9 +95,9 @@ class ConfigManager(object):
         """
 
         if var.default is MISSING:
-            return "%s (%s): %s [no default]" % (var.name, var.type, var.description)
+            return "%s (%s): %s [no default]" % (name, var.type, var.description)
 
-        return "%s (%s): %s [default: %s]" % (var.name, var.type, var.description, var.default)
+        return "%s (%s): %s [default: %s]" % (name, var.type, var.description, var.default)
 
     @param("glob", "string", desc="Glob pattern for finding config variables")
     @return_type("list(string)")
@@ -112,7 +113,7 @@ class ConfigManager(object):
         """
 
         known_vars = [x for x in sorted(self._known_variables.iterkeys()) if fnmatch.fnmatchcase(x, glob)]
-        return ['- ' + self._format_variable(self._known_variables[x]) for x in known_vars]
+        return ['- ' + self._format_variable(x, self._known_variables[x]) for x in known_vars]
 
     @param("name", "string", desc="Config variable to find")
     @stringable
@@ -168,7 +169,7 @@ class ConfigManager(object):
             raise ArgumentError("Unknown config variable", name=name)
 
         var = self._known_variables[name]
-        return self._format_variable(var)
+        return self._format_variable(name, var)
 
     def add_variable(self, name, var_type, desc, default=MISSING):
         """Add a temporary variable to the config variable manager
