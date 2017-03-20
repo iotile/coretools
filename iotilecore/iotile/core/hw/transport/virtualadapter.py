@@ -1,13 +1,17 @@
 import pkg_resources
 import json
+import os
 import traceback
+import imp
+import inspect
 from adapter import DeviceAdapter
 from iotile.core.exceptions import ArgumentError
-from iotile.core.hw.virtual.virtualdevice import RPCInvalidIDError, TileNotFoundError, RPCNotFoundError
+from iotile.core.hw.virtual.virtualdevice import RPCInvalidIDError, TileNotFoundError, RPCNotFoundError, VirtualIOTileDevice
+
 
 class VirtualDeviceAdapter(DeviceAdapter):
     """Callback based adapter that gives access to one or more virtual devices
-    
+
     The adapter is created and serves access to the virtual_devices that are
     found by name in the entry_point group iotile.virtual_device.
 
@@ -34,17 +38,68 @@ class VirtualDeviceAdapter(DeviceAdapter):
         self.devices = loaded_devs
         self.connections = {}
 
+    def _find_device_script(self, script_path):
+        """Import a virtual device from a file rather than an installed module
+
+        script_path must point to a python file ending in .py that contains exactly one
+        VirtualIOTileDevice class definitions.  That class is loaded and executed as if it
+        were installed.
+
+        Args:
+            script_path (string): The path to the script to load
+
+        Returns:
+            VirtualIOTileDevice: A subclass of VirtualIOTileDevice that was loaded from script_path
+        """
+
+        search_dir, filename = os.path.split(script_path)
+        if search_dir == '':
+            search_dir = './'
+
+        if filename == '' or not os.path.exists(script_path):
+            raise ArgumentError("Could not find script to load virtual device", path=script_path)
+
+        module_name, ext = os.path.splitext(filename)
+        if ext != '.py':
+            raise ArgumentError("Script did not end with .py", filename=filename)
+
+        try:
+            file = None
+            file, pathname, desc = imp.find_module(module_name, [search_dir])
+            mod = imp.load_module(module_name, file, pathname, desc)
+        finally:
+            if file is not None:
+                file.close()
+
+        devs = filter(lambda x: inspect.isclass(x) and issubclass(x, VirtualIOTileDevice) and x != VirtualIOTileDevice, mod.__dict__.itervalues())
+        if len(devs) == 0:
+            raise ArgumentError("No VirtualIOTileDevice subclasses were defined in script", path=script_path)
+        elif len(devs) > 1:
+            raise ArgumentError("More than one VirtualIOTileDevice subclass was defined in script", path=script_path, devices=devs)
+
+        return devs[0]
+
     def _load_device(self, name, config):
+        """Load a device either from a script or from an installed module
+        """
+
         if config is None:
             config_dict = {}
         else:
-            with open(config, "rb") as conf:
-                data = json.load(conf)
+            try:
+                with open(config, "rb") as conf:
+                    data = json.load(conf)
+            except IOError, exc:
+                raise ArgumentError("Could not open config file", error=str(exc), path=config)
 
             if 'device' not in data:
                 raise ArgumentError("Invalid configuration file passed to VirtualDeviceAdapter", device_name=name, config_path=config, missing_key='device')
 
             config_dict = data['device']
+
+        if name.endswith('.py'):
+            device_factory = self._find_device_script(name)
+            return device_factory(config_dict)
 
         seen_names = []
         for entry in pkg_resources.iter_entry_points('iotile.virtual_device'):
