@@ -2,12 +2,9 @@ import pkg_resources
 import json
 import os
 import traceback
-<<<<<<< HEAD
 import imp
 import inspect
-=======
 import time
->>>>>>> Update virtualadapter to be useful with gateway
 from adapter import DeviceAdapter
 from iotile.core.exceptions import ArgumentError
 from iotile.core.hw.virtual.virtualdevice import RPCInvalidIDError, TileNotFoundError, RPCNotFoundError, VirtualIOTileDevice
