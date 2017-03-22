@@ -155,6 +155,7 @@ class IOTileCloud(object):
             raise EnvironmentError("Could not refresh token", error_code=resp.status_code)
 
         data = resp.json()
+        
         # Save token that we just refreshed to the registry and update our own token
         self.token = data['token']
         reg = ComponentRegistry()
