@@ -10,8 +10,9 @@ def test_format_default():
     man = ConfigManager()
     man.add_variable('test:var', 'bool', 'test variable', 'false')
     desc = man.describe('test:var')
-    
+
     assert desc == 'test:var (bool): test variable [default: false]'
+
 
 def test_format_nodefault():
     """Test formatting of config variable without a default value
@@ -22,6 +23,7 @@ def test_format_nodefault():
     desc = man.describe('test:var')
 
     assert desc == 'test:var (bool): test variable [no default]'
+
 
 def test_list_vars():
     """Test listing variables using a glob
@@ -38,6 +40,7 @@ def test_list_vars():
     assert len(man.list('test:*')) == 3
     assert len(man.list('test:var*')) == 2
     assert len(man.list('test:hello')) == 1
+
 
 def test_getting_and_setting():
     """Test setting and getting variables with correct types
@@ -70,3 +73,26 @@ def test_getting_and_setting():
 
     man.remove('test:var')
     assert man.get('test:var') is False
+
+
+def test_setting_config_function():
+    """Test adding a config function to ConfigManager
+    """
+
+    man = ConfigManager()
+
+    def conf_function(self, arg1):
+        if arg1 == 5:
+            raise ArgumentError("test")
+
+        return arg1
+
+    with pytest.raises(AttributeError):
+        man.test_conf(5)
+
+    man.add_function('test_conf', conf_function)
+
+    with pytest.raises(ArgumentError):
+        man.test_conf(5)
+
+    assert man.test_conf(3) == 3
