@@ -15,7 +15,8 @@ IOTile device.
 |IOTile-Core   |[![PyPI version](https://badge.fury.io/py/iotile-core.svg)](https://badge.fury.io/py/iotile-core)             |
 |IOTile-Build  |[![PyPI version](https://badge.fury.io/py/iotile-build.svg)](https://badge.fury.io/py/iotile-build)           |
 |IOTile-Gateway|[![PyPI version](https://badge.fury.io/py/iotile-gateway.svg)](https://badge.fury.io/py/iotile-gateway)       |
-|IOTile-Test   |[![PyPI version](https://badge.fury.io/py/iotile-gateway.svg)](https://badge.fury.io/py/iotile-test)          |
+|IOTile-Test   |[![PyPI version](https://badge.fury.io/py/iotile-test.svg)](https://badge.fury.io/py/iotile-test)             |
+|IOTile-Cloud  |[![PyPI version](https://badge.fury.io/py/iotile-ext-cloud.svg)](https://badge.fury.io/py/iotile-ext-cloud)   |
 |BLED112-Plugin|[![PyPI version](https://badge.fury.io/py/iotile-transport-bled112.svg)](https://badge.fury.io/py/iotile-transport-bled112)|
 
 ### Installation (from PyPI)
