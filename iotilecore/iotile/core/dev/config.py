@@ -20,7 +20,7 @@ import pkg_resources
 import fnmatch
 from collections import namedtuple
 from iotile.core.dev.registry import ComponentRegistry
-from iotile.core.exceptions import ArgumentError, ValidationError, EnvironmentError
+from iotile.core.exceptions import ArgumentError, EnvironmentError
 from iotile.core.utilities.typedargs import context, param, return_type, stringable, type_system
 
 MISSING = object()
@@ -37,6 +37,7 @@ class ConfigManager(object):
     def __init__(self):
         self._known_variables = {}
         self._load_providers()
+        self._load_functions()
         self._reg = ComponentRegistry()
 
     def _load_providers(self):
@@ -64,6 +65,23 @@ class ConfigManager(object):
                     raise EnvironmentError("The same config variable was defined twice", name=name)
 
                 self._known_variables[name] = var_obj
+
+    def _load_functions(self):
+        """Load all config functions that should be bound to this ConfigManager
+
+        Config functions allow you to add functions that will appear under ConfigManager
+        but call your specified function.  This is useful for adding complex configuration
+        behavior that is callable from the iotile command line tool
+        """
+
+        for entry in pkg_resources.iter_entry_points('iotile.config_function'):
+            try:
+                conf_func = entry.load()
+                name = conf_func.__name__
+
+                self.add_function(name, conf_func)
+            except (ValueError, TypeError) as exc:
+                raise EnvironmentError("Error loading config function", name=name, error=str(exc))
 
     def _format_variable(self, var):
         """Format a helpful string describing a config variable
@@ -163,7 +181,37 @@ class ConfigManager(object):
             var_type (string): The type of the variable.  This should be a type
                 known to the type_system.
             desc (string): The description of what this variable is for
-            default (string): An optional default value for the variable 
+            default (string): An optional default value for the variable
         """
 
         self._known_variables[name] = ConfigVariable(name, var_type, desc, default)
+
+    def add_function(self, name, callable):
+        """Add a config function to the config variable manager
+
+        Config functions are like config variables but are functions
+        rather than variables.  Sometimes you want to expose configuration
+        but you really need a function to actually do it.  For example,
+        let's say you want to store a github OAUTH token on behalf of a
+        user.  You would like a config function like `link_github` that
+        walks the user through logging in to github and getting a token
+        then you would like to save that token into the config manager like
+        normal.
+
+        add_function lets you bind a method to ConfigManager dynamically.
+        The function should be a normal function with its first argument
+        as self and it is turned into a bound method on this instance
+        of config manager.
+
+        Args:
+            name (string): The attribute name for this function
+            callable (callable): A function with first argument self
+                that will be bound to this ConfigManager object as
+                a method.
+        """
+
+        if hasattr(self, name):
+            raise ArgumentError("Trying to add a Config function with a conflicting name", name=name)
+
+        bound_callable = callable.__get__(self)
+        setattr(self, name, bound_callable)
