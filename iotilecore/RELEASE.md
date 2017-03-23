@@ -2,6 +2,13 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.12.3
+
+- Add the ability to have configuration functions loaded in ConfigManager
+  the same way that we have config variables.  This is needed by
+  iotile-ext-cloud to support storing persistent cloud tokens.
+- Increase test coverage
+
 ## 3.12.2
 
 - Add the ability to load virtual devices from python modules that have not
