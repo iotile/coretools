@@ -56,6 +56,7 @@ class BLED112Adapter(DeviceAdapter):
                 raise ValueError("Could not find any BLED112 adapters connected to this computer")
 
         self.scanning = False
+        self.stopped = False
         self._active_scan = not passive
 
         self._serial_port = serial.Serial(port, 256000, timeout=0.01, rtscts=True)
@@ -126,6 +127,8 @@ class BLED112Adapter(DeviceAdapter):
         self._command_task.stop()
         self._stream.stop()
         self._serial_port.close()
+
+        self.stopped = True
 
     def stop_scan(self):
         self._command_task.sync_command(['_stop_scan'])
@@ -798,7 +801,10 @@ class BLED112Adapter(DeviceAdapter):
         """Periodic cleanup tasks to maintain this adapter, should be called every second
         """
 
-        #Check if we should start scanning again
+        if self.stopped:
+            return
+
+        # Check if we should start scanning again
         if not self.scanning and len(self._connections) == 0 and self.connecting_count == 0:
             self._logger.info("Restarting scan for devices")
             self.start_scan(self._active_scan)

@@ -13,12 +13,17 @@ import time
 class WSIOTileClient(WebSocketClient):
     def __init__(self, port, report_callback):
         super(WSIOTileClient, self).__init__(port, protocols=['iotile-ws'])
+
         self.connection_established = threading.Event()
         self.messages = Queue()
         self.report_callback = report_callback
 
     def start(self):
-        self.connect()
+        try:
+            self.connect()
+        except Exception, exc:
+           raise HardwareError("Unable to connect to websockets host", reason=str(exc))
+
         self.connection_established.wait()
 
     def opened(self):

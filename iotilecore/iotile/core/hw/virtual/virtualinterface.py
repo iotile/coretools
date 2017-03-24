@@ -38,7 +38,7 @@ class VirtualIOTileInterface(object):
 
     def start(self, device):
         """Begin allowing connections to a virtual IOTile device
-        
+
         Args:
             device (VirtualIOTileDevice): The python object that implements the IOTile
                 device functionality that we wish to allow interaction with.
@@ -63,7 +63,7 @@ class VirtualIOTileInterface(object):
     def stop(self):
         """Stop allowing connections to this virtual IOTile device
         """
-        
+
         raise NotImplementedError("VirtualIOTileInterface subclass did not override start")
 
     def _audit(self, event, **args):
@@ -141,7 +141,7 @@ class VirtualIOTileInterface(object):
         """
 
         chunk = bytearray()
-        
+
         while len(chunk) < max_size:
             desired_size = max_size - len(chunk)
 

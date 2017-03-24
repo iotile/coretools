@@ -74,7 +74,6 @@ def test_getting_and_setting():
     man.remove('test:var')
     assert man.get('test:var') is False
 
-
 def test_setting_config_function():
     """Test adding a config function to ConfigManager
     """
