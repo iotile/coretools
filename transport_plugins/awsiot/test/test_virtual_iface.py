@@ -44,18 +44,19 @@ def topics():
     prefix = 'devices/d--0000-0000-0000-0001'
     yield MQTTTopicValidator(prefix)
 
-def expect_success(message):
-    parsed = json.loads(message)
-    payload = json.loads(parsed['message'])
+def expect_success(message, custom_type='response'):
 
-    assert parsed['type'] == 'response'
+    parsed = json.loads(message)
+    payload = parsed['message']
+
+    assert parsed['type'] == custom_type
     assert payload['success'] is True
 
-def expect_failure(message):
+def expect_failure(message, custom_type='response'):
     parsed = json.loads(message)
-    payload = json.loads(parsed['message'])
+    payload = parsed['message']
 
-    assert parsed['type'] == 'response'
+    assert parsed['type'] == custom_type
     assert payload['success'] is False
 
 def test_connecting(topics, local_broker, client, simple):
@@ -117,11 +118,12 @@ def test_disconnecting(topics, local_broker, client, simple):
 
     assert simple.topics.locked is False
     client.publish(topics.connect_topic, 'connect', {'key': test_key, 'client': test_client})
-    client.publish(topics.connect_topic, 'disconnect', {})
+    client.publish(topics.connect_topic, 'disconnect', {'key': test_key, 'client': test_client})
 
+    simple.process()
     assert len(local_broker.messages[topics.response_topic]) == 1
     assert simple.topics.locked is False
     assert simple.topics.key is None
     assert simple.topics.client is None
 
-    expect_success(local_broker.messages[topics.response_topic][-1])
+    expect_success(local_broker.messages[topics.response_topic][-1], 'disconnection_response')

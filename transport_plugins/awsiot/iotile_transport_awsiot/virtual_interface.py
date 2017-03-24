@@ -201,6 +201,7 @@ class AWSIOTVirtualInterface(VirtualIOTileInterface):
                 self._publish_status('invalid_message', {'reason': 'invalid key', 'message': message, 'client': message['client']})
             else:
                 # This must be called outside of this message handler since it resets topic sequence numbers
+                print "received disconnect message: " + str(message)
                 self._defer(self._disconnect_client)
 
     def _disconnect_client(self):
@@ -214,7 +215,7 @@ class AWSIOTVirtualInterface(VirtualIOTileInterface):
         self.client.reset_sequence(self.topics.connect_topic)
         self.client.reset_sequence(self.topics.interface_topic)
         self.client.reset_sequence(self.topics.rpc_topic)
-        self._publish_status('disconnection_response', {'success': True, 'client': client})
+        self._publish_success_response({"client": client}, custom_type='disconnection_response')
 
     def _call_rpc(self, message):
         """Call an RPC based on received rpc message

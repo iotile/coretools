@@ -12,8 +12,9 @@ class LocalBroker(object):
     listeners = {}
     messages = {}
 
-    def __init__(self, client_id):
+    def __init__(self, client_id, useWebsocket=False):
         self.client = client_id
+        self.websocket = useWebsocket
 
     def configureEndpoint(self, endpoint, port):
         return
@@ -29,12 +30,6 @@ class LocalBroker(object):
 
     def disconnect(self):
         return
-
-    def send(self, topic, seq, message_type, payload):
-        message = {}
-        message['sequence'] = seq
-        message['type'] = message_type
-        message['']
 
     def publish(self, topic, message, qos):
         if topic not in self.messages:
