@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.12.4
+
+- Fix handling of virtual interface config data that checked for the wrong
+  dictionary key
+
 ## 3.12.3
 
 - Add the ability to have configuration functions loaded in ConfigManager
