@@ -148,9 +148,9 @@ def instantiate_interface(virtual_iface, config):
 
     Args:
         virtual_iface (string): The name of the pkg_resources entry point corresponding to
-            the device.  It should be in group iotile.virtual_device
+            the interface.  It should be in group iotile.virtual_interface
         config (dict): A dictionary with a 'device' key with the config info for configuring
-            this virtual device.  This is optional.
+            this virtual interface.  This is optional.
 
     Returns:
         VirtualInterface: The instantiated subclass of VirtualInterface
