@@ -10,10 +10,11 @@ from iotile.core.hw.hwmanager import HardwareManager
 from iotile.core.hw.reports.signed_list_format import SignedListReport
 from iotile.core.hw.exceptions import *
 from iotile.core.exceptions import *
-import unittest
 import pytest
 import os.path
 import os
+import time
+
 
 @pytest.fixture
 def simple_hw():
@@ -30,6 +31,7 @@ def report_hw():
 
     hw.disconnect()
 
+
 @pytest.fixture
 def conf_report_hw():
     conf_file = os.path.join(os.path.dirname(__file__), 'report_test_config_hash.json')
@@ -41,6 +43,33 @@ def conf_report_hw():
     yield hw
 
     hw.disconnect()
+
+
+@pytest.fixture
+def realtime_hw():
+    conf_file = os.path.join(os.path.dirname(__file__), 'fast_realtime_test.json')
+
+    if '@' in conf_file or ',' in conf_file or ';' in conf_file:
+        pytest.skip('Cannot pass device config because path has [@,;] in it')
+
+    hw = HardwareManager('virtual:realtime_streamer@%s' % conf_file)
+    yield hw
+
+    hw.disconnect()
+
+
+@pytest.fixture
+def tracer_hw():
+    conf_file = os.path.join(os.path.dirname(__file__), 'fast_realtime_trace.json')
+
+    if '@' in conf_file or ',' in conf_file or ';' in conf_file:
+        pytest.skip('Cannot pass device config because path has [@,;] in it')
+
+    hw = HardwareManager('virtual:realtime_tracer@%s' % conf_file)
+    yield hw
+
+    hw.disconnect()
+
 
 @pytest.fixture
 def conf2_report_hw():
@@ -63,6 +92,7 @@ def test_report(report_hw):
     report_hw.enable_streaming()
     assert report_hw.count_reports() == 100
 
+
 def test_config_file(conf_report_hw):
     """Make sure we can pass a config dict
     """
@@ -70,6 +100,7 @@ def test_config_file(conf_report_hw):
     conf_report_hw.connect_direct('2')
     conf_report_hw.enable_streaming()
     assert conf_report_hw.count_reports() == 11
+
 
 def test_config_file2(conf2_report_hw, monkeypatch):
     """Make sure we can sign reports
@@ -88,3 +119,40 @@ def test_config_file2(conf2_report_hw, monkeypatch):
         assert report.lowest_id >= 1
         assert report.highest_id > report.lowest_id
         assert isinstance(report, SignedListReport)
+
+
+def test_realtime_streaming(realtime_hw):
+    """Make sure we properly support streaming asynchronously
+    """
+
+    realtime_hw.connect_direct('1')
+    realtime_hw.enable_streaming()
+
+    reports = realtime_hw.wait_reports(10)
+
+    stream1 = [x for x in reports if x.visible_readings[0].stream == 0x100a]
+    stream2 = [x for x in reports if x.visible_readings[0].stream == 0x5001]
+
+    assert len(stream1) != 0
+    assert len(stream2) != 0
+
+    assert stream1[0].visible_readings[0].value == 200
+    assert stream2[0].visible_readings[0].value == 100
+
+
+def test_realtime_tracing(tracer_hw):
+    """Make sure we properly support tracing data asynchronously
+    """
+
+    tracer_hw.connect_direct('1')
+    tracer_hw.enable_tracing()
+
+    time.sleep(.1)
+
+    trace_data = tracer_hw.dump_trace('raw')
+
+    assert len(trace_data) > 0
+    words = trace_data.split(' ')
+
+    wrong_data = [x for x in words if (x != 'hello' and x != 'goodbye' and x != '')]
+    assert len(wrong_data) == 0

@@ -1,0 +1,11 @@
+{
+	"device":
+	{
+		"iotile_id": "1",
+		"trace":
+		[
+			[0.001, "hello "],
+			[0.001, "goodbye "]
+		]
+	}
+}

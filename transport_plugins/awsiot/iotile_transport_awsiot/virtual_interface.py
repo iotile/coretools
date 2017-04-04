@@ -89,7 +89,7 @@ class AWSIOTVirtualInterface(VirtualIOTileInterface):
         """Safely shut down this interface
         """
 
-        super(AWSIOTVirtualInterface, self).stop(device)
+        super(AWSIOTVirtualInterface, self).stop()
 
         if self.client is not None:
             self.client.disconnect()
