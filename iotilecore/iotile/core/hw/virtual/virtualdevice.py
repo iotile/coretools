@@ -2,34 +2,39 @@
 """
 
 import struct
-import functools
 import inspect
-from iotile.core.exceptions import *
+from iotile.core.exceptions import IOTileException, InternalError
+from iotile.core.utilities.stoppable_thread import StoppableWorkerThread
 
 class RPCNotFoundError(IOTileException):
     """Exception thrown when an RPC is not found
     """
     pass
 
+
 class RPCInvalidArgumentsError(IOTileException):
     """Exception thrown when an RPC with a fixed parameter format has invalid arguments
     """
     pass
+
 
 class RPCInvalidReturnValueError(IOTileException):
     """Exception thrown when the return value of an RPC does not conform to its known format
     """
     pass
 
+
 class RPCInvalidIDError(IOTileException):
     """Exception thrown when an RPC is created with an invalid RPC id
     """
     pass
 
+
 class TileNotFoundError(IOTileException):
     """Exception thrown when an RPC is sent to a tile that does not exist
     """
     pass
+
 
 def rpc(address, rpc_id, arg_format, resp_format=None):
     """Decorator to denote that a function implements an RPC with the given ID and address
@@ -60,7 +65,6 @@ def rpc(address, rpc_id, arg_format, resp_format=None):
     if rpc_id < 0 or rpc_id > 0xFFFF:
         raise RPCInvalidIDError("Invalid RPC ID: {}".format(rpc_id))
 
-
     def _rpc_wrapper(func):
         def _rpc_executor(self, payload):
             args = struct.unpack("<{}".format(arg_format), payload)
@@ -80,6 +84,7 @@ def rpc(address, rpc_id, arg_format, resp_format=None):
         return _rpc_executor
 
     return _rpc_wrapper
+
 
 class VirtualIOTileDevice(object):
     """A Virtual IOTile device that can be interacted with as if it were a real one
@@ -101,11 +106,105 @@ class VirtualIOTileDevice(object):
         self.traces = []
         self.script = bytearray()
 
+        # For this device to push streams or tracing data through a VirtualInterface, it
+        # needs access to that interface's push channel
+        self._push_channel = None
+        self._workers = []
+        self._started = False
+
         # Iterate through all of our member functions and see the ones that are
         # RPCS and add them to the RPC handler table
         for name, value in inspect.getmembers(self, predicate=inspect.ismethod):
             if hasattr(value, 'is_rpc'):
                 self.register_rpc(value.rpc_addr, value.rpc_id, value)
+
+    def create_worker(self, func, interval, *args, **kwargs):
+        """Spawn a worker thread running func
+
+        The worker will be automatically be started when start() is called
+        and terminated when stop() is called on this VirtualIOTileDevice.
+        This must be called only from the main thread, not from a worker thread.
+
+        create_worker must not be called after stop() has been called.  If it
+        is called before start() is called, the thread is started when start()
+        is called, otherwise it is called immediately.
+
+        Args:
+            func (callable): Either a function that will be called in a loop
+                with a sleep of interval seconds with *args and **kwargs or
+                a generator function that will be called once and expected to
+                yield periodically so that the worker can check if it should
+                be killed.
+            interval (float): The time interval between invocations of func.
+                This should not be 0 so that the thread doesn't peg the CPU
+                and should be short enough so that the worker checks if it
+                should be killed in a timely fashion.
+            *args: Arguments that are passed to func as positional args
+            **kwargs: Arguments that are passed to func as keyword args
+        """
+
+        thread = StoppableWorkerThread(func, interval, args, kwargs)
+        self._workers.append(thread)
+
+        if self._started:
+            thread.start()
+
+    def start(self, channel):
+        """Start running this virtual device including any necessary worker threads
+
+        Args:
+            channel (IOTilePushChannel): the channel with a stream and trace
+                routine for streaming and tracing data through a VirtualInterface
+        """
+
+        if self._started:
+            raise InternalError("The method start() was called twice on VirtualIOTileDevice.")
+
+        self._push_channel = channel
+        self._started = True
+
+        for worker in self._workers:
+            worker.start()
+
+    def stream(self, report):
+        """Stream a report asynchronously
+
+        If no one is listening for the report, the report may be dropped,
+        otherwise it will be queued for sending
+
+        Args:
+            report (IOTileReport): The report that should be streamed
+        """
+
+        if self._push_channel is None:
+            return
+
+        self._push_channel.stream(report)
+
+    def trace(self, data):
+        """Trace data asynchronously
+
+        If no one is listening for traced data, it will be dropped
+        otherwise it will be queued for sending.
+
+        Args:
+            data (bytearray, string): Unstructured data to trace to any
+                connected client.
+        """
+
+        if self._push_channel is None:
+            return
+
+        self._push_channel.trace(data)
+
+    def stop(self):
+        """Synchronously stop this virtual device and any potential workers
+        """
+
+        self._started = False
+
+        for worker in self._workers:
+            worker.stop()
 
     def register_rpc(self, address, rpc_id, func):
         """Register an RPC handler with the given info
@@ -120,7 +219,7 @@ class VirtualIOTileDevice(object):
 
         if rpc_id < 0 or rpc_id > 0xFFFF:
             raise RPCInvalidIDError("Invalid RPC ID: {}".format(rpc_id))
-        
+
         self.tiles.add(address)
 
         code = (address << 8) | rpc_id

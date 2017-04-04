@@ -56,7 +56,7 @@ class AWSIOTVirtualInterface(VirtualIOTileInterface):
             device (VirtualIOTileDevice): The device we will be providing access to
         """
 
-        self.device = device
+        super(AWSIOTVirtualInterface, self).start(device)
 
         self.slug = self._build_device_slug(device.iotile_id)
         self.client = OrderedAWSIOTClient(self.args)
@@ -88,6 +88,8 @@ class AWSIOTVirtualInterface(VirtualIOTileInterface):
     def stop(self):
         """Safely shut down this interface
         """
+
+        super(AWSIOTVirtualInterface, self).stop()
 
         if self.client is not None:
             self.client.disconnect()

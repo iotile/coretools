@@ -10,6 +10,50 @@ from iotile.core.exceptions import ArgumentError
 from iotile.core.hw.virtual.virtualdevice import RPCInvalidIDError, TileNotFoundError, RPCNotFoundError, VirtualIOTileDevice
 
 
+class VirtualAdapterAsyncChannel(object):
+    """A channel for tracing and streaming data asynchronously from virtual devices
+    """
+
+    def __init__(self, adapter, iotile_id):
+        self.adapter = adapter
+        self.iotile_id = iotile_id
+
+    def stream(self, report):
+        """Queue data for streaming
+
+        Args:
+            report (IOTileReport): A report object to stream to a client
+        """
+
+        conn_id = self._find_connection(self.iotile_id)
+
+        if conn_id is not None:
+            self.adapter._trigger_callback('on_report', conn_id, report)
+
+    def trace(self, data):
+        """Queue data for tracing
+
+        Args:
+            data (bytearray, string): Unstructured data to trace to any
+                connected client.
+        """
+
+        conn_id = self._find_connection(self.iotile_id)
+
+        if conn_id is not None:
+            self.adapter._trigger_callback('on_trace', conn_id, data)
+
+    def _find_connection(self, iotile_id):
+        """Find the connection corresponding to an iotile_id
+        """
+
+        for conn_id, dev in self.adapter.connections.iteritems():
+            if dev.iotile_id == iotile_id:
+                return conn_id
+
+        return None
+
+
 class VirtualDeviceAdapter(DeviceAdapter):
     """Callback based adapter that gives access to one or more virtual devices
 
@@ -30,6 +74,10 @@ class VirtualDeviceAdapter(DeviceAdapter):
         devs = port.split(';')
         loaded_devs = {}
 
+        # This needs to be initialized before any VirtualAdapterAsyncChannels are
+        # created because those could reference it
+        self.connections = {}
+
         for dev in devs:
             name, sep, config = dev.partition('@')
 
@@ -37,10 +85,10 @@ class VirtualDeviceAdapter(DeviceAdapter):
                 config = None
 
             loaded_dev = self._load_device(name, config)
+            loaded_dev.start(VirtualAdapterAsyncChannel(self, loaded_dev.iotile_id))
             loaded_devs[loaded_dev.iotile_id] = loaded_dev
 
         self.devices = loaded_devs
-        self.connections = {}
         self.scan_interval = self.get_config('scan_interval', 1.0)
         self.last_scan = None
 
@@ -329,4 +377,6 @@ class VirtualDeviceAdapter(DeviceAdapter):
                 self._send_scan_event(dev)
 
     def stop_sync(self):
-        pass
+        for dev in self.devices.itervalues():
+            dev.stop()
+

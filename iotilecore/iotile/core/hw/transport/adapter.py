@@ -50,7 +50,7 @@ class DeviceAdapter(object):
     on_disconnect: called when the device disconnects unexpectedly
         Signature of on_disconnect should be on_disconnect(adapter_id, connection_id)
     on_report: called when the device has streamed a complete sensor graph report
-        Signature of on_report should be on_report(connection_id, report), 
+        Signature of on_report should be on_report(connection_id, report),
         where report is a subclass of IOTileReport.
     on_scan: called when this device is seen during a scan of this communication channel
         Signature of on_scan should be on_scan(adapter_id, device_info, expiration_interval)

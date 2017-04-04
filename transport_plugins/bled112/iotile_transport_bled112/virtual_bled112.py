@@ -84,11 +84,17 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         self._connection_handle = 0
         self._device = None
 
-        #Initialize state
+        # Initialize state
         self.payload_notif = False
         self.header_notif = False
         self.streaming = False
         self.tracing = False
+
+        # Keep track of whether we've launched our state machine
+        # to stream or trace data so that when we find more data available
+        # in process() we know not to restart the streaming/tracing process
+        self._stream_sm_running = False
+        self._trace_sm_running = False
 
         self.rpc_payload = bytearray(20)
         self.rpc_header = bytearray(20)
@@ -103,13 +109,13 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
     def find_bled112_devices(cls):
         found_devs = []
 
-        #Look for BLED112 dongles on this computer and start an instance on each one
+        # Look for BLED112 dongles on this computer and start an instance on each one
         ports = serial.tools.list_ports.comports()
         for p in ports:
             if not hasattr(p, 'pid') or not hasattr(p, 'vid'):
                 continue
 
-            #Check if the device matches the BLED112's PID/VID combination
+            # Check if the device matches the BLED112's PID/VID combination
             if p.pid == 1 and p.vid == 9304:
                 found_devs.append(p.device)
 
@@ -120,7 +126,7 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         """
 
         retval = self._command_task.sync_command(['_query_systemstate'])
-        
+
         for conn in retval['active_connections']:
             self.disconnect_sync(conn)
 
@@ -131,23 +137,37 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
             device (VirtualIOTileDevice): The device we will be providing access to
         """
 
-        self.device = device
+        super(BLED112VirtualInterface, self).start(device)
 
         self._command_task.sync_command(['_set_advertising_data', 0, self._advertisement()])
         self._command_task.sync_command(['_set_advertising_data', 1, self._scan_response()])
-        self._command_task.sync_command(['_set_mode', 0, 0]) #Disable advertising
-        self._command_task.sync_command(['_set_mode', 4, 2]) #Enable undirected connectable
+        self._command_task.sync_command(['_set_mode', 0, 0])  # Disable advertising
+        self._command_task.sync_command(['_set_mode', 4, 2])  # Enable undirected connectable
 
     def stop(self):
         """Safely shut down this interface
         """
 
-        self._command_task.sync_command(['_set_mode', 0, 0]) #Disable advertising
+        super(BLED112VirtualInterface, self).stop()
+
+        self._command_task.sync_command(['_set_mode', 0, 0])  # Disable advertising
         self.stop_sync()
+
+    def process(self):
+        """Periodic nonblocking processes
+        """
+
+        super(BLED112VirtualInterface, self).process()
+
+        if (not self._stream_sm_running) and (not self.reports.empty()):
+            self._stream_data()
+
+        if (not self._trace_sm_running) and (not self.traces.empty()):
+            self._send_trace()
 
     def _advertisement(self):
         flags = (0 << 1) | (0 << 2) | (int(self.device.pending_data))
-        ble_flags = struct.pack("<BBB", 2, 1, 0x4 | 0x2) #General discoverability and no BR/EDR support
+        ble_flags = struct.pack("<BBB", 2, 1, 0x4 | 0x2)  # General discoverability and no BR/EDR support
         uuid_list = struct.pack("<BB16s", 17, 6, TileBusService.bytes_le)
         manu = struct.pack("<BBHLH", 9, 0xFF, ArchManuID, self.device.iotile_id, flags)
 
@@ -222,11 +242,10 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
                 if flags & 0b1 and not self.streaming:
                     self.streaming = True
 
-                    #If we should send any reports, queue them for sending
+                    # If we should send any reports, queue them for sending
                     reports = self.device.open_streaming_interface()
                     if reports is not None:
                         self._queue_reports(*reports)
-                        self._defer(self._stream_data)
 
                     self._audit('StreamingInterfaceOpened')
                 elif not (flags & 0b1) and self.streaming:
@@ -237,11 +256,10 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
                 if flags & 0b1 and not self.tracing:
                     self.tracing = True
 
-                    #If we should send any reports, queue them for sending
+                    # If we should send any trace data, queue it immediately
                     traces = self.device.open_tracing_interface()
                     if traces is not None:
                         self._queue_traces(*traces)
-                        self._defer(self._send_trace)
 
                     self._audit('TracingInterfaceOpened')
                 elif not (flags & 0b1) and self.tracing:
@@ -249,7 +267,7 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
                     self.device.close_tracing_interface()
                     self._audit('TracingInterfaceClosed')
 
-        #Now check for RPC writes
+        # Now check for RPC writes
         elif event.command_class == 2 and event.command == 0:
             conn, reas, handle, offset, value_len, value = struct.unpack("<BBHHB%ds" % (len(event.payload) - 7,), event.payload)
             if handle == self.SendPayloadHandle:
@@ -261,7 +279,7 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
 
     def _call_rpc(self, header):
         """Call an RPC given a header and possibly a previously sent payload
-        
+
         Args:
             header (bytearray): The RPC header we should call
         """
@@ -320,11 +338,15 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
                 new chunk from the pending reports.
         """
 
-        #If we failed to transmit a chunk, we will be requeued with an argument
+        # If we failed to transmit a chunk, we will be requeued with an argument
+
+        self._stream_sm_running = True
+
         if chunk is None:
             chunk = self._next_streaming_chunk(20)
-        
+
         if chunk is None or len(chunk) == 0:
+            self._stream_sm_running = False
             return
 
         try:
@@ -333,17 +355,17 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         except HardwareError, exc:
             retval = exc.params['return_value']
 
-            #If we're told we ran out of memory, wait and try again
+            # If we're told we ran out of memory, wait and try again
             if retval.get('code', 0) == 0x182:
                 time.sleep(.02)
                 self._defer(self._stream_data, [chunk])
-            elif retval.get('code', 0) == 0x181: #Invalid state, the other side likely disconnected midstream
-                self._audit('ErrorStreamingReport') #If there was an error, stop streaming but don't choke
+            elif retval.get('code', 0) == 0x181:  # Invalid state, the other side likely disconnected midstream
+                self._audit('ErrorStreamingReport')  # If there was an error, stop streaming but don't choke
             else:
                 print("*** EXCEPTION OCCURRED STREAMING DATA ***")
                 traceback.print_exc()
                 print("*** END EXCEPTION ***")
-                self._audit('ErrorStreamingReport') #If there was an error, stop streaming but don't choke
+                self._audit('ErrorStreamingReport')  # If there was an error, stop streaming but don't choke
 
     def _send_trace(self, chunk=None):
         """Stream tracing data to the ble client in 20 byte chunks
@@ -353,11 +375,13 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
                 new chunk from the pending reports.
         """
 
-        #If we failed to transmit a chunk, we will be requeued with an argument
+        self._trace_sm_running = True
+        # If we failed to transmit a chunk, we will be requeued with an argument
         if chunk is None:
             chunk = self._next_tracing_chunk(20)
-        
+
         if chunk is None or len(chunk) == 0:
+            self._trace_sm_running = False
             return
 
         try:
@@ -366,14 +390,14 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         except HardwareError, exc:
             retval = exc.params['return_value']
 
-            #If we're told we ran out of memory, wait and try again
+            # If we're told we ran out of memory, wait and try again
             if retval.get('code', 0) == 0x182:
                 time.sleep(.02)
                 self._defer(self._send_trace, [chunk])
-            elif retval.get('code', 0) == 0x181: #Invalid state, the other side likely disconnected midstream
-                self._audit('ErrorStreamingTrace') #If there was an error, stop streaming but don't choke
+            elif retval.get('code', 0) == 0x181:  # Invalid state, the other side likely disconnected midstream
+                self._audit('ErrorStreamingTrace')  # If there was an error, stop streaming but don't choke
             else:
                 print("*** EXCEPTION OCCURRED STREAMING DATA ***")
                 traceback.print_exc()
                 print("*** END EXCEPTION ***")
-                self._audit('ErrorStreamingTrace') #If there was an error, stop streaming but don't choke
+                self._audit('ErrorStreamingTrace')  # If there was an error, stop streaming but don't choke
