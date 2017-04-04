@@ -52,7 +52,7 @@ def realtime_hw():
     if '@' in conf_file or ',' in conf_file or ';' in conf_file:
         pytest.skip('Cannot pass device config because path has [@,;] in it')
 
-    hw = HardwareManager('virtual:realtime_streamer@%s' % conf_file)
+    hw = HardwareManager('virtual:realtime_test@%s' % conf_file)
     yield hw
 
     hw.disconnect()
@@ -65,7 +65,7 @@ def tracer_hw():
     if '@' in conf_file or ',' in conf_file or ';' in conf_file:
         pytest.skip('Cannot pass device config because path has [@,;] in it')
 
-    hw = HardwareManager('virtual:realtime_tracer@%s' % conf_file)
+    hw = HardwareManager('virtual:realtime_test@%s' % conf_file)
     yield hw
 
     hw.disconnect()
