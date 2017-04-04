@@ -9,6 +9,7 @@ from iotile.core.dev.registry import ComponentRegistry
 from iotile.core.exceptions import ArgumentError, EnvironmentError
 from iotile.core.utilities.typedargs import context, param, return_type, annotated
 
+
 @context("IOTileCloud")
 class IOTileCloud(object):
     """High level routines for interacting with IOTile cloud
@@ -66,7 +67,7 @@ class IOTileCloud(object):
             self.api.device(slug).patch(patch)
         except RestHttpBaseException, exc:
             if exc.response.status_code == 400:
-                raise ArgumentError("Error setting sensor graph, invalid value", value=new_sg, error_code=exc.response.status_code)  
+                raise ArgumentError("Error setting sensor graph, invalid value", value=new_sg, error_code=exc.response.status_code)
             else:
                 raise EnvironmentError("Error calling method on iotile.cloud", exception=exc, response=exc.response.status_code)
 
@@ -129,7 +130,7 @@ class IOTileCloud(object):
                 about.
 
         Returns:
-            int: The highest reading id that has been acknowledged by the cloud 
+            int: The highest reading id that has been acknowledged by the cloud
         """
 
         slug = self._build_streamer_slug(device_id, streamer)
@@ -155,7 +156,7 @@ class IOTileCloud(object):
             raise EnvironmentError("Could not refresh token", error_code=resp.status_code)
 
         data = resp.json()
-        
+
         # Save token that we just refreshed to the registry and update our own token
         self.token = data['token']
         reg = ComponentRegistry()

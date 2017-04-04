@@ -1,12 +1,12 @@
 import argparse
 import pkg_resources
 import sys
-import logging
 import json
 import os.path
 import imp
-from iotile.core.exceptions import ArgumentError, IOTileException
+from iotile.core.exceptions import IOTileException
 from iotile.core.hw.hwmanager import HardwareManager
+
 
 def main():
     """Run a script that puts an IOTile device into a known state
@@ -16,7 +16,7 @@ def main():
     list_parser.add_argument('-l', '--list', action='store_true', help="List all known device preparation scripts and then exit")
 
     parser = argparse.ArgumentParser(description="Prepare a device or a list of devices into a known state using a script")
-    
+
     parser.add_argument('port', help="The name of the port to use to connect to the device")
     parser.add_argument('script', help="The name of the device preparation script to use (can either be an installed script name or a .py file with extension")
     parser.add_argument('-c', '--config', help="An optional JSON config file with arguments for the script")
@@ -51,7 +51,7 @@ def main():
     devices.extend([('conection_string', x) for x in args.device])
 
     for uuid_range in args.uuid_range:
-        start,_,end = uuid_range.partition('-')
+        start, _, end = uuid_range.partition('-')
         start = int(start, 16)
         end = int(end, 16)
 
@@ -77,13 +77,14 @@ def main():
 
     print("\n**FINISHED**\n")
     print("Successfully processed %d devices" % len(success))
-    for conntype,conn in success:
+    for conntype, conn in success:
         print("%s: %s" % (conntype, conn))
 
     if len(success) != len(devices):
         return 1
 
     return 0
+
 
 def import_device_script(script_path):
     """Import a main function from a script file
@@ -126,6 +127,7 @@ def import_device_script(script_path):
 
     return getattr(mod, 'main')
 
+
 def configure_device(hw, conntype, conarg, script, args):
     if conntype == 'uuid':
         hw.connect(conarg)
@@ -137,6 +139,7 @@ def configure_device(hw, conntype, conarg, script, args):
     finally:
         if hw.stream.connected:
             hw.disconnect()
+
 
 def instantiate_script(device_recipe):
     """Find a device recipe by name and instantiate it
