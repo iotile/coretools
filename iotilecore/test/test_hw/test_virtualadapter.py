@@ -71,8 +71,8 @@ def test_config_file(conf_report_hw):
     conf_report_hw.enable_streaming()
     assert conf_report_hw.count_reports() == 11
 
-def test_config_file(conf2_report_hw, monkeypatch):
-    """Make sure we can pass a config dict
+def test_config_file2(conf2_report_hw, monkeypatch):
+    """Make sure we can sign reports
     """
 
     monkeypatch.setenv('USER_KEY_00000002', '0000000000000000000000000000000000000000000000000000000000000000')

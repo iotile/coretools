@@ -3,13 +3,49 @@
 Virtual things are different from Mock things in that mock things are designed specifically
 to facilitate unit testing and hence do not allow for the complete configurability of behavior.
 Virtual things are designed to allow the same level of configurability and robustness as a real
-thing. 
+thing.
 """
 
 from Queue import Queue, Empty
 import logging
 from iotile.core.exceptions import ArgumentError
-import audit
+import iotile.core.hw.virtual.audit as audit
+
+
+class IOTilePushChannel(object):
+    """A channel that allows VirtualIOTileDevices to push data to clients
+
+    This basic implementation just queues data in the VirtualIOTileInterface.
+    If a subclass needs to implement special behavior, it should subclass this
+    interface and pass that instead in start().
+
+    Args:
+        iface (VirtualIOTileInterface): The interface that this channel should
+            push and stream data through.
+    """
+
+    def __init__(self, iface):
+        self._interface = iface
+
+    def stream(self, report):
+        """Queue data for streaming
+
+        Args:
+            report (IOTileReport): A report object to stream to a client
+        """
+
+        self._interface._queue_reports(report)
+
+    def trace(self, data):
+        """Queue data for tracing
+
+        Args:
+            data (bytearray, string): Unstructured data to trace to any
+                connected client.
+        """
+
+        self._interface._queue_traces(data)
+
 
 class VirtualIOTileInterface(object):
     """A virtual interface that presents an IOTile device to the world
@@ -19,9 +55,14 @@ class VirtualIOTileInterface(object):
     BLE client to connect to this virtual IOTile device as if it were a real
     one.
 
-    Args:
-        device (VirtualIOTileDevice): The actual device implementation that this
-            virtual interface is providing access to.
+    There are two portions of the VirtualIOTileInterface.
+
+    The first is to handle external control commands to the VirtualIOTileDevice
+    that it is managing.
+
+    The second is to provide an API to that device for it to asynchronously stream
+    or trace data back to any client that might be connected over the virtual interface.
+
     """
 
     def __init__(self):
@@ -33,8 +74,9 @@ class VirtualIOTileInterface(object):
         self.reports = Queue()
         self.traces = Queue()
 
-        self.in_progress_report = None
-        self.in_progress_trace = None
+        # Track whether we are chunking a report or a trace
+        self._in_progress_report = None
+        self._in_progress_trace = None
 
     def start(self, device):
         """Begin allowing connections to a virtual IOTile device
@@ -44,12 +86,14 @@ class VirtualIOTileInterface(object):
                 device functionality that we wish to allow interaction with.
         """
 
-        raise NotImplementedError("VirtualIOTileInterface subclass did not override start")
+        channel = IOTilePushChannel(self)
+        device.start(channel)
+        self.device = device
 
     def process(self):
         """Process all pending actions, needs to be called periodically after start
 
-        This function will block for up to 100 ms so that it may be simple called in a tight
+        This function will block for up to 100 ms so that it may be simply called in a tight
         while loop without pegging the CPU to 100%.
         """
 
@@ -64,7 +108,8 @@ class VirtualIOTileInterface(object):
         """Stop allowing connections to this virtual IOTile device
         """
 
-        raise NotImplementedError("VirtualIOTileInterface subclass did not override start")
+        if self.device is not None:
+            self.device.stop()
 
     def _audit(self, event, **args):
         """Log an audit event with the given message and parameters
@@ -145,24 +190,24 @@ class VirtualIOTileInterface(object):
         while len(chunk) < max_size:
             desired_size = max_size - len(chunk)
 
-            #If we don't have an in progress report at the moment, attempt to get one
-            if self.in_progress_report is None:
+            # If we don't have an in progress report at the moment, attempt to get one
+            if self._in_progress_report is None:
                 try:
                     next_report = self.reports.get_nowait()
                 except Empty:
                     return chunk
 
                 self._audit('ReportStreamed', report=str(next_report))
-                self.in_progress_report = bytearray(next_report.encode())
+                self._in_progress_report = bytearray(next_report.encode())
 
-            if len(self.in_progress_report) <= desired_size:
-                chunk += self.in_progress_report
-                self.in_progress_report = None
+            if len(self._in_progress_report) <= desired_size:
+                chunk += self._in_progress_report
+                self._in_progress_report = None
             else:
-                remaining = self.in_progress_report[desired_size:]
-                chunk += self.in_progress_report[:desired_size]
+                remaining = self._in_progress_report[desired_size:]
+                chunk += self._in_progress_report[:desired_size]
 
-                self.in_progress_report = remaining
+                self._in_progress_report = remaining
 
         return chunk
 
@@ -178,27 +223,27 @@ class VirtualIOTileInterface(object):
         """
 
         chunk = bytearray()
-        
+
         while len(chunk) < max_size:
             desired_size = max_size - len(chunk)
 
-            #If we don't have an in progress report at the moment, attempt to get one
-            if self.in_progress_trace is None:
+            # If we don't have an in progress report at the moment, attempt to get one
+            if self._in_progress_trace is None:
                 try:
                     next_trace = self.traces.get_nowait()
                 except Empty:
                     return chunk
 
                 self._audit('TraceSent', trace=str(next_trace))
-                self.in_progress_trace = bytearray(next_trace)
+                self._in_progress_trace = bytearray(next_trace)
 
-            if len(self.in_progress_trace) <= desired_size:
-                chunk += self.in_progress_trace
-                self.in_progress_trace = None
+            if len(self._in_progress_trace) <= desired_size:
+                chunk += self._in_progress_trace
+                self._in_progress_trace = None
             else:
-                remaining = self.in_progress_trace[desired_size:]
-                chunk += self.in_progress_trace[:desired_size]
+                remaining = self._in_progress_trace[desired_size:]
+                chunk += self._in_progress_trace[:desired_size]
 
-                self.in_progress_trace = remaining
+                self._in_progress_trace = remaining
 
         return chunk
