@@ -167,9 +167,9 @@ class VirtualDeviceAdapter(DeviceAdapter):
 
     def can_connect(self):
         """Can this adapter have another simultaneous connection
-        
+
         There is no limit on the number of simultaneous virtual connections
-        
+
         Returns:
             bool: whether another connection is allowed
         """
@@ -199,6 +199,7 @@ class VirtualDeviceAdapter(DeviceAdapter):
             return
 
         dev = self.devices[id_number]
+        dev.connected = True
 
         self.connections[connection_id] = dev
 
@@ -220,6 +221,7 @@ class VirtualDeviceAdapter(DeviceAdapter):
             return
 
         dev = self.connections[conn_id]
+        dev.connected = False
         del self.connections[conn_id]
 
         if callback is not None:
@@ -320,7 +322,7 @@ class VirtualDeviceAdapter(DeviceAdapter):
             rpc_id (int): the 16-bit id of the RPC we want to call
             payload (bytearray): the payload of the command
             timeout (float): the number of seconds to wait for the RPC to execute
-            callback (callable): A callback for when we have finished the RPC.  The callback will be called as" 
+            callback (callable): A callback for when we have finished the RPC.  The callback will be called as"
                 callback(connection_id, adapter_id, success, failure_reason, status, payload)
                 'connection_id': the connection id
                 'adapter_id': this adapter's id

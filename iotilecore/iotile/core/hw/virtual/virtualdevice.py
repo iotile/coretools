@@ -5,6 +5,9 @@ import struct
 import inspect
 from iotile.core.exceptions import IOTileException, InternalError
 from iotile.core.utilities.stoppable_thread import StoppableWorkerThread
+from iotile.core.hw.reports.individual_format import IndividualReadingReport
+from iotile.core.hw.reports.report import IOTileReading
+
 
 class RPCNotFoundError(IOTileException):
     """Exception thrown when an RPC is not found
@@ -106,6 +109,9 @@ class VirtualIOTileDevice(object):
         self.traces = []
         self.script = bytearray()
 
+        self.connected = False
+        self.stream_iface_open = False
+
         # For this device to push streams or tracing data through a VirtualInterface, it
         # needs access to that interface's push channel
         self._push_channel = None
@@ -180,6 +186,26 @@ class VirtualIOTileDevice(object):
             return
 
         self._push_channel.stream(report)
+
+    def stream_realtime(self, stream, value):
+        """Stream a realtime value as an IndividualReadingReport
+
+        If the streaming interface of the VirtualInterface this
+        VirtualDevice is attached to is not opened, the realtime
+        reading may be dropped.
+
+        Args:
+            stream (int): The stream id to send
+            value (int): The stream value to send
+        """
+
+        if not self.stream_iface_open:
+            return
+
+        reading = IOTileReading(0, stream, value)
+
+        report = IndividualReadingReport.FromReadings(self.iotile_id, [reading])
+        self.stream(report)
 
     def trace(self, data):
         """Trace data asynchronously
@@ -274,6 +300,8 @@ class VirtualIOTileDevice(object):
                 the streaming interface.
         """
 
+        self.stream_iface_open = True
+
         return self.reports
 
     def open_tracing_interface(self):
@@ -296,7 +324,7 @@ class VirtualIOTileDevice(object):
         """Called when someone closes the streaming interface to the device
         """
 
-        pass
+        self.stream_iface_open = False
 
     def push_script_chunk(self, chunk):
         """Called when someone pushes a new bit of a TRUB script to this device
