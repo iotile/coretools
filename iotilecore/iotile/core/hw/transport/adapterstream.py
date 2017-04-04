@@ -28,6 +28,7 @@ class AdapterCMDStream(CMDStream):
         self.adapter = adapter
         self._scanned_devices = {}
         self._reports = None
+        self._traces = None
         self.connection_interrupted = False
 
         self.adapter.add_callback('on_scan', self._on_scan)

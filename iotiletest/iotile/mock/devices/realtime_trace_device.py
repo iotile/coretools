@@ -28,7 +28,7 @@ class RealtimeTracingDevice(VirtualIOTileDevice):
 
         super(RealtimeTracingDevice, self).__init__(iotile_id, 'Simple')
 
-        traces = [1.0, 'Hello trace world.  ']
+        traces = [[1.0, 'Hello trace world.  ']]
 
         if 'trace' in args:
             traces = args['trace']
