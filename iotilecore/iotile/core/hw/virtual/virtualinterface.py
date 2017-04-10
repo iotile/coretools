@@ -146,6 +146,36 @@ class VirtualIOTileInterface(object):
 
         self.actions.put((action, args))
 
+    def _clear_reports(self):
+        """Clear all queued reports and any in progress reports
+
+        This function should be called when a client disconnects so that
+        future clients don't get a partial report streamed to them.
+        """
+
+        try:
+            while not self.reports.empty():
+                self.reports.get(block=False)
+        except Empty:
+            pass
+
+        self._in_progress_report = None
+
+    def _clear_traces(self):
+        """Clear all queued traces and any in progres traces
+
+        This function should be called when a client disconnects so that
+        future clients don't get old tracing data.
+        """
+
+        try:
+            while not self.traces.empty():
+                self.traces.get(block=False)
+        except Empty:
+            pass
+
+        self._in_progress_trace = None
+
     def _queue_reports(self, *reports):
         """Queue reports for transmission over the streaming interface
 

@@ -204,6 +204,28 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
 
         self._command_task.sync_command(['_disconnect', connection_handle])
 
+    def _on_disconnect(self):
+        """Clean up after a client disconnects
+
+        This resets any open interfaces on the virtual device and clears any
+        in progress traces and streams.  This function is called in the
+        main event loop after the client has already disconnected, so it should
+        not attempt to interact with the bluetooth stack in any way.
+        """
+
+        if self.streaming:
+            self.device.close_streaming_interface()
+            self.streaming = False
+
+        if self.tracing:
+            self.device.close_tracing_interface()
+            self.tracing = False
+
+        self.device.connected = False
+
+        self._clear_reports()
+        self._clear_traces()
+
     def _handle_event(self, event):
         self._logger.debug("BLED Event: {}".format(str(event)))
 
@@ -214,16 +236,16 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
             self.device.connected = True
             self._audit('ClientConnected')
 
-        #Check if we're being disconnected from
+        # Check if we're being disconnected from
         elif event.command_class == 3 and event.command == 4:
             self.connected = False
             self._connection_handle = 0
-            self.streamer = False
             self.header_notif = False
             self.payload = False
-            #Reenable advertising
+
+            # Reenable advertising and clean up the virtual device on disconnection
+            self._defer(self._on_disconnect)
             self._defer(self._command_task.sync_command, [['_set_mode', 4, 2]])
-            self.device.connected = False
             self._audit('ClientDisconnected')
 
         #Check for attribute writes that indicate interfaces being opened or closed

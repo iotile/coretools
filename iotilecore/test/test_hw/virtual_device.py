@@ -3,6 +3,7 @@
 
 from iotile.core.hw.virtual.virtualdevice import VirtualIOTileDevice, rpc
 
+
 class BasicVirtualDevice(VirtualIOTileDevice):
     """Virtual device that acts like a blank tile with just an executive loaded
 
