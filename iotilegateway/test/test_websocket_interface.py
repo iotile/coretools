@@ -12,7 +12,7 @@ from util_async import AsyncWebSocketsTestCase
 
 
 class TestWebSocketInterface(AsyncWebSocketsTestCase):
-    def initialize(self):
+    def _initialize(self):
         self.dev = MockIOTileDevice(1, 'TestCN')
         self.dev.reports = [IndividualReadingReport.FromReadings(100, [IOTileReading(0, 1, 2)])]
         self.adapter = MockDeviceAdapter()
@@ -22,10 +22,10 @@ class TestWebSocketInterface(AsyncWebSocketsTestCase):
         self.manager.add_adapter(self.adapter)
         self.hw = None
 
-    def deinitialize(self):
+    def _deinitialize(self):
         pass
 
-    def get_app(self):
+    def _get_app(self):
         app = tornado.web.Application([
             (r'/iotile/v1', WebSocketHandler, {'manager': self.manager})
         ])
