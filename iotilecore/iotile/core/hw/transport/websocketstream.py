@@ -5,10 +5,11 @@ from iotile.core.hw.commands import RPCCommand
 from iotile.core.hw.reports.parser import IOTileReportParser
 import threading
 from Queue import Queue, Empty
-from cmdstream import CMDStream 
+from cmdstream import CMDStream
 import msgpack
 import datetime
 import time
+
 
 class WSIOTileClient(WebSocketClient):
     def __init__(self, port, report_callback):
@@ -135,7 +136,6 @@ class WebSocketStream(CMDStream):
             timeout = float(kwargs['timeout'])
 
         args['rpc_timeout'] = timeout
-
 
         result = self.send('send_rpc', args)
         status = result['status']

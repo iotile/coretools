@@ -3,7 +3,7 @@
 # info@welldone.org
 # http://welldone.org
 #
-# Modifications to this file from the original created at WellDone International 
+# Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
 #Caveats and possible issues
@@ -25,11 +25,15 @@ setup(
     install_requires=[
         "tornado>=4.4.0",
         "iotile-core>=3.0.1",
-        "iotile-transport-bled112>=1.0.0"
+        "iotile-transport-bled112>=1.0.0",
+        "monotonic",
+        "msgpack-python>=0.4.8",
+        "ws4py>=0.3.5"
     ],
     entry_points={
         'console_scripts': [
             'iotile-gateway = iotilegateway.main:main',
+            'iotile-supervisor = iotilegateway.supervisor.main:main'
         ],
         'iotile.gateway_agent': [
             'websockets = iotilegateway.ws_agent:WebSocketGatewayAgent'
@@ -51,7 +55,7 @@ setup(
 IOTileGateway
 -------------
 
-A python package providing basic gateway infrastructure for talking to multiple IOTile devices.  
+A python package providing basic gateway infrastructure for talking to multiple IOTile devices.
 
 See https://www.arch-iot.com.
 
