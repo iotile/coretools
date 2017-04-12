@@ -30,6 +30,7 @@ class StoppableWorkerThread(threading.Thread):
         self._kwargs = kwargs
         self._wait = timeout
         self._stop_condition = threading.Event()
+        self._running = threading.Event()
 
         self._generator = inspect.isgeneratorfunction(routine)
 
@@ -69,6 +70,8 @@ class StoppableWorkerThread(threading.Thread):
                     if self._stop_condition.is_set():
                         break
 
+                    self._running.set()
+
                     next(gen)
                     time.sleep(self._wait)
             except StopIteration:
@@ -82,15 +85,29 @@ class StoppableWorkerThread(threading.Thread):
                     if self._stop_condition.is_set():
                         break
 
+                    self._running.set()
+
                     self._routine(*self._args, **self._kwargs)
                     time.sleep(self._wait)
             except Exception, exc:
                 print("Exception occurred in background worker thread")
                 traceback.print_exc()
 
+    def wait_running(self, timeout=None):
+        """Wait for the thread to pass control to its routine
+
+        Args:
+            timeout (float): The maximum amount of time to wait
+        """
+
+        flag = self._running.wait(timeout)
+
+        if flag is False:
+            raise TimeoutError("Timeout waiting for thread to start running")
+
     def stop(self, timeout=None, force=False):
         """Stop the worker thread and synchronously wait for it to finish
-        
+
         Args:
             timeout (float): The maximum time to wait for the thread to stop
                 before raising a TimeoutError.  If force is True, TimeoutError

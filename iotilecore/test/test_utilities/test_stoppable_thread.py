@@ -80,6 +80,7 @@ def test_failed_stop():
 
     thread = StoppableWorkerThread(thread_func, timeout=0.001)
     thread.start()
+    thread.wait_running(timeout=1.0)
 
     with pytest.raises(TimeoutError):
         thread.stop(timeout=0.01)

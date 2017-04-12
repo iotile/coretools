@@ -19,6 +19,7 @@ from bled112_cmd import BLED112CommandProcessor
 from tilebus import *
 import bgapi_structures
 
+
 def packet_length(header):
     """
     Find the BGAPI packet length given its header
@@ -29,11 +30,12 @@ def packet_length(header):
 
     return (highbits << 8) | lowbits
 
+
 class BLED112Adapter(DeviceAdapter):
     """Callback based BLED112 wrapper supporting multiple simultaneous connections
     """
 
-    ExpirationTime = 60 #Expire devices 60 seconds after seeing them
+    ExpirationTime = 60  # Expire devices 60 seconds after seeing them
 
     def __init__(self, port, on_scan=None, on_disconnect=None, passive=True):
         super(BLED112Adapter, self).__init__()
@@ -75,7 +77,7 @@ class BLED112Adapter(DeviceAdapter):
 
         self._logger = logging.getLogger('ble.manager')
         self._logger.addHandler(logging.NullHandler())
-        
+
         self._command_task._logger.setLevel(logging.WARNING)
 
         try:
@@ -212,7 +214,7 @@ class BLED112Adapter(DeviceAdapter):
             rpc_id (int): the 16-bit id of the RPC we want to call
             payload (bytearray): the payload of the command
             timeout (float): the number of seconds to wait for the RPC to execute
-            callback (callable): A callback for when we have finished the RPC.  The callback will be called as" 
+            callback (callable): A callback for when we have finished the RPC.  The callback will be called as"
                 callback(connection_id, adapter_id, success, failure_reason, status, payload)
                 'connection_id': the connection id
                 'adapter_id': this adapter's id
@@ -246,7 +248,7 @@ class BLED112Adapter(DeviceAdapter):
             data (string): the script to send to the device
             progress_callback (callable): A function to be called with status on our progress, called as:
                 progress_callback(done_count, total_count)
-            callback (callable): A callback for when we have finished sending the script.  The callback will be called as" 
+            callback (callable): A callback for when we have finished sending the script.  The callback will be called as"
                 callback(connection_id, adapter_id, success, failure_reason)
                 'connection_id': the connection id
                 'adapter_id': this adapter's id
@@ -310,7 +312,7 @@ class BLED112Adapter(DeviceAdapter):
         if disconnected:
             del self._connections[context['handle']]
             self._trigger_callback('on_disconnect', self.id, context['connection_id'])
-        
+
         callback(context['connection_id'], self.id, success, failure, status, payload)
 
     def _open_rpc_interface(self, conn_id, callback):
@@ -419,7 +421,7 @@ class BLED112Adapter(DeviceAdapter):
 
         callback(context['connection_id'], self.id, success, failure)
 
-    def _handle_event(self, event):        
+    def _handle_event(self, event):
         if event.command_class == 6 and event.command == 0:
             #Handle scan response events
             self._parse_scan_response(event)
@@ -458,7 +460,7 @@ class BLED112Adapter(DeviceAdapter):
             #Handle notifications
             conn, = unpack("<B", event.payload[:1])
             at_handle, value = bgapi_structures.process_notification(event)
-            
+
             conndata = self._get_connection(conn)
             parser = conndata['parser']
 
@@ -515,7 +517,7 @@ class BLED112Adapter(DeviceAdapter):
             #Make sure the scan data comes back with an incomplete UUID list
             if scan_data[0] != 17 or scan_data[1] != 6:
                 return #FIXME: Log an error here
-            
+
             uuid_buf = scan_data[2:18]
             assert len(uuid_buf) == 16
             service = uuid.UUID(bytes_le=str(uuid_buf))
@@ -527,7 +529,7 @@ class BLED112Adapter(DeviceAdapter):
 
                 #FIXME: Move flag parsing code flag definitions somewhere else
                 length, datatype, manu_id, device_uuid, flags = unpack("<BBHLH", manu_data)
-                
+
                 pending = False
                 low_voltage = False
                 user_connected = False
@@ -538,8 +540,8 @@ class BLED112Adapter(DeviceAdapter):
                 if flags & (1 << 2):
                     user_connected = True
 
-                info = {'user_connected': user_connected, 'connection_string': parsed['address'], 
-                        'uuid': device_uuid, 'pending_data': pending, 'low_voltage': low_voltage, 
+                info = {'user_connected': user_connected, 'connection_string': parsed['address'],
+                        'uuid': device_uuid, 'pending_data': pending, 'low_voltage': low_voltage,
                         'signal_strength': parsed['rssi']}
 
                 if not self._active_scan:
@@ -553,7 +555,7 @@ class BLED112Adapter(DeviceAdapter):
                 return #FIXME: Log an error here
 
             length, datatype, manu_id, voltage, stream, reading, reading_time, curr_time = unpack("<BBHHHLLL11x", scan_data)
-            
+
             info = self.partial_scan_responses[parsed['address']]
             info['voltage'] = voltage / 256.0
             info['current_time'] = curr_time
@@ -591,7 +593,7 @@ class BLED112Adapter(DeviceAdapter):
             services (dict): A dictionary of GATT services produced by probe_services()
         """
         self._command_task.async_command(['_probe_characteristics', handle, services],
-            self._probe_characteristics_finished, {'connection_id': conn_id, 'handle': handle, 
+            self._probe_characteristics_finished, {'connection_id': conn_id, 'handle': handle,
                                                    'services': services})
 
     def initialize_system_sync(self):
@@ -599,7 +601,7 @@ class BLED112Adapter(DeviceAdapter):
         """
 
         retval = self._command_task.sync_command(['_query_systemstate'])
-        
+
         self.maximum_connections = retval['max_connections']
 
         for conn in retval['active_connections']:
@@ -616,7 +618,7 @@ class BLED112Adapter(DeviceAdapter):
         Args:
             result (dict): result returned from diconnection command
         """
-        
+
         success, _, context = self._parse_return(result)
 
         callback = context['callback']
@@ -654,7 +656,7 @@ class BLED112Adapter(DeviceAdapter):
         conndata = self._connections[handle]
 
         if expect_state is not None and conndata['state'] != expect_state:
-            self._logger.error("Connection in unexpected state, wanted=%s, got=%s", expect_state,   
+            self._logger.error("Connection in unexpected state, wanted=%s, got=%s", expect_state,
                                conndata['state'])
         return conndata
 
@@ -737,7 +739,7 @@ class BLED112Adapter(DeviceAdapter):
             self.probe_characteristics(result['context']['connection_id'], result['context']['handle'], result['return_value']['services'])
 
     def _probe_characteristics_finished(self, result):
-        """Callback when BLE adapter has finished probing services and characteristics for a device 
+        """Callback when BLE adapter has finished probing services and characteristics for a device
 
         Args:
             result (dict): Result from the probe_characteristics command
@@ -774,7 +776,7 @@ class BLED112Adapter(DeviceAdapter):
         total_time = service_time + char_time
         conndata['state'] = 'connected'
         conndata['services'] = services
-        
+
         #Create a report parser for this connection for when reports are streamed to us
         conndata['parser'] = IOTileReportParser(report_callback=self._on_report, error_callback=self._on_report_error)
         conndata['parser'].context = conn_id

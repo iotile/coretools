@@ -2,7 +2,7 @@
 
 The BLED112 must be configured to have the appropriate GATT server table.  This module
 just implements the correct connections between writes to GATT table characteristics and
-TileBus commands. 
+TileBus commands.
 """
 
 # This file is copyright Arch Systems, Inc.
@@ -17,15 +17,12 @@ import binascii
 import serial
 import serial.tools.list_ports
 from iotile.core.exceptions import EnvironmentError, HardwareError
-from iotile.core.utilities.packed import unpack
-from iotile.core.hw.reports.parser import IOTileReportParser
 from async_packet import AsyncPacketBuffer
 from iotile.core.hw.virtual.virtualinterface import VirtualIOTileInterface
 from iotile.core.hw.virtual.virtualdevice import RPCInvalidIDError, RPCNotFoundError, TileNotFoundError
-import iotile.core.hw.virtual.audit as audit
 from bled112_cmd import BLED112CommandProcessor
-from tilebus import *
-import bgapi_structures
+from tilebus import TileBusService, ArchManuID
+
 
 def packet_length(header):
     """
@@ -36,6 +33,7 @@ def packet_length(header):
     lowbits = header[1]
 
     return (highbits << 8) | lowbits
+
 
 class BLED112VirtualInterface(VirtualIOTileInterface):
     """Turn a BLED112 ble adapter into a virtual IOTile
@@ -175,7 +173,7 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
 
     def _scan_response(self):
         header = struct.pack("<BBH", 19, 0xFF, ArchManuID)
-        voltage = struct.pack("<H", int(3.8*256)) #FIXME: Hardcoded 3.8V voltage
+        voltage = struct.pack("<H", int(3.8*256))  # FIXME: Hardcoded 3.8V voltage
         reading = struct.pack("<HLLL", 0xFFFF, 0, 0, 0)
         name = struct.pack("<BB6s", 7, 0x09, "IOTile")
         reserved = struct.pack("<BBB", 0, 0, 0)
@@ -206,6 +204,28 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
 
         self._command_task.sync_command(['_disconnect', connection_handle])
 
+    def _on_disconnect(self):
+        """Clean up after a client disconnects
+
+        This resets any open interfaces on the virtual device and clears any
+        in progress traces and streams.  This function is called in the
+        main event loop after the client has already disconnected, so it should
+        not attempt to interact with the bluetooth stack in any way.
+        """
+
+        if self.streaming:
+            self.device.close_streaming_interface()
+            self.streaming = False
+
+        if self.tracing:
+            self.device.close_tracing_interface()
+            self.tracing = False
+
+        self.device.connected = False
+
+        self._clear_reports()
+        self._clear_traces()
+
     def _handle_event(self, event):
         self._logger.debug("BLED Event: {}".format(str(event)))
 
@@ -213,16 +233,18 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         if event.command_class == 3 and event.command == 0:
             self.connected = True
             self._connection_handle = 0
+            self.device.connected = True
             self._audit('ClientConnected')
 
-        #Check if we're being disconnected from
+        # Check if we're being disconnected from
         elif event.command_class == 3 and event.command == 4:
             self.connected = False
             self._connection_handle = 0
-            self.streamer = False
             self.header_notif = False
             self.payload = False
-            #Reenable advertising
+
+            # Reenable advertising and clean up the virtual device on disconnection
+            self._defer(self._on_disconnect)
             self._defer(self._command_task.sync_command, [['_set_mode', 4, 2]])
             self._audit('ClientDisconnected')
 
@@ -272,7 +294,7 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
             conn, reas, handle, offset, value_len, value = struct.unpack("<BBHHB%ds" % (len(event.payload) - 7,), event.payload)
             if handle == self.SendPayloadHandle:
                 self.rpc_payload = bytearray(value)
-                if len(self.rpc_payload) < 20: 
+                if len(self.rpc_payload) < 20:
                     self.rpc_payload += bytearray(20 - len(self.rpc_payload))
             elif handle == self.SendHeaderHandle:
                 self._defer(self._call_rpc, [bytearray(value)])
@@ -285,7 +307,7 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         """
 
         length, _, cmd, feature, address = struct.unpack("<BBBBB", str(header))
-        rpc_id = (feature << 8) |  cmd
+        rpc_id = (feature << 8) | cmd
 
         payload = self.rpc_payload[:length]
 
@@ -295,7 +317,7 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
             if len(response) > 0:
                 status |= (1 << 7)
         except (RPCInvalidIDError, RPCNotFoundError):
-            status = 2 #FIXME: Insert the correct ID here
+            status = 2  # FIXME: Insert the correct ID here
             response = ""
         except TileNotFoundError:
             status = 0xFF
@@ -308,7 +330,6 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
             print("*** EXCEPTION OCCURRED IN RPC ***")
             traceback.print_exc()
             print("*** END EXCEPTION ***")
-
 
         self._audit("RPCReceived", rpc_id=rpc_id, address=address, payload=binascii.hexlify(payload), status=status, response=binascii.hexlify(response))
 
