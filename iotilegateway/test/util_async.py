@@ -1,3 +1,5 @@
+"""Asynchronous test class for running tests on tornado servers."""
+
 import os
 import tornado.gen
 import tornado.testing
@@ -8,10 +10,11 @@ from concurrent.futures import ThreadPoolExecutor
 
 
 def bind_unused_port(reuse_port=False):
-    """Binds a server socket to an available port on localhost.
+    """Bind a server socket to an available port on localhost.
 
     Adapted from tornado source code.
-    Returns a tuple (socket, port).
+    Returns:
+        (socket, port)
     """
     sock = netutil.bind_sockets(None, '127.0.0.1', family=socket.AF_INET,
                                 reuse_port=reuse_port)[0]
@@ -50,64 +53,70 @@ class AsyncWebSocketsTestCase(tornado.testing.AsyncTestCase):
     executor = ThreadPoolExecutor(max_workers=1)
 
     def setUp(self):
+        """Setup before test."""
         super(AsyncWebSocketsTestCase, self).setUp()
         sock, port = bind_unused_port()
         self.__port = port
 
-        self.initialize()
+        self._initialize()
 
-        self._app = self.get_app()
-        self.http_server = self.get_http_server()
+        self._app = self._get_app()
+        self.http_server = self._get_http_server()
         self.http_server.add_sockets([sock])
 
-    def get_http_server(self):
+    def _get_http_server(self):
         return HTTPServer(self._app, io_loop=self.io_loop,
-                          **self.get_httpserver_options())
+                          **self._get_httpserver_options())
 
-    def get_app(self):
-        """Should be overridden by subclasses to return a
-        `tornado.web.Application` or other `.HTTPServer` callback.
-        """
+    def _get_app(self):
+        """Return a `tornado.web.Application` or other `.HTTPServer` callback."""
         raise NotImplementedError()
 
-    def initialize(self):
+    def _initialize(self):
         pass
 
-    def deinitialize(self):
+    def _deinitialize(self):
         pass
 
-    def get_httpserver_options(self):
-        """May be overridden by subclasses to return additional
-        keyword arguments for the server.
-        """
+    @tornado.gen.coroutine
+    def _preshutdown_deinitialize(self):
+        pass
+
+    def _get_httpserver_options(self):
+        """Override to pass additional options to http server."""
         return {}
 
     def get_port(self):
-        """Returns the port used by the server.
+        """Return the port used by the server.
 
         A new port is chosen for each test.
         """
         return self.__port
 
-    def get_protocol(self):
+    def _get_protocol(self):
         return 'ws'
 
     def get_url(self, path):
-        """Returns an absolute url for the given path on the test server."""
-        return '%s://localhost:%s%s' % (self.get_protocol(),
+        """Return an absolute url for the given path on the test server."""
+        return '%s://localhost:%s%s' % (self._get_protocol(),
                                         self.get_port(), path)
 
     def get_iotile_port(self):
+        """Get the iotile port string for this server."""
+
         return 'ws:127.0.0.1:%s/iotile/v1' % (self.get_port())
 
     def get_supervisor_port(self):
+        """Get the supervisor server url."""
         return 'ws://127.0.0.1:%s/services' % (self.get_port())
 
     def tearDown(self):
+        """Clean up after test."""
+        yield self._preshutdown_deinitialize()
         self.http_server.stop()
         self.io_loop.run_sync(self.http_server.close_all_connections,
                               timeout=get_async_test_timeout())
 
-        self.deinitialize()
+        self._deinitialize()
 
         super(AsyncWebSocketsTestCase, self).tearDown()

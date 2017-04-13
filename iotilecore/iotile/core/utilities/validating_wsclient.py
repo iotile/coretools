@@ -1,5 +1,4 @@
-"""A websocket client that validates messages received and dispatches them
-"""
+"""A websocket client that validates messages received and dispatches them."""
 
 from ws4py.client.threadedclient import WebSocketClient
 import threading
@@ -25,23 +24,27 @@ ResponseSchema = OptionsVerifier(SuccessfulResponseSchema, FailureResponseSchema
 
 
 class ValidatingWSClient(WebSocketClient):
-    """A threaded websocket client that validates messages received
+    """A threaded websocket client that validates messages received.
 
     Messages are assumed to be packed using msgpack in a binary format
     and are decoded and validated against message type schema.  Matching
     messages are dispatched to the appropriate handler and messages that
     match no attached schema are logged and dropped.
-
-    Args:
-        url (string): The URL of the websocket server that we want
-            to connect to.
-        logger_name (string): An optional name that errors are logged to
     """
 
     def __init__(self, url, logger_name=__file__):
+        """Constructor.
+
+        Args:
+        url (string): The URL of the websocket server that we want
+            to connect to.
+        logger_name (string): An optional name that errors are logged to
+        """
+
         super(ValidatingWSClient, self).__init__(url)
 
         self._connected = threading.Event()
+        self._disconnection_finished = threading.Event()
 
         self._last_response = None
         self._response_received = threading.Event()
@@ -54,8 +57,8 @@ class ValidatingWSClient(WebSocketClient):
 
         self.validators = [(ResponseSchema, self._on_response_received)]
 
-    def add_message_type(self, validator, calback):
-        """Add a message type that should trigger a callback
+    def add_message_type(self, validator, callback):
+        """Add a message type that should trigger a callback.
 
         Each validator must be unique, in that a message will
         be dispatched to the first callback whose validator
@@ -71,7 +74,7 @@ class ValidatingWSClient(WebSocketClient):
         self.validators.append((validator, callback))
 
     def start(self, timeout=5.0):
-        """Synchronously connect to websocket server
+        """Synchronously connect to websocket server.
 
         Args:
             timeout (float): The maximum amount of time to wait for the
@@ -81,15 +84,34 @@ class ValidatingWSClient(WebSocketClient):
         try:
             self.connect()
         except Exception, exc:
-           raise InternalError("Unable to connect to websockets host", reason=str(exc))
-
+            raise InternalError("Unable to connect to websockets host", reason=str(exc))
 
         flag = self._connected.wait(timeout=timeout)
         if not flag:
             raise TimeoutError("Conection attempt to host timed out")
 
+    def stop(self, timeout=5.0):
+        """Synchronously disconnect from websocket server.
+
+        Args:
+            timeout (float): The maximum amount of time to wait for the
+                connection to be established. Defaults to 5 seconds
+        """
+
+        if not self._connected.is_set():
+            return
+
+        try:
+            self.close()
+        except Exception, exc:
+            raise InternalError("Unable to disconnect from websockets host", reason=str(exc))
+
+        flag = self._disconnection_finished.wait(timeout=timeout)
+        if not flag:
+            raise TimeoutError("Disconnection attempt from host timed out")
+
     def send_message(self, obj):
-        """Send a packed message
+        """Send a packed message.
 
         Args:
             obj (dict): The message to be sent
@@ -99,7 +121,7 @@ class ValidatingWSClient(WebSocketClient):
         self.send(packed, binary=True)
 
     def send_command(self, command, args, timeout=10.0):
-        """Send a command any synchronously wait for a response
+        """Send a command any synchronously wait for a response.
 
         Args:
             command (string): The command name
@@ -107,7 +129,7 @@ class ValidatingWSClient(WebSocketClient):
             timeout (float): The maximum time to wait for a response
         """
 
-        msg = {x:y for x,y in args.iteritems()}
+        msg = {x: y for x, y in args.iteritems()}
         msg['type'] = 'command'
         msg['operation'] = command
 
@@ -122,13 +144,12 @@ class ValidatingWSClient(WebSocketClient):
         return self._last_response
 
     def opened(self):
-        """Callback called in another thread when a connection is opened
-        """
+        """Callback called in another thread when a connection is opened."""
 
         self._connected.set()
 
     def closed(self, code, reason):
-        """Callback called in another thread when a connection is closed
+        """Callback called in another thread when a connection is closed.
 
         Args:
             code (int): A code for the closure
@@ -137,22 +158,24 @@ class ValidatingWSClient(WebSocketClient):
 
         self.disconnection_code = code
         self.disconnection_reason = reason
+        self._disconnection_finished.set()
         self._connected.clear()
 
     def _unpack(self, msg):
-        """Unpack a binary msgpacked message
-        """
+        """Unpack a binary msgpacked message."""
 
         return msgpack.unpackb(msg, object_hook=self.decode_datetime)
 
     @classmethod
     def decode_datetime(cls, obj):
+        """Decode a msgpack'ed datetime."""
         if b'__datetime__' in obj:
             obj = datetime.datetime.strptime(obj[b'as_str'].decode(), "%Y%m%dT%H:%M:%S.%f")
         return obj
 
     @classmethod
     def encode_datetime(cls, obj):
+        """Encode a msgpck'ed datetime."""
         if isinstance(obj, datetime.datetime):
             obj = {'__datetime__': True, 'as_str': obj.strftime("%Y%m%dT%H:%M:%S.%f").encode()}
         return obj
@@ -178,7 +201,6 @@ class ValidatingWSClient(WebSocketClient):
             try:
                 validator.verify(unpacked)
             except ValidationError, exc:
-                self.logger.error("Validation error = %s", str(exc))
                 continue
 
             try:

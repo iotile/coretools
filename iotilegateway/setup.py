@@ -6,13 +6,11 @@
 # Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
-#Caveats and possible issues
-#Mac OS X
+# Caveats and possible issues
+# Mac OS X
 # - when using a virtualenv, readline is not properly installed into the virtualenv
 #   and cannot be imported.  You need to install it using easy_install as described here
 #   http://calvinx.com/tag/readline/
-
-import re
 
 from setuptools import setup, find_packages
 import version
