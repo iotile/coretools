@@ -2,6 +2,14 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.13.0
+
+- Add support for validating documents using schema validator
+- Add support for standard websocket client using schema validator
+  to dispatch messages to handlers
+- Add better support for virtaul virtual devices to allow realtime streaming
+  of data from the devices rather than just on connection
+
 ## 3.12.4
 
 - Fix handling of virtual interface config data that checked for the wrong

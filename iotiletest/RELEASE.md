@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 0.7.1
+
+- Better support for testing realtime tracing and streaming of data
+
 ## 0.7.0
 
 - Add test virtual device tracing_test for testing the tracing interface of iotile-core
