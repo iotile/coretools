@@ -4,8 +4,9 @@ import sys
 import tornado.ioloop
 import traceback
 import json
-import serial.tools.list_ports
 from tornado.options import define, parse_command_line, options
+from supervisor import ServiceStatusClient
+import supervisor.states as states
 import pkg_resources
 import device
 
@@ -16,12 +17,13 @@ should_close = False
 device_manager = None
 agents = []
 
+supervisor = None
+
 define('config', help="Config file for defining what adapters and agents to use")
 
 
 def quit_signal_handler(signum, frame):
-    """Signal handler to catch ^C and cleanly shut down
-    """
+    """Signal handler to catch ^C and cleanly shut down."""
 
     global should_close
 
@@ -31,8 +33,7 @@ def quit_signal_handler(signum, frame):
 
 
 def try_quit():
-    """Periodic callback to attempt to cleanly shut down this gateway
-    """
+    """Periodic callback to attempt to cleanly shut down this gateway."""
     global should_close
 
     if not should_close:
@@ -56,12 +57,41 @@ def try_quit():
             log.error("Error stopping device adapters: %s", str(exc))
             traceback.print_exc()
 
+    if supervisor:
+        try:
+            supervisor.update_state('gateway', states.STOPPED)
+        except Exception, exc:
+            log.error("Error updating service status to stopped: %s", str(exc))
+            traceback.print_exc()
+
+        try:
+            supervisor.stop()
+        except Exception, exc:
+            log.error("Error stopping supervisor client: %s", str(exc))
+            traceback.print_exc()
+
     tornado.ioloop.IOLoop.instance().stop()
     log.critical('Stopping event loop and shutting down')
 
 
+def try_report_status():
+    """Periodic callback to report our gateway's status."""
+
+    global supervisor
+
+    if supervisor is None:
+        try:
+            supervisor = ServiceStatusClient('ws://localhost:9400/services')
+            supervisor.register_service('gateway', 'Device Gateway')
+        except Exception:
+            return
+
+    supervisor.update_state('gateway', states.RUNNING)
+    supervisor.send_heartbeat('gateway')
+
+
 def find_entry_point(group, name):
-    """Find an entry point by name
+    """Find an entry point by name.
 
     Args:
         group (string): The entry point group like iotile.gateway_agent
@@ -76,6 +106,8 @@ def find_entry_point(group, name):
 
 
 def main():
+    """Main entry point for iotile-gateway."""
+
     global device_manager, should_close
 
     log = logging.getLogger('tornado.general')
@@ -147,6 +179,11 @@ def main():
     # Make sure we have a way to cleanly break out of the event loop on Ctrl-C
     tornado.ioloop.PeriodicCallback(try_quit, 100).start()
 
+    # Try to regularly update a supervisor about our status
+    tornado.ioloop.PeriodicCallback(try_report_status, 60000)
+
+    # Try to report status immediately when we start the ioloop
+    loop.add_callback(try_report_status)
     loop.start()
 
     # The loop has been closed, finish and quit

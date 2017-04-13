@@ -182,21 +182,22 @@ class ServiceStatusClient(ValidatingWSClient):
 
         return resp['payload']
 
-    def register_service(self, short_name, long_name):
+    def register_service(self, short_name, long_name, allow_duplicate=True):
         """Register a new service with the service manager.
 
         Args:
             short_name (string): A unique short name for this service that functions
                 as an id
-            long_name (strign): A user facing name for this service
-
+            long_name (string): A user facing name for this service
+            allow_duplicate (boolean): Don't throw an error if this service is already
+                registered.  This is important if the service is preregistered for example.
         Raises:
             ArgumentError: if the short_name is already taken
         """
 
         resp = self.send_command('register_service', {'name': short_name, 'long_name': long_name})
 
-        if resp['success'] is not True:
+        if resp['success'] is not True and not allow_duplicate:
             raise ArgumentError("Service name already registered", short_name=short_name)
 
     def _on_status_change(self, update):
