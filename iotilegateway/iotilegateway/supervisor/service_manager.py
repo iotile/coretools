@@ -130,6 +130,22 @@ class ServiceManager:
 
         return info
 
+    def service_messages(self, short_name):
+        """Get the messages stored for a service.
+
+        Args:
+            short_name (string): The short name of the service to get messages for
+
+        Returns:
+            list(tuple): A list of 2-tuples (level, message) for each message stored
+                for this service.
+        """
+
+        if short_name not in self.services:
+            raise ArgumentError("Unknown service name", short_name=short_name)
+
+        return [(msg.level, msg.message) for msg in self.services[short_name]['state'].messages]
+
     def service_status(self, short_name):
         """Get the current status of a service.
 
@@ -156,6 +172,21 @@ class ServiceManager:
         info['string_status'] = service.string_state
 
         return info
+
+    def send_message(self, short_name, level, message):
+        """Post a message for a service.
+
+        Args:
+            short_name (string): The short name of the service to query
+            level (int): The level of the message (info, warning, error)
+            message (string): The message contents
+        """
+
+        if short_name not in self.services:
+            raise ArgumentError("Unknown service name", short_name=short_name)
+
+        self.services[short_name]['state'].post_message(level, message)
+        self._notify_update(short_name, 'new_message', {'level': level, 'message': message})
 
     def send_heartbeat(self, short_name):
         """Post a heartbeat for a service.

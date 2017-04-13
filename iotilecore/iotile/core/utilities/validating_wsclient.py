@@ -46,6 +46,8 @@ class ValidatingWSClient(WebSocketClient):
         self._connected = threading.Event()
         self._disconnection_finished = threading.Event()
 
+        self._command_lock = threading.Lock()
+
         self._last_response = None
         self._response_received = threading.Event()
 
@@ -132,16 +134,33 @@ class ValidatingWSClient(WebSocketClient):
         msg = {x: y for x, y in args.iteritems()}
         msg['type'] = 'command'
         msg['operation'] = command
+        msg['no_response'] = False
 
-        self._response_received.clear()
+        with self._command_lock:
+            self._response_received.clear()
+            self.send_message(msg)
+
+            flag = self._response_received.wait(timeout=timeout)
+            if not flag:
+                raise TimeoutError("Timeout waiting for response")
+
+            self._response_received.clear()
+            return self._last_response
+
+    def post_command(self, command, args):
+        """Post a command asynchronously and don't wait for a response.
+
+        Args:
+            command (string): The command name
+            args (dict): Optional arguments
+        """
+
+        msg = {x: y for x, y in args.iteritems()}
+        msg['type'] = 'command'
+        msg['operation'] = command
+        msg['no_response'] = True
+
         self.send_message(msg)
-
-        flag = self._response_received.wait(timeout=timeout)
-        if not flag:
-            raise TimeoutError("Timeout waiting for response")
-
-        self._response_received.clear()
-        return self._last_response
 
     def opened(self):
         """Callback called in another thread when a connection is opened."""

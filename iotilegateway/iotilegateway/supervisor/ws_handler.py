@@ -57,38 +57,67 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
         if op == 'heartbeat':
             try:
                 self.manager.send_heartbeat(cmd['name'])
-                self.send_response(True, None)
+
+                if not cmd['no_response']:
+                    self.send_response(True, None)
             except Exception, exc:
-                self.send_error(str(exc))
+                if not cmd['no_response']:
+                    self.send_error(str(exc))
         elif op == 'list_services':
             names = self.manager.list_services()
-            self.send_response(True, {'services': names})
+            if not cmd['no_response']:
+                self.send_response(True, {'services': names})
         elif op == 'query_status':
             try:
                 status = self.manager.service_status(cmd['name'])
-                self.send_response(True, status)
+                if not cmd['no_response']:
+                    self.send_response(True, status)
             except ArgumentError:
-                self.send_error("Service name could not be found")
+                if not cmd['no_response']:
+                    self.send_error("Service name could not be found")
         elif op == 'register_service':
             try:
                 status = self.manager.add_service(cmd['name'], cmd['long_name'])
-                self.send_response(True, None)
+                if not cmd['no_response']:
+                    self.send_response(True, None)
             except ArgumentError:
-                self.send_error("Service was already registered")
+                if not cmd['no_response']:
+                    self.send_error("Service was already registered")
         elif op == 'query_info':
             try:
                 info = self.manager.service_info(cmd['name'])
-                self.send_response(True, info)
+                if not cmd['no_response']:
+                    self.send_response(True, info)
             except ArgumentError:
-                self.send_error("Service was already registered")
+                if not cmd['no_response']:
+                    self.send_error("Service name could not be found")
+        elif op == 'query_messages':
+            try:
+                msgs = self.manager.service_messages(cmd['name'])
+                if not cmd['no_response']:
+                    self.send_response(True, msgs)
+            except ArgumentError:
+                if not cmd['no_response']:
+                    self.send_error("Service name could not be found")
         elif op == 'update_state':
             try:
                 self.manager.update_state(cmd['name'], cmd['new_status'])
-                self.send_response(True, None)
+                if not cmd['no_response']:
+                    self.send_response(True, None)
             except ArgumentError, exc:
-                self.send_error(str(exc))
+                if not cmd['no_response']:
+                    self.send_error(str(exc))
+        elif op == 'post_message':
+            try:
+                self.manager.send_message(cmd['name'], cmd['level'], cmd['message'])
+                if not cmd['no_response']:
+                    self.send_response(True, None)
+            except ArgumentError, exc:
+                if not cmd['no_response']:
+                    self.send_error(str(exc))
         else:
-            self.send_error("Unknown command: %s" % op)
+            if not cmd['no_response']:
+                self.send_error("Unknown command: %s" % op)
 
     def send_response(self, success, obj):
         """Send a response back to someone."""

@@ -38,6 +38,7 @@ class ServiceStatusClient(ValidatingWSClient):
         self.add_message_type(command_formats.ServiceStatusChanged, self._on_status_change)
         self.add_message_type(command_formats.ServiceAdded, self._on_service_added)
         self.add_message_type(command_formats.HeartbeatReceived, self._on_heartbeat)
+        self.add_message_type(command_formats.NewMessage, self._on_message)
         self.start()
 
         with self._state_lock:
@@ -106,12 +107,28 @@ class ServiceStatusClient(ValidatingWSClient):
         for i, serv in enumerate(servs):
             info = self.service_info(serv)
             status = self.service_status(serv)
-            status.update(info)
+            messages = self.get_messages(serv)
 
             services[serv] = states.ServiceState(info['short_name'], info['long_name'], info['preregistered'], i)
             services[serv].state = status['numeric_status']
 
+            for level, message in messages:
+                services[serv].post_message(level, message)
+
         return services
+
+    def get_messages(self, name):
+        """Get stored messages for a service.
+
+        Args:
+            name (string): The name of the service to get messages from.
+
+        Returns:
+            list(tuple): A list of 2-tuples with level, message for each message stored for the service
+        """
+
+        resp = self.send_command('query_messages', {'name': name}, timeout=5.0)
+        return resp['payload']
 
     def list_services(self):
         """Get the current list of services from the server.
@@ -167,6 +184,52 @@ class ServiceStatusClient(ValidatingWSClient):
         resp = self.send_command('update_state', {'name': name, 'new_status': state}, timeout=5.0)
         if resp['success'] is not True:
             raise ArgumentError("Error updating service state", reason=resp['reason'])
+
+    def post_state(self, name, state):
+        """Asynchronously try to update the state for a service.
+
+        If the update fails, nothing is reported because we don't wait for a
+        response from the server.  This function will return immmediately and not block.
+
+        Args:
+            name (string): The name of the service
+            state (int): The new state of the service
+        """
+
+        self.post_command('update_state', {'name': name, 'new_status': state})
+
+    def post_error(self, name, message):
+        """Asynchronously post a user facing error message about a service.
+
+        Args:
+            name (string): The name of the service
+            message (string): The user facing error message that will be stored
+                for the service and can be queried later.
+        """
+
+        self.post_command('post_message', {'name': name, 'level': states.ERROR_LEVEL, 'message': message})
+
+    def post_warning(self, name, message):
+        """Asynchronously post a user facing warning message about a service.
+
+        Args:
+            name (string): The name of the service
+            message (string): The user facing warning message that will be stored
+                for the service and can be queried later.
+        """
+
+        self.post_command('post_message', {'name': name, 'level': states.WARNING_LEVEL, 'message': message})
+
+    def post_info(self, name, message):
+        """Asynchronously post a user facing info message about a service.
+
+        Args:
+            name (string): The name of the service
+            message (string): The user facing info message that will be stored
+                for the service and can be queried later.
+        """
+
+        self.post_command('post_message', {'name': name, 'level': states.INFO_LEVEL, 'message': message})
 
     def service_status(self, name):
         """Pull the current status of a service by name.
@@ -246,3 +309,15 @@ class ServiceStatusClient(ValidatingWSClient):
                 return
 
             self.services[name].heartbeat()
+
+    def _on_message(self, update):
+        """Receive a message from a service."""
+
+        name = update['name']
+        message_obj = update['payload']
+
+        with self._state_lock:
+            if name not in self.services:
+                return
+
+            self.services[name].post_message(message_obj['level'], message_obj['message'])

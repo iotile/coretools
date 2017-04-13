@@ -2,7 +2,9 @@
 
 from iotile.core.exceptions import ArgumentError
 from monotonic import monotonic
+from collections import deque
 
+# Service states
 NOT_STARTED = 0
 RUNNING = 1
 DEGRADED = 2
@@ -16,11 +18,34 @@ KNOWN_STATES = {
     UNKNOWN: 'Unknown'
 }
 
+# Message Levels
+INFO_LEVEL = 0
+WARNING_LEVEL = 1
+ERROR_LEVEL = 2
+
+
+class ServiceMessage(object):
+    """A message received from a service."""
+
+    def __init__(self, level, message, message_id):
+        """Constructor.
+
+        Args:
+            level (int): The message importance
+            message (string): The message contents
+            message_id (int): A unique id for the message
+        """
+
+        self.level = level
+        self.message = message
+        self.count = 1
+        self.id = message_id
+
 
 class ServiceState(object):
     """A simple object for holding the current state of a service."""
 
-    def __init__(self, short_name, long_name, preregistered, int_id=None):
+    def __init__(self, short_name, long_name, preregistered, int_id=None, max_messages=10):
         """Constructor.
 
         Args:
@@ -29,6 +54,7 @@ class ServiceState(object):
             preregistered (bool): Whether this is an expected preregistered
                 service
             int_id (int): An internal numeric id for this service
+            max_messages (int): The maximum number of messages to keep
         """
 
         self.short_name = short_name
@@ -38,6 +64,8 @@ class ServiceState(object):
         self.num_heartbeats = 0
         self.id = int_id
         self._state = UNKNOWN
+        self.messages = deque(maxlen=max_messages)
+        self._last_message_id = 0
 
     @property
     def string_state(self):
@@ -60,6 +88,34 @@ class ServiceState(object):
             raise ArgumentError("Unknown service state", state=new_state)
 
         self._state = new_state
+
+    def get_message(self, message_id):
+        """Get a message by its persistent id.
+
+        Args:
+            message_id (int): The id of the message that we're looking for
+        """
+
+        for message in self.messages:
+            if message.id == message_id:
+                return message
+
+        raise ArgumentError("Message ID not found", message_id=message_id)
+
+    def post_message(self, level, message):
+        """Post a new message for service.
+
+        Args:
+            level (int): The level of the message (info, warning, error)
+            message (string): The message contents
+        """
+
+        if len(self.messages) > 0 and self.messages[-1].message == message:
+            self.messages[-1].count += 1
+        else:
+            msg_object = ServiceMessage(level, message, self._last_message_id)
+            self.messages.append(msg_object)
+            self._last_message_id += 1
 
     def heartbeat(self):
         """Record a heartbeat for this service."""
