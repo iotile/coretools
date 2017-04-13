@@ -3,7 +3,7 @@
 from iotile.core.utilities.validating_wsclient import ValidatingWSClient
 from iotile.core.exceptions import ArgumentError
 from threading import Lock
-from monotonic import monotonic
+from copy import copy
 import command_formats
 import states
 
@@ -43,6 +43,43 @@ class ServiceStatusClient(ValidatingWSClient):
             self.services = self.sync_services()
             for i, name in enumerate(self.services.iterkeys()):
                 self._name_map[i] = name
+
+    def local_service(self, name_or_id):
+        """Get the locally synced information for a service.
+
+        Args:
+            name_or_id (string or int): Either a short name for the service or
+                a numeric id.
+
+        Returns:
+            ServiceState: the current state of the service synced locally
+                at the time of the call.
+        """
+
+        with self._state_lock:
+            if isinstance(name_or_id, int) or isinstance(name_or_id, long):
+                if name_or_id not in self._name_map:
+                    raise ArgumentError("Unknown ID used to look up service", id=name_or_id)
+
+                name = self._name_map[name_or_id]
+            else:
+                name = name_or_id
+
+            if name not in self.services:
+                raise ArgumentError("Unknown service name", name=name)
+
+            service = self.services[name]
+            return copy(service)
+
+    def local_services(self):
+        """Get a map of id, name pairs for all of the known synced services.
+
+        Returns:
+            list (id, name): A list of tuples with id and service name
+        """
+
+        with self._state_lock:
+            return [(x, y) for x, y in self._name_map.iteritems()]
 
     def sync_services(self):
         """Poll the current state of all services.
