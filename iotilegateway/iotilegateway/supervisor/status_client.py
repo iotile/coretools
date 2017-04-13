@@ -32,6 +32,7 @@ class ServiceStatusClient(ValidatingWSClient):
         self._state_lock = Lock()
         self.services = {}
         self._name_map = {}
+        self._on_change_callback = None
 
         # Register callbacks for all of the status notifications
         self.add_message_type(command_formats.ServiceStatusChanged, self._on_status_change)
@@ -43,6 +44,16 @@ class ServiceStatusClient(ValidatingWSClient):
             self.services = self.sync_services()
             for i, name in enumerate(self.services.iterkeys()):
                 self._name_map[i] = name
+
+    def notify_changes(self, callback):
+        """Register to receive a callback when a service changes state.
+
+        Args:
+            callback (callable): A function to be called with signature
+                callback(short_name, id, state, is_new)
+        """
+
+        self._on_change_callback = callback
 
     def local_service(self, name_or_id):
         """Get the locally synced information for a service.
@@ -72,14 +83,15 @@ class ServiceStatusClient(ValidatingWSClient):
             return copy(service)
 
     def local_services(self):
-        """Get a map of id, name pairs for all of the known synced services.
+        """Get a list of id, name pairs for all of the known synced services.
 
         Returns:
-            list (id, name): A list of tuples with id and service name
+            list (id, name): A list of tuples with id and service name sorted by id
+                from low to high
         """
 
         with self._state_lock:
-            return [(x, y) for x, y in self._name_map.iteritems()]
+            return sorted([(x, y) for x, y in self._name_map.iteritems()], key=lambda x: x[0])
 
     def sync_services(self):
         """Poll the current state of all services.
@@ -200,6 +212,10 @@ class ServiceStatusClient(ValidatingWSClient):
 
             self.services[name].state = new_number
 
+        # Notify about this service state change if anyone is listening
+        if self._on_change_callback:
+            self._on_change_callback(name, self.services[name].id, new_number, False)
+
     def _on_service_added(self, update):
         """Add a new service."""
 
@@ -214,6 +230,10 @@ class ServiceStatusClient(ValidatingWSClient):
             serv = states.ServiceState(name, info['long_name'], info['preregistered'], new_id)
             self.services[name] = serv
             self._name_map[new_id] = name
+
+        # Notify about this new service if anyone is listening
+        if self._on_change_callback:
+            self._on_change_callback(name, new_id, serv.state, True)
 
     def _on_heartbeat(self, update):
         """Receive a new heartbeat for a service."""

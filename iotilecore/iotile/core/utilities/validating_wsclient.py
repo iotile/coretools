@@ -98,6 +98,9 @@ class ValidatingWSClient(WebSocketClient):
                 connection to be established. Defaults to 5 seconds
         """
 
+        if not self._connected.is_set():
+            return
+
         try:
             self.close()
         except Exception, exc:

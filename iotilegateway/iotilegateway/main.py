@@ -77,7 +77,7 @@ def find_entry_point(group, name):
 
 def main():
     global device_manager, should_close
-    
+
     log = logging.getLogger('tornado.general')
 
     parse_command_line()

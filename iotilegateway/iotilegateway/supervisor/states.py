@@ -49,6 +49,11 @@ class ServiceState(object):
         """The current numeric service state."""
         return self._state
 
+    @property
+    def heartbeat_age(self):
+        """The time in seconds since the last heartbeat."""
+        return monotonic() - self.last_heartbeat
+
     @state.setter
     def state(self, new_state):
         if new_state not in KNOWN_STATES:

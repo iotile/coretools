@@ -15,8 +15,7 @@ define('config', help="Optional config file for defining expected services and o
 
 
 def quit_signal_handler(signum, frame):
-    """Signal handler to catch ^C and cleanly shut down
-    """
+    """Signal handler to catch ^C and cleanly shut down."""
 
     global should_close
 
@@ -26,8 +25,7 @@ def quit_signal_handler(signum, frame):
 
 
 def try_quit():
-    """Periodic callback to attempt to cleanly shut down this gateway
-    """
+    """Periodic callback to attempt to cleanly shut down this gateway."""
     global should_close
 
     if not should_close:
@@ -42,6 +40,7 @@ def try_quit():
 
 
 def main():
+    """Main entry point for iotile-supervisor."""
     global should_close
 
     log = logging.getLogger('tornado.general')
