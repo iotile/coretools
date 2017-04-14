@@ -15,6 +15,7 @@ KNOWN_STATES = {
     NOT_STARTED: 'Not Started',
     RUNNING: 'Running',
     STOPPED: 'Stopped',
+    DEGRADED: 'Degraded',
     UNKNOWN: 'Unknown'
 }
 
@@ -45,7 +46,7 @@ class ServiceMessage(object):
 class ServiceState(object):
     """A simple object for holding the current state of a service."""
 
-    def __init__(self, short_name, long_name, preregistered, int_id=None, max_messages=10):
+    def __init__(self, short_name, long_name, preregistered, int_id=None, max_messages=5):
         """Constructor.
 
         Args:
