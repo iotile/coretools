@@ -3,7 +3,7 @@
 # info@welldone.org
 # http://welldone.org
 #
-# Modifications to this file from the original created at WellDone International 
+# Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
 #Automatic building of firmware and unit tests using the
@@ -11,6 +11,7 @@
 
 import utilities
 import unit_test
+import unit_test_qemu
 from SCons.Script import *
 import os.path
 import os
@@ -31,7 +32,7 @@ def require(builder_name):
     """Find an advertised autobuilder and return it
 
     This function searches through all installed distributions to find
-    if any advertise an entry point with group 'iotile.autobuild' and 
+    if any advertise an entry point with group 'iotile.autobuild' and
     name equal to builder_name.  The first one that is found is returned.
 
     This function raises a BuildError if it cannot find the required
@@ -39,7 +40,7 @@ def require(builder_name):
 
     Args:
         builder_name (string): The name of the builder to find
-    
+
     Returns:
         callable: the autobuilder function found in the search
     """
@@ -114,7 +115,7 @@ def autobuild_release(family=None):
 
     env = Environment(tools=[])
     env['TILE'] = family.tile
-    
+
     target = env.Command(['#build/output/module_settings.json'], ['#module_settings.json'], action=env.Action(create_release_settings_action, "Creating release manifest"))
     env.AlwaysBuild(target)
 

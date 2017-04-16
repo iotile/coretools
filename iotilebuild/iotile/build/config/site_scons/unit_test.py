@@ -3,7 +3,7 @@
 # info@welldone.org
 # http://welldone.org
 #
-# Modifications to this file from the original created at WellDone International 
+# Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
 #unit_test.py
@@ -45,7 +45,7 @@ class UnitTest (object):
 		"""
 
 		self.extra_depends.append(filename)
-	
+
 	def show(self):
 		print "#Unit Test#"
 		print self.name
@@ -98,14 +98,14 @@ class UnitTest (object):
 			raise BuildError("Path to unknown build product asked for", unit_test=self.name, object=obj, arch=chip.name)
 
 	def build_target(self, target, summary_env):
-		raise BuildError('The build_target method must be overriden by a UnitTest subclass', unit_test=self.name, type=str(self.__class__))
+		raise BuildError('The build_target method must be overriden by a UnitTest subclass', unit_test=self.name, type=str(self.__class__.__name__))
 
 	def check_output(self, chip, log):
 		"""
 		If unit tests have additional things to check about the unit test's output,
 		they should override this function and return False if the test fails these
 		additional checks. They may also choose to open log for appending and log the
-		reason for this failure. 
+		reason for this failure.
 		"""
 
 		return True
@@ -192,11 +192,11 @@ class UnitTest (object):
 
 	def find_support_file(self, support_name, target):
 		"""
-		Given the name of a support file, try to find it by looking in the 
+		Given the name of a support file, try to find it by looking in the
 		same directory as the first unit test file and searching the following
 		names, where target is a list of architectures like:
 		arch1/arch2/arch3
-		
+
 		name_arch1_arch2_arch3.ext
 		name_arch1_arch2.ext
 		name_arch1.ext
@@ -255,7 +255,7 @@ class UnitTest (object):
 				val = val.strip()
 
 				name = name.lower()
-				
+
 				#Check if we support this attribute natives
 				if name == 'name':
 					self.name = val
@@ -274,7 +274,7 @@ class UnitTest (object):
 					if hasattr(self, handlern):
 						handler = getattr(self, handlern)
 						handler(val)
-					elif not self.ignore_extra_attributes: 
+					elif not self.ignore_extra_attributes:
 						raise BuildError("Unknown attribute encountered with no handler", file=file, attribute=name, value=val, type=str(self.__class__))
 
 		#Make sure that all of the right information has been found
@@ -338,7 +338,7 @@ def find_units(parent):
 
 	for f in files:
 		unit = UnitTest([f], ignore_extra_attributes=True)
-		
+
 		if unit.type not in known_types:
 			raise BuildError("Unknown test type in unit test", name=unit.name, type=unit.type)
 
