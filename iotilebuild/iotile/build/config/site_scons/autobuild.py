@@ -6,8 +6,8 @@
 # Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
-#Automatic building of firmware and unit tests using the
-#scons based momo build system
+# Automatic building of firmware and unit tests using the
+# scons based iotile build system
 
 import utilities
 import unit_test

@@ -6,8 +6,8 @@
 # Modifications to this file from the original created at WellDone International 
 # are copyright Arch Systems Inc.
 
-#Caveats and possible issues
-#Mac OS X
+# Caveats and possible issues
+# Mac OS X
 # - when using a virtualenv, readline is not properly installed into the virtualenv
 #   and cannot be imported.  You need to install it using easy_install as described here
 #   http://calvinx.com/tag/readline/
@@ -17,8 +17,6 @@
 # > iotile registry add_plugin build iotilebuild.build.build,build
 
 from setuptools import setup, find_packages
-
-import os
 import version
 
 embedded_scons = "2.5.1"
@@ -36,7 +34,8 @@ setup(
         "pygtrie>=2.0.0",
         "toposort>=1.5.0",
         "wheel>=0.29",
-        "setuptools>=32"
+        "setuptools>=32",
+        "pycparser>=2.17"
     ],
     include_package_data=True,
     entry_points={'iotile.plugin': ['.build = iotile.build.plugin:setup_plugin'],

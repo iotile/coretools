@@ -25,21 +25,18 @@ class QEMUSemihostedUnitTest(unit_test.UnitTest):
         super(QEMUSemihostedUnitTest, self).__init__(files, ignore_extra_attributes)
 
     def _find_test_functions(self, infile, arch):
-        """Parse the unit test file and search for functions that start with test_."""
+        """Parse the unit test file and search for functions that start with `test_`."""
 
         parsed = ParsedCFile(infile, arch)
         test_functions = parsed.defined_functions(criterion=lambda x: x.startswith('test_'))
-        print(test_functions)
+        return test_functions
 
     def build_target(self, target, summary_env):
-        temp = template.RecursiveTemplate(QEMUSemihostedUnitTest.UnitTemplate, resource_filename(Requirement.parse("iotile-build"), "iotile/build/config/templates"), only_ext=".tpl")
-
-
         self._find_test_functions(self.files[0], target)
+
+        temp = template.RecursiveTemplate(QEMUSemihostedUnitTest.UnitTemplate, resource_filename(Requirement.parse("iotile-build"), "iotile/build/config/templates"), only_ext=".tpl")
         test_dir = self.build_dirs(target)['objects']
         temp.render(test_dir)
-
-
 
         self._create_objects(target)
 
@@ -58,14 +55,13 @@ class QEMUSemihostedUnitTest(unit_test.UnitTest):
         prog_env['OUTPUT_PATH'] = os.path.join(build_dirs['objects'], output_name)
         prog_env['MODULE'] = elfname
 
-
         ldscript = os.path.join(build_dirs['objects'], 'qemu_semihost.ld')
         lddir = os.path.abspath(os.path.dirname(ldscript))
         prog_env['LIBPATH'] += [lddir]
 
         prog_env['LINKFLAGS'].append('-T"%s"' % ldscript)
 
-        ##Specify the output map file
+        # Specify the output map file
         prog_env['LINKFLAGS'].extend(['-Xlinker', '-Map="%s"' % os.path.join(build_dirs['objects'], map_name)])
         prog_env.Clean(os.path.join(build_dirs['objects'], output_name), [os.path.join(build_dirs['objects'], map_name)])
 
