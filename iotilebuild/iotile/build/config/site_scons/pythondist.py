@@ -33,7 +33,7 @@ def build_python_distribution(tile):
 
     srcfiles = [os.path.basename(x) for x in itertools.chain(iter(proxies), iter(typelibs), iter(plugins))]
     buildfiles = []
-    
+
     for infile in srcfiles:
         inpath = os.path.join(srcdir, infile)
         outfile = os.path.join(outsrcdir, infile)
@@ -43,7 +43,7 @@ def build_python_distribution(tile):
         env.Command(buildfile, inpath, Copy("$TARGET", "$SOURCE"))
         buildfiles.append(buildfile)
 
-    #Create setup.py file and then use that to build a python wheel 
+    #Create setup.py file and then use that to build a python wheel
     env['TILE'] = tile
     wheel_output = os.path.join('build', 'python', 'dist', tile.support_wheel)
 
@@ -61,18 +61,18 @@ def generate_setup_py(target, source, env):
     tile = env['TILE']
     data = {}
 
-    #Figure out the packages and modules that we need to put in this package
+    # Figure out the packages and modules that we need to put in this package
     typelibs = [os.path.basename(x) for x in tile.type_packages()]
     mods = [os.path.splitext(os.path.basename(x))[0] for x in itertools.chain(iter(tile.proxy_modules()), iter(tile.proxy_plugins()))]
 
-    #Now figure out all of the entry points that group type_packages, proxy_plugins and proxy_modules 
-    #and allow us to find them.
+    # Now figure out all of the entry points that group type_packages, proxy_plugins and proxy_modules
+    # and allow us to find them.
 
     entry_points = {}
 
     modentries = [os.path.splitext(os.path.basename(x))[0] for x in tile.proxy_modules()]
     pluginentries = [os.path.splitext(os.path.basename(x))[0] for x in tile.proxy_plugins()]
-    
+
     if len(modentries) > 0:
         entry_points['iotile.proxy'] = ["{0} = {0}".format(x) for x in modentries]
     if len(pluginentries) > 0:
@@ -92,8 +92,9 @@ def generate_setup_py(target, source, env):
 
     setup_template.add(data)
     setup_template.render(outdir)
+    print outdir
 
-    #Run setuptools to generate a wheel
+    # Run setuptools to generate a wheel
     curr = os.getcwd()
     os.chdir(outdir)
     try:
