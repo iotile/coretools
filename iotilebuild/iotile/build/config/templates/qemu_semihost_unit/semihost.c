@@ -31,5 +31,5 @@ void qemu_semihost_exit(int retcode)
 	if (retcode == 0)
 		svc(kSYS_EXIT, (void*)0x20026);
 	else
-		svc(kSYS_EXIT, 0);
+		svc(kSYS_EXIT, (void*)retcode);
 }

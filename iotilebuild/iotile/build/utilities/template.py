@@ -102,9 +102,9 @@ class RecursiveTemplate:
             output_dir (string): The directory that we should output the result into
         """
 
-        inpath = os.path.join(self.basepath, file_in)
+        file_out = os.path.basename(file_in)
 
-        path = os.path.join(output_dir, file_in)
+        path = os.path.join(output_dir, file_out)
         if self.only_ext is not None and self.remove_ext and path.endswith(self.only_ext):
             path = path[:-len(self.only_ext)]
 
@@ -113,13 +113,13 @@ class RecursiveTemplate:
         dname = os.path.dirname(path)
 
         self._ensure_path(dname)
-        self.format_file(inpath, filled_path)
+        self.format_file(file_in, filled_path)
 
     def _iterfiles(self):
         """Iterate over all of the files in this template and yield their relative paths."""
 
         if not self.recursive:
-            yield self.name
+            yield os.path.join(self.basepath, self.name), self.name
         else:
             indir = os.path.join(self.basepath, self.name)
             for dirpath, dirs, files in os.walk(indir):
@@ -141,10 +141,10 @@ class RecursiveTemplate:
 
     def render(self, output_dir):
         if not self.recursive:
-            self.format(self.name, output_dir)
+            self.format(os.path.join(self.basepath, self.name), output_dir)
             return
 
-        for inpath, outpath in self._iterfiles:
+        for inpath, outpath in self._iterfiles():
             if self.only_ext is not None and not inpath.endswith(self.only_ext):
                 shutil.copyfile(inpath, os.path.join(output_dir, outpath))
             else:

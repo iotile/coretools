@@ -256,7 +256,7 @@ class UnitTest (object):
 
                 name = name.lower()
 
-                 #Check if we support this attribute natively
+                # Check if we support this attribute natively
                 if name == 'name':
                     self.name = val
                 elif name == 'type':
