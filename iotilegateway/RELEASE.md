@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileGateway are listed here.
 
+## 1.3.1
+
+- Add the ability to store messages for services and bug fixes
+
 ## 1.3.0
 
 - Add iotile-supervisor that can store and report on the status of services
