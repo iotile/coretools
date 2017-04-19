@@ -11,7 +11,6 @@ from util_async import AsyncWebSocketsTestCase
 from iotile.core.exceptions import ArgumentError
 
 
-
 class TestSupervisor(AsyncWebSocketsTestCase):
     """Test the supervisor service and websocket synchronizing client."""
 
@@ -64,6 +63,14 @@ class TestSupervisor(AsyncWebSocketsTestCase):
     @tornado.concurrent.run_on_executor
     def _update_state(self, short_name, state):
         self.client.update_state(short_name, state)
+
+    @tornado.concurrent.run_on_executor
+    def _set_headline(self, short_name, level, message):
+        self.client.post_headline(short_name, level, message)
+
+    @tornado.concurrent.run_on_executor
+    def _get_headline(self, short_name):
+        self.client.get_headline(short_name)
 
     @tornado.testing.gen_test
     def test_list_services(self):
@@ -153,3 +160,12 @@ class TestSupervisor(AsyncWebSocketsTestCase):
         yield self._heartbeat('service1')
         yield self._query_info('service1')
         assert self.client.services['service1'].num_heartbeats == 2
+
+    @tornado.testing.gen_test
+    def test_service_heartbeat(self):
+        """Make sure we can set headlines."""
+
+        yield self._get_client()
+
+        yield self._set_headline('service1', states.ERROR_LEVEL, 'test message')
+        msg = yield self._get_headline('service1')

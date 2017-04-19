@@ -130,6 +130,23 @@ class ServiceStatusClient(ValidatingWSClient):
         resp = self.send_command('query_messages', {'name': name}, timeout=5.0)
         return resp['payload']
 
+    def get_headline(self, name):
+        """Get stored messages for a service.
+
+        Args:
+            name (string): The name of the service to get messages from.
+
+        Returns:
+            ServiceMessage: the headline or None if no headline has been set
+        """
+
+        resp = self.send_command('query_headline', {'name': name}, timeout=5.0)
+
+        if 'payload' not in resp:
+            return None
+
+        msg = resp['payload']
+
     def list_services(self):
         """Get the current list of services from the server.
 
@@ -184,6 +201,18 @@ class ServiceStatusClient(ValidatingWSClient):
         resp = self.send_command('update_state', {'name': name, 'new_status': state}, timeout=5.0)
         if resp['success'] is not True:
             raise ArgumentError("Error updating service state", reason=resp['reason'])
+
+    def post_headline(self, name, level, message):
+        """Asynchronously update the sticky headline for a service.
+
+        Args:
+            name (string): The name of the service
+            level (int): A message level in states.*_LEVEL
+            message (string): The user facing error message that will be stored
+                for the service and can be queried later.
+        """
+
+        self.post_command('set_headline', {'name': name, 'level': level, 'message': message})
 
     def post_state(self, name, state):
         """Asynchronously try to update the state for a service.

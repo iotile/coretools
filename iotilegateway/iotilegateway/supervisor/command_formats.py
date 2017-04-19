@@ -1,6 +1,6 @@
 """Schemas for all of the messages types that we support into the status server."""
 
-from iotile.core.utilities.schema_verify import DictionaryVerifier, IntVerifier, StringVerifier, LiteralVerifier, OptionsVerifier, BooleanVerifier
+from iotile.core.utilities.schema_verify import DictionaryVerifier, IntVerifier, StringVerifier, LiteralVerifier, OptionsVerifier, BooleanVerifier, FloatVerifier
 
 # Commands that we support
 HeartbeatCommand = DictionaryVerifier()
@@ -25,6 +25,12 @@ QueryMessagesCommand.add_required('type', LiteralVerifier('command'))
 QueryMessagesCommand.add_required('operation', LiteralVerifier('query_messages'))
 QueryMessagesCommand.add_required('name', StringVerifier())
 QueryMessagesCommand.add_required('no_response', BooleanVerifier())
+
+QueryHeadlineCommand = DictionaryVerifier()
+QueryHeadlineCommand.add_required('type', LiteralVerifier('command'))
+QueryHeadlineCommand.add_required('operation', LiteralVerifier('query_headline'))
+QueryHeadlineCommand.add_required('name', StringVerifier())
+QueryHeadlineCommand.add_required('no_response', BooleanVerifier())
 
 RegisterServiceCommand = DictionaryVerifier()
 RegisterServiceCommand.add_required('type', LiteralVerifier('command'))
@@ -54,7 +60,15 @@ PostMessageCommand.add_required('level', IntVerifier())
 PostMessageCommand.add_required('message', StringVerifier())
 PostMessageCommand.add_required('no_response', BooleanVerifier())
 
-CommandMessage = OptionsVerifier(HeartbeatCommand, QueryMessagesCommand, PostMessageCommand, UpdateStateCommand, ServiceInfoCommand, RegisterServiceCommand, ServiceListCommand, ServiceQueryCommand)
+SetHeadlineCommand = DictionaryVerifier()
+SetHeadlineCommand.add_required('type', LiteralVerifier('command'))
+SetHeadlineCommand.add_required('operation', LiteralVerifier('set_headline'))
+SetHeadlineCommand.add_required('name', StringVerifier())
+SetHeadlineCommand.add_required('level', IntVerifier())
+SetHeadlineCommand.add_required('message', StringVerifier())
+SetHeadlineCommand.add_required('no_response', BooleanVerifier())
+
+CommandMessage = OptionsVerifier(HeartbeatCommand, SetHeadlineCommand, QueryMessagesCommand, PostMessageCommand, UpdateStateCommand, ServiceInfoCommand, RegisterServiceCommand, ServiceListCommand, ServiceQueryCommand)
 
 # Possible response and notification payloads
 ServiceInfoPayload = DictionaryVerifier()
@@ -67,9 +81,11 @@ ServiceStatusPayload.add_required('old_status', IntVerifier())
 ServiceStatusPayload.add_required('new_status', IntVerifier())
 ServiceStatusPayload.add_required('new_status_string', StringVerifier())
 
-NewMessagePayload = DictionaryVerifier()
-NewMessagePayload.add_required('level', IntVerifier())
-NewMessagePayload.add_required('message', StringVerifier())
+MessagePayload = DictionaryVerifier()
+MessagePayload.add_required('level', IntVerifier())
+MessagePayload.add_required('message', StringVerifier())
+MessagePayload.add_required('created_time', FloatVerifier())
+MessagePayload.add_required('now_time', FloatVerifier())
 
 # Notifications that the SupervisorService can push
 ServiceStatusChanged = DictionaryVerifier()
@@ -93,4 +109,10 @@ NewMessage = DictionaryVerifier()
 NewMessage.add_required('type', LiteralVerifier('notification'))
 NewMessage.add_required('operation', LiteralVerifier('new_message'))
 NewMessage.add_required('name', StringVerifier())
-NewMessage.add_required('payload', NewMessagePayload)
+NewMessage.add_required('payload', MessagePayload)
+
+NewHeadline = DictionaryVerifier()
+NewHeadline.add_required('type', LiteralVerifier('notification'))
+NewHeadline.add_required('operation', LiteralVerifier('new_headline'))
+NewHeadline.add_required('name', StringVerifier())
+NewHeadline.add_required('payload', MessagePayload)

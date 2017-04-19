@@ -99,6 +99,14 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
             except ArgumentError:
                 if not cmd['no_response']:
                     self.send_error("Service name could not be found")
+        elif op == 'query_headline':
+            try:
+                headline = self.manager.service_headline(cmd['name'])
+                if not cmd['no_response']:
+                    self.send_response(True, headline)
+            except ArgumentError:
+                if not cmd['no_response']:
+                    self.send_error("Service name could not be found")
         elif op == 'update_state':
             try:
                 self.manager.update_state(cmd['name'], cmd['new_status'])
@@ -110,6 +118,14 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
         elif op == 'post_message':
             try:
                 self.manager.send_message(cmd['name'], cmd['level'], cmd['message'])
+                if not cmd['no_response']:
+                    self.send_response(True, None)
+            except ArgumentError, exc:
+                if not cmd['no_response']:
+                    self.send_error(str(exc))
+        elif op == 'set_headline':
+            try:
+                self.manager.set_headline(cmd['name'], cmd['level'], cmd['message'])
                 if not cmd['no_response']:
                     self.send_response(True, None)
             except ArgumentError, exc:

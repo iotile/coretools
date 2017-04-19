@@ -28,19 +28,68 @@ ERROR_LEVEL = 2
 class ServiceMessage(object):
     """A message received from a service."""
 
-    def __init__(self, level, message, message_id):
+    def __init__(self, level, message, message_id, timestamp=None, now_reference=None):
         """Constructor.
 
         Args:
             level (int): The message importance
             message (string): The message contents
             message_id (int): A unique id for the message
+            timestamp (float): An optional monotonic value in seconds for when the message was created
+            now_reference (float): If timestamp is not relative to monotonic() as called from this
+                module then this should be now() as seen by whoever created the timestamp.
         """
 
         self.level = level
         self.message = message
         self.count = 1
         self.id = message_id
+
+        if timestamp is None:
+            self.created = monotonic()
+        elif now_reference is None:
+            self.created = timestamp
+        else:
+            # Figure out the age of the timestamp relative to the now reference from the creator
+            # and subtract that age from now for us to convert the timestamp into our frame of
+            # reference.
+            now = monotonic()
+            adj = now - now_reference
+            self.created = timestamp + adj
+
+            # Make sure we never create times in the future so that age below is always nonnegative
+            if self.created > now:
+                self.created = now
+
+    @classmethod
+    FromDictionary(cls, msg_dict):
+        """Create from a dictionary with kv pairs.kv
+
+        Args:
+            msg_dict (dict): A dictionary with information as created by to_dict()
+
+        Returns:
+            ServiceMessage: the converted message
+        """
+
+        MessagePayload.verify(msg_dict)
+
+        level = msg_dict.get('level')
+        msg = msg_dict.get('message')
+        now = msg_dict.get('now_time')
+        created = msg_dict.get('created_time')
+
+        return ServiceMessage(level, msg, 0, now, created)
+
+    @property
+    def age(self):
+        """Return the age of this message in seconds.
+
+        Returns:
+            float: the age in seconds
+        """
+
+        return monotonic() - self.created
 
 
 class ServiceState(object):
@@ -66,6 +115,7 @@ class ServiceState(object):
         self.id = int_id
         self._state = UNKNOWN
         self.messages = deque(maxlen=max_messages)
+        self.headline = None
         self._last_message_id = 0
 
     @property
@@ -103,7 +153,7 @@ class ServiceState(object):
 
         raise ArgumentError("Message ID not found", message_id=message_id)
 
-    def post_message(self, level, message):
+    def post_message(self, level, message, timestamp=None, now_reference=None):
         """Post a new message for service.
 
         Args:
@@ -117,6 +167,20 @@ class ServiceState(object):
             msg_object = ServiceMessage(level, message, self._last_message_id)
             self.messages.append(msg_object)
             self._last_message_id += 1
+
+    def set_headline(self, level, message, timestamp=None, now_reference=None):
+        """Set the persistent headline message for this service.
+
+        Args:
+            level (int): The level of the message (info, warning, error)
+            message (string): The message contents
+            timestamp (float): An optional monotonic value in seconds for when the message was created
+            now_reference (float): If timestamp is not relative to monotonic() as called from this
+                module then this should be now() as seen by whoever created the timestamp.
+        """
+
+        msg_object = ServiceMessage(level, message, 0, timestamp, now_reference)
+        self.headline = msg_object
 
     def heartbeat(self):
         """Record a heartbeat for this service."""
