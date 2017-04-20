@@ -65,7 +65,19 @@ def test_message_creation():
     msg_dict = msg.to_dict()
     new_msg = states.ServiceMessage.FromDictionary(msg_dict)
 
-    assert msg_dict == new_msg.to_dict()
+    msg_age = msg_dict['now_time'] - msg_dict['created_time']
+    del msg_dict['created_time']
+    del msg_dict['now_time']
+
+    new_dict = new_msg.to_dict()
+    new_age = new_dict['now_time'] - new_dict['created_time']
+    del new_dict['created_time']
+    del new_dict['now_time']
+
+    # The message ages should be identical to within a few lsbs of a float but
+    # technically we don't really care how precise it is
+    assert abs(new_age - msg_age) < 0.1
+    assert msg_dict == new_dict
     assert new_msg.level == states.ERROR_LEVEL
     assert new_msg.message == 'test message'
     assert new_msg.id == 15
