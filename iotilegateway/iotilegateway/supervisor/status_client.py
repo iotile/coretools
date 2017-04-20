@@ -2,6 +2,7 @@
 
 from iotile.core.utilities.validating_wsclient import ValidatingWSClient
 from iotile.core.exceptions import ArgumentError
+from monotonic import monotonic
 from threading import Lock
 from copy import copy
 import command_formats
@@ -39,6 +40,7 @@ class ServiceStatusClient(ValidatingWSClient):
         self.add_message_type(command_formats.ServiceAdded, self._on_service_added)
         self.add_message_type(command_formats.HeartbeatReceived, self._on_heartbeat)
         self.add_message_type(command_formats.NewMessage, self._on_message)
+        self.add_message_type(command_formats.NewHeadline, self._on_headline)
         self.start()
 
         with self._state_lock:
@@ -112,8 +114,8 @@ class ServiceStatusClient(ValidatingWSClient):
             services[serv] = states.ServiceState(info['short_name'], info['long_name'], info['preregistered'], i)
             services[serv].state = status['numeric_status']
 
-            for level, message in messages:
-                services[serv].post_message(level, message)
+            for message in messages:
+                services[serv].post_message(message.level, message.message, message.count, message.created)
 
         return services
 
@@ -124,11 +126,11 @@ class ServiceStatusClient(ValidatingWSClient):
             name (string): The name of the service to get messages from.
 
         Returns:
-            list(tuple): A list of 2-tuples with level, message for each message stored for the service
+            list(ServiceMessage): A list of the messages stored for this service
         """
 
         resp = self.send_command('query_messages', {'name': name}, timeout=5.0)
-        return resp['payload']
+        return [states.ServiceMessage.FromDictionary(x) for x in resp['payload']]
 
     def get_headline(self, name):
         """Get stored messages for a service.
@@ -141,11 +143,11 @@ class ServiceStatusClient(ValidatingWSClient):
         """
 
         resp = self.send_command('query_headline', {'name': name}, timeout=5.0)
-
         if 'payload' not in resp:
             return None
 
         msg = resp['payload']
+        return states.ServiceMessage.FromDictionary(msg)
 
     def list_services(self):
         """Get the current list of services from the server.
@@ -212,7 +214,8 @@ class ServiceStatusClient(ValidatingWSClient):
                 for the service and can be queried later.
         """
 
-        self.post_command('set_headline', {'name': name, 'level': level, 'message': message})
+        now = monotonic()
+        self.post_command('set_headline', {'name': name, 'level': level, 'message': message, 'created_time': now, 'now_time': now})
 
     def post_state(self, name, state):
         """Asynchronously try to update the state for a service.
@@ -350,3 +353,15 @@ class ServiceStatusClient(ValidatingWSClient):
                 return
 
             self.services[name].post_message(message_obj['level'], message_obj['message'])
+
+    def _on_headline(self, update):
+        """Receive a headline from a service."""
+
+        name = update['name']
+        message_obj = update['payload']
+
+        with self._state_lock:
+            if name not in self.services:
+                return
+
+            self.services[name].set_headline(message_obj['level'], message_obj['message'])

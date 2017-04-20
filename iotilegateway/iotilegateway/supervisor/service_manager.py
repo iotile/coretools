@@ -137,14 +137,13 @@ class ServiceManager:
             short_name (string): The short name of the service to get messages for
 
         Returns:
-            list(tuple): A list of 2-tuples (level, message) for each message stored
-                for this service.
+            list(ServiceMessage): A list of the ServiceMessages stored for this service
         """
 
         if short_name not in self.services:
             raise ArgumentError("Unknown service name", short_name=short_name)
 
-        return [(msg.level, msg.message) for msg in self.services[short_name]['state'].messages]
+        return self.services[short_name]['state'].messages
 
     def service_headline(self, short_name):
         """Get the headline stored for a service.
@@ -159,7 +158,7 @@ class ServiceManager:
         if short_name not in self.services:
             raise ArgumentError("Unknown service name", short_name=short_name)
 
-        return self.services[short_name].headline
+        return self.services[short_name]['state'].headline
 
     def service_status(self, short_name):
         """Get the current status of a service.

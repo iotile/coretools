@@ -3,6 +3,7 @@
 from iotile.core.exceptions import ArgumentError
 from monotonic import monotonic
 from collections import deque
+from command_formats import MessagePayload
 
 # Service states
 NOT_STARTED = 0
@@ -62,8 +63,8 @@ class ServiceMessage(object):
                 self.created = now
 
     @classmethod
-    FromDictionary(cls, msg_dict):
-        """Create from a dictionary with kv pairs.kv
+    def FromDictionary(cls, msg_dict):
+        """Create from a dictionary with kv pairs.
 
         Args:
             msg_dict (dict): A dictionary with information as created by to_dict()
@@ -78,8 +79,31 @@ class ServiceMessage(object):
         msg = msg_dict.get('message')
         now = msg_dict.get('now_time')
         created = msg_dict.get('created_time')
+        count = msg_dict.get('count', 1)
+        msg_id = msg_dict.get('id', 0)
 
-        return ServiceMessage(level, msg, 0, now, created)
+        new_msg = ServiceMessage(level, msg, msg_id, created, now)
+        if count > 1:
+            new_msg.count = count
+
+        return new_msg
+
+    def to_dict(self):
+        """Create a dictionary with the information in this message.
+
+        Returns:
+            dict: The dictionary with information
+        """
+
+        msg_dict = {}
+        msg_dict['level'] = self.level
+        msg_dict['message'] = self.message
+        msg_dict['now_time'] = monotonic()
+        msg_dict['created_time'] = self.created
+        msg_dict['id'] = self.id
+        msg_dict['count'] = self.count
+
+        return msg_dict
 
     @property
     def age(self):
@@ -153,18 +177,23 @@ class ServiceState(object):
 
         raise ArgumentError("Message ID not found", message_id=message_id)
 
-    def post_message(self, level, message, timestamp=None, now_reference=None):
+    def post_message(self, level, message, count=1, timestamp=None, now_reference=None):
         """Post a new message for service.
 
         Args:
             level (int): The level of the message (info, warning, error)
             message (string): The message contents
+            count (int): The number of times the message has been repeated
+            timestamp (float): An optional monotonic value in seconds for when the message was created
+            now_reference (float): If timestamp is not relative to monotonic() as called from this
+                module then this should be now() as seen by whoever created the timestamp.
         """
 
         if len(self.messages) > 0 and self.messages[-1].message == message:
             self.messages[-1].count += 1
         else:
-            msg_object = ServiceMessage(level, message, self._last_message_id)
+            msg_object = ServiceMessage(level, message, self._last_message_id, timestamp, now_reference)
+            msg_object.count = count
             self.messages.append(msg_object)
             self._last_message_id += 1
 

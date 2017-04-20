@@ -44,6 +44,8 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
             CommandMessage.verify(cmd)
             self._on_command(cmd)
         except ValidationError:
+            if 'operation' in cmd:
+                print("Invalid operation received: %s" % cmd['operation'])
             self.send_error('message did not correspond with a known schema')
 
     def _on_command(self, cmd):
@@ -53,6 +55,8 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
         """
 
         op = cmd['operation']
+
+        print("Tracing Op: %s" % op)
 
         if op == 'heartbeat':
             try:
@@ -95,7 +99,7 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
             try:
                 msgs = self.manager.service_messages(cmd['name'])
                 if not cmd['no_response']:
-                    self.send_response(True, msgs)
+                    self.send_response(True, [msg.to_dict() for msg in msgs])
             except ArgumentError:
                 if not cmd['no_response']:
                     self.send_error("Service name could not be found")
@@ -103,6 +107,8 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
             try:
                 headline = self.manager.service_headline(cmd['name'])
                 if not cmd['no_response']:
+                    if headline is not None:
+                        headline = headline.to_dict()
                     self.send_response(True, headline)
             except ArgumentError:
                 if not cmd['no_response']:

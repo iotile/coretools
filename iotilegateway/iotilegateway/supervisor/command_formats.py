@@ -66,9 +66,11 @@ SetHeadlineCommand.add_required('operation', LiteralVerifier('set_headline'))
 SetHeadlineCommand.add_required('name', StringVerifier())
 SetHeadlineCommand.add_required('level', IntVerifier())
 SetHeadlineCommand.add_required('message', StringVerifier())
+SetHeadlineCommand.add_required('created_time', FloatVerifier())
+SetHeadlineCommand.add_required('now_time', FloatVerifier())
 SetHeadlineCommand.add_required('no_response', BooleanVerifier())
 
-CommandMessage = OptionsVerifier(HeartbeatCommand, SetHeadlineCommand, QueryMessagesCommand, PostMessageCommand, UpdateStateCommand, ServiceInfoCommand, RegisterServiceCommand, ServiceListCommand, ServiceQueryCommand)
+CommandMessage = OptionsVerifier(HeartbeatCommand, SetHeadlineCommand, QueryHeadlineCommand, QueryMessagesCommand, PostMessageCommand, UpdateStateCommand, ServiceInfoCommand, RegisterServiceCommand, ServiceListCommand, ServiceQueryCommand)
 
 # Possible response and notification payloads
 ServiceInfoPayload = DictionaryVerifier()
@@ -86,6 +88,8 @@ MessagePayload.add_required('level', IntVerifier())
 MessagePayload.add_required('message', StringVerifier())
 MessagePayload.add_required('created_time', FloatVerifier())
 MessagePayload.add_required('now_time', FloatVerifier())
+MessagePayload.add_optional('count', IntVerifier())
+MessagePayload.add_optional('id', IntVerifier())
 
 # Notifications that the SupervisorService can push
 ServiceStatusChanged = DictionaryVerifier()
