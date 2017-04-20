@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 0.7.2
+
+- Add support for mocking subprocess output so that you can better test modules that
+  use subprocess.check_output
+
 ## 0.7.1
 
 - Better support for testing realtime tracing and streaming of data
