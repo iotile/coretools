@@ -110,12 +110,16 @@ class ServiceStatusClient(ValidatingWSClient):
             info = self.service_info(serv)
             status = self.service_status(serv)
             messages = self.get_messages(serv)
+            headline = self.get_headline(serv)
 
             services[serv] = states.ServiceState(info['short_name'], info['long_name'], info['preregistered'], i)
             services[serv].state = status['numeric_status']
 
             for message in messages:
                 services[serv].post_message(message.level, message.message, message.count, message.created)
+
+            if headline is not None:
+                services[serv].set_headline(headline.level, headline.message, headline.created)
 
         return services
 

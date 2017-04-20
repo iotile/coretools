@@ -84,6 +84,7 @@ def try_report_status():
             supervisor = ServiceStatusClient('ws://localhost:9400/services')
             supervisor.register_service('gateway', 'Device Gateway')
             supervisor.post_info('gateway', "Service started successfully")
+            supervisor.post_headline('gateway', states.INFO_LEVEL, 'Test headline')
         except Exception, exc:
             print str(exc)
             return

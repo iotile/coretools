@@ -208,8 +208,9 @@ class ServiceState(object):
                 module then this should be now() as seen by whoever created the timestamp.
         """
 
-        msg_object = ServiceMessage(level, message, 0, timestamp, now_reference)
+        msg_object = ServiceMessage(level, message, self._last_message_id, timestamp, now_reference)
         self.headline = msg_object
+        self._last_message_id += 1
 
     def heartbeat(self):
         """Record a heartbeat for this service."""
