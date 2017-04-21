@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileGateway are listed here.
 
+## 1.3.2
+
+- Add the ability to store sticky headline messages for services and bug fixes
+
 ## 1.3.1
 
 - Add the ability to store messages for services and bug fixes
