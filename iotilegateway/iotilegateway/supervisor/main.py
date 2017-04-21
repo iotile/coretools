@@ -79,7 +79,7 @@ def main():
     port = args.get('port')
 
     app = tornado.web.Application([
-        (r'/services', ServiceWebSocketHandler, {'manager': service_manager}),
+        (r'/services', ServiceWebSocketHandler, {'manager': service_manager, 'logger': log}),
     ])
 
     log.info("Starting IOTile supervisor service over websockets on port %d" % port)

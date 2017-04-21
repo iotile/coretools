@@ -20,7 +20,9 @@ def get_released_versions(component):
 
     releases = get_tags()
 
-    return sorted([x for x in releases if x[0] == component], key=lambda x: x[1])[::-1]
+    releases = sorted([(x[0], map(int, x[1].split('.'))) for x in releases], key=lambda x: x[1])[::-1]
+
+    return [(x[0], ".".join(map(str, x[1]))) for x in releases if x[0] == component]
 
 def get_changed_since_tag(tag, filter_dir):
     data = subprocess.check_output(['git', '--no-pager', 'diff', '--name-only', tag, '--', filter_dir])
@@ -31,7 +33,7 @@ class StatusProcessor(cmdln.Cmdln):
 
     def do_releases(self, subcmd, opts, component):
         """${cmd_name}: print all releases for the given component
-        
+
         ${cmd_usage}
         ${cmd_option_list}
         """
@@ -42,7 +44,7 @@ class StatusProcessor(cmdln.Cmdln):
 
     def do_latest(self, subcmd, opts, component):
         """${cmd_name}: print the latest release version of a given component
-        
+
         ${cmd_usage}
         ${cmd_option_list}
         """
@@ -57,7 +59,7 @@ class StatusProcessor(cmdln.Cmdln):
 
     def do_dirty(self, subcmd, opts):
         """${cmd_name}: check if any components have unreleased changes
-        
+
         ${cmd_usage}
         ${cmd_option_list}
         """
@@ -74,7 +76,7 @@ class StatusProcessor(cmdln.Cmdln):
 
     def do_changed(self, subcmd, opts, component):
         """${cmd_name}: print all files changes in component since the latest release
-        
+
         ${cmd_usage}
         ${cmd_option_list}
         """

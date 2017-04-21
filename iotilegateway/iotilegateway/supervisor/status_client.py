@@ -2,6 +2,7 @@
 
 from iotile.core.utilities.validating_wsclient import ValidatingWSClient
 from iotile.core.exceptions import ArgumentError
+from monotonic import monotonic
 from threading import Lock
 from copy import copy
 import command_formats
@@ -39,6 +40,7 @@ class ServiceStatusClient(ValidatingWSClient):
         self.add_message_type(command_formats.ServiceAdded, self._on_service_added)
         self.add_message_type(command_formats.HeartbeatReceived, self._on_heartbeat)
         self.add_message_type(command_formats.NewMessage, self._on_message)
+        self.add_message_type(command_formats.NewHeadline, self._on_headline)
         self.start()
 
         with self._state_lock:
@@ -108,12 +110,16 @@ class ServiceStatusClient(ValidatingWSClient):
             info = self.service_info(serv)
             status = self.service_status(serv)
             messages = self.get_messages(serv)
+            headline = self.get_headline(serv)
 
             services[serv] = states.ServiceState(info['short_name'], info['long_name'], info['preregistered'], i)
             services[serv].state = status['numeric_status']
 
-            for level, message in messages:
-                services[serv].post_message(level, message)
+            for message in messages:
+                services[serv].post_message(message.level, message.message, message.count, message.created)
+
+            if headline is not None:
+                services[serv].set_headline(headline.level, headline.message, headline.created)
 
         return services
 
@@ -124,11 +130,28 @@ class ServiceStatusClient(ValidatingWSClient):
             name (string): The name of the service to get messages from.
 
         Returns:
-            list(tuple): A list of 2-tuples with level, message for each message stored for the service
+            list(ServiceMessage): A list of the messages stored for this service
         """
 
         resp = self.send_command('query_messages', {'name': name}, timeout=5.0)
-        return resp['payload']
+        return [states.ServiceMessage.FromDictionary(x) for x in resp['payload']]
+
+    def get_headline(self, name):
+        """Get stored messages for a service.
+
+        Args:
+            name (string): The name of the service to get messages from.
+
+        Returns:
+            ServiceMessage: the headline or None if no headline has been set
+        """
+
+        resp = self.send_command('query_headline', {'name': name}, timeout=5.0)
+        if 'payload' not in resp:
+            return None
+
+        msg = resp['payload']
+        return states.ServiceMessage.FromDictionary(msg)
 
     def list_services(self):
         """Get the current list of services from the server.
@@ -184,6 +207,19 @@ class ServiceStatusClient(ValidatingWSClient):
         resp = self.send_command('update_state', {'name': name, 'new_status': state}, timeout=5.0)
         if resp['success'] is not True:
             raise ArgumentError("Error updating service state", reason=resp['reason'])
+
+    def post_headline(self, name, level, message):
+        """Asynchronously update the sticky headline for a service.
+
+        Args:
+            name (string): The name of the service
+            level (int): A message level in states.*_LEVEL
+            message (string): The user facing error message that will be stored
+                for the service and can be queried later.
+        """
+
+        now = monotonic()
+        self.post_command('set_headline', {'name': name, 'level': level, 'message': message, 'created_time': now, 'now_time': now})
 
     def post_state(self, name, state):
         """Asynchronously try to update the state for a service.
@@ -269,15 +305,18 @@ class ServiceStatusClient(ValidatingWSClient):
         info = update['payload']
         new_number = info['new_status']
         name = update['name']
+        is_changed = False
 
         with self._state_lock:
             if name not in self.services:
                 return
 
+            is_changed = self.services[name].state != new_number
+
             self.services[name].state = new_number
 
         # Notify about this service state change if anyone is listening
-        if self._on_change_callback:
+        if self._on_change_callback and is_changed:
             self._on_change_callback(name, self.services[name].id, new_number, False)
 
     def _on_service_added(self, update):
@@ -321,3 +360,19 @@ class ServiceStatusClient(ValidatingWSClient):
                 return
 
             self.services[name].post_message(message_obj['level'], message_obj['message'])
+
+    def _on_headline(self, update):
+        """Receive a headline from a service."""
+
+        name = update['name']
+        message_obj = update['payload']
+
+        with self._state_lock:
+            if name not in self.services:
+                return
+
+            self.services[name].set_headline(message_obj['level'], message_obj['message'])
+
+        # Notify about this service state change if anyone is listening
+        if self._on_change_callback:
+            self._on_change_callback(name, self.services[name].id, self.services[name].state, False)
