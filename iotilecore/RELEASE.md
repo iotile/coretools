@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.13.2
+
+- Add support for float validator
+
 ## 3.13.1
 
 - Improve schema validator support
