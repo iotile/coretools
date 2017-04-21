@@ -1,6 +1,7 @@
 """Unit tests for supervisor server and client."""
 
 import pytest
+import logging
 from iotilegateway.supervisor.ws_handler import ServiceWebSocketHandler
 from iotilegateway.supervisor.service_manager import ServiceManager
 from iotilegateway.supervisor.status_client import ServiceStatusClient
@@ -26,7 +27,7 @@ class TestSupervisor(AsyncWebSocketsTestCase):
 
     def _get_app(self):
         app = tornado.web.Application([
-            (r'/services', ServiceWebSocketHandler, {'manager': self.manager})
+            (r'/services', ServiceWebSocketHandler, {'manager': self.manager, 'logger': logging.getLogger('test.logger')})
         ])
 
         return app

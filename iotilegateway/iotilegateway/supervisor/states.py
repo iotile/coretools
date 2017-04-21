@@ -208,6 +208,11 @@ class ServiceState(object):
                 module then this should be now() as seen by whoever created the timestamp.
         """
 
+        if self.headline is not None and self.headline.message == message:
+            self.headline.created = monotonic()
+            self.headline.count += 1
+            return
+
         msg_object = ServiceMessage(level, message, self._last_message_id, timestamp, now_reference)
         self.headline = msg_object
         self._last_message_id += 1

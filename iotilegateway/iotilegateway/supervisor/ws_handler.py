@@ -12,11 +12,10 @@ from iotile.core.exceptions import ArgumentError, ValidationError
 class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
     """A websocket interface to ServiceManager."""
 
-    _logger = logging.getLogger('service.query')
-
-    def initialize(self, manager):
+    def initialize(self, manager, logger):
         """Initialize this handler."""
         self.manager = manager
+        self.logger = logger
 
     @classmethod
     def decode_datetime(cls, obj):
@@ -56,7 +55,9 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
 
         op = cmd['operation']
 
-        print("Tracing Op: %s" % op)
+        del cmd['operation']
+        del cmd['type']
+        self.logger.info("Received %s with payload %s", op, cmd)
 
         if op == 'heartbeat':
             try:
@@ -183,10 +184,10 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
         """Register that someone opened a connection."""
         self.stream.set_nodelay(True)
         self.manager.add_monitor(self.send_notification)
-        self._logger.info('Client connected')
+        self.logger.info('Client connected')
 
     def on_close(self, *args):
         """Register that someone closed a connection."""
 
         self.manager.remove_monitor(self.send_notification)
-        self._logger.info('Client disconnected')
+        self.logger.info('Client disconnected')

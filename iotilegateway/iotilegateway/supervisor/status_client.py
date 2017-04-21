@@ -305,15 +305,18 @@ class ServiceStatusClient(ValidatingWSClient):
         info = update['payload']
         new_number = info['new_status']
         name = update['name']
+        is_changed = False
 
         with self._state_lock:
             if name not in self.services:
                 return
 
+            is_changed = self.services[name].state != new_number
+
             self.services[name].state = new_number
 
         # Notify about this service state change if anyone is listening
-        if self._on_change_callback:
+        if self._on_change_callback and is_changed:
             self._on_change_callback(name, self.services[name].id, new_number, False)
 
     def _on_service_added(self, update):
@@ -369,3 +372,7 @@ class ServiceStatusClient(ValidatingWSClient):
                 return
 
             self.services[name].set_headline(message_obj['level'], message_obj['message'])
+
+        # Notify about this service state change if anyone is listening
+        if self._on_change_callback:
+            self._on_change_callback(name, self.services[name].id, self.services[name].state, False)
