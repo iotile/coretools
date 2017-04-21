@@ -12,11 +12,10 @@ from iotile.core.exceptions import ArgumentError, ValidationError
 class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
     """A websocket interface to ServiceManager."""
 
-    _logger = logging.getLogger('service.query')
-
-    def initialize(self, manager):
+    def initialize(self, manager, logger):
         """Initialize this handler."""
         self.manager = manager
+        self.logger = logger
 
     @classmethod
     def decode_datetime(cls, obj):
@@ -44,6 +43,8 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
             CommandMessage.verify(cmd)
             self._on_command(cmd)
         except ValidationError:
+            if 'operation' in cmd:
+                print("Invalid operation received: %s" % cmd['operation'])
             self.send_error('message did not correspond with a known schema')
 
     def _on_command(self, cmd):
@@ -53,6 +54,10 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
         """
 
         op = cmd['operation']
+
+        del cmd['operation']
+        del cmd['type']
+        self.logger.info("Received %s with payload %s", op, cmd)
 
         if op == 'heartbeat':
             try:
@@ -95,7 +100,17 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
             try:
                 msgs = self.manager.service_messages(cmd['name'])
                 if not cmd['no_response']:
-                    self.send_response(True, msgs)
+                    self.send_response(True, [msg.to_dict() for msg in msgs])
+            except ArgumentError:
+                if not cmd['no_response']:
+                    self.send_error("Service name could not be found")
+        elif op == 'query_headline':
+            try:
+                headline = self.manager.service_headline(cmd['name'])
+                if not cmd['no_response']:
+                    if headline is not None:
+                        headline = headline.to_dict()
+                    self.send_response(True, headline)
             except ArgumentError:
                 if not cmd['no_response']:
                     self.send_error("Service name could not be found")
@@ -110,6 +125,14 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
         elif op == 'post_message':
             try:
                 self.manager.send_message(cmd['name'], cmd['level'], cmd['message'])
+                if not cmd['no_response']:
+                    self.send_response(True, None)
+            except ArgumentError, exc:
+                if not cmd['no_response']:
+                    self.send_error(str(exc))
+        elif op == 'set_headline':
+            try:
+                self.manager.set_headline(cmd['name'], cmd['level'], cmd['message'])
                 if not cmd['no_response']:
                     self.send_response(True, None)
             except ArgumentError, exc:
@@ -161,10 +184,10 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
         """Register that someone opened a connection."""
         self.stream.set_nodelay(True)
         self.manager.add_monitor(self.send_notification)
-        self._logger.info('Client connected')
+        self.logger.info('Client connected')
 
     def on_close(self, *args):
         """Register that someone closed a connection."""
 
         self.manager.remove_monitor(self.send_notification)
-        self._logger.info('Client disconnected')
+        self.logger.info('Client disconnected')

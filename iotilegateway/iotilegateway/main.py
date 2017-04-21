@@ -60,6 +60,7 @@ def try_quit():
     if supervisor:
         try:
             supervisor.update_state('gateway', states.STOPPED)
+            supervisor.post_headline('gateway', states.INFO_LEVEL, 'Stoppped by supervisor')
         except Exception, exc:
             log.error("Error updating service status to stopped: %s", str(exc))
             traceback.print_exc()
@@ -84,6 +85,7 @@ def try_report_status():
             supervisor = ServiceStatusClient('ws://localhost:9400/services')
             supervisor.register_service('gateway', 'Device Gateway')
             supervisor.post_info('gateway', "Service started successfully")
+            supervisor.post_headline('gateway', states.INFO_LEVEL, 'Started successfully')
         except Exception, exc:
             print str(exc)
             return

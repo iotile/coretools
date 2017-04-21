@@ -52,3 +52,33 @@ def test_duplicate_messages(service):
     assert service.messages[0].message == 'test message'
     assert service.messages[0].count == 2
     assert service.messages[0].id == 0
+
+
+def test_message_creation():
+    """Make sure messages can be serialized and deserialized."""
+
+    ts = 1000.0
+    now = 1010.0
+
+    msg = states.ServiceMessage(states.ERROR_LEVEL, 'test message', 15, ts, now)
+
+    msg_dict = msg.to_dict()
+    new_msg = states.ServiceMessage.FromDictionary(msg_dict)
+
+    msg_age = msg_dict['now_time'] - msg_dict['created_time']
+    del msg_dict['created_time']
+    del msg_dict['now_time']
+
+    new_dict = new_msg.to_dict()
+    new_age = new_dict['now_time'] - new_dict['created_time']
+    del new_dict['created_time']
+    del new_dict['now_time']
+
+    # The message ages should be identical to within a few lsbs of a float but
+    # technically we don't really care how precise it is
+    assert abs(new_age - msg_age) < 0.1
+    assert msg_dict == new_dict
+    assert new_msg.level == states.ERROR_LEVEL
+    assert new_msg.message == 'test message'
+    assert new_msg.id == 15
+    assert new_msg.count == 1

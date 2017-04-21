@@ -137,14 +137,28 @@ class ServiceManager:
             short_name (string): The short name of the service to get messages for
 
         Returns:
-            list(tuple): A list of 2-tuples (level, message) for each message stored
-                for this service.
+            list(ServiceMessage): A list of the ServiceMessages stored for this service
         """
 
         if short_name not in self.services:
             raise ArgumentError("Unknown service name", short_name=short_name)
 
-        return [(msg.level, msg.message) for msg in self.services[short_name]['state'].messages]
+        return self.services[short_name]['state'].messages
+
+    def service_headline(self, short_name):
+        """Get the headline stored for a service.
+
+        Args:
+            short_name (string): The short name of the service to get messages for
+
+        Returns:
+            ServiceMessage: the headline or None if there is no headline
+        """
+
+        if short_name not in self.services:
+            raise ArgumentError("Unknown service name", short_name=short_name)
+
+        return self.services[short_name]['state'].headline
 
     def service_status(self, short_name):
         """Get the current status of a service.
@@ -185,8 +199,27 @@ class ServiceManager:
         if short_name not in self.services:
             raise ArgumentError("Unknown service name", short_name=short_name)
 
+        now = monotonic()
+
         self.services[short_name]['state'].post_message(level, message)
-        self._notify_update(short_name, 'new_message', {'level': level, 'message': message})
+        self._notify_update(short_name, 'new_message', {'level': level, 'message': message, 'created_time': now, 'now_time': now})
+
+    def set_headline(self, short_name, level, message):
+        """Set the sticky headline for a service.
+
+        Args:
+            short_name (string): The short name of the service to query
+            level (int): The level of the message (info, warning, error)
+            message (string): The message contents
+        """
+
+        if short_name not in self.services:
+            raise ArgumentError("Unknown service name", short_name=short_name)
+
+        now = monotonic()
+
+        self.services[short_name]['state'].set_headline(level, message)
+        self._notify_update(short_name, 'new_headline', {'level': level, 'message': message, 'created_time': now, 'now_time': now})
 
     def send_heartbeat(self, short_name):
         """Post a heartbeat for a service.
