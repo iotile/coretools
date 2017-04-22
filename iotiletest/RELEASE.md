@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 0.7.3
+
+- Add support for mocking file open calls
+
 ## 0.7.2
 
 - Add support for mocking subprocess output so that you can better test modules that

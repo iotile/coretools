@@ -53,7 +53,7 @@ class ServiceStatusClient(ValidatingWSClient):
 
         Args:
             callback (callable): A function to be called with signature
-                callback(short_name, id, state, is_new)
+                callback(short_name, id, state, is_new, new_headline)
         """
 
         self._on_change_callback = callback
@@ -317,7 +317,7 @@ class ServiceStatusClient(ValidatingWSClient):
 
         # Notify about this service state change if anyone is listening
         if self._on_change_callback and is_changed:
-            self._on_change_callback(name, self.services[name].id, new_number, False)
+            self._on_change_callback(name, self.services[name].id, new_number, False, False)
 
     def _on_service_added(self, update):
         """Add a new service."""
@@ -336,7 +336,7 @@ class ServiceStatusClient(ValidatingWSClient):
 
         # Notify about this new service if anyone is listening
         if self._on_change_callback:
-            self._on_change_callback(name, new_id, serv.state, True)
+            self._on_change_callback(name, new_id, serv.state, True, False)
 
     def _on_heartbeat(self, update):
         """Receive a new heartbeat for a service."""
@@ -375,4 +375,4 @@ class ServiceStatusClient(ValidatingWSClient):
 
         # Notify about this service state change if anyone is listening
         if self._on_change_callback:
-            self._on_change_callback(name, self.services[name].id, self.services[name].state, False)
+            self._on_change_callback(name, self.services[name].id, self.services[name].state, False, True)
