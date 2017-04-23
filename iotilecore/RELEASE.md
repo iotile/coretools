@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.13.4
+
+- Add better exception message when there are invalid arguments or response 
+  to a virtual device.
+
 ## 3.13.3
 
 - Make StoppableThread stop faster when you configure a large interval for 

@@ -3,6 +3,7 @@
 
 import struct
 import inspect
+import binascii
 from iotile.core.exceptions import IOTileException, InternalError
 from iotile.core.utilities.stoppable_thread import StoppableWorkerThread
 from iotile.core.hw.reports.individual_format import IndividualReadingReport
@@ -70,14 +71,17 @@ def rpc(address, rpc_id, arg_format, resp_format=None):
 
     def _rpc_wrapper(func):
         def _rpc_executor(self, payload):
-            args = struct.unpack("<{}".format(arg_format), payload)
+            try:
+                args = struct.unpack("<{}".format(arg_format), payload)
+            except struct.error as exc:
+                raise RPCInvalidArgumentsError(str(exc), arg_format=arg_format, payload=binascii.hexlify(payload))
 
             resp = func(self, *args)
             if resp_format is not None:
                 try:
                     return struct.pack("<{}".format(resp_format), *resp)
                 except struct.error as exc:
-                    raise RPCInvalidReturnValueError(str(exc))
+                    raise RPCInvalidReturnValueError(str(exc), resp_format(resp_format), resp=repr(resp))
 
             return resp
 
