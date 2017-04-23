@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.13.3
+
+- Make StoppableThread stop faster when you configure a large interval for 
+  the thread function to run at.
+
 ## 3.13.2
 
 - Add support for float validator
