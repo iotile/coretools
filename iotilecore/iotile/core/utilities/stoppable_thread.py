@@ -28,9 +28,18 @@ class StoppableWorkerThread(threading.Thread):
         self._routine = routine
         self._args = args
         self._kwargs = kwargs
-        self._wait = timeout
         self._stop_condition = threading.Event()
         self._running = threading.Event()
+
+        # In order to keep the thread responsive, we default to checking for our
+        # stop signal every 10 milliseconds.  If the execution timeout is less than
+        # 10 ms, we use that, otherwise we round it to a multiple of 10 ms
+        if timeout <= 0.01:
+            self._wait = timeout
+            self._wait_count = 1
+        else:
+            self._wait = 0.01
+            self._wait_count = int(timeout / self._wait)
 
         self._generator = inspect.isgeneratorfunction(routine)
 
@@ -54,7 +63,7 @@ class StoppableWorkerThread(threading.Thread):
 
     def run(self):
         """The target routine called to start thread activity
-        
+
         If the thread is created with a generator function, this iterates
         the generator and checks for a stop condition between each iteration.
 
@@ -68,15 +77,20 @@ class StoppableWorkerThread(threading.Thread):
 
                 while True:
                     if self._stop_condition.is_set():
-                        break
+                        return
 
                     self._running.set()
 
                     next(gen)
-                    time.sleep(self._wait)
+
+                    for i in xrange(0, self._wait_count):
+                        if self._stop_condition.is_set():
+                            return
+                        time.sleep(self._wait)
+
             except StopIteration:
                 pass
-            except Exception, exc:
+            except Exception:
                 print("Exception occurred in background worker thread")
                 traceback.print_exc()
         else:
@@ -88,13 +102,19 @@ class StoppableWorkerThread(threading.Thread):
                     self._running.set()
 
                     self._routine(*self._args, **self._kwargs)
-                    time.sleep(self._wait)
-            except Exception, exc:
+
+                    # Wait for the desired interval, checking if we should exit
+                    for i in xrange(0, self._wait_count):
+                        if self._stop_condition.is_set():
+                            return
+
+                        time.sleep(self._wait)
+            except Exception:
                 print("Exception occurred in background worker thread")
                 traceback.print_exc()
 
     def wait_running(self, timeout=None):
-        """Wait for the thread to pass control to its routine
+        """Wait for the thread to pass control to its routine.
 
         Args:
             timeout (float): The maximum amount of time to wait
@@ -106,7 +126,7 @@ class StoppableWorkerThread(threading.Thread):
             raise TimeoutError("Timeout waiting for thread to start running")
 
     def stop(self, timeout=None, force=False):
-        """Stop the worker thread and synchronously wait for it to finish
+        """Stop the worker thread and synchronously wait for it to finish.
 
         Args:
             timeout (float): The maximum time to wait for the thread to stop

@@ -366,6 +366,7 @@ class ServiceStatusClient(ValidatingWSClient):
 
         name = update['name']
         message_obj = update['payload']
+        new_headline = False
 
         with self._state_lock:
             if name not in self.services:
@@ -373,6 +374,9 @@ class ServiceStatusClient(ValidatingWSClient):
 
             self.services[name].set_headline(message_obj['level'], message_obj['message'])
 
+            if self.services[name].headline.count == 1:
+                new_headline = True
         # Notify about this service state change if anyone is listening
-        if self._on_change_callback:
+        # headline changes are only reported if they are not duplicates
+        if self._on_change_callback and new_headline:
             self._on_change_callback(name, self.services[name].id, self.services[name].state, False, True)
