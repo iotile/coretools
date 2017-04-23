@@ -164,7 +164,14 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
             self._send_trace()
 
     def _advertisement(self):
-        flags = (0 << 1) | (0 << 2) | (int(self.device.pending_data))
+        # Flags are
+        # bit 0: whether we have pending data
+        # bit 1: whether we are in a low voltage state
+        # bit 2: whether another user is connected
+        # bit 3: whether we supoprt robust reports
+        # bit 4: whether we allow fast writes
+
+        flags = (0 << 1) | (0 << 2) | (1 << 3) | (1 << 4) | (int(self.device.pending_data))
         ble_flags = struct.pack("<BBB", 2, 1, 0x4 | 0x2)  # General discoverability and no BR/EDR support
         uuid_list = struct.pack("<BB16s", 17, 6, TileBusService.bytes_le)
         manu = struct.pack("<BBHLH", 9, 0xFF, ArchManuID, self.device.iotile_id, flags)
