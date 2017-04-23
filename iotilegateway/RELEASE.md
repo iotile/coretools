@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileGateway are listed here.
 
+## 1.3.4
+
+- Fix headline status reporting to only report when it actually changes
+
 ## 1.3.3
 
 - Add better granularity on service status change reporting
