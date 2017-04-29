@@ -60,11 +60,6 @@ class IOTileGateway(threading.Thread):
 
         super(IOTileGateway, self).__init__()
 
-    def start(self):
-        """Start this thread."""
-
-        super(IOTileGateway, self).start()
-
     def run(self):
         """Start the gateway and run it to completion in another thread."""
 
