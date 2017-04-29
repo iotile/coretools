@@ -84,7 +84,7 @@ def upload_component(component):
     The pypi username and password must either be specified in a ~/.pypirc
     file or in environment variables PYPI_USER and PYPI_PASS
     """
-    
+
     if 'PYPI_USER' in os.environ and 'PYPI_PASS' in os.environ:
         pypi_user = os.environ['PYPI_USER']
         pypi_pass = os.environ['PYPI_PASS']
@@ -118,7 +118,7 @@ def get_release_notes(component, version):
         sys.exit(1)
 
     release_lines = {y[2:].strip(): x for x, y in enumerate(lines) if y.startswith('##')}
-    
+
     if version not in release_lines:
         print("ERROR: Could not find release notes for current release version")
         sys.exit(1)
