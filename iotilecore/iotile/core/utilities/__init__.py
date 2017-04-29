@@ -3,10 +3,7 @@
 # info@welldone.org
 # http://welldone.org
 #
-# Modifications to this file from the original created at WellDone International 
+# Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
 #__init__.py
-
-#Import commonly used function decorators
-from decorators import deprecated

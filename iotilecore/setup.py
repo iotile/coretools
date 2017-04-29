@@ -1,18 +1,19 @@
+"""Setup file for iotile-core."""
+
 # This file is adapted from python code released by WellDone International
 # under the terms of the LGPLv3.  WellDone International's contact information is
 # info@welldone.org
 # http://welldone.org
 #
-# Modifications to this file from the original created at WellDone International 
+# Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
-#Caveats and possible issues
-#Mac OS X
+# Caveats and possible issues
+# Mac OS X
 # - when using a virtualenv, readline is not properly installed into the virtualenv
 #   and cannot be imported.  You need to install it using easy_install as described here
 #   http://calvinx.com/tag/readline/
 
-import re
 
 from setuptools import setup, find_packages
 import version
