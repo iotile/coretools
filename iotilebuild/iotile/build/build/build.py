@@ -3,14 +3,13 @@
 # info@welldone.org
 # http://welldone.org
 #
-# Modifications to this file from the original created at WellDone International 
+# Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
 #build.py
 #Return the build settings json file.
 
 import json as json
-from iotile.core.utilities import deprecated
 from iotile.core.dev.iotileobj import IOTile
 import sys
 from iotile.core.utilities.typedargs.annotate import *
@@ -29,8 +28,8 @@ from pkg_resources import resource_filename, Requirement
 @takes_cmdline
 def build(args):
     """
-    Invoke the scons build system from the current directory, exactly as if 
-    the scons tool had been invoked. 
+    Invoke the scons build system from the current directory, exactly as if
+    the scons tool had been invoked.
     """
 
     # Do some sluething work to find scons if it's not installed into an importable
@@ -51,7 +50,7 @@ def build(args):
 
 def build_other(directory, artifacts=[]):
     """
-    Invoke SCons to build a project in another directory. 
+    Invoke SCons to build a project in another directory.
 
     All output is suppressed by default.
     """
@@ -72,7 +71,7 @@ def build_other(directory, artifacts=[]):
         site_tools = os.path.join(resource_filename(Requirement.parse("iotile-build"), "iotile/build/config"), 'site_scons')
         site_path = os.path.abspath(site_tools)
         all_args = ['iotile', 'build'] + artifact_paths
-        
+
         #Call this in a subprocess since SCons can't do repeated calls into SCons.Script.main()
         #because it sets global state about what nodes are present
         p = subprocess.Popen(all_args, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
@@ -84,7 +83,7 @@ def build_other(directory, artifacts=[]):
 
 def build_iotile(iotile, artifacts=[]):
     """
-    Build all products in an IOTile 
+    Build all products in an IOTile
     """
 
     #If there's no SConstruct then there's nothing to build
@@ -149,7 +148,7 @@ class TargetSettings (object):
         """
 
         archs = self.arch_list().split('/')
-        
+
         if as_list:
             return archs
 
@@ -206,8 +205,8 @@ class TargetSettings (object):
         """
 
         if name in self.settings:
-            return self.settings[name]  
-        
+            return self.settings[name]
+
         if default is not MISSING:
             return default
 
@@ -229,7 +228,7 @@ class TargetSettings (object):
         """
         Return all of the include directories for this chip as a list.
         """
-        
+
         incs = self.combined_properties('includes')
 
         processed_incs = []
@@ -238,8 +237,8 @@ class TargetSettings (object):
                 processed_incs.append(prop)
             else:
                 processed_incs.append(os.path.join(*prop))
-        
-        #All inclue paths are relative to base directory of the 
+
+        #All inclue paths are relative to base directory of the
         fullpaths = [os.path.normpath(os.path.join('.', x)) for x in processed_incs]
         fullpaths.append(os.path.normpath(os.path.abspath(self.build_dirs()['build'])))
 
@@ -254,7 +253,7 @@ class TargetSettings (object):
         raise BuildError("Extra sources no longer supported")
         paths = MomoPaths()
         base = paths.modules
-        
+
         srcs = [y for x,y in self.settings.iteritems() if x.endswith('sources')]
         sources = itertools.chain(*srcs)
 
@@ -280,14 +279,14 @@ class TargetSettings (object):
 
 class ArchitectureGroup:
     """A list of build architectures that may be used for building an IOTile Component.
-    
+
     ArchitectureGroup objects are a collection of architectures, which are dictionaries
     that define properties relevant to buildign an IOTile Component.  Examples of these
     properties are: include paths, libraries, python proxy objects, etc.
 
-    Whenever an IOTile component is built, it is always built targeting a list of 
+    Whenever an IOTile component is built, it is always built targeting a list of
     architectures, whose properties are then merged together to create the final
-    dictionary of properties that is used to build the component.  
+    dictionary of properties that is used to build the component.
     """
 
     def __init__(self, modulefile):
