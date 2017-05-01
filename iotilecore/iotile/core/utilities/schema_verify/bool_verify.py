@@ -32,6 +32,8 @@ class BooleanVerifier(Verifier):
         if self._require_value is not None and obj != self._require_value:
             raise ValidationError("Boolean is not equal to specified literal", reason='boolean value %s should be %s' % (str(obj), str(self._require_value)))
 
+        return obj
+
     def format(self, indent_level, indent_size=4):
         """Format this verifier
 

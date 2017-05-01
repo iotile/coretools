@@ -36,7 +36,7 @@ class OptionsVerifier(Verifier):
         for i, option in enumerate(self._options):
             try:
                 option.verify(obj)
-                return
+                return obj
             except ValidationError, exc:
                 exceptions['option_%d' % (i+1)] = exc.params['reason']
 

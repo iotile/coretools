@@ -32,11 +32,14 @@ class ListVerifier(Verifier):
                 the reason for the lack of validation.
         """
 
+        out_obj = []
         if self._min_length is not None and len(obj) < self._min_length:
             raise ValidationError("List was too short", reason="list length %d was less than the minimum %d" % (len(obj), self._min_length), min_length=self._min_length, actual_length=len(obj))
 
         if self._max_length is not None and len(obj) > self._max_length:
             raise ValidationError("List was too long", reason="list length %d was greater than the maximum %d" % (len(obj), self._max_length), min_length=self._max_length, actual_length=len(obj))
 
-        for i, val in enumerate(obj):
-            self._verifier.verify(val)
+        for val in obj:
+            out_obj.append(self._verifier.verify(val))
+
+        return out_obj

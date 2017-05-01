@@ -27,6 +27,8 @@ class StringVerifier(Verifier):
         if not isinstance(obj, basestring):
             raise ValidationError("Object is not a string", reason='object is not a string', object=obj)
 
+        return obj
+
     def format(self, indent_level, indent_size=4):
         """Format this verifier
 

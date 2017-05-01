@@ -1,5 +1,5 @@
 import pytest
-from iotile.core.utilities.schema_verify import DictionaryVerifier, ListVerifier, StringVerifier, IntVerifier, BooleanVerifier, LiteralVerifier, OptionsVerifier
+from iotile.core.utilities.schema_verify import BytesVerifier, DictionaryVerifier, ListVerifier, StringVerifier, IntVerifier, BooleanVerifier, LiteralVerifier, OptionsVerifier
 from iotile.core.exceptions import ValidationError
 
 
@@ -94,6 +94,20 @@ def test_options_verifier():
     with pytest.raises(ValidationError):
         verifier.verify('ab')
 
-
     with pytest.raises(ValidationError):
         verifier.verify(1)
+
+def test_bytes_decoding():
+    """Check to make sure that decoding bytes works."""
+
+    instring = 'zasAAA=='
+    verifier = BytesVerifier(encoding='base64')
+
+    out1 = verifier.verify(instring)
+    assert len(out1) == 4
+
+    verifier = BytesVerifier(encoding='hex')
+    out2 = verifier.verify('cdab0000')
+    assert len(out2) == 4
+
+    assert out1 == out2

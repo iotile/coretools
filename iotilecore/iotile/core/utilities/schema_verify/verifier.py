@@ -32,7 +32,7 @@ class Verifier(object):
         self.long_desc = self._get_long_description()
 
     def verify(self, obj):
-        """Verify that the object conforms to this verifier's schema
+        """Verify that the object conforms to this verifier's schema.
 
         Args:
             obj (object): A python object to verify
@@ -43,7 +43,7 @@ class Verifier(object):
                 the reason for the lack of validation.
         """
 
-        pass
+        return obj
 
     def _get_short_description(self):
         """Return the first line of a multiline description
