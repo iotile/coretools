@@ -1,19 +1,23 @@
 import pytest
-from iotile_transport_awsiot.gateway_agent import AWSIOTGatewayAgent
-from iotilegateway.device import DeviceManager
-import tornado.testing
+from iotile_transport_awsiot.mqtt_client import OrderedAWSIOTClient
 
-class TestDeviceManager(tornado.testing.AsyncTestCase):
-    def setUp(self):
-        super(TestDeviceManager, self).setUp()
 
-        self.dev = MockIOTileDevice(1, 'TestCN')
-        self.dev.reports = [IndividualReadingReport.FromReadings(100, [IOTileReading(0, 1, 2)])]
-        self.adapter = MockDeviceAdapter()
-        self.adapter.add_device('test', self.dev)
+def test_gateway(gateway, local_broker, args):
+    """Make sure we can connect to the gateway by sending packets over the mqtt message broker."""
 
-        self.manager = DeviceManager(self.io_loop)
-        self.manager.add_adapter(self.adapter)
+    client = OrderedAWSIOTClient(args)
+    client.connect('hello')
+    local_broker.expect(2)
+    client.publish('devices/d--0000-0000-0000-0002/control/probe', {'type': 'command', 'operation': 'probe', 'client': 'hello'})
+    local_broker.wait()
 
-    def tearDown(self):
-        super(TestDeviceManager, self).tearDown()
+
+def test_probe(gateway, hw_man, local_broker):
+    """Make sure we can probe for devices."""
+
+    local_broker.expect(3)
+    results = hw_man.scan(wait=0.1)
+
+    assert len(results) == 1
+    assert results[0]['uuid'] == 1
+    assert results[0]['connection_string'] == 'd--0000-0000-0000-0001'

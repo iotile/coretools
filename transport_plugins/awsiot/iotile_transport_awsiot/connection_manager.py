@@ -1,6 +1,6 @@
 import threading
 import Queue
-import traceback
+import logging
 from timeout import TimeoutInterval
 from iotile.core.exceptions import ArgumentError
 
@@ -29,7 +29,7 @@ class ConnectionAction(object):
 
 
 class ConnectionManager(threading.Thread):
-    """A class that manages connection states and transitions
+    """A class that manages connection states and transitions.
 
     ConnectionManager presents a nonblocking interface that is designed
     to work with DeviceAdapter.  It handles maintaining an internal dictionary
@@ -44,7 +44,7 @@ class ConnectionManager(threading.Thread):
         idle: The connection is connected and idle
         in_progress: An operation is in progress on the connection
         disconnecting: The connection has started the disconnect process
-        but has not finished it yet. 
+        but has not finished it yet.
 
     The user of ConnectionManager is free to create their own microstates if
     the actions required to, e.g., connect to a device require a sequence
@@ -59,11 +59,6 @@ class ConnectionManager(threading.Thread):
         nonexistent -> connecting -> idle <--> in_progress <--> idle -> disconnecting -> nonexistant
 
     ConnectionManager will fail a request that does not follow the above pattern.
-
-    Args:
-        adapter_id (int): Since the ConnectionManager responds to callbacks on behalf
-            of a DeviceAdapter, it needs to know what adapter_id to send with the
-            callbacks.
     """
 
     Disconnected = 0
@@ -73,6 +68,14 @@ class ConnectionManager(threading.Thread):
     Disconnecting = 4
 
     def __init__(self, adapter_id):
+        """Constructor.
+
+        Args:
+            adapter_id (int): Since the ConnectionManager responds to callbacks on behalf
+                of a DeviceAdapter, it needs to know what adapter_id to send with the
+                callbacks.
+        """
+
         super(ConnectionManager, self).__init__()
 
         self.id = adapter_id
@@ -80,7 +83,13 @@ class ConnectionManager(threading.Thread):
         self._actions = Queue.Queue()
         self._connections = {}
         self._int_connections = {}
-        self._data_lock = threading.RLock()
+
+        # Our thread should be a daemon so that we don't block exiting the program if we hang
+        self.daemon = True
+
+        self._logger = logging.getLogger(__name__)
+        self._logger.addHandler(logging.NullHandler())
+        self._logger.setLevel(logging.INFO)
 
     def run(self):
         while True:
@@ -99,7 +108,7 @@ class ConnectionManager(threading.Thread):
                 handler_name = '_{}_action'.format(action.action)
 
                 if not hasattr(self, handler_name):
-                    print("Unknown action in ConnectionManager: %s" % action.action)
+                    self._logger.error("Ignoring unknown action in ConnectionManager: %s", action.action)
                     continue
 
                 handler = getattr(self, handler_name)
@@ -108,16 +117,14 @@ class ConnectionManager(threading.Thread):
                 if action.sync:
                     action.done.set()
             except Exception:
-                print("***Exception in worker thread***")
-                traceback.print_exc()
+                self._logger.exception('Exception processing event in ConnectionManager')
 
     def stop(self):
         try:
             self._stop_event.set()
             self.join(5.0)
         except RuntimeError:
-            print("Could not stop connection manager thread, killing it on exit in a dirty fashion")
-            self.daemon=True
+            self._logger.warn("Could not stop connection manager thread, killing it on exit in a dirty fashion")
 
     def get_connections(self):
         """Get a list of all open connections
@@ -430,7 +437,7 @@ class ConnectionManager(threading.Thread):
         conn_key = action.data['id']
 
         if self._get_connection_state(conn_key) != self.Disconnecting:
-            print("Invalid finish_disconnection action on a connection whose state is not Disconnecting, conn_key=%s" % str(conn_key))
+            self._logger.error("Invalid finish_disconnection action on a connection whose state is not Disconnecting, conn_key=%s", str(conn_key))
             return
 
         # Cannot be None since we checked above to make sure it exists
@@ -460,7 +467,7 @@ class ConnectionManager(threading.Thread):
         Args:
             conn_or_internal_id (string, int): Either an integer connection id or a string
                 internal_id
-            op_name (string): The name of the operation that we are starting (stored in 
+            op_name (string): The name of the operation that we are starting (stored in
                 the connection's microstate)
             callback (callable): Callback to call when this disconnection attempt either
                 succeeds or fails
@@ -479,7 +486,7 @@ class ConnectionManager(threading.Thread):
         self._actions.put(action)
 
     def _begin_operation_action(self, action):
-        """Finish an attempted operation
+        """Begin an attempted operation.
 
         Args:
             action (ConnectionAction): the action object describing what we are
@@ -500,7 +507,7 @@ class ConnectionManager(threading.Thread):
         data['timeout'] = action.timeout
 
     def finish_operation(self, conn_or_internal_id, success, *args):
-        """Finish an operation on a connection
+        """Finish an operation on a connection.
 
         Args:
             conn_or_internal_id (string, int): Either an integer connection id or a string
@@ -520,7 +527,7 @@ class ConnectionManager(threading.Thread):
         self._actions.put(action)
 
     def _finish_operation_action(self, action):
-        """Finish an attempted operation
+        """Finish an attempted operation.
 
         Args:
             action (ConnectionAction): the action object describing the result
@@ -531,7 +538,7 @@ class ConnectionManager(threading.Thread):
         conn_key = action.data['id']
 
         if self._get_connection_state(conn_key) != self.InProgress:
-            print("Invalid finish_operation action on a connection whose state is not InProgress, conn_key=%s" % str(conn_key))
+            self._logger.error("Invalid finish_operation action on a connection whose state is not InProgress, conn_key=%s", str(conn_key))
             return
 
         # Cannot be None since we checked above to make sure it exists

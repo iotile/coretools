@@ -1,0 +1,24 @@
+{
+	"agents":
+	[
+		{
+			"name": "awsiot",
+			"args": 
+			{
+				"endpoint": "ayhm07zf32oun.iot.us-east-1.amazonaws.com",
+				"certificate": "C:\\Arch\\awsiot-test\\certs\\657a539ec8-cert.pem",
+				"private_key": "C:\\Arch\\awsiot-test\\certs\\657a539ec8-private.pem.key",
+				"root_certificate": "C:\\Arch\\awsiot-test\\certs\\root-cert.pem",
+				"iotile_id": "2"
+			}
+		}
+	],
+
+	"adapters":
+	[
+		{
+			"name": "virtual",
+			"port": "report_test"
+		}
+	]
+}

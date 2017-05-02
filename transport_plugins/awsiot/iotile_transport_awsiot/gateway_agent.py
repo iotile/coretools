@@ -2,9 +2,11 @@ import logging
 import tornado.gen
 import binascii
 import struct
+import messages
 from mqtt_client import OrderedAWSIOTClient
 from topic_validator import MQTTTopicValidator
 from iotile.core.exceptions import EnvironmentError, ArgumentError, ValidationError
+
 
 class AWSIOTGatewayAgent(object):
     """An agent for serving access to devices over AWSIOT
@@ -21,15 +23,14 @@ class AWSIOTGatewayAgent(object):
     def __init__(self, args, manager, loop):
         self._args = args
         self._manager = manager
-        self._advertisement_callback = None
         self._loop = loop
         self.client = None
         self.slug = None
         self.topics = None
         self._connections = {}
+
         self._logger = logging.getLogger(__name__)
         self._logger.addHandler(logging.NullHandler())
-
         self._logger.setLevel(logging.DEBUG)
 
         self.prefix = self._args.get('prefix', '')
@@ -47,6 +48,7 @@ class AWSIOTGatewayAgent(object):
 
         return "d--0000-0000-0000-{}".format(idhex)
 
+    @classmethod
     def _extract_device_uuid(cls, slug):
         """Turn a string slug into a UUID
         """
@@ -65,14 +67,12 @@ class AWSIOTGatewayAgent(object):
             raise ArgumentError("Could not convert device slug to hex integer", slug=slug, error=str(exc))
 
     def start(self):
-        """Start this gateway agent
-        """
+        """Start this gateway agent."""
 
         self._prepare()
 
     def stop(self):
-        if self._advertisement_callback is not None:
-            self._advertisement_callback.stop()
+        """Stop this gateway agent."""
 
         self.client.disconnect()
 
@@ -87,20 +87,10 @@ class AWSIOTGatewayAgent(object):
         self.topics = MQTTTopicValidator(self.prefix + 'devices/{}'.format(self.slug))
         self._bind_topics()
 
-        # If we should publish advertisements for the devices that we manage, set up a periodic
-        # timer to manage those advertisements.
-        if 'advertisement_interval' in self._args:
-            advertisement_interval = self._args['advertisement_interval']
-            self._advertisement_callback = tornado.ioloop.PeriodicCallback(self._publish_advertisements, int(advertisement_interval*1000), self._loop)
-            self._advertisement_callback.start()
-        else:
-            self._logger.info("No advertisement_interval is configured, devices will not be scannable")
-
     def _bind_topics(self):
-        self.client.subscribe(self.topics.scan_topic, self._on_scan_request, ordered=False)
-        self.client.subscribe(self.topics.gateway_connect_topic, self._on_connect, ordered=False)
-        self.client.subscribe(self.topics.gateway_interface_topic, self._on_interface, ordered=False)
-        self.client.subscribe(self.topics.gateway_rpc_topic, self._on_rpc, ordered=False)
+        self.client.subscribe(self.topics.probe, self._on_scan_request, ordered=False)
+        self.client.subscribe(self.topics.gateway_connect, self._on_connect, ordered=False)
+        self.client.subscribe(self.topics.gateway_action, self._on_action, ordered=False)
 
     def _validate_connection(self, action, uuid, key):
         """Validate that a message received for a device has the right key
@@ -160,7 +150,7 @@ class AWSIOTGatewayAgent(object):
             slug (string): The device slug that we are publishing on behalf of
             message_type (string): The message type to publish
             success (bool): Whether the operation was successful
-            payload (dict): Whatever should be sent back to the caller 
+            payload (dict): Whatever should be sent back to the caller
         """
 
         message = {'success': success, 'payload': payload}
@@ -168,6 +158,17 @@ class AWSIOTGatewayAgent(object):
         resp_topic = self.topics.gateway_topic(slug, 'data/response')
         self._logger.debug("Publishing response message: (topic=%s) (message=%s)", resp_topic, str(message))
         self.client.publish(resp_topic, message_type, message)
+
+    def _on_action(self, sequence, topic, message):
+        """Process a command action that we received on behalf of a device.
+
+        Args:
+            sequence (int): The sequence number of the packet received
+            topic (string): The topic this message was received on
+            message (dict): The message itself
+        """
+
+        self._logger.error("Unsupported message received (topic=%s) (message=%s)", topic, str(message))
 
     def _on_interface(self, sequence, topic, message_type, message):
         """Process a request to open/close an interface on an IOTile device
@@ -202,9 +203,9 @@ class AWSIOTGatewayAgent(object):
         elif message_type == 'close_interface':
             self._loop.add_callback(self._close_interface, uuid, iface, key)
 
-    def _on_rpc(self, sequence, topic, message_type, message):
+    def _on_rpc(self, _sequence, topic, message_type, message):
         """Process a request to send an RPC to an IOTile device
-        
+
         Args:
             sequence (int): The sequence number of the packet received
             topic (string): The topic this message was received on
@@ -236,7 +237,7 @@ class AWSIOTGatewayAgent(object):
         if message_type == 'rpc':
             self._loop.add_callback(self._send_rpc, uuid, address, rpc, payload, timeout, key)
 
-    def _on_connect(self, sequence, topic, message_type, message):
+    def _on_connect(self, sequence, topic, message):
         """Process a request to connect to an IOTile device
 
         A connection message triggers an attempt to connect to a device,
@@ -258,23 +259,17 @@ class AWSIOTGatewayAgent(object):
             parts = topic.split('/')
             slug = parts[-3]
             uuid = self._extract_device_uuid(slug)
-        except Exception, exc:
-            self._logger.warn("Error parsing slug from connection request (slug=%s, topic=%s)", slug, topic)
+        except Exception:
+            self._logger.exception("Error parsing slug from connection request (slug=%s, topic=%s)", slug, topic)
             return
 
-        try:
-            message = self.topics.validate_message(['connect', 'disconnect'], message_type, message)
-        except ValidationError, exc:
-            self._publish_status(slug, 'invalid_message', exc.to_dict())
-            return
+        if messages.ConnectCommand.matches(message):
+            key = message['key']
+            client = message['client']
 
-        key = message['key']
-        client = message['client']
-
-        if message_type == 'connect':
             self._loop.add_callback(self._connect_to_device, uuid, key, client)
-        elif message_type == 'disconnect':
-            self._loop.add_callback(self._disconnect_from_device, uuid, key, client)
+        else:
+            self._logger.warn("Unknown message received on connect topic=%s, message=%s", topic, message)
 
     @tornado.gen.coroutine
     def _send_rpc(self, uuid, address, rpc, payload, timeout, key):
@@ -414,7 +409,7 @@ class AWSIOTGatewayAgent(object):
         """
 
         slug = self._build_device_slug(uuid)
-        message = {'client': client}
+        message = {'client': client, 'type': 'response'}
 
         self._logger.info("Connection attempt for device %d", uuid)
 
@@ -423,7 +418,7 @@ class AWSIOTGatewayAgent(object):
             message['success'] = False
             message['failure_reason'] = 'Someone else is connected to the device'
 
-            self._publish_status(slug, 'connection_response', message)
+            self._publish_status(slug, message)
             return
 
         # Otherwise try to connect
@@ -435,9 +430,9 @@ class AWSIOTGatewayAgent(object):
         else:
             message['failure_reason'] = resp['reason']
 
-        self._publish_status(slug, 'connection_response', message)
+        self._publish_status(slug, message)
 
-    def _on_scan_request(self, sequence, topic, message_type, message):
+    def _on_scan_request(self, sequence, topic, message):
         """Process a request for scanning information
 
         Args:
@@ -447,33 +442,30 @@ class AWSIOTGatewayAgent(object):
             message (dict): The message itself
         """
 
-        self._loop.add_callback(self._publish_scan_response)
+        if messages.ProbeCommand.matches(message):
+            self._logger.debug("Received probe message on topic %s, message=%s", topic, message)
+            self._loop.add_callback(self._publish_scan_response, message['client'])
+        else:
+            self._logger.warn("Invalid message received on topic %s, message=%s", topic, message)
 
-    def _publish_scan_response(self):
+    def _publish_scan_response(self, client):
         """Publish a scan response message
 
         The message contains all of the devices that are currently known
         to this agent.  Connection strings for direct connections are
         translated to what is appropriate for this agent.
+
+        Args:
+            client (string): A unique id for the client that made this request
         """
 
         devices = self._manager.scanned_devices
 
-        message = {'devices': devices}
-
-        # FIXME: translate the device connection string to what is appropriate
-        # for this agent.
-
-        self.client.publish(self.topics.status_topic, 'scan_response', message)
-
-    def _publish_advertisements(self):
-        devices = self._manager.scanned_devices
-
+        converted_devs = []
         for uuid, info in devices.iteritems():
             slug = self._build_device_slug(uuid)
 
             message = {}
-            #message['expiration_time'] = str(info['expiration_time'])
             message['uuid'] = uuid
             if uuid in self._connections:
                 message['user_connected'] = True
@@ -483,5 +475,18 @@ class AWSIOTGatewayAgent(object):
                 message['user_connected'] = False
 
             message['connection_string'] = slug
+            message['signal_strength'] = info['signal_strength']
 
-            self.client.publish(self.topics.gateway_topic(slug, 'data/advertisement'), 'advertisement', message)
+            converted_devs.append({x: y for x, y in message.iteritems()})
+            message['type'] = 'notification'
+            message['operation'] = 'advertisement'
+
+            self.client.publish(self.topics.gateway_topic(slug, 'data/advertisement'), message)
+
+        probe_message = {}
+        probe_message['type'] = 'response'
+        probe_message['client'] = client
+        probe_message['success'] = True
+        probe_message['devices'] = converted_devs
+
+        self.client.publish(self.topics.status, probe_message)

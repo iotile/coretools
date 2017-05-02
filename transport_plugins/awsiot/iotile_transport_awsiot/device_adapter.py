@@ -3,7 +3,6 @@ import binascii
 import threading
 import time
 import logging
-import traceback
 import Queue
 import uuid
 from iotile.core.exceptions import IOTileException, ArgumentError, HardwareError
@@ -12,6 +11,7 @@ from iotile.core.dev.registry import ComponentRegistry
 from mqtt_client import OrderedAWSIOTClient
 from topic_validator import MQTTTopicValidator
 from connection_manager import ConnectionManager
+
 
 class AWSIOTDeviceAdapter(DeviceAdapter):
     """A device adapter allowing connections to devices over AWS IoT
@@ -46,10 +46,6 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
         args['iam_secret'] = iamsecret
 
         self._logger = logging.getLogger(__name__)
-        self._logger.addHandler(logging.NullHandler())
-
-        self._logger.setLevel(logging.INFO)
-        self._logger.addHandler(logging.StreamHandler())
 
         # Port should be a topic prefix that allows us to connect
         # only to subset of IOTile devices managed by a gateway
@@ -71,6 +67,10 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
         self.client.subscribe(self.prefix + 'devices/+/data/advertisement', self._on_advertisement, ordered=False)
 
         self._deferred = Queue.Queue()
+
+        self.set_config('minimum_scan_time', 5.0)
+        self.set_config('probe_supported', True)
+        self.set_config('probe_required', True)
 
     def connect_async(self, connection_id, connection_string, callback):
         """Connect to a device by its connection_string
@@ -102,7 +102,7 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
         self._bind_topics(topics)
 
         try:
-            self.client.publish(topics.connect_topic, 'connect', conn_message)
+            self.client.publish(topics.connect, conn_message)
         except IOTileException:
             self._unbind_topics(topics)
             self.conns.finish_connection(connection_id, False, 'Failed to send connection message')
@@ -139,7 +139,7 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
             rpc_id (int): the 16-bit id of the RPC we want to call
             payload (bytearray): the payload of the command
             timeout (float): the number of seconds to wait for the RPC to execute
-            callback (callable): A callback for when we have finished the RPC.  The callback will be called as" 
+            callback (callable): A callback for when we have finished the RPC.  The callback will be called as"
                 callback(connection_id, adapter_id, success, failure_reason, status, payload)
                 'connection_id': the connection id
                 'adapter_id': this adapter's id
@@ -205,6 +205,20 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
         self.client.disconnect()
         self.conns.stop()
 
+    def probe_async(self, callback):
+        """Probe for visible devices connected to this DeviceAdapter.
+
+        Args:
+            callback (callable): A callback for when the probe operation has completed.
+                callback should have signature callback(adapter_id, success, failure_reason) where:
+                    success: bool
+                    failure_reason: None if success is True, otherwise a reason for why we could not probe
+        """
+
+        topics = MQTTTopicValidator(self.prefix)
+        self.client.publish(topics.probe, {'type': 'command', 'operation': 'probe', 'client': self.name})
+        callback(self.id, True, None)
+
     def periodic_callback(self):
         """Periodically help maintain adapter internal state
         """
@@ -216,9 +230,7 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
             except Queue.Empty:
                 break
             except Exception:
-                print("***Exception in periodic callback***")
-                traceback.print_exc() 
-                print("************************************")
+                self._logger.exception('Exception in periodic callback')
 
     def _bind_topics(self, topics):
         """Subscribe to all the topics we need to communication with this device
@@ -274,11 +286,13 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
         slug = parts[-3]
         return slug
 
-    def _on_advertisement(self, sequence, topic, message_type, message):
+    def _on_advertisement(self, sequence, topic, message):
         try:
             # FIXME: We need a global topic validator to validate these messages
             #message = self.topics.validate_message(['advertisement'], message_type, message)
 
+            del message['operation']
+            del message['type']
             self._trigger_callback('on_scan', self.id, message, 60.) # FIXME: Get the timeout from somewhere
         except IOTileException, exc:
             pass

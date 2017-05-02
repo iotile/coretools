@@ -35,7 +35,7 @@ class OrderedAWSIOTClient(object):
                 raise EnvironmentError("IAM Credentials need to be provided for websockets auth")
 
         if root is None:
-            raise EnvironmentError ("Root of certificate chain not passed in root_certificate key")
+            raise EnvironmentError("Root of certificate chain not passed in root_certificate key")
         elif endpoint is None:
             raise EnvironmentError("AWS IOT endpoint not passed in endpoint key")
 
@@ -50,6 +50,7 @@ class OrderedAWSIOTClient(object):
         self.sequencer = TopicSequencer()
         self.queues = {}
         self.wildcard_queues = []
+        self._logger = logging.getLogger(__name__)
 
     def connect(self, client_id):
         """Connect to AWS IOT with the given client_id
@@ -70,7 +71,7 @@ class OrderedAWSIOTClient(object):
         else:
             client.configureEndpoint(self.endpoint, 8883)
             client.configureCredentials(self.root, self.key, self.cert)
-        
+
         client.configureOfflinePublishQueueing(0)
 
         try:
@@ -93,20 +94,17 @@ class OrderedAWSIOTClient(object):
         except operationError, exc:
             raise InternalError("Could not disconnect from AWS IOT", message=exc.message)
 
-    def publish(self, topic, message_type, message):
+    def publish(self, topic, message):
         """Publish a json message to a topic with a type and a sequence number
 
         The actual message will be published as a JSON object:
         {
             "sequence": <incrementing id>,
-            "type": type,
             "message": message
         }
 
         Args:
             topic (string): The MQTT topic to publish in
-            message_type (string): The type of message to publish.  This is a freeform
-                string
             message (string, dict): The message to publish
         """
 
@@ -114,13 +112,13 @@ class OrderedAWSIOTClient(object):
 
         packet = {
             'sequence': seq,
-            'type': message_type,
             'message': message
         }
 
         serialized_packet = json.dumps(packet)
 
         try:
+            self._logger.debug("Publishing %s on topic %s", serialized_packet, topic)
             self.client.publish(topic, serialized_packet, 1)
         except operationError, exc:
             raise InternalError("Could not publish message", topic=topic, message=exc.message)
@@ -131,13 +129,13 @@ class OrderedAWSIOTClient(object):
         The contents of topic should be in the format created by self.publish with a
         sequence number of message type encoded as a json string.
 
-        Wildcard topics containing + and # are allowed and 
+        Wildcard topics containing + and # are allowed and
 
         Args:
             topic (string): The MQTT topic to subscribe to
             callback (callable): The callback to call when a new mesage is received
                 The signature of callback should be callback(sequence, topic, type, message)
-            ordered (bool): Whether messages on this topic have a sequence number that must 
+            ordered (bool): Whether messages on this topic have a sequence number that must
                 be checked and queued to ensure that packets are received in order
         """
 
@@ -168,7 +166,7 @@ class OrderedAWSIOTClient(object):
 
     def unsubscribe(self, topic):
         """Unsubscribe from messages on a given topic
-        
+
         Args:
             topic (string): The MQTT topic to unsubscribe from
         """
@@ -178,7 +176,7 @@ class OrderedAWSIOTClient(object):
         try:
             self.client.unsubscribe(topic)
         except operationError, exc:
-            raise InternalError("Could not unsubscribe from topic", topic=topic, message=exc.message)            
+            raise InternalError("Could not unsubscribe from topic", topic=topic, message=exc.message)
 
     def _on_receive(self, client, userdata, message):
         """Callback called whenever we receive a message on a subscribed topic
@@ -189,19 +187,23 @@ class OrderedAWSIOTClient(object):
             message (object): The mesage with a topic and payload.
         """
 
+        self._logger.info("Receive called")
+
         topic = message.topic
         encoded = message.payload
 
         try:
             packet = json.loads(encoded)
         except ValueError:
-            print("Could not decode json packet: %s" % encoded)
+            self._logger.warn("Could not decode json packet: %s", encoded)
             return
 
-        # FIXME: Error handling here
-        seq = packet['sequence']
-        message_type = packet['type']
-        message_data = packet['message']
+        try:
+            seq = packet['sequence']
+            message_data = packet['message']
+        except KeyError:
+            self._logger.warn("Message received did not have required sequence and message keys: %s", packet)
+            return
 
         # If we received a packet that does not fit into a queue, check our wildcard
         # queues
@@ -214,7 +216,7 @@ class OrderedAWSIOTClient(object):
                     break
 
             if not found:
-                print("Received message for unknown topic: %s" % topic)
+                self._logger.warn("Received message for unknown topic: %s", topic)
                 return
 
-        self.queues[topic].receive(seq, [seq, topic, message_type, message_data])
+        self.queues[topic].receive(seq, [seq, topic, message_data])
