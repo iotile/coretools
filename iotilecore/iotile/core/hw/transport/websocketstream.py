@@ -86,7 +86,7 @@ class WebSocketStream(CMDStream):
         if self.client.connection_established.is_set():
             self.client.close()
 
-    def _scan(self):
+    def _scan(self, wait=None):
         result = self.send('scan')
         return result['devices']
 

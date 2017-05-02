@@ -32,6 +32,9 @@ class DeviceAdapter(object):
     send_script_async
     send_script_sync
 
+    probe_async
+    probe_sync
+
     periodic_callback
     can_connect
 
@@ -40,7 +43,7 @@ class DeviceAdapter(object):
     Subclasses only need to override the '_async' versions of each call.  The synchronous versions will
     be automatically functional using the '_async' versions provided that the '_async' version not use
     multiprocessing to invoke its callback, i.e. it should use multithreading since the default synchronous
-    adapter function needs a shared memory lock. 
+    adapter function needs a shared memory lock.
 
     periodic_callback should be a non-blocking callback that is invoked periodically to allow
     the DeviceAdapter to maintain its internal state.
@@ -179,7 +182,7 @@ class DeviceAdapter(object):
 
         Args:
             conn_id (int): A unique identifer that will refer to this connection
-        
+
         Returns:
             dict: A dictionary with two elements
                 'success': a bool with the result of the connection attempt
@@ -206,7 +209,7 @@ class DeviceAdapter(object):
 
         Args:
             interface (string): The interface to open
-            conn_id (int): A unique identifer that will refer to this connection 
+            conn_id (int): A unique identifer that will refer to this connection
             callback (callable):  A callback that will be called as
                 callback(conn_id, adapter_id, success, failure_reason)
         """
@@ -254,6 +257,34 @@ class DeviceAdapter(object):
 
         return result
 
+    def probe_async(self, callback):
+        """Probe for visible devices connected to this DeviceAdapter.
+
+        Args:
+            callback (callable): A callback for when the probe operation has completed.
+                callback should have signature callback(adapter_id, success, failure_reason) where:
+                    success: bool
+                    failure_reason: None if success is True, otherwise a reason for why we could not probe
+        """
+
+        callback(self.id, False, "Probe is not supported on this adapter")
+
+    def probe_sync(self):
+        """Synchronously probe for devices on this adapter."""
+
+        done = threading.Event()
+        result = {}
+
+        def probe_done(adapter_id, status, reason):
+            result['success'] = status
+            result['failure_reason'] = reason
+            done.set()
+
+        self.probe_async(probe_done)
+        done.wait()
+
+        return result
+
     def send_rpc_async(self, conn_id, address, rpc_id, payload, timeout, callback):
         """Asynchronously send an RPC to this IOTile device
 
@@ -263,7 +294,7 @@ class DeviceAdapter(object):
             rpc_id (int): the 16-bit id of the RPC we want to call
             payload (bytearray): the payload of the command
             timeout (float): the number of seconds to wait for the RPC to execute
-            callback (callable): A callback for when we have finished the RPC.  The callback will be called as" 
+            callback (callable): A callback for when we have finished the RPC.  The callback will be called as"
                 callback(connection_id, adapter_id, success, failure_reason, status, payload)
                 'connection_id': the connection id
                 'adapter_id': this adapter's id
@@ -317,7 +348,7 @@ class DeviceAdapter(object):
             data (string): the script to send to the device
             progress_callback (callable): A function to be called with status on our progress, called as:
                 progress_callback(done_count, total_count)
-            callback (callable): A callback for when we have finished sending the script.  The callback will be called as" 
+            callback (callable): A callback for when we have finished sending the script.  The callback will be called as"
                 callback(connection_id, adapter_id, success, failure_reason)
                 'connection_id': the connection id
                 'adapter_id': this adapter's id

@@ -5,7 +5,7 @@ verification steps and works on dictionaries produced from a variety of sources.
 """
 
 import inspect
-
+from iotile.core.exceptions import ValidationError
 
 class Verifier(object):
     """A base class for verifing that an object conforms to a schema
@@ -30,6 +30,15 @@ class Verifier(object):
 
         self.short_desc = self._get_short_description()
         self.long_desc = self._get_long_description()
+
+    def matches(self, obj):
+        """Return True if object matches this verifier."""
+
+        try:
+            self.verify(obj)
+            return True
+        except ValidationError:
+            return False
 
     def verify(self, obj):
         """Verify that the object conforms to this verifier's schema.

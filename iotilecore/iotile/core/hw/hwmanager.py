@@ -3,7 +3,7 @@
 # info@welldone.org
 # http://welldone.org
 #
-# Modifications to this file from the original created at WellDone International 
+# Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 import pkg_resources
 
@@ -33,8 +33,8 @@ class HardwareManager:
     any IOTile module.  Specific functionality can be implemented in dynamically
     loaded proxy objects that are designed to provide access to each IOTile.
 
-    To create a HardwareManager, you need to pass a port string that describes the 
-    method to be used to connect to the IOTile device. The method should specify the 
+    To create a HardwareManager, you need to pass a port string that describes the
+    method to be used to connect to the IOTile device. The method should specify the
     name of the connection method optionally followed by a colon and any extra information
     possibly needed to connect using that method.
     """
@@ -98,12 +98,12 @@ class HardwareManager:
         name = tile.tile_name()
         version = tile.tile_version()
 
-        # Now create the appropriate proxy object based on the name and version of the tile 
+        # Now create the appropriate proxy object based on the name and version of the tile
         tile_type = self.get_proxy(name)
         if tile_type is None:
             raise HardwareError("Could not find proxy object for tile", name="'{}'".format(name), known_names=self.name_map.keys())
 
-        tile = tile_type(self.stream, address)      
+        tile = tile_type(self.stream, address)
         return tile
 
     @annotated
@@ -112,7 +112,7 @@ class HardwareManager:
         Find an attached IOTile controller and attempt to connect to it.
         """
 
-        con = self.get(8)       
+        con = self.get(8)
         con._hwmanager = self
 
         return con
@@ -133,7 +133,7 @@ class HardwareManager:
 
     @annotated
     def disconnect(self):
-        """Attempt to disconnect from a device 
+        """Attempt to disconnect from a device
         """
 
         self.stream.disconnect()
@@ -315,7 +315,7 @@ class HardwareManager:
 
             self.proxies[obj.__name__] = obj
 
-            #Check if this object matches a specific shortened name so that we can 
+            #Check if this object matches a specific shortened name so that we can
             #automatically match a hw module to a proxy without user intervention
             if hasattr(obj, 'ModuleName'):
                 short_name = obj.ModuleName()
@@ -328,14 +328,20 @@ class HardwareManager:
 
         return num_added
 
-    @annotated
     @return_type("list(basic_dict)")
-    def scan(self):
-        """
-        Scan for available devices and print a dictionary of information about them
+    @param("wait", "float", desc="Time to wait for devices to show up before returning")
+    def scan(self, wait=None):
+        """Scan for available devices and print a dictionary of information about them.
+
+        If wait is specified as a floating point number in seconds, then the default wait times
+        configured inside of the stream or device adapter used to find IOTile devices is overriden
+        with the value specified.
+
+        Args:
+            wait (float): An optional override time to wait for results to accumulate before returning
         """
 
-        devices = self.stream.scan()
+        devices = self.stream.scan(wait=wait)
 
         #FIXME: Use dictionary format in bled112stream to document information returned about devices
         return devices

@@ -10,11 +10,11 @@ from iotile.core.utilities.typedargs import iprint
 
 class AdapterCMDStream(CMDStream):
     """An adapter class that takes a DeviceAdapter and produces a CMDStream compatible interface
-    
+
     DeviceAdapters have a more generic interface that is not restricted to exclusive use in an online
     fashion by a single user at a time.  This class implements the CMDStream interface on top of a
     DeviceAdapter.
-    
+
     Args:
         adapter (DeviceAdapter): the DeviceAdatper that we should use to create this CMDStream
         port (string): the name of the port that we should connect through
@@ -38,6 +38,7 @@ class AdapterCMDStream(CMDStream):
 
         self.start_time = time.time()
         self.min_scan = self.adapter.get_config('minimum_scan_time', 0.0)
+        self.probe_required = self.adapter.get_config('probe_required', False)
 
         super(AdapterCMDStream, self).__init__(port, connection_string, record)
 
@@ -57,7 +58,7 @@ class AdapterCMDStream(CMDStream):
         self._scanned_devices[device_id] = infocopy
 
     def _on_disconnect(self, adapter_id, connection_id):
-        """Callback when a device is disconnected unexpectedly
+        """Callback when a device is disconnected unexpectedly.
 
         Args:
             adapter_id (int): An ID for the adapter that was connected to the device
@@ -66,10 +67,35 @@ class AdapterCMDStream(CMDStream):
 
         self.connection_interrupted = True
 
-    def _scan(self):
+    def _scan(self, wait=None):
+        """Return the devices that have been found for this device adapter.
+
+        If the adapter indicates that we need to explicitly tell it to probe for devices, probe now.
+        By default we return the list of seen devices immediately, however there are two cases where
+        we will sleep here for a fixed period of time to let devices show up in our result list:
+
+        - If we are probing then we wait for 'minimum_scan_time'
+        - If we are told an explicit wait time that overrides everything and we wait that long
+        """
+
+        # Figure out how long and if we need to wait before returning our scan results
+        wait_time = None
         elapsed = time.time() - self.start_time
         if elapsed < self.min_scan:
-            time.sleep(self.min_scan - elapsed)
+            wait_time = self.min_scan - elapsed
+
+        # If we need to probe for devices rather than letting them just bubble up, start the probe
+        # and then use our min_scan_time to wait for them to arrive via the normal _on_scan event
+        if self.probe_required:
+            self.adapter.probe_sync()
+            wait_time = self.min_scan
+
+        # If an explicit wait is specified that overrides everything else
+        if wait is not None:
+            wait_time = wait
+
+        if wait_time is not None:
+            time.sleep(wait_time)
 
         to_remove = set()
 
@@ -94,7 +120,7 @@ class AdapterCMDStream(CMDStream):
 
         connstring = self._scanned_devices[uuid_value]['connection_string']
         self._connect_direct(connstring)
-        
+
         return connstring
 
     def _connect_direct(self, connection_string):

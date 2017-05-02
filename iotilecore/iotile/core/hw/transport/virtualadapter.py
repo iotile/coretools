@@ -92,6 +92,8 @@ class VirtualDeviceAdapter(DeviceAdapter):
         self.scan_interval = self.get_config('scan_interval', 1.0)
         self.last_scan = None
 
+        self.set_config('probe_supported', True)
+
     def _find_device_script(self, script_path):
         """Import a virtual device from a file rather than an installed module
 
@@ -382,3 +384,17 @@ class VirtualDeviceAdapter(DeviceAdapter):
         for dev in self.devices.itervalues():
             dev.stop()
 
+    def probe_async(self, callback):
+        """Send advertisements for all connected virtual devices.
+
+        Args:
+            callback (callable): A callback for when the probe operation has completed.
+                callback should have signature callback(adapter_id, success, failure_reason) where:
+                    success: bool
+                    failure_reason: None if success is True, otherwise a reason for why we could not probe
+        """
+
+        for dev in self.devices.itervalues():
+                self._send_scan_event(dev)
+
+        callback(self.id, True, None)
