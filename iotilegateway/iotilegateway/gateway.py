@@ -47,6 +47,7 @@ class IOTileGateway(threading.Thread):
         self.device_manager = device.DeviceManager(self.loop)
         self.agents = []
         self.supervisor = None
+        self.loaded = threading.Event()
 
         self._config = config
         self._logger = logging.getLogger(__name__)
@@ -113,6 +114,8 @@ class IOTileGateway(threading.Thread):
         if should_close:
             self.loop.add_callback(self._stop_loop)
         else:
+            # Notify that we have now loaded all plugins and are starting operation
+            self.loaded.set()
             # Try to regularly update a supervisor about our status
             callback = tornado.ioloop.PeriodicCallback(self._try_report_status, 60000)
             callback.start()
