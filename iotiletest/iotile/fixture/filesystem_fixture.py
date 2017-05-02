@@ -24,7 +24,7 @@ class MockFileOpen(object):
             if params[0] == 'r':
                 self.files[filename].seek(0)
             elif params[0] == 'w':
-                self.files[filename] =StringIO()
+                self.files[filename] = StringIO()
 
             yield self.files[filename]
 
