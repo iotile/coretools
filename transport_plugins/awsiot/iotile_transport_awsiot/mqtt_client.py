@@ -187,8 +187,6 @@ class OrderedAWSIOTClient(object):
             message (object): The mesage with a topic and payload.
         """
 
-        self._logger.info("Receive called")
-
         topic = message.topic
         encoded = message.payload
 

@@ -110,10 +110,10 @@ class AdapterCMDStream(CMDStream):
 
         return self._scanned_devices.values()
 
-    def _connect(self, uuid_value):
-        elapsed = time.time() - self.start_time
-        if elapsed < self.min_scan:
-            time.sleep(self.min_scan - elapsed)
+    def _connect(self, uuid_value, wait=None):
+        # If we can't see the device, scan to try to find it
+        if uuid_value not in self._scanned_devices:
+            self.scan(wait=wait)
 
         if uuid_value not in self._scanned_devices:
             raise HardwareError("Could not find device to connect to by UUID", uuid=uuid_value)

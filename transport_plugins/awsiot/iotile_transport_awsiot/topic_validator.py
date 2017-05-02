@@ -2,6 +2,7 @@ import json
 import binascii
 from iotile.core.exceptions import ValidationError
 
+
 class MQTTTopicValidator(object):
     """Canonical source of topic names for different actions.
 
@@ -51,6 +52,20 @@ class MQTTTopicValidator(object):
         return self.prefix + "data/status"
 
     @property
+    def tracing(self):
+        """The MQTT topic used for tracing data
+        """
+
+        return self.prefix + "data/tracing"
+
+    @property
+    def streaming(self):
+        """The MQTT topic used for streaming data
+        """
+
+        return self.prefix + "data/streaming"
+
+    @property
     def response(self):
         """The MQTT topic used for responses to rpcs and other requests
         """
@@ -61,7 +76,7 @@ class MQTTTopicValidator(object):
     def action(self):
         """The MQTT topic used for sending RPCs
         """
-        return self.prefix + "control/rpc"
+        return self.prefix + "control/action"
 
     @property
     def probe(self):

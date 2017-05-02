@@ -118,11 +118,12 @@ class HardwareManager:
         return con
 
     @param("device_uuid", "integer", desc="UUID of the device we would like to connect to")
-    def connect(self, device_uuid):
+    @param("wait", "float", desc="Time to wait for devices to show up before connecting")
+    def connect(self, device_uuid, wait=None):
         """Attempt to connect to a device by its UUID
         """
 
-        self.stream.connect(device_uuid)
+        self.stream.connect(device_uuid, wait=wait)
 
     @param("connection_string", "string", desc="opaque connection string indicating which device")
     def connect_direct(self, connection_string):

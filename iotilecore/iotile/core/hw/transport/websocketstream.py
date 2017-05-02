@@ -90,7 +90,7 @@ class WebSocketStream(CMDStream):
         result = self.send('scan')
         return result['devices']
 
-    def _connect(self, uuid_value):
+    def _connect(self, uuid_value, wait=None):
         args = {}
         args['uuid'] = uuid_value
 

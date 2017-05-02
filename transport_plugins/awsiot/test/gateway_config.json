@@ -18,7 +18,17 @@
 	[
 		{
 			"name": "virtual",
-			"port": "report_test"
+			"port": "report_test@./test/report_config.json"
+		},
+
+		{
+			"name": "virtual",
+			"port": "realtime_test@./test/realtime_config.json"
+		},
+
+		{
+			"name": "virtual",
+			"port": "tracing_test@./test/tracing_config.json"
 		}
 	]
 }

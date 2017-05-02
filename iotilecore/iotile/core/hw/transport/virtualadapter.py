@@ -364,6 +364,32 @@ class VirtualDeviceAdapter(DeviceAdapter):
         response = bytearray(response)
         callback(conn_id, self.id, True, "", status, response)
 
+    def send_script_async(self, conn_id, data, progress_callback, callback):
+        """Asynchronously send a a script to this IOTile device
+
+        Args:
+            conn_id (int): A unique identifer that will refer to this connection
+            data (string): the script to send to the device
+            progress_callback (callable): A function to be called with status on our progress, called as:
+                progress_callback(done_count, total_count)
+            callback (callable): A callback for when we have finished sending the script.  The callback will be called as"
+                callback(connection_id, adapter_id, success, failure_reason)
+                'connection_id': the connection id
+                'adapter_id': this adapter's id
+                'success': a bool indicating whether we received a response to our attempted RPC
+                'failure_reason': a string with the reason for the failure if success == False
+        """
+
+        if conn_id not in self.connections:
+            if callback is not None:
+                callback(conn_id, self.id, False, 'Device is not in connected state')
+            return
+
+        dev = self.connections[conn_id]
+        dev.script = data
+
+        callback(conn_id, self.id, True, None)
+
     def _send_scan_event(self, device):
         """Send a scan event from a device
         """

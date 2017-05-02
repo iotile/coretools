@@ -106,58 +106,45 @@ class AWSIOTGatewayAgent(object):
                 to
 
         Returns:
-            int: True if the action is allowed, otherwise False
+            int: if the action is allowed, otherwise None
         """
 
-        slug = self._build_device_slug(uuid)
-
         if uuid not in self._connections:
-            message = {}
-            message['action'] = action
-            message['failure_reason'] = 'Invalid uuid with no active connections'
-
-            self._publish_status(slug, 'invalid_message', message)
+            self._logger.warn("Received message for device with no connection 0x%X", uuid)
             return None
 
         data = self._connections[uuid]
         if key != data['key']:
-            message = {}
-            message['action'] = action
-            message['failure_reason'] = 'Invalid key'
-            self._publish_status(slug, 'invalid_message', message)
+            self._logger.warn("Received message for device with incorrect key, uuid=0x%X", uuid)
             return None
 
         return data['connection_id']
 
-    def _publish_status(self, slug, message_type, data):
+    def _publish_status(self, slug, data):
         """Publish a status message for a device
 
         Args:
             slug (string): The device slug that we are publishing on behalf of
-            message_type (string): The message type to publish
             data (dict): The status message data to be sent back to the caller
         """
 
         status_topic = self.topics.prefix + 'devices/{}/data/status'.format(slug)
 
         self._logger.debug("Publishing status message: (topic=%s) (message=%s)", status_topic, str(data))
-        self.client.publish(status_topic, message_type, data)
+        self.client.publish(status_topic, data)
 
-    def _publish_response(self, slug, message_type, success, payload):
+    def _publish_response(self, slug, message):
         """Publish a response message for a device
 
         Args:
             slug (string): The device slug that we are publishing on behalf of
-            message_type (string): The message type to publish
-            success (bool): Whether the operation was successful
-            payload (dict): Whatever should be sent back to the caller
+            message (dict): A set of key value pairs that are used to create the message
+                that is sent.
         """
 
-        message = {'success': success, 'payload': payload}
-
         resp_topic = self.topics.gateway_topic(slug, 'data/response')
-        self._logger.debug("Publishing response message: (topic=%s) (message=%s)", resp_topic, str(message))
-        self.client.publish(resp_topic, message_type, message)
+        self._logger.debug("Publishing response message: (topic=%s) (message=%s)", resp_topic, message)
+        self.client.publish(resp_topic, message)
 
     def _on_action(self, sequence, topic, message):
         """Process a command action that we received on behalf of a device.
@@ -168,74 +155,51 @@ class AWSIOTGatewayAgent(object):
             message (dict): The message itself
         """
 
-        self._logger.error("Unsupported message received (topic=%s) (message=%s)", topic, str(message))
-
-    def _on_interface(self, sequence, topic, message_type, message):
-        """Process a request to open/close an interface on an IOTile device
-
-        Args:
-            sequence (int): The sequence number of the packet received
-            topic (string): The topic this message was received on
-            message_type (string): The type of the packet received
-            message (dict): The message itself
-        """
-
         try:
             slug = None
             parts = topic.split('/')
             slug = parts[-3]
             uuid = self._extract_device_uuid(slug)
         except Exception, exc:
-            self._logger.warn("Error parsing slug from connection request (slug=%s, topic=%s)", slug, topic)
+            self._logger.warn("Error parsing slug in action handler (slug=%s, topic=%s)", slug, topic)
             return
 
-        try:
-            message = self.topics.validate_message(['open_interface', 'close_interface'], message_type, message)
-        except ValidationError, exc:
-            self._publish_status(slug, 'invalid_message', exc.to_dict())
-            return
+        if messages.DisconnectCommand.matches(message):
+            self._logger.debug("Received disconnect command for device 0x%X", uuid)
+            key = message['key']
+            client = message['client']
+            self._loop.add_callback(self._disconnect_from_device, uuid, key, client)
+        elif messages.OpenInterfaceCommand.matches(message) or messages.CloseInterfaceCommand.matches(message):
+            self._logger.debug("Received %s command for device 0x%X", message['operation'], uuid)
+            key = message['key']
+            client = message['client']
+            oper = message['operation']
 
-        key = message['key']
-        iface = message['interface']
+            if oper == 'open_interface':
+                self._loop.add_callback(self._open_interface, client, uuid, message['interface'], key)
+            else:
+                self._loop.add_callback(self._close_interface, client, uuid, message['interface'], key)
+        elif messages.RPCCommand.matches(message):
+            rpc_msg = messages.RPCCommand.verify(message)
 
-        if message_type == 'open_interface':
-            self._loop.add_callback(self._open_interface, uuid, iface, key)
-        elif message_type == 'close_interface':
-            self._loop.add_callback(self._close_interface, uuid, iface, key)
+            client = rpc_msg['client']
+            address = rpc_msg['address']
+            rpc = rpc_msg['rpc_id']
+            payload = rpc_msg['payload']
+            key = rpc_msg['key']
+            timeout = rpc_msg['timeout']
 
-    def _on_rpc(self, _sequence, topic, message_type, message):
-        """Process a request to send an RPC to an IOTile device
+            self._loop.add_callback(self._send_rpc, client, uuid, address, rpc, payload, timeout, key)
+        elif messages.ScriptCommand.matches(message):
+            script_msg = messages.ScriptCommand.verify(message)
 
-        Args:
-            sequence (int): The sequence number of the packet received
-            topic (string): The topic this message was received on
-            message_type (string): The type of the packet received
-            message (dict): The message itself
-        """
+            key = script_msg['key']
+            client = script_msg['client']
+            script = script_msg['script']
 
-        try:
-            slug = None
-            parts = topic.split('/')
-            slug = parts[-3]
-            uuid = self._extract_device_uuid(slug)
-        except Exception, exc:
-            self._logger.warn("Error parsing slug from rpc request (slug=%s, topic=%s)", slug, topic)
-            return
-
-        try:
-            message = self.topics.validate_message(['rpc'], message_type, message)
-        except ValidationError, exc:
-            self._publish_status(slug, 'invalid_message', exc.to_dict())
-            return
-
-        address = message['address']
-        rpc = message['rpc_id']
-        payload = message['payload']
-        key = message['key']
-        timeout = message['timeout']
-
-        if message_type == 'rpc':
-            self._loop.add_callback(self._send_rpc, uuid, address, rpc, payload, timeout, key)
+            self._loop.add_callback(self._send_script, client, uuid, script, key)
+        else:
+            self._logger.error("Unsupported message received (topic=%s) (message=%s)", topic, str(message))
 
     def _on_connect(self, sequence, topic, message):
         """Process a request to connect to an IOTile device
@@ -272,10 +236,11 @@ class AWSIOTGatewayAgent(object):
             self._logger.warn("Unknown message received on connect topic=%s, message=%s", topic, message)
 
     @tornado.gen.coroutine
-    def _send_rpc(self, uuid, address, rpc, payload, timeout, key):
+    def _send_rpc(self, client, uuid, address, rpc, payload, timeout, key):
         """Send an RPC to a connected device
 
         Args:
+            client (string): The client that sent the rpc request
             uuid (int): The id of the device we're opening the interface on
             address (int): The address of the tile that we want to send the RPC to
             rpc (int): The id of the rpc that we want to send.
@@ -293,23 +258,69 @@ class AWSIOTGatewayAgent(object):
         try:
             resp = yield self._manager.send_rpc(conn_id, address, rpc >> 8, rpc & 0xFF, str(payload), timeout)
         except Exception, exc:
-            self._logger.error("Error in manager open interface: %s" % str(exc))
+            self._logger.error("Error in manager send rpc: %s" % str(exc))
             resp = {'success': False, 'reason': "Internal error: %s" % str(exc)}
 
-        payload = {}
+        payload = {'client': client, 'type': 'response', 'operation': 'rpc'}
+        payload['success'] = resp['success']
+
         if resp['success'] is False:
             payload['failure_reason'] = resp['reason']
         else:
             payload['status'] = resp['status']
             payload['payload'] = binascii.hexlify(resp['payload'])
 
-        self._publish_response(slug, 'rpc_response', resp['success'], payload)
+        self._publish_response(slug, payload)
 
     @tornado.gen.coroutine
-    def _open_interface(self, uuid, iface, key):
-        """Open an interface on a connected device
+    def _send_script(self, client, uuid, script, key):
+        """Send a script to the connected device.
 
         Args:
+            client (string): The client that sent the rpc request
+            uuid (int): The id of the device we're opening the interface on
+            script (bytes): The binary script to send to the device
+            key (string): The key to authenticate the caller
+        """
+
+        conn_id = self._validate_connection('send_script', uuid, key)
+        if conn_id is None:
+            return
+
+        slug = self._build_device_slug(uuid)
+
+        try:
+            resp = yield self._manager.send_script(conn_id, script, lambda x, y: self._notify_progress_async(slug, client, x, y))
+        except Exception, exc:
+            self._logger.exception("Error in manager send_script")
+            resp = {'success': False, 'reason': "Internal error: %s" % str(exc)}
+
+        payload = {'client': client, 'type': 'response', 'operation': 'send_script'}
+        payload['success'] = resp['success']
+        if resp['success'] is False:
+            payload['failure_reason'] = resp['reason']
+
+        self._publish_response(slug, payload)
+
+    def _notify_progress_async(self, slug, client, done_count, total_count):
+        """Notify progress reporting on the status of a script download.
+
+        Args:
+            slug (string): The slug of the device that we are talking to
+            client (string): The client identifier
+            done_count (int): The number of items that have been finished
+            total_count (int): The total number of items
+        """
+
+        status_msg = {'type': 'notification', 'operation': 'script', 'client': client, 'done_count': done_count, 'total_count': total_count}
+        self._publish_status(slug, status_msg)
+
+    @tornado.gen.coroutine
+    def _open_interface(self, client, uuid, iface, key):
+        """Open an interface on a connected device.
+
+        Args:
+            client (string): The client id who is requesting this operation
             uuid (int): The id of the device we're opening the interface on
             iface (string): The name of the interface that we're opening
             key (string): The key to authenticate the caller
@@ -324,20 +335,23 @@ class AWSIOTGatewayAgent(object):
         try:
             resp = yield self._manager.open_interface(conn_id, iface)
         except Exception, exc:
-            self._logger.error("Error in manager open interface: %s" % str(exc))
+            self._logger.exception("Error in manager open interface")
             resp = {'success': False, 'reason': "Internal error: %s" % str(exc)}
 
-        payload = {}
-        if resp['success'] is False:
-            payload['failure_reason'] = resp['reason']
+        message = {'type': 'response', 'operation': 'open_interface', 'client': client}
+        message['success'] = resp['success']
 
-        self._publish_response(slug, 'open_interface_response', resp['success'], payload)
+        if not message['success']:
+            message['failure_reason'] = resp['reason']
+
+        self._publish_response(slug, message)
 
     @tornado.gen.coroutine
-    def _close_interface(self, uuid, iface, key):
-        """Close an interface on a connected device
+    def _close_interface(self, client, uuid, iface, key):
+        """Close an interface on a connected device.
 
         Args:
+            client (string): The client id who is requesting this operation
             uuid (int): The id of the device we're opening the interface on
             iface (string): The name of the interface that we're opening
             key (string): The key to authenticate the caller
@@ -347,22 +361,25 @@ class AWSIOTGatewayAgent(object):
         if conn_id is None:
             return
 
+        slug = self._build_device_slug(uuid)
+
         try:
             resp = yield self._manager.close_interface(conn_id, iface)
         except Exception, exc:
-            self._logger.error("Error in manager open interface: %s" % str(exc))
+            self._logger.exception("Error in manager close interface")
             resp = {'success': False, 'reason': "Internal error: %s" % str(exc)}
 
-        payload = {}
-        if resp['success'] is False:
-            payload['failure_reason'] = resp['reason']
+        message = {'type': 'response', 'operation': 'close_interface', 'client': client}
+        message['success'] = resp['success']
 
-        slug = self._build_device_slug(uuid)
-        self._publish_response(slug, 'open_interface_response', resp['success'], payload)
+        if not message['success']:
+            message['failure_reason'] = resp['reason']
+
+        self._publish_response(slug, message)
 
     @tornado.gen.coroutine
     def _disconnect_from_device(self, uuid, key, client):
-        """Disconnect from a device that we have previously connected to
+        """Disconnect from a device that we have previously connected to.
 
         Args:
             uuid (int): The unique id of the device
@@ -376,16 +393,15 @@ class AWSIOTGatewayAgent(object):
             return
 
         slug = self._build_device_slug(uuid)
-        message = {'client': client}
+        message = {'client': client, 'type': 'response', 'operation': 'disconnect'}
 
         self.client.reset_sequence(self.topics.gateway_topic(slug, 'control/connect'))
-        self.client.reset_sequence(self.topics.gateway_topic(slug, 'control/interface'))
-        self.client.reset_sequence(self.topics.gateway_topic(slug, 'control/rpc'))
+        self.client.reset_sequence(self.topics.gateway_topic(slug, 'control/action'))
 
         try:
             resp = yield self._manager.disconnect(conn_id)
         except Exception, exc:
-            self._logger.error("Error in manager disconnect: %s" % str(exc))
+            self._logger.exception("Error in manager disconnect")
             resp = {'success': False, 'reason': "Internal error: %s" % str(exc)}
 
         if resp['success']:
@@ -395,7 +411,9 @@ class AWSIOTGatewayAgent(object):
             message['success'] = False
             message['failure_reason'] = resp['reason']
 
-        self._publish_status(slug, 'disconnection_response', message)
+        self._logger.info("Client %s disconnected from device 0x%X", client, uuid)
+
+        self._publish_response(slug, message)
 
     @tornado.gen.coroutine
     def _connect_to_device(self, uuid, key, client):
@@ -409,7 +427,7 @@ class AWSIOTGatewayAgent(object):
         """
 
         slug = self._build_device_slug(uuid)
-        message = {'client': client, 'type': 'response'}
+        message = {'client': client, 'type': 'response', 'operation': 'connect'}
 
         self._logger.info("Connection attempt for device %d", uuid)
 
@@ -430,7 +448,41 @@ class AWSIOTGatewayAgent(object):
         else:
             message['failure_reason'] = resp['reason']
 
+        self._connections[uuid]['report_monitor'] = self._manager.register_monitor(uuid, ['report'], self._notify_report)
+        self._connections[uuid]['trace_monitor'] = self._manager.register_monitor(uuid, ['trace'], self._notify_trace)
+
         self._publish_status(slug, message)
+
+    def _notify_report(self, device_uuid, event_name, report):
+        """Notify that a report has been received from a device."""
+
+        slug = self._build_device_slug(device_uuid)
+        streaming_topic = self.topics.prefix + 'devices/{}/data/streaming'.format(slug)
+
+        data = {'type': 'notification', 'operation': 'report'}
+
+        ser = report.serialize()
+        data['received_time'] = ser['received_time'].strftime("%Y%m%dT%H:%M:%S.%fZ").encode()
+        data['report_origin'] = ser['origin']
+        data['report_format'] = ser['report_format']
+        data['report'] = binascii.hexlify(ser['encoded_report'])
+        data['fragment_count'] = 1
+        data['fragment_index'] = 0
+        self._logger.debug("Publishing report: (topic=%s)", streaming_topic)
+        self.client.publish(streaming_topic, data)
+
+    def _notify_trace(self, device_uuid, event_name, trace):
+        """Notify that we have received tracing data from a device."""
+
+        slug = self._build_device_slug(device_uuid)
+        tracing_topic = self.topics.prefix + 'devices/{}/data/tracing'.format(slug)
+
+        data = {'type': 'notification', 'operation': 'trace'}
+        data['trace'] = binascii.hexlify(trace)
+        data['trace_origin'] = device_uuid
+
+        self._logger.debug('Publishing trace: (topic=%s)', tracing_topic)
+        self.client.publish(tracing_topic, data)
 
     def _on_scan_request(self, sequence, topic, message):
         """Process a request for scanning information

@@ -83,6 +83,7 @@ class ConnectionManager(threading.Thread):
         self._actions = Queue.Queue()
         self._connections = {}
         self._int_connections = {}
+        self._data_lock = threading.Lock()
 
         # Our thread should be a daemon so that we don't block exiting the program if we hang
         self.daemon = True
@@ -168,6 +169,37 @@ class ConnectionManager(threading.Thread):
             raise ArgumentError("Could not find connection by id", id=key)
 
         return data['context']
+
+    def get_connection_id(self, conn_or_int_id):
+        """Get the connection id.
+
+        Args:
+            conn_or_int_id (int, string): The external integer connection id or
+                and internal string connection id
+
+        Returns:
+            dict: The context data associated with that connection or None if it cannot
+                be found.
+
+        Raises:
+            ArgumentError: When the key is not found in the list of active connections
+                or is invalid.
+        """
+
+        key = conn_or_int_id
+        if isinstance(key, basestring):
+            table = self._int_connections
+        elif isinstance(key, (int, long)):
+            table = self._connections
+        else:
+            raise ArgumentError("You must supply either an int connection id or a string internal id to _get_connection_state", id=key)
+
+        try:
+            data = table[key]
+        except KeyError:
+            raise ArgumentError("Could not find connection by id", id=key)
+
+        return data['conn_id']
 
     def _get_connection(self, conn_or_int_id):
         """Get the data for a connection by either conn_id or internal_id
@@ -347,8 +379,6 @@ class ConnectionManager(threading.Thread):
             reason = action.data['reason']
             if reason is None:
                 reason = "No reason was given"
-
-            print "Connection failed"
 
             del self._connections[conn_id]
             del self._int_connections[int_id]

@@ -88,8 +88,16 @@ class CMDStream(object):
         self.connected = True
         self.connection_string = connection_string
 
-    def connect(self, uuid_value):
+    def connect(self, uuid_value, wait=None):
         """Connect to a specific device by its uuid
+
+        Attempt to connect to a device that we have previously scanned using its UUID.
+        If wait is not None, then it is used in the same was a scan(wait) to override
+        default wait times with an explicit value.
+
+        Args:
+            wait (float): Optional amount of time to force the device adapter to wait before
+                atttempting to connect.
         """
 
         if self.connected:
@@ -98,7 +106,7 @@ class CMDStream(object):
         if not hasattr(self, '_connect'):
             raise StreamOperationNotSupportedError(command="connect")
 
-        connection_string = self._connect(uuid_value)
+        connection_string = self._connect(uuid_value, wait=wait)
 
         self.connected = True
         self.connection_string = connection_string
