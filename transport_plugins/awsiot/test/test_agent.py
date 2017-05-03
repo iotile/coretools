@@ -93,3 +93,4 @@ def test_script(gateway, hw_man, local_broker):
 
     dev = gateway.device_manager.adapters[0].devices[3]
     assert dev.script == script
+
