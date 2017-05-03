@@ -1,5 +1,6 @@
 import os
 import binascii
+import base64
 import threading
 import time
 import datetime
@@ -74,6 +75,7 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
         self.set_config('minimum_scan_time', 5.0)
         self.set_config('probe_supported', True)
         self.set_config('probe_required', True)
+        self.mtu = self.get_config('mtu', 60*1024)  # Split script payloads larger than this
 
     def connect_async(self, connection_id, connection_string, callback):
         """Connect to a device by its connection_string
@@ -157,14 +159,25 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
 
         topics = context['topics']
         context['progress_callback'] = progress_callback
-        encoded = binascii.hexlify(data)
 
         self.conns.begin_operation(conn_id, 'script', callback, 60.0)
 
-        script_message = {'key': context['key'], 'client': self.name, 'type': 'command', 'operation': 'send_script',
-                          'script': encoded, 'fragment_count': 1, 'fragment_index': 0}
+        chunks = 1
+        if len(data) > self.mtu:
+            chunks = len(data) // self.mtu
+            if len(data) % self.mtu != 0:
+                chunks += 1
 
-        self.client.publish(topics.action, script_message)
+        # Send the script out possibly in multiple chunks if it's larger than our maximum transmit unit
+        for i in xrange(0, chunks):
+            start = i*self.mtu
+            chunk = data[start:start + self.mtu]
+            encoded = base64.standard_b64encode(chunk)
+
+            script_message = {'key': context['key'], 'client': self.name, 'type': 'command', 'operation': 'send_script',
+                              'script': encoded, 'fragment_count': chunks, 'fragment_index': i}
+
+            self.client.publish(topics.action, script_message)
 
     def send_rpc_async(self, conn_id, address, rpc_id, payload, timeout, callback):
         """Asynchronously send an RPC to this IOTile device

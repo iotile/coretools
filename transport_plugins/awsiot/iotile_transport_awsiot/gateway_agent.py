@@ -3,6 +3,7 @@ import tornado.gen
 import binascii
 import struct
 import messages
+from monotonic import monotonic
 from mqtt_client import OrderedAWSIOTClient
 from topic_validator import MQTTTopicValidator
 from iotile.core.exceptions import EnvironmentError, ArgumentError, ValidationError
@@ -16,8 +17,20 @@ class AWSIOTGatewayAgent(object):
             by iotile-gateway.
         loop (IOLoop): A tornado IOLoop that this agent
             shold integrate into.
-        args (dict): A dictionary of arguments for configuring
-            this agent.
+        args (dict): A dictionary of arguments for configuring this agent.
+            Currently supported keys are:
+            - iotile_id (int): the id of this gateway agent if we're not acting
+              as a transparent proxy.  Can be an integer or a string in either hex or
+              decimal, interpreted as id = int(x, 0).
+            - trace_throttle_interval (float): the minimal number of seconds between
+              trace data being sent across the network.  Traces received inside this
+              window are accumulated and sent as a unit.  Default: 5s
+            - progress_throttle_interval (float): the minimal number of seconds between
+              progress events being sent across the network.  Progress events are dropped
+              in between this interval and only the last one is sent every interval unless
+              the progres event indicates that the total operation has finished, in which
+              case it is sent immediately.  Default: 2s
+
     """
 
     def __init__(self, args, manager, loop):
@@ -41,6 +54,8 @@ class AWSIOTGatewayAgent(object):
             raise ArgumentError("No iotile_id in awsiot gateway agent argument", args=args)
 
         self.iotile_id = int(self._args['iotile_id'], 0)
+        self.throttle_trace = self._args.get('trace_throttle_interval', 5.0)
+        self.throttle_progress = self._args.get('progress_throttle_interval', 2.0)
 
     @classmethod
     def _build_device_slug(cls, device_id):
@@ -197,7 +212,7 @@ class AWSIOTGatewayAgent(object):
             client = script_msg['client']
             script = script_msg['script']
 
-            self._loop.add_callback(self._send_script, client, uuid, script, key)
+            self._loop.add_callback(self._send_script, client, uuid, script, key, (script_msg['fragment_index'], script_msg['fragment_count']))
         else:
             self._logger.error("Unsupported message received (topic=%s) (message=%s)", topic, str(message))
 
@@ -273,24 +288,46 @@ class AWSIOTGatewayAgent(object):
         self._publish_response(slug, payload)
 
     @tornado.gen.coroutine
-    def _send_script(self, client, uuid, script, key):
+    def _send_script(self, client, uuid, chunk, key, chunk_status):
         """Send a script to the connected device.
 
         Args:
             client (string): The client that sent the rpc request
             uuid (int): The id of the device we're opening the interface on
-            script (bytes): The binary script to send to the device
+            chunk (bytes): The binary script to send to the device
             key (string): The key to authenticate the caller
+            last_chunk (tuple): the chunk index and count of chunks of this script
+                so that we know to either accumulate it or send it on to the device
+                immediately.
         """
 
         conn_id = self._validate_connection('send_script', uuid, key)
         if conn_id is None:
             return
 
+        conn_data = self._connections[uuid]
+
         slug = self._build_device_slug(uuid)
 
+        # Check and see if we have the entire script or if we need to accumulate it
+        index, count = chunk_status
+        if index == 0:
+            conn_data['script'] = bytes()
+
+        conn_data['script'] += chunk
+
+        # If there is more than one chunk and we aren't on the last one, wait until we receive them
+        # all before sending them on to the device as a unit
+        if index != count - 1:
+            return
+
+        # Initialize our progress throttling system in case we need to throttle progress reports
+        conn_data['last_progress'] = None
+
         try:
-            resp = yield self._manager.send_script(conn_id, script, lambda x, y: self._notify_progress_async(slug, client, x, y))
+            resp = yield self._manager.send_script(conn_id, conn_data['script'], lambda x, y: self._notify_progress_async(uuid, client, x, y))
+            yield None # Make sure we give time for any progress notifications that may have been queued to flush out
+            conn_data['script'] = bytes()
         except Exception, exc:
             self._logger.exception("Error in manager send_script")
             resp = {'success': False, 'reason': "Internal error: %s" % str(exc)}
@@ -302,18 +339,60 @@ class AWSIOTGatewayAgent(object):
 
         self._publish_response(slug, payload)
 
-    def _notify_progress_async(self, slug, client, done_count, total_count):
+    def _notify_progress_sync(self, uuid, client, done_count, total_count):
         """Notify progress reporting on the status of a script download.
 
+        This function must be called synchronously inside of the event loop.
+
         Args:
-            slug (string): The slug of the device that we are talking to
+            uuid (int): The id of the device that we are talking to
             client (string): The client identifier
             done_count (int): The number of items that have been finished
             total_count (int): The total number of items
         """
 
-        status_msg = {'type': 'notification', 'operation': 'script', 'client': client, 'done_count': done_count, 'total_count': total_count}
-        self._publish_status(slug, status_msg)
+        # If the connection was closed, don't notify anything
+        conn_data = self._connections.get(uuid, None)
+        if conn_data is None:
+            return
+
+        last_progress = conn_data['last_progress']
+
+        should_drop = False
+
+        # We drop status updates that come faster than our configured update interval
+        # unless those updates are the final update, which we send on.  The first
+        # update is always also sent since there would not have been an update before
+        # that.
+
+        now = monotonic()
+        if last_progress is not None and (now - last_progress) < self.throttle_progress:
+            should_drop = True
+
+        if should_drop and (done_count != total_count):
+            return
+
+        conn_data['last_progress'] = now
+
+        slug = self._build_device_slug(uuid)
+        status_msg = {'type': 'notification', 'operation': 'send_script', 'client': client, 'done_count': done_count, 'total_count': total_count}
+        self._publish_response(slug, status_msg)
+
+    def _notify_progress_async(self, uuid, client, done_count, total_count):
+        """Notify progress reporting on the status of a script download.
+
+        This function is called asynchronously to the event loop so it cannot
+        do any processing on its own.  It's job is to schedule the sync version
+        of itself in the event loop.
+
+        Args:
+            uuid (int): The id of the device that we are talking to
+            client (string): The client identifier
+            done_count (int): The number of items that have been finished
+            total_count (int): The total number of items
+        """
+
+        self._loop.add_callback(self._notify_progress_sync, uuid, client, done_count, total_count)
 
     @tornado.gen.coroutine
     def _open_interface(self, client, uuid, iface, key):
@@ -444,7 +523,9 @@ class AWSIOTGatewayAgent(object):
         message['success'] = resp['success']
         if resp['success']:
             conn_id = resp['connection_id']
-            self._connections[uuid] = {'key': key, 'client': client, 'connection_id': conn_id}
+            self._connections[uuid] = {'key': key, 'client': client, 'connection_id': conn_id, 'last_touch': monotonic(),
+                                       'script': [], 'trace_accum': bytes(), 'last_trace': None, 'trace_scheduled': False,
+                                       'last_progress': None}
         else:
             message['failure_reason'] = resp['reason']
 
@@ -454,7 +535,14 @@ class AWSIOTGatewayAgent(object):
         self._publish_status(slug, message)
 
     def _notify_report(self, device_uuid, event_name, report):
-        """Notify that a report has been received from a device."""
+        """Notify that a report has been received from a device.
+
+        This routine is called synchronously in the event loop by the DeviceManager
+        """
+
+        if device_uuid not in self._connections:
+            self._logger.debug("Dropping report for device without an active connection, uuid=0x%X", device_uuid)
+            return
 
         slug = self._build_device_slug(device_uuid)
         streaming_topic = self.topics.prefix + 'devices/{}/data/streaming'.format(slug)
@@ -472,17 +560,56 @@ class AWSIOTGatewayAgent(object):
         self.client.publish(streaming_topic, data)
 
     def _notify_trace(self, device_uuid, event_name, trace):
-        """Notify that we have received tracing data from a device."""
+        """Notify that we have received tracing data from a device.
 
-        slug = self._build_device_slug(device_uuid)
-        tracing_topic = self.topics.prefix + 'devices/{}/data/tracing'.format(slug)
+        This routine is called synchronously in the event loop by the DeviceManager
+        """
 
-        data = {'type': 'notification', 'operation': 'trace'}
-        data['trace'] = binascii.hexlify(trace)
-        data['trace_origin'] = device_uuid
+        if device_uuid not in self._connections:
+            self._logger.debug("Dropping trace data for device without an active connection, uuid=0x%X", device_uuid)
+            return
 
-        self._logger.debug('Publishing trace: (topic=%s)', tracing_topic)
-        self.client.publish(tracing_topic, data)
+        conn_data = self._connections[device_uuid]
+        last_trace = conn_data['last_trace']
+        now = monotonic()
+
+        conn_data['trace_accum'] += bytes(trace)
+
+        # If we're throttling tracing data, we need to see if we should accumulate this trace or
+        # send it now.  We acculumate if we've last sent tracing data less than self.throttle_trace seconds ago
+        if last_trace is not None and (now - last_trace) < self.throttle_trace:
+            if not conn_data['trace_scheduled']:
+                self._loop.call_later(self.throttle_trace - (now - last_trace), self._send_accum_trace, device_uuid)
+                conn_data['trace_scheduled'] = True
+                self._logger.debug("Deferring trace data due to throttling uuid=0x%X", device_uuid)
+        else:
+            self._send_accum_trace(device_uuid)
+
+    def _send_accum_trace(self, device_uuid):
+        """Send whatever accumulated tracing data we have for the device."""
+
+        if device_uuid not in self._connections:
+            self._logger.debug("Dropping trace data for device without an active connection, uuid=0x%X", device_uuid)
+            return
+
+        conn_data = self._connections[device_uuid]
+
+        trace = conn_data['trace_accum']
+
+        if len(trace) > 0:
+            slug = self._build_device_slug(device_uuid)
+            tracing_topic = self.topics.prefix + 'devices/{}/data/tracing'.format(slug)
+
+            data = {'type': 'notification', 'operation': 'trace'}
+            data['trace'] = binascii.hexlify(trace)
+            data['trace_origin'] = device_uuid
+
+            self._logger.debug('Publishing trace: (topic=%s)', tracing_topic)
+            self.client.publish(tracing_topic, data)
+
+        conn_data['trace_scheduled'] = False
+        conn_data['last_trace'] = monotonic()
+        conn_data['trace_accum'] = bytes()
 
     def _on_scan_request(self, sequence, topic, message):
         """Process a request for scanning information

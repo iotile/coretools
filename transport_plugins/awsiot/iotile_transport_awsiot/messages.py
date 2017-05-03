@@ -31,7 +31,7 @@ ScriptCommand.add_required('fragment_count', IntVerifier())
 ScriptCommand.add_required('fragment_index', IntVerifier())
 ScriptCommand.add_required('key', StringVerifier())
 ScriptCommand.add_required('client', StringVerifier())
-ScriptCommand.add_required('script', BytesVerifier(encoding="hex"))
+ScriptCommand.add_required('script', BytesVerifier(encoding="base64"))
 
 DisconnectCommand = DictionaryVerifier()  # pylint: disable=C0103
 DisconnectCommand.add_required('type', LiteralVerifier('command'))
@@ -172,7 +172,7 @@ TracingNotification.add_required('trace', BytesVerifier(encoding='hex'))
 
 ProgressNotification = DictionaryVerifier()  # pylint: disable=C0103
 ProgressNotification.add_required('type', LiteralVerifier('notification'))
-ProgressNotification.add_required('operation', LiteralVerifier('script'))
+ProgressNotification.add_required('operation', LiteralVerifier('send_script'))
 ProgressNotification.add_required('client', StringVerifier())
 ProgressNotification.add_required('done_count', IntVerifier())
 ProgressNotification.add_required('total_count', IntVerifier())

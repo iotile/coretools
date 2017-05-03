@@ -77,10 +77,43 @@ def test_script(gateway, hw_man, local_broker):
     script = bytes('ab')*10000
     progs = Queue.Queue()
     hw_man.connect(3, wait=0.1)
+
+    gateway.throttle_progress = 0.0
     hw_man.stream._send_highspeed(script, lambda x, y: progs.put((x,y)))
 
     last_done = -1
     last_total = None
+    prog_count = 0
+    while not progs.empty():
+        done, total = progs.get(block=False)
+        assert done <= total
+        assert done >= last_done
+        if last_total is not None:
+            assert total == last_total
+
+        last_done = done
+        last_total = total
+        prog_count += 1
+
+    assert prog_count > 0
+
+    dev = gateway.device_manager.adapters[0].devices[3]
+    assert dev.script == script
+
+
+def test_script_chunking(gateway, hw_man, local_broker):
+    """Make sure we can send scripts."""
+
+    script = bytes('a')*1024*80
+    progs = Queue.Queue()
+    hw_man.connect(3, wait=0.1)
+
+    gateway.throttle_progress = 0.0
+    hw_man.stream._send_highspeed(script, lambda x, y: progs.put((x, y)))
+
+    last_done = -1
+    last_total = None
+    prog_count = 0
     while not progs.empty():
         done, total = progs.get(block=False)
         assert done <= total
@@ -91,6 +124,33 @@ def test_script(gateway, hw_man, local_broker):
         last_done = done
         last_total = total
 
+        prog_count += 1
+
+    assert prog_count > 0
+
     dev = gateway.device_manager.adapters[0].devices[3]
     assert dev.script == script
 
+
+def test_script_progress_throttling(gateway, hw_man, local_broker):
+    """Make sure progress updates are properly throttled."""
+
+    script = bytes('a')*1024*80
+    progs = []
+    hw_man.connect(3, wait=0.1)
+
+    gateway.throttle_progress = 10.0
+    hw_man.stream._send_highspeed(script, lambda x, y: progs.append((x, y)))
+
+    dev = gateway.device_manager.adapters[0].devices[3]
+    assert dev.script == script
+
+    # This should happen faster than our throttling period so we should
+    # get exactly 2 progress updates, on start and on finish
+    assert len(progs) == 2
+    x, y = progs[0]
+
+    assert x == 0
+
+    x, y = progs[1]
+    assert x == y

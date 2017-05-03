@@ -385,8 +385,12 @@ class VirtualDeviceAdapter(DeviceAdapter):
                 callback(conn_id, self.id, False, 'Device is not in connected state')
             return
 
+        # Simulate some progress callbacks (0, 50%, 100%)
+        progress_callback(0, len(data))
         dev = self.connections[conn_id]
         dev.script = data
+        progress_callback(len(data)//2, len(data))
+        progress_callback(len(data), len(data))
 
         callback(conn_id, self.id, True, None)
 

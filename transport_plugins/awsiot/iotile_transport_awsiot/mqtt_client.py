@@ -118,7 +118,8 @@ class OrderedAWSIOTClient(object):
         serialized_packet = json.dumps(packet)
 
         try:
-            self._logger.debug("Publishing %s on topic %s", serialized_packet, topic)
+            # Limit how much we log in case the message is very long
+            self._logger.debug("Publishing %s on topic %s", serialized_packet[:256], topic)
             self.client.publish(topic, serialized_packet, 1)
         except operationError, exc:
             raise InternalError("Could not publish message", topic=topic, message=exc.message)
