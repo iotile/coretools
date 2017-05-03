@@ -284,6 +284,7 @@ class VirtualDeviceAdapter(DeviceAdapter):
         if conn_id not in self.connections:
             if callback is not None:
                 callback(conn_id, self.id, False, "device had no active connection")
+
             return
 
         dev = self.connections[conn_id]

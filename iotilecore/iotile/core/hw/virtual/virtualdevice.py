@@ -115,6 +115,7 @@ class VirtualIOTileDevice(object):
 
         self.connected = False
         self.stream_iface_open = False
+        self.trace_iface_open = False
 
         # For this device to push streams or tracing data through a VirtualInterface, it
         # needs access to that interface's push channel
@@ -316,13 +317,15 @@ class VirtualIOTileDevice(object):
                 the tracing interface.
         """
 
+        self.trace_iface_open = True
+
         return self.traces
 
     def close_tracing_interface(self):
         """Called when someone closes the tracing interface to the device
         """
 
-        pass
+        self.trace_iface_open = False
 
     def close_streaming_interface(self):
         """Called when someone closes the streaming interface to the device

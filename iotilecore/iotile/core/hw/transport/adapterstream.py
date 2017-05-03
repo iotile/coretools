@@ -8,6 +8,7 @@ import time
 from iotile.core.exceptions import HardwareError
 from iotile.core.utilities.typedargs import iprint
 
+
 class AdapterCMDStream(CMDStream):
     """An adapter class that takes a DeviceAdapter and produces a CMDStream compatible interface
 

@@ -37,10 +37,7 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
         rootcert = reg.get_config('awsiot-rootcert')
         iamuser = reg.get_config('awsiot-iamkey')
         iamsecret = reg.get_config('awsiot-iamtoken')
-
-        # If we need to debug things, enable low level mqtt logging
-        #logging.getLogger('AWSIoTPythonSDK.core.protocol.mqttCore').addHandler(logging.StreamHandler())
-        #logging.getLogger('AWSIoTPythonSDK.core.protocol.mqttCore').setLevel(logging.INFO)
+        iamsession = reg.get_config('awsiot-session', default=None)
 
         args = {}
         args['endpoint'] = endpoint
@@ -48,6 +45,7 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
         args['use_websockets'] = True
         args['iam_key'] = iamuser
         args['iam_secret'] = iamsecret
+        args['iam_session'] = iamsession
 
         self._logger = logging.getLogger(__name__)
 
@@ -487,6 +485,9 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
         except ArgumentError:
             self._logger.warn("Dropping message that does not correspond with a known connection, message=%s", message)
             return
+
+        if 'client' in message and message['client'] != self.name:
+            self._logger.debug("Dropping message that is for another client %s, we are %s", message['client'], self.name)
 
         if messages.DisconnectionResponse.matches(message):
             self.conns.finish_disconnection(conn_key, message['success'], message.get('failure_reason', None))

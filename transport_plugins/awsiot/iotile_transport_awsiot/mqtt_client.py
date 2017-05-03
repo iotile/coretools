@@ -4,6 +4,7 @@ import AWSIoTPythonSDK.MQTTLib
 import re
 from AWSIoTPythonSDK.exception import operationError
 from iotile.core.exceptions import ArgumentError, EnvironmentError, InternalError
+from iotile.core.dev.registry import ComponentRegistry
 from packet_queue import PacketQueue
 from topic_sequencer import TopicSequencer
 
@@ -23,25 +24,47 @@ class OrderedAWSIOTClient(object):
         endpoint = args.get('endpoint', None)
         iamkey = args.get('iam_key', None)
         iamsecret = args.get('iam_secret', None)
+        iamsession = args.get('iam_session', None)
         use_websockets = args.get('use_websockets', False)
 
-        if not use_websockets:
-            if cert is None:
-                raise EnvironmentError("Certificate for AWS IOT not passed in certificate key")
-            elif key is None:
-                raise EnvironmentError("Private key for certificate not passed in private_key key")
-        else:
+        try:
+            if not use_websockets:
+                if cert is None:
+                    raise EnvironmentError("Certificate for AWS IOT not passed in certificate key")
+                elif key is None:
+                    raise EnvironmentError("Private key for certificate not passed in private_key key")
+            else:
+                if iamkey is None or iamsecret is None:
+                    raise EnvironmentError("IAM Credentials need to be provided for websockets auth")
+        except EnvironmentError:
+            # If the correct information is not passed in, try and see if we get it from our environment
+            # try to pull in root certs, endpoint name and iam or cognito session information
+            reg = ComponentRegistry()
+
+            if endpoint is None:
+                endpoint = reg.get_config('awsiot-endpoint', default=None)
+
+            if root is None:
+                root = reg.get_config('awsiot-rootcert', default=None)
+
+            iamkey = reg.get_config('awsiot-iamkey', default=None)
+            iamsecret = reg.get_config('awsiot-iamtoken', default=None)
+            iamsession = reg.get_config('awsiot-session', default=None)
+
             if iamkey is None or iamsecret is None:
-                raise EnvironmentError("IAM Credentials need to be provided for websockets auth")
+                raise
+
+            use_websockets = True
 
         if root is None:
-            raise EnvironmentError("Root of certificate chain not passed in root_certificate key")
+            raise EnvironmentError("Root of certificate chain not passed in root_certificate key (and not in registry)")
         elif endpoint is None:
-            raise EnvironmentError("AWS IOT endpoint not passed in endpoint key")
+            raise EnvironmentError("AWS IOT endpoint not passed in endpoint key (and not in registry)")
 
         self.websockets = use_websockets
         self.iam_key = iamkey
         self.iam_secret = iamsecret
+        self.iam_session = iamsession
         self.cert = cert
         self.key = key
         self.root = root
@@ -67,7 +90,11 @@ class OrderedAWSIOTClient(object):
         if self.websockets:
             client.configureEndpoint(self.endpoint, 443)
             client.configureCredentials(self.root)
-            client.configureIAMCredentials(self.iam_key, self.iam_secret)
+
+            if self.iam_session is None:
+                client.configureIAMCredentials(self.iam_key, self.iam_secret)
+            else:
+                client.configureIAMCredentials(self.iam_key, self.iam_secret, self.iam_session)
         else:
             client.configureEndpoint(self.endpoint, 8883)
             client.configureCredentials(self.root, self.key, self.cert)
