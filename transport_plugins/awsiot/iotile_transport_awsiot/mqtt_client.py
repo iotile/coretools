@@ -4,6 +4,7 @@ import AWSIoTPythonSDK.MQTTLib
 import re
 from AWSIoTPythonSDK.exception import operationError
 from iotile.core.exceptions import ArgumentError, EnvironmentError, InternalError
+from iotile.core.dev.registry import ComponentRegistry
 from packet_queue import PacketQueue
 from topic_sequencer import TopicSequencer
 
@@ -23,25 +24,47 @@ class OrderedAWSIOTClient(object):
         endpoint = args.get('endpoint', None)
         iamkey = args.get('iam_key', None)
         iamsecret = args.get('iam_secret', None)
+        iamsession = args.get('iam_session', None)
         use_websockets = args.get('use_websockets', False)
 
-        if not use_websockets:
-            if cert is None:
-                raise EnvironmentError("Certificate for AWS IOT not passed in certificate key")
-            elif key is None:
-                raise EnvironmentError("Private key for certificate not passed in private_key key")
-        else:
+        try:
+            if not use_websockets:
+                if cert is None:
+                    raise EnvironmentError("Certificate for AWS IOT not passed in certificate key")
+                elif key is None:
+                    raise EnvironmentError("Private key for certificate not passed in private_key key")
+            else:
+                if iamkey is None or iamsecret is None:
+                    raise EnvironmentError("IAM Credentials need to be provided for websockets auth")
+        except EnvironmentError:
+            # If the correct information is not passed in, try and see if we get it from our environment
+            # try to pull in root certs, endpoint name and iam or cognito session information
+            reg = ComponentRegistry()
+
+            if endpoint is None:
+                endpoint = reg.get_config('awsiot-endpoint', default=None)
+
+            if root is None:
+                root = reg.get_config('awsiot-rootcert', default=None)
+
+            iamkey = reg.get_config('awsiot-iamkey', default=None)
+            iamsecret = reg.get_config('awsiot-iamtoken', default=None)
+            iamsession = reg.get_config('awsiot-session', default=None)
+
             if iamkey is None or iamsecret is None:
-                raise EnvironmentError("IAM Credentials need to be provided for websockets auth")
+                raise
+
+            use_websockets = True
 
         if root is None:
-            raise EnvironmentError ("Root of certificate chain not passed in root_certificate key")
+            raise EnvironmentError("Root of certificate chain not passed in root_certificate key (and not in registry)")
         elif endpoint is None:
-            raise EnvironmentError("AWS IOT endpoint not passed in endpoint key")
+            raise EnvironmentError("AWS IOT endpoint not passed in endpoint key (and not in registry)")
 
         self.websockets = use_websockets
         self.iam_key = iamkey
         self.iam_secret = iamsecret
+        self.iam_session = iamsession
         self.cert = cert
         self.key = key
         self.root = root
@@ -50,6 +73,7 @@ class OrderedAWSIOTClient(object):
         self.sequencer = TopicSequencer()
         self.queues = {}
         self.wildcard_queues = []
+        self._logger = logging.getLogger(__name__)
 
     def connect(self, client_id):
         """Connect to AWS IOT with the given client_id
@@ -66,11 +90,15 @@ class OrderedAWSIOTClient(object):
         if self.websockets:
             client.configureEndpoint(self.endpoint, 443)
             client.configureCredentials(self.root)
-            client.configureIAMCredentials(self.iam_key, self.iam_secret)
+
+            if self.iam_session is None:
+                client.configureIAMCredentials(self.iam_key, self.iam_secret)
+            else:
+                client.configureIAMCredentials(self.iam_key, self.iam_secret, self.iam_session)
         else:
             client.configureEndpoint(self.endpoint, 8883)
             client.configureCredentials(self.root, self.key, self.cert)
-        
+
         client.configureOfflinePublishQueueing(0)
 
         try:
@@ -93,20 +121,17 @@ class OrderedAWSIOTClient(object):
         except operationError, exc:
             raise InternalError("Could not disconnect from AWS IOT", message=exc.message)
 
-    def publish(self, topic, message_type, message):
+    def publish(self, topic, message):
         """Publish a json message to a topic with a type and a sequence number
 
         The actual message will be published as a JSON object:
         {
             "sequence": <incrementing id>,
-            "type": type,
             "message": message
         }
 
         Args:
             topic (string): The MQTT topic to publish in
-            message_type (string): The type of message to publish.  This is a freeform
-                string
             message (string, dict): The message to publish
         """
 
@@ -114,13 +139,14 @@ class OrderedAWSIOTClient(object):
 
         packet = {
             'sequence': seq,
-            'type': message_type,
             'message': message
         }
 
         serialized_packet = json.dumps(packet)
 
         try:
+            # Limit how much we log in case the message is very long
+            self._logger.debug("Publishing %s on topic %s", serialized_packet[:256], topic)
             self.client.publish(topic, serialized_packet, 1)
         except operationError, exc:
             raise InternalError("Could not publish message", topic=topic, message=exc.message)
@@ -131,13 +157,13 @@ class OrderedAWSIOTClient(object):
         The contents of topic should be in the format created by self.publish with a
         sequence number of message type encoded as a json string.
 
-        Wildcard topics containing + and # are allowed and 
+        Wildcard topics containing + and # are allowed and
 
         Args:
             topic (string): The MQTT topic to subscribe to
             callback (callable): The callback to call when a new mesage is received
                 The signature of callback should be callback(sequence, topic, type, message)
-            ordered (bool): Whether messages on this topic have a sequence number that must 
+            ordered (bool): Whether messages on this topic have a sequence number that must
                 be checked and queued to ensure that packets are received in order
         """
 
@@ -168,7 +194,7 @@ class OrderedAWSIOTClient(object):
 
     def unsubscribe(self, topic):
         """Unsubscribe from messages on a given topic
-        
+
         Args:
             topic (string): The MQTT topic to unsubscribe from
         """
@@ -178,7 +204,7 @@ class OrderedAWSIOTClient(object):
         try:
             self.client.unsubscribe(topic)
         except operationError, exc:
-            raise InternalError("Could not unsubscribe from topic", topic=topic, message=exc.message)            
+            raise InternalError("Could not unsubscribe from topic", topic=topic, message=exc.message)
 
     def _on_receive(self, client, userdata, message):
         """Callback called whenever we receive a message on a subscribed topic
@@ -195,13 +221,15 @@ class OrderedAWSIOTClient(object):
         try:
             packet = json.loads(encoded)
         except ValueError:
-            print("Could not decode json packet: %s" % encoded)
+            self._logger.warn("Could not decode json packet: %s", encoded)
             return
 
-        # FIXME: Error handling here
-        seq = packet['sequence']
-        message_type = packet['type']
-        message_data = packet['message']
+        try:
+            seq = packet['sequence']
+            message_data = packet['message']
+        except KeyError:
+            self._logger.warn("Message received did not have required sequence and message keys: %s", packet)
+            return
 
         # If we received a packet that does not fit into a queue, check our wildcard
         # queues
@@ -214,7 +242,7 @@ class OrderedAWSIOTClient(object):
                     break
 
             if not found:
-                print("Received message for unknown topic: %s" % topic)
+                self._logger.warn("Received message for unknown topic: %s", topic)
                 return
 
-        self.queues[topic].receive(seq, [seq, topic, message_type, message_data])
+        self.queues[topic].receive(seq, [seq, topic, message_data])

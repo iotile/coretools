@@ -1,6 +1,12 @@
 import pytest
 import threading
-from Queue import Queue
+import sys
+
+if sys.version[0] == '2':
+    import Queue as queue
+else:
+    import queue as queue
+
 from iotile.core.utilities.stoppable_thread import StoppableWorkerThread
 from iotile.core.exceptions import TimeoutError
 
@@ -8,7 +14,7 @@ def test_running_function():
     """Make sure we can run a function in the thread
     """
 
-    items = Queue()
+    items = queue.Queue()
 
     def thread_func(shared_queue):
         if shared_queue.qsize() == 3:
@@ -29,7 +35,7 @@ def test_kwargs_function():
     """Make sure we can run a function in the thread with kwargs
     """
 
-    items = Queue()
+    items = queue.Queue()
 
     def thread_func(shared_queue):
         if shared_queue.qsize() == 3:
@@ -50,7 +56,7 @@ def test_running_generator():
     """Make sure we can run a generator in the thread
     """
 
-    items = Queue()
+    items = queue.Queue()
 
     def thread_func(shared_queue):
         for i in xrange(0, 3):

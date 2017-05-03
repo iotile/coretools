@@ -48,19 +48,20 @@ class DictionaryVerifier(Verifier):
                 the reason for the lack of validation.
         """
 
+        out_obj = {}
+
         if not isinstance(obj, dict):
             raise ValidationError("Invalid dictionary", reason="object is not a dictionary")
 
         unmatched_keys = set(obj.keys())
         required_keys = set(self._required_keys.keys())
-        optional_keys = set(self._optional_keys.keys())
 
         # First check and make sure that all required keys are included and verify them
         for key in required_keys:
             if key not in unmatched_keys:
                 raise ValidationError("Required key not found in dictionary", reason="required key %s not found" % key, key=key)
 
-            self._required_keys[key].verify(obj[key])
+            out_obj[key] = self._required_keys[key].verify(obj[key])
             unmatched_keys.remove(key)
 
         # Now check and see if any of the keys in the dictionary are optional and check them
@@ -69,7 +70,7 @@ class DictionaryVerifier(Verifier):
             if key not in self._optional_keys:
                 continue
 
-            self._optional_keys[key].verify(obj[key])
+            out_obj[key] = self._optional_keys[key].verify(obj[key])
             to_remove.add(key)
 
         unmatched_keys -= to_remove
@@ -83,7 +84,7 @@ class DictionaryVerifier(Verifier):
             for key in unmatched_keys:
                 for rule in self._additional_key_rules:
                     if rule[0].matches(key):
-                        rule[1].verify(obj[key])
+                        out_obj[key] = rule[1].verify(obj[key])
                         to_remove.add(key)
                         break
 
@@ -91,3 +92,5 @@ class DictionaryVerifier(Verifier):
 
             if len(unmatched_keys) > 0:
                 raise ValidationError("Extra key found in dictionary that did not match any extra key rule", reason="extra keys found that did not match any rule", keys=unmatched_keys)
+
+        return out_obj

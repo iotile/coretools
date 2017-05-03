@@ -1,0 +1,35 @@
+{
+	"agents":
+	[
+		{
+			"name": "awsiot",
+			"args": 
+			{
+				"endpoint": "ayhm07zf32oun.iot.us-east-1.amazonaws.com",
+				"certificate": "C:\\Arch\\awsiot-test\\certs\\657a539ec8-cert.pem",
+				"private_key": "C:\\Arch\\awsiot-test\\certs\\657a539ec8-private.pem.key",
+				"root_certificate": "C:\\Arch\\awsiot-test\\certs\\root-cert.pem",
+				"iotile_id": "2",
+				"trace_throttle_interval": 0.001
+			}
+		}
+	],
+
+	"adapters":
+	[
+		{
+			"name": "virtual",
+			"port": "report_test@./test/report_config.json"
+		},
+
+		{
+			"name": "virtual",
+			"port": "realtime_test@./test/realtime_config.json"
+		},
+
+		{
+			"name": "virtual",
+			"port": "tracing_test@./test/tracing_config.json"
+		}
+	]
+}

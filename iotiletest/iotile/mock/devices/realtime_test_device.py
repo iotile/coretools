@@ -69,6 +69,9 @@ class RealtimeTestDevice(VirtualIOTileDevice):
             value (string): The tracing value to send
         """
 
+        if not self.trace_iface_open:
+            return
+
         self.trace(bytearray(value.encode('ascii')))
 
     def _create_stream(self, stream, value):
@@ -78,6 +81,9 @@ class RealtimeTestDevice(VirtualIOTileDevice):
             stream (int): The stream id to send
             value (int): The stream value to send
         """
+
+        if not self.stream_iface_open:
+            return
 
         reading = IOTileReading(0, stream, value)
 

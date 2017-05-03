@@ -26,7 +26,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
     @classmethod
     def encode_datetime(cls, obj):
         if isinstance(obj, datetime.datetime):
-            obj = {'__datetime__': True, 'as_str': obj.strftime("%Y%m%dT%H:%M:%S.%f").encode()}
+            obj = {'__datetime__': True, 'as_str': obj.strftime("%Y%m%dT%H:%M:%S.%fZ").encode()}
         return obj
 
     def unpack(self, message):

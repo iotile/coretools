@@ -26,7 +26,8 @@ class TracingTestDevice(VirtualIOTileDevice):
     """
 
     def __init__(self, args):
-        super(TracingTestDevice, self).__init__(1, 'Simple')
+        iotile_id = args.get('iotile_id', 1)
+        super(TracingTestDevice, self).__init__(iotile_id, 'Simple')
 
         data = bytearray("Hello world, this is tracing data!")
 

@@ -52,6 +52,7 @@ There are three main concepts that unify all IOTile Devices:
    extending-coretools
    typedargs-reference
    building-devices
+   contributing
 
 
 

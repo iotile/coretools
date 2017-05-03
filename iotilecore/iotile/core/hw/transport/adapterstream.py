@@ -8,13 +8,14 @@ import time
 from iotile.core.exceptions import HardwareError
 from iotile.core.utilities.typedargs import iprint
 
+
 class AdapterCMDStream(CMDStream):
     """An adapter class that takes a DeviceAdapter and produces a CMDStream compatible interface
-    
+
     DeviceAdapters have a more generic interface that is not restricted to exclusive use in an online
     fashion by a single user at a time.  This class implements the CMDStream interface on top of a
     DeviceAdapter.
-    
+
     Args:
         adapter (DeviceAdapter): the DeviceAdatper that we should use to create this CMDStream
         port (string): the name of the port that we should connect through
@@ -38,6 +39,7 @@ class AdapterCMDStream(CMDStream):
 
         self.start_time = time.time()
         self.min_scan = self.adapter.get_config('minimum_scan_time', 0.0)
+        self.probe_required = self.adapter.get_config('probe_required', False)
 
         super(AdapterCMDStream, self).__init__(port, connection_string, record)
 
@@ -57,7 +59,7 @@ class AdapterCMDStream(CMDStream):
         self._scanned_devices[device_id] = infocopy
 
     def _on_disconnect(self, adapter_id, connection_id):
-        """Callback when a device is disconnected unexpectedly
+        """Callback when a device is disconnected unexpectedly.
 
         Args:
             adapter_id (int): An ID for the adapter that was connected to the device
@@ -66,10 +68,35 @@ class AdapterCMDStream(CMDStream):
 
         self.connection_interrupted = True
 
-    def _scan(self):
+    def _scan(self, wait=None):
+        """Return the devices that have been found for this device adapter.
+
+        If the adapter indicates that we need to explicitly tell it to probe for devices, probe now.
+        By default we return the list of seen devices immediately, however there are two cases where
+        we will sleep here for a fixed period of time to let devices show up in our result list:
+
+        - If we are probing then we wait for 'minimum_scan_time'
+        - If we are told an explicit wait time that overrides everything and we wait that long
+        """
+
+        # Figure out how long and if we need to wait before returning our scan results
+        wait_time = None
         elapsed = time.time() - self.start_time
         if elapsed < self.min_scan:
-            time.sleep(self.min_scan - elapsed)
+            wait_time = self.min_scan - elapsed
+
+        # If we need to probe for devices rather than letting them just bubble up, start the probe
+        # and then use our min_scan_time to wait for them to arrive via the normal _on_scan event
+        if self.probe_required:
+            self.adapter.probe_sync()
+            wait_time = self.min_scan
+
+        # If an explicit wait is specified that overrides everything else
+        if wait is not None:
+            wait_time = wait
+
+        if wait_time is not None:
+            time.sleep(wait_time)
 
         to_remove = set()
 
@@ -84,17 +111,17 @@ class AdapterCMDStream(CMDStream):
 
         return self._scanned_devices.values()
 
-    def _connect(self, uuid_value):
-        elapsed = time.time() - self.start_time
-        if elapsed < self.min_scan:
-            time.sleep(self.min_scan - elapsed)
+    def _connect(self, uuid_value, wait=None):
+        # If we can't see the device, scan to try to find it
+        if uuid_value not in self._scanned_devices:
+            self.scan(wait=wait)
 
         if uuid_value not in self._scanned_devices:
             raise HardwareError("Could not find device to connect to by UUID", uuid=uuid_value)
 
         connstring = self._scanned_devices[uuid_value]['connection_string']
         self._connect_direct(connstring)
-        
+
         return connstring
 
     def _connect_direct(self, connection_string):
@@ -119,17 +146,9 @@ class AdapterCMDStream(CMDStream):
         self.adapter.disconnect_sync(0)
         self.adapter.periodic_callback()
 
-    def _send_rpc(self, address, feature, cmd, payload, **kwargs):
-        timeout = 3.0
-        if 'timeout' in kwargs:
-            timeout = float(kwargs['timeout'])
+    def _try_reconnect(self):
+        """Try to recover an interrupted connection."""
 
-        result = self.adapter.send_rpc_sync(0, address, (feature << 8) | cmd, payload, timeout)
-        success = result['success']
-        status = result['status']
-        payload = result['payload']
-
-        #If the rpc caused us to lose connection, we will have a connection_interrupted flag set
         try:
             if self.connection_interrupted:
                 self.connected = False
@@ -137,13 +156,38 @@ class AdapterCMDStream(CMDStream):
                 self.connection_interrupted = False
                 self.connected = True
 
-                #Reenable streaming interface if that was open before as well
+                # Reenable streaming interface if that was open before as well
                 if self._reports is not None:
                     res = self.adapter.open_interface_sync(0, 'streaming')
                     if not res['success']:
                         raise HardwareError("Could not open streaming interface to device", reason=res['failure_reason'])
+
+                # Reenable tracing interface if that was open before as well
+                if self._traces is not None:
+                    res = self.adapter.open_interface_sync(0, 'tracing')
+                    if not res['success']:
+                        raise HardwareError("Could not open tracing interface to device", reason=res['failure_reason'])
         except HardwareError, exc:
-            raise HardwareError("Device disconnected before we received an RPC response and we could not reconnect", reconnect_error=exc)
+            raise HardwareError("Device disconnected unexpectedly and we could not reconnect", reconnect_error=exc)
+
+    def _send_rpc(self, address, feature, cmd, payload, **kwargs):
+        timeout = 3.0
+        if 'timeout' in kwargs:
+            timeout = float(kwargs['timeout'])
+
+        # If our connection was interrupted before this RPC, try to recover it
+        if self.connection_interrupted:
+            self._try_reconnect()
+
+        result = self.adapter.send_rpc_sync(0, address, (feature << 8) | cmd, payload, timeout)
+        success = result['success']
+        status = result['status']
+        payload = result['payload']
+
+        # Sometimes RPCs can cause the device to go offline, so try to reconnect to it.
+        # For example, the RPC could cause the device to reset itself.
+        if self.connection_interrupted:
+            self._try_reconnect()
 
         if not success:
             raise HardwareError("Could not send RPC", reason=result['failure_reason'])

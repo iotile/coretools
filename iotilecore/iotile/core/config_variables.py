@@ -1,7 +1,9 @@
-"""Canonical list of config variables defined by iotile-core
-"""
+"""Canonical list of config variables defined by iotile-core."""
+
 
 def get_variables():
+    """Get a dictionary of configuration variables."""
+
     prefix = "core"
 
     conf_vars = []

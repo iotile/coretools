@@ -1,17 +1,21 @@
 import os
 import binascii
+import base64
 import threading
 import time
+import datetime
 import logging
-import traceback
 import Queue
 import uuid
 from iotile.core.exceptions import IOTileException, ArgumentError, HardwareError
 from iotile.core.hw.transport.adapter import DeviceAdapter
+from iotile.core.hw.reports.parser import IOTileReportParser
 from iotile.core.dev.registry import ComponentRegistry
 from mqtt_client import OrderedAWSIOTClient
 from topic_validator import MQTTTopicValidator
 from connection_manager import ConnectionManager
+import messages
+
 
 class AWSIOTDeviceAdapter(DeviceAdapter):
     """A device adapter allowing connections to devices over AWS IoT
@@ -33,10 +37,7 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
         rootcert = reg.get_config('awsiot-rootcert')
         iamuser = reg.get_config('awsiot-iamkey')
         iamsecret = reg.get_config('awsiot-iamtoken')
-
-        # If we need to debug things, enable low level mqtt logging
-        #logging.getLogger('AWSIoTPythonSDK.core.protocol.mqttCore').addHandler(logging.StreamHandler())
-        #logging.getLogger('AWSIoTPythonSDK.core.protocol.mqttCore').setLevel(logging.INFO)
+        iamsession = reg.get_config('awsiot-session', default=None)
 
         args = {}
         args['endpoint'] = endpoint
@@ -44,12 +45,9 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
         args['use_websockets'] = True
         args['iam_key'] = iamuser
         args['iam_secret'] = iamsecret
+        args['iam_session'] = iamsession
 
         self._logger = logging.getLogger(__name__)
-        self._logger.addHandler(logging.NullHandler())
-
-        self._logger.setLevel(logging.INFO)
-        self._logger.addHandler(logging.StreamHandler())
 
         # Port should be a topic prefix that allows us to connect
         # only to subset of IOTile devices managed by a gateway
@@ -71,6 +69,11 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
         self.client.subscribe(self.prefix + 'devices/+/data/advertisement', self._on_advertisement, ordered=False)
 
         self._deferred = Queue.Queue()
+
+        self.set_config('minimum_scan_time', 5.0)
+        self.set_config('probe_supported', True)
+        self.set_config('probe_required', True)
+        self.mtu = self.get_config('mtu', 60*1024)  # Split script payloads larger than this
 
     def connect_async(self, connection_id, connection_string, callback):
         """Connect to a device by its connection_string
@@ -94,7 +97,7 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
         key = self._generate_key()
         name = self.name
 
-        conn_message = {'action': 'connect', 'key': key, 'client': name}
+        conn_message = {'type': 'command', 'operation': 'connect', 'key': key, 'client': name}
         context = {'key': key, 'slug': connection_string, 'topics': topics}
 
         self.conns.begin_connection(connection_id, connection_string, callback, context, self.get_config('default_timeout'))
@@ -102,7 +105,7 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
         self._bind_topics(topics)
 
         try:
-            self.client.publish(topics.connect_topic, 'connect', conn_message)
+            self.client.publish(topics.connect, conn_message)
         except IOTileException:
             self._unbind_topics(topics)
             self.conns.finish_connection(connection_id, False, 'Failed to send connection message')
@@ -126,9 +129,53 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
         self.conns.begin_disconnection(conn_id, callback, self.get_config('default_timeout'))
 
         topics = context['topics']
-        disconn_message = {'key': context['key'], 'client': self.name}
+        disconn_message = {'key': context['key'], 'client': self.name, 'type': 'command', 'operation': 'disconnect'}
 
-        self.client.publish(topics.connect_topic, 'disconnect', disconn_message)
+        self.client.publish(topics.action, disconn_message)
+
+    def send_script_async(self, conn_id, data, progress_callback, callback):
+        """Asynchronously send a a script to this IOTile device
+
+        Args:
+            conn_id (int): A unique identifer that will refer to this connection
+            data (string): the script to send to the device
+            progress_callback (callable): A function to be called with status on our progress, called as:
+                progress_callback(done_count, total_count)
+            callback (callable): A callback for when we have finished sending the script.  The callback will be called as"
+                callback(connection_id, adapter_id, success, failure_reason)
+                'connection_id': the connection id
+                'adapter_id': this adapter's id
+                'success': a bool indicating whether we received a response to our attempted RPC
+                'failure_reason': a string with the reason for the failure if success == False
+        """
+
+        try:
+            context = self.conns.get_context(conn_id)
+        except ArgumentError:
+            callback(conn_id, self.id, False, "Could not find connection information")
+            return
+
+        topics = context['topics']
+        context['progress_callback'] = progress_callback
+
+        self.conns.begin_operation(conn_id, 'script', callback, 60.0)
+
+        chunks = 1
+        if len(data) > self.mtu:
+            chunks = len(data) // self.mtu
+            if len(data) % self.mtu != 0:
+                chunks += 1
+
+        # Send the script out possibly in multiple chunks if it's larger than our maximum transmit unit
+        for i in xrange(0, chunks):
+            start = i*self.mtu
+            chunk = data[start:start + self.mtu]
+            encoded = base64.standard_b64encode(chunk)
+
+            script_message = {'key': context['key'], 'client': self.name, 'type': 'command', 'operation': 'send_script',
+                              'script': encoded, 'fragment_count': chunks, 'fragment_index': i}
+
+            self.client.publish(topics.action, script_message)
 
     def send_rpc_async(self, conn_id, address, rpc_id, payload, timeout, callback):
         """Asynchronously send an RPC to this IOTile device
@@ -139,7 +186,7 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
             rpc_id (int): the 16-bit id of the RPC we want to call
             payload (bytearray): the payload of the command
             timeout (float): the number of seconds to wait for the RPC to execute
-            callback (callable): A callback for when we have finished the RPC.  The callback will be called as" 
+            callback (callable): A callback for when we have finished the RPC.  The callback will be called as"
                 callback(connection_id, adapter_id, success, failure_reason, status, payload)
                 'connection_id': the connection id
                 'adapter_id': this adapter's id
@@ -161,16 +208,61 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
 
         encoded_payload = binascii.hexlify(payload)
 
-        rpc_message = {'key': context['key'], 'client': self.name, 'address': address,
-                       'rpc_id': rpc_id, 'payload': encoded_payload, 'timeout': timeout}
+        rpc_message = {'key': context['key'], 'client': self.name, 'type': 'command', 'operation': 'rpc',
+                       'address': address, 'rpc_id': rpc_id, 'payload': encoded_payload, 'timeout': timeout}
 
-        self.client.publish(topics.rpc_topic, 'rpc', rpc_message)
+        self.client.publish(topics.action, rpc_message)
 
     def _open_rpc_interface(self, conn_id, callback):
         """Enable RPC interface for this IOTile device
 
         Args:
             conn_id (int): the unique identifier for the connection
+            callback (callback): Callback to be called when this command finishes
+                callback(conn_id, adapter_id, success, failure_reason)
+        """
+
+        self._open_interface(conn_id, 'rpc', callback)
+
+    def _open_streaming_interface(self, conn_id, callback):
+        """Enable streaming interface for this IOTile device
+
+        Args:
+            conn_id (int): the unique identifier for the connection
+            callback (callback): Callback to be called when this command finishes
+                callback(conn_id, adapter_id, success, failure_reason)
+        """
+
+        self._open_interface(conn_id, 'streaming', callback)
+
+    def _open_tracing_interface(self, conn_id, callback):
+        """Enable tracing interface for this IOTile device
+
+        Args:
+            conn_id (int): the unique identifier for the connection
+            callback (callback): Callback to be called when this command finishes
+                callback(conn_id, adapter_id, success, failure_reason)
+        """
+
+        self._open_interface(conn_id, 'tracing', callback)
+
+    def _open_script_interface(self, conn_id, callback):
+        """Enable script interface for this IOTile device
+
+        Args:
+            conn_id (int): the unique identifier for the connection
+            callback (callback): Callback to be called when this command finishes
+                callback(conn_id, adapter_id, success, failure_reason)
+        """
+
+        self._open_interface(conn_id, 'script', callback)
+
+    def _open_interface(self, conn_id, iface, callback):
+        """Open an interface on this device
+
+        Args:
+            conn_id (int): the unique identifier for the connection
+            iface (string): the interface name to open
             callback (callback): Callback to be called when this command finishes
                 callback(conn_id, adapter_id, success, failure_reason)
         """
@@ -185,9 +277,8 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
 
         topics = context['topics']
 
-        open_iface_message = {'key': context['key'], 'client': self.name, 'interface': 'rpc'}
-
-        self.client.publish(topics.interface_topic, 'open_interface', open_iface_message)
+        open_iface_message = {'key': context['key'], 'type': 'command', 'operation': 'open_interface', 'client': self.name, 'interface': iface}
+        self.client.publish(topics.action, open_iface_message)
 
     def stop_sync(self):
         """Synchronously stop this adapter
@@ -205,6 +296,20 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
         self.client.disconnect()
         self.conns.stop()
 
+    def probe_async(self, callback):
+        """Probe for visible devices connected to this DeviceAdapter.
+
+        Args:
+            callback (callable): A callback for when the probe operation has completed.
+                callback should have signature callback(adapter_id, success, failure_reason) where:
+                    success: bool
+                    failure_reason: None if success is True, otherwise a reason for why we could not probe
+        """
+
+        topics = MQTTTopicValidator(self.prefix)
+        self.client.publish(topics.probe, {'type': 'command', 'operation': 'probe', 'client': self.name})
+        callback(self.id, True, None)
+
     def periodic_callback(self):
         """Periodically help maintain adapter internal state
         """
@@ -216,9 +321,7 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
             except Queue.Empty:
                 break
             except Exception:
-                print("***Exception in periodic callback***")
-                traceback.print_exc() 
-                print("************************************")
+                self._logger.exception('Exception in periodic callback')
 
     def _bind_topics(self, topics):
         """Subscribe to all the topics we need to communication with this device
@@ -231,8 +334,10 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
         # FIXME: Allow for these subscriptions to fail and clean up the previous ones
         # so that this function is atomic
 
-        self.client.subscribe(topics.status_topic, self._on_status_message)
-        self.client.subscribe(topics.response_topic, self._on_response_message)
+        self.client.subscribe(topics.status, self._on_status_message)
+        self.client.subscribe(topics.tracing, self._on_trace)
+        self.client.subscribe(topics.streaming, self._on_report)
+        self.client.subscribe(topics.response, self._on_response_message)
 
     def _unbind_topics(self, topics):
         """Unsubscribe to all of the topics we needed for communication with device
@@ -242,8 +347,10 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
                 we have connected to.
         """
 
-        self.client.unsubscribe(topics.status_topic)
-        self.client.unsubscribe(topics.response_topic)
+        self.client.unsubscribe(topics.status)
+        self.client.unsubscribe(topics.tracing)
+        self.client.unsubscribe(topics.streaming)
+        self.client.unsubscribe(topics.response)
 
     def _generate_key(self):
         """Generate a random 32 byte key and encode it in hex
@@ -274,65 +381,95 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
         slug = parts[-3]
         return slug
 
-    def _on_advertisement(self, sequence, topic, message_type, message):
+    def _on_advertisement(self, sequence, topic, message):
         try:
             # FIXME: We need a global topic validator to validate these messages
             #message = self.topics.validate_message(['advertisement'], message_type, message)
 
+            del message['operation']
+            del message['type']
             self._trigger_callback('on_scan', self.id, message, 60.) # FIXME: Get the timeout from somewhere
         except IOTileException, exc:
             pass
 
-    def _on_status_message(self, sequence, topic, message_type, message):
+    def _on_report(self, sequence, topic, message):
+        """Process a report received from a device.
+
+        Args:
+            sequence (int): The sequence number of the packet received
+            topic (string): The topic this message was received on
+            message (dict): The message itself
+        """
+
+        try:
+            conn_key = self._find_connection(topic)
+            conn_id = self.conns.get_connection_id(conn_key)
+        except ArgumentError:
+            self._logger.warn("Dropping report message that does not correspond with a known connection, topic=%s", topic)
+            return
+
+        try:
+            rep_msg = messages.ReportNotification.verify(message)
+
+            serialized_report = {}
+            serialized_report['report_format'] = rep_msg['report_format']
+            serialized_report['encoded_report'] = rep_msg['report']
+            serialized_report['received_time'] = datetime.datetime.strptime(rep_msg['received_time'].decode(), "%Y%m%dT%H:%M:%S.%fZ")
+
+            report = IOTileReportParser.DeserializeReport(serialized_report)
+            self._trigger_callback('on_report', conn_id, report)
+        except Exception:
+            self._logger.exception("Error processing report conn_id=%d", conn_id)
+
+    def _on_trace(self, sequence, topic, message):
+        """Process a trace received from a device.
+
+        Args:
+            sequence (int): The sequence number of the packet received
+            topic (string): The topic this message was received on
+            message (dict): The message itself
+        """
+
+        try:
+            conn_key = self._find_connection(topic)
+            conn_id = self.conns.get_connection_id(conn_key)
+        except ArgumentError:
+            self._logger.warn("Dropping trace message that does not correspond with a known connection, topic=%s", topic)
+            return
+
+        try:
+            tracing = messages.TracingNotification.verify(message)
+            self._trigger_callback('on_trace', conn_id, tracing['trace'])
+        except Exception:
+            self._logger.exception("Error processing trace conn_id=%d", conn_id)
+
+    def _on_status_message(self, sequence, topic, message):
         """Process a status message received
 
         Args:
             sequence (int): The sequence number of the packet received
             topic (string): The topic this message was received on
-            message_type (string): The type of the packet received
             message (dict): The message itself
         """
 
-        self._logger.debug("Received message on (topic=%s): %s" % (topic, str(message)))
+        self._logger.debug("Received message on (topic=%s): %s" % (topic, message))
 
         try:
             conn_key = self._find_connection(topic)
-            context = self.conns.get_context(conn_key)
         except ArgumentError:
-            print("Dropping message that does not correspond with a known connection")
+            self._logger.warn("Dropping message that does not correspond with a known connection, message=%s", message)
             return
 
-        topics = context['topics']
-
-        try:
-            message = topics.validate_message(['heartbeat', 'disconnection_response', 'connection_response'], message_type, message)
-
-            # If a status message is directed at a specific client that's not us, ignore it
-            if 'client' in message and self.name != message['client']:
+        if messages.ConnectionResponse.matches(message):
+            if self.name != message['client']:
+                self._logger.debug("Connection response received for a different client, client=%s, name=%s", message['client'], self.name)
                 return
 
-            # We respond to connection responses only when we are trying to connect
-            if message_type == 'connection_response':
-                success = message['success']
-                if success:
-                    self.conns.finish_connection(conn_key, True, None)
-                else:
-                    self.conns.finish_connection(conn_key, False, message['failure_reason'])
-            elif message_type == 'disconnection_response':
-                success = message['success']
-                if success:
-                    # If we disconnect from a device, queue a task to unbind from its topics
-                    # We cannot do it here since we would block the paho event loop
-                    self._deferred.put(lambda: self._unbind_topics(topics))
-                    self.conns.finish_disconnection(conn_key, True, None)
-                else:
-                    self.conns.finish_disconnection(conn_key, False, message['failure_reason'])
-        except IOTileException, exc:
-            # Eat all exceptions here because this is a callback in another
-            # thread
-            print(str(exc))
+            self.conns.finish_connection(conn_key, message['success'], message.get('failure_reason', None))
+        else:
+            self._logger.warn("Dropping message that did not correspond with a known schema, message=%s", message)
 
-    def _on_response_message(self, sequence, topic, message_type, message):
+    def _on_response_message(self, sequence, topic, message):
         """Process a response message received
 
         Args:
@@ -346,32 +483,37 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
             conn_key = self._find_connection(topic)
             context = self.conns.get_context(conn_key)
         except ArgumentError:
-            print("Dropping message that does not correspond with a known connection")
+            self._logger.warn("Dropping message that does not correspond with a known connection, message=%s", message)
             return
 
-        topics = context['topics']
+        if 'client' in message and message['client'] != self.name:
+            self._logger.debug("Dropping message that is for another client %s, we are %s", message['client'], self.name)
 
-        try:
-            message = topics.validate_message(['open_interface_response', 'rpc_response'], message_type, message)
+        if messages.DisconnectionResponse.matches(message):
+            self.conns.finish_disconnection(conn_key, message['success'], message.get('failure_reason', None))
+        elif messages.OpenInterfaceResponse.matches(message):
+            self.conns.finish_operation(conn_key, message['success'], message.get('failure_reason', None))
+        elif messages.RPCResponse.matches(message):
+            rpc_message = messages.RPCResponse.verify(message)
+            self.conns.finish_operation(conn_key, rpc_message['success'], rpc_message.get('failure_reason', None), rpc_message.get('status', None), rpc_message.get('payload', None))
+        elif messages.ProgressNotification.matches(message):
+            progress_callback = context.get('progress_callback', None)
+            if progress_callback is not None:
+                progress_callback(message['done_count'], message['total_count'])
+        elif messages.ScriptResponse.matches(message):
+            if 'progress_callback' in context:
+                del context['progress_callback']
 
-            if message_type == 'open_interface_response':
-                success = message['success']
-                payload = message['payload']
-                if success:
-                    self.conns.finish_operation(conn_key, True, None)
-                else:
-                    self.conns.finish_operation(conn_key, False, payload['reason'])
-            elif message_type == 'rpc_response':
-                success = message['success']
-                payload = message['payload']
+            self.conns.finish_operation(conn_key, message['success'], message.get('failure_reason', None))
+        elif messages.DisconnectionNotification.matches(message):
+            try:
+                conn_key = self._find_connection(topic)
+                conn_id = self.conns.get_connection_id(conn_key)
+            except ArgumentError:
+                self._logger.warn("Dropping disconnect notification that does not correspond with a known connection, topic=%s", topic)
+                return
 
-                if success:
-                    status = payload['status']
-                    rpc_payload = payload['payload']
-                    self.conns.finish_operation(conn_key, True, None, status, rpc_payload)
-                else:
-                    self.conns.finish_operation(conn_key, False, payload['reason'], None, None)
-        except IOTileException, exc:
-            # Eat all exceptions here because this is a callback in another
-            # thread
-            print(str(exc))
+            self.conns.unexpected_disconnect(conn_key)
+            self._trigger_callback('on_disconnect', self.id, conn_id)
+        else:
+            self._logger.warn("Invalid response message received, message=%s", message)

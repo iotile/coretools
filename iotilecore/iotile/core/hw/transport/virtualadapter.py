@@ -92,6 +92,8 @@ class VirtualDeviceAdapter(DeviceAdapter):
         self.scan_interval = self.get_config('scan_interval', 1.0)
         self.last_scan = None
 
+        self.set_config('probe_supported', True)
+
     def _find_device_script(self, script_path):
         """Import a virtual device from a file rather than an installed module
 
@@ -282,6 +284,7 @@ class VirtualDeviceAdapter(DeviceAdapter):
         if conn_id not in self.connections:
             if callback is not None:
                 callback(conn_id, self.id, False, "device had no active connection")
+
             return
 
         dev = self.connections[conn_id]
@@ -362,6 +365,36 @@ class VirtualDeviceAdapter(DeviceAdapter):
         response = bytearray(response)
         callback(conn_id, self.id, True, "", status, response)
 
+    def send_script_async(self, conn_id, data, progress_callback, callback):
+        """Asynchronously send a a script to this IOTile device
+
+        Args:
+            conn_id (int): A unique identifer that will refer to this connection
+            data (string): the script to send to the device
+            progress_callback (callable): A function to be called with status on our progress, called as:
+                progress_callback(done_count, total_count)
+            callback (callable): A callback for when we have finished sending the script.  The callback will be called as"
+                callback(connection_id, adapter_id, success, failure_reason)
+                'connection_id': the connection id
+                'adapter_id': this adapter's id
+                'success': a bool indicating whether we received a response to our attempted RPC
+                'failure_reason': a string with the reason for the failure if success == False
+        """
+
+        if conn_id not in self.connections:
+            if callback is not None:
+                callback(conn_id, self.id, False, 'Device is not in connected state')
+            return
+
+        # Simulate some progress callbacks (0, 50%, 100%)
+        progress_callback(0, len(data))
+        dev = self.connections[conn_id]
+        dev.script = data
+        progress_callback(len(data)//2, len(data))
+        progress_callback(len(data), len(data))
+
+        callback(conn_id, self.id, True, None)
+
     def _send_scan_event(self, device):
         """Send a scan event from a device
         """
@@ -382,3 +415,17 @@ class VirtualDeviceAdapter(DeviceAdapter):
         for dev in self.devices.itervalues():
             dev.stop()
 
+    def probe_async(self, callback):
+        """Send advertisements for all connected virtual devices.
+
+        Args:
+            callback (callable): A callback for when the probe operation has completed.
+                callback should have signature callback(adapter_id, success, failure_reason) where:
+                    success: bool
+                    failure_reason: None if success is True, otherwise a reason for why we could not probe
+        """
+
+        for dev in self.devices.itervalues():
+                self._send_scan_event(dev)
+
+        callback(self.id, True, None)

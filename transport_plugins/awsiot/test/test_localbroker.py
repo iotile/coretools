@@ -7,4 +7,4 @@ def test_basic_functionality(local_broker, args):
 
     client = OrderedAWSIOTClient(args)
     client.connect('hello')
-    client.publish('test_topic', 'a', 'hello')
+    client.publish('test_topic', 'hello')

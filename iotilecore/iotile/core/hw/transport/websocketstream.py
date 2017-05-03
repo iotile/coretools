@@ -39,13 +39,13 @@ class WSIOTileClient(WebSocketClient):
     @classmethod
     def decode_datetime(cls, obj):
         if b'__datetime__' in obj:
-            obj = datetime.datetime.strptime(obj[b'as_str'].decode(), "%Y%m%dT%H:%M:%S.%f")
+            obj = datetime.datetime.strptime(obj[b'as_str'].decode(), "%Y%m%dT%H:%M:%S.%fZ")
         return obj
 
     @classmethod
     def encode_datetime(cls, obj):
         if isinstance(obj, datetime.datetime):
-            obj = {'__datetime__': True, 'as_str': obj.strftime("%Y%m%dT%H:%M:%S.%f").encode()}
+            obj = {'__datetime__': True, 'as_str': obj.strftime("%Y%m%dT%H:%M:%S.%fZ").encode()}
         return obj
 
     def received_message(self, message):
@@ -86,11 +86,11 @@ class WebSocketStream(CMDStream):
         if self.client.connection_established.is_set():
             self.client.close()
 
-    def _scan(self):
+    def _scan(self, wait=None):
         result = self.send('scan')
         return result['devices']
 
-    def _connect(self, uuid_value):
+    def _connect(self, uuid_value, wait=None):
         args = {}
         args['uuid'] = uuid_value
 

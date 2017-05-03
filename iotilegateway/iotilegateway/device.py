@@ -9,7 +9,7 @@ from iotile.core.exceptions import ArgumentError
 class DeviceManager(object):
     """An object to manage connections to IOTile devices over one or more specific DeviceAdapters
 
-    DeviceManagers aggregate all of the available devices across each DeviceAdapter and route 
+    DeviceManagers aggregate all of the available devices across each DeviceAdapter and route
     connections to the appropriate adapter as connections are requested.
     """
 
@@ -25,7 +25,7 @@ class DeviceManager(object):
         self.adapters = {}
         self.connections = {}
         self._loop = loop
-        self._logger = logging.getLogger('device.manager')
+        self._logger = logging.getLogger(__name__)
         self._logger.setLevel(logging.DEBUG)
         self._next_conn_id = 0
 
@@ -39,6 +39,12 @@ class DeviceManager(object):
         man.add_callback('on_scan', self.device_found_callback)
         man.add_callback('on_disconnect', self.device_disconnected_callback)
         man.add_callback('on_report', self.report_received_callback)
+        man.add_callback('on_trace', self.trace_received_callback)
+
+        # If this adapter supports probing for devices, probe now so we have an initial
+        # list of connected devices without waiting for them to show up over time
+        if man.get_config('probe_supported', False):
+            man.probe_sync()
 
         tornado.ioloop.PeriodicCallback(man.periodic_callback, 1000, self._loop).start()
 
@@ -102,11 +108,11 @@ class DeviceManager(object):
             uuid (int): the IOTile UUID of the device that we're trying to connect to
 
         Returns:
-            a dict containing: 
+            a dict containing:
                 'success': bool with whether the attempt was sucessful
                 'reason': failure_reason as a string if the attempt failed
                 'connection_id': int with the id for the connection if the attempt was successful,
-                'connection_string': a string that can be used to reconnect to this exact device in the 
+                'connection_string': a string that can be used to reconnect to this exact device in the
                     future on success
         """
 
@@ -142,6 +148,7 @@ class DeviceManager(object):
         using the given event_name:
         - 'report': a report is received from the device
         - 'connection': someone has connected to the device
+        - 'trace': tracing data has been received from a device
         - 'device_seen': a scan event has seen the device
         - 'disconnection': someone has disconnected from the device
 
@@ -156,7 +163,7 @@ class DeviceManager(object):
             string: A unique string that can be used to remove or adjust this monitoring callback in the future
         """
 
-        #FIXME: Check filter_names to make sure they contain only supported event names
+        # FIXME: Check filter_names to make sure they contain only supported event names
 
         monitor_uuid = uuid.uuid4()
 
@@ -234,7 +241,7 @@ class DeviceManager(object):
                 a device on that adapter.
 
         Returns:
-            a dict containing: 
+            a dict containing:
                 'success': bool with whether the attempt was sucessful
                 'reason': failure_reason as a string if the attempt failed
                 'connection_id': int with the id for the connection if the attempt was successful
@@ -278,7 +285,7 @@ class DeviceManager(object):
             interface (string): The name of the interface that we are trying to enable
 
         Returns:
-            a dictionary containg two keys: 
+            a dictionary containg two keys:
                 'success': bool with whether the attempt was sucessful
                 'reason': failure_reason as a string if the attempt failed
         """
@@ -384,7 +391,7 @@ class DeviceManager(object):
             feature (int): the high byte of the rpc id
             command (int): the low byte of the rpc id
             payload (string): the payload to send (up to 20 bytes)
-            timeout (float): the maximum amount of time to wait for a response 
+            timeout (float): the maximum amount of time to wait for a response
         """
 
         if connection_id not in self.connections:
@@ -494,12 +501,12 @@ class DeviceManager(object):
             pass
 
         self._loop.add_callback(sync_device_disconnected_callback, self, adapter, connection_id)
-        
+
     def device_found_callback(self, ad, inf, exp):
         """Add or update a device record in scanned_devices
 
         This notification function is called by a DeviceAdapter and notifies the device manager
-        that a new device has been seen.  
+        that a new device has been seen.
 
         This callback must only be called on the main tornado ioloop.
 
@@ -507,7 +514,7 @@ class DeviceManager(object):
             adapter (int): the id of the adapter that found this device
             info (dict): a dictionary of information about the device including its uuid
             expires (int): the number of seconds the device should stay in scanned_devices before expiring.
-                If expires==0 then the record will never expire on its own, 
+                If expires==0 then the record will never expire on its own,
         """
 
         def sync_device_found_callback(self, adapter, info, expires):
@@ -526,10 +533,10 @@ class DeviceManager(object):
 
     def device_lost_callback(self, adapter, uuid):
         """Remove a device record from scanned_devices
-        
+
         DeviceAdapters should call this function when they lose track of an IOTile device.
         This function SHOULD NOT be called when a device just hasn't been seen for awhile
-        unless the DeviceAdapter knows that it is no longer accessible.  
+        unless the DeviceAdapter knows that it is no longer accessible.
 
         This function should be useful only for DeviceAdapter objects that do not periodically
         scan for device where the natural expiration logic in DeviceManager would remove them,
@@ -551,6 +558,26 @@ class DeviceManager(object):
             return
 
         del devrecord[adapter]
+
+    def trace_received_callback(self, connection_id, trace):
+        """Callback when tracing data has been received for a connection
+
+        Args:
+            connection_id (int): The id of the connection for which the report was received
+            trace (bytearray): The raw data traced from the device
+        """
+
+        def sync_trace_received_callback(self, connection_id, report):
+            if connection_id not in self.connections:
+                self._logger.warn('Dropping tracing data for an unknown connection %d', connection_id)
+
+            try:
+                dev_uuid = self._get_connection_data(connection_id, 'uuid')
+                self.call_monitor(dev_uuid, 'trace', report)
+            except KeyError:
+                self._logger.warn('Dropping tracing data for a connection that has no associated UUID %d', connection_id)
+
+        self._loop.add_callback(sync_trace_received_callback, self, connection_id, trace)
 
     def report_received_callback(self, connection_id, report):
         """Callback when a report has been received for a connection

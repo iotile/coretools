@@ -27,6 +27,8 @@ class IntVerifier(Verifier):
         if not isinstance(obj, int) and not isinstance(obj, long):
             raise ValidationError("Object is not a int", reason='object is not a int', object=obj)
 
+        return obj
+
     def format(self, indent_level, indent_size=4):
         """Format this verifier
 

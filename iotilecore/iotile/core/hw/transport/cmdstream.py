@@ -3,7 +3,7 @@
 # info@welldone.org
 # http://welldone.org
 #
-# Modifications to this file from the original created at WellDone International 
+# Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
 from iotile.core.hw.exceptions import *
@@ -32,7 +32,7 @@ class CMDStream(object):
     Any physical method that supports talking to an IOTile based device
 
     All interactions with the IOTile device will be via one of the primitive operations defined in this
-    class. Specific implementations may transfer the data in their own way and add additional layers 
+    class. Specific implementations may transfer the data in their own way and add additional layers
     as needed. Examples of CMDStream implementations are:
     - the Field Service Unit communicating over a USB <-> Serial bridge
     - Bluetooth LE (directly)
@@ -58,17 +58,21 @@ class CMDStream(object):
                 self.close()
                 raise
 
-    def scan(self):
-        """Scan for available IOTile devices
+    def scan(self, wait=None):
+        """Scan for available IOTile devices.
 
-        Scan for connected device and return a map of UUIDs and connection strings for 
+        Scan for connected device and return a map of UUIDs and connection strings for
         all of the devices that were found.
+
+        Args:
+            wait (float): Optional amount of time to force the device adapter to wait before
+                returning.
         """
 
         if not hasattr(self, '_scan'):
             raise StreamOperationNotSupportedError(command="scan")
 
-        return sorted(self._scan(), key=lambda x: x['uuid'])
+        return sorted(self._scan(wait=wait), key=lambda x: x['uuid'])
 
     def connect_direct(self, connection_string):
         """Directly connect to a device using its stream specific connection string
@@ -84,8 +88,16 @@ class CMDStream(object):
         self.connected = True
         self.connection_string = connection_string
 
-    def connect(self, uuid_value):
+    def connect(self, uuid_value, wait=None):
         """Connect to a specific device by its uuid
+
+        Attempt to connect to a device that we have previously scanned using its UUID.
+        If wait is not None, then it is used in the same was a scan(wait) to override
+        default wait times with an explicit value.
+
+        Args:
+            wait (float): Optional amount of time to force the device adapter to wait before
+                atttempting to connect.
         """
 
         if self.connected:
@@ -94,8 +106,8 @@ class CMDStream(object):
         if not hasattr(self, '_connect'):
             raise StreamOperationNotSupportedError(command="connect")
 
-        connection_string = self._connect(uuid_value)
-            
+        connection_string = self._connect(uuid_value, wait=wait)
+
         self.connected = True
         self.connection_string = connection_string
 

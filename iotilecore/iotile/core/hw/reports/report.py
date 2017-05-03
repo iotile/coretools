@@ -94,7 +94,7 @@ class IOTileReport(object):
         self.decoded = False
         self.verified = False
 
-        #If we're able to, decode the report immediately 
+        #If we're able to, decode the report immediately
         if not encrypted:
             self.visible_readings = self.decode()
             self.decoded = True
@@ -147,7 +147,7 @@ class IOTileReport(object):
         info = {}
         info['received_time'] = self.received_time
         info['encoded_report'] = str(self.encode())
-        info['report_format'] = ord(info['encoded_report'][0]) #Report format is the first byte of the encoded report
+        info['report_format'] = ord(info['encoded_report'][0])  # Report format is the first byte of the encoded report
         info['origin'] = self.origin
 
         return info

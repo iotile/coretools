@@ -1,4 +1,4 @@
-# This file is copyright Arch Systems, Inc.  
+# This file is copyright Arch Systems, Inc.
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
 from iotile.core.hw.transport.cmdstream import CMDStream
@@ -22,10 +22,10 @@ class RecordedStream (CMDStream):
 
 		super(RecordedStream, self).__init__(filepath, conn_string)
 
-	def _connect(self, conn_string):
+	def _connect(self, conn_string, wait=None):
 		if conn_string not in self.recording:
 			raise HardwareError("Attempting to connect to an unrecorded device in a RecordedStream", connection_string=conn_string, recorded_devices=self.recording.keys())
-		
+
 	def _send_rpc(self, address, feature, command, *args, **kwargs):
 		rpc = RPCCommand(address, feature, command, *args)
 
