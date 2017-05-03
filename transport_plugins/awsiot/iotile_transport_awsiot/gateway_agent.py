@@ -40,6 +40,7 @@ class AWSIOTGatewayAgent(object):
         self.client = None
         self.slug = None
         self.topics = None
+        self._disconnector = None
         self._connections = {}
 
         self._logger = logging.getLogger(__name__)
@@ -56,6 +57,7 @@ class AWSIOTGatewayAgent(object):
         self.iotile_id = int(self._args['iotile_id'], 0)
         self.throttle_trace = self._args.get('trace_throttle_interval', 5.0)
         self.throttle_progress = self._args.get('progress_throttle_interval', 2.0)
+        self.client_timeout = self._args.get('client_timeout', 60.0)
 
     @classmethod
     def _build_device_slug(cls, device_id):
@@ -86,8 +88,14 @@ class AWSIOTGatewayAgent(object):
 
         self._prepare()
 
+        self._disconnector = tornado.ioloop.PeriodicCallback(self._disconnect_hanging_devices, 1000, self._loop)
+        self._disconnector.start()
+
     def stop(self):
         """Stop this gateway agent."""
+
+        if self._disconnector:
+            self._disconnector.stop()
 
         self.client.disconnect()
 
@@ -268,6 +276,9 @@ class AWSIOTGatewayAgent(object):
         if conn_id is None:
             return
 
+        conn_data = self._connections[uuid]
+        conn_data['last_touch'] = monotonic()
+
         slug = self._build_device_slug(uuid)
 
         try:
@@ -306,6 +317,7 @@ class AWSIOTGatewayAgent(object):
             return
 
         conn_data = self._connections[uuid]
+        conn_data['last_touch'] = monotonic()
 
         slug = self._build_device_slug(uuid)
 
@@ -409,6 +421,9 @@ class AWSIOTGatewayAgent(object):
         if conn_id is None:
             return
 
+        conn_data = self._connections[uuid]
+        conn_data['last_touch'] = monotonic()
+
         slug = self._build_device_slug(uuid)
 
         try:
@@ -440,6 +455,9 @@ class AWSIOTGatewayAgent(object):
         if conn_id is None:
             return
 
+        conn_data = self._connections[uuid]
+        conn_data['last_touch'] = monotonic()
+
         slug = self._build_device_slug(uuid)
 
         try:
@@ -456,8 +474,17 @@ class AWSIOTGatewayAgent(object):
 
         self._publish_response(slug, message)
 
+    def _disconnect_hanging_devices(self):
+        """Periodic callback that checks for devices that haven't been used and disconnects them."""
+
+        now = monotonic()
+        for uuid, data in self._connections.iteritems():
+            if (now - data['last_touch']) > self.client_timeout:
+                self._logger.info("Disconnect inactive client %s from device 0x%X", data['client'], uuid)
+                self._loop.add_callback(self._disconnect_from_device, uuid, data['key'], data['client'], unsolicited=True)
+
     @tornado.gen.coroutine
-    def _disconnect_from_device(self, uuid, key, client):
+    def _disconnect_from_device(self, uuid, key, client, unsolicited=False):
         """Disconnect from a device that we have previously connected to.
 
         Args:
@@ -465,13 +492,19 @@ class AWSIOTGatewayAgent(object):
             key (string): A 64 byte string used to secure this connection
             client (string): The client id for who is trying to connect
                 to the device.
+            unsolicited (bool): Whether the client asked us to disconnect or we
+                are forcibly doing it.  Forcible disconnections are sent as notifications
+                instead of responses.
         """
 
         conn_id = self._validate_connection('disconnect', uuid, key)
         if conn_id is None:
             return
 
+        conn_data = self._connections[uuid]
+
         slug = self._build_device_slug(uuid)
+
         message = {'client': client, 'type': 'response', 'operation': 'disconnect'}
 
         self.client.reset_sequence(self.topics.gateway_topic(slug, 'control/connect'))
@@ -483,6 +516,10 @@ class AWSIOTGatewayAgent(object):
             self._logger.exception("Error in manager disconnect")
             resp = {'success': False, 'reason': "Internal error: %s" % str(exc)}
 
+        # Remove any monitors that we registered for this device
+        self._manager.remove_monitor(conn_data['report_monitor'])
+        self._manager.remove_monitor(conn_data['trace_monitor'])
+
         if resp['success']:
             del self._connections[uuid]
             message['success'] = True
@@ -492,7 +529,12 @@ class AWSIOTGatewayAgent(object):
 
         self._logger.info("Client %s disconnected from device 0x%X", client, uuid)
 
-        self._publish_response(slug, message)
+        # Send a response for all requested disconnects and if we tried to disconnect the client
+        # on our own and succeeded, send an unsolicited notification to that effect
+        if unsolicited and resp['success']:
+            self._publish_response(slug, {'client': client, 'type': 'notification', 'operation': 'disconnect'})
+        elif not unsolicited:
+            self._publish_response(slug, message)
 
     @tornado.gen.coroutine
     def _connect_to_device(self, uuid, key, client):

@@ -389,6 +389,24 @@ class ConnectionManager(threading.Thread):
             data['callback'] = None
             callback(conn_id, self.id, True, None)
 
+    def unexpected_disconnect(self, conn_or_internal_id):
+        """Notify that there was an unexpected disconnection of the device.
+
+        Any in progress operations are canceled cleanly and the device is transitioned
+        to a disconnected state.
+
+        Args:
+            conn_or_internal_id (string, int): Either an integer connection id or a string
+                internal_id
+        """
+
+        data = {
+            'id': conn_or_internal_id
+        }
+
+        action = ConnectionAction('force_disconnect', data, sync=False)
+        self._actions.put(action)
+
     def begin_disconnection(self, conn_or_internal_id, callback, timeout):
         """Begin a disconnection attempt
 
@@ -408,6 +426,41 @@ class ConnectionManager(threading.Thread):
 
         action = ConnectionAction('begin_disconnection', data, timeout=timeout, sync=False)
         self._actions.put(action)
+
+    def _force_disconnect_action(self, action):
+        """Forcibly disconnect a device.
+
+        Args:
+            action (ConnectionAction): the action object describing what we are
+                forcibly disconnecting
+        """
+
+        conn_key = action.data['id']
+        if self._get_connection_state(conn_key) == self.Disconnected:
+            return
+
+        data = self._get_connection(conn_key)
+
+        # If there are any operations in progress, cancel them cleanly
+        if data['state'] == self.Connecting:
+            callback = data['callback']
+            callback(False, 'Unexpected disconnection')
+        elif data['state'] == self.Disconnecting:
+            callback = data['callback']
+            callback(True, None)
+        elif data['state'] == self.InProgress:
+            callback = data['callback']
+            if data['microstate'] == 'rpc':
+                callback(False, 'Unexpected disconnection', None, None)
+            elif data['microstate'] == 'open_interface':
+                callback(False, 'Unexpected disconnection')
+            elif data['microstate'] == 'close_interface':
+                callback(False, 'Unexpected disconnection')
+
+        int_id = data['int_id']
+        conn_id = data['conn_id']
+        del self._connections[conn_id]
+        del self._int_connections[int_id]
 
     def _begin_disconnection_action(self, action):
         """Begin a disconnection attempt

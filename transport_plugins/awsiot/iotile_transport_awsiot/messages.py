@@ -176,3 +176,8 @@ ProgressNotification.add_required('operation', LiteralVerifier('send_script'))
 ProgressNotification.add_required('client', StringVerifier())
 ProgressNotification.add_required('done_count', IntVerifier())
 ProgressNotification.add_required('total_count', IntVerifier())
+
+DisconnectionNotification = DictionaryVerifier()  # pylint: disable=C0103
+DisconnectionNotification.add_required('type', LiteralVerifier('notification'))
+DisconnectionNotification.add_required('operation', LiteralVerifier('disconnect'))
+DisconnectionNotification.add_required('client', StringVerifier())

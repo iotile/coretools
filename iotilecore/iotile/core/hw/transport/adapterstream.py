@@ -145,17 +145,9 @@ class AdapterCMDStream(CMDStream):
         self.adapter.disconnect_sync(0)
         self.adapter.periodic_callback()
 
-    def _send_rpc(self, address, feature, cmd, payload, **kwargs):
-        timeout = 3.0
-        if 'timeout' in kwargs:
-            timeout = float(kwargs['timeout'])
+    def _try_reconnect(self):
+        """Try to recover an interrupted connection."""
 
-        result = self.adapter.send_rpc_sync(0, address, (feature << 8) | cmd, payload, timeout)
-        success = result['success']
-        status = result['status']
-        payload = result['payload']
-
-        #If the rpc caused us to lose connection, we will have a connection_interrupted flag set
         try:
             if self.connection_interrupted:
                 self.connected = False
@@ -163,13 +155,38 @@ class AdapterCMDStream(CMDStream):
                 self.connection_interrupted = False
                 self.connected = True
 
-                #Reenable streaming interface if that was open before as well
+                # Reenable streaming interface if that was open before as well
                 if self._reports is not None:
                     res = self.adapter.open_interface_sync(0, 'streaming')
                     if not res['success']:
                         raise HardwareError("Could not open streaming interface to device", reason=res['failure_reason'])
+
+                # Reenable tracing interface if that was open before as well
+                if self._traces is not None:
+                    res = self.adapter.open_interface_sync(0, 'tracing')
+                    if not res['success']:
+                        raise HardwareError("Could not open tracing interface to device", reason=res['failure_reason'])
         except HardwareError, exc:
-            raise HardwareError("Device disconnected before we received an RPC response and we could not reconnect", reconnect_error=exc)
+            raise HardwareError("Device disconnected unexpectedly and we could not reconnect", reconnect_error=exc)
+
+    def _send_rpc(self, address, feature, cmd, payload, **kwargs):
+        timeout = 3.0
+        if 'timeout' in kwargs:
+            timeout = float(kwargs['timeout'])
+
+        # If our connection was interrupted before this RPC, try to recover it
+        if self.connection_interrupted:
+            self._try_reconnect()
+
+        result = self.adapter.send_rpc_sync(0, address, (feature << 8) | cmd, payload, timeout)
+        success = result['success']
+        status = result['status']
+        payload = result['payload']
+
+        # Sometimes RPCs can cause the device to go offline, so try to reconnect to it.
+        # For example, the RPC could cause the device to reset itself.
+        if self.connection_interrupted:
+            self._try_reconnect()
 
         if not success:
             raise HardwareError("Could not send RPC", reason=result['failure_reason'])

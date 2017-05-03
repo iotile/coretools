@@ -78,7 +78,7 @@ def test_script(gateway, hw_man, local_broker):
     progs = Queue.Queue()
     hw_man.connect(3, wait=0.1)
 
-    gateway.throttle_progress = 0.0
+    gateway.agents[0].throttle_progress = 0.0
     hw_man.stream._send_highspeed(script, lambda x, y: progs.put((x,y)))
 
     last_done = -1
@@ -108,7 +108,7 @@ def test_script_chunking(gateway, hw_man, local_broker):
     progs = Queue.Queue()
     hw_man.connect(3, wait=0.1)
 
-    gateway.throttle_progress = 0.0
+    gateway.agents[0].throttle_progress = 0.0
     hw_man.stream._send_highspeed(script, lambda x, y: progs.put((x, y)))
 
     last_done = -1
@@ -139,7 +139,7 @@ def test_script_progress_throttling(gateway, hw_man, local_broker):
     progs = []
     hw_man.connect(3, wait=0.1)
 
-    gateway.throttle_progress = 10.0
+    gateway.agents[0].throttle_progress = 10.0
     hw_man.stream._send_highspeed(script, lambda x, y: progs.append((x, y)))
 
     dev = gateway.device_manager.adapters[0].devices[3]
@@ -154,3 +154,31 @@ def test_script_progress_throttling(gateway, hw_man, local_broker):
 
     x, y = progs[1]
     assert x == y
+
+def test_autodisconnect(gateway, hw_man, local_broker):
+    """Make sure we autodisconnect clients."""
+
+    gateway.agents[0].client_timeout = 0.1
+
+    hw_man.connect(3, wait=0.1)
+    assert len(gateway.agents[0]._connections) == 1
+
+    time.sleep(1.5)
+
+    assert len(gateway.agents[0]._connections) == 0
+
+    assert hw_man.stream.connection_interrupted is True
+
+    # Make sure we can reconnect automatically
+    hw_man.controller()
+    assert len(gateway.agents[0]._connections) == 1
+
+    # Let us lapse again
+    time.sleep(1.5)
+    assert len(gateway.agents[0]._connections) == 0
+
+    # Return to our disconnected state
+    hw_man.disconnect()
+
+    # Make sure we can connect normally again
+    hw_man.connect(3, wait=0.1)

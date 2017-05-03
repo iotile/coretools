@@ -504,5 +504,15 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
                 del context['progress_callback']
 
             self.conns.finish_operation(conn_key, message['success'], message.get('failure_reason', None))
+        elif messages.DisconnectionNotification.matches(message):
+            try:
+                conn_key = self._find_connection(topic)
+                conn_id = self.conns.get_connection_id(conn_key)
+            except ArgumentError:
+                self._logger.warn("Dropping disconnect notification that does not correspond with a known connection, topic=%s", topic)
+                return
+
+            self.conns.unexpected_disconnect(conn_key)
+            self._trigger_callback('on_disconnect', self.id, conn_id)
         else:
             self._logger.warn("Invalid response message received, message=%s", message)
