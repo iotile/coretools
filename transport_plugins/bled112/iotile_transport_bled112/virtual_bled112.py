@@ -16,7 +16,7 @@ import time
 import binascii
 import serial
 import serial.tools.list_ports
-from iotile.core.exceptions import EnvironmentError, HardwareError
+from iotile.core.exceptions import ExternalError, HardwareError
 from async_packet import AsyncPacketBuffer
 from iotile.core.hw.virtual.virtualinterface import VirtualIOTileInterface
 from iotile.core.hw.virtual.virtualdevice import RPCInvalidIDError, RPCNotFoundError, TileNotFoundError
@@ -64,7 +64,7 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
             if len(devices) > 0:
                 port = devices[0]
             else:
-                raise EnvironmentError("Could not find any BLED112 adapters connected to this computer")
+                raise ExternalError("Could not find any BLED112 adapters connected to this computer")
 
         self._serial_port = serial.Serial(port, 256000, timeout=0.01, rtscts=True)
         self._stream = AsyncPacketBuffer(self._serial_port, header_length=4, length_function=packet_length)
