@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileGateway are listed here.
 
+## 1.4.0
+
+- Fix exception hierarchy
+- Make unit testing easier
+
 ## 1.3.4
 
 - Fix headline status reporting to only report when it actually changes
