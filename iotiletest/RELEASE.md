@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 0.8.0
+
+- Fix realtime test
+- Update exception hierarchy
+
 ## 0.7.3
 
 - Add support for mocking file open calls
