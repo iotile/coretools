@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.14.0
+
+- Fix exception hierarchy to remove EnvironmentError and TimeoutError that
+  shadow builtin exceptions
+
 ## 3.13.4
 
 - Add better exception message when there are invalid arguments or response 
