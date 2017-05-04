@@ -1,7 +1,7 @@
 import unittest
 import os
 import pytest
-from iotile.core.exceptions import *
+from iotile.core.exceptions import ExternalError
 from iotile.core.hw.reports.signed_list_format import SignedListReport
 from iotile.core.hw.reports.report import IOTileReading
 import struct
@@ -18,7 +18,7 @@ def make_sequential(iotile_id, stream, num_readings, give_ids=False, signature_m
             reading = IOTileReading(i, stream, i)
 
         readings.append(reading)
-        
+
     report = SignedListReport.FromReadings(iotile_id, readings, signature_method=signature_method)
     return report
 
@@ -58,7 +58,7 @@ def test_userkey_signing(monkeypatch):
     print(os.environ.keys())
     monkeypatch.setenv('USER_KEY_00000002', '0000000000000000000000000000000000000000000000000000000000000000')
 
-    with pytest.raises(EnvironmentError):
+    with pytest.raises(ExternalError):
         report1 = make_sequential(1, 0x1000, 10, give_ids=True, signature_method=1)
 
     report1 = make_sequential(2, 0x1000, 10, give_ids=True, signature_method=1)

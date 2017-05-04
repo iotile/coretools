@@ -236,7 +236,7 @@ class HardwareManager:
         """
 
         if self._stream_queue is None:
-            raise EnvironmentError("You have to enable streaming before you can wait for reports")
+            raise ExternalError("You have to enable streaming before you can wait for reports")
 
         reports = []
 
@@ -245,7 +245,7 @@ class HardwareManager:
                 report = self._stream_queue.get(timeout=timeout)
                 reports.append(report)
             except Empty:
-                raise TimeoutError("Timeout waiting for a report", expected_number=num_reports, received_number=i, received_reports=reports)
+                raise TimeoutExpiredError("Timeout waiting for a report", expected_number=num_reports, received_number=i, received_reports=reports)
 
         return reports
 

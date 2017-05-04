@@ -10,7 +10,7 @@
 
 class IOTileException(Exception):
     """
-    All MoMo API routines, upon encountering unrecoverable errors,
+    All IOTile API routines, upon encountering unrecoverable errors,
     will throw an exception that is a subclass of this exception.
     All other exceptions are caught and rethrown as an APIError
     for consistency.  Calling methods can assume that all annotated
@@ -83,7 +83,7 @@ class NotFoundError(IOTileException):
 
     pass
 
-class TimeoutError(IOTileException):
+class TimeoutExpiredError(IOTileException):
     """
     The method timed out, usually indicating that a communication failure
     occurred, either with another process or with a hardware module.
@@ -149,16 +149,16 @@ class BuildError(IOTileException):
 
 class TypeSystemError(IOTileException):
     """
-    There was an error with the MoMo type system.  This can be due to improperly
+    There was an error with the IOTile type system.  This can be due to improperly
     specifying an unknown type or because the required type was not properly loaded
     from an external module before a function that used that type was needed.
     """
 
     pass
 
-class EnvironmentError(IOTileException):
+class ExternalError(IOTileException):
     """
-    The environment is not properly configured for the MoMo API command that was called.
+    The external environment is not properly configured for the IOTile API command that was called.
     This can be because a required program was not installed or accessible or because
     a required environment variable was not defined.
     """
@@ -167,7 +167,7 @@ class EnvironmentError(IOTileException):
 
 class HardwareError(IOTileException):
     """
-    There was an issue communicating with or controlling a MoMo hardware module.  This
+    There was an issue communicating with or controlling an IOTile hardware module.  This
     exception anchors a range of exceptions that refer to specific kinds of hardware issues.
 
     By catching this exception, you will catch any sort of hardware failure.  If you are

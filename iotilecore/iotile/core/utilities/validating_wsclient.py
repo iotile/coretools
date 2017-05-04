@@ -5,7 +5,7 @@ import threading
 import msgpack
 import datetime
 import logging
-from iotile.core.exceptions import IOTileException, InternalError, ValidationError, TimeoutError
+from iotile.core.exceptions import IOTileException, InternalError, ValidationError, TimeoutExpiredError
 from iotile.core.utilities.schema_verify import Verifier, DictionaryVerifier, StringVerifier, LiteralVerifier, OptionsVerifier
 
 # The prescribed schema of command response messages
@@ -90,7 +90,7 @@ class ValidatingWSClient(WebSocketClient):
 
         flag = self._connected.wait(timeout=timeout)
         if not flag:
-            raise TimeoutError("Conection attempt to host timed out")
+            raise TimeoutExpiredError("Conection attempt to host timed out")
 
     def stop(self, timeout=5.0):
         """Synchronously disconnect from websocket server.
@@ -110,7 +110,7 @@ class ValidatingWSClient(WebSocketClient):
 
         flag = self._disconnection_finished.wait(timeout=timeout)
         if not flag:
-            raise TimeoutError("Disconnection attempt from host timed out")
+            raise TimeoutExpiredError("Disconnection attempt from host timed out")
 
     def send_message(self, obj):
         """Send a packed message.
@@ -142,7 +142,7 @@ class ValidatingWSClient(WebSocketClient):
 
             flag = self._response_received.wait(timeout=timeout)
             if not flag:
-                raise TimeoutError("Timeout waiting for response")
+                raise TimeoutExpiredError("Timeout waiting for response")
 
             self._response_received.clear()
             return self._last_response

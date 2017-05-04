@@ -46,8 +46,8 @@ class DependencyResolverChain(object):
             name = factory.__name__
 
             if name in self._known_resolvers:
-                raise EnvironmentError("The same dependency resolver class name is provided by more than one entry point", name=name)
-            
+                raise ExternalError("The same dependency resolver class name is provided by more than one entry point", name=name)
+
             self._known_resolvers[name] = factory
 
     def instantiate_resolver(self, name, args):
@@ -80,7 +80,7 @@ class DependencyResolverChain(object):
                 be fetched.
 
         Raises:
-            EnvironmentError: If the destination folder exists and force is not specified
+            ExternalError: If the destination folder exists and force is not specified
             ArgumentError: If the specified component could not be found with the required version
         """
 
@@ -96,7 +96,7 @@ class DependencyResolverChain(object):
         destdir = os.path.join(destfolder, unique_id)
         if os.path.exists(destdir):
             if not force:
-                raise EnvironmentError("Output directory exists and force was not specified, aborting", output_directory=destdir)
+                raise ExternalError("Output directory exists and force was not specified, aborting", output_directory=destdir)
 
             shutil.rmtree(destdir)
 
@@ -122,7 +122,7 @@ class DependencyResolverChain(object):
 
         if destdir is None:
             destdir = os.path.join(tile.folder, 'build', 'deps', depinfo['unique_id'])
-        
+
         has_version = False
         had_version = False
         if os.path.exists(destdir):
@@ -201,7 +201,7 @@ class DependencyResolverChain(object):
         except IOError as e:
             return False
 
-        #If this dependency was initially resolved with a different resolver, then 
+        #If this dependency was initially resolved with a different resolver, then
         #we cannot check if it is up to date
         if settings['resolver'] != resolver.__class__.__name__:
             return None
@@ -211,7 +211,7 @@ class DependencyResolverChain(object):
             resolver_settings = settings['settings']
 
         return resolver.check(depinfo, deptile, resolver_settings)
-    
+
     def _find_resolver(self, rule):
         regex,factory,args = rule
         return factory(args)

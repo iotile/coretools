@@ -5,7 +5,7 @@ import datetime
 import struct
 from report import IOTileReport, IOTileReading
 from iotile.core.utilities.packed import unpack
-from iotile.core.exceptions import ArgumentError, NotFoundError, EnvironmentError
+from iotile.core.exceptions import ArgumentError, NotFoundError, ExternalError
 import iotile.core.hw.auth.auth_provider as auth_provider
 from iotile.core.hw.auth.auth_chain import ChainedAuthProvider
 
@@ -84,7 +84,7 @@ class SignedListReport(IOTileReport):
         try:
             signature = signer.sign(uuid, signature_method, signed_data)
         except NotFoundError:
-            raise EnvironmentError("Could not sign report because no AuthProvider supported the requested signature method for the requested device", device_id=uuid, signature_method=signature_method)
+            raise ExternalError("Could not sign report because no AuthProvider supported the requested signature method for the requested device", device_id=uuid, signature_method=signature_method)
         
         footer = struct.pack("16s", str(signature['signature'][:16]))
         footer = bytearray(footer)

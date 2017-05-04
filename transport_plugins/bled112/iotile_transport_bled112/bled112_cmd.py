@@ -13,7 +13,7 @@ from iotile.core.exceptions import HardwareError
 from tilebus import *
 from bgapi_structures import process_gatt_service, process_attribute, process_read_handle, process_notification
 from bgapi_structures import parse_characteristic_declaration
-from async_packet import TimeoutError
+from async_packet import InternalTimeoutError
 
 BGAPIPacket = namedtuple("BGAPIPacket", ["is_event", "command_class", "command", "payload"])
 
@@ -92,7 +92,7 @@ class BLED112CommandProcessor(threading.Thread):
             response = self._send_command(6, 7, payload)
             if response.payload[0] != 0:
                 return False, {'reason': "Could not set scanning parameters", 'error': response.payload[0]}
-        except TimeoutError:
+        except InternalTimeoutError:
             return False, {'reason': 'Timeout waiting for response'}
 
         return True, None
@@ -110,7 +110,7 @@ class BLED112CommandProcessor(threading.Thread):
         try:
             response = self._send_command(0, 6, [])
             maxconn, = unpack("<B", response.payload)
-        except TimeoutError:
+        except InternalTimeoutError:
             return False, {'reason': 'Timeout waiting for command response'}
 
         events = self._wait_process_events(0.5, status_filter_func, lambda x: False)
@@ -137,7 +137,7 @@ class BLED112CommandProcessor(threading.Thread):
             if response.payload[0] != 0:
                 self._logger.error('Error starting scan for devices, error=%d', response.payload[0])
                 return False, {'reason': "Could not initiate scan for ble devices, error_code=%d, response=%s" % (response.payload[0], response)}
-        except TimeoutError:
+        except InternalTimeoutError:
             return False, {'reason': "Timeout waiting for response"}
 
         return True, None
@@ -151,7 +151,7 @@ class BLED112CommandProcessor(threading.Thread):
             if response.payload[0] != 0:
                 self._logger.error('Error stopping scan for devices, error=%d', response.payload[0])
                 return False, {'reason': "Could not stop scan for ble devices"}
-        except TimeoutError:
+        except InternalTimeoutError:
             return False, {'reason': "Timeout waiting for response"}
 
         return True, None
@@ -183,7 +183,7 @@ class BLED112CommandProcessor(threading.Thread):
 
         try:
             response = self._send_command(4, 1, payload)
-        except TimeoutError:
+        except InternalTimeoutError:
             return False, {'reason': 'Timeout waiting for command response'}
 
         handle, result = unpack("<BH", response.payload)
@@ -315,7 +315,7 @@ class BLED112CommandProcessor(threading.Thread):
         try:
             response = self._send_command(4, 3, payload)
             handle, result = unpack("<BH", response.payload)
-        except TimeoutError:
+        except InternalTimeoutError:
             return False, {'reason': "Timeout enumerating handles"}
 
         if result != 0:
@@ -337,7 +337,7 @@ class BLED112CommandProcessor(threading.Thread):
         try:
             response = self._send_command(4, 4, payload)
             ignored_handle, result = unpack("<BH", response.payload)
-        except TimeoutError:
+        except InternalTimeoutError:
             return False, {'reason': 'Timeout sending read handle command'}
 
         if result != 0:
@@ -397,7 +397,7 @@ class BLED112CommandProcessor(threading.Thread):
                 response = self._send_command(4, 5, payload)
             else:
                 response = self._send_command(4, 6, payload)
-        except TimeoutError:
+        except InternalTimeoutError:
             return False, {'reason': 'Timeout waiting for response to command in _write_handle'}
 
         _, result = unpack("<BH", response.payload)

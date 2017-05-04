@@ -6,7 +6,7 @@ import requests
 from iotile_cloud.api.connection import Api
 from iotile_cloud.api.exceptions import RestHttpBaseException, HttpNotFoundError
 from iotile.core.dev.registry import ComponentRegistry
-from iotile.core.exceptions import ArgumentError, EnvironmentError
+from iotile.core.exceptions import ArgumentError, ExternalError
 from iotile.core.utilities.typedargs import context, param, return_type, annotated
 
 
@@ -21,7 +21,7 @@ class IOTileCloud(object):
         try:
             token = reg.get_config('arch:cloud_token')
         except ArgumentError:
-            raise EnvironmentError("No stored iotile cloud authentication information", suggestion='Call iotile config link_cloud with your iotile cloud username and password')
+            raise ExternalError("No stored iotile cloud authentication information", suggestion='Call iotile config link_cloud with your iotile cloud username and password')
 
         self.api = Api()
         self.api.set_token(token)
@@ -69,7 +69,7 @@ class IOTileCloud(object):
             if exc.response.status_code == 400:
                 raise ArgumentError("Error setting sensor graph, invalid value", value=new_sg, error_code=exc.response.status_code)
             else:
-                raise EnvironmentError("Error calling method on iotile.cloud", exception=exc, response=exc.response.status_code)
+                raise ExternalError("Error calling method on iotile.cloud", exception=exc, response=exc.response.status_code)
 
     @param("project_id", "string", desc="ID of the project to download a list of devices from")
     @return_type("list(integer)")
@@ -94,7 +94,7 @@ class IOTileCloud(object):
         try:
             self.api.device(slug).unclaim.post(payload)
         except RestHttpBaseException, exc:
-            raise EnvironmentError("Error calling method on iotile.cloud", exception=exc, response=exc.response.status_code)
+            raise ExternalError("Error calling method on iotile.cloud", exception=exc, response=exc.response.status_code)
 
     def upload_report(self, report):
         """Upload an IOTile report to the cloud.
@@ -141,7 +141,7 @@ class IOTileCloud(object):
             raise ArgumentError("Could not get information for streamer", device_id=device_id, streamer_id=streamer, slug=slug, err=str(exc))
 
         if 'last_id' not in data:
-            raise EnvironmentError("Response fom the cloud did not have last_id set", response=data)
+            raise ExternalError("Response fom the cloud did not have last_id set", response=data)
 
         return data['last_id']
 
@@ -153,7 +153,7 @@ class IOTileCloud(object):
         url = 'https://iotile.cloud/api/v1/auth/api-jwt-refresh/'
         resp = requests.post(url, json={'token': self.token})
         if resp.status_code != 200:
-            raise EnvironmentError("Could not refresh token", error_code=resp.status_code)
+            raise ExternalError("Could not refresh token", error_code=resp.status_code)
 
         data = resp.json()
 

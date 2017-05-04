@@ -20,7 +20,7 @@ import pkg_resources
 import fnmatch
 from collections import namedtuple
 from iotile.core.dev.registry import ComponentRegistry
-from iotile.core.exceptions import ArgumentError, EnvironmentError
+from iotile.core.exceptions import ArgumentError, ExternalError
 from iotile.core.utilities.typedargs import context, param, return_type, stringable, type_system
 
 MISSING = object()
@@ -49,11 +49,11 @@ class ConfigManager(object):
                 provider = entry.load()
                 prefix, conf_vars = provider()
             except (ValueError, TypeError) as exc:
-                raise EnvironmentError("Error loading config variables", package=entry.name, error=str(exc))
+                raise ExternalError("Error loading config variables", package=entry.name, error=str(exc))
 
             for var in conf_vars:
                 if len(var) != 3 and len(var) != 4:
-                    raise EnvironmentError("Error loading config variable, invalid length", data=var, package=entry.name)
+                    raise ExternalError("Error loading config variable, invalid length", data=var, package=entry.name)
 
                 name = prefix + ':' + var[0]
                 if len(var) == 3:
@@ -62,7 +62,7 @@ class ConfigManager(object):
                     var_obj = ConfigVariable(name, var[1], var[2], var[3])
 
                 if name in self._known_variables:
-                    raise EnvironmentError("The same config variable was defined twice", name=name)
+                    raise ExternalError("The same config variable was defined twice", name=name)
 
                 self._known_variables[name] = var_obj
 
@@ -81,7 +81,7 @@ class ConfigManager(object):
 
                 self.add_function(name, conf_func)
             except (ValueError, TypeError) as exc:
-                raise EnvironmentError("Error loading config function", name=name, error=str(exc))
+                raise ExternalError("Error loading config function", name=name, error=str(exc))
 
     def _format_variable(self, name, var):
         """Format a helpful string describing a config variable

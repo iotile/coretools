@@ -1,7 +1,7 @@
 import pytest
 import os
 import shutil
-from iotile.core.exceptions import EnvironmentError
+from iotile.core.exceptions import ExternalError
 from iotile.build.dev.resolverchain import DependencyResolverChain
 from iotile.mock.mock_resolver import MockDependencyResolver
 from iotile.core.dev.iotileobj import IOTile
@@ -125,7 +125,7 @@ def test_registry_resolver_unbuilt(tmpdir):
 
     try:
         reg.add_component(comp_path('comp1_v1.1_unbuilt'))
-        with pytest.raises(EnvironmentError) as excinfo:
+        with pytest.raises(ExternalError) as excinfo:
             for dep in tile.dependencies:
                 result = chain.update_dependency(tile, dep)
 
@@ -144,7 +144,7 @@ def test_registry_resolver_built_invalid(tmpdir):
 
     try:
         reg.add_component(comp_path('comp1_v1.1_built_empty'))
-        with pytest.raises(EnvironmentError) as excinfo:
+        with pytest.raises(ExternalError) as excinfo:
             for dep in tile.dependencies:
                 result = chain.update_dependency(tile, dep)
 

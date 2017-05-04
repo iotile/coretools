@@ -162,7 +162,7 @@ class WebSocketStream(CMDStream):
             try:
                 result = self.client.messages.get(timeout=10.0)
             except Empty:
-                raise TimeoutError('Timeout waiting for response to %s command from websocket server' % command)
+                raise TimeoutExpiredError('Timeout waiting for response to %s command from websocket server' % command)
 
             if 'type' in result and result['type'] == 'progress':
                 total = result['total']

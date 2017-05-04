@@ -49,12 +49,12 @@ class MockDependencyResolver(object):
             bool: True meaning the dependency is up-to-date or False if it is not.
 
         Raises:
-            EnvironmentError: if the checking process was not able to assess whether the dependency was 
+            ExternalError: if the checking process was not able to assess whether the dependency was 
                 up to date or not.
         """
 
         if depinfo['unique_id'] not in self.known_deps:
-            raise EnvironmentError("Could not check dependency's status", unique_id=depinfo['unique_id'])
+            raise ExternalError("Could not check dependency's status", unique_id=depinfo['unique_id'])
 
         dep = self.known_deps[depinfo['unique_id']]
         if not depinfo['required_version'].check(dep.parsed_version):

@@ -3,7 +3,7 @@ import logging
 import AWSIoTPythonSDK.MQTTLib
 import re
 from AWSIoTPythonSDK.exception import operationError
-from iotile.core.exceptions import ArgumentError, EnvironmentError, InternalError
+from iotile.core.exceptions import ArgumentError, ExternalError, InternalError
 from iotile.core.dev.registry import ComponentRegistry
 from packet_queue import PacketQueue
 from topic_sequencer import TopicSequencer
@@ -30,13 +30,13 @@ class OrderedAWSIOTClient(object):
         try:
             if not use_websockets:
                 if cert is None:
-                    raise EnvironmentError("Certificate for AWS IOT not passed in certificate key")
+                    raise ExternalError("Certificate for AWS IOT not passed in certificate key")
                 elif key is None:
-                    raise EnvironmentError("Private key for certificate not passed in private_key key")
+                    raise ExternalError("Private key for certificate not passed in private_key key")
             else:
                 if iamkey is None or iamsecret is None:
-                    raise EnvironmentError("IAM Credentials need to be provided for websockets auth")
-        except EnvironmentError:
+                    raise ExternalError("IAM Credentials need to be provided for websockets auth")
+        except ExternalError:
             # If the correct information is not passed in, try and see if we get it from our environment
             # try to pull in root certs, endpoint name and iam or cognito session information
             reg = ComponentRegistry()
@@ -57,9 +57,9 @@ class OrderedAWSIOTClient(object):
             use_websockets = True
 
         if root is None:
-            raise EnvironmentError("Root of certificate chain not passed in root_certificate key (and not in registry)")
+            raise ExternalError("Root of certificate chain not passed in root_certificate key (and not in registry)")
         elif endpoint is None:
-            raise EnvironmentError("AWS IOT endpoint not passed in endpoint key (and not in registry)")
+            raise ExternalError("AWS IOT endpoint not passed in endpoint key (and not in registry)")
 
         self.websockets = use_websockets
         self.iam_key = iamkey

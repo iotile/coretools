@@ -1,6 +1,6 @@
 from iotile.core.utilities.typedargs import context, annotated, param, return_type, iprint
 from iotile.core.dev.iotileobj import IOTile
-from iotile.core.exceptions import ArgumentError, EnvironmentError, BuildError
+from iotile.core.exceptions import ArgumentError, ExternalError, BuildError
 from resolverchain import DependencyResolverChain
 import os
 
@@ -17,7 +17,7 @@ class DependencyManager (object):
     @return_type('basic_dict')
     def info(self, path="."):
         """Get information on an IOTile component.
-        
+
         If path is not given, the current directory is assumed to be an IOTile component.
         """
 
@@ -37,7 +37,7 @@ class DependencyManager (object):
 
         Returns
         =======
-    
+
         A map with a string value for each dependency where the value is one of:
         - 'not installed' when there is no dependency currently in build/deps
         - 'installed' when the dependency in build/deps is valid
@@ -54,7 +54,7 @@ class DependencyManager (object):
         for dep in tile.dependencies:
             try:
                 deptile = IOTile(os.path.join(path, 'build', 'deps', dep['unique_id']))
-            except (EnvironmentError, IOError):
+            except (ExternalError, IOError):
                 dep_stati[dep['name']] = 'not installed'
                 continue
 
@@ -71,7 +71,7 @@ class DependencyManager (object):
 
         Returns
         =======
-    
+
         A map with a string value for each dependency where the value is one of:
         - 'not installed' when there is no dependency currently in build/deps
         - 'X.Y.Z' with the version of the dependency when it is installed
@@ -87,7 +87,7 @@ class DependencyManager (object):
         for dep in tile.dependencies:
             try:
                 deptile = IOTile(os.path.join(path, 'build', 'deps', dep['unique_id']))
-            except EnvironmentError, IOError:
+            except ExternalError, IOError:
                 dep_stati[dep['name']] = 'not installed'
                 continue
 
@@ -110,7 +110,7 @@ class DependencyManager (object):
 
         #FIXME: Read resolver_settings.json file
         resolver_chain = DependencyResolverChain()
-        
+
         for dep in tile.dependencies:
             result = resolver_chain.update_dependency(tile, dep)
             iprint("Resolving %s: %s" % (dep['name'], result))
@@ -152,9 +152,9 @@ class DependencyManager (object):
                 #Check for version conflict between a directly included dependency and a dep used to build
                 #a dependency.
                 if tile.unique_id in seen_versions and seen_versions[tile.unique_id][0].coexistence_class != tile.parsed_version.coexistence_class:
-                    raise BuildError("Version conflict between direct dependency and component used to build one of our dependencies", 
-                                     direct_dependency=tile.short_name, direct_version=str(tile.parsed_version), 
-                                     included_version=seen_versions[tile.unique_id][0], 
+                    raise BuildError("Version conflict between direct dependency and component used to build one of our dependencies",
+                                     direct_dependency=tile.short_name, direct_version=str(tile.parsed_version),
+                                     included_version=seen_versions[tile.unique_id][0],
                                      included_source=seen_versions[tile.unique_id][1])
                 elif tile.unique_id not in seen_versions:
                     seen_versions[tile.unique_id] = (tile.parsed_version, 'direct')
@@ -162,12 +162,12 @@ class DependencyManager (object):
                 #Check for version conflicts between two included dependencies
                 for inc_dep, inc_ver in tile.dependency_versions.iteritems():
                     if inc_dep in seen_versions and seen_versions[inc_dep][0].coexistence_class != inc_ver.coexistence_class:
-                        raise BuildError("Version conflict between component used to build two of our dependencies", 
+                        raise BuildError("Version conflict between component used to build two of our dependencies",
                                      component_id=inc_dep,
-                                     dependency_one=tile.unique_id, version_one=str(inc_ver), 
-                                     dependency_two=seen_versions[inc_dep][1], 
+                                     dependency_one=tile.unique_id, version_one=str(inc_ver),
+                                     dependency_two=seen_versions[inc_dep][1],
                                      version_two=seen_versions[inc_dep][0])
                     elif inc_dep not in seen_versions:
                         seen_versions[inc_dep] = (inc_ver, tile.unique_id)
-            except (ArgumentError,EnvironmentError):
+            except (ArgumentError,ExternalError):
                 raise ArgumentError("Not all dependencies are satisfied for tile", uninstalled_dep=dep['unique_id'])

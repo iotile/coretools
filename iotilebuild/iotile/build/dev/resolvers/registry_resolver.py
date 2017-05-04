@@ -1,6 +1,6 @@
 import os
 from depresolver import DependencyResolver
-from iotile.core.exceptions import ArgumentError, EnvironmentError, IOTileException
+from iotile.core.exceptions import ArgumentError, ExternalError, IOTileException
 from iotile.core.utilities.typedargs import iprint
 from iotile.core.dev.iotileobj import IOTile
 
@@ -29,12 +29,12 @@ class ComponentRegistryResolver (DependencyResolver):
         # raise an error.
 
         if not os.path.exists(comp.output_folder):
-            raise EnvironmentError("Component found in registry but has not been built", path=comp.folder, name=comp.name, suggestion="Run iotile build on this component first")
+            raise ExternalError("Component found in registry but has not been built", path=comp.folder, name=comp.name, suggestion="Run iotile build on this component first")
 
         try:
             IOTile(comp.output_folder)
         except IOTileException:
-            raise EnvironmentError("Component found in registry but its build/output folder is not valid", path=comp.folder, name=comp.name, suggestion="Cleanly rebuild the component")
+            raise ExternalError("Component found in registry but its build/output folder is not valid", path=comp.folder, name=comp.name, suggestion="Cleanly rebuild the component")
 
         self._copy_folder_contents(comp.output_folder, destdir)
         return {'found': True}

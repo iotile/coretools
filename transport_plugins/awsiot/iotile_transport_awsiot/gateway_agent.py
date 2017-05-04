@@ -6,7 +6,7 @@ import messages
 from monotonic import monotonic
 from mqtt_client import OrderedAWSIOTClient
 from topic_validator import MQTTTopicValidator
-from iotile.core.exceptions import EnvironmentError, ArgumentError, ValidationError
+from iotile.core.exceptions import ExternalError, ArgumentError, ValidationError
 
 
 class AWSIOTGatewayAgent(object):
@@ -105,7 +105,7 @@ class AWSIOTGatewayAgent(object):
         try:
             self.client.connect(self.slug)
         except Exception, exc:
-            raise EnvironmentError("Could not connect to AWS IOT", error=str(exc))
+            raise ExternalError("Could not connect to AWS IOT", error=str(exc))
 
         self.topics = MQTTTopicValidator(self.prefix + 'devices/{}'.format(self.slug))
         self._bind_topics()
