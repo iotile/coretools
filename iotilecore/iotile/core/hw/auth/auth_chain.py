@@ -3,7 +3,7 @@
 
 import pkg_resources
 from auth_provider import AuthProvider, KnownSignatureMethods
-from iotile.core.exceptions import NotFoundError, EnvironmentError
+from iotile.core.exceptions import NotFoundError, ExternalError
 
 class ChainedAuthProvider(AuthProvider):
     """An AuthProvider that delegates operations to a list of subproviders
@@ -28,7 +28,7 @@ class ChainedAuthProvider(AuthProvider):
             priority, provider, args = entry.load()
 
             if provider not in self._auth_factories:
-                raise EnvironmentError("Default authentication provider list references unknown auth provider", provider_name=provider, known_providers=self._auth_factories.keys())
+                raise ExternalError("Default authentication provider list references unknown auth provider", provider_name=provider, known_providers=self._auth_factories.keys())
             configured = self._auth_factories[provider](args)
             sub_providers.append((priority, configured))
 

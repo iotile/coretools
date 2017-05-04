@@ -156,9 +156,9 @@ class TypeSystemError(IOTileException):
 
     pass
 
-class EnvironmentError(IOTileException):
+class ExternalError(IOTileException):
     """
-    The environment is not properly configured for the MoMo API command that was called.
+    The external environment is not properly configured for the MoMo API command that was called.
     This can be because a required program was not installed or accessible or because
     a required environment variable was not defined.
     """

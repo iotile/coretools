@@ -236,7 +236,7 @@ class HardwareManager:
         """
 
         if self._stream_queue is None:
-            raise EnvironmentError("You have to enable streaming before you can wait for reports")
+            raise ExternalError("You have to enable streaming before you can wait for reports")
 
         reports = []
 

@@ -32,7 +32,7 @@ class IOTile(object):
             with open(modfile, "r") as f:
                 settings = json.load(f)
         except IOError:
-            raise EnvironmentError("Could not load module_settings.json file, make sure this directory is an IOTile component", path=self.folder)
+            raise ExternalError("Could not load module_settings.json file, make sure this directory is an IOTile component", path=self.folder)
 
         if 'module_name' in settings:
             modname = settings['module_name']
