@@ -2,6 +2,10 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
+## 1.4.4
+
+- Update exception hierarchy
+
 ## 1.4.3
 
 - Add advertisement flag that we support fast write without response actions on our RPC interface.
