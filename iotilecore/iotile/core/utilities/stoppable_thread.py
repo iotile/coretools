@@ -5,7 +5,7 @@ import threading
 import inspect
 import traceback
 import time
-from iotile.core.exceptions import TimeoutError
+from iotile.core.exceptions import TimeoutExpiredError
 
 
 class StoppableWorkerThread(threading.Thread):
@@ -123,14 +123,14 @@ class StoppableWorkerThread(threading.Thread):
         flag = self._running.wait(timeout)
 
         if flag is False:
-            raise TimeoutError("Timeout waiting for thread to start running")
+            raise TimeoutExpiredError("Timeout waiting for thread to start running")
 
     def stop(self, timeout=None, force=False):
         """Stop the worker thread and synchronously wait for it to finish.
 
         Args:
             timeout (float): The maximum time to wait for the thread to stop
-                before raising a TimeoutError.  If force is True, TimeoutError
+                before raising a TimeoutExpiredError.  If force is True, TimeoutExpiredError
                 is not raised and the thread is just marked as a daemon thread
                 so that it does not block cleanly exiting the process.
             force (bool): If true and the thread does not exit in timeout seconds
@@ -142,4 +142,4 @@ class StoppableWorkerThread(threading.Thread):
         self.join(timeout)
 
         if self.is_alive() and force is False:
-            raise TimeoutError("Error waiting for background thread to exit", timeout=timeout)
+            raise TimeoutExpiredError("Error waiting for background thread to exit", timeout=timeout)

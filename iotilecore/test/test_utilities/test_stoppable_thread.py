@@ -8,7 +8,7 @@ else:
     import queue as queue
 
 from iotile.core.utilities.stoppable_thread import StoppableWorkerThread
-from iotile.core.exceptions import TimeoutError
+from iotile.core.exceptions import TimeoutExpiredError
 
 def test_running_function():
     """Make sure we can run a function in the thread
@@ -88,7 +88,7 @@ def test_failed_stop():
     thread.start()
     thread.wait_running(timeout=1.0)
 
-    with pytest.raises(TimeoutError):
+    with pytest.raises(TimeoutExpiredError):
         thread.stop(timeout=0.01)
 
 def test_failed_stop_force():

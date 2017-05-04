@@ -10,7 +10,7 @@
 
 class IOTileException(Exception):
     """
-    All MoMo API routines, upon encountering unrecoverable errors,
+    All IOTile API routines, upon encountering unrecoverable errors,
     will throw an exception that is a subclass of this exception.
     All other exceptions are caught and rethrown as an APIError
     for consistency.  Calling methods can assume that all annotated
@@ -83,7 +83,7 @@ class NotFoundError(IOTileException):
 
     pass
 
-class TimeoutError(IOTileException):
+class TimeoutExpiredError(IOTileException):
     """
     The method timed out, usually indicating that a communication failure
     occurred, either with another process or with a hardware module.
