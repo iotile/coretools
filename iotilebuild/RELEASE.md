@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.4.1
+
+- Rename exceptions for compatibility
+
 ## 2.4.0
 
 - Add support for showing build commands during builds by setting the build:show-commands
