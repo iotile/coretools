@@ -1,7 +1,7 @@
 from threading import Thread, Event
 from Queue import Queue, Empty
 
-class TimeoutError(Exception):
+class InternalTimeoutError(Exception):
     pass
 
 class AsyncPacketBuffer:
@@ -41,7 +41,7 @@ class AsyncPacketBuffer:
         try:
             return self.queue.get(timeout=timeout)
         except Empty:
-            raise TimeoutError("Timeout waiting for packet in AsyncPacketBuffer")
+            raise InternalTimeoutError("Timeout waiting for packet in AsyncPacketBuffer")
 
 
 def ReaderThread(filelike, read_queue, header_length, length_function, stop):
