@@ -42,7 +42,7 @@ class SignedListReport(IOTileReport):
         return length
 
     @classmethod
-    def FromReadings(cls, uuid, readings, signature_method=auth_provider.HashOnlySHA256Signature, signer=None, report_id=IOTileReading.InvalidReadingID, selector=0xFFFF):
+    def FromReadings(cls, uuid, readings, signature_method=auth_provider.HashOnlySHA256Signature, signer=None, report_id=IOTileReading.InvalidReadingID, selector=0xFFFF, streamer=0, sent_timestamp=0):
         """Generate an instance of the report format from a list of readings and a uuid.
 
         The signed list report is created using the passed readings and signed using the specified method
@@ -62,6 +62,8 @@ class SignedListReport(IOTileReport):
                 since devices generate ids sequentially.
             selector (int): The streamer selector of this report.  This can be anything but if the report came from
                 a device, it would correspond with the query the device used to pick readings to go into the report.
+            streamer (int): The streamer id that this reading was sent from.
+            sent_timestamp (int): The device's uptime that sent this report.
         """
 
         lowest_id = IOTileReading.InvalidReadingID
@@ -76,7 +78,7 @@ class SignedListReport(IOTileReport):
             lowest_id = min(unique_readings)
             highest_id = max(unique_readings)
 
-        header = struct.pack("<BBHLLLBBH", cls.ReportType, len_low, len_high, uuid, report_id, 0, signature_method, 0, selector)
+        header = struct.pack("<BBHLLLBBH", cls.ReportType, len_low, len_high, uuid, report_id, sent_timestamp, signature_method, streamer, selector)
         header = bytearray(header)
 
         packed_readings = bytearray()

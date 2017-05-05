@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.14.2
+
+- Allow specifying sent streamer and timestamp when creating signed list reports
+
 ## 3.14.1
 
 - Allow specifying the streamer selector and report id when creating signed list
