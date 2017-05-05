@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.14.1
+
+- Allow specifying the streamer selector and report id when creating signed list
+  reports.
+
 ## 3.14.0
 
 - Fix exception hierarchy to remove EnvironmentError and TimeoutError that

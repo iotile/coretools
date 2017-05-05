@@ -42,8 +42,12 @@ class SignedListReport(IOTileReport):
         return length
 
     @classmethod
-    def FromReadings(cls, uuid, readings, signature_method=auth_provider.HashOnlySHA256Signature, signer=None):
-        """Generate an instance of the report format from a list of readings and a uuid
+    def FromReadings(cls, uuid, readings, signature_method=auth_provider.HashOnlySHA256Signature, signer=None, report_id=IOTileReading.InvalidReadingID, selector=0xFFFF):
+        """Generate an instance of the report format from a list of readings and a uuid.
+
+        The signed list report is created using the passed readings and signed using the specified method
+        and AuthProvider.  If no auth provider is specified, the report is signed using the default authorization
+        chain.
 
         Args:
             uuid (int): The uuid of the deviec that this report came from
@@ -52,6 +56,12 @@ class SignedListReport(IOTileReport):
                 by an auth_provider)
             signer (AuthProvider): An optional preconfigured AuthProvider that should be used to sign this
                 report.  If no AuthProvider is provided, the default ChainedAuthProvider is used.
+            report_id (int): The id of the report.  If not provided it defaults to IOTileReading.InvalidReadingID.
+                Note that you can specify anything you want for the report id but for actual IOTile devices
+                the report id will always be greater than the id of all of the readings contained in the report
+                since devices generate ids sequentially.
+            selector (int): The streamer selector of this report.  This can be anything but if the report came from
+                a device, it would correspond with the query the device used to pick readings to go into the report.
         """
 
         lowest_id = IOTileReading.InvalidReadingID
@@ -62,11 +72,11 @@ class SignedListReport(IOTileReport):
         len_high = report_len >> 8
 
         unique_readings = [x.reading_id for x in readings if x.reading_id != IOTileReading.InvalidReadingID]
-        if len(unique_readings) > 0:  
+        if len(unique_readings) > 0:
             lowest_id = min(unique_readings)
             highest_id = max(unique_readings)
 
-        header = struct.pack("<BBHLLLBBH", cls.ReportType, len_low, len_high, uuid, 0, 0, signature_method, 0, 0xFFFF)
+        header = struct.pack("<BBHLLLBBH", cls.ReportType, len_low, len_high, uuid, report_id, 0, signature_method, 0, selector)
         header = bytearray(header)
 
         packed_readings = bytearray()
@@ -85,7 +95,7 @@ class SignedListReport(IOTileReport):
             signature = signer.sign(uuid, signature_method, signed_data)
         except NotFoundError:
             raise ExternalError("Could not sign report because no AuthProvider supported the requested signature method for the requested device", device_id=uuid, signature_method=signature_method)
-        
+
         footer = struct.pack("16s", str(signature['signature'][:16]))
         footer = bytearray(footer)
 
@@ -151,7 +161,7 @@ class SignedListReport(IOTileReport):
         """Turn this report into a serialized bytearray that could be decoded with a call to decode
 
         If we were generated from a binary report, just return that so that the signature remains intact,
-        otherwise generate one and attempt to sign it 
+        otherwise generate one and attempt to sign it
         """
 
         if hasattr(self, 'raw_report'):
