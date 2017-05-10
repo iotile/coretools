@@ -2,6 +2,10 @@
 
 All major changes in each released version of the iotile-ext-cloud plugin are listed here.
 
+## 0.2.2
+
+- Fix jwt token refresh to work on non default iotile.cloud servers.
+
 ## 0.2.1
 
 - Add cloud:server config variable for configuring different domains for talking to iotile.cloud.

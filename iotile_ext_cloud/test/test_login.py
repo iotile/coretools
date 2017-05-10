@@ -73,3 +73,16 @@ def test_alternative_domains(registry):
 
     assert registry.get_config('arch:cloud_user') == 'user1'
     assert registry.get_config('arch:cloud_token') == 'big-token'
+
+    cloud = IOTileCloud()
+
+    payload = {
+        'token': 'new-token'
+    }
+
+    with requests_mock.Mocker() as mocker:
+        mocker.post('https://testcloud.com/api/v1/auth/api-jwt-refresh/', json=payload)
+
+        cloud.refresh_token()
+
+    assert registry.get_config('arch:cloud_token') == 'new-token'

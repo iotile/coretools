@@ -153,8 +153,11 @@ class IOTileCloud(object):
     def refresh_token(self):
         """Attempt to refresh out cloud token with iotile.cloud
         """
+        conf = ConfigManager()
+        domain = conf.get('cloud:server')
 
-        url = 'https://iotile.cloud/api/v1/auth/api-jwt-refresh/'
+        url = '{}/api/v1/auth/api-jwt-refresh/'.format(domain)
+
         resp = requests.post(url, json={'token': self.token})
         if resp.status_code != 200:
             raise ExternalError("Could not refresh token", error_code=resp.status_code)
