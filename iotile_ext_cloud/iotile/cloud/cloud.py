@@ -6,6 +6,7 @@ import requests
 from iotile_cloud.api.connection import Api
 from iotile_cloud.api.exceptions import RestHttpBaseException, HttpNotFoundError
 from iotile.core.dev.registry import ComponentRegistry
+from iotile.core.dev.config import ConfigManager
 from iotile.core.exceptions import ArgumentError, ExternalError
 from iotile.core.utilities.typedargs import context, param, return_type, annotated
 
@@ -17,13 +18,16 @@ class IOTileCloud(object):
 
     def __init__(self):
         reg = ComponentRegistry()
+        conf = ConfigManager()
+
+        domain = conf.get('cloud:server')
 
         try:
             token = reg.get_config('arch:cloud_token')
         except ArgumentError:
             raise ExternalError("No stored iotile cloud authentication information", suggestion='Call iotile config link_cloud with your iotile cloud username and password')
 
-        self.api = Api()
+        self.api = Api(domain=domain)
         self.api.set_token(token)
         self.token = token
 
