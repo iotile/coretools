@@ -3,7 +3,7 @@
 # info@welldone.org
 # http://welldone.org
 #
-# Modifications to this file from the original created at WellDone International 
+# Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
 import sys
@@ -24,18 +24,8 @@ def main():
     type_system.interactive = True
     line = sys.argv[1:]
 
-    norc = False
-    if len(line) > 0 and line[0] == '--norc':
-        norc = True
-        line = line[1:]
+    shell = HierarchicalShell('iotile')
 
-    if len(line) > 0 and line[0] == '--rcfile':
-        rc = RCFile('iotile')
-        print rc.path
-        return 0
-
-    shell = HierarchicalShell('iotile', no_rc=norc)
-        
     shell.root_add("registry", "iotile.core.dev.annotated_registry,registry")
     shell.root_add("config", "iotile.core.dev.config,ConfigManager")
     shell.root_add('hw', "iotile.core.hw.hwmanager,HardwareManager")
@@ -132,7 +122,7 @@ def main():
             if shell.finished():
                 break
 
-    #Make sure to catch ^C and ^D so that we can cleanly dispose of subprocess resources if 
+    #Make sure to catch ^C and ^D so that we can cleanly dispose of subprocess resources if
     #there are any.
     except EOFError:
         print ""
