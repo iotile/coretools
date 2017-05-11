@@ -3,7 +3,7 @@
 # info@welldone.org
 # http://welldone.org
 #
-# Modifications to this file from the original created at WellDone International 
+# Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
 # Caveats and possible issues
@@ -27,6 +27,7 @@ setup(
     version=version.version,
     license="LGPLv3",
     install_requires=[
+        "crcmod>=1.7.0",
         "iotile-core>=3.12.0",
         "sphinx>=1.3.1",
         "Cheetah>=2.4.4",
@@ -35,7 +36,8 @@ setup(
         "toposort>=1.5.0",
         "wheel>=0.29",
         "setuptools>=32",
-        "pycparser>=2.17"
+        "pycparser>=2.17",
+        "pyparsing>=2.0.3"
     ],
     include_package_data=True,
     entry_points={'iotile.plugin': ['.build = iotile.build.plugin:setup_plugin'],

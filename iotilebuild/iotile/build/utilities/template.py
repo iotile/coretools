@@ -56,12 +56,12 @@ class RecursiveTemplate:
         return str(templ)
 
     def format_file(self, file_in, file_out):
-        templ = Cheetah.Template.Template(file = file_in, searchList=self.objs)
+        templ = Cheetah.Template.Template(file=file_in, searchList=self.objs)
 
-        with open(file_out, "w") as f:
+        with open(file_out, "wb") as f:
             f.write(str(templ))
 
-    def _ensure_path(self,path):
+    def _ensure_path(self, path):
         if not os.path.exists(path):
             os.makedirs(path)
 
