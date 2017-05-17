@@ -1,3 +1,4 @@
+
 Creating Your First IOTile Device
 ---------------------------------
 
@@ -43,7 +44,7 @@ followed by the arguments.  The device synchronously executes the function and r
 back to you as if you had just invoked a function locally on your own computer.
 
 Since IOTile devices typically contain small embedded microcontrollers, the low-level binary encoding
-for how RPCs are transmitted to the device is not user-friendly, e.g. the RPCs are identified with opaque
+for how RPCs are transmitted to the device is not user-friendly, e.g. the RPCs are identified with unique
 16-bit numbers rather than string names and all arguments and responses are packed into 20 byte
 binary buffers.  
 
@@ -177,7 +178,7 @@ names.  We also gave the device an IOTile ID of 1, which we'll use to connect to
 
 So, let's try to interact with our virtual device::
 
-    $ iotile hw --port=virtual:./virtual_dev.py
+    $ iotile hw --port=virtual:./demo_device.py
     (HardwareManager) connect_direct 1
     (HardwareManager) controller
     HardwareError: Could not find proxy object for tile
@@ -188,7 +189,7 @@ So, let's try to interact with our virtual device::
     $
 
 We told the ``iotile`` tool that we wanted to connect to an IOTile device that was virtual and implemented in the python module
-``./virtual_dev.py``.  We connected to it (``connect_direct 1``) and tried to get a proxy object for it using the ``controller``
+``./demo_device.py``.  We connected to it (``connect_direct 1``) and tried to get a proxy object for it using the ``controller``
 command but we were told that CoreTools couldn't find a proxy module for it.  
 
 This makes sense because we haven't created the proxy module yet.  So, lets create a basic proxy module and try again.  Add the
@@ -213,7 +214,7 @@ following to ``demo_proxy.py``::
 The only required function that we need to implement is the classmethod ``ModuleName`` that tells CoreTools what IOTile devices
 should load this proxy module.  Now let's try to connect to our virtual device again::
 
-    $ iotile hw --port=virtual:./virtual_dev.py connect_direct 1 controller
+    $ iotile hw --port=virtual:./demo_device.py connect_direct 1 controller
     (DemoProxy) quit
     $
 
@@ -224,7 +225,7 @@ Adding an RPC That Returns Data
 ###############################
 
 Let's add an RPC to our virtual device name ``get_temperature`` that returns the (fake) temperature of the device.  Add the following to 
-your virtual_dev.py DemoVirtualDevice class::
+your demo_device.py DemoVirtualDevice class::
 
     
     @rpc(8, 0x8000, "", "L")
@@ -253,7 +254,7 @@ Add the following to your ``demo_proxy.py`` ``DemoProxyObject`` class::
 
 Now let's call our new RPC::
 
-    $ iotile hw --port=virtual:./virtual_dev.py connect_direct 1 controller
+    $ iotile hw --port=virtual:./demo_device.py connect_direct 1 controller
     (DemoProxy) <TAB><TAB>
     back             get_temperature  quit             status           tile_status
     config_manager   help             reset            tile_name        tile_version
@@ -300,7 +301,7 @@ Then we need to add a corresponding call on the proxy object::
 
 Now we can call it::
 
-    $ iotile hw --port=virtual:./virtual_dev.py connect_direct 1 controller
+    $ iotile hw --port=virtual:./demo_device.py connect_direct 1 controller
     (DemoProxy) historical_temps
     273.0
     280.0
@@ -315,7 +316,7 @@ Setting Values Using an RPC
 
 Up until now, we've only received information from RPCs, so lets create one that lets us set the temperature that the virtual device returns when you 
 call `get_temperature`.  We'll need to create a member variable to store the temperature and a new RPC `set_temperature` that sets its value.  Adjust
-``virtual_dev.py`` to look like this::
+``demo_device.py`` to look like this::
 
     """Virtual IOTile device for CoreTools Walkthrough
     """
@@ -390,7 +391,7 @@ Note that we need to explicitly pack our arguments into a binary structure using
 
 Let's try out our ``set_temperature`` and ``get_temperature`` functions::
 
-    $ iotile hw --port=virtual:./virtual_dev.py connect_direct 1 controller
+    $ iotile hw --port=virtual:./demo_device.py connect_direct 1 controller
     (DemoProxy) get_temperature
     273.0
     (DemoProxy) set_temperature 15
