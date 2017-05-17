@@ -37,7 +37,9 @@ and Python 3.
         #On Windows CMD
         iotile\Scripts\activate.bat
 
-Installing CoreTools is just a normal pip install::
+Note that *virtualenv* only needs to be installed once; iotile must be activated in a every new virtual enviroment. 
+
+Installing CoreTools is just a normal pip install:
 
     pip install iotile-core iotile-test iotile-transport-bled112
 
@@ -156,6 +158,8 @@ Save this script as ``example.py`` and let's run it::
 
     python example.py
     Tile Version: (1, 0, 0)
+
+Clearly, this code find creates and hardware manager and finds the version number. The manager is instantiated in the with-as statement. The following 3 lines connect, gain control, and find the version respectively. 
 
 Note how every command in the script mapped to a single line in ``iotile`` and
 how the arguments you passed were the same.  There is always a 1:1 mapping like
