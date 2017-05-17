@@ -5,7 +5,16 @@ import datetime
 from iotile.core.exceptions import NotFoundError, ArgumentError
 
 class IOTileReading(object):
-    """Base class for readings streamed from IOTile device
+    """Base class for readings streamed from IOTile device.
+
+    Each reading represents a single time/value pair sent from an IOTile Device.
+    Since many IOTile Devices do not have a hardware realtime clock, the timestamp
+    that is assigned to a reading may only be a relative interval from a fixed
+    event in the past, like the time the device turned on.
+
+    If the user knows the absolute time for this event they can pass it as a datetime
+    in time_base to turn the relative reading timestamp into an absolute datetime
+    accessible as reading_time.
 
     Args:
         raw_time (int): the number of seconds since the device turned on
@@ -16,7 +25,7 @@ class IOTileReading(object):
         reading_id (int): An optional unique identifier for this reading that allows
             deduplication.  If no reading id is passed, InvalidReadingID is used.
         stream (int): The stream that this reading is part of
-        value (bytearray): the raw reading value
+        value (int): The raw reading value
     """
 
     InvalidReadingID = 0
@@ -94,7 +103,7 @@ class IOTileReport(object):
         self.decoded = False
         self.verified = False
 
-        #If we're able to, decode the report immediately
+        # If we're able to, decode the report immediately
         if not encrypted:
             self.visible_readings = self.decode()
             self.decoded = True

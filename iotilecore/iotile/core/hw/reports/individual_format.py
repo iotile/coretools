@@ -9,7 +9,7 @@ from iotile.core.exceptions import ArgumentError
 
 
 class IndividualReadingReport(IOTileReport):
-    """Report format where every reading is packaged in a 20 byte frame
+    """Report format where every reading is packaged in a 20 byte frame.
 
     Args:
         rawreport (bytearray): The raw data of this report
