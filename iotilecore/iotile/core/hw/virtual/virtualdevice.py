@@ -130,7 +130,7 @@ class VirtualIOTileDevice(object):
                 self.register_rpc(value.rpc_addr, value.rpc_id, value)
 
     def create_worker(self, func, interval, *args, **kwargs):
-        """Spawn a worker thread running func
+        """Spawn a worker thread running func.
 
         The worker will be automatically be started when start() is called
         and terminated when stop() is called on this VirtualIOTileDevice.
@@ -138,7 +138,7 @@ class VirtualIOTileDevice(object):
 
         create_worker must not be called after stop() has been called.  If it
         is called before start() is called, the thread is started when start()
-        is called, otherwise it is called immediately.
+        is called, otherwise it is started immediately.
 
         Args:
             func (callable): Either a function that will be called in a loop
@@ -193,7 +193,7 @@ class VirtualIOTileDevice(object):
         self._push_channel.stream(report)
 
     def stream_realtime(self, stream, value):
-        """Stream a realtime value as an IndividualReadingReport
+        """Stream a realtime value as an IndividualReadingReport.
 
         If the streaming interface of the VirtualInterface this
         VirtualDevice is attached to is not opened, the realtime

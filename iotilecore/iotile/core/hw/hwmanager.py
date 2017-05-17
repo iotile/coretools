@@ -149,8 +149,18 @@ class HardwareManager:
 
     @annotated
     def enable_streaming(self):
-        """
-        Enable streaming of sensor graph data over this interface
+        """Enable streaming of report data from the connected device.
+
+        This function will create an internal queue to receive and store
+        reports until the user looks at them and then inform the connected
+        IOTile device that is should begin streaming data.
+
+        This is done by telling the underlying DeviceAdapter managing the
+        communication with the device that it should open the device's
+        streaming interface.
+
+        There is currently no way to close the streaming interface except
+        by disconnecting from the device and then reconnecting to it.
         """
 
         self._stream_queue = self.stream.enable_streaming()
@@ -207,7 +217,7 @@ class HardwareManager:
             pass
 
     def iter_reports(self, blocking=False):
-        """Iterate over reports that have been received
+        """Iterate over reports that have been received.
 
         If blocking is True, this iterator will never stop.  Otherwise
         it will iterate over all reports currently in the queue (and those
