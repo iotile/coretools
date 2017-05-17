@@ -6,5 +6,5 @@ and use your own IOTile Devices.  They don't require any special hardware to
 run, just a computer with CoreTools installed.  
 
 .. include:: tutorials/first-iotile-device.rst
-.. include:: tutorials/reporting-data-to-cloud.rst
+.. include:: tutorials/streaming-data.rst
 
