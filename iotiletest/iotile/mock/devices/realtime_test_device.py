@@ -17,20 +17,26 @@ class RealtimeTestDevice(VirtualIOTileDevice):
     this default setting.
 
     If no 'trace' argument is passed the device defaults to tracing the phrase
-    'Hello trace world.  ' every second.  If a 'trace' array is passed that overrides
+    'Hello trace world.  ' every second.  If a 'trace' array is passed, that overrides
     the default behavior.
 
     Args:
         args (dict): Any arguments that you want to pass to create this device.
             Supported args are:
-                iotile_id (int): The UUID used for this device (default: 1)
-                streams (dict): A map of strings with hex numbers to tuples of (interval, value)
+
+                iotile_id (int)
+                    The UUID used for this device.  If no UUID is specified, the default value of 1 is used.
+
+                streams (dict):
+                    A map of strings with hex numbers to tuples of (interval, value)
                     where interval is a float that expresses how often the stream should stream
                     in seconds and value is an integer that is sent as the value every interval
                     as a realtime reading (IndividualReadingReport).  The stream id is the key of the
                     streams dict which should be a string encoding of a hex number including
-                    the prefix 0x so that it can be parsed with int(key, 0)
-                trace (list): A list of tuples which are (float, string) lists
+                    the prefix 0x so that it can be parsed with int(key, 0).
+
+                trace (list):
+                    A list of tuples which are (float, string) lists
                     that will trace the fixed string every fixed interval given
                     by the first float argument in seconds.
     """
