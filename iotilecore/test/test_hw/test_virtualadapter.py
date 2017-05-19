@@ -171,11 +171,7 @@ def test_realtime_tracing(tracer_hw):
 def test_virtual_scan(realtime_scan_hw):
     """Make sure we can scan for virtual devices and connect directly without connect_direct
     """
-    #devices = report_hw.scan()
-
+    devices = report_hw.scan()
+    
+    assert len(devices) > 0     
     realtime_scan_hw.connect('1')
-    realtime_scan_hw.enable_streaming()
-
-    reports = realtime_scan_hw.wait_reports(10)
-    stream1 = [x for x in reports if x.visible_readings[0].stream == 0x100a]
-    assert len(stream1) != 0
