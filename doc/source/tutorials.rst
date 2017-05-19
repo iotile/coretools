@@ -7,4 +7,4 @@ run, just a computer with CoreTools installed.
 
 .. include:: tutorials/first-iotile-device.rst
 .. include:: tutorials/streaming-data.rst
-
+.. include:: tutorials/virtual-interfaces.rst
