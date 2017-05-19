@@ -8,6 +8,8 @@ IOTile based devices.  It is divided into a set of python packages that work
 together to create an extensible but easy to use framework that supports any 
 IOTile device.
 
+Read the latest [Documentation](http://coretools.readthedocs.io/en/latest/)!
+
 ### Tool Status
 
 | Tool         | PyPI Version                                                                                                 |

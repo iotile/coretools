@@ -74,7 +74,7 @@ rather than embedded C.
 The overall picture then looks like the figure below.
 
 .. figure:: virtual_interface_layers.png
-    :width: 50%
+    :width: 30%
     :alt: Stack diagram showing virtual Interfaces
 
     The stack that allows interacting with a Virtual IOTile Device from another
