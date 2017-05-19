@@ -156,3 +156,15 @@ def test_realtime_tracing(tracer_hw):
 
     wrong_data = [x for x in words if (x != 'hello' and x != 'goodbye' and x != '')]
     assert len(wrong_data) == 0
+
+def test_virtual_scan(realtime_hw):
+    """Make sure we can scan for virtual devices and connect directly without connect_direct
+    """
+    #devices = report_hw.scan()
+
+    realtime_hw.connect('1')
+    realtime_hw.enable_streaming()
+
+    reports = realtime_hw.wait_reports(10)
+    stream1 = [x for x in reports if x.visible_readings[0].stream == 0x100a]
+    assert len(stream1) != 0
