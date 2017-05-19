@@ -91,7 +91,8 @@ class VirtualDeviceAdapter(DeviceAdapter):
         self.devices = loaded_devs
         self.scan_interval = self.get_config('scan_interval', 1.0)
         self.last_scan = None
-
+        
+        self.set_config('probe_required', True)
         self.set_config('probe_supported', True)
 
     def _find_device_script(self, script_path):
