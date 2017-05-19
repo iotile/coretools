@@ -172,11 +172,20 @@ Just like in the first tutorial, create a class for the virtual device::
 
             self.stream_realtime(0x1000, random.randint(32, 100))
 
-Save your device file as `demo_streamer.py` and then connect to it using the
-iotile tool::
+Save your device file as `demo_streamer.py`. 
+
+This time we'll scan for the device before connecting to it. Scanning in real life will display all ofthe devices you are able to connect to, as well as the unique id (uuid) of each device. You can then connect to it using the
+iotile tool *connect*::
 
     (iotile-virtualenv) > iotile hw --port=virtual:./demo_streamer.py
-    (HardwareManager) connect_direct 1
+    (HardwareManager) scan
+	{
+	    "connection_string": "1",
+	    "expiration_time": "2017-05-26 13:06:54.800662",
+	    "signal_strength": 100,
+	    "uuid": 1
+	}
+    (HardwareManager) connect 1
     (HardwareManager) enable_streaming
     (HardwareManager) count_reports
     1
@@ -203,7 +212,7 @@ in::
     from iotile.core.hw.reports import IndividualReadingReport, IOTileReading
 
     with HardwareManager(port='virtual:./demo_streamer.py') as hw:
-        hw.connect_direct('1')
+        hw.connect('1')
         hw.enable_streaming()
 
         # hw.iter_reports() will run forever until we kill the program
