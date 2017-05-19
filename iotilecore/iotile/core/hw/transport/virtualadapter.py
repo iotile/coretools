@@ -94,7 +94,7 @@ class VirtualDeviceAdapter(DeviceAdapter):
         print("changes executed")
 
         self.set_config('probe_required', True)
-        self.set_config('probe_supported', True)
+        #self.set_config('probe_supported', True)
 
     def _find_device_script(self, script_path):
         """Import a virtual device from a file rather than an installed module
