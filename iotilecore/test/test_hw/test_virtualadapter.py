@@ -171,7 +171,7 @@ def test_realtime_tracing(tracer_hw):
 def test_virtual_scan(realtime_scan_hw):
     """Make sure we can scan for virtual devices and connect directly without connect_direct
     """
-    devices = report_hw.scan()
+    devices = realtime_scan_hw.scan()
     
     assert len(devices) > 0     
     realtime_scan_hw.connect('1')
