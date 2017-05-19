@@ -57,6 +57,17 @@ def realtime_hw():
 
     hw.disconnect()
 
+@pytest.fixture
+def realtime_scan_hw():
+    conf_file = os.path.join(os.path.dirname(__file__), 'fast_realtime_test.json')
+
+    if '@' in conf_file or ',' in conf_file or ';' in conf_file:
+        pytest.skip('Cannot pass device config because path has [@,;] in it')
+
+    hw = HardwareManager('virtual:realtime_test@%s' % conf_file)
+    yield hw
+
+    hw.disconnect()
 
 @pytest.fixture
 def tracer_hw():
@@ -157,14 +168,14 @@ def test_realtime_tracing(tracer_hw):
     wrong_data = [x for x in words if (x != 'hello' and x != 'goodbye' and x != '')]
     assert len(wrong_data) == 0
 
-def test_virtual_scan(realtime_hw):
+def test_virtual_scan(realtime_scan_hw):
     """Make sure we can scan for virtual devices and connect directly without connect_direct
     """
     #devices = report_hw.scan()
 
-    realtime_hw.connect('1')
-    realtime_hw.enable_streaming()
+    realtime_scan_hw.connect('1')
+    realtime_scan_hw.enable_streaming()
 
-    reports = realtime_hw.wait_reports(10)
+    reports = realtime_scan_hw.wait_reports(10)
     stream1 = [x for x in reports if x.visible_readings[0].stream == 0x100a]
     assert len(stream1) != 0
