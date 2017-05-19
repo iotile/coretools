@@ -93,7 +93,7 @@ class VirtualDeviceAdapter(DeviceAdapter):
         self.last_scan = None
         print("changes executed")
 
-        self.setd_config('probe_required', True)
+        self.set_config('probe_required', True)
         self.set_config('probe_supported', True)
 
     def _find_device_script(self, script_path):
