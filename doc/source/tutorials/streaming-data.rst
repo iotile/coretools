@@ -174,11 +174,11 @@ Just like in the first tutorial, create a class for the virtual device::
 
 Save your device file as `demo_streamer.py`. 
 
-This time we'll scan for the device before connecting to it. Scanning in real life will display all ofthe devices you are able to connect to, as well as the unique id (uuid) of each device. You can then connect to it using the
+This time we'll scan for the device before connecting to it. Scanning in real life will display all of the devices you are able to connect to, as well as the unique id (uuid) of each device. You can then connect to it using the
 iotile tool *connect*::
-
+ 
     (iotile-virtualenv) > iotile hw --port=virtual:./demo_streamer.py
-    (HardwareManager) scan
+    (HardwareManager) scan  
 	{
 	    "connection_string": "1",
 	    "expiration_time": "2017-05-26 13:06:54.800662",
