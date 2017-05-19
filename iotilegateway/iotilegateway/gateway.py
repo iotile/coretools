@@ -34,11 +34,23 @@ class IOTileGateway(threading.Thread):
     event loop and implicitly call wait to synchronously wait until the gateway loop actually
     stops.
 
+    IOTileGateway should be thought of as a turn-key gateway object that translates requests
+    for IOTile Device access received from one or more GatewayAgents into commands sent to
+    one or more DeviceAdapters.  It is a multi-device, multi-user, multi-protocol system that
+    can have many connections in flight at the same time, limited only by the available resources
+    on the computer that hosts it.
+
+    The arguments dictionary to IOTileGateway class has the same format as the json parameters
+    passed to the iotile-gateway script that is just a thin wrapper around this class.
+
     Args:
         config (dict): The configuration of the gateway.  There should be two keys set:
-            agents: a list of dictionaries with the name of the agent and any arguments that
+
+            agents (list):
+                a list of dictionaries with the name of the agent and any arguments that
                 should be passed to create it.
-            adapters: a list of dictionaries with the device adapters to add into the gateway
+            adapters (list):
+                a list of dictionaries with the device adapters to add into the gateway
                 and any argument sthat should be use to create each one.
     """
 

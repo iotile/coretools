@@ -6,11 +6,25 @@ import tornado.gen
 import uuid
 from iotile.core.exceptions import ArgumentError
 
+
 class DeviceManager(object):
-    """An object to manage connections to IOTile devices over one or more specific DeviceAdapters
+    """An object to manage connections to IOTile devices over one or more specific DeviceAdapters.
 
     DeviceManagers aggregate all of the available devices across each DeviceAdapter and route
-    connections to the appropriate adapter as connections are requested.
+    connections to the appropriate adapter as connections are requested.  An API is provided
+    to make connections to devices, monitor events that happen on devices and remember what
+    devices have been seen on different adapters.
+
+    It is assumed that devices have unique identifiers so if the same device is seen by multiple
+    DeviceAdapters, those different instances are unified and the best route to the device is
+    chosen when a user tries to connect to it.  For this purpose there is an abstract notion
+    of 'signal_strength' that is reported by each DeviceAdapter and used to rank which one
+    has a better route to a given device.
+
+    Args:
+        loop (tornado.ioloop.IOLoop): A tornado IOLoop object that this DeviceManager will run
+            itself in.  It is up to the caller to make sure the loop is started and run.  The
+            DeviceManager will run forever until the loop is stopped.
     """
 
     ConnectionIdleState = 0
