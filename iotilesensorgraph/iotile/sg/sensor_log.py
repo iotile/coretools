@@ -43,7 +43,7 @@ class SensorLog(object):
 
     def create_walker(self, selector):
         """Create a stream walker based on the given selector.
-
+`
         This function returns a StreamWalker subclass that will
         remain up to date and allow iterating over and popping readings
         from the stream(s) specified by the selector.

@@ -23,6 +23,7 @@ setup(
     license="LGPLv3",
     description="IOTile SensorGraph Management and Simulator",
     install_requires=[
+        "pyparsing>=2.2.0",
         "future>=0.16.0"
     ],
     entry_points={},
