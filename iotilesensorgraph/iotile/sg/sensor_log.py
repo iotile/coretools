@@ -6,6 +6,12 @@ you can limit the number of readings stored in any given FIFO as needed to put
 a hard cap on storage requirements.
 """
 
+from .engine import InMemoryStorageEngine
+from .stream import DataStreamSelector
+from .walker import VirtualStreamWalker
+from .exceptions import StreamEmptyError
+from iotile.core.exceptions import ArgumentError
+
 
 class SensorLog(object):
     """A storage engine holding multiple named FIFOs.
@@ -36,4 +42,55 @@ class SensorLog(object):
         self._model = model
 
     def create_walker(self, selector):
+        """Create a stream walker based on the given selector.
 
+        This function returns a StreamWalker subclass that will 
+        remain up to date and allow iterating over and popping readings
+        from the stream(s) specified by the selector.  
+
+        When the stream walker is done, it should be passed to 
+        destroy_walker so that it is removed from internal lists that
+        are used to always keep it in sync.
+
+        Args:
+            selector (DataStreamSelector): The selector describing the
+                streams that we want to iterate over.
+        """
+
+        if selector.buffered:
+            raise ArgumentError("Buffered stream walkers are not yet supported")
+
+        walker = VirtualStreamWalker(selector)
+        self._virtual_walkers.append(walker)
+
+        return walker
+
+    def destroy_walkers(self, walker):
+        """Destroy a previously created stream walker.
+
+        Args:
+            walker (StreamWalker): The walker to remove from internal updating
+                lists.
+        """
+
+        if walker.buffered:
+            self._queue_walkers.remove(walker)
+        else:
+            self._virtual_walkers.remove(walker)
+
+    def push(self, stream, reading):
+        """Push a reading into a stream, updating any associated stream walkers.
+
+        Args:
+            stream (DataStream): the stream to push the reading into
+            reading (IOTileReading): the reading to push
+        """
+
+        if stream.buffered:
+            raise ArgumentError("Buffered readings are not yet supported")
+
+        # Virtual streams live only in their walkers, so update each walker
+        # that contains this stream.
+        for walker in self._virtual_walkers:
+            if walker.matches(stream):
+                walker.push(stream, reading)

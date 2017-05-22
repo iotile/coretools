@@ -1,7 +1,7 @@
 from iotile.core.exceptions import IOTileException
 
 
-class StreamWalkerEmpty(IOTileException):
+class StreamEmptyError(IOTileException):
     """Thrown when a stream walker is empty."""
 
     pass

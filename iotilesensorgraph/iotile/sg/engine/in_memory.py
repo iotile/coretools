@@ -1,5 +1,7 @@
 """An in memory storage engine for sensor graph."""
 
+from collections import deque
+from iotile.sg import DataStream
 
 class InMemoryStorageEngine(object):
     """A simple in memory storage engine for sensor graph.
@@ -12,19 +14,21 @@ class InMemoryStorageEngine(object):
     """
 
     def __init__(self, model):
-        self.persistent = []
-        self.virtual_streams = {}
         self.model = model
+        self.streaming_data = deque()
+        self.storage_data = deque()
 
-    def count(self, stream):
-        """Count the number of readings in a stream.
+    def count(self):
+        """Count the number of readings.
 
         Args:
             stream (DataStream): The stream to count readings in
 
         Returns:
-            int: The number of readings stored for this stream.
+            (int, int: The number of readings in storage and streaming
         """
+
+        return (len(self.storage_data), len(self.streaming_data))
 
     def push(self, stream, value):
         """Store a new value for the given stream.
@@ -33,6 +37,11 @@ class InMemoryStorageEngine(object):
             stream (DataStream): The stream to store data for
             value (IOTileReading): The value to store
         """
+
+        if stream.stream_type == DataStream.OutputType:
+            self.streaming_data.append((stream, value))
+        else:
+            self.streaming_data.append((stream, value))
 
     def pop(self, stream):
         """Remove and return the oldest value for a stream.

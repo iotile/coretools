@@ -2,6 +2,8 @@
 
 from builtins import implements_iterator  # for python 3 compatibility
 from iotile.core.exceptions import ArgumentError
+from iotile.sg.exceptions import StreamEmptyError
+from iotile.sg.stream import DataStream
 
 
 class StreamWalker(object):
@@ -48,17 +50,44 @@ class VirtualStreamWalker(StreamWalker):
         just overwrites whatever was previously stored.
         """
 
+        if not self.matches(stream):
+            raise ArgumentError("Attempting to push reading to stream walker that does not match", selector=self.selector, stream=stream)
+
         self.reading = value
 
     def iter(self):
         """Iterate over the readings that are responsive to this stream walker."""
 
         if self.reading is not None:
-            reading = self.reading
             yield self.reading
 
     def count(self):
+        if self.selector.match_type == DataStream.ConstantType:
+            return 0xFFFFFFFF
+
         if self.reading is None:
             return 0
 
         return 1
+
+    def pop(self):
+        """Pop a reading off of this virtual stream and return it."""
+
+        if self.reading is None:
+            raise StreamEmptyError("Pop called on virtual stream walker without any data", selector=self.selector)
+
+        reading = self.reading
+
+        # If we're not a constant stream, we just exhausted ourselves
+        if self.selector.match_type != DataStream.ConstantType: 
+            self.reading = None
+
+        return reading
+
+    def peek(self):
+        """Peek at the oldest reading in this virtual stream."""
+
+        if self.reading is None:
+            raise StreamEmptyError("Pop called on virtual stream walker without any data", selector=self.selector)
+
+        return self.reading
