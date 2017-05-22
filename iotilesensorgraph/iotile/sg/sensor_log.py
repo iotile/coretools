@@ -7,8 +7,8 @@ a hard cap on storage requirements.
 """
 
 from .engine import InMemoryStorageEngine
-from .stream import DataStreamSelector
-from .walker import VirtualStreamWalker
+from .stream import DataStreamSelector, DataStream
+from .walker import VirtualStreamWalker, CounterStreamWalker
 from .exceptions import StreamEmptyError
 from iotile.core.exceptions import ArgumentError
 
@@ -44,11 +44,11 @@ class SensorLog(object):
     def create_walker(self, selector):
         """Create a stream walker based on the given selector.
 
-        This function returns a StreamWalker subclass that will 
+        This function returns a StreamWalker subclass that will
         remain up to date and allow iterating over and popping readings
-        from the stream(s) specified by the selector.  
+        from the stream(s) specified by the selector.
 
-        When the stream walker is done, it should be passed to 
+        When the stream walker is done, it should be passed to
         destroy_walker so that it is removed from internal lists that
         are used to always keep it in sync.
 
@@ -60,7 +60,11 @@ class SensorLog(object):
         if selector.buffered:
             raise ArgumentError("Buffered stream walkers are not yet supported")
 
-        walker = VirtualStreamWalker(selector)
+        if selector.match_type == DataStream.CounterType:
+            walker = CounterStreamWalker(selector)
+        else:
+            walker = VirtualStreamWalker(selector)
+
         self._virtual_walkers.append(walker)
 
         return walker

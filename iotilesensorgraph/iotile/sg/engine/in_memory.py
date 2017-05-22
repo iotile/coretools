@@ -3,6 +3,7 @@
 from collections import deque
 from iotile.sg import DataStream
 
+
 class InMemoryStorageEngine(object):
     """A simple in memory storage engine for sensor graph.
 
