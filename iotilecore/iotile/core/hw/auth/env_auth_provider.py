@@ -2,7 +2,7 @@ import hashlib
 import hmac
 import struct
 import os
-from auth_provider import AuthProvider, KnownSignatureMethods
+from .auth_provider import AuthProvider, KnownSignatureMethods
 from iotile.core.exceptions import NotFoundError
 
 class EnvAuthProvider(AuthProvider):
@@ -11,7 +11,7 @@ class EnvAuthProvider(AuthProvider):
     Keys must be defined in environment variables with the naming scheme:
     USER_KEY_ABCDEFGH where ABCDEFGH is the device uuid in hex prepended with 0s
     and expressed in capital letters.  So the device with UUID 0xab would look
-    for the environment variable USER_KEY_000000AB.  
+    for the environment variable USER_KEY_000000AB.
 
     The key must be a 64 character hex string that is decoded to create a 32 byte key.
     """
@@ -52,8 +52,8 @@ class EnvAuthProvider(AuthProvider):
 
         Returns:
             dict: The signature and any associated metadata about the signature.
-                The signatured itself must always be a bytearray stored under the 
-                'signature' key, however additional keys may be present depending 
+                The signatured itself must always be a bytearray stored under the
+                'signature' key, however additional keys may be present depending
                 on the signature method used.
 
         Raises:
@@ -86,7 +86,7 @@ class EnvAuthProvider(AuthProvider):
 
         Returns:
             dict: The result of the verification process must always be a bool under the
-                'verified' key, however additional keys may be present depending on the 
+                'verified' key, however additional keys may be present depending on the
                 signature method used.
 
         Raises:
@@ -116,4 +116,4 @@ class EnvAuthProvider(AuthProvider):
             verified = hmac.compare_digest(signature, result)
 
         return {'verified': verified, 'bit_length': 8*len(signature)}
- 
+

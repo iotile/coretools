@@ -2,7 +2,7 @@
 """
 
 import pkg_resources
-from auth_provider import AuthProvider, KnownSignatureMethods
+from .auth_provider import AuthProvider, KnownSignatureMethods
 from iotile.core.exceptions import NotFoundError, ExternalError
 
 class ChainedAuthProvider(AuthProvider):
@@ -15,7 +15,7 @@ class ChainedAuthProvider(AuthProvider):
     By default, the python entry_point group 'iotile.default_auth_providers' is used
     to build the list of auth providers in the chain.  The entries in that group should
     be tuples of (priority, auth_provider_class, arg_dict) where priority is an integer,
-    auth_provider_class is an AuthProvider subclass and arg_dict is a dictionary of 
+    auth_provider_class is an AuthProvider subclass and arg_dict is a dictionary of
     arguments passed to the constructor of auth_provider.
     """
 
@@ -103,8 +103,8 @@ class ChainedAuthProvider(AuthProvider):
 
         Returns:
             dict: The signature and any associated metadata about the signature.
-                The signatured itself must always be a bytearray stored under the 
-                'signature' key, however additional keys may be present depending 
+                The signatured itself must always be a bytearray stored under the
+                'signature' key, however additional keys may be present depending
                 on the signature method used.
 
         Raises:
@@ -130,7 +130,7 @@ class ChainedAuthProvider(AuthProvider):
 
         Returns:
             dict: The result of the verification process must always be a bool under the
-                'verified' key, however additional keys may be present depending on the 
+                'verified' key, however additional keys may be present depending on the
                 signature method used.
 
         Raises:
