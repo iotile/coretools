@@ -91,6 +91,15 @@ class VirtualStreamWalker(StreamWalker):
 
         return self.reading
 
+    def skip_all(self):
+        """Skip all readings in this walker."""
+
+        # We can't skip a constant stream
+        if self.selector.match_type == DataStream.ConstantType:
+            return
+
+        self.reading = None
+
 
 class CounterStreamWalker(StreamWalker):
     """A stream walker that walks across a counter stream.
@@ -155,3 +164,8 @@ class CounterStreamWalker(StreamWalker):
             raise StreamEmptyError("peek called on virtual stream walker without any data", selector=self.selector)
 
         return self.reading
+
+    def skip_all(self):
+        """Skip all readings in this walker."""
+
+        self.count = 0

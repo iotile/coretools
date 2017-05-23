@@ -7,7 +7,7 @@ to create a graph structure (hence the name SensorGraph).
 """
 
 from builtins import str
-from .exceptions import TooManyInputsError, TooManyOutputsError
+from .exceptions import TooManyInputsError, TooManyOutputsError, ProcessingFunctionError
 from iotile.core.exceptions import ArgumentError
 
 
@@ -126,6 +126,7 @@ class SGNode(object):
         self.inputs = [(None, FalseTrigger())]*max_inputs
         self.outputs = []
         self.stream = stream
+        self.func_name = None
         self.func = None
         self.trigger_combiner = SGNode.OrTriggerCombiner
 
@@ -188,3 +189,42 @@ class SGNode(object):
             return (True in trigs)
 
         return not (False in trigs)
+
+    def set_func(self, name, func):
+        """Set the processing function to use for this node.
+
+        Args:
+            name (str): The name of the function to use.  This is
+                just stored for reference in case we need to serialize
+                the node later.
+            func (callable): A function that is called to process inputs
+                for this node.  It should have the following signature:
+                callable(input1_walker, input2_walker, ...)
+                It should return a list of IOTileReadings that are then pushed into
+                the node's output stream
+        """
+
+        self.func_name = name
+        self.func = func
+
+    def process(self):
+        """Run this node's processing function.
+
+        Args:
+            sensor_log (SensorLog): The sensor log to use to
+                store the results of processing this function.
+
+        Returns:
+            list(IOTileReading): A list of IOTileReadings with the results of
+                the processing function or an empty list if no results were
+                produced
+        """
+
+        if self.func is None:
+            raise ProcessingFunctionError('No processing function set for node', stream=self.stream)
+
+        results = self.func(*self.inputs)
+        if results is None:
+            results = []
+
+        return results

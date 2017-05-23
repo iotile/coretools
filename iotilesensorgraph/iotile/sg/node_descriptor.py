@@ -2,7 +2,7 @@
 
 from pyparsing import Word, Regex, nums, hexnums, Literal, Optional, Group, oneOf, QuotedString, ParseException
 from .node import SGNode, InputTrigger
-from .stream import DataStream
+from .stream import DataStream, DataStreamSelector
 
 number = Regex('((0x[a-fA-F0-9]+)|[0-9]+)')
 combiner = (Literal('&&') | Literal('||')).setParseAction(lambda s,l,t: [t[0] == '||']) # True when disjunction
@@ -53,7 +53,7 @@ def parse_node_descriptor(desc, model):
 
     if 'input_a' in data:
         input_a = data['input_a']
-        stream_a = DataStream.FromString(u' '.join(input_a['input_stream']))
+        stream_a = DataStreamSelector.FromString(u' '.join(input_a['input_stream']))
 
         trigger_a = None
         if 'type' in input_a:
@@ -63,7 +63,7 @@ def parse_node_descriptor(desc, model):
 
     if 'input_b' in data:
         input_a = data['input_b']
-        stream_a = DataStream.FromString(u' '.join(input_a['input_stream']))
+        stream_a = DataStreamSelector.FromString(u' '.join(input_a['input_stream']))
 
         trigger_a = None
         if 'type' in input_a:

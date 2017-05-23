@@ -7,7 +7,7 @@ from iotile.sg.model import DeviceModel
 def test_basic_parsing():
     """Make sure we can parse a basic node description."""
 
-    node, inputs, processing = parse_node_descriptor('(input 1 always && input 2 when count >= 1) => buffered node 1 using copyA', DeviceModel())
+    node, inputs, processing = parse_node_descriptor('(input 1 always && input 2 when count >= 1) => buffered node 1 using copy_all_a', DeviceModel())
 
     assert processing == u'copyA'
     assert str(node.stream) == 'buffered 1'

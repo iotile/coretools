@@ -26,7 +26,7 @@ setup(
         "pyparsing>=2.2.0",
         "future>=0.16.0"
     ],
-    entry_points={},
+    entry_points={'iotile.sg_processor': ['copy_all_a = iotile.sg.processors:copy_all_a']},
     author="Arch",
     author_email="info@arch-iot.com",
     url="https://github.com/iotile/coretools/iotilesensorgraph",

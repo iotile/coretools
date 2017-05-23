@@ -130,6 +130,12 @@ class DataStreamSelector(object):
         self.match_system = system
 
     @property
+    def input(self):
+        """Whether this is a root input stream."""
+
+        return self.match_type == DataStream.InputType
+
+    @property
     def buffered(self):
         return self.match_type == DataStream.BufferedType or self.match_type == DataStream.OutputType
 
