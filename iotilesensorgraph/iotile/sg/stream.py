@@ -112,6 +112,15 @@ class DataStream(object):
 
         return u'{} {}'.format(type_str, self.stream_id)
 
+    def __hash__(self):
+        return hash(str(self))
+
+    def __eq__(self, other):
+        if not isinstance(other, DataStream):
+            raise NotImplemented()
+
+        return self.system == other.system and self.stream_type == other.stream_type and self.stream_id == other.stream_id
+
 
 @python_2_unicode_compatible
 class DataStreamSelector(object):

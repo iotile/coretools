@@ -9,10 +9,10 @@ def test_basic_parsing():
 
     node, inputs, processing = parse_node_descriptor('(input 1 always && input 2 when count >= 1) => buffered node 1 using copy_all_a', DeviceModel())
 
-    assert processing == u'copyA'
-    assert str(node.stream) == 'buffered 1'
-    assert str(inputs[0][0]) == 'input 1'
+    assert processing == u'copy_all_a'
+    assert str(node.stream) == u'buffered 1'
+    assert str(inputs[0][0]) == u'input 1'
     assert inputs[0][1] is None
 
-    assert str(inputs[1][0]) == 'input 2'
+    assert str(inputs[1][0]) == u'input 2'
     assert inputs[1][1] is not None

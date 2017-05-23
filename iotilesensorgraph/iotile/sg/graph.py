@@ -1,8 +1,10 @@
 """Sensor Graph main object."""
 
+from collections import deque
 from pkg_resources import iter_entry_points
 from .node_descriptor import parse_node_descriptor
 from .exceptions import NodeConnectionError, ProcessingFunctionError
+
 
 class SensorGraph(object):
     """A graph based data processing engine.
@@ -70,10 +72,10 @@ class SensorGraph(object):
 
         self.sensor_log.push(stream, value)
 
-        to_check = [x for x in self.roots]
+        to_check = deque([x for x in self.roots])
 
         while len(to_check) > 0:
-            node = to_check[0]
+            node = to_check.popleft()
             if node.triggered():
                 results = node.process()
                 for result in results:

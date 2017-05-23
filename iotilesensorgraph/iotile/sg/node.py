@@ -69,7 +69,7 @@ class InputTrigger(object):
         else:
             comp_value = walker.peek().value
 
-        return self.comp_function(comp_value, self.refernce)
+        return self.comp_function(comp_value, self.reference)
 
     def _gt_comp(self, comp, ref):
         return comp > ref
@@ -223,7 +223,7 @@ class SGNode(object):
         if self.func is None:
             raise ProcessingFunctionError('No processing function set for node', stream=self.stream)
 
-        results = self.func(*self.inputs)
+        results = self.func(*[x[0] for x in self.inputs])
         if results is None:
             results = []
 

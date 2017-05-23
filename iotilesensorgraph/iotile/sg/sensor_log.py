@@ -32,6 +32,7 @@ class SensorLog(object):
 
     def __init__(self, engine=None, model=None):
         self._monitors = {}
+        self._last_values = {}
         self._virtual_walkers = []
         self._queue_walkers = []
 
@@ -98,3 +99,28 @@ class SensorLog(object):
         for walker in self._virtual_walkers:
             if walker.matches(stream):
                 walker.push(stream, reading)
+
+        self._last_values[stream] = reading
+
+    def inspect_last(self, stream):
+        """Return the last value pushed into a stream.
+
+        This function works even if the stream is virtual and no
+        virtual walker has been created for it.  It is primarily
+        useful to aid in debugging sensor graphs.
+
+        Args:
+            stream (DataStream): The stream to inspect
+
+        Returns:
+            IOTileReading: The data in the stream
+
+        Raises:
+            StreamEmptyError: if there has never been data written to
+                the stream.
+        """
+
+        if stream in self._last_values:
+            return self._last_values[stream]
+
+        raise StreamEmptyError(u"inspect_last called on stream that has never been written to", stream=stream)
