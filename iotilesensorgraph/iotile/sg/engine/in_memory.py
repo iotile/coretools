@@ -26,7 +26,7 @@ class InMemoryStorageEngine(object):
             stream (DataStream): The stream to count readings in
 
         Returns:
-            (int, int: The number of readings in storage and streaming
+            (int, int): The number of readings in storage and streaming
         """
 
         return (len(self.storage_data), len(self.streaming_data))
