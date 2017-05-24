@@ -169,3 +169,59 @@ class CounterStreamWalker(StreamWalker):
         """Skip all readings in this walker."""
 
         self.count = 0
+
+
+class InvalidStreamWalker(StreamWalker):
+    """A stream walker that is not connected to anything.
+
+    These stream walkers are cannot be used to hold any data and always
+    have a count() of 0 but they are useful for unconnected inputs on
+    sensor graph node.  The only functions that work are:
+
+        skip_all
+        count
+
+    Args:
+        selector (DataStreamSelector): The selector for the stream(s) that
+            we're supposed to walk.
+    """
+
+    def __init__(self, selector):
+        super(InvalidStreamWalker, self).__init__(selector)
+
+
+    def push(self, stream, value):
+        """Update this stream walker with a new responsive reading.
+
+        Args:
+            stream (DataStream): The stream that we're pushing
+            value (IOTileReading): The reading tha we're pushing
+        """
+
+        raise ArgumentError("Attempting to push reading to an invalid stream walker that cannot hold data", selector=self.selector, stream=stream)
+
+
+    def iter(self):
+        """Iterate over the readings that are responsive to this stream walker."""
+
+        return []
+
+    def count(self):
+        """Count how many readings are available in this walker."""
+
+        return 0
+
+    def pop(self):
+        """Pop a reading off of this virtual stream and return it."""
+
+        raise StreamEmptyError("Pop called on an invalid stream walker")
+
+    def peek(self):
+        """Peek at the oldest reading in this virtual stream."""
+
+        raise StreamEmptyError("peek called on an invalid stream walker")
+
+    def skip_all(self):
+        """Skip all readings in this walker."""
+
+        pass

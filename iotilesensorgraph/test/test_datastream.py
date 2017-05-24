@@ -144,3 +144,19 @@ def test_matching():
     assert sel.matches(DataStream.FromString('system buffered 1'))
     assert not sel.matches(DataStream.FromString('buffered 1'))
     assert not sel.matches(DataStream.FromString('counter 1'))
+
+
+def test_encoding():
+    """Test data stream and selector encoding."""
+
+    sel = DataStreamSelector.FromString(u'all system output')
+    assert sel.encode() == 0x5FFF
+
+    sel = DataStreamSelector.FromString(u'all output')
+    assert sel.encode() == 0x57FF
+
+    stream = DataStream.FromString('output 1')
+    assert stream.encode() == 0x5001
+
+    stream = DataStream.FromString('unbuffered 10')
+    assert stream.encode() == 0x100a

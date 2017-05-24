@@ -81,10 +81,13 @@ class SensorGraph(object):
                 for result in results:
                     self.sensor_log.push(node.stream, result)
 
+                # If we generated any outputs, notify our downstream nodes
+                # so that they are also checked to see if they should run.
                 if len(results) > 0:
                     to_check.extend(node.outputs)
 
-    def _find_processing_function(self, name):
+    @classmethod
+    def _find_processing_function(cls, name):
         """Find a processing function by name.
 
         This function searches through installed processing functions

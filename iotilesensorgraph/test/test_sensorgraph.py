@@ -3,6 +3,7 @@
 from iotile.sg import SensorGraph, DeviceModel, SensorLog, DataStream
 from iotile.core.hw.reports import IOTileReading
 
+
 def test_basic_sensorgraph():
     """Make sure we can parse, load and run a basic sensor graph."""
 

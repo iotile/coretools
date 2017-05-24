@@ -104,6 +104,15 @@ class DataStream(object):
 
         return DataStream(stream_type, stream_id, system)
 
+    def encode(self):
+        """Encode this stream as a packed 16-bit unsigned integer.
+
+        Returns:
+            int: The packed encoded stream
+        """
+
+        return (self.stream_type << 12) | (int(self.system) << 11) | self.stream_id
+
     def __str__(self):
         type_str = self.TypeToString[self.stream_type]
 
@@ -117,7 +126,7 @@ class DataStream(object):
 
     def __eq__(self, other):
         if not isinstance(other, DataStream):
-            raise NotImplemented()
+            raise NotImplementedError()
 
         return self.system == other.system and self.stream_type == other.stream_type and self.stream_id == other.stream_id
 
@@ -225,3 +234,16 @@ class DataStreamSelector(object):
             return False
 
         return True
+
+    def encode(self):
+        """Encode this stream as a packed 16-bit unsigned integer.
+
+        Returns:
+            int: The packed encoded stream
+        """
+
+        match_id = self.match_id
+        if match_id is None:
+            match_id = (1 << 11) - 1
+
+        return (self.match_type << 12) | (int(self.match_system) << 11) | match_id

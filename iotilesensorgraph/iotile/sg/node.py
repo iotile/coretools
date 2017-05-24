@@ -9,6 +9,7 @@ to create a graph structure (hence the name SensorGraph).
 from builtins import str
 from .exceptions import TooManyInputsError, TooManyOutputsError, ProcessingFunctionError
 from iotile.core.exceptions import ArgumentError
+from .walker import InvalidStreamWalker
 
 
 class InputTrigger(object):
@@ -123,7 +124,7 @@ class SGNode(object):
         max_inputs = model.get('max_node_inputs')
         max_outputs = model.get('max_node_outputs')
 
-        self.inputs = [(None, FalseTrigger())]*max_inputs
+        self.inputs = [(InvalidStreamWalker(None), FalseTrigger())]*max_inputs
         self.outputs = []
         self.stream = stream
         self.func_name = None
