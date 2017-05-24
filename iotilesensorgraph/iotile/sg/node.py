@@ -208,12 +208,12 @@ class SGNode(object):
         self.func_name = name
         self.func = func
 
-    def process(self):
+    def process(self, rpc_executor):
         """Run this node's processing function.
 
         Args:
-            sensor_log (SensorLog): The sensor log to use to
-                store the results of processing this function.
+            rpc_executor (RPCExecutor): An object capable of executing RPCs
+                in case we need to do that.
 
         Returns:
             list(IOTileReading): A list of IOTileReadings with the results of
@@ -224,7 +224,7 @@ class SGNode(object):
         if self.func is None:
             raise ProcessingFunctionError('No processing function set for node', stream=self.stream)
 
-        results = self.func(*[x[0] for x in self.inputs])
+        results = self.func(*[x[0] for x in self.inputs], rpc_executor=rpc_executor)
         if results is None:
             results = []
 

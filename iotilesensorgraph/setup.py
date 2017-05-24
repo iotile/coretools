@@ -21,13 +21,14 @@ setup(
     packages=find_packages(exclude=("test",)),
     version=version.version,
     license="LGPLv3",
-    description="IOTile SensorGraph Management and Simulation",
+    description="IOTile SensorGraph Management and Simulation Package",
     install_requires=[
         "pyparsing>=2.2.0",
         "future>=0.16.0",
         "monotonic>=1.3.0"
     ],
-    entry_points={'iotile.sg_processor': ['copy_all_a = iotile.sg.processors:copy_all_a'],
+    entry_points={'iotile.sg_processor': ['copy_all_a = iotile.sg.processors:copy_all_a',
+                                          'call_rpc = iotile.sg.processors:call_rpc'],
                   'console_scripts': ['iotile-sgrun = iotile.sg.scripts.iotile_sgrun:main']},
     author="Arch",
     author_email="info@arch-iot.com",

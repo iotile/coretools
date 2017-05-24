@@ -51,7 +51,7 @@ class SensorGraph(object):
                         other.connect_output(node)
                         found = True
 
-                if not found:
+                if not found and selector.buffered:
                     raise NodeConnectionError("Node has input that refers to another node that has not been created yet", node_descriptor=node_descriptor, input_selector=str(selector), input_index=i)
 
         # Find and load the processing function for this node
@@ -62,12 +62,14 @@ class SensorGraph(object):
         node.set_func(processor, func)
         self.nodes.append(node)
 
-    def process_input(self, stream, value):
+    def process_input(self, stream, value, rpc_executor):
         """Process an input through this sensor graph.
 
         Args:
             stream (DataStream): The stream the input is part of
             value (IOTileReading): The value to process
+            rpc_executor (RPCExecutor): An object capable of executing RPCs
+                in case we need to do that.
         """
 
         self.sensor_log.push(stream, value)
@@ -77,7 +79,7 @@ class SensorGraph(object):
         while len(to_check) > 0:
             node = to_check.popleft()
             if node.triggered():
-                results = node.process()
+                results = node.process(rpc_executor)
                 for result in results:
                     self.sensor_log.push(node.stream, result)
 

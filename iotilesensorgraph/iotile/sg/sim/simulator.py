@@ -73,7 +73,7 @@ class SensorGraphSimulator(object):
 
             if (self.tick_count % 10) == 0:
                 reading = IOTileReading(system_tick.encode(), self.tick_count, self.tick_count)
-                sensor_graph.process_input(system_tick, reading)
+                sensor_graph.process_input(system_tick, reading, self._rpc_executor)
 
             self.tick_count += 1
             now = monotonic()
