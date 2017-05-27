@@ -1,0 +1,109 @@
+from pyparsing import Optional, Word, Literal, Forward, alphas, nums, Group, Regex, ZeroOrMore, oneOf, delimitedList, restOfLine, dblQuotedString, StringEnd
+from ..stream import DataStream
+from ..slot import SlotIdentifier
+
+ident = None
+rvalue = None
+number = None
+comp = None
+config_type = None
+slot_id = None
+stream = None
+time_interval = None
+quoted_string = None
+semi = None
+
+callrpc_stmt = None
+simple_statement = None
+
+block_id = None
+block_bnf = None
+statement = None
+sensor_graph = None
+
+
+def _create_primitives():
+    global ident, rvalue, number, quoted_string, semi, time_interval, slot_id, comp, config_type, stream
+
+    if ident is not None:
+        return
+
+    semi = Literal(u';').suppress()
+    ident = Word(alphas+u"_", alphas + nums + u"_")
+    number = Regex(u'((0x[a-fA-F0-9]+)|[0-9]+)').setParseAction(lambda s,l,t: [int(t[0], 0)])
+    quoted_string = dblQuotedString
+
+    rvalue = number | quoted_string
+
+    # Convert all time intervals into an integer number of seconds
+    time_unit_multipliers = {
+        u'second': 1,
+        u'seconds': 1,
+        u'minute': 60,
+        u'minutes': 60,
+        u'hour': 60*60,
+        u'hours': 60*60,
+        u'day': 60*60*24,
+        u'days': 60*60*24,
+        u'month': 60*60*24*30,
+        u'months': 60*60*24*30,
+        u'year': 60*60*24*365,
+        u'years': 60*60*24*365,
+    }
+
+    config_type = oneOf('uint8_t uint16_t uint32_t string')
+    comp = oneOf('> < >= <= == ~=')
+
+    time_unit = oneOf(u"second seconds minute minutes hour hours day days week weeks month months year years")
+    time_interval = (number + time_unit).setParseAction(lambda s, l, t: [t[0]*time_unit_multipliers[t[1]]])
+
+    slot_id = Literal(u"controller") | (Literal(u'slot') + number)
+    slot_id.setParseAction(lambda s,l,t: [SlotIdentifier.FromString(u' '.join([str(x) for x in t]))])
+
+    stream = Optional(Literal("system")) + oneOf("buffered unbuffered input output counter constant") + number + Optional(Literal("node"))
+    stream.setParseAction(lambda s,l,t: [DataStream.FromString(u' '.join([str(x) for x in t]))])
+
+def _create_simple_statements():
+    global ident, rvalue, simple_statement, semi, comp, number, slot_id, callrpc_stmt
+
+    if simple_statement is not None:
+        return
+
+    meta_stmt = Group(Literal('meta').suppress() + ident + Literal('=').suppress() + rvalue + semi).setResultsName('meta_statement')
+    require_stmt = Group(Literal('require').suppress() + ident + comp + rvalue + semi).setResultsName('require_statement')
+    set_stmt = Group(Literal('set').suppress() + (ident|number) + Literal("to").suppress() + rvalue + Optional(Literal('as').suppress() + config_type) + semi).setResultsName('set_statement')
+    callrpc_stmt = Group(Literal("call").suppress() + (ident|number) + Literal("on").suppress() + slot_id + Literal("=>").suppress() + stream + semi).setResultsName('call_statement')
+    simple_statement = meta_stmt | require_stmt | set_stmt | callrpc_stmt
+
+def _create_block_bnf():
+    global block_bnf, time_interval, slot_id, statement, block_id
+
+    if block_bnf is not None:
+        return
+
+    every_block_id = Group(Literal(u'every').suppress() + time_interval).setResultsName('every_block')
+    when_block_id = Group(Literal(u'when') + Literal("connected") + Literal("to") + slot_id).setResultsName('when_block')
+    config_block_id = Group(Literal(u'config').suppress() + slot_id).setResultsName('config_block')
+
+    block_id = every_block_id | when_block_id | config_block_id
+
+    block_bnf = Forward()
+    statement = simple_statement | block_bnf
+
+    block_bnf << Group(block_id + Group(Literal(u'{').suppress() + ZeroOrMore(statement) + Literal(u'}').suppress())).setResultsName('block')
+
+
+def get_language():
+    """Create or retrieve the parse tree for iotile messages."""
+
+    global sensor_graph, statement
+
+    if sensor_graph is not None:
+        return sensor_graph
+
+    _create_primitives()
+    _create_simple_statements()
+    _create_block_bnf()
+
+    sensor_graph = ZeroOrMore(statement) + StringEnd()
+    return sensor_graph

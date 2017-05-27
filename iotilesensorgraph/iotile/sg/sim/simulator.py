@@ -2,7 +2,7 @@
 
 import time
 from monotonic import monotonic
-from ..known_streams import system_tick, user_tick
+from ..known_constants import system_tick, user_tick
 from .null_executor import NullRPCExecutor
 from .stop_conditions import TimeBasedStopCondition
 from iotile.core.exceptions import ArgumentError

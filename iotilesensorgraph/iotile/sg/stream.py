@@ -126,7 +126,7 @@ class DataStream(object):
 
     def __eq__(self, other):
         if not isinstance(other, DataStream):
-            raise NotImplementedError()
+            return NotImplemented
 
         return self.system == other.system and self.stream_type == other.stream_type and self.stream_id == other.stream_id
 

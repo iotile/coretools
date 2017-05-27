@@ -17,6 +17,9 @@ def copy_all_a(input_a, *other_inputs, **kwargs):
     runs there are no readings left in any of the input walkers
     when the function finishes, even if it generated no output
     readings.
+
+    Returns:
+        list(IOTileReading)
     """
 
     output = []
@@ -40,6 +43,9 @@ def call_rpc(*inputs, **kwargs):
 
     All other readings are then skipped so that there are no
     readings in any input queue when this function returns
+
+    Returns:
+        list(IOTileReading)
     """
 
     rpc_executor = kwargs['rpc_executor']
@@ -52,7 +58,7 @@ def call_rpc(*inputs, **kwargs):
         rpc_id = value.value & 0xFFFF
 
         reading_value = rpc_executor.rpc(addr, rpc_id)
-        output.append(IOTileReading(0, 0, output))
+        output.append(IOTileReading(0, 0, reading_value))
     except (HardwareError, StreamEmptyError):
         pass
 

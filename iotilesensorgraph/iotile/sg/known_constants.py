@@ -13,3 +13,10 @@ system_tick = DataStream.FromString('system input 2')
 # The user tick can be configured by the user to any interval
 # 1 second or longer.
 user_tick = DataStream.FromString('system input 3')
+
+
+# Known config variable ids on the controller
+
+## An optional config variable that sets the time interval in seconds
+## for the user tick input to sensor graph
+config_user_tick_secs = 0x2000
