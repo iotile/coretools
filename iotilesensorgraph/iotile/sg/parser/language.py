@@ -1,4 +1,4 @@
-from pyparsing import Optional, Word, Literal, Forward, alphas, nums, Group, Regex, ZeroOrMore, oneOf, delimitedList, restOfLine, dblQuotedString, StringEnd
+from pyparsing import Optional, Word, Literal, Forward, alphas, nums, Group, Regex, ZeroOrMore, oneOf, restOfLine, dblQuotedString, StringEnd, Empty
 from ..stream import DataStream
 from ..slot import SlotIdentifier
 
@@ -15,6 +15,7 @@ semi = None
 
 callrpc_stmt = None
 simple_statement = None
+generic_statement = None
 
 block_id = None
 block_bnf = None
@@ -30,7 +31,7 @@ def _create_primitives():
 
     semi = Literal(u';').suppress()
     ident = Word(alphas+u"_", alphas + nums + u"_")
-    number = Regex(u'((0x[a-fA-F0-9]+)|[0-9]+)').setParseAction(lambda s,l,t: [int(t[0], 0)])
+    number = Regex(u'((0x[a-fA-F0-9]+)|[0-9]+)').setParseAction(lambda s, l, t: [int(t[0], 0)])
     quoted_string = dblQuotedString
 
     rvalue = number | quoted_string
@@ -64,7 +65,7 @@ def _create_primitives():
     stream.setParseAction(lambda s,l,t: [DataStream.FromString(u' '.join([str(x) for x in t]))])
 
 def _create_simple_statements():
-    global ident, rvalue, simple_statement, semi, comp, number, slot_id, callrpc_stmt
+    global ident, rvalue, simple_statement, semi, comp, number, slot_id, callrpc_stmt, generic_statement
 
     if simple_statement is not None:
         return
@@ -72,29 +73,34 @@ def _create_simple_statements():
     meta_stmt = Group(Literal('meta').suppress() + ident + Literal('=').suppress() + rvalue + semi).setResultsName('meta_statement')
     require_stmt = Group(Literal('require').suppress() + ident + comp + rvalue + semi).setResultsName('require_statement')
     set_stmt = Group(Literal('set').suppress() + (ident|number) + Literal("to").suppress() + rvalue + Optional(Literal('as').suppress() + config_type) + semi).setResultsName('set_statement')
-    callrpc_stmt = Group(Literal("call").suppress() + (ident|number) + Literal("on").suppress() + slot_id + Literal("=>").suppress() + stream + semi).setResultsName('call_statement')
+    callrpc_stmt = Group(Literal("call").suppress() + (ident | number) + Literal("on").suppress() + slot_id + Literal("=>").suppress() + stream + semi).setResultsName('call_statement')
     simple_statement = meta_stmt | require_stmt | set_stmt | callrpc_stmt
 
+    # In generic statements, keep track of the location where the match started for error handling
+    locator = Empty().setParseAction(lambda s, l, t: l)('location')
+    generic_statement = Group(locator + Group(ZeroOrMore(Regex(u"[^{};]+")) + Literal(u';'))('match')).setResultsName('unparsed_statement')
+
 def _create_block_bnf():
-    global block_bnf, time_interval, slot_id, statement, block_id
+    global block_bnf, time_interval, slot_id, statement, block_id, ident, stream
 
     if block_bnf is not None:
         return
 
     every_block_id = Group(Literal(u'every').suppress() + time_interval).setResultsName('every_block')
-    when_block_id = Group(Literal(u'when') + Literal("connected") + Literal("to") + slot_id).setResultsName('when_block')
+    when_block_id = Group(Literal(u'when').suppress() + Literal("connected").suppress() + Literal("to").suppress() + slot_id).setResultsName('when_block')
     config_block_id = Group(Literal(u'config').suppress() + slot_id).setResultsName('config_block')
+    on_block_id = Group(Literal(u'on').suppress() + (ident | stream)).setResultsName('on_block')
 
-    block_id = every_block_id | when_block_id | config_block_id
+    block_id = every_block_id | when_block_id | config_block_id | on_block_id
 
     block_bnf = Forward()
-    statement = simple_statement | block_bnf
+    statement = generic_statement | block_bnf
 
     block_bnf << Group(block_id + Group(Literal(u'{').suppress() + ZeroOrMore(statement) + Literal(u'}').suppress())).setResultsName('block')
 
 
 def get_language():
-    """Create or retrieve the parse tree for iotile messages."""
+    """Create or retrieve the parse tree for defining a sensor graph."""
 
     global sensor_graph, statement
 
@@ -107,3 +113,12 @@ def get_language():
 
     sensor_graph = ZeroOrMore(statement) + StringEnd()
     return sensor_graph
+
+def get_statement():
+    """Create or retrieve the parse tree for a simple statement."""
+
+    global simple_statement
+
+    get_language()
+
+    return simple_statement

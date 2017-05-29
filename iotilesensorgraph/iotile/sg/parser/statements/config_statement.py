@@ -1,8 +1,10 @@
 """Set config statement that adds a config variable to the sensor graph."""
 
+from future.utils import python_2_unicode_compatible
 from .statement import SensorGraphStatement
 
 
+@python_2_unicode_compatible
 class SetConfigStatement(SensorGraphStatement):
     """A config variable assignment.
 
@@ -28,3 +30,9 @@ class SetConfigStatement(SensorGraphStatement):
             self.explicit_type = parsed[2]
 
         super(SetConfigStatement, self).__init__([])
+
+    def __str__(self):
+        if self.explicit_type is not None:
+            return u"set %s = %s as %s;" % (str(self.identifier), str(self.value), str(self.explicit_type))
+
+        return u"set %s = %s" % (str(self.identifier), str(self.value))

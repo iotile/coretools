@@ -1,5 +1,6 @@
 """Base class for all statements supported in sensor graph files."""
 
+
 class SensorGraphStatement(object):
     """The base class for an AST of statements in a sensor graph file.
 
@@ -9,7 +10,6 @@ class SensorGraphStatement(object):
     """
 
     def __init__(self, children=None):
-
         if children is None:
             children = []
 

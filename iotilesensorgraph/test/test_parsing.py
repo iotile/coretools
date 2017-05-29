@@ -54,5 +54,11 @@ def test_every_interval_block_parsing(parser):
     """Make sure we can parse an interval block."""
 
     parser.parse_file(get_path('basic_block.sgf'))
+
+
+def test_nested_blocks(parser):
+    """Make sure we can parse nested blocks."""
+
+    parser.parse_file(get_path('nested_block.sgf'))
     print(parser.dump_tree())
     assert False

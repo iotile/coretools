@@ -47,3 +47,13 @@ class ProcessingFunctionError(IOTileException):
     """
 
     pass
+
+
+class SensorGraphSyntaxError(IOTileException):
+    """Thrown when there is an error parsing a sensor graph description file.
+
+    The parameters line and column will indicate where the error occured and
+    other paremeters will give more specific information about what was expected.
+    """
+
+    pass

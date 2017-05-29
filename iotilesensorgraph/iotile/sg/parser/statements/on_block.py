@@ -1,24 +1,25 @@
-"""Time based event block for scheduling RPCs every X interval."""
+"""On blocks trigger functions when an event occurs on a stream."""
 
 from future.utils import python_2_unicode_compatible
 from .statement import SensorGraphStatement
 
 
 @python_2_unicode_compatible
-class EveryBlock(SensorGraphStatement):
-    """A block of statements that should run every time interval
+class OnBlock(SensorGraphStatement):
+    """A block of statements that should run every time an event occurs
 
     Args:
         parsed(ParseResults): The parsed tokens that make up this
             statement.
         children(list(SensorGraphStatement)): The statements that are
-            part of this every block.
+            part of this on block.
     """
 
     def __init__(self, parsed, children):
-        self.interval = parsed[0]
 
-        super(EveryBlock, self).__init__(children)
+        self.ident_or_stream = parsed[0]
+
+        super(OnBlock, self).__init__(children)
 
     def __str__(self):
-        return u"every %s" % (str(self.interval),)
+        return u"on %s" % (str(self.ident_or_stream),)

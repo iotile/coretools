@@ -1,24 +1,24 @@
-"""Time based event block for scheduling RPCs every X interval."""
+"""Blocks that execute when someone is connected."""
 
 from future.utils import python_2_unicode_compatible
 from .statement import SensorGraphStatement
 
 
 @python_2_unicode_compatible
-class EveryBlock(SensorGraphStatement):
-    """A block of statements that should run every time interval
+class WhenBlock(SensorGraphStatement):
+    """A block of statements that should run when someone is connected to the device.
 
     Args:
         parsed(ParseResults): The parsed tokens that make up this
             statement.
         children(list(SensorGraphStatement)): The statements that are
-            part of this every block.
+            part of this when block.
     """
 
     def __init__(self, parsed, children):
-        self.interval = parsed[0]
+        self.slot_id = parsed[0]
 
-        super(EveryBlock, self).__init__(children)
+        super(WhenBlock, self).__init__(children)
 
     def __str__(self):
-        return u"every %s" % (str(self.interval),)
+        return u"when connected to %s" % (str(self.slot_id),)
