@@ -7,8 +7,7 @@ when connected to controller
 
 	every 1 second
 	{
-		call 0x5001 on slot 1 => unbuffered 15;
-		call 0x5001 on slot 1 => unbuffered 16;
+		call 0x5001R on slot 1 => unbuffered 15;
 	}
 
 	on disconnect

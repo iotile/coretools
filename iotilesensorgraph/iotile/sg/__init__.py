@@ -6,5 +6,5 @@ from .sensor_log import SensorLog
 from .slot import SlotIdentifier
 
 __all__ = ['DeviceModel', 'DataStream', 'SensorGraph', 'DataStreamSelector',
-           'StreamEmptyError', 'StorageFullError', 'SensorLog', 'SlotIdentifier']
+           'StreamEmptyError',  'SensorLog', 'SlotIdentifier']
 

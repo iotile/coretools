@@ -1,6 +1,7 @@
 import os
 import pytest
 import json
+from iotile.sg.exceptions import SensorGraphSyntaxError
 from iotile.sg import DataStream, SlotIdentifier
 from iotile.sg.parser import SensorGraphFileParser
 import iotile.sg.parser.language as language
@@ -55,6 +56,13 @@ def test_every_interval_block_parsing(parser):
 
     parser.parse_file(get_path('basic_block.sgf'))
 
+def test_statement_syntax_error(parser):
+    """Make sure we get a nice syntax error when we type a bad statement."""
+
+    with pytest.raises(SensorGraphSyntaxError) as exc_info:
+        parser.parse_file(get_path('syntax_error_statement.sgf'))
+
+    assert exc_info.value.params['line_number'] == 10
 
 def test_nested_blocks(parser):
     """Make sure we can parse nested blocks."""
