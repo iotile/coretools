@@ -187,9 +187,9 @@ class SGNode(object):
         trigs = [x[1].triggered(x[0]) for x in self.inputs]
 
         if self.trigger_combiner == self.OrTriggerCombiner:
-            return (True in trigs)
+            return True in trigs
 
-        return not (False in trigs)
+        return False not in trigs
 
     def set_func(self, name, func):
         """Set the processing function to use for this node.

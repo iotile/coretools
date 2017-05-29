@@ -57,3 +57,12 @@ class SensorGraphSyntaxError(IOTileException):
     """
 
     pass
+
+
+class UnresolvedIdentifierError(IOTileException):
+    """Thrown when an identifier is asked for but cannot be found.
+
+    The name of the identifier is given in the parameters.
+    """
+
+    pass

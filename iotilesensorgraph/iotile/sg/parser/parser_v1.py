@@ -1,3 +1,5 @@
+"""Parser for reading sensor graph files."""
+
 from builtins import str
 
 import pyparsing
