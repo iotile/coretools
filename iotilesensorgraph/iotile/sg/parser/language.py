@@ -12,6 +12,7 @@ stream = None
 time_interval = None
 quoted_string = None
 semi = None
+comment = None
 
 callrpc_stmt = None
 simple_statement = None
@@ -24,7 +25,7 @@ sensor_graph = None
 
 
 def _create_primitives():
-    global ident, rvalue, number, quoted_string, semi, time_interval, slot_id, comp, config_type, stream
+    global ident, rvalue, number, quoted_string, semi, time_interval, slot_id, comp, config_type, stream, comment
 
     if ident is not None:
         return
@@ -33,6 +34,8 @@ def _create_primitives():
     ident = Word(alphas+u"_", alphas + nums + u"_")
     number = Regex(u'((0x[a-fA-F0-9]+)|[0-9]+)').setParseAction(lambda s, l, t: [int(t[0], 0)])
     quoted_string = dblQuotedString
+
+    comment = Literal('#') + restOfLine
 
     rvalue = number | quoted_string
 
@@ -112,6 +115,8 @@ def get_language():
     _create_block_bnf()
 
     sensor_graph = ZeroOrMore(statement) + StringEnd()
+    sensor_graph.ignore(comment)
+
     return sensor_graph
 
 def get_statement():

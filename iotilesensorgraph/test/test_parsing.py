@@ -1,10 +1,10 @@
 import os
 import pytest
-import json
 from iotile.sg.exceptions import SensorGraphSyntaxError
-from iotile.sg import DataStream, SlotIdentifier
+from iotile.sg import DataStream
 from iotile.sg.parser import SensorGraphFileParser
 import iotile.sg.parser.language as language
+
 
 @pytest.fixture
 def parser():
@@ -34,7 +34,7 @@ def test_language_constructs():
     assert parsed.asList()[0][0][0] == 60*60*24
 
     # Test stream parsing
-    parsed = language.stream.parseString('output 1');
+    parsed = language.stream.parseString('output 1')
     assert isinstance(parsed.asList()[0], DataStream)
 
     # Test call_rpc statement
@@ -44,6 +44,7 @@ def test_language_constructs():
     # Test block with statement parsing
     parsed = language.block_bnf.parseString(u'every 1 day { call 0x5001 on slot 2 => output 1; }')
     assert parsed.asList()[0][0][0] == 60*60*24
+
 
 def test_basic_parsing(parser):
     """Make sure we can parse a basic file without syntax errors."""
@@ -56,6 +57,7 @@ def test_every_interval_block_parsing(parser):
 
     parser.parse_file(get_path('basic_block.sgf'))
 
+
 def test_statement_syntax_error(parser):
     """Make sure we get a nice syntax error when we type a bad statement."""
 
@@ -64,9 +66,14 @@ def test_statement_syntax_error(parser):
 
     assert exc_info.value.params['line_number'] == 10
 
+
 def test_nested_blocks(parser):
     """Make sure we can parse nested blocks."""
 
     parser.parse_file(get_path('nested_block.sgf'))
-    print(parser.dump_tree())
-    assert False
+
+
+def test_ignoring_comments(parser):
+    """Make sure we ignore comments."""
+
+    parser.parse_file(get_path('comment_graph.sgf'))
