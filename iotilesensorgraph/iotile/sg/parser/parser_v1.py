@@ -6,6 +6,8 @@ import pyparsing
 
 from .language import get_language, get_statement
 from .statements import statement_map
+from iotile.sg import SensorGraph, SensorLog
+from iotile.sg.engine import InMemoryStorageEngine
 from iotile.core.exceptions import ArgumentError
 from iotile.sg.exceptions import SensorGraphSyntaxError
 
@@ -14,8 +16,9 @@ class SensorGraphFileParser(object):
     """A parser that builds a sensor graph object from a text file specification."""
 
     def __init__(self):
-        self._block_stack = []
+        self._scope_stack = []
         self.statements = []
+        self.sensor_graph = None
 
     def dump_tree(self, statement=None, indent_level=0):
         """Dump the AST for this parsed file.
@@ -68,6 +71,29 @@ class SensorGraphFileParser(object):
         for statement in result:
             parsed = self.parse_statement(statement, orig_contents=data)
             self.statements.append(parsed)
+
+    def compile(self, model):
+        """Compile this file into a SensorGraph.
+
+        You must have preivously called parse_file to parse a
+        sensor graph file into statements that are then executed
+        by this command to build a sensor graph.
+
+
+        The results are stored in self.sensor_graph and can be
+        inspected before running optimization passes.
+
+        Args:
+            model (DeviceModel): The device model that we should compile
+                this sensor graph for.
+        """
+
+        log = SensorLog(InMemoryStorageEngine(model), model)
+        self.sensor_graph = SensorGraph(log, model)
+        self._scope_stack = []
+
+        for statement in self.statements:
+            statement.execute(self.sensor_graph, self._scope_stack)
 
     def parse_statement(self, statement, orig_contents):
         """Parse a statement, possibly called recursively.

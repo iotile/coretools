@@ -27,7 +27,7 @@ class SensorGraphStatement(object):
         Args:
             sensor_graph (SensorGraph): The sensor graph that we are building or
                 modifying
-            scope_stack (ScopeStack): A stack of nested scopes that may influence
+            scope_stack (list(Scope)): A stack of nested scopes that may influence
                 how this statement allocates clocks or other stream resources.
         """
 
@@ -44,7 +44,7 @@ class SensorGraphStatement(object):
         Args:
             sensor_graph (SensorGraph): The sensor graph that we are building or
                 modifying
-            scope_stack (ScopeStack): A stack of nested scopes that may influence
+            scope_stack (list(Scope)): A stack of nested scopes that may influence
                 how this statement allocates clocks or other stream resources.
         """
 
@@ -56,8 +56,9 @@ class SensorGraphStatement(object):
         Args:
             sensor_graph (SensorGraph): The sensor graph that we are building or
                 modifying
-            scope_stack (ScopeStack): A stack of nested scopes that may influence
+            scope_stack (list(Scope)): A stack of nested scopes that may influence
                 how this statement allocates clocks or other stream resources.
         """
 
         pass
+
