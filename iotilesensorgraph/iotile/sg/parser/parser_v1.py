@@ -6,6 +6,8 @@ import pyparsing
 
 from .language import get_language, get_statement
 from .statements import statement_map
+from .scopes import RootScope
+from .stream_allocator import StreamAllocator
 from iotile.sg import SensorGraph, SensorLog
 from iotile.sg.engine import InMemoryStorageEngine
 from iotile.core.exceptions import ArgumentError
@@ -79,7 +81,6 @@ class SensorGraphFileParser(object):
         sensor graph file into statements that are then executed
         by this command to build a sensor graph.
 
-
         The results are stored in self.sensor_graph and can be
         inspected before running optimization passes.
 
@@ -90,7 +91,14 @@ class SensorGraphFileParser(object):
 
         log = SensorLog(InMemoryStorageEngine(model), model)
         self.sensor_graph = SensorGraph(log, model)
+
+        allocator = StreamAllocator(self.sensor_graph, model)
+
         self._scope_stack = []
+
+        # Create a root scope
+        root = RootScope(self.sensor_graph, allocator)
+        self._scope_stack.append(root)
 
         for statement in self.statements:
             statement.execute(self.sensor_graph, self._scope_stack)

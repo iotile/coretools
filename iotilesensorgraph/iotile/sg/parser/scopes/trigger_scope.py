@@ -1,0 +1,42 @@
+from .scope import Scope
+from ..exceptions import SensorGraphSemanticError
+
+
+class TriggerScope(Scope):
+    """A scope that implements trigger_chain but cannot provide a clock.
+
+    Args:
+        sensor_graph (SensorGraph): The sensor graph we are working on.
+        scope_stack (list(Scope)): The stack of already allocated scopes.
+        trigger_input (NodeInput): The
+    """
+
+    def __init__(self, sensor_graph, scope_stack, trigger_input):
+        parent = scope_stack[-1]
+        alloc = parent.allocator
+        sensor_graph = parent.sensor_graph
+
+        super(TriggerScope, self).__init__(u"Trigger Scope", sensor_graph, alloc, parent)
+
+        self.trigger_stream = trigger_input[0]
+        self.trigger_interval = trigger_input[1]
+
+    def trigger_chain(self):
+        """Return a NodeInput tuple for creating a node.
+
+        Returns:
+            (StreamIdentifier, InputTrigger)
+        """
+
+        trigger_stream = self.allocator.attach_stream(self.trigger_stream)
+        return (trigger_stream, self.trigger_interval)
+
+    def clock(self, interval):
+        """Return a NodeInput tuple for triggering an event every interval.
+
+        Args:
+            interval (int): The interval (in seconds) at which this input should
+                trigger.
+        """
+
+        raise SensorGraphSemanticError("TriggerScope does not provide a clock output that can be used.")

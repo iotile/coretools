@@ -27,7 +27,7 @@ class StreamAllocator(object):
         self._allocated_streams = {}
         self._next_id = {}
 
-    def allocate_stream(self, stream_type, stream_id=None, previous=None):
+    def allocate_stream(self, stream_type, stream_id=None, previous=None, attach=False):
         """Allocate a new stream of the given type.
 
         The stream is allocated with an incremental ID starting at
@@ -38,6 +38,9 @@ class StreamAllocator(object):
         stream used instead to satisfy a device specific constraint on the
         maximum number of outputs attached to a given stream.
 
+        You can call allocate_stream on the same stream multiple times without
+        issue.  Subsequent calls to allocate_stream are noops.
+
         Args:
             stream_type (int): A stream type specified in the DataStream class
                 like DataStream.ConstantType
@@ -46,9 +49,11 @@ class StreamAllocator(object):
             previous (DataStream): If this stream was automatically derived from
                 another stream, this parameter should be a link to the old
                 stream.
+            attach (bool): Call attach_stream immediately before returning.  Convenience
+                routine for streams that should immediately be attached to something.
 
         Returns:
-            DataStream: The allocated data stream.  This data stream
+            DataStream: The allocated data stream.
         """
 
         if stream_type not in DataStream.TypeToString:
@@ -70,7 +75,11 @@ class StreamAllocator(object):
         # that we know when we need to split it into two.
         stream = DataStream(stream_type, stream_id)
 
-        self._allocated_streams[stream] = (stream, 0, previous)
+        if stream not in self._allocated_streams:
+            self._allocated_streams[stream] = (stream, 0, previous)
+
+        if attach:
+            stream = self.attach_stream(stream)
 
         return stream
 

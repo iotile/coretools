@@ -30,16 +30,19 @@ class Scope(object):
         name (str): An identifier for this scope to be
             used in debug messages
         sensor_graph (SensorGraph): The SensorGraph we
-            are operating on.
+            are operating on
+        allocator (StreamAllocator): The global stream
+            allocator we are using
         parent (Scope): Our parent scope if we have one
             so that we can forward on requests for
             information if needed.
     """
 
-    def __init__(self, name, sensor_graph, parent):
+    def __init__(self, name, sensor_graph, allocator, parent):
         self.sensor_graph = sensor_graph
         self.parent = parent
         self.name = name
+        self.allocator = allocator
         self._known_identifiers = {}
 
     def add_identifier(self, name, obj):
