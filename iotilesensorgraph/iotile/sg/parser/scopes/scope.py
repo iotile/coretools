@@ -53,11 +53,18 @@ class Scope(object):
         name = str(name)
         self._known_identifiers[name] = obj
 
-    def resolve_identifier(self, name):
+    def resolve_identifier(self, name, expected_type=None):
         """Resolve an identifier to an object.
+
+        There is a single namespace for identifiers so the user also should
+        pass an expected type that will be checked against what the identifier
+        actually resolves to so that there are no surprises.
 
         Args:
             name (str): The name that we want to resolve
+            expected_type (type): The type of object that we expect to receive.
+                This is an optional parameter.  If None is passed, no type checking
+                is performed.
 
         Returns:
             object: The resolved object
@@ -66,7 +73,11 @@ class Scope(object):
         name = str(name)
 
         if name in self._known_identifiers:
-            return self._known_identifiers[name]
+            obj = self._known_identifiers[name]
+            if expected_type is not None and not isinstance(obj, expected_type):
+                raise UnresolvedIdentifierError(u"Identifier resolved to an object of an unexpected type", name=name, expected_type=expected_type.__name__, resolved_type=obj.__class__.__name__)
+
+            return obj
 
         if self.parent is not None:
             try:
@@ -74,4 +85,4 @@ class Scope(object):
             except UnresolvedIdentifierError:
                 pass
 
-        raise UnresolvedIdentifierError("Could not resolve identifier", name=name, scope=self.name)
+        raise UnresolvedIdentifierError(u"Could not resolve identifier", name=name, scope=self.name)

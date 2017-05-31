@@ -59,10 +59,23 @@ class SensorGraphSyntaxError(IOTileException):
     pass
 
 
+class SensorGraphSemanticError(IOTileException):
+    """Thrown when a syntactically valid statement occurs in a context that is not valid.
+
+    Not all statements can appear in all scopes.  This exception indicates a semantic error
+    where a statement appears in a scope that does not allow it.
+    """
+
+    pass
+
+
 class UnresolvedIdentifierError(IOTileException):
     """Thrown when an identifier is asked for but cannot be found.
 
-    The name of the identifier is given in the parameters.
+    The name of the identifier is given in the parameters.  This exception will
+    also be thrown if an identifier is found but resolves to an object of an incorrect
+    type.  For example, if you are asking for a DataStream but the identifier names
+    a SlotIdentifier.
     """
 
     pass

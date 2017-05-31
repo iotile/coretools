@@ -158,6 +158,16 @@ class DataStreamSelector(object):
         return self.match_type == DataStream.BufferedType or self.match_type == DataStream.OutputType
 
     @classmethod
+    def FromStream(cls, stream):
+        """Create a DataStreamSelector from a DataStream.
+
+        Args:
+            stream (DataStream): The data stream that we want to convert.
+        """
+
+        return DataStreamSelector(stream.stream_type, stream.stream_id, stream.system)
+
+    @classmethod
     def FromString(cls, string_rep):
         """Create a DataStreamSelector from a string.
 
