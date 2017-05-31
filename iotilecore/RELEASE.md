@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.14.3
+
+- Fix virtual device adapter to properly allow connecting to devices by setting
+  the probe_required flag.
+
 ## 3.14.2
 
 - Allow specifying sent streamer and timestamp when creating signed list reports
