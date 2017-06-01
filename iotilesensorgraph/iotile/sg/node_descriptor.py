@@ -1,11 +1,12 @@
 """A grammer for specifying sensor graph nodes."""
 
+from builtins import str
 from pyparsing import Word, Regex, nums, hexnums, Literal, Optional, Group, oneOf, QuotedString, ParseException
 from .node import SGNode, InputTrigger
 from .stream import DataStream, DataStreamSelector
 
 number = Regex('((0x[a-fA-F0-9]+)|[0-9]+)')
-combiner = (Literal('&&') | Literal('||')).setParseAction(lambda s,l,t: [t[0] == '||']) # True when disjunction
+combiner = (Literal('&&') | Literal('||'))
 symbol = Regex('[a-zA-Z][a-zA-Z_]*')
 
 stream_type = Optional(Literal('system')) + (Literal('input') | Literal('output') | Literal('buffered') | Literal("unbuffered") | Literal("constant") | Literal("counter")) + Optional(Literal("node").suppress())
@@ -71,7 +72,7 @@ def parse_node_descriptor(desc, model):
 
         inputs.append((stream_a, trigger_a))
 
-    if 'combiner' in data and data['combiner'] == '&&':
+    if 'combiner' in data and str(data['combiner']) == u'&&':
         node.trigger_combiner = SGNode.AndTriggerCombiner
     else:
         node.trigger_combiner = SGNode.OrTriggerCombiner

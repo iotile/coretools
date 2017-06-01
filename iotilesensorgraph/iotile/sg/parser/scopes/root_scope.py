@@ -1,7 +1,9 @@
 from .scope import Scope
-from ..stream import DataStream
-from ..exceptions import SensorGraphSemanticError
-from ..known_constants import system_tick, user_tick
+from ...stream import DataStream
+from ...node import InputTrigger
+from ...exceptions import SensorGraphSemanticError
+from ...known_constants import system_tick, user_tick
+
 
 class RootScope(Scope):
     """The global scope that contains all others.
@@ -31,8 +33,8 @@ class RootScope(Scope):
         systick = self.allocator.allocate_stream(DataStream.CounterType, attach=True)
         usertick = self.allocator.allocate_stream(DataStream.CounterType, attach=True)
 
-        self.sensor_graph.add_node("({} always) => {} using copy_latest_a".format(system_tick, systick))
-        self.sensor_graph.add_node("({} always) => {} using copy_latest_a".format(user_tick, usertick))
+        self.sensor_graph.add_node("({} always) => {} using copy_all_a".format(system_tick, systick))
+        self.sensor_graph.add_node("({} always) => {} using copy_all_a".format(user_tick, usertick))
 
         self.system_tick = systick
         self.user_tick = usertick
@@ -56,9 +58,10 @@ class RootScope(Scope):
 
         if (interval % 10) == 0:
             tick = self.allocator.attach_stream(self.system_tick)
-            count = interval / 10
+            count = interval // 10
         else:
             tick = self.allocator.attach_stream(self.user_tick)
             count = interval
 
-        return (tick, count)
+        trigger = InputTrigger(u'count', '=', count)
+        return (tick, trigger)

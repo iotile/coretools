@@ -2,6 +2,7 @@
 
 from future.utils import python_2_unicode_compatible
 from .statement import SensorGraphStatement
+from ...stream import DataStream
 
 
 @python_2_unicode_compatible
@@ -25,3 +26,27 @@ class CallRPCStatement(SensorGraphStatement):
 
     def __str__(self):
         return u'call 0x%X on %s => %s;' % (self.rpc_id, str(self.slot_id), str(self.stream))
+
+    def execute(self, sensor_graph, scope_stack):
+        """Execute this statement on the sensor_graph given the current scope tree.
+
+        This adds a single node to the sensor graph with the call_rpc function
+        as is processing function.
+
+        Args:
+            sensor_graph (SensorGraph): The sensor graph that we are building or
+                modifying
+            scope_stack (list(Scope)): A stack of nested scopes that may influence
+                how this statement allocates clocks or other stream resources.
+        """
+
+        parent = scope_stack[-1]
+        alloc = parent.allocator
+
+        trigger_stream, trigger_cond = parent.trigger_chain()
+        rpc_const = alloc.allocate_stream(DataStream.ConstantType, attach=True)
+        rpc_val = (self.slot_id.address << 16) | self.rpc_id
+
+        sensor_graph.add_node(u"({} {} && {} always) => {} using call_rpc".format(trigger_stream, trigger_cond, rpc_const, self.stream))
+        sensor_graph.add_constant(rpc_const, rpc_val)
+

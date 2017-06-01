@@ -7,11 +7,13 @@ to create a graph structure (hence the name SensorGraph).
 """
 
 from builtins import str
+from future.utils import python_2_unicode_compatible
 from .exceptions import TooManyInputsError, TooManyOutputsError, ProcessingFunctionError
 from iotile.core.exceptions import ArgumentError
 from .walker import InvalidStreamWalker
 
 
+@python_2_unicode_compatible
 class InputTrigger(object):
     """A triggering condition for a graph node input.
 
@@ -53,6 +55,7 @@ class InputTrigger(object):
             raise ArgumentError("Unkown comparison function for input trigger", comparator=comparator)
 
         self.comp_function = known_comps[comparator]
+        self.comp_string = comparator
         self.reference = reference_value
 
     def triggered(self, walker):
@@ -87,6 +90,12 @@ class InputTrigger(object):
     def _eq_comp(self, comp, ref):
         return comp == ref
 
+    def __str__(self):
+        if self.use_count:
+            return u"when count {} {}".format(self.comp_string, self.reference)
+
+        return u"when value {} {}".format(self.comp_string, self.reference)
+
 
 class FalseTrigger(object):
     """Simple trigger that always returns False."""
@@ -95,13 +104,18 @@ class FalseTrigger(object):
         return False
 
 
+@python_2_unicode_compatible
 class TrueTrigger(object):
     """Simple trigger that always returns True."""
 
     def triggered(self, walker):
         return True
 
+    def __str__(self):
+        return u"always"
 
+
+@python_2_unicode_compatible
 class SGNode(object):
     """A node in a graph based processing structure.
 
@@ -229,3 +243,18 @@ class SGNode(object):
             results = []
 
         return results
+
+    def __str__(self):
+        # FIXME: This only works for a maximum of two inputs
+        comb = u'||'
+
+        if self.trigger_combiner == self.AndTriggerCombiner:
+            comb = u'&&'
+
+        # Handle one input nodes
+        if isinstance(self.inputs[1][0], InvalidStreamWalker):
+            return u'({} {}) => {} using {}'.format(self.inputs[0][0].selector, self.inputs[0][1], self.stream, self.func_name)
+
+        return u'({} {} {} {} {}) => {} using {}'.format(self.inputs[0][0].selector, self.inputs[0][1], comb,
+                                                         self.inputs[1][0].selector, self.inputs[1][1],
+                                                         self.stream, self.func_name)

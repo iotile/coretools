@@ -1,5 +1,6 @@
 from .scope import Scope
-from ..exceptions import SensorGraphSemanticError
+from ...node import InputTrigger
+from ...exceptions import SensorGraphSemanticError
 
 
 class TriggerScope(Scope):
@@ -8,7 +9,8 @@ class TriggerScope(Scope):
     Args:
         sensor_graph (SensorGraph): The sensor graph we are working on.
         scope_stack (list(Scope)): The stack of already allocated scopes.
-        trigger_input (NodeInput): The
+        trigger_input ((DataStream, InputTrigger): The input trigger stream
+            and condition.  The input trigger must already be attached.
     """
 
     def __init__(self, sensor_graph, scope_stack, trigger_input):
@@ -18,8 +20,12 @@ class TriggerScope(Scope):
 
         super(TriggerScope, self).__init__(u"Trigger Scope", sensor_graph, alloc, parent)
 
-        self.trigger_stream = trigger_input[0]
-        self.trigger_interval = trigger_input[1]
+        # Create our own node to create our triggering chain
+        # This will be optimized out if it turned out not be needed
+        stream = alloc.allocate_stream(trigger_input[0].stream_type)
+        sensor_graph.add_node(u'({} {}) => {} using copy_latest_a'.format(trigger_input[0], trigger_input[1], stream))
+        self.trigger_stream = stream
+        self.trigger_cond = InputTrigger(u'count', '=', 1)
 
     def trigger_chain(self):
         """Return a NodeInput tuple for creating a node.
@@ -29,7 +35,7 @@ class TriggerScope(Scope):
         """
 
         trigger_stream = self.allocator.attach_stream(self.trigger_stream)
-        return (trigger_stream, self.trigger_interval)
+        return (trigger_stream, self.trigger_cond)
 
     def clock(self, interval):
         """Return a NodeInput tuple for triggering an event every interval.

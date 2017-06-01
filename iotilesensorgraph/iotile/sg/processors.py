@@ -31,6 +31,36 @@ def copy_all_a(input_a, *other_inputs, **kwargs):
 
     return output
 
+
+def copy_latest_a(input_a, *other_inputs, **kwargs):
+    """Copy the latest reading from input a into the output.
+
+    All other inputs are skipped to that after this function
+    runs there are no readings left in any of the input walkers
+    even if no output is generated.
+
+    Returns:
+        list(IOTileReading)
+    """
+
+    output = []
+
+    last_reading = None
+
+    if input_a.selector.inexhaustible:
+        last_reading = input_a.pop()
+    else:
+        while input_a.count() > 0:
+            last_reading = input_a.pop()
+
+    if last_reading is not None:
+        output = [last_reading]
+
+    for input_x in other_inputs:
+        input_x.skip_all()
+
+    return output
+
 def call_rpc(*inputs, **kwargs):
     """Call an RPC based on the encoded value read from input b.
 
@@ -66,3 +96,4 @@ def call_rpc(*inputs, **kwargs):
         input_x.skip_all()
 
     return output
+

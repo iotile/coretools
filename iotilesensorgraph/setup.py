@@ -28,6 +28,7 @@ setup(
         "monotonic>=1.3.0"
     ],
     entry_points={'iotile.sg_processor': ['copy_all_a = iotile.sg.processors:copy_all_a',
+                                          'copy_latest_a = iotile.sg.processors:copy_latest_a',
                                           'call_rpc = iotile.sg.processors:call_rpc'],
                   'console_scripts': ['iotile-sgrun = iotile.sg.scripts.iotile_sgrun:main']},
     author="Arch",

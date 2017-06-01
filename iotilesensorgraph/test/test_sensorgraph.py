@@ -14,6 +14,8 @@ def test_basic_sensorgraph():
 
     sg.add_node('(input 1 always && input 2 when count >= 1) => unbuffered 1 using copy_all_a')
     sg.process_input(DataStream.FromString('input 1'), IOTileReading(0, 1, 1), rpc_executor=None)
+    sg.process_input(DataStream.FromString('input 2'), IOTileReading(0, 1, 1), rpc_executor=None)
+
     assert sg.sensor_log.inspect_last(DataStream.FromString('unbuffered 1')).value == 1
 
 

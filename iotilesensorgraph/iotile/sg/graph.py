@@ -22,6 +22,7 @@ class SensorGraph(object):
     def __init__(self, sensor_log, model=None):
         self.roots = []
         self.nodes = []
+        self.constant_database = {}
         self.config_database = {}
         self.sensor_log = sensor_log
         self.model = model
@@ -82,6 +83,23 @@ class SensorGraph(object):
             self.config_database[slot] = {}
 
         self.config_database[slot][config_id] = (config_type, value)
+
+    def add_constant(self, stream, value):
+        """Store a constant value for use in this sensor graph.
+
+        Constant assignments occur after all sensor graph nodes have been
+        allocated since they must be propogated to all appropriate virtual
+        stream walkers.
+
+        Args:
+            stream (DataStream): The constant stream to assign the value to
+            value (int): The value to assign.
+        """
+
+        if stream in self.constant_database:
+            raise ArgumentError("Attempted to set the same constant twice", stream=stream, old_value=self.constant_database[stream], new_value=value)
+
+        self.constant_database[stream] = value
 
     def get_config(self, slot, config_id):
         """Get a config variable assignment previously set on this sensor graph.
@@ -175,3 +193,8 @@ class SensorGraph(object):
 
         for entry in iter_entry_points(u'iotile.sg_processor', name):
             return entry.load()
+
+    def dump_nodes(self):
+        """Dump all of the nodes in this sensor graph as a list of strings."""
+
+        return [str(x) for x in self.nodes]

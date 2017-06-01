@@ -154,6 +154,12 @@ class DataStreamSelector(object):
         return self.match_type == DataStream.InputType
 
     @property
+    def inexhaustible(self):
+        """Whether this is a constant stream."""
+
+        return self.match_type == DataStream.ConstantType
+
+    @property
     def buffered(self):
         return self.match_type == DataStream.BufferedType or self.match_type == DataStream.OutputType
 
