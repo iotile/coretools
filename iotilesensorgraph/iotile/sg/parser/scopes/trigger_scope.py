@@ -21,7 +21,8 @@ class TriggerScope(Scope):
         super(TriggerScope, self).__init__(u"Trigger Scope", sensor_graph, alloc, parent)
 
         # Create our own node to create our triggering chain
-        # This will be optimized out if it turned out not be needed
+        # this will be optimized out if it turned out not to be needed
+        # after all nodes have been allocated
         stream = alloc.allocate_stream(trigger_input[0].stream_type)
         sensor_graph.add_node(u'({} {}) => {} using copy_latest_a'.format(trigger_input[0], trigger_input[1], stream))
         self.trigger_stream = stream
