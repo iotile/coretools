@@ -1,3 +1,4 @@
+six
 tox
 setuptools>=30.2.0
 wheel
