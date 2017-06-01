@@ -6,6 +6,6 @@ meta cloud_name = "nfc300-1-0-0";
 
 every 1 minute
 {
-	call 0x1000 on slot 1 => unbuffered 15;
-	call 0x1001 on slot 2 => unbuffered 16;
+	call 0x1000 on slot 1 => counter 15;
+	call 0x1001 on slot 2 => counter 16;
 }

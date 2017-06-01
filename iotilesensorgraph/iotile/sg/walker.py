@@ -168,7 +168,7 @@ class CounterStreamWalker(StreamWalker):
     def skip_all(self):
         """Skip all readings in this walker."""
 
-        self.count = 0
+        self._count = 0
 
 
 class InvalidStreamWalker(StreamWalker):

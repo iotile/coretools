@@ -63,6 +63,9 @@ class SensorGraphSimulator(object):
         if self._check_stop_conditions(sensor_graph):
             return
 
+        # Make sure all of teh constants are loaded
+        sensor_graph.load_constants()
+
         if include_reset:
             pass  # TODO: include a reset event here
 

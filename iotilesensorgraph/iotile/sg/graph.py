@@ -7,6 +7,7 @@ from .slot import SlotIdentifier
 from .known_constants import config_user_tick_secs
 from .exceptions import NodeConnectionError, ProcessingFunctionError
 from iotile.core.exceptions import ArgumentError
+from iotile.core.hw.reports import IOTileReading
 
 
 class SensorGraph(object):
@@ -100,6 +101,18 @@ class SensorGraph(object):
             raise ArgumentError("Attempted to set the same constant twice", stream=stream, old_value=self.constant_database[stream], new_value=value)
 
         self.constant_database[stream] = value
+
+    def load_constants(self):
+        """Load all constants into their respective streams.
+
+        All previous calls to add_constant stored a constant value that
+        should be associated with virtual stream walkers.  This function
+        actually calls push_stream in order to push all of the constant
+        values to their walkers.
+        """
+
+        for stream, value in self.constant_database.items():
+            self.sensor_log.push(stream, IOTileReading(stream.encode(), 0, value))
 
     def get_config(self, slot, config_id):
         """Get a config variable assignment previously set on this sensor graph.
