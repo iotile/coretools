@@ -2,6 +2,10 @@
 
 from future.utils import python_2_unicode_compatible
 from .statement import SensorGraphStatement
+from ...known_constants import user_connected, user_disconnected
+from ...node import InputTrigger
+from ...stream import DataStream
+from ..scopes import ClockScope
 
 
 @python_2_unicode_compatible
@@ -22,3 +26,55 @@ class WhenBlock(SensorGraphStatement):
 
     def __str__(self):
         return u"when connected to %s" % (str(self.slot_id),)
+
+    def execute_before(self, sensor_graph, scope_stack):
+        """Execute statement before children are executed.
+
+        Args:
+            sensor_graph (SensorGraph): The sensor graph that we are building or
+                modifying
+            scope_stack (list(Scope)): A stack of nested scopes that may influence
+                how this statement allocates clocks or other stream resources.
+        """
+
+        parent = scope_stack[-1]
+        alloc = parent.allocator
+
+        # We want to create a gated clock that only fires when there is a connection
+        # to a communication tile.  So we create a latching constant stream that is used to gate the
+        # clock passed through from the previous scope.
+        connect_stream = alloc.allocate_stream(DataStream.UnbufferedType, attach=True)
+        disconnect_stream = alloc.allocate_stream(DataStream.UnbufferedType, attach=True)
+        latch_stream = alloc.allocate_stream(DataStream.ConstantType, attach=True)
+        latch_on_stream = alloc.allocate_stream(DataStream.ConstantType, attach=True)
+        latch_off_stream = alloc.allocate_stream(DataStream.ConstantType, attach=True)
+        clock_stream = alloc.allocate_stream(DataStream.CounterType)  # Don't attach because it's not an input anywhere
+
+        parent_clock = parent.clock(1)
+
+        sensor_graph.add_node(u"({} always) => {} using copy_latest_a".format(user_connected, connect_stream))
+        sensor_graph.add_node(u"({} always) => {} using copy_latest_a".format(user_disconnected, disconnect_stream))
+
+        sensor_graph.add_node(u"({} always && {} when value={}) => {} using copy_latest_a".format(latch_on_stream, connect_stream, self.slot_id.address, latch_stream))
+        sensor_graph.add_node(u"({} always && {} when value={}) => {} using copy_latest_a".format(latch_off_stream, disconnect_stream, self.slot_id.address, latch_stream))
+
+        sensor_graph.add_node(u"({} {} && {} when value = 1) => {} using copy_latest_a".format(parent_clock[0], parent_clock[1], latch_stream, clock_stream))
+
+        sensor_graph.add_constant(latch_on_stream, 1)
+        sensor_graph.add_constant(latch_off_stream, 0)
+        sensor_graph.add_constant(latch_stream, 0)
+
+        new_scope = ClockScope(sensor_graph, scope_stack, (clock_stream, InputTrigger(u'count', u'=', 1)), 1)
+        scope_stack.append(new_scope)
+
+    def execute_after(self, sensor_graph, scope_stack):
+        """Execute statement after children are executed.
+
+        Args:
+            sensor_graph (SensorGraph): The sensor graph that we are building or
+                modifying
+            scope_stack (list(Scope)): A stack of nested scopes that may influence
+                how this statement allocates clocks or other stream resources.
+        """
+
+        scope_stack.pop()

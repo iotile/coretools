@@ -38,10 +38,28 @@ class SensorGraphSimulator(object):
         self._known_conditions = []
         self.watch_streams = []
         self.tick_count = 0
+        self._start_tick = 0  # the tick on which the current simulation started
         self._rpc_executor = NullRPCExecutor()
 
         # Register known stop conditions
         self._known_conditions.append(TimeBasedStopCondition)
+
+    def step(self, sensor_graph, input_stream, value):
+        """Step the sensor graph through one since input.
+
+        The internal tick count is not advanced so this function may
+        be called as many times as desired to input specific conditions
+        without simulation time passing.
+
+        Args:
+            sensor_graph (SensorGraph): The sensor graph to run
+            input_stream (DataStream): The input stream to push the
+                value into
+            value (int): The reading value to push as an integer
+        """
+
+        reading = IOTileReading(input_stream.encode(), self.tick_count, value)
+        sensor_graph.process_input(input_stream, reading, self._rpc_executor)
 
     def run(self, sensor_graph, include_reset=True, accelerated=True):
         """Run this sensor graph until a stop condition is hit.
@@ -56,23 +74,29 @@ class SensorGraphSimulator(object):
                 a reset event to match what would happen when an
                 actual device powers on.
             accelerated (bool): Whether to run this sensor graph as
-                fast as possible or to delay ticke events to simulate
+                fast as possible or to delay tick events to simulate
                 the actual passage of wall clock time.
         """
+
+        self._start_tick = self.tick_count
 
         if self._check_stop_conditions(sensor_graph):
             return
 
-        # Make sure all of teh constants are loaded
-        sensor_graph.load_constants()
-
         if include_reset:
             pass  # TODO: include a reset event here
+
+        # See if there's a user tick that's set
+        user_interval = sensor_graph.user_tick()
 
         while not self._check_stop_conditions(sensor_graph):
             # Process one more one second tick
             now = monotonic()
             next_tick = now + 1.0
+
+            if user_interval != 0 and (self.tick_count % user_interval) == 0:
+                reading = IOTileReading(user_tick.encode(), self.tick_count, self.tick_count)
+                sensor_graph.process_input(user_tick, reading, self._rpc_executor)
 
             if (self.tick_count % 10) == 0:
                 reading = IOTileReading(system_tick.encode(), self.tick_count, self.tick_count)
@@ -97,7 +121,7 @@ class SensorGraphSimulator(object):
         """
 
         for stop in self.stop_conditions:
-            if stop.should_stop(self.tick_count, sensor_graph):
+            if stop.should_stop(self.tick_count, self.tick_count - self._start_tick, sensor_graph):
                 return True
 
         return False

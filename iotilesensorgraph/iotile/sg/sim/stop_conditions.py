@@ -29,11 +29,12 @@ class StopCondition(object):
     """A condition under which the simulation should stop.
 
     Subclasses should override the one public method
-    named should_stop(self, second_count, sensor_graph).
+    named should_stop(self, abs_seconds, rel_seconds, sensor_graph).
 
-    The second_count is the number of seconds that have expired
-    since the start of the simulation.  The sensor_graph is the
-    sensor_graph (including data) being simulated.  The function
+    The abs_seconds parameter is the number of seconds that have expired
+    since the start of the simulation (over all calls to run).  The
+    rel_seconds parameter counts relative seconds inside the current call to run.
+    The sensor_graph is the sensor_graph (including data) being simulated.  The function
     should return a bool with True meaning that the simulation
     should stop.
 
@@ -42,12 +43,14 @@ class StopCondition(object):
     must raise an ArgumentError if it could not match the input string.
     """
 
-    def should_stop(self, second_count, sensor_graph):
+    def should_stop(self, abs_second_count, rel_second_count, sensor_graph):
         """Check if this stop condition is fulfilled.
 
         Args:
-            second_count (int): The number of seconds that
+            abs_second_count (int): The number of seconds that
                 have expired since the start of the simulation.
+            second_count (int): The number of seconds that
+                have expired since the start of the last `run` calls.
             sensor_graph (SensorGraph): The sensor graph that is
                 being simulated, giving access to its stored data.
 
@@ -61,6 +64,10 @@ class StopCondition(object):
 class TimeBasedStopCondition(StopCondition):
     """Stop the simulation after a fixed period of time.
 
+    This time is relative to the call to `run` so the simulation
+    may be continued over multiple run calls, each of which lasts
+    for max_time seconds.
+
     Args:
         max_time (int): The maximum number of seconds to run the
             simulation for.
@@ -69,7 +76,7 @@ class TimeBasedStopCondition(StopCondition):
     def __init__(self, max_time):
         self.max_time = max_time
 
-    def should_stop(self, second_count, sensor_graph):
+    def should_stop(self, abs_seconds, rel_seconds, sensor_graph):
         """Check if this stop condition is fulfilled.
 
         Args:
@@ -82,7 +89,7 @@ class TimeBasedStopCondition(StopCondition):
             bool: True if we should stop, otherwise False
         """
 
-        return second_count > self.max_time
+        return rel_seconds >= self.max_time
 
     @classmethod
     def FromString(cls, desc):

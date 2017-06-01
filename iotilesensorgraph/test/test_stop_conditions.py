@@ -23,8 +23,8 @@ def test_time_based_stop():
 
     cond1 = TimeBasedStopCondition.FromString(u'run_time 0x10 seconds')
     assert cond1.max_time == 16
-    assert not cond1.should_stop(15, None)
-    assert cond1.should_stop(17, None)
+    assert not cond1.should_stop(15, 15, None)
+    assert cond1.should_stop(17, 17, None)
 
     with pytest.raises(ArgumentError):
         TimeBasedStopCondition.FromString('run_time random thing')

@@ -83,6 +83,16 @@ class SensorLog(object):
         else:
             self._virtual_walkers.remove(walker)
 
+    def clear(self):
+        """Clear all data from this sensor_log.
+
+        All readings in all walkers are skipped and buffered data is
+        destroyed.
+        """
+
+        for walker in self._virtual_walkers:
+            walker.skip_all()
+
     def push(self, stream, reading):
         """Push a reading into a stream, updating any associated stream walkers.
 

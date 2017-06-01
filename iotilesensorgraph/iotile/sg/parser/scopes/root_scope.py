@@ -1,8 +1,9 @@
 from .scope import Scope
 from ...stream import DataStream
+from ...slot import SlotIdentifier
 from ...node import InputTrigger
 from ...exceptions import SensorGraphSemanticError
-from ...known_constants import system_tick, user_tick
+from ...known_constants import system_tick, user_tick, config_user_tick_secs
 
 
 class RootScope(Scope):
@@ -35,6 +36,7 @@ class RootScope(Scope):
 
         self.sensor_graph.add_node("({} always) => {} using copy_all_a".format(system_tick, systick))
         self.sensor_graph.add_node("({} always) => {} using copy_all_a".format(user_tick, usertick))
+        self.sensor_graph.add_config(SlotIdentifier.FromString('controller'), config_user_tick_secs, 'uint32_t', 1)
 
         self.system_tick = systick
         self.user_tick = usertick
@@ -63,5 +65,5 @@ class RootScope(Scope):
             tick = self.allocator.attach_stream(self.user_tick)
             count = interval
 
-        trigger = InputTrigger(u'count', '=', count)
+        trigger = InputTrigger(u'count', '>=', count)
         return (tick, trigger)

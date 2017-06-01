@@ -14,6 +14,11 @@ system_tick = DataStream.FromString('system input 2')
 # 1 second or longer.
 user_tick = DataStream.FromString('system input 3')
 
+# These streams receive the address of the tile that an external
+# user connected to or disconnected from.
+user_connected = DataStream.FromString('system input 1025')
+user_disconnected = DataStream.FromString('system input 1026')
+
 
 # Known config variable ids on the controller
 
