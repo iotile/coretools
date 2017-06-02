@@ -23,6 +23,3 @@ def main():
     model = DeviceModel()
     log = SensorLog(model=model)
     graph = SensorGraph()
-
-
-    print(args.sensor_graph)
