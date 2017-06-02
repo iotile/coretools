@@ -26,7 +26,7 @@ class TriggerScope(Scope):
         stream = alloc.allocate_stream(trigger_input[0].stream_type)
         sensor_graph.add_node(u'({} {}) => {} using copy_latest_a'.format(trigger_input[0], trigger_input[1], stream))
         self.trigger_stream = stream
-        self.trigger_cond = InputTrigger(u'count', '=', 1)
+        self.trigger_cond = InputTrigger(u'count', '==', 1)
 
     def trigger_chain(self):
         """Return a NodeInput tuple for creating a node.

@@ -47,7 +47,7 @@ class InputTrigger(object):
             u'>=': self._ge_comp,
             u'<': self._lt_comp,
             u'<=': self._le_comp,
-            u'=': self._eq_comp
+            u'==': self._eq_comp
         }
 
         comparator = str(comparator)

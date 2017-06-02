@@ -2,6 +2,7 @@ from pyparsing import Optional, Word, Literal, Forward, alphas, nums, Group, Reg
 from ..stream import DataStream
 from ..slot import SlotIdentifier
 
+
 ident = None
 rvalue = None
 number = None
@@ -9,6 +10,7 @@ comp = None
 config_type = None
 slot_id = None
 stream = None
+stream_trigger = None
 time_interval = None
 quoted_string = None
 semi = None
@@ -25,7 +27,7 @@ sensor_graph = None
 
 
 def _create_primitives():
-    global ident, rvalue, number, quoted_string, semi, time_interval, slot_id, comp, config_type, stream, comment
+    global ident, rvalue, number, quoted_string, semi, time_interval, slot_id, comp, config_type, stream, comment, stream_trigger
 
     if ident is not None:
         return
@@ -67,6 +69,10 @@ def _create_primitives():
     stream = Optional(Literal("system")) + oneOf("buffered unbuffered input output counter constant") + number + Optional(Literal("node"))
     stream.setParseAction(lambda s,l,t: [DataStream.FromString(u' '.join([str(x) for x in t]))])
 
+    trigger_comp = oneOf('> < >= <= ==')
+    stream_trigger = Group((Literal(u'count') | Literal(u'value')) + Literal(u'(').suppress() - stream - Literal(u')').suppress() - trigger_comp - number).setResultsName('stream_trigger')
+
+
 def _create_simple_statements():
     global ident, rvalue, simple_statement, semi, comp, number, slot_id, callrpc_stmt, generic_statement
 
@@ -83,16 +89,17 @@ def _create_simple_statements():
     locator = Empty().setParseAction(lambda s, l, t: l)('location')
     generic_statement = Group(locator + Group(ZeroOrMore(Regex(u"[^{};]+")) + Literal(u';'))('match')).setResultsName('unparsed_statement')
 
+
 def _create_block_bnf():
     global block_bnf, time_interval, slot_id, statement, block_id, ident, stream
 
     if block_bnf is not None:
         return
 
-    every_block_id = Group(Literal(u'every').suppress() + time_interval).setResultsName('every_block')
-    when_block_id = Group(Literal(u'when').suppress() + Literal("connected").suppress() + Literal("to").suppress() + slot_id).setResultsName('when_block')
-    config_block_id = Group(Literal(u'config').suppress() + slot_id).setResultsName('config_block')
-    on_block_id = Group(Literal(u'on').suppress() + (ident | stream)).setResultsName('on_block')
+    every_block_id = Group(Literal(u'every').suppress() - time_interval).setResultsName('every_block')
+    when_block_id = Group(Literal(u'when').suppress() - Literal("connected").suppress() - Literal("to").suppress() - slot_id).setResultsName('when_block')
+    config_block_id = Group(Literal(u'config').suppress() - slot_id).setResultsName('config_block')
+    on_block_id = Group(Literal(u'on').suppress() + (stream_trigger | Group(ident).setResultsName('identifier'))).setResultsName('on_block')
 
     block_id = every_block_id | when_block_id | config_block_id | on_block_id
 
@@ -118,6 +125,7 @@ def get_language():
     sensor_graph.ignore(comment)
 
     return sensor_graph
+
 
 def get_statement():
     """Create or retrieve the parse tree for a simple statement."""

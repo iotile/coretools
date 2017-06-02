@@ -13,7 +13,7 @@ stream_type = Optional(Literal('system')) + (Literal('input') | Literal('output'
 stream = stream_type + number
 
 trigger_type = (Literal('value') | Literal('count'))
-trigger_op = oneOf('> < >= <= =')
+trigger_op = oneOf('> < >= <= ==')
 
 trigger = Literal('always') | (Literal('when').suppress() + trigger_type('type') + trigger_op('op') + number('reference'))
 

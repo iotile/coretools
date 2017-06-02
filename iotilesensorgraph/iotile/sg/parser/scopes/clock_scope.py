@@ -45,5 +45,5 @@ class ClockScope(Scope):
 
         stream = self.allocator.attach_stream(self.clock_stream)
 
-        return (stream, InputTrigger(u'count', '=', interval // self.clock_interval))
+        return (stream, InputTrigger(u'count', '==', interval // self.clock_interval))
 

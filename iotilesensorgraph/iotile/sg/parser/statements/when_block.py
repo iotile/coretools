@@ -55,16 +55,20 @@ class WhenBlock(SensorGraphStatement):
         sensor_graph.add_node(u"({} always) => {} using copy_latest_a".format(user_connected, connect_stream))
         sensor_graph.add_node(u"({} always) => {} using copy_latest_a".format(user_disconnected, disconnect_stream))
 
-        sensor_graph.add_node(u"({} always && {} when value={}) => {} using copy_latest_a".format(latch_on_stream, connect_stream, self.slot_id.address, latch_stream))
-        sensor_graph.add_node(u"({} always && {} when value={}) => {} using copy_latest_a".format(latch_off_stream, disconnect_stream, self.slot_id.address, latch_stream))
+        sensor_graph.add_node(u"({} always && {} when value=={}) => {} using copy_latest_a".format(latch_on_stream, connect_stream, self.slot_id.address, latch_stream))
+        sensor_graph.add_node(u"({} always && {} when value=={}) => {} using copy_latest_a".format(latch_off_stream, disconnect_stream, self.slot_id.address, latch_stream))
 
-        sensor_graph.add_node(u"({} {} && {} when value = 1) => {} using copy_latest_a".format(parent_clock[0], parent_clock[1], latch_stream, clock_stream))
+        sensor_graph.add_node(u"({} {} && {} when value == 1) => {} using copy_latest_a".format(parent_clock[0], parent_clock[1], latch_stream, clock_stream))
 
         sensor_graph.add_constant(latch_on_stream, 1)
         sensor_graph.add_constant(latch_off_stream, 0)
         sensor_graph.add_constant(latch_stream, 0)
 
-        new_scope = ClockScope(sensor_graph, scope_stack, (clock_stream, InputTrigger(u'count', u'=', 1)), 1)
+        new_scope = ClockScope(sensor_graph, scope_stack, (clock_stream, InputTrigger(u'count', u'==', 1)), 1)
+
+        # Add two new identifiers to the scope for supporting on connect and on disconnect events
+        new_scope.add_identifier('connect', connect_stream)
+        new_scope.add_identifier('disconnect', disconnect_stream)
         scope_stack.append(new_scope)
 
     def execute_after(self, sensor_graph, scope_stack):

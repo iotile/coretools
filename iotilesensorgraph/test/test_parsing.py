@@ -45,6 +45,25 @@ def test_language_constructs():
     parsed = language.block_bnf.parseString(u'every 1 day { call 0x5001 on slot 2 => output 1; }')
     assert parsed.asList()[0][0][0] == 60*60*24
 
+    # Test parsing stream_trigger
+    parsed = language.stream_trigger.parseString(u'value(input 2) == 10')
+    assert parsed[0].getName() == u'stream_trigger'
+
+    parsed = language.stream_trigger.parseString(u'count(output 1) <= 10')
+    assert parsed[0].getName() == u'stream_trigger'
+
+    # Test parsing on block with identifier
+    parsed = language.block_bnf.parseString(u'on test_identifier {}')
+    assert parsed[0][0][0].getName() == u'identifier'
+    assert parsed[0][0][0][0] == u'test_identifier'
+
+    parsed = language.block_bnf.parseString(u'on value(input 2) >= 5 {}')
+    assert parsed[0][0][0].getName() == u'stream_trigger'
+    assert parsed[0][0][0][0] == u'value'
+    assert parsed[0][0][0][1] == DataStream.FromString('input 2')
+    assert parsed[0][0][0][2] == u'>='
+    assert parsed[0][0][0][3] == 5
+
 
 def test_basic_parsing(parser):
     """Make sure we can parse a basic file without syntax errors."""
