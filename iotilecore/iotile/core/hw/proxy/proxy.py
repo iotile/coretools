@@ -38,7 +38,11 @@ class TileBusProxyObject (object):
         is not successful.
         """
 
-        status, payload = self.stream.send_rpc(self.addr, feature, cmd, *args, **kw)
+        if kw.has_key('arg_format'):
+            packed_args = struct.pack("<{}".format(kw['arg_format']), *args)
+            status, payload = self.stream.send_rpc(self.addr, feature, cmd, packed_args, **kw)
+        else:
+            status, payload = self.stream.send_rpc(self.addr, feature, cmd, *args, **kw)
 
         unpack_flag = False
         if "result_type" in kw:
