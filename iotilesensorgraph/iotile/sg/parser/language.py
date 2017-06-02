@@ -99,7 +99,7 @@ def _create_block_bnf():
     every_block_id = Group(Literal(u'every').suppress() - time_interval).setResultsName('every_block')
     when_block_id = Group(Literal(u'when').suppress() - Literal("connected").suppress() - Literal("to").suppress() - slot_id).setResultsName('when_block')
     config_block_id = Group(Literal(u'config').suppress() - slot_id).setResultsName('config_block')
-    on_block_id = Group(Literal(u'on').suppress() + (stream_trigger | Group(ident).setResultsName('identifier'))).setResultsName('on_block')
+    on_block_id = Group(Literal(u'on').suppress() + (stream_trigger | Group(stream).setResultsName('stream_always') | Group(ident).setResultsName('identifier'))).setResultsName('on_block')
 
     block_id = every_block_id | when_block_id | config_block_id | on_block_id
 

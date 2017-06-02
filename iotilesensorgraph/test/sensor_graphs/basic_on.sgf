@@ -13,3 +13,8 @@ on count(counter 1) == 2
 {
 	call 0x5002 on slot 2 => counter 2;
 }
+
+on counter 2
+{
+	call 0x5002 on slot 2 => counter 3;
+}

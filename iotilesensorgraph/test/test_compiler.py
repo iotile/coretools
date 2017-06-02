@@ -153,7 +153,7 @@ def test_when_block_on_event(parser):
 
 
 def test_on_block(parser):
-    """Make sure on count(stream) and on value(stream) work."""
+    """Make sure on count(stream), on value(stream) and on stream work."""
 
     parser.parse_file(get_path(u'basic_on.sgf'))
 
@@ -169,16 +169,18 @@ def test_on_block(parser):
 
     counter1 = log.create_walker(DataStreamSelector.FromString('counter 1'))
     counter2 = log.create_walker(DataStreamSelector.FromString('counter 2'))
+    counter3 = log.create_walker(DataStreamSelector.FromString('counter 3'))
 
     sim = SensorGraphSimulator()
     sim.step(sg, DataStream.FromString('input 1'), 8)
 
     assert counter1.count() == 0
     assert counter2.count() == 0
+    assert counter3.count() == 0
 
     for i in range(0, 10):
         sim.step(sg, DataStream.FromString('input 1'), 5)
 
     assert counter1.count() == 10
     assert counter2.count() == 5
-
+    assert counter3.count() == 5

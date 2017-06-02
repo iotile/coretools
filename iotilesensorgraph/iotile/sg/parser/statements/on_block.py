@@ -39,6 +39,11 @@ class OnBlock(SensorGraphStatement):
             trigger = InputTrigger(trigger_type, oper, ref)
             self.explicit_stream = stream
             self.explicit_trigger = trigger
+        elif cond.getName() == 'stream_always':
+            stream = cond[0]
+            trigger = TrueTrigger()
+            self.explicit_stream = stream
+            self.explicit_trigger = trigger
         else:
             raise ArgumentError("OnBlock created from an invalid ParseResults object", parse_results=parsed)
 
