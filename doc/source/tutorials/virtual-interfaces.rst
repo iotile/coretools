@@ -122,7 +122,7 @@ The `virtual_device` script is just a small program whose job is to let you
 run a VirtualDevice inside of a VirtualInterface without having to write custom
 python code.
 
-VirtualInterfaces and VirtualDevices can be installed in your virtual 
+VirtualInterfaces and VirtualDevices can be installed in your virtual environment  
 by packages during the pip install process, and you can use virtual_device to
 list what installed interfaces and devices are available using the -l flag::
 
@@ -161,6 +161,8 @@ a json config file using a `--config` flag on the command line.
     attached to your computer to allow for a looback test and you will need to 
     know either their device file on Mac OS and Linux or their COM port number 
     on Windows.
+
+In Linux, you will need to find the dongle existing in the /dev directory. You will also need to yourself to the sudo user group with `sudo usermod -a -G dialout [username]`.
 
 First, create a config file named `device_config.json`::
 
@@ -304,7 +306,7 @@ Start the realtime_test device again::
     Starting to serve virtual IOTile device
 
 Now load up your realtime stream dumping script from the last tuorial (fixing
-the port to use bled112 instead of virtual (dump_streams.py)::
+the port to use bled112 instead of virtual (test_script.py)::
 
     from iotile.core.hw.hwmanager import HardwareManager
     from iotile.core.hw.reports import IndividualReadingReport, IOTileReading
@@ -332,7 +334,7 @@ the port to use bled112 instead of virtual (dump_streams.py)::
 
 Run it and see the realtime data coming from your device::
 
-    (iotile) > python ./dump_streams.py
+    (iotile) > python ./test_script.py
     Received Stream 4096: 50 at 2017-05-18 18:05:45.693000
     Received Stream 8192: 100 at 2017-05-18 18:05:45.693000
     Received Stream 8192: 100 at 2017-05-18 18:05:46.211000

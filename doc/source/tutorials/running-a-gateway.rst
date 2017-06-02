@@ -1,5 +1,6 @@
 Setting Up a Gateway
 --------------------
+You may have to `pip install iotile-gateway`.
 
 Many times individual IOTile Devices are not able to directly connect to the
 internet and instead talk exclusively to an intermediate gateway device.  This
