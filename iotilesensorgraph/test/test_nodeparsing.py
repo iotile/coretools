@@ -3,7 +3,7 @@ import pytest
 
 from iotile.sg.node_descriptor import parse_node_descriptor
 from iotile.sg.model import DeviceModel
-from iotile.sg import SensorGraph, SensorLog
+from iotile.sg import SensorGraph, SensorLog, DataStream
 
 def test_basic_parsing():
     """Make sure we can parse a basic node description."""

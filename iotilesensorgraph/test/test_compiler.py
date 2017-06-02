@@ -2,7 +2,7 @@ import pdb
 
 import os
 import pytest
-from iotile.sg.exceptions import SensorGraphSyntaxError
+from iotile.sg.exceptions import SensorGraphSyntaxError, StreamEmptyError
 from iotile.sg import DataStream, DeviceModel, DataStreamSelector
 from iotile.sg.parser import SensorGraphFileParser
 from iotile.sg.sim import SensorGraphSimulator
@@ -119,3 +119,34 @@ def test_when_block_clock(parser):
     sim.step(sg, DataStream.FromString('system input 1026'), 8)
     sim.run(sg)
     assert counter15.count() == 0
+
+
+def test_when_block_on_event(parser):
+    """Make sure on connect and on disconnect work."""
+
+    parser.parse_file(get_path(u'basic_when_on.sgf'))
+
+    model = DeviceModel()
+    parser.compile(model=model)
+
+    sg = parser.sensor_graph
+    log = sg.sensor_log
+    for x in sg.dump_nodes():
+        print(x)
+
+    sg.load_constants()
+
+    sim = SensorGraphSimulator()
+
+    # We should only get a reading in unbuffered 1 on connect and unbuffered 2 on disconnect
+    with pytest.raises(StreamEmptyError):
+        sg.sensor_log.inspect_last(DataStream.FromString('unbuffered 2'))
+
+    sim.step(sg, DataStream.FromString('system input 1025'), 8)
+    assert sg.sensor_log.inspect_last(DataStream.FromString('unbuffered 1')).value == 0
+
+    with pytest.raises(StreamEmptyError):
+        sg.sensor_log.inspect_last(DataStream.FromString('unbuffered 2'))
+
+    sim.step(sg, DataStream.FromString('system input 1026'), 8)
+    assert sg.sensor_log.inspect_last(DataStream.FromString('unbuffered 2')).value == 0

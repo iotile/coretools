@@ -58,6 +58,22 @@ class InputTrigger(object):
         self.comp_string = comparator
         self.reference = reference_value
 
+    def format_trigger(self, stream):
+        """Create a user understandable string like count(stream) >= X.
+
+        Args:
+            stream (DataStream): The stream to use to format ourselves.
+
+        Returns:
+            str: The formatted string
+        """
+
+        src = u'value'
+        if self.use_count:
+            src = u'count'
+
+        return u"{}({}) {} {}".format(src, stream, self.comp_string, self.reference)
+
     def triggered(self, walker):
         """Check if this input is triggered on the given stream walker.
 
