@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.14.4
+
+- Now using optional kwarg 'arg_format' in TileBusProxyObject's rpc method to allow calling code to not have to manually pack arguments
+
 ## 3.14.3
 
 - Fix virtual device adapter to properly allow connecting to devices by setting
