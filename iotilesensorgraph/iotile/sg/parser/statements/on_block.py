@@ -31,10 +31,10 @@ class OnBlock(SensorGraphStatement):
         if cond.getName() == 'identifier':
             self.named_event = cond[0]
         elif cond.getName() == 'stream_trigger':
-            trigger_type = cond[0][0]
-            stream = cond[0][1]
-            oper = cond[0][2]
-            ref = cond[0][3]
+            trigger_type = cond[0]
+            stream = cond[1]
+            oper = cond[2]
+            ref = cond[3]
 
             trigger = InputTrigger(trigger_type, oper, ref)
             self.explicit_stream = stream

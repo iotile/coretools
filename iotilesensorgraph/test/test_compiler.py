@@ -140,13 +140,45 @@ def test_when_block_on_event(parser):
 
     # We should only get a reading in unbuffered 1 on connect and unbuffered 2 on disconnect
     with pytest.raises(StreamEmptyError):
-        sg.sensor_log.inspect_last(DataStream.FromString('unbuffered 2'))
+        log.inspect_last(DataStream.FromString('unbuffered 2'))
 
     sim.step(sg, DataStream.FromString('system input 1025'), 8)
-    assert sg.sensor_log.inspect_last(DataStream.FromString('unbuffered 1')).value == 0
+    assert log.inspect_last(DataStream.FromString('unbuffered 1')).value == 0
 
     with pytest.raises(StreamEmptyError):
-        sg.sensor_log.inspect_last(DataStream.FromString('unbuffered 2'))
+        log.inspect_last(DataStream.FromString('unbuffered 2'))
 
     sim.step(sg, DataStream.FromString('system input 1026'), 8)
-    assert sg.sensor_log.inspect_last(DataStream.FromString('unbuffered 2')).value == 0
+    assert log.inspect_last(DataStream.FromString('unbuffered 2')).value == 0
+
+
+def test_on_block(parser):
+    """Make sure on count(stream) and on value(stream) work."""
+
+    parser.parse_file(get_path(u'basic_on.sgf'))
+
+    model = DeviceModel()
+    parser.compile(model=model)
+
+    sg = parser.sensor_graph
+    log = sg.sensor_log
+    for x in sg.dump_nodes():
+        print(x)
+
+    sg.load_constants()
+
+    counter1 = log.create_walker(DataStreamSelector.FromString('counter 1'))
+    counter2 = log.create_walker(DataStreamSelector.FromString('counter 2'))
+
+    sim = SensorGraphSimulator()
+    sim.step(sg, DataStream.FromString('input 1'), 8)
+
+    assert counter1.count() == 0
+    assert counter2.count() == 0
+
+    for i in range(0, 10):
+        sim.step(sg, DataStream.FromString('input 1'), 5)
+
+    assert counter1.count() == 10
+    assert counter2.count() == 5
+
