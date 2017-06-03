@@ -25,7 +25,8 @@ setup(
     install_requires=[
         "pyparsing>=2.2.0",
         "future>=0.16.0",
-        "monotonic>=1.3.0"
+        "monotonic>=1.3.0",
+        "toposort>=1.5"
     ],
     entry_points={'iotile.sg_processor': ['copy_all_a = iotile.sg.processors:copy_all_a',
                                           'copy_latest_a = iotile.sg.processors:copy_latest_a',
