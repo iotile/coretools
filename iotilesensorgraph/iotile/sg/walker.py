@@ -11,6 +11,9 @@ class StreamWalker(object):
     Args:
         selector (DataStreamSelector): The selector for the stream(s) that we
             are walking.
+
+    Returns:
+        bool: Whether the walker matches the stream
     """
 
     def __init__(self, selector):
@@ -189,6 +192,17 @@ class InvalidStreamWalker(StreamWalker):
     def __init__(self, selector):
         super(InvalidStreamWalker, self).__init__(selector)
 
+    def matches(self, stream):
+        """Check if a stream matches this walker.
+
+        Args:
+            stream (DataStream): The stream to check
+
+        Returns:
+            bool: Whether the walker matches the stream
+        """
+
+        return False
 
     def push(self, stream, value):
         """Update this stream walker with a new responsive reading.

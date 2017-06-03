@@ -42,14 +42,17 @@ class SensorGraph(object):
 
         node, inputs, processor = parse_node_descriptor(node_descriptor, self.model)
 
+        in_root = False
+
         for i, input_data in enumerate(inputs):
             selector, trigger = input_data
 
             walker = self.sensor_log.create_walker(selector)
             node.connect_input(i, walker, trigger)
 
-            if selector.input:
+            if selector.input and not in_root:
                 self.roots.append(node)
+                in_root = True  # Make sure we only add to root list once
             else:
                 found = False
                 for other in self.nodes:
@@ -189,6 +192,36 @@ class SensorGraph(object):
                 # so that they are also checked to see if they should run.
                 if len(results) > 0:
                     to_check.extend(node.outputs)
+
+    def iterate_bfs(self):
+        """Generator that yields node, [inputs], [outputs] in breadth first order.
+
+        This generator will iterate over all nodes in the sensor graph, yielding
+        a 3 tuple for each node with a list of all of the nodes connected to its
+        inputs and all of the nodes connected to its output.
+
+        Returns:
+            (SGNode, list(SGNode), list(SGNode)): A tuple for each node in the graph
+        """
+
+        working_set = deque(self.roots)
+        seen = []
+
+        while len(working_set) > 0:
+            curr = working_set.popleft()
+
+            # Now build input and output node lists for this node
+            inputs = []
+            for walker, _ in curr.inputs:
+                for other in seen:
+                    if walker.matches(other.stream):
+                        inputs.append(other)
+
+            outputs = [x for x in curr.outputs]
+            yield curr, inputs, outputs
+
+            working_set.extend(curr.outputs)
+            seen.append(curr)
 
     @classmethod
     def _find_processing_function(cls, name):
