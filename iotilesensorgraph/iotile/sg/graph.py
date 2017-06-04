@@ -142,6 +142,16 @@ class SensorGraph(object):
 
         return self.config_database[slot][config_id]
 
+    def is_output(self, stream):
+        """Check if a stream is a sensor graph output.
+
+        Return:
+            bool
+        """
+
+        # TODO: Sensor graph outputs are not yet supported
+        return False
+
     def user_tick(self):
         """Check the config variables to see if there is a user tick.
 

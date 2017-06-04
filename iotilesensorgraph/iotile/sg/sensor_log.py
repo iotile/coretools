@@ -70,7 +70,7 @@ class SensorLog(object):
 
         return walker
 
-    def destroy_walkers(self, walker):
+    def destroy_walker(self, walker):
         """Destroy a previously created stream walker.
 
         Args:

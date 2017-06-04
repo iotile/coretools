@@ -5,7 +5,7 @@ import argparse
 from builtins import str
 from iotile.sg import SensorGraph, SensorLog, DeviceModel
 from iotile.sg.parser import SensorGraphFileParser
-
+from iotile.sg.optimizer import SensorGraphOptimizer
 
 def build_args():
     """Create command line argument parser."""
@@ -14,7 +14,7 @@ def build_args():
     parser.add_argument(u'sensor_graph', type=str, help=u"the sensor graph file to load and run.")
     parser.add_argument(u'-f', u'--format', default=u"nodes", choices=[u'nodes', u'ast'], type=str, help=u"the output format for the compiled result.")
     parser.add_argument(u'-o', u'--output', type=str, help=u"the output file to save the results (defaults to stdout)")
-
+    parser.add_argument(u'--disable-optimizer', action="store_true", help=u"disable the sensor graph optimizer completely")
     return parser
 
 
@@ -38,6 +38,10 @@ def main():
         sys.exit(0)
 
     parser.compile(model)
+
+    if not args.disable_optimizer:
+        opt = SensorGraphOptimizer()
+        opt.optimize(parser.sensor_graph, model=model)
 
     if args.format == u'nodes':
         for node in parser.sensor_graph.dump_nodes():

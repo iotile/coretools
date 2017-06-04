@@ -28,6 +28,10 @@ class StreamWalker(object):
 
         return self.selector.matches(stream)
 
+    @property
+    def buffered(self):
+        return self.selector.buffered
+
 
 class VirtualStreamWalker(StreamWalker):
     """A stream walker that just walks over virtual streams.

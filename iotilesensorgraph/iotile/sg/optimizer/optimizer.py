@@ -61,9 +61,9 @@ class SensorGraphOptimizer(object):
             _, before, after = self._known_passes[opt]
 
             if opt not in pass_deps:
-                pass_deps[opt] = []
+                pass_deps[opt] = set()
 
-            pass_deps[opt].extend([x for x in after])
+            pass_deps[opt].update(*[x for x in after])
 
             # For passes that we are before, we may need to
             # preemptively add them to the list early
@@ -72,9 +72,9 @@ class SensorGraphOptimizer(object):
                     continue
 
                 if other not in pass_deps:
-                    pass_deps[other] = []
+                    pass_deps[other] = set()
 
-                pass_deps[other].append(opt)
+                pass_deps[other].add(opt)
 
         return toposort_flatten(pass_deps)
 
@@ -93,7 +93,9 @@ class SensorGraphOptimizer(object):
 
         passes = self._order_pases(self._known_passes.keys())
 
-        for opt in passes:
+        for opt_name in passes:
             rerun = True
+            pass_instance = self._known_passes[opt_name][0]()
+
             while rerun:
-                rerun = opt(sensor_graph, model=model)
+                rerun = pass_instance.run(sensor_graph, model=model)

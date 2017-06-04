@@ -11,6 +11,7 @@ from future.utils import python_2_unicode_compatible
 from .exceptions import TooManyInputsError, TooManyOutputsError, ProcessingFunctionError
 from iotile.core.exceptions import ArgumentError
 from .walker import InvalidStreamWalker
+from copy import copy
 
 
 @python_2_unicode_compatible
@@ -187,6 +188,56 @@ class SGNode(object):
             raise TooManyInputsError("Input index exceeded max number of inputs", index=index, max_inputs=len(self.inputs), stream=self.stream)
 
         self.inputs[index] = (walker, trigger)
+
+    def find_input(self, stream):
+        """Find the input that responds to this stream.
+
+        Args:
+            stream (DataStream): The stream to find
+
+        Returns:
+            (index, None): The index if found or None
+        """
+
+        for i, input_x in enumerate(self.inputs):
+            if input_x[0].matches(stream):
+                return i
+
+    @property
+    def num_inputs(self):
+        """Return the number of connected inputs.
+
+        Returns:
+            int: The number of connected inputs
+        """
+
+        num = 0
+
+        for walker, _ in self.inputs:
+            if not isinstance(walker, InvalidStreamWalker):
+                num += 1
+
+        return num
+
+    @property
+    def num_outputs(self):
+        """Return the number of connected outputs.
+
+        Returns:
+            int: The number of nodes connected to this node's output
+        """
+
+        return len(self.outputs)
+
+    @property
+    def free_outputs(self):
+        """Return the number of free output connections.
+
+        Returns:
+            int: The number of additional outputs that could be connected.
+        """
+
+        return self.max_outputs - self.num_outputs
 
     def connect_output(self, node):
         """Connect another node to our output.
