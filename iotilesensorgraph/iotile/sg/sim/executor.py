@@ -16,6 +16,24 @@ class RPCExecutor(object):
 
     def __init__(self):
         self.warning_channel = None
+        self.mock_rpcs = {}
+
+    def mock(self, slot, rpc_id, value):
+        """Store a mock return value for an RPC
+
+        Args:
+            slot (SlotIdentifier): The slot we are mocking
+            rpc_id (int): The rpc we are mocking
+            value (int): The value that should be returned
+                when the RPC is called.
+        """
+
+        address = slot.address
+
+        if address not in self.mock_rpcs:
+            self.mock_rpcs[address] = {}
+
+        self.mock_rpcs[address][rpc_id] = value
 
     def warn(self, message):
         """Let the user of this RPCExecutor know about an issue.
@@ -44,6 +62,11 @@ class RPCExecutor(object):
             int: The result of the RPC call.  If the rpc did not succeed
                 an error is thrown instead.
         """
+
+        # Always allow mocking an RPC to override whatever the defaul behavior is
+        if address in self.mock_rpcs and rpc_id in self.mock_rpcs[address]:
+            value = self.mock_rpcs[address][rpc_id]
+            return value
 
         result = self._call_rpc(address, rpc_id, bytes())
 

@@ -9,6 +9,11 @@ every 10 minutes
 	call 0x5004 on slot 1 => output 1;
 }
 
+every 10 seconds
+{
+	call 0x5005 on slot 1 => unbuffered 3;
+}
+
 when connected to controller
 {
 	on connect

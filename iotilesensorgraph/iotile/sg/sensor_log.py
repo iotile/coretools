@@ -42,6 +42,21 @@ class SensorLog(object):
         self._engine = engine
         self._model = model
 
+    def watch(self, selector, callback):
+        """Call a function whenever a stream changes.
+
+        Args:
+            selector (DataStreamSelector): The selector to watch
+            callback (callable): The function to call when a new
+                reading is pushed.  Callback is called as:
+                callback(stream, value)
+        """
+
+        if selector not in self._monitors:
+            self._monitors[selector] = set()
+
+        self._monitors[selector].add(callback)
+
     def create_walker(self, selector):
         """Create a stream walker based on the given selector.
 `
@@ -103,6 +118,12 @@ class SensorLog(object):
 
         if stream.buffered:
             raise ArgumentError("Buffered readings are not yet supported")
+
+        # Activate any monitors we have for this stream
+        for selector in self._monitors:
+            if selector.matches(stream):
+                for callback in self._monitors[selector]:
+                    callback(stream, reading)
 
         # Virtual streams live only in their walkers, so update each walker
         # that contains this stream.

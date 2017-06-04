@@ -180,6 +180,9 @@ class SensorGraph(object):
     def process_input(self, stream, value, rpc_executor):
         """Process an input through this sensor graph.
 
+        The tick information in value should be correct and is transfered
+        to all results produced by nodes acting on this tick.
+
         Args:
             stream (DataStream): The stream the input is part of
             value (IOTileReading): The value to process
@@ -196,6 +199,7 @@ class SensorGraph(object):
             if node.triggered():
                 results = node.process(rpc_executor)
                 for result in results:
+                    result.raw_time = value.raw_time
                     self.sensor_log.push(node.stream, result)
 
                 # If we generated any outputs, notify our downstream nodes
