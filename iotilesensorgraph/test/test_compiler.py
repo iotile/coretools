@@ -3,7 +3,7 @@ import pdb
 import os
 import pytest
 from iotile.sg.exceptions import SensorGraphSyntaxError, StreamEmptyError
-from iotile.sg import DataStream, DeviceModel, DataStreamSelector
+from iotile.sg import DataStream, DeviceModel, DataStreamSelector, SlotIdentifier
 from iotile.sg.parser import SensorGraphFileParser
 from iotile.sg.sim import SensorGraphSimulator
 import iotile.sg.parser.language as language
@@ -184,3 +184,15 @@ def test_on_block(parser):
     assert counter1.count() == 10
     assert counter2.count() == 5
     assert counter3.count() == 5
+
+def test_config_block(parser):
+    """Make sure config blocks and statement are parsed."""
+
+    parser.parse_file(get_path(u'basic_config.sgf'))
+
+    model = DeviceModel()
+    parser.compile(model=model)
+
+    sg = parser.sensor_graph
+    assert sg.get_config(SlotIdentifier.FromString('controller'), 0x2000) == (u'uint32_t', 5)
+    assert sg.get_config(SlotIdentifier.FromString('slot 1'), 0x5000) == (u'uint8_t', 10)

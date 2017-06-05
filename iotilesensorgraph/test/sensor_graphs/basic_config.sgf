@@ -8,3 +8,8 @@ config controller
 {
 	set 0x2000 to 5 as uint32_t;
 }
+
+config slot 1
+{
+	set 0x5000 to 10 as uint8_t;
+}

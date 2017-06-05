@@ -1,7 +1,7 @@
 """Scopes provide the vessel for storing key state data during code generation."""
 
 from builtins import str
-from iotile.sg.exceptions import UnresolvedIdentifierError
+from iotile.sg.exceptions import UnresolvedIdentifierError, SensorGraphSemanticError
 
 
 class Scope(object):
@@ -89,3 +89,22 @@ class Scope(object):
                 pass
 
         raise UnresolvedIdentifierError(u"Could not resolve identifier", name=name, scope=self.name)
+
+    def trigger_chain(self):
+        """Return a NodeInput tuple for creating a node.
+
+        Returns:
+            (StreamIdentifier, InputTrigger)
+        """
+
+        raise SensorGraphSemanticError("There is no trigger chain in this scope since no triggering criteria have been set", scope=self.name)
+
+    def clock(self, interval):
+        """Return a NodeInput tuple for triggering an event every interval.
+
+        Args:
+            interval (int): The interval (in seconds) at which this input should
+                trigger.
+        """
+
+        raise SensorGraphSemanticError("There is not default clock defined in this scope", scope=self.name)

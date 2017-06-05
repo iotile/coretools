@@ -3,7 +3,7 @@
 from future.utils import python_2_unicode_compatible
 from .statement import SensorGraphStatement
 from iotile.sg import SlotIdentifier
-from iotile.sg.exceptions import
+from iotile.sg.exceptions import SensorGraphSemanticError, UnresolvedIdentifierError
 
 
 @python_2_unicode_compatible
