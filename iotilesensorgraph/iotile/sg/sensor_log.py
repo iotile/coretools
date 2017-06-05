@@ -6,10 +6,12 @@ you can limit the number of readings stored in any given FIFO as needed to put
 a hard cap on storage requirements.
 """
 
+import copy
 from .engine import InMemoryStorageEngine
 from .stream import DataStreamSelector, DataStream
-from .walker import VirtualStreamWalker, CounterStreamWalker
-from .exceptions import StreamEmptyError
+from .walker import VirtualStreamWalker, CounterStreamWalker, BufferedStreamWalker
+from .exceptions import StreamEmptyError, StorageFullError
+from iotile.sg.model import DeviceModel
 from iotile.core.exceptions import ArgumentError
 
 
@@ -35,6 +37,9 @@ class SensorLog(object):
         self._last_values = {}
         self._virtual_walkers = []
         self._queue_walkers = []
+
+        if model is None:
+            model = DeviceModel()
 
         if engine is None:
             engine = InMemoryStorageEngine(model=model)
@@ -74,7 +79,9 @@ class SensorLog(object):
         """
 
         if selector.buffered:
-            raise ArgumentError("Buffered stream walkers are not yet supported")
+            walker = BufferedStreamWalker(selector, self._engine)
+            self._queue_walkers.append(walker)
+            return walker
 
         if selector.match_type == DataStream.CounterType:
             walker = CounterStreamWalker(selector)
@@ -108,6 +115,11 @@ class SensorLog(object):
         for walker in self._virtual_walkers:
             walker.skip_all()
 
+        self._engine.clear()
+
+        for walker in self._queue_walkers:
+            walker.skip_all()
+
     def push(self, stream, reading):
         """Push a reading into a stream, updating any associated stream walkers.
 
@@ -116,8 +128,23 @@ class SensorLog(object):
             reading (IOTileReading): the reading to push
         """
 
+        # Make sure the stream is correct
+        reading = copy.copy(reading)
+        reading.stream = stream.encode()
+
         if stream.buffered:
-            raise ArgumentError("Buffered readings are not yet supported")
+            output_buffer = stream.output
+
+            try:
+                self._engine.push(reading)
+            except StorageFullError:
+                self._erase_buffer(stream.output)
+                self._engine.push(reading)
+
+            for walker in self._queue_walkers:
+                # Only notify the walkers that are on this queue
+                if walker.selector.output == output_buffer:
+                    walker.notify_added(stream)
 
         # Activate any monitors we have for this stream
         for selector in self._monitors:
@@ -132,6 +159,27 @@ class SensorLog(object):
                 walker.push(stream, reading)
 
         self._last_values[stream] = reading
+
+    def _erase_buffer(self, output_buffer):
+        """Erase readings in the specified buffer to make space."""
+
+        erase_size = self._model.get(u'buffer_erase_size')
+
+        buffer_type = u'storage'
+        if output_buffer:
+            buffer_type = 'streaming'
+
+        old_readings = self._engine.popn(buffer_type, erase_size)
+
+        # Now go through all of our walkers that could match and
+        # update their availability counts and data buffer pointers
+        for reading in old_readings:
+            stream = DataStream.FromEncoded(reading.stream)
+
+            for walker in self._queue_walkers:
+                # Only notify the walkers that are on this queue
+                if walker.selector.output == output_buffer:
+                    walker.notify_rollover(stream)
 
     def inspect_last(self, stream):
         """Return the last value pushed into a stream.

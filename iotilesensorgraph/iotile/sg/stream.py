@@ -60,6 +60,10 @@ class DataStream(object):
     def buffered(self):
         return self.stream_type == self.BufferedType or self.stream_type == self.OutputType
 
+    @property
+    def output(self):
+        return self.stream_type == DataStream.OutputType
+
     @classmethod
     def FromString(cls, string_rep):
         """Create a DataStream from a string representation.
@@ -103,6 +107,20 @@ class DataStream(object):
             raise ArgumentError("Invalid stream type given", stream_type=stream_type, known_types=cls.StringToType.keys())
 
         return DataStream(stream_type, stream_id, system)
+
+    @classmethod
+    def FromEncoded(self, encoded):
+        """Create a DataStream from an encoded 16-bit unsigned integer.
+
+        Returns:
+            DataStream: The decoded DataStream object
+        """
+
+        stream_type = (encoded >> 12) & 0b1111
+        stream_system = bool(encoded & (1 << 11))
+        stream_id = (encoded & ((1 << 11) - 1))
+
+        return DataStream(stream_type, stream_id, stream_system)
 
     def encode(self):
         """Encode this stream as a packed 16-bit unsigned integer.
@@ -162,6 +180,10 @@ class DataStreamSelector(object):
     @property
     def buffered(self):
         return self.match_type == DataStream.BufferedType or self.match_type == DataStream.OutputType
+
+    @property
+    def output(self):
+        return self.match_type == DataStream.OutputType
 
     @classmethod
     def FromStream(cls, stream):

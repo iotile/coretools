@@ -1,6 +1,6 @@
 """Stream walkers are the basic data retrieval mechanism in sensor graph."""
 
-from iotile.core.exceptions import ArgumentError
+from iotile.core.exceptions import ArgumentError, InternalError
 from iotile.sg.exceptions import StreamEmptyError
 from iotile.sg.stream import DataStream
 
@@ -31,6 +31,93 @@ class StreamWalker(object):
     @property
     def buffered(self):
         return self.selector.buffered
+
+
+class BufferedStreamWalker(StreamWalker):
+    """A stream walker backed by a storage buffer.
+
+    Args:
+        selector (DataStreamSelector): The selector for the streams
+            that we are walking
+        engine (StorageEngine): The storage engine backing us up
+    """
+
+    def __init__(self, selector, engine):
+        super(BufferedStreamWalker, self).__init__(selector)
+        self.engine = engine
+        self._count = 0
+
+        storage, streaming = self.engine.count()
+
+        if selector.output:
+            self.offset = streaming
+            self.storage_type = u'streaming'
+        else:
+            self.offset = storage
+            self.storage_type = u'storage'
+
+    def count(self):
+        return self._count
+
+    def pop(self):
+        """Pop a reading off of this stream and return it."""
+
+        if self._count == 0:
+            raise StreamEmptyError("Pop called on buffered stream walker without any data", selector=self.selector)
+
+        while True:
+            curr = self.engine.get(self.storage_type, self.offset)
+            self.offset += 1
+
+            stream = DataStream.FromEncoded(curr.stream)
+            if self.matches(stream):
+                return curr
+
+    def peek(self):
+        """Peek at the oldest reading in this virtual stream."""
+
+        return self.engine.get(self.storage_type, self.offset)
+
+    def skip_all(self):
+        """Skip all readings in this walker."""
+
+        storage, streaming = self.engine.count()
+
+        if self.selector.output:
+            self.offset = streaming
+        else:
+            self.offset = storage
+
+        self._count = 0
+
+    def notify_added(self, stream):
+        """Notify that a new reading has been added.
+
+        Args:
+            stream (DataStream): The stream that had new data
+        """
+
+        if not self.matches(stream):
+            return
+
+        self._count += 1
+
+    def notify_rollover(self, stream):
+        """Notify that a reading in the given stream was overwritten.
+
+        Args:
+            stream (DataStream): The stream that had overwritten data.
+        """
+
+        self.offset -= 1
+
+        if not self.matches(stream):
+            return
+
+        if self._count == 0:
+            raise InternalError("BufferedStreamWalker out of sync with storage engine, count was wrong.")
+
+        self._count -= 1
 
 
 class VirtualStreamWalker(StreamWalker):

@@ -22,6 +22,9 @@ class DeviceModel(object):
         self._add_property(u'max_root_nodes', 8)
         self._add_property(u'max_streamers', 8)
         self._add_property(u'max_nodes', 32)
+        self._add_property(u'max_storage_buffer', 16128)
+        self._add_property(u'max_streaming_buffer', 48896)
+        self._add_property(u'buffer_erase_size', 256)
 
     def _add_property(self, name, default_value):
         """Add a device property with a given default value.
