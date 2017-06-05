@@ -214,6 +214,7 @@ def test_on_block(parser):
     assert counter2.count() == 5
     assert counter3.count() == 5
 
+
 def test_config_block(parser):
     """Make sure config blocks and statement are parsed."""
 
