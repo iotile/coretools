@@ -47,6 +47,35 @@ def test_every_block_compilation(parser):
     assert counter16.count() == 2
 
 
+def test_every_block_with_buffering(parser):
+    """Make sure we can compile and simulate an every block with buffered data."""
+
+    parser.parse_file(get_path(u'basic_output.sgf'))
+
+    model = DeviceModel()
+    parser.compile(model=model)
+
+    sg = parser.sensor_graph
+    log = sg.sensor_log
+    for x in sg.dump_nodes():
+        print(x)
+
+    assert len(sg.nodes) == 5
+
+    sg.load_constants()
+    # Now make sure it produces the right output
+    output1 = log.create_walker(DataStreamSelector.FromString('output 1'))
+    buffered1 = log.create_walker(DataStreamSelector.FromString('buffered 1'))
+
+    sim = SensorGraphSimulator()
+    sim.stop_condition('run_time 120 seconds')
+    sim.run(sg)
+
+    assert output1.count() == 12
+    assert buffered1.count() == 12
+
+
+
 def test_every_block_splitting(parser):
     """Make sure we can split nodes in an every block."""
 
