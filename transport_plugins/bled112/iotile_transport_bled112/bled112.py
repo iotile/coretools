@@ -428,11 +428,13 @@ class BLED112Adapter(DeviceAdapter):
         elif event.command_class == 3 and event.command == 4:
             #Handle disconnect event
             conn, reason = unpack("<BH", event.payload)
-            if conn not in self._connections:
+
+            conndata = self._get_connection(conn)
+
+            if not conndata:
                 self._logger.warn("Disconnection event for conn not in table %d", conn)
                 return
 
-            conndata = self._get_connection(conn)
             state = conndata['state']
             self._logger.warn('Disconnection event, handle=%d, reason=0x%X, state=%s', conn, reason,
                               state)
@@ -653,9 +655,9 @@ class BLED112Adapter(DeviceAdapter):
         """Get a connection object, logging an error if its in an unexpected state
         """
 
-        conndata = self._connections[handle]
+        conndata = self._connections.get(handle)
 
-        if expect_state is not None and conndata['state'] != expect_state:
+        if conndata and expect_state is not None and conndata['state'] != expect_state:
             self._logger.error("Connection in unexpected state, wanted=%s, got=%s", expect_state,
                                conndata['state'])
         return conndata
