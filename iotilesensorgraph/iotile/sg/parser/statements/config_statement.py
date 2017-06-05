@@ -2,6 +2,8 @@
 
 from future.utils import python_2_unicode_compatible
 from .statement import SensorGraphStatement
+from iotile.sg import SlotIdentifier
+from iotile.sg.exceptions import
 
 
 @python_2_unicode_compatible
@@ -36,3 +38,27 @@ class SetConfigStatement(SensorGraphStatement):
             return u"set %s = %s as %s;" % (str(self.identifier), str(self.value), str(self.explicit_type))
 
         return u"set %s = %s" % (str(self.identifier), str(self.value))
+
+    def execute(self, sensor_graph, scope_stack):
+        """Execute this statement on the sensor_graph given the current scope tree.
+
+        This adds a single config variable assignment to the current sensor graph
+
+        Args:
+            sensor_graph (SensorGraph): The sensor graph that we are building or
+                modifying
+            scope_stack (list(Scope)): A stack of nested scopes that may influence
+                how this statement allocates clocks or other stream resources.
+        """
+
+        parent = scope_stack[-1]
+
+        try:
+            slot = parent.resolve_identifier('current_slot', SlotIdentifier)
+        except UnresolvedIdentifierError:
+            raise SensorGraphSemanticError("set config statement used outside of config block")
+
+        if self.explicit_type is None or not isinstance(self.identifier, int):
+            raise SensorGraphSemanticError("Config variable type definitions are not yet supported")
+
+        sensor_graph.add_config(slot, self.identifier, self.explicit_type, self.value)
