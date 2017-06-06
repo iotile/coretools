@@ -3,7 +3,7 @@
 # info@welldone.org
 # http://welldone.org
 #
-# Modifications to this file from the original created at WellDone International 
+# Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
 import unittest
@@ -18,7 +18,7 @@ class TestSettingsDirectory(unittest.TestCase):
         self.settings_dir = settings_directory()
         self.confdir = os.path.join(os.path.expanduser('~'), '.config')
 
-    @unittest.skipIf(platform.system() != 'Linux', 'Linux specific test')
+    @unittest.skipIf(platform.system() == 'Windows', 'Linux/Mac specific test')
     def test_settings_linix(self):
         settings_dir = os.path.abspath(os.path.join(self.confdir, 'IOTile-Core'))
 
@@ -32,12 +32,4 @@ class TestSettingsDirectory(unittest.TestCase):
             base = self.confdir
 
         settings_dir = os.path.abspath(os.path.join(base, 'IOTile-Core'))
-        assert settings_dir == self.settings_dir
-
-    @unittest.skipIf(platform.system() != 'Darwin', 'Mac OS X specific test')
-    def test_settings_darwin(self):
-
-        settings_dir = os.path.abspath(os.path.join(os.path.expanduser('~'), 'Library', 'Preferences',
-                                                            'IOTile-Core'))
-
         assert settings_dir == self.settings_dir

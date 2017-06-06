@@ -23,12 +23,10 @@ def settings_directory():
     if system == 'Windows':
         if 'APPDATA' in os.environ:
             basedir = os.environ['APPDATA']
-    elif system == 'Darwin':
-        basedir = os.path.expanduser('~/Library/Preferences')
 
-    #If we're not on Windows or Mac OS X, assume we're on some
-    #kind of posix system where the appropriate place would be
-    #~/.config
+    # If we're not on Windows assume we're on some
+    # kind of posix system or Mac, where the appropriate place would be
+    # ~/.config
     if basedir is None:
         basedir = os.path.expanduser('~')
         basedir = os.path.join(basedir, '.config')
