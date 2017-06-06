@@ -473,7 +473,7 @@ class BLED112Adapter(DeviceAdapter):
 
             try:
                 char_uuid = bgapi_structures.handle_to_uuid(at_handle, conndata['services'])
-            except ValueErro:
+            except ValueError:
                 self._logger.warn("Notification from characteristic not in gatt table, ignoring it, handle=%d" % at_handle)
                 return
 
