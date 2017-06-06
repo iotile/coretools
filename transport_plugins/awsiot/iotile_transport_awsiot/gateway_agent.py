@@ -570,9 +570,11 @@ class AWSIOTGatewayAgent(object):
                                        'last_progress': None}
         else:
             message['failure_reason'] = resp['reason']
+            self._connections[uuid] = {}
 
-        self._connections[uuid]['report_monitor'] = self._manager.register_monitor(uuid, ['report'], self._notify_report)
-        self._connections[uuid]['trace_monitor'] = self._manager.register_monitor(uuid, ['trace'], self._notify_trace)
+        connection = self._connections[uuid]
+        connection['report_monitor'] = self._manager.register_monitor(uuid, ['report'], self._notify_report)
+        connection['trace_monitor'] = self._manager.register_monitor(uuid, ['trace'], self._notify_trace)
 
         self._publish_status(slug, message)
 
