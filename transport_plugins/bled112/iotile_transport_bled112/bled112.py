@@ -310,7 +310,7 @@ class BLED112Adapter(DeviceAdapter):
             disconnected = retval['disconnected']
 
         if disconnected:
-            del self._connections[context['handle']]
+            self._remove_connection(context['handle'])
             self._trigger_callback('on_disconnect', self.id, context['connection_id'])
 
         callback(context['connection_id'], self.id, success, failure, status, payload)
@@ -451,8 +451,7 @@ class BLED112Adapter(DeviceAdapter):
                 callback = conndata['disconnect_handler']
                 callback(conndata['connection_id'], conn, True, 'Disconnected')
 
-            if conn in self._connections:
-                del self._connections[conn]
+            self._remove_connection(conn)
 
             #If we were not told how to handle this disconnection, report that it happened
             if 'disconnect_handler' not in conndata:
@@ -633,7 +632,7 @@ class BLED112Adapter(DeviceAdapter):
         handle = context['handle']
 
         callback(connection_id, self.id, success, "No reason given")
-        del self._connections[handle] #NB Cleanup connection after callback in case it needs the connection info
+        self._remove_connection(handle) #NB Cleanup connection after callback in case it needs the connection info
 
     @classmethod
     def _parse_return(cls, result):
@@ -666,6 +665,9 @@ class BLED112Adapter(DeviceAdapter):
             self._logger.error("Connection in unexpected state, wanted=%s, got=%s", expect_state,
                                conndata['state'])
         return conndata
+
+    def _remove_connection(self, handle):
+        self._connections.pop(handle, None)
 
     def _on_connection_finished(self, result):
         """Callback when the connection attempt to a BLE device has finished
@@ -716,11 +718,11 @@ class BLED112Adapter(DeviceAdapter):
 
         # If this was an early disconnect from the device, automatically retry
         if 'error_code' in conndata and conndata['error_code'] == 0x23e and conndata['retries'] > 0:
-            del self._connections[handle]
+            self._remove_connection(handle)
             self.connect_async(conn_id, conndata['connection_string'], callback, conndata['retries'] - 1)
         else:
             callback(conn_id, self.id, False, failure_reason)
-            del self._connections[handle]
+            self._remove_connection(handle)
 
     def _probe_services_finished(self, result):
         """Callback called after a BLE device has had its GATT table completely probed
