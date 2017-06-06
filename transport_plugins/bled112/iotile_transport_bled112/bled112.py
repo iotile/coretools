@@ -464,6 +464,11 @@ class BLED112Adapter(DeviceAdapter):
             at_handle, value = bgapi_structures.process_notification(event)
 
             conndata = self._get_connection(conn)
+
+            if conndata is None:
+                self._logger.warn("Recieved notification for an unknown connection, handle=%d" % at_handle)
+                return
+
             parser = conndata['parser']
 
             try:
@@ -700,6 +705,11 @@ class BLED112Adapter(DeviceAdapter):
         self._logger.info("_on_connection_failed conn_id=%d, reason=%s", conn_id, str(reason))
 
         conndata = self._get_connection(handle)
+
+        if conndata is None:
+            self._logger.info("Unable to obtain connection data on unknown connection %d", conn_id)
+            return
+
         callback = conndata['callback']
         conn_id = conndata['connection_id']
         failure_reason = conndata['failure_reason']
@@ -724,13 +734,14 @@ class BLED112Adapter(DeviceAdapter):
         handle = result['context']['handle']
         conn_id = result['context']['connection_id']
 
-        if handle not in self._connections:
+        conndata = self._get_connection(handle, 'preparing')
+
+        if conndata is None:
             self._logger.info('Connection disconnected before prob_services_finished, conn_id=%d',
                               conn_id)
             return
 
 
-        conndata = self._get_connection(handle, 'preparing')
 
         if result['result'] is False:
             conndata['failed'] = True
@@ -750,12 +761,13 @@ class BLED112Adapter(DeviceAdapter):
         handle = result['context']['handle']
         conn_id = result['context']['connection_id']
 
-        if handle not in self._connections:
+        conndata = self._get_connection(handle, 'preparing')
+
+        if conndata is None:
             self._logger.info('Connection disconnected before probe_char... finished, conn_id=%d',
                               conn_id)
             return
 
-        conndata = self._get_connection(handle, 'preparing')
         callback = conndata['callback']
 
         if result['result'] is False:
