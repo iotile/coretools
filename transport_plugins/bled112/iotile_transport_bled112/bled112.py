@@ -428,11 +428,13 @@ class BLED112Adapter(DeviceAdapter):
         elif event.command_class == 3 and event.command == 4:
             #Handle disconnect event
             conn, reason = unpack("<BH", event.payload)
-            if conn not in self._connections:
+
+            conndata = self._get_connection(conn)
+
+            if not conndata:
                 self._logger.warn("Disconnection event for conn not in table %d", conn)
                 return
 
-            conndata = self._get_connection(conn)
             state = conndata['state']
             self._logger.warn('Disconnection event, handle=%d, reason=0x%X, state=%s', conn, reason,
                               state)
@@ -462,11 +464,16 @@ class BLED112Adapter(DeviceAdapter):
             at_handle, value = bgapi_structures.process_notification(event)
 
             conndata = self._get_connection(conn)
+
+            if conndata is None:
+                self._logger.warn("Recieved notification for an unknown connection, handle=%d" % at_handle)
+                return
+
             parser = conndata['parser']
 
             try:
                 char_uuid = bgapi_structures.handle_to_uuid(at_handle, conndata['services'])
-            except ValueErro:
+            except ValueError:
                 self._logger.warn("Notification from characteristic not in gatt table, ignoring it, handle=%d" % at_handle)
                 return
 
@@ -653,9 +660,9 @@ class BLED112Adapter(DeviceAdapter):
         """Get a connection object, logging an error if its in an unexpected state
         """
 
-        conndata = self._connections[handle]
+        conndata = self._connections.get(handle)
 
-        if expect_state is not None and conndata['state'] != expect_state:
+        if conndata and expect_state is not None and conndata['state'] != expect_state:
             self._logger.error("Connection in unexpected state, wanted=%s, got=%s", expect_state,
                                conndata['state'])
         return conndata
@@ -698,6 +705,11 @@ class BLED112Adapter(DeviceAdapter):
         self._logger.info("_on_connection_failed conn_id=%d, reason=%s", conn_id, str(reason))
 
         conndata = self._get_connection(handle)
+
+        if conndata is None:
+            self._logger.info("Unable to obtain connection data on unknown connection %d", conn_id)
+            return
+
         callback = conndata['callback']
         conn_id = conndata['connection_id']
         failure_reason = conndata['failure_reason']
@@ -722,13 +734,14 @@ class BLED112Adapter(DeviceAdapter):
         handle = result['context']['handle']
         conn_id = result['context']['connection_id']
 
-        if handle not in self._connections:
+        conndata = self._get_connection(handle, 'preparing')
+
+        if conndata is None:
             self._logger.info('Connection disconnected before prob_services_finished, conn_id=%d',
                               conn_id)
             return
 
 
-        conndata = self._get_connection(handle, 'preparing')
 
         if result['result'] is False:
             conndata['failed'] = True
@@ -748,12 +761,13 @@ class BLED112Adapter(DeviceAdapter):
         handle = result['context']['handle']
         conn_id = result['context']['connection_id']
 
-        if handle not in self._connections:
+        conndata = self._get_connection(handle, 'preparing')
+
+        if conndata is None:
             self._logger.info('Connection disconnected before probe_char... finished, conn_id=%d',
                               conn_id)
             return
 
-        conndata = self._get_connection(handle, 'preparing')
         callback = conndata['callback']
 
         if result['result'] is False:
