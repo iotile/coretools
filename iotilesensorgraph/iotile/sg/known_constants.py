@@ -7,6 +7,9 @@ from .stream import DataStream
 # according to internal signals and events.  Some indicate abnormal conditions
 # and others are standard signals.
 
+# Battery voltage is sampled and reported every 10 seconds
+battery_voltage = DataStream.FromString('system input 0')
+
 # The system tick is fired every 10 seconds
 system_tick = DataStream.FromString('system input 2')
 

@@ -11,7 +11,7 @@ from .stream_allocator import StreamAllocator
 from iotile.sg import SensorGraph, SensorLog
 from iotile.sg.engine import InMemoryStorageEngine
 from iotile.core.exceptions import ArgumentError
-from iotile.sg.exceptions import SensorGraphSyntaxError
+from iotile.sg.exceptions import SensorGraphSyntaxError, SensorGraphSemanticError
 
 
 class SensorGraphFileParser(object):
@@ -147,8 +147,11 @@ class SensorGraphFileParser(object):
             # is a problem parsing a step.
             try:
                 statement = stmt_language.parseString(statement_string)[0]
-            except pyparsing.ParseException:
-                raise SensorGraphSyntaxError("Error parsing statement in sensor graph file", line=pyparsing.line(locn, orig_contents).strip(), line_number=pyparsing.lineno(locn, orig_contents), column=pyparsing.col(locn, orig_contents))
+            except (pyparsing.ParseException, pyparsing.ParseSyntaxException) as exc:
+                raise SensorGraphSyntaxError("Error parsing statement in sensor graph file", message=exc.msg, line=pyparsing.line(locn, orig_contents).strip(), line_number=pyparsing.lineno(locn, orig_contents), column=pyparsing.col(locn, orig_contents))
+            except SensorGraphSemanticError as exc:
+                # Reraise semantic errors with line information
+                raise SensorGraphSemanticError(exc.msg, line=pyparsing.line(locn, orig_contents).strip(), line_number=pyparsing.lineno(locn, orig_contents), **exc.params)
 
             name = statement.getName()
 

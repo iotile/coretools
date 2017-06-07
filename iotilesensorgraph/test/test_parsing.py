@@ -1,7 +1,7 @@
 import os
 import pytest
 from iotile.sg.exceptions import SensorGraphSyntaxError
-from iotile.sg import DataStream
+from iotile.sg import DataStream, SlotIdentifier, DataStreamSelector
 from iotile.sg.parser import SensorGraphFileParser
 import iotile.sg.parser.language as language
 
@@ -63,6 +63,18 @@ def test_language_constructs():
     assert parsed[0][0][0][1] == DataStream.FromString('input 2')
     assert parsed[0][0][0][2] == u'>='
     assert parsed[0][0][0][3] == 5
+
+    # Test parser streamer statements
+    parsed = language.streamer_stmt.parseString(u'manual streamer on output 1;')
+    assert parsed[0]['selector'] == DataStreamSelector.FromString('output 1')
+
+    parsed = language.streamer_stmt.parseString(u'manual streamer on all system outputs;')
+    assert parsed[0]['selector'] == DataStreamSelector.FromString('all system outputs')
+
+    parsed = language.streamer_stmt.parseString(u'manual signed streamer on output 1 to slot 1;')
+    assert parsed[0]['selector'] == DataStreamSelector.FromString('output 1')
+    assert parsed[0]['explicit_tile'] == SlotIdentifier.FromString('slot 1')
+    assert parsed[0]['security'] == u'signed'
 
 
 def test_basic_parsing(parser):

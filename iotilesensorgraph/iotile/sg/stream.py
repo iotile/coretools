@@ -226,6 +226,10 @@ class DataStreamSelector(object):
                 raise ArgumentError("Invalid wildcard stream selector", string_rep=string_rep)
 
             try:
+                # Remove pluralization that can come with e.g. 'all system outputs'
+                if stream_type.endswith(u's'):
+                    stream_type = stream_type[:-1]
+
                 stream_type = DataStream.StringToType[stream_type]
             except KeyError:
                 raise ArgumentError("Invalid stream type given", stream_type=stream_type, known_types=DataStream.StringToType.keys())
@@ -285,3 +289,12 @@ class DataStreamSelector(object):
             match_id = (1 << 11) - 1
 
         return (self.match_type << 12) | (int(self.match_system) << 11) | match_id
+
+    def __hash__(self):
+        return hash(str(self))
+
+    def __eq__(self, other):
+        if not isinstance(other, DataStreamSelector):
+            return NotImplemented
+
+        return self.match_system == other.match_system and self.match_type == other.match_type and self.match_id == other.match_id

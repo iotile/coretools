@@ -23,6 +23,7 @@ class SensorGraph(object):
     def __init__(self, sensor_log, model=None):
         self.roots = []
         self.nodes = []
+        self.streamers = []
         self.constant_database = {}
         self.config_database = {}
         self.sensor_log = sensor_log
@@ -87,6 +88,15 @@ class SensorGraph(object):
             self.config_database[slot] = {}
 
         self.config_database[slot][config_id] = (config_type, value)
+
+    def add_streamer(self, streamer):
+        """Add a streamer to this sensor graph.
+
+        Args:
+            streamer (DataStreamer): The streamer we want to add
+        """
+
+        self.streamers.append(streamer)
 
     def add_constant(self, stream, value):
         """Store a constant value for use in this sensor graph.

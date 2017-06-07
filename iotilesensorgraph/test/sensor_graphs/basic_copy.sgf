@@ -1,0 +1,11 @@
+every 1 minute
+{
+	call 0xabcd on slot 1 => unbuffered 1;
+	copy unbuffered 1 => output 1;
+	copy count => output 3;
+}
+
+every 1 minute
+{
+	copy => output 2;
+}

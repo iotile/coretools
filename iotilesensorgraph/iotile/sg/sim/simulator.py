@@ -2,7 +2,7 @@
 
 import time
 from monotonic import monotonic
-from ..known_constants import system_tick, user_tick
+from ..known_constants import system_tick, user_tick, battery_voltage
 from .null_executor import NullRPCExecutor
 from .stop_conditions import TimeBasedStopCondition
 from iotile.core.exceptions import ArgumentError
@@ -34,6 +34,7 @@ class SensorGraphSimulator(object):
     """
 
     def __init__(self):
+        self.voltage = 3.6
         self.stop_conditions = []
         self._known_conditions = []
         self.watch_streams = []
@@ -94,6 +95,10 @@ class SensorGraphSimulator(object):
             now = monotonic()
             next_tick = now + 1.0
 
+            # To match what is done in actual hardware, we incremeent tick count so the first tick
+            # is 1.
+            self.tick_count += 1
+
             if user_interval != 0 and (self.tick_count % user_interval) == 0:
                 reading = IOTileReading(self.tick_count, user_tick.encode(), self.tick_count)
                 sensor_graph.process_input(user_tick, reading, self.rpc_executor)
@@ -102,7 +107,10 @@ class SensorGraphSimulator(object):
                 reading = IOTileReading(self.tick_count, system_tick.encode(), self.tick_count)
                 sensor_graph.process_input(system_tick, reading, self.rpc_executor)
 
-            self.tick_count += 1
+                # Every 10 seconds the battery voltage is reported in 16.16 fixed point format in volts
+                reading = IOTileReading(self.tick_count, battery_voltage.encode(), int(self.voltage * 65536))
+                sensor_graph.process_input(battery_voltage, reading, self.rpc_executor)
+
             now = monotonic()
 
             # If we are trying to execute this sensor graph in realtime, wait for

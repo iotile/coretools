@@ -1,5 +1,5 @@
 from pyparsing import Optional, Word, Literal, Forward, alphas, nums, Group, Regex, ZeroOrMore, oneOf, restOfLine, dblQuotedString, StringEnd, Empty
-from ..stream import DataStream
+from ..stream import DataStream, DataStreamSelector
 from ..slot import SlotIdentifier
 
 
@@ -10,11 +10,14 @@ comp = None
 config_type = None
 slot_id = None
 stream = None
+selector = None
 stream_trigger = None
 time_interval = None
 quoted_string = None
 semi = None
 comment = None
+
+streamer_stmt = None
 
 callrpc_stmt = None
 simple_statement = None
@@ -27,7 +30,7 @@ sensor_graph = None
 
 
 def _create_primitives():
-    global ident, rvalue, number, quoted_string, semi, time_interval, slot_id, comp, config_type, stream, comment, stream_trigger
+    global ident, rvalue, number, quoted_string, semi, time_interval, slot_id, comp, config_type, stream, comment, stream_trigger, selector
 
     if ident is not None:
         return
@@ -69,21 +72,33 @@ def _create_primitives():
     stream = Optional(Literal("system")) + oneOf("buffered unbuffered input output counter constant") + number + Optional(Literal("node"))
     stream.setParseAction(lambda s,l,t: [DataStream.FromString(u' '.join([str(x) for x in t]))])
 
+    all_selector = Optional(Literal("all")) + Optional(Literal("system")) + oneOf("buffered unbuffered inputs outputs counters constants") + Optional(Literal("nodes"))
+    all_selector.setParseAction(lambda s,l,t: [DataStreamSelector.FromString(u' '.join([str(x) for x in t]))])
+    one_selector = Optional(Literal("system")) + oneOf("buffered unbuffered input output counter constant") + number + Optional(Literal("node"))
+    one_selector.setParseAction(lambda s,l,t: [DataStreamSelector.FromString(u' '.join([str(x) for x in t]))])
+
+    selector = one_selector | all_selector
+
     trigger_comp = oneOf('> < >= <= ==')
     stream_trigger = Group((Literal(u'count') | Literal(u'value')) + Literal(u'(').suppress() - stream - Literal(u')').suppress() - trigger_comp - number).setResultsName('stream_trigger')
 
 
 def _create_simple_statements():
-    global ident, rvalue, simple_statement, semi, comp, number, slot_id, callrpc_stmt, generic_statement
+    global ident, rvalue, simple_statement, semi, comp, number, slot_id, callrpc_stmt, generic_statement, streamer_stmt, stream, selector
 
     if simple_statement is not None:
         return
 
     meta_stmt = Group(Literal('meta').suppress() + ident + Literal('=').suppress() + rvalue + semi).setResultsName('meta_statement')
     require_stmt = Group(Literal('require').suppress() + ident + comp + rvalue + semi).setResultsName('require_statement')
-    set_stmt = Group(Literal('set').suppress() + (ident|number) + Literal("to").suppress() + rvalue + Optional(Literal('as').suppress() + config_type) + semi).setResultsName('set_statement')
+    set_stmt = Group(Literal('set').suppress() + (ident | number) + Literal("to").suppress() + rvalue + Optional(Literal('as').suppress() + config_type) + semi).setResultsName('set_statement')
     callrpc_stmt = Group(Literal("call").suppress() + (ident | number) + Literal("on").suppress() + slot_id + Literal("=>").suppress() + stream + semi).setResultsName('call_statement')
-    simple_statement = meta_stmt | require_stmt | set_stmt | callrpc_stmt
+    streamer_stmt = Group(Optional(Literal("manual")('manual')) + Optional(oneOf(u'encrypted signed')('security')) + Optional(Literal(u'realtime')('realtime')) + Literal('streamer').suppress() -
+                          Literal('on').suppress() - selector('selector') - Optional(Literal('to').suppress() - slot_id('explicit_tile')) - Optional(Literal('with').suppress() - Literal('streamer').suppress() - number('with_other')) - semi).setResultsName('streamer_statement')
+    copy_stmt = Group(Literal("copy") - Optional(oneOf("all count average")('modifier')) - Optional(stream('explicit_input')) - Literal("=>") - stream("output") - semi).setResultsName('copy_statement')
+    trigger_stmt = Group(Literal("trigger") - Literal("streamer") - number('index') - semi).setResultsName('trigger_statement')
+
+    simple_statement = meta_stmt | require_stmt | set_stmt | callrpc_stmt | streamer_stmt | trigger_stmt | copy_stmt
 
     # In generic statements, keep track of the location where the match started for error handling
     locator = Empty().setParseAction(lambda s, l, t: l)('location')

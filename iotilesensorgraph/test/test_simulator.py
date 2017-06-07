@@ -50,8 +50,8 @@ def test_basic_sim(basic_sg):
     last_input = basic_sg.sensor_log.inspect_last(DataStream.FromString('system input 2'))
     last_output = basic_sg.sensor_log.inspect_last(DataStream.FromString('unbuffered 1'))
 
-    assert last_input.value == 990
-    assert last_output.value == 990
+    assert last_input.value == 1000
+    assert last_output.value == 1000
     assert sim.tick_count == 1000
 
 
@@ -66,7 +66,7 @@ def test_rpc_sim(callrpc_sg):
     last_input = callrpc_sg.sensor_log.inspect_last(DataStream.FromString('system input 2'))
     last_output = callrpc_sg.sensor_log.inspect_last(DataStream.FromString('unbuffered 2'))
 
-    assert last_input.value == 990
+    assert last_input.value == 1000
     assert last_output.value == 0
 
 
@@ -82,7 +82,7 @@ def test_multiple_run_calls(callrpc_sg):
     last_input = callrpc_sg.sensor_log.inspect_last(DataStream.FromString('system input 2'))
     last_output = callrpc_sg.sensor_log.inspect_last(DataStream.FromString('unbuffered 2'))
 
-    assert last_input.value == 90
+    assert last_input.value == 100
     assert last_output.value == 0
 
     sim.run(callrpc_sg)
@@ -91,7 +91,7 @@ def test_multiple_run_calls(callrpc_sg):
     last_input = callrpc_sg.sensor_log.inspect_last(DataStream.FromString('system input 2'))
     last_output = callrpc_sg.sensor_log.inspect_last(DataStream.FromString('unbuffered 2'))
 
-    assert last_input.value == 190
+    assert last_input.value == 200
     assert last_output.value == 0
 
 
@@ -107,9 +107,8 @@ def test_usertick(usertick_sg):
     last_input = usertick_sg.sensor_log.inspect_last(DataStream.FromString('system input 3'))
     last_output = usertick_sg.sensor_log.inspect_last(DataStream.FromString('counter 1'))
 
-    # user tick is at 2 seconds so the highest before 100 is 98
-    assert last_input.value == 98
-    assert last_output.value == 98
+    assert last_input.value == 100
+    assert last_output.value == 100
 
     sim.run(usertick_sg)
 
@@ -117,5 +116,5 @@ def test_usertick(usertick_sg):
     last_input = usertick_sg.sensor_log.inspect_last(DataStream.FromString('system input 3'))
     last_output = usertick_sg.sensor_log.inspect_last(DataStream.FromString('counter 1'))
 
-    assert last_input.value == 198
-    assert last_output.value == 198
+    assert last_input.value == 200
+    assert last_output.value == 200

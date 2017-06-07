@@ -61,6 +61,25 @@ def copy_latest_a(input_a, *other_inputs, **kwargs):
 
     return output
 
+
+def copy_count_a(input_a, *other_inputs, **kwargs):
+    """Copy the latest reading from input a into the output.
+
+    All other inputs are skipped to that after this function
+    runs there are no readings left in any of the input walkers
+    even if no output is generated.
+
+    Returns:
+        list(IOTileReading)
+    """
+
+    output = []
+
+    count = input_a.count()
+
+    return [IOTileReading(0, 0, count)]
+
+
 def call_rpc(*inputs, **kwargs):
     """Call an RPC based on the encoded value read from input b.
 
@@ -97,3 +116,13 @@ def call_rpc(*inputs, **kwargs):
 
     return output
 
+
+def trigger_streamer(*inputs, **kwargs):
+    """Trigger a streamer based on the index read from input b.
+
+    Returns:
+        list(IOTileReading)
+    """
+
+    # TODO: This function does nothing currently
+    return [IOTIleReading(0, 0, 0)]

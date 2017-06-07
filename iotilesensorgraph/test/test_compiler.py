@@ -75,6 +75,21 @@ def test_every_block_with_buffering(parser):
     assert buffered1.count() == 12
 
 
+def test_streamers(parser):
+    """Make sure we can compile streamer statements."""
+
+    parser.parse_file(get_path(u'basic_streamer.sgf'))
+
+    model = DeviceModel()
+    parser.compile(model=model)
+
+    streamers = parser.sensor_graph.streamers
+    assert len(streamers) == 2
+    assert streamers[0].dest == SlotIdentifier.FromString('controller')
+    assert streamers[1].dest == SlotIdentifier.FromString('slot 1')
+    assert streamers[1].with_other == 0
+
+
 
 def test_every_block_splitting(parser):
     """Make sure we can split nodes in an every block."""
@@ -226,3 +241,38 @@ def test_config_block(parser):
     sg = parser.sensor_graph
     assert sg.get_config(SlotIdentifier.FromString('controller'), 0x2000) == (u'uint32_t', 5)
     assert sg.get_config(SlotIdentifier.FromString('slot 1'), 0x5000) == (u'uint8_t', 10)
+
+
+def test_copy_statement(parser):
+    """Make sure we can copy data using copy."""
+
+    parser.parse_file(get_path(u'basic_copy.sgf'))
+
+    model = DeviceModel()
+    parser.compile(model=model)
+
+    sg = parser.sensor_graph
+    log = sg.sensor_log
+    for x in sg.dump_nodes():
+        print(x)
+
+    sg.load_constants()
+
+    output1 = log.create_walker(DataStreamSelector.FromString('output 1'))
+    output2 = log.create_walker(DataStreamSelector.FromString('output 2'))
+    output3 = log.create_walker(DataStreamSelector.FromString('output 3'))
+
+    sim = SensorGraphSimulator()
+    sim.stop_condition('run_time 60 seconds')
+    sim.run(sg)
+
+    assert output1.count() == 1
+    assert output2.count() == 1
+    assert output3.count() == 1
+    val1 = output1.pop()
+    val2 = output2.pop()
+    val3 = output3.pop()
+
+    assert val1.value == 0
+    assert val2.value == 60
+    assert val3.value == 1
