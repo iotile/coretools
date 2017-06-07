@@ -26,7 +26,8 @@ setup(
         "pyparsing>=2.2.0",
         "future>=0.16.0",
         "monotonic>=1.3.0",
-        "toposort>=1.5"
+        "toposort>=1.5",
+        "iotile-core>=3.14.4"
     ],
     entry_points={'iotile.sg_processor': ['copy_all_a = iotile.sg.processors:copy_all_a',
                                           'copy_latest_a = iotile.sg.processors:copy_latest_a',
@@ -48,7 +49,7 @@ setup(
         ],
     long_description="""\
 IOTileSensorGraph
-----------
+-----------------
 
 A package that parses, optimizes and runs sensor graph scripts.
 
