@@ -52,7 +52,7 @@ class SlotIdentifier(object):
         if self.controller:
             return 8
 
-        return 9 + self.slot
+        return 10 + self.slot
 
     @classmethod
     def FromString(cls, desc):

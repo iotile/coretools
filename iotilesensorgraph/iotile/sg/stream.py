@@ -252,9 +252,9 @@ class DataStreamSelector(object):
             return u'{} {}'.format(type_str, self.match_id)
         else:
             if self.match_system:
-                return u'all system {}'.format(type_str)
+                return u'all system {}s'.format(type_str)
 
-            return u'all {}'.format(type_str)
+            return u'all {}s'.format(type_str)
 
     def matches(self, stream):
         """Check if this selector matches the given stream

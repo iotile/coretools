@@ -7,13 +7,13 @@ def test_slotid_parsing():
     """Make sure we can parse slot identifiers correctly."""
 
     slot_id = SlotIdentifier.FromString('slot 1')
-    assert slot_id.address == 10
+    assert slot_id.address == 11
 
     slot_id = SlotIdentifier.FromString(u'slot 1')
-    assert slot_id.address == 10
+    assert slot_id.address == 11
 
     slot_id = SlotIdentifier.FromString(u'slot 0x1')
-    assert slot_id.address == 10
+    assert slot_id.address == 11
 
     slot_id = SlotIdentifier.FromString('controller')
     assert slot_id.address == 8
