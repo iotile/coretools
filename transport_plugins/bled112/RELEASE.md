@@ -2,6 +2,11 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
+## 1.4.5
+
+- Added helper method to BLED112Adapter for safely removing connections
+- Modified BLED112Adapter's _get_connection for safer connection lookups, modified calling code to handle empty response
+
 ## 1.4.4
 
 - Update exception hierarchy
