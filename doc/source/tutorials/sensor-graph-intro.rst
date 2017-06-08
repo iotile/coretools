@@ -429,5 +429,6 @@ sensor graph.
 Next Steps
 ##########
 
-An upcoming tutorial will cover how to write more advanced sensor graphs as 
-well as how to program them into actual devices.
+Read about how to write more advanced sensor graphs as well as how to program
+or test them with actual devices.
+
