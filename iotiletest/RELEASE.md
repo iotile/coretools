@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 0.8.1
+
+- Add sg_test device that returns random data to RPCs to allow for testing semihosted
+  sensor graphs.
+
 ## 0.8.0
 
 - Fix realtime test
