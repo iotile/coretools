@@ -169,6 +169,13 @@ So the easiest way to program this into a device is::
 When the command terminates the new sensor graph will be programed into the 
 device and the device will have reset itself to start running the sensor graph.
 
+Simulating in Realtime
+######################
+
+If you want to simulate your sensor-graph in real time, i.e. waiting 10 minutes
+for an `every 10 minutes` block to fire, you can do so by passing the `-r` 
+flag to the simulator.  
+
 Next Steps
 ##########
 
