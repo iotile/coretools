@@ -1,5 +1,5 @@
-Using SensorGraph to Configure a Device
----------------------------------------
+Introduction to SensorGraph
+---------------------------
 
 Previous tutorials have covered how to create virtual IOTile devices that expose
 functionality in terms of RPCs that can be called to, for example, read a sensor
@@ -369,8 +369,8 @@ Now let's simulate a connected user with the `-c` flag::
 Notice how we now got realtime outputs now in the stream `unbuffered 10` every
 second.
 
-Selecting Data to Send
-######################
+Selecting Data to Stream
+########################
 
 In the beginning of this tutorial, we laid out three jobs for a SensorGraph:
 
