@@ -71,12 +71,24 @@ class BufferedStreamWalker(StreamWalker):
 
             stream = DataStream.FromEncoded(curr.stream)
             if self.matches(stream):
+                self._count -= 1
                 return curr
 
     def peek(self):
         """Peek at the oldest reading in this virtual stream."""
 
-        return self.engine.get(self.storage_type, self.offset)
+        if self._count == 0:
+            raise StreamEmptyError("Peek called on buffered stream walker without any data", selector=self.selector)
+
+        offset = self.offset
+
+        while True:
+            curr = self.engine.get(self.storage_type, offset)
+            offset += 1
+
+            stream = DataStream.FromEncoded(curr.stream)
+            if self.matches(stream):
+                return curr
 
     def skip_all(self):
         """Skip all readings in this walker."""

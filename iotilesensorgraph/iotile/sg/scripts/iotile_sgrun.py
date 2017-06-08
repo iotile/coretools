@@ -18,7 +18,7 @@ def build_args():
     parser.add_argument(u'sensor_graph', type=str, help=u"The sensor graph file to load and run.")
     parser.add_argument(u'--stop', u'-s', action=u"append", type=str, help=u"A stop condition for when the simulation should end.")
     parser.add_argument(u'--realtime', u'-r', action=u"store_true", help=u"A stop condition for when the simulation should end.")
-    parser.add_argument(u'--watch', u'-w', action=u"append", help=u"A stream to watch and print whenever writes are made.")
+    parser.add_argument(u'--watch', u'-w', action=u"append", default=[], help=u"A stream to watch and print whenever writes are made.")
     parser.add_argument(u'--disable-optimizer', action="store_true", help=u"disable the sensor graph optimizer completely")
     parser.add_argument(u"--mock-rpc", u"-m", action=u"append", type=str, default=[], help=u"mock an rpc, format should be <slot id>:<rpc_id> = value.  For example -m \"slot 1:0x500a = 10\"")
     parser.add_argument(u"--port", u"-p", help=u"The port to use to connect to a device if we are semihosting")
@@ -118,9 +118,9 @@ def main():
             sim.run(graph, accelerated=not args.realtime)
         except KeyboardInterrupt:
             pass
-    except IOTileException as exc:
-        print(str(exc))
-        return 1
+    #except IOTileException as exc:
+    #    print(str(exc))
+    #    return 1
     finally:
         if executor is not None:
             executor.hw.close()

@@ -88,6 +88,9 @@ class InputTrigger(object):
         if self.use_count:
             comp_value = walker.count()
         else:
+            if walker.count() == 0:
+                return False
+
             comp_value = walker.peek().value
 
         return self.comp_function(comp_value, self.reference)
