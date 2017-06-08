@@ -159,7 +159,10 @@ class SensorGraph(object):
             bool
         """
 
-        # TODO: Sensor graph outputs are not yet supported
+        for streamer in self.streamers:
+            if streamer.walker.matches(stream):
+                return True
+
         return False
 
     def user_tick(self):
