@@ -305,3 +305,6 @@ translates devices from one communication protocol to another.  You should also
 be able to use what you learned in the previous tutorials to add virtual devices
 to your gateway that let you control things directly connected to the gateway
 computer or configure the gateway itself as if it were an IOTile Adapter.
+
+You can read on to figure out how to configure your own physical IOTile devices
+using the SensorGraph language.

@@ -26,7 +26,8 @@ setup(
                                             'report_test = iotile.mock.devices.report_test_device:ReportTestDevice',
                                             'realtime_test = iotile.mock.devices.realtime_test_device:RealtimeTestDevice',
                                             'no_app = iotile.mock.devices.noapp:NoAppVirtualDevice',
-                                            'tracing_test = iotile.mock.devices.tracing_test_device:TracingTestDevice'],
+                                            'tracing_test = iotile.mock.devices.tracing_test_device:TracingTestDevice',
+                                            'sg_test = iotile.mock.devices.sg_test_device:SensorGraphTestDevice'],
                   'iotile.proxy': ['simple = iotile.mock.devices.simple_virtual_proxy'],
                   'console_scripts': ['prepare_device = iotile.test_scripts.prepare_device:main']},
     author="Arch",
@@ -44,7 +45,7 @@ setup(
 IOTileTest
 ----------
 
-A python package for testing IOTile based infrastructure including mocks for major portions.  
+A python package for testing IOTile based infrastructure including mocks for major portions.
 
 See https://www.arch-iot.com.
 """
