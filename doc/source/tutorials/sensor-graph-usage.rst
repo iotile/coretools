@@ -75,7 +75,7 @@ For example, save the following sensor graph a `test.sgf`::
 		call 0x8001 on slot 1 => output 1;
 	}
 
-We're going to semihost using a virtual device in `iotile-test called
+We're going to semihost using a virtual device in `iotile-test` called
 (appropriately) sg_test.  The sg_test device just has two RPCs that are useful
 for learning sensor graphs::
 
