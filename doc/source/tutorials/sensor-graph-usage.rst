@@ -1,5 +1,5 @@
-Testing and Deploying Sensor Graphs
------------------------------------
+Deploying Sensor Graphs
+-----------------------
 
 In the last tutorial we covered the basics of how to make your own SensorGraph.
 Now we are going to talk about how to program that sensor graph into an
