@@ -92,7 +92,7 @@ def _create_simple_statements():
     meta_stmt = Group(Literal('meta').suppress() + ident + Literal('=').suppress() + rvalue + semi).setResultsName('meta_statement')
     require_stmt = Group(Literal('require').suppress() + ident + comp + rvalue + semi).setResultsName('require_statement')
     set_stmt = Group(Literal('set').suppress() + (ident | number) + Literal("to").suppress() + rvalue + Optional(Literal('as').suppress() + config_type) + semi).setResultsName('set_statement')
-    callrpc_stmt = Group(Literal("call").suppress() + (ident | number) + Literal("on").suppress() + slot_id + Literal("=>").suppress() + stream + semi).setResultsName('call_statement')
+    callrpc_stmt = Group(Literal("call").suppress() + (ident | number) + Literal("on").suppress() + slot_id + Optional(Literal("=>").suppress() + stream('explicit_stream')) + semi).setResultsName('call_statement')
     streamer_stmt = Group(Optional(Literal("manual")('manual')) + Optional(oneOf(u'encrypted signed')('security')) + Optional(Literal(u'realtime')('realtime')) + Literal('streamer').suppress() -
                           Literal('on').suppress() - selector('selector') - Optional(Literal('to').suppress() - slot_id('explicit_tile')) - Optional(Literal('with').suppress() - Literal('streamer').suppress() - number('with_other')) - semi).setResultsName('streamer_statement')
     copy_stmt = Group(Literal("copy") - Optional(oneOf("all count average")('modifier')) - Optional(stream('explicit_input')) - Literal("=>") - stream("output") - semi).setResultsName('copy_statement')

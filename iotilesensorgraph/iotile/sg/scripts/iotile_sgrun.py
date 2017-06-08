@@ -8,6 +8,7 @@ from iotile.sg import DeviceModel, DataStreamSelector, SlotIdentifier
 from iotile.sg.sim import SensorGraphSimulator
 from iotile.sg.sim.hosted_executor import SemihostedRPCExecutor
 from iotile.sg.parser import SensorGraphFileParser
+from iotile.sg.known_constants import user_connected
 from iotile.sg.optimizer import SensorGraphOptimizer
 
 
@@ -23,7 +24,7 @@ def build_args():
     parser.add_argument(u"--mock-rpc", u"-m", action=u"append", type=str, default=[], help=u"mock an rpc, format should be <slot id>:<rpc_id> = value.  For example -m \"slot 1:0x500a = 10\"")
     parser.add_argument(u"--port", u"-p", help=u"The port to use to connect to a device if we are semihosting")
     parser.add_argument(u"--semihost-device", u"-d", type=lambda x: int(x, 0), help=u"The device id of the device we should semihost this sensor graph on.")
-
+    parser.add_argument(u"-c", u"--connected", action="store_true", help=u"Simulate with a user connected to the device (to enable realtime outputs)")
     return parser
 
 
@@ -115,6 +116,9 @@ def main():
         graph.load_constants()
 
         try:
+            if args.connected:
+                sim.step(graph, user_connected, 8)
+
             sim.run(graph, accelerated=not args.realtime)
         except KeyboardInterrupt:
             pass

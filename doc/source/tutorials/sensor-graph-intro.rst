@@ -193,7 +193,7 @@ total of 6 readings in 1 hour.
 
 This is a complete sensor graph that you could program into an iotile device 
 and have it take data every 10 minutes forever.  It's not that interesting 
-of a SensorGraph though.
+of a SensorGraph though, so we'll add some more to it later.
 
 Mocking RPCs
 ############
@@ -216,11 +216,218 @@ returns 15 rather than 0::
     (    3600 s) output 1: 15   
 
 .. note::
-    There is a more advanced way to use the simulator called 'semihosting' mode
+    There is a more advanced way to use the simulator called 'semihosting'
     where the RPCs are sent to an actual iotile device to run and the response 
-    it returned to the simulator.  This lets you test your sensor graph as if 
+    is returned to the simulator.  This lets you test your sensor graph as if 
     it were running on an actual device while still being able to watch any
-    stream and accelerate the passage of simulated time.
+    stream and accelerate the passage of simulated time to verify that the
+    sensor graph behaves as you would expect over time without having to have
+    an actual device running for that long.
 
     **How to use semihosting will be covered in the next tutorial.**
 
+The syntax for mocking an RPC straightforward::
+
+    -m "<slot id>:<rpc number> = <value>"
+
+    - <slot id> should be either the literal value controller or 'slot X'
+    where X is a number >= 1.
+    
+    - <rpc number> should be the same 16 bit number in either decimal or hex
+    that you enter into the sensor graph to identify the RPC you want to call.
+
+    - <value> should be an integer that will simulate what the RPC returned.
+    It is not currently possible to change what the mocked RPC returns over
+    time from the command line; it always returns the same thing.
+
+    For example:
+
+    - m "controller:0x2000 = 0x50"
+    - m "slot 5:1500 = 12"
+
+Adding Control to a SensorGraph 
+###############################
+
+The first sensor graph above just got data via an RPC and then saved it as 
+a buffered output.  We used an `every <time>` block to specify how often
+we wanted the RPC called.  Now we're going to introduce the `on` block that
+lets us inspect and act on the values we get.
+
+Let's say our RPC represents temperature and we want to turn on the AC when
+the temperature rises above a certain temperature (say 80 degrees).  We can
+express that as follows::
+
+    every 10 minutes
+    {
+        call 0x8000 on slot 1 => unbuffered 1;
+    }
+
+    on value(unbuffered 1) > 80
+    {
+        # In this example, 0x9000 is the RPC that turns on the AC
+        call 0x9000 on slot 2;
+    }
+
+    on unbuffered 1
+    {
+        copy => output 2;
+    }
+
+This sensor graph will still log the temperature every 10 minutes but also
+check if its value is greater than 80 degrees and call another RPC that turns
+on the AC.  (Note in a real life example, you would probably want another
+on block to turn off the AC as well!)
+
+.. note::
+    
+    See how there are two ways to use the `call` statement.  In the first call,
+    we specified that we wanted to keep track of the value returned by the RPC
+    so we gave it a name.  In the second call, we didn't care about the return
+    value of the RPC so we didn't give it an explicit name.
+
+    Internally, the sensor graph compiler automatically allocated an unused 
+    stream for this value that we'll see in the next tutorial how this turns
+    into the actual rules that could be programmed into .
+
+Adding Realtime Data Outputs
+############################
+
+Most IOTile devices don't have screens.  However, users can walk up them with
+their phones and access their virtual screen over Bluetooth Low Energy.
+
+When a user is standing next to an IOTile device, they probably don't want to
+wait 10 minutes to see the next data point, so there needs to be a way to
+trigger faster data outputs when a user is connected to the device.
+
+This functionality is builtin to sensor graph and can be enabled using a `when`
+block as in the example below::
+
+    every 10 minutes
+    {
+            call 0x8000 on slot 1 => unbuffered 1;
+    }
+
+    when connected to controller
+    {
+        on connect
+        {
+
+        }
+
+        every 1 second
+        {
+            call 0x8000 on slot 1 => unbuffered 10;
+            call 0x8001 on slot 1 => unbuffered 11;
+        }
+
+        on disconnect
+        {
+
+        }
+    }
+
+The `when connected to controller` block specifies actions that should
+only be taken when a user is connected. The `on connect` and `on disconnect`
+blocks are not required if they are unused but are included here for reference.
+
+This sensor graph says that when a user is connected two RPCs should be made
+every second and the results stored in unbuffered streams 10 and 11.
+
+The `on connect` and `on disconnect` blocks allow you to do any required setup 
+or cleanup on the device that might be necessary to prepare it for high
+resolution outputs and then put it back into low power autonomous mode when the
+user disconnects.
+
+Now let's simulate this for 10 seconds::
+
+    (iotile) > iotile-sgrun simple.sgf -s 'run_time 10 seconds' -w "unbuffered 10" -w "unbuffered 1"
+    (iotile) >
+
+We didn't see any output because no user was connected and we didn't wait 10
+minutes for a reading.
+
+So let's wait 10 minutes to make sure the readings are happening::
+
+    (iotile) > iotile-sgrun simple.sgf -s 'run_time 10 minutes' -w "unbuffered 10" -w "unbuffered 1"
+    (     600 s) unbuffered 1: 0
+
+Now let's simulate a connected user with the `-c` flag::
+
+    (iotile) > iotile-sgrun simple.sgf -s 'run_time 10 seconds' -w "unbuffered 10" -c
+
+    (       1 s) unbuffered 10: 0
+    (       2 s) unbuffered 10: 0
+    (       3 s) unbuffered 10: 0
+    (       4 s) unbuffered 10: 0
+    (       5 s) unbuffered 10: 0
+    (       6 s) unbuffered 10: 0
+    (       7 s) unbuffered 10: 0
+    (       8 s) unbuffered 10: 0
+    (       9 s) unbuffered 10: 0
+    (      10 s) unbuffered 10: 0
+
+Notice how we now got realtime outputs now in the stream `unbuffered 10` every
+second.
+
+Selecting Data to Send
+######################
+
+In the beginning of this tutorial, we laid out three jobs for a SensorGraph:
+
+1. Configuring tiles
+2. Wiring together RPCS into an application
+3. Selecting data to send remotely
+
+We've focused on step 2 so far.  Step 1 will be addressed in the next tutorial 
+so we will briefly touch on step 3 now.
+
+As mentioned, the way to send data from an IOTile Device is referred to as
+**Streaming** and is done by a **Streamer**.  
+
+When you write a sensor graph you need to explicitly say what streamers you want
+to set up so that the device can be configured properly.  Just like there are
+two kinds of data produced by an IOTile device, there are also two kinds of
+streamers: realtime and historical.
+
+Realtime streamers report the latest value in a stream without worrying about 
+robustless packaging it or retrying the transmission if its not successful
+because it's expected that they can just send an updated value when its
+available.
+
+Historical (or Robust) streamers take much more care in signing and optionally
+encypting the data before sending it and keeping track of exactly which readings
+have been acknowledged as successful received by the cloud so that no data can
+be lost.  Historical data is resent until it is successfully received.
+
+The syntax for specifying streamers is straightforward.  You just specify
+what data streams you want to send and whether you want to send them as realtime
+or historical data::
+
+    [manual] (signed | realtime) streamer on <selector>;
+
+The manual keyword will be covered in the next tutorial but it gives the user
+more flexibilty in when the streamer tries to send data.  By default streamers
+are "automatic", which means they try to send data whenever it is available.
+
+You choose whether it data is realtime or historical by specifying the 
+keywords `realtime` or `signed` and finally you choose what data to send by 
+specify a **Stream Selector**.  This can be just the name of a stream or it can
+be a wildcard like **all outputs**.  
+
+Here are a few examples::
+        
+    manual signed streamer on all outputs;
+    realtime streamer on unbuffered 10;
+
+These two streamer say that we would like to report realtime data whenever it 
+is available on the `unbuffered 10` stream and we would also like to send 
+all `output` streams as historical data that will be triggered manually.  
+
+In the next tutorial, we will cover how to trigger manual streamers from a 
+sensor graph.
+
+Next Steps
+##########
+
+An upcoming tutorial will cover how to write more advanced sensor graphs as 
+well as how to use the `iotile-sgcompile` to program them into actual devices.

@@ -20,12 +20,18 @@ class CallRPCStatement(SensorGraphStatement):
     def __init__(self, parsed):
         self.rpc_id = parsed[0]
         self.slot_id = parsed[1]
-        self.stream = parsed[2]
+
+        self.stream = None
+        if 'explicit_stream' in parsed:
+            self.stream = parsed['explicit_stream'][0]
 
         super(CallRPCStatement, self).__init__([])
 
     def __str__(self):
-        return u'call 0x%X on %s => %s;' % (self.rpc_id, str(self.slot_id), str(self.stream))
+        if self.stream is not None:
+            return u'call 0x%X on %s => %s;' % (self.rpc_id, str(self.slot_id), str(self.stream))
+
+        return u'call 0x%X;' % (self.rpc_id, str(self.slot_id), str(self.stream))
 
     def execute(self, sensor_graph, scope_stack):
         """Execute this statement on the sensor_graph given the current scope tree.
@@ -47,6 +53,10 @@ class CallRPCStatement(SensorGraphStatement):
         rpc_const = alloc.allocate_stream(DataStream.ConstantType, attach=True)
         rpc_val = (self.slot_id.address << 16) | self.rpc_id
 
-        sensor_graph.add_node(u"({} {} && {} always) => {} using call_rpc".format(trigger_stream, trigger_cond, rpc_const, self.stream))
+        stream = self.stream
+        if stream is None:
+            stream = alloc.allocate_stream(DataStream.UnbufferedType)
+
+        sensor_graph.add_node(u"({} {} && {} always) => {} using call_rpc".format(trigger_stream, trigger_cond, rpc_const, stream))
         sensor_graph.add_constant(rpc_const, rpc_val)
 
