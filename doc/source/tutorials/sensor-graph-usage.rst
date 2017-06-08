@@ -123,8 +123,8 @@ Let's mock RPC 0x8001 on slot 1 to return 50 rather than 42::
 	(    3250 s) output 1: 50
 	(    3360 s) output 1: 50
 
-Programming a SensorGraph Into a Device
-#######################################
+Programming Into a Device
+#########################
 
 Currently the best way to program a sensor graph into an actual device is to
 use a combination of the `iotile-sgcompile` and `iotile` tools.  Given your
