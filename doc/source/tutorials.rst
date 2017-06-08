@@ -9,4 +9,4 @@ run, just a computer with CoreTools installed.
 .. include:: tutorials/streaming-data.rst
 .. include:: tutorials/virtual-interfaces.rst
 .. include:: tutorials/running-a-gateway.rst
-
+.. include:: tutorials/sensor-graph-intro.rst

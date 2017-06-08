@@ -1,0 +1,34 @@
+meta file_format = "sensorgraph-1.0";
+
+meta name = "NFC300";
+meta version = "1.0.0";
+meta cloud_name = "nfc300-1-0-0";
+
+every 10 minutes
+{
+	call 0x5004 on slot 1 => output 1;
+}
+
+every 10 seconds
+{
+	call 0x5005 on slot 1 => unbuffered 3;
+}
+
+when connected to controller
+{
+	on connect
+	{
+		call 0x5000 on slot 1 => unbuffered 1;
+	}
+
+	every 1 second
+	{
+		call 0x5001 on slot 1 => unbuffered 15;
+		call 0x5002 on slot 1 => unbuffered 16;
+	}
+
+	on disconnect
+	{
+		call 0x5003 on slot 1 => unbuffered 1;
+	}
+}

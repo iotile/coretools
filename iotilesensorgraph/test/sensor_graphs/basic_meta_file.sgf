@@ -1,0 +1,5 @@
+meta file_format = "sensorgraph-1.0";
+
+meta name = "NFC300";
+meta version = "1.0.0";
+meta cloud_name = "nfc300-1-0-0";

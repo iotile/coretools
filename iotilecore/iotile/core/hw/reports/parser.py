@@ -9,7 +9,7 @@ class IOTileReportParser (object):
 
     Every time new data is available on the stream, add_data should be called.
     Every time a complete report has been received, the optional callback passed in will
-    be called with an IOTileReport subclass.  
+    be called with an IOTileReport subclass.
 
     Args:
         report_callback (callable): A function to be called every time a new report is received
@@ -81,7 +81,7 @@ class IOTileReportParser (object):
                 self.current_header_size = self.calculate_header_size(self.current_type)
                 self.state = self.WaitingForReportHeader
                 further_processing = True
-            except Exception, exc:
+            except Exception as exc:
                 self.state = self.ErrorState
 
                 if self.error_callback:
@@ -94,7 +94,7 @@ class IOTileReportParser (object):
                 self.current_report_size = self.calculate_report_size(self.current_type, self.raw_data[:self.current_header_size])
                 self.state = self.WaitingForCompleteReport
                 further_processing = True
-            except Exception, exc:
+            except Exception as exc:
                 self.state = self.ErrorState
 
                 if self.error_callback:
@@ -111,7 +111,7 @@ class IOTileReportParser (object):
                 self._handle_report(report)
                 self.state = self.WaitingForReportType
                 further_processing = True
-            except Exception, exc:
+            except Exception as exc:
                 self.state = self.ErrorState
 
                 if self.error_callback:

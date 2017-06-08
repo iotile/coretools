@@ -1,0 +1,20 @@
+meta file_format = "sensorgraph-1.0";
+
+meta name = "NFC300";
+meta version = "1.0.0";
+meta cloud_name = "nfc300-1-0-0";
+
+on value(input 1) == 5
+{
+	call 0x5001 on slot 1 => counter 1;
+}
+
+on count(counter 1) == 2
+{
+	call 0x5002 on slot 2 => counter 2;
+}
+
+on counter 2
+{
+	call 0x5002 on slot 2 => counter 3;
+}

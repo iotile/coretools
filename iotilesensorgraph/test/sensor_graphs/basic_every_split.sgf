@@ -1,0 +1,13 @@
+meta file_format = "sensorgraph-1.0";
+
+meta name = "NFC300";
+meta version = "1.0.0";
+meta cloud_name = "nfc300-1-0-0";
+
+every 1 minute
+{
+	call 0x1000 on slot 1 => counter 15;
+	call 0x1001 on slot 2 => counter 16;
+	call 0x1002 on slot 3 => counter 17;
+	call 0x1003 on slot 4 => counter 18;
+}

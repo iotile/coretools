@@ -1,0 +1,17 @@
+when connected to controller
+{
+	on connect
+	{
+		call 0x5001 on slot 1 => unbuffered 15;
+	}
+
+	every 1 second
+	{
+		call 0x5001R on slot 1 => unbuffered 15;
+	}
+
+	on disconnect
+	{
+
+	}
+}

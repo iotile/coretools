@@ -1,7 +1,7 @@
 import hashlib
 import hmac
 import struct
-from auth_provider import AuthProvider, KnownSignatureMethods
+from .auth_provider import AuthProvider, KnownSignatureMethods
 from iotile.core.exceptions import NotFoundError
 
 class BasicAuthProvider(AuthProvider):
@@ -20,8 +20,8 @@ class BasicAuthProvider(AuthProvider):
 
         Returns:
             dict: The signature and any associated metadata about the signature.
-                The signatured itself must always be a bytearray stored under the 
-                'signature' key, however additional keys may be present depending 
+                The signatured itself must always be a bytearray stored under the
+                'signature' key, however additional keys may be present depending
                 on the signature method used.
 
         Raises:
@@ -49,7 +49,7 @@ class BasicAuthProvider(AuthProvider):
 
         Returns:
             dict: The result of the verification process must always be a bool under the
-                'verified' key, however additional keys may be present depending on the 
+                'verified' key, however additional keys may be present depending on the
                 signature method used.
 
         Raises:

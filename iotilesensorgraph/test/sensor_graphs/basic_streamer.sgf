@@ -1,0 +1,16 @@
+meta file_format = "sensorgraph-1.0";
+
+meta name = "NFC300";
+meta version = "1.0.0";
+meta cloud_name = "nfc300-1-0-0";
+
+every 10 seconds
+{
+	call 0x1000 on slot 1 => output 1;
+	call 0x1001 on slot 2 => buffered 1;
+	trigger streamer 0;
+}
+
+# Configure outputs
+manual signed streamer on all outputs;
+manual signed streamer on all system outputs to slot 1 with streamer 0;

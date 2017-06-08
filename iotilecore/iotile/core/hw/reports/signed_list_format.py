@@ -3,7 +3,7 @@
 
 import datetime
 import struct
-from report import IOTileReport, IOTileReading
+from .report import IOTileReport, IOTileReading
 from iotile.core.utilities.packed import unpack
 from iotile.core.exceptions import ArgumentError, NotFoundError, ExternalError
 import iotile.core.hw.auth.auth_provider as auth_provider
