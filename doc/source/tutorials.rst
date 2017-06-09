@@ -11,4 +11,5 @@ run, just a computer with CoreTools installed.
 .. include:: tutorials/running-a-gateway.rst
 .. include:: tutorials/sensor-graph-intro.rst
 .. include:: tutorials/sensor-graph-usage.rst
+.. include:: tutorials/sensor-graph-statements.rst
 .. include:: tutorials/sensor-graph-advanced.rst 
