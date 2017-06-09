@@ -7,28 +7,28 @@ interacted with them directly on your computer.
 
 However, virtual devices are much more powerful than just tutorial usage.  One
 of the key foundations of IOTile and CoreTools is that every part of an IOTile
-system should be testable and mockable without complicated tools.  
+system should be testable and mockable without complicated tools.
 
 For example, let's say you're building a solution for monitoring water meters.
 You have an IOTile device attached to the water meter that counts how much
 water has passed through the meter and provides access to that data over
-Bluetooth.  You also have a mobile app that connects to the water meter and 
+Bluetooth.  You also have a mobile app that connects to the water meter and
 allows you to download that data and see the flow rate through the pipe in
 realtime when you're connected.
 
 It can be challenging to properly test your mobile app across a range of
 conditions because you need to trick the water meter into showing you a wide
-range of 'fake' flow rates and historical readings on demand.  
+range of 'fake' flow rates and historical readings on demand.
 
 For a large piece of industrial equipment, it's not always clear how to 'trick'
-it into giving you the data you need to test other parts of the sytem and while
-it's easy to generate fake data on a computer, it's not clear how to get your 
+it into giving you the data you need to test other parts of the system and while
+it's easy to generate fake data on a computer, it's not clear how to get your
 computer to serve that data over Bluetooth in the same way the water meter would
 so you can properly test your mobile app.
 
 Virtual devices fix this problem.  Any IOTile device (including its wireless
-connectivity) can be replaced with a Virtual Device that exactly mimicks it (
-or whatever portion of it we need to test). 
+connectivity) can be replaced with a Virtual Device that exactly mimics it (
+or whatever portion of it we need to test).
 
 So, we can create a simple Virtual Device to act as a stand in for the
 real IOTile Device and then have our computer serve it over Bluetooth for the
@@ -42,7 +42,7 @@ Goals
    and how to use them to mock IOTile Devices for testing.
 
 2. Introduce the **virtual_device** script that serves a Virtual Device over
-   a Virtual Interface so that users can connect to it without running 
+   a Virtual Interface so that users can connect to it without running
    CoreTools.
 
 3. Show how we can interact with our Virtual Device over Bluetooth from
@@ -51,21 +51,21 @@ Goals
 Background
 ##########
 
-For past tutorials, we've been using VirtualDevices just as a simple tool to 
-illustrate some of the concepts in IOTile Device interactions like RPCs and 
+For past tutorials, we've been using VirtualDevices just as a simple tool to
+illustrate some of the concepts in IOTile Device interactions like RPCs and
 streaming data without needing physical hardware.  To keep things simple,
-we directly embedded the virtual device inside of a `HardwareManager` object.  
+we directly embedded the virtual device inside of a `HardwareManager` object.
 
 However, that's not the only way that a VirtualDevice can be used.  In a more
 general sense, `HardwareManager` loads plugins called `DeviceAdapters` that
 tell is how to find and communicate with IOTile Devices.  In past tutorials,
-we've implictly been using a `VirtualDeviceAdapter` plugin that lets
-HardwareManager talk directly to a VirtualDevice object runing in the same
+we've implicitly been using a `VirtualDeviceAdapter` plugin that lets
+HardwareManager talk directly to a VirtualDevice object running in the same
 process as the HardwareManager.
 
 Another way to use a VirtualDevice is to attach it to a `VirtualInterface` that
 exposes its RPCs and Streaming interface directly over a communication channel
-like Bluetooth Low Energy.  
+like Bluetooth Low Energy.
 
 In that case the VirtualDevice ceases to be just a tutorial aid and becomes
 basically a normal IOTile Device that just happens to be written in Python
@@ -103,8 +103,8 @@ DeviceAdapter
 
 VirtualInterface
     VirtualInterfaces are python implementations of the communication stack
-    inside an IOTile Device that allows it to communicate with CoreTools.  
-    For example, a Bluetooth Low Energy VirtualInterface would allow a 
+    inside an IOTile Device that allows it to communicate with CoreTools.
+    For example, a Bluetooth Low Energy VirtualInterface would allow a
     Virtual Device to receive RPCs over Bluetooth LE using the Bluetooth stack
     built-in to your computer.  The combination of a VirtualDevice and a
     VirtualInterface is a complete 'software implementation' of an IOTile
@@ -118,11 +118,11 @@ virtual_device
 Using virtual_device
 ####################
 
-The `virtual_device` script is just a small program whose job is to let you 
+The `virtual_device` script is just a small program whose job is to let you
 run a VirtualDevice inside of a VirtualInterface without having to write custom
 python code.
 
-VirtualInterfaces and VirtualDevices can be installed in your virtual environment  
+VirtualInterfaces and VirtualDevices can be installed in your virtual environment
 by packages during the pip install process, and you can use virtual_device to
 list what installed interfaces and devices are available using the -l flag::
 
@@ -139,7 +139,7 @@ list what installed interfaces and devices are available using the -l flag::
     - no_app
 
 In this case, we had the ability to serve virtual devices over AWS IOT's MQTT
-broker and locally over bluetooth using a BLED112 USB->BLE dongle.  There were 
+broker and locally over bluetooth using a BLED112 USB->BLE dongle.  There were
 5 built-in virtual devices that we had available to us as well.
 
 In this tutorial we'll be using the `realtime_test` device that can be
@@ -151,15 +151,15 @@ Let's see what the realtime_test device does.
 
 .. autoclass:: RealtimeTestDevice
 
-Basically, this is just a configurable device that can simulate realtime 
-streaming data.  Note that it takes a dictionary of parameters names `args`.  
+Basically, this is just a configurable device that can simulate realtime
+streaming data.  Note that it takes a dictionary of parameters names `args`.
 When using the `virtual_device` script, you can set these parameters by passing
 a json config file using a `--config` flag on the command line.
 
 .. warning::
     For this next test to work, you will need two BLED112 USB Bluetooth dongles
-    attached to your computer to allow for a looback test and you will need to 
-    know either their device file on Mac OS and Linux or their COM port number 
+    attached to your computer to allow for a loopback test and you will need to
+    know either their device file on Mac OS and Linux or their COM port number
     on Windows.
 
 In Linux, you will need to find the dongle existing in the /dev directory. You will also need to yourself to the sudo user group with `sudo usermod -a -G dialout [username]`.
@@ -194,8 +194,8 @@ Now, start running your virtual device using::
 
         pip install --upgrade iotile-test
 
-Now your computer is advertising itself as an IOTile Device over bluetooth.  
-Either using a second computer or using a different terminal on the same 
+Now your computer is advertising itself as an IOTile Device over bluetooth.
+Either using a second computer or using a different terminal on the same
 computer, we're going to connect to the device over bluetooth::
 
     (iotile) > iotile hw --port=bled112:<path to second dongle>
@@ -212,7 +212,7 @@ computer, we're going to connect to the device over bluetooth::
 
 Note how we used the port string bled112 to indicate that we wanted to
 connect to the device over bluetooth.  In previous tutorials, we've used the
-virtual DeviceAdapter rather than Bluetooth Low Energy.  Make sure you pass 
+virtual DeviceAdapter rather than Bluetooth Low Energy.  Make sure you pass
 the correct COM port or file path in the port string otherwise you will get an
 error.
 
@@ -222,7 +222,7 @@ set up with UUID 0x10 (decimal 16).  We see an RSSI signal strength of -39 dBm
 and see that no one is currently connected to it.
 
 So, let's connect and see the realtime streaming data come in over Bluetooth::
-    
+
     (HardwareManager) connect 0x10
     (HardwareManager) enable_streaming
 
@@ -301,11 +301,11 @@ virtual device to now print the realtime data coming from our actual (soft)
 device over bluetooth.
 
 Start the realtime_test device again::
-    
+
     (iotile) > virtual_device bled112 realtime_test --config device_config.json
     Starting to serve virtual IOTile device
 
-Now load up your realtime stream dumping script from the last tuorial (fixing
+Now load up your realtime stream dumping script from the last tutorial (fixing
 the port to use bled112 instead of virtual (test_script.py)::
 
     from iotile.core.hw.hwmanager import HardwareManager
@@ -348,8 +348,8 @@ Run it and see the realtime data coming from your device::
     Received Stream 8192: 100 at 2017-05-18 18:05:48.859000
     Received Stream 8192: 100 at 2017-05-18 18:05:49.468000
 
-If you have a physical IOTile device as well, you could now point your 
-script at it and have it show you the realtime sensor data coming from the 
+If you have a physical IOTile device as well, you could now point your
+script at it and have it show you the realtime sensor data coming from the
 device.
 
 Next Steps

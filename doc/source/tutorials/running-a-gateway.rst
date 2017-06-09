@@ -6,7 +6,7 @@ Many times individual IOTile Devices are not able to directly connect to the
 internet and instead talk exclusively to an intermediate gateway device.  This
 is usually because the devices lack the required communications hardware to
 send multi-hop or IP routed transmissions.  An example would be a battery
-powered wireless sensor connected via Bluetooth Low Energy.  BLE devices 
+powered wireless sensor connected via Bluetooth Low Energy.  BLE devices
 connect to a local central device in a point-to-point fashion without a built-in
 provision for connecting to the internet.
 
@@ -36,7 +36,7 @@ Goals
 Background
 ##########
 
-In previous tutorials, we've seen how DeviceAdapters provide a generic way to 
+In previous tutorials, we've seen how DeviceAdapters provide a generic way to
 allow access to IOTile devices from multiple clients and how HardwareManager
 allows a single client or script to discover and make a connection to a specific
 IOTile Device.
@@ -49,16 +49,16 @@ GatewayAgents are the direct complement to DeviceAdapters.  Whereas
 DeviceAdapters standardize devices that may have very different communication
 protocols, GatewayAgents take those standardize devices and re-broadcast them
 over a different communucation protocol.  So, you could take a device connected
-over Bluetooth and serve it up over Websockets, MQTT, or HTTPS.  
+over Bluetooth and serve it up over Websockets, MQTT, or HTTPS.
 
-Since there are many moving pieces in performing this kind of translation, there 
-needs to be a host application that provides the framework for linking 
+Since there are many moving pieces in performing this kind of translation, there
+needs to be a host application that provides the framework for linking
 DeviceAdapters and GatewayAgents together.  This program is called
-**iotile-gateway** and is installed as a script when you `pip install` the 
+**iotile-gateway** and is installed as a script when you `pip install` the
 iotile-gateway package in CoreTools.
 
-The heavy lifting is done by an asynchronous event loop managed the 
-**DeviceManager** class.  
+The heavy lifting is done by an asynchronous event loop managed the
+**DeviceManager** class.
 
 .. py:module:: iotilegateway.device
 
@@ -66,12 +66,12 @@ The heavy lifting is done by an asynchronous event loop managed the
 
 By itself, DeviceManager does not allow serving access to IOTile Devices, it
 just aggregates multiple DeviceAdapters together and unifies the view of the
-devices that they can see.  
+devices that they can see.
 
-There still needs to be a way to configure what DeviceAdapters to add to the 
+There still needs to be a way to configure what DeviceAdapters to add to the
 DeviceManager and to specify what GatewayAgents should be included as well.
 
-This is performed by the **IOTileGateway** class.  IOTileGateway is designed 
+This is performed by the **IOTileGateway** class.  IOTileGateway is designed
 for simple integration into host applications and forms the backbone of the
 iotile-gateway command line program.
 
@@ -103,13 +103,13 @@ DeviceManager
 
 IOTileGateway
     A helper class that locates and loads DeviceAdapter and GatewayAgent plugins
-    and then runs a DeviceManager instance with those plugins in a separate 
+    and then runs a DeviceManager instance with those plugins in a separate
     thread to allow for easy integration into a host application
 
 GatewayAgent
     A class that serves access to IOTile Devices over a communication protocol.
-    This class serves the opposite function as a DeviceAdapter and you would 
-    imagine a natural pairing where each DeviceAdapter has a corresponding 
+    This class serves the opposite function as a DeviceAdapter and you would
+    imagine a natural pairing where each DeviceAdapter has a corresponding
     GatewayAgent.
 
 iotile-gateway
@@ -126,15 +126,15 @@ DeviceAdapters to load and what GatewayAgents to use.  The DeviceAdapters are
 configured by passing the same 'port' string you would use in the iotile tool.
 
 The GatewayAgents have more configurability and take a dictionary of arguments
-that are specific to each agent. In this example, we're going to use our 
+that are specific to each agent. In this example, we're going to use our
 venerable VirtualDeviceAdapter to connect to a virtual device and serve access
-to it over Websockets.  
+to it over Websockets.
 
 Websockets are a bidirectional communication channel built on top of http that
 is widely used in javascript web applications, so serving IOTile Devices over
 web sockets is a great way to connect them to web apps.
 
-We'll need to create a config file with the required information (named 
+We'll need to create a config file with the required information (named
 gateway.json)::
 
     {
@@ -142,7 +142,7 @@ gateway.json)::
         [
             {
                 "name": "websockets",
-                "args": 
+                "args":
                 {
                     "port": 5120
                 }
@@ -165,9 +165,9 @@ Then we just run iotile-gateway and point it to our config file::
     I-2017-05-19 14:38:19,381-ws_agent  :38   Starting Websocket Agent on port 5120
     I-2017-05-19 14:38:19,388-gateway   :116  Loading device adapter by name 'virtual' and port 'realtime_test'
 
-Now (in another shell or a separate computer on the same network), 
+Now (in another shell or a separate computer on the same network),
 we can connect to the gateway just like we connect directly to an IOTile
-Device by specifying a protocol supported by one of the gateway's agents, in 
+Device by specifying a protocol supported by one of the gateway's agents, in
 this case websockets::
 
     (iotile) > iotile hw --port=ws:localhost:5120/iotile/v1
@@ -189,17 +189,17 @@ this case websockets::
 Note how there is a little more detail here than when you scan directly from
 the IOTile tool.  In particular we see a list of all of the DeviceAdapters that
 could see the device ranked in order of signal strength and a key specifying
-the best adapter to use to connect to the device.  
+the best adapter to use to connect to the device.
 
 If this were, for example, a Bluetooth device and we had two different Bluetooth
-adapters connected to the computer, we would see the device twice but they 
+adapters connected to the computer, we would see the device twice but they
 would both be merged into a single entry with the closest adapter used to
 actually make the connection.
 
 Combining Multiple Device Adapters
 ##################################
 
-There is no restriction on the number of different device adapters that you 
+There is no restriction on the number of different device adapters that you
 can connect to a gateway, so let's use two virtual adapters::
 
     {
@@ -207,7 +207,7 @@ can connect to a gateway, so let's use two virtual adapters::
         [
             {
                 "name": "websockets",
-                "args": 
+                "args":
                 {
                     "port": 5120
                 }
@@ -232,17 +232,17 @@ can connect to a gateway, so let's use two virtual adapters::
     You need a BLED112 USB bluetooth dongle plugged into your computer for
     this to work.
 
-In this case, we're going to find physical IOTile Devices over bluetooth as 
+In this case, we're going to find physical IOTile Devices over bluetooth as
 well as our virtual device.  This combination of physical and virtual devices
 is often very useful since virtual devices can provide you a way to configure
-things on the computer running the gateway program.  
+things on the computer running the gateway program.
 
-For example, lets say you're deploying a gateway on a remote farm that you 
+For example, lets say you're deploying a gateway on a remote farm that you
 are going to use to control a variety of bluetooth sensors.  It would be great
-if you could also control the gatewy computer itself.  By making a virtual
+if you could also control the gateway computer itself.  By making a virtual
 device that allows control of the gateway and connecting it to the
 iotile-gateway as well as the bluetooth adapter, you're able to introspectively
-access the gateway just as easily as you can reach through it to access a 
+access the gateway just as easily as you can reach through it to access a
 local bluetooth device::
 
     (iotile) > iotile hw --port=ws:localhost:5120/iotile/v1
