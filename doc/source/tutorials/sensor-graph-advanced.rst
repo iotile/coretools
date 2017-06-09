@@ -26,11 +26,11 @@ cause actions to be executed and what data should be sent remotely for long
 term storage.
 
 It's not necessarily clear though, why the language is called Sensor*Graph*. 
-There's nothing particular graphlike about the language as we've discussed it
+There's nothing particularly graph-like about the language as we've discussed it
 so far.  However, the low level representation of the SensorGraph files that 
 you write is actually a data processing graph where DataStreams are linked
 together with processing functions to create complex chains of actions that
-are simultaneously powerfully expressive but also easy to verify and understand.
+are simultaneously powerfully expressive and also easy to verify and understand.
 
 Conceptually a sensor graph is made up of **Nodes** that correspond with
 processing functions.  Each Node has several inputs that are each FIFOs so
@@ -41,8 +41,18 @@ processing function on its inputs to produce an output.
 The input FIFOs are called **Stream Walkers**.  Stream walkers are FIFOs
 that are attached to a DataStream and remember the last value in that Stream
 that each node has processed.  You can have multiple stream walkers on the
-same stream that walk that stream at a different rate so one walker has 0
-unprocessed readings while the other has many unprocessed readings.
+same stream that walk that stream at a different rate.  For example, say you
+have a stream named 'output 1' that has two nodes connected to it.  The first
+node processes readings one at a time every time they come in so its stream
+walker will always stay up to date with the latest reading.  The second node,
+ though, could be configured to average its input every 60 readings, so its 
+ stream walker would accumulate 60 readings before the node fires.  
+
+The key point is that whenever a reading is pushed into a stream, it is as if
+a copy of the value is pushed to each stream walker
+separately and those stream walkers function as independent FIFOs.  So, one
+could have 60 readings in it while another has 5 even though the have the 
+same stream name.
 
 In this tutorial we're going to use the iotile-sgcompile program to compile
 our high level SensorGraph down into the actual graph nodes and edges that 
@@ -158,7 +168,7 @@ In prose this says::
 
 	When a node is triggered, it typically consumes all of the data that is 
 	pending on all of its inputs, returning their counts back to 0 (except 
-	for constant streams that inexhaustible).  
+	for constant streams that are inexhaustible).  
 
 	So if you have a node like:
 
@@ -171,8 +181,8 @@ In prose this says::
 Different Kinds of Streams 
 ##########################
 
-There are currently X different classes of streams.  Their own differences are 
-in how many past readings values are remembered and whether a count is kept
+There are currently 6 different classes of streams.  Their own differences are 
+in how many past values are remembered and whether a count is kept
 of how many readings have been pushed to the stream. 
 
 Buffered Streams
@@ -183,7 +193,7 @@ Buffered Streams
 	next oldest reading.
 
 Unbuffered Streams
-	Unbuffered streams only every store 1 value.  They have no space to store
+	Unbuffered streams only ever store 1 value.  They have no space to store
 	historical data and they also don't lie to you about how many readings are
 	available so an unbuffered stream can only ever have a count of 0 or 1
 	depending on whether it has data available or not.
@@ -205,7 +215,7 @@ Output Streams
 	Output streams are buffered streams but stored in a different region of 
 	persistent storage from buffered streams so that overflowing the buffered
 	storage region does not overflow the output storage.  As the name suggests,
-	Output streams typically represent the outputs of a device that should be 
+	output streams typically represent the outputs of a device that should be 
 	saved historically.
 
 Constant Streams
@@ -235,7 +245,7 @@ guarantees that the behavior for each input is unchanged in so far as the
 outputs are concerned.
 
 The optimizer works by taking an initial sensor graph and either removing
-or modifying nodes and triggers if it can proves that the resulting 
+or modifying nodes and triggers if it can prove that the resulting 
 configuration is identical to the initial one in terms of user visible 
 behavior. The optimizer makes no assumptions about what happens inside of 
 an RPC and just works on the sensor graph structure itself.
@@ -248,4 +258,4 @@ Next Steps
 
 After finishing all of these tutorials you should be ready to build your 
 own IOTile based data gathering and control system by putting all of the 
-pieces we've covered together to fits your needs.
+pieces we've covered together to fit your needs.
