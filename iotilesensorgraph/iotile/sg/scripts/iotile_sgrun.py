@@ -17,7 +17,7 @@ def build_args():
 
     parser = argparse.ArgumentParser(description=u'Load and run a sensor graph, either in a simulator or on a physical device.')
     parser.add_argument(u'sensor_graph', type=str, help=u"The sensor graph file to load and run.")
-    parser.add_argument(u'--stop', u'-s', action=u"append", type=str, help=u"A stop condition for when the simulation should end.")
+    parser.add_argument(u'--stop', u'-s', action=u"append", default=[], type=str, help=u"A stop condition for when the simulation should end.")
     parser.add_argument(u'--realtime', u'-r', action=u"store_true", help=u"A stop condition for when the simulation should end.")
     parser.add_argument(u'--watch', u'-w', action=u"append", default=[], help=u"A stream to watch and print whenever writes are made.")
     parser.add_argument(u'--disable-optimizer', action="store_true", help=u"disable the sensor graph optimizer completely")
