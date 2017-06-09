@@ -48,7 +48,11 @@ walker will always stay up to date with the latest reading.  The second node,
  though, could be configured to average its input every 60 readings, so its 
  stream walker would accumulate 60 readings before the node fires.  
 
-The key point is that streams are just names for where data readings are   
+The key point is that whenever a reading is pushed into a stream, it is as if
+a copy of the value is pushed to each stream walker
+separately and those stream walkers function as independent FIFOs.  So, one
+could have 60 readings in it while another has 5 even though the have the 
+same stream name.
 
 In this tutorial we're going to use the iotile-sgcompile program to compile
 our high level SensorGraph down into the actual graph nodes and edges that 
