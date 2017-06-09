@@ -3,7 +3,7 @@ Understanding IOTile Reports
 
 All data from IOTile devices comes in the form of **Reports**.  As the name
 suggests, a Report just contains a list of data that the IOTile Device wants
-to report to the cloud.  This data is packed into a specific structure for 
+to report to the cloud.  This data is packed into a specific structure for
 transportation to the cloud and then unpacked and inspected to make sure it
 arrived correctly and originated from the IOTile Device that it claimed to
 come from.
@@ -21,7 +21,7 @@ Goals
    reports for transmission.
 
 2. Introduce the classes in `iotile-core` that represent data from IOTile
-   devices and their API. 
+   devices and their API.
 
 3. Understand the distinction between realtime data and signed *Robust Reports*.
 
@@ -29,7 +29,7 @@ Background
 ##########
 
 Before talking about how CoreTools handles data from IOTile Devices, we need to
-cover how IOTile Devices generate data in the first place.  
+cover how IOTile Devices generate data in the first place.
 
 IOTile Devices are designed to produce timeseries of discrete data points.
 Think of a soil moisture sensor programmed to record the water content in the
@@ -42,34 +42,34 @@ wants to report both of those numbers.  Clearly, there needs to be a way to
 distinguish these two data streams so that users know which numbers are
 temperatures and which are moisture values.
 
-IOTile Devices distinguish different sensor readings by using a 16-bit 
+IOTile Devices distinguish different sensor readings by using a 16-bit
 **Stream** identifier (a **Stream ID**), where each different Stream corresponds
 to a different type of reading.
 
 All of the data entries in a Stream are time, value pairs, i.e a single reading
-that occured at a specific time.  Most IOTile Devices timestamp their data with
+that occurred at a specific time.  Most IOTile Devices timestamp their data with
 1 second precision.  Currently, each data value saved in a Stream must fit in
-32 bits, so it can either be an integer or encoded/packed into an integer.  
+32 bits, so it can either be an integer or encoded/packed into an integer.
 
 For example, realtime water flow measurements might report their results as 2
 16 bit numbers packed together with one number representing the fractional
-part of the flow and the other number representing the whole number part of the 
+part of the flow and the other number representing the whole number part of the
 flow (a 16.16 fixed point format).
 
 To save space on small embedded microcontrollers, there are no explicit units
 included in data sent from IOTile Devices.
 
-.. important:: 
+.. important::
     it us up to the user to make sure that they understand the implicit
-    units of the data being sent from an IOTile Device, since just bare 
+    units of the data being sent from an IOTile Device, since just bare
     numbers are transmitted from the devices.  The data in each Stream
     must all have the same units.
 
 Since many IOTile devices are not directly connected to the internet, they
 typically save up data to transmit periodically to the cloud in the form of a
 **Report**.  A Report is simply a data packet with 1 or more readings in it
-and some associated header and footer information identifying where it came 
-from and what it contains.  Reports may be encrypted or cryptographically 
+and some associated header and footer information identifying where it came
+from and what it contains.  Reports may be encrypted or cryptographically
 signed if desired to provide data privacy and verification of origin.
 
 Key Concepts
@@ -78,10 +78,10 @@ Key Concepts
 Reading
     An individual time/value data entry recorded by an IOTile Device. Each
     reading is timestamped and the reading value must fit in 4 bytes (32 bits).
-    Every reading must be assoicated with exactly 1 Stream.
+    Every reading must be associated with exactly 1 Stream.
 
 Stream
-    A time series of Readings that all have the same units and should be 
+    A time series of Readings that all have the same units and should be
     logically grouped together.  Usually Streams come from a single sensor.
 
 Stream ID
@@ -92,18 +92,18 @@ Stream ID
 Report
     A Report is a data packet containing one or more Readings from one or more
     Streams that is packaged together for transmission from an IOTile Device to
-    a remote user, usually either a mobile phone or the cloud.  
+    a remote user, usually either a mobile phone or the cloud.
 
     There are different report formats that can be used depending on the
-    communication channel constraints and the user's desired privacy and 
+    communication channel constraints and the user's desired privacy and
     security levels for the data.
 
 How CoreTools Handles Reports
 #############################
 
-Once data is received from an IOTile Device, it is decoded into an 
-`IOTileReport` subclass.  All reports processed through CoreTools are 
-represented as subclasses of `IOTileReport`.  
+Once data is received from an IOTile Device, it is decoded into an
+`IOTileReport` subclass.  All reports processed through CoreTools are
+represented as subclasses of `IOTileReport`.
 
 Each IOTileReport contains one or more IOTileReadings which are the way that
 CoreTools represents Readings coming from an IOTile Device.
@@ -113,7 +113,7 @@ The `IOTileReading` class is pretty simple.
 .. py:module:: iotile.core.hw.reports
 
 .. autoclass:: IOTileReading
-    :members: 
+    :members:
 
 There are two major Report Formats that we are going to be using in this
 tutorial.  The first is the `IndividualReportFormat`.  Individual reports
@@ -122,10 +122,10 @@ real time data to a connected user that should be stored persistently in the
 cloud.
 
 .. important::
-    Readings sent in Individual reports cannot be stored persistently in 
+    Readings sent in Individual reports cannot be stored persistently in
     iotile.cloud since they do not contain the required unique reading
     identifiers to allow the cloud to deduplicate readings received from
-    multiple sources.  **They are only used for transmitting emphemeral, 
+    multiple sources.  **They are only used for transmitting ephemeral,
     realtime data.**
 
 The second major report format is the `SignedListReport`.  Signed list reports,
@@ -172,13 +172,13 @@ Just like in the first tutorial, create a class for the virtual device::
 
             self.stream_realtime(0x1000, random.randint(32, 100))
 
-Save your device file as `demo_streamer.py`. 
+Save your device file as `demo_streamer.py`.
 
 This time we'll scan for the device before connecting to it. Scanning in real life will display all of the devices you are able to connect to, as well as the unique id (uuid) of each device. You can then connect to it using the
 iotile tool *connect*::
- 
+
     (iotile-virtualenv) > iotile hw --port=virtual:./demo_streamer.py
-    (HardwareManager) scan  
+    (HardwareManager) scan
 	{
 	    "connection_string": "1",
 	    "expiration_time": "2017-05-26 13:06:54.800662",
@@ -232,11 +232,11 @@ in::
         except KeyboardInterrupt:
             pass
 
-This script uses the `hw.iter_reports()` function to wait forever for each new 
+This script uses the `hw.iter_reports()` function to wait forever for each new
 report to come and the let you print it out.  Run it inside your virtual
 environment to see it print out all of the readings your device is sending.
 
-Save it as `test_script.py` and then run it to make sure everything works as 
+Save it as `test_script.py` and then run it to make sure everything works as
 expected.
 
 You should see a new reading come once per second.  You can quit the program
@@ -271,6 +271,6 @@ looked mainly at how realtime data is streamed from IOTile devices and covered
 the different report formats that exist inside CoreTools.
 
 Future tutorials will cover creating signed reports that could be uploaded to
-iotile.cloud.  That process is a litle more involved because the cloud requires
-readings that come from devices to include unique identifier information to 
+iotile.cloud.  That process is a little more involved because the cloud requires
+readings that come from devices to include unique identifier information to
 ensure data integrity.
