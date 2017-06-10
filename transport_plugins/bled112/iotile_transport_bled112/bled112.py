@@ -621,7 +621,10 @@ class BLED112Adapter(DeviceAdapter):
         try:
             self.stop_scan()
         except HardwareError:
-            pass
+            # If we errored our it is because we were not currently scanning, so make sure
+            # we update our self.scanning flag (which would not be updated by stop_scan since
+            # it raised an exception.)
+            self.scanning = False
 
         self._command_task.sync_command(['_set_mode', 0, 0]) #Disable advertising
 
