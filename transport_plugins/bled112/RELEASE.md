@@ -2,6 +2,11 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
+## 1.4.6
+
+- Fix initialization that can hang if a previous process exited uncleanly without
+  stopping scanning.  Now we gratuitously stop scanning on dongle initialization. (#231)
+
 ## 1.4.5
 
 - Added helper method to BLED112Adapter for safely removing connections

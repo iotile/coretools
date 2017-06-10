@@ -12,6 +12,7 @@ import copy
 import serial
 import serial.tools.list_ports
 from iotile.core.utilities.packed import unpack
+from iotile.core.exceptions import HardwareError
 from iotile.core.hw.reports.parser import IOTileReportParser
 from async_packet import AsyncPacketBuffer
 from iotile.core.hw.transport.adapter import DeviceAdapter
@@ -613,6 +614,14 @@ class BLED112Adapter(DeviceAdapter):
         for conn in retval['active_connections']:
             self._connections[conn] = {'handle': conn, 'connection_id': len(self._connections)}
             self.disconnect_sync(0)
+
+        # If the dongle was previously left in a dirty state while still scanning, it will
+        # not allow new scans to be started.  So, forcibly stop any in progress scans.
+        # This throws a hardware error if scanning is not in progress which should be ignored.
+        try:
+            self.stop_scan()
+        except HardwareError:
+            pass
 
         self._command_task.sync_command(['_set_mode', 0, 0]) #Disable advertising
 
