@@ -1,5 +1,17 @@
 ## Core IOTile Tools
 
+<!-- MarkdownTOC -->
+
+- [Build Status][build-status]
+- [Installation \(from PyPI\)][installation-from-pypi]
+- [Installing Support for IOTile Based Devices][installing-support-for-iotile-based-devices]
+- [Continuous Deployment][continuous-deployment]
+- [Manually Releasing][manually-releasing]
+- [License][license]
+
+<!-- /MarkdownTOC -->
+
+
 [![Build Status](https://travis-ci.org/iotile/coretools.svg?branch=master)](https://travis-ci.org/iotile/coretools)
 [![Build status](https://ci.appveyor.com/api/projects/status/yu3q8m8dm6aqoc6e/branch/master?svg=true)](https://ci.appveyor.com/project/timburke/coretools/branch/master)
 
@@ -10,7 +22,7 @@ IOTile device.
 
 Read the latest [Documentation](http://coretools.readthedocs.io/en/latest/)!
 
-### Tool Status
+### Build Status
 
 | Tool         | PyPI Version                                                                                                 |
 |--------------|--------------------------------------------------------------------------------------------------------------|
@@ -86,6 +98,9 @@ iotilecore
 iotilebuild
 iotilegateway
 iotile_transport_bled112
+iotile_transport_awsiot
+iotiletest
+iotilesensorgraph
 ```
 
 The version must match the version that is encoded in version.py in the corresponding python
