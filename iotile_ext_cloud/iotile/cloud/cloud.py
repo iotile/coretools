@@ -75,12 +75,15 @@ class IOTileCloud(object):
             else:
                 raise ExternalError("Error calling method on iotile.cloud", exception=exc, response=exc.response.status_code)
 
-    @param("project_id", "string", desc="ID of the project to download a list of devices from")
+    @param("project_id", "string", desc="Optional ID of the project to download a list of devices from")
     @return_type("list(integer)")
-    def device_list(self, project_id):
-        """Download a list of device IDs that are members for a specific project."""
+    def device_list(self, project_id=None):
+        """Download a list of all device IDs or device IDs that are members for a specific project."""
 
-        devices = self.api.device.get(project=project_id)
+        if project_id:
+            devices = self.api.device.get(project=project_id)
+        else:
+            devices = self.api.device.get()
 
         ids = [device['id'] for device in devices['results']]
         return ids
