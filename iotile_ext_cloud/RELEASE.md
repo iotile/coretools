@@ -2,6 +2,10 @@
 
 All major changes in each released version of the iotile-ext-cloud plugin are listed here.
 
+## 0.2.3
+
+- Modified device lookup to conditionally filter by project or not
+
 ## 0.2.2
 
 - Fix jwt token refresh to work on non default iotile.cloud servers.
