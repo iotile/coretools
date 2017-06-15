@@ -16,7 +16,7 @@ Background
 Like most languages, there are two kinds of elements in a sensor graph:
 **Blocks** and **Statements**.
 
-Blocks are containers for statements that are used to influence how the
+Blocks are `containers` for statements that are used to influence how the
 statements are compiled.  All blocks consist of a single line that starts the
 block and then zero or more statements contained in curly braces.
 
@@ -34,6 +34,8 @@ The most basic statement in a sensor graph is the `call` statement that calls
 an RPC on a tile.  It's syntax is::
 
     call <rpc id> on <slot id> [=> <output stream>];
+    call <rpc id> on controller [=> <output stream>];
+
 
 .. important::
 
