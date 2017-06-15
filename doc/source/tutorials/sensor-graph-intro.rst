@@ -415,7 +415,7 @@ Here are a few examples::
     manual signed streamer on all outputs;
     realtime streamer on unbuffered 10;
 
-These two streamer ssay that we would like to report realtime data whenever it
+These two streamer say that we would like to report realtime data whenever it
 is available on the `unbuffered 10` stream and we would also like to send
 all `output` streams as historical data that will be triggered manually.
 
