@@ -1,7 +1,7 @@
 from .scope import Scope
 from ...node import InputTrigger
 from ...exceptions import SensorGraphSemanticError
-
+from ...stream import DataStream
 
 class TriggerScope(Scope):
     """A scope that implements trigger_chain but cannot provide a clock.
@@ -22,8 +22,13 @@ class TriggerScope(Scope):
 
         # Create our own node to create our triggering chain
         # this will be optimized out if it turned out not to be needed
-        # after all nodes have been allocated
-        stream = alloc.allocate_stream(trigger_input[0].stream_type)
+        # after all nodes have been allocated.  Since we can trigger on a root
+        # node, make sure we don't try to make our output a root input.
+        stream_type = trigger_input[0].stream_type
+        if stream_type == DataStream.InputType:
+            stream_type = DataStream.UnbufferedType
+
+        stream = alloc.allocate_stream(stream_type)
         sensor_graph.add_node(u'({} {}) => {} using copy_latest_a'.format(trigger_input[0], trigger_input[1], stream))
         self.trigger_stream = stream
         self.trigger_cond = InputTrigger(u'count', '==', 1)
