@@ -5,7 +5,7 @@
 \#include <stdbool.h>
 \#include "cdb_application.h"
 
-\#define kNumRequiredConfigs	($len($sorted($filter(lambda x: x['required'], $configs.itervalues()))))
+\#define kNumRequiredConfigs	($len($list($filter(lambda x: x['required'], $configs.itervalues()))))
 \#define kNumTotalConfigs 		($len($configs))
 
 #for $variable in $configs.itervalues()
