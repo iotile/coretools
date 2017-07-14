@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.4.2
+
+- Fix template compatability issue for Cheetah #242.
+
 ## 2.4.1
 
 - Rename exceptions for compatibility
