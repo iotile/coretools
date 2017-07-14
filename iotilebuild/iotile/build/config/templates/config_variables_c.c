@@ -33,8 +33,8 @@ $variable.type __attribute__((section(".optional_config"))) $variable.name = $va
 #if $len($configs) > 0
 const cdb_config_entry cdb_config_map[kNumTotalConfigs] = 
 {
-#set $reqkeys = $filter(lambda x: $configs[x]['required'], $configs.iterkeys())
-#set $optkeys = $filter(lambda x: not $configs[x]['required'], $configs.iterkeys())
+#set $reqkeys = $sorted($filter(lambda x: $configs[x]['required'], $configs.iterkeys()))
+#set $optkeys = $sorted($filter(lambda x: not $configs[x]['required'], $configs.iterkeys()))
 #for $num, $id in $enumerate($sorted($reqkeys))
 	{&$configs[$id].name, $id, $configs[$id].total_size, $int($configs[$id].array)}#slurp
 #if $num != $len($configs) - 1
