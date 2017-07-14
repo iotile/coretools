@@ -81,7 +81,7 @@ def rpc(address, rpc_id, arg_format, resp_format=None):
                 try:
                     return struct.pack("<{}".format(resp_format), *resp)
                 except struct.error as exc:
-                    raise RPCInvalidReturnValueError(str(exc), resp_format(resp_format), resp=repr(resp))
+                    raise RPCInvalidReturnValueError(str(exc), resp_format=resp_format, resp=repr(resp))
 
             return resp
 

@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.14.5
+
+- Fix argument format on exception call inside virtualdevice
+
 ## 3.14.4
 
 - Now using optional kwarg 'arg_format' in TileBusProxyObject's rpc method to allow calling code to not have to manually pack arguments
