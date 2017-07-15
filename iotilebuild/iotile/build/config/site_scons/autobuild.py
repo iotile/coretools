@@ -200,9 +200,11 @@ def autobuild_documentation(tile):
         autobuild_doxygen(tile)
         env.Depends(outfile, 'doxygen')
 
-    #There is no /dev/null on Windows
+    # There is no /dev/null on Windows
+    # Also disable color output on Windows since it seems to leave powershell
+    # in a weird state.
     if platform.system() == 'Windows':
-        action = 'sphinx-build -b html %s %s > NUL' % (docdir[1:], outdir)
+        action = 'sphinx-build --no-color -b html %s %s > NUL' % (docdir[1:], outdir)
     else:
         action = 'sphinx-build -b html %s %s > /dev/null' % (docdir[1:], outdir)
 
