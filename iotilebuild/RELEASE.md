@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.4.3
+
+- Fix powershell issue with Sphinx that causes the terminal colors to be
+  inverted after iotile build
+
 ## 2.4.2
 
 - Fix template compatability issue for Cheetah #242.
