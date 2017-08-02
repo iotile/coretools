@@ -15,14 +15,30 @@ from iotile.core.utilities.typedargs import context, param, return_type, annotat
 
 @context("IOTileCloud")
 class IOTileCloud(object):
-    """High level routines for interacting with IOTile cloud
+    """High level routines for interacting with IOTile cloud.
+
+    Normally, you can create one of these objects with no arguments
+    and the iotile.cloud server and authentication details will
+    be pulled from the ComponentRegistry.  However, you can force
+    a specific domain by passing the optional domain arguments.
+
+    If there are no stored credentials in ComponentRegistry, the
+    user will be prompted for a password on the command line IF
+    the session is interactive, otherwise __init__ will fail.
+
+    Args:
+        domain (str): Optional server domain.  If not specified,
+            the default will be whatever is stored in the registry
+        username (str): Optional username to force the user to use
+            if they don't have stored credentials
     """
 
-    def __init__(self):
+    def __init__(self, domain=None, username=None):
         reg = ComponentRegistry()
         conf = ConfigManager()
 
-        domain = conf.get('cloud:server')
+        if domain is None:
+            domain = conf.get('cloud:server')
 
         self.api = Api(domain=domain)
 
@@ -33,12 +49,14 @@ class IOTileCloud(object):
             # If we are interactive, try to get the user to login for a single
             # session rather than making them call link_cloud to store a cloud token
             if type_system.interactive:
-                username = raw_input("Please enter your iotile.cloud username: ")
-                password = getpass.getpass('Please enter the iotile.cloud password for %s: ' % username)
+                if username is None:
+                    username = raw_input("Please enter your (%s) username: " % domain)
+
+                password = getpass.getpass('Please enter the (%s) password for %s: ' % (domain, username))
                 ok_resp = self.api.login(email=username, password=password)
 
                 if not ok_resp:
-                    raise ExternalError("Could not login to iotile.cloud as user %s" % username)
+                    raise ExternalError("Could not login to %s as user %s" % (domain, username))
             else:
                 raise ExternalError("No stored iotile cloud authentication information", suggestion='Call iotile config link_cloud with your iotile cloud username and password')
 
