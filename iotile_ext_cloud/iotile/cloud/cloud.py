@@ -3,12 +3,14 @@
 
 from io import BytesIO
 import requests
+import getpass
+
 from iotile_cloud.api.connection import Api
 from iotile_cloud.api.exceptions import RestHttpBaseException, HttpNotFoundError
 from iotile.core.dev.registry import ComponentRegistry
 from iotile.core.dev.config import ConfigManager
 from iotile.core.exceptions import ArgumentError, ExternalError
-from iotile.core.utilities.typedargs import context, param, return_type, annotated
+from iotile.core.utilities.typedargs import context, param, return_type, annotated, type_system
 
 
 @context("IOTileCloud")
@@ -22,14 +24,25 @@ class IOTileCloud(object):
 
         domain = conf.get('cloud:server')
 
+        self.api = Api(domain=domain)
+
         try:
             token = reg.get_config('arch:cloud_token')
+            self.api.set_token(token)
         except ArgumentError:
-            raise ExternalError("No stored iotile cloud authentication information", suggestion='Call iotile config link_cloud with your iotile cloud username and password')
+            # If we are interactive, try to get the user to login for a single
+            # session rather than making them call link_cloud to store a cloud token
+            if type_system.interactive:
+                username = raw_input("Please enter your iotile.cloud username: ")
+                password = getpass.getpass('Please enter the iotile.cloud password for %s: ' % username)
+                ok_resp = self.api.login(email=username, password=password)
 
-        self.api = Api(domain=domain)
-        self.api.set_token(token)
-        self.token = token
+                if not ok_resp:
+                    raise ExternalError("Could not login to iotile.cloud as user %s" % username)
+            else:
+                raise ExternalError("No stored iotile cloud authentication information", suggestion='Call iotile config link_cloud with your iotile cloud username and password')
+
+        self.token = self.api.token
 
     def _build_device_slug(self, device_id):
         idhex = "{:04x}".format(device_id)

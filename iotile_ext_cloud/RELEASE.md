@@ -2,6 +2,12 @@
 
 All major changes in each released version of the iotile-ext-cloud plugin are listed here.
 
+## 0.3.0
+
+- Add the ability to autologin to iotile.cloud if the user is in an interactive session
+  and they don't have stored cloud credentials.  We will prompt for a username/password
+  on the command line.
+
 ## 0.2.3
 
 - Modified device lookup to conditionally filter by project or not
