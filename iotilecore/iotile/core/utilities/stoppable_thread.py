@@ -134,11 +134,37 @@ class StoppableWorkerThread(threading.Thread):
                 is not raised and the thread is just marked as a daemon thread
                 so that it does not block cleanly exiting the process.
             force (bool): If true and the thread does not exit in timeout seconds
-                no error is raises since the thread is marked as daemon and will
+                no error is raised since the thread is marked as daemon and will
                 be killed when the process exits.
         """
 
+        self.signal_stop()
+        self.wait_stopped(timeout, force)
+
+    def signal_stop(self):
+        """Signal that the worker thread should stop but don't wait.
+
+        This function is useful for stopping multiple threads in parallel when
+        combined with wait_stopped().
+        """
+
         self._stop_condition.set()
+
+    def wait_stopped(self, timeout=None, force=False):
+        """Wait for the thread to stop.
+
+        You must have previously called signal_stop or this function will hang.
+
+        Args:
+            timeout (float): The maximum time to wait for the thread to stop
+                before raising a TimeoutExpiredError.  If force is True, TimeoutExpiredError
+                is not raised and the thread is just marked as a daemon thread
+                so that it does not block cleanly exiting the process.
+            force (bool): If true and the thread does not exit in timeout seconds
+                no error is raised since the thread is marked as daemon and will
+                be killed when the process exits.
+        """
+
         self.join(timeout)
 
         if self.is_alive() and force is False:

@@ -1,100 +1,74 @@
 """Mock IOTile device class for testing other components interactions with IOTile devices
 """
 
-import struct
 import inspect
-import binascii
-from iotile.core.exceptions import IOTileException, InternalError
-from iotile.core.utilities.stoppable_thread import StoppableWorkerThread
+from iotile.core.exceptions import InternalError, ArgumentError
 from iotile.core.hw.reports.individual_format import IndividualReadingReport
 from iotile.core.hw.reports.report import IOTileReading
+from .base_runnable import BaseRunnable
+from .common_types import RPCInvalidIDError, RPCNotFoundError, TileNotFoundError, rpc
 
 
-class RPCNotFoundError(IOTileException):
-    """Exception thrown when an RPC is not found
-    """
-    pass
+class RPCDispatcher(object):
+    """A simple dispatcher that can store and call RPCs."""
+
+    def __init__(self):
+        self._rpcs = {}
+
+    def add_rpc(self, rpc_id, callable):
+        """Add an RPC.
+
+        Args:
+            rpc_id (int): The ID of the RPC
+            callable (callable): The RPC implementation.
+                The signature of callable should be callable(args) taking
+                a bytes object with the argument and returning a bytes object
+                with the response.
+        """
+
+        self._rpcs[rpc_id] = callable
+
+    def has_rpc(self, rpc_id):
+        """Check if an RPC is defined.
+
+        Args:
+            rpc_id (int): The RPC to check
+
+        Returns:
+            bool: Whether it exists
+        """
+
+        return rpc_id in self._rpcs
+
+    def call_rpc(self, rpc_id, payload=bytes()):
+        """Call an RPC by its ID.
+
+        Args:
+            rpc_id (int): The number of the RPC
+            payload (bytes): A byte string of payload parameters up to 20 bytes
+
+        Returns:
+            str: The response payload from the RPC
+        """
+        if rpc_id < 0 or rpc_id > 0xFFFF:
+            raise RPCInvalidIDError("Invalid RPC ID: {}".format(rpc_id))
+
+        if rpc_id not in self._rpcs:
+            raise RPCNotFoundError("rpc_id: {}".format(rpc_id))
+
+        return self._rpcs[rpc_id](payload)
 
 
-class RPCInvalidArgumentsError(IOTileException):
-    """Exception thrown when an RPC with a fixed parameter format has invalid arguments
-    """
-    pass
+class VirtualIOTileDevice(BaseRunnable):
+    """A Virtual IOTile device that can be interacted with as if it were a real one.
 
+    This is the base class of all other Virtual IOTile devices.  It allows defining
+    RPCs directly using decorators and the `register_rpc` function.  Subclasses
+    implement virtual tiles that modularize building complex virtual devices from
+    reusable pieces.
 
-class RPCInvalidReturnValueError(IOTileException):
-    """Exception thrown when the return value of an RPC does not conform to its known format
-    """
-    pass
-
-
-class RPCInvalidIDError(IOTileException):
-    """Exception thrown when an RPC is created with an invalid RPC id
-    """
-    pass
-
-
-class TileNotFoundError(IOTileException):
-    """Exception thrown when an RPC is sent to a tile that does not exist
-    """
-    pass
-
-
-def rpc(address, rpc_id, arg_format, resp_format=None):
-    """Decorator to denote that a function implements an RPC with the given ID and address
-
-    The underlying function should be a member function that will take
-    individual parameters after the RPC payload has been decoded according
-    to arg_format.
-
-    Arguments to the function are decoded from the 20 byte RPC argument payload according
-    to arg_format, which should be a format string that can be passed to struct.unpack.
-
-    Similarly, the function being decorated should return an iterable of results that
-    will be encoded into a 20 byte response buffer by struct.pack using resp_format as
-    the format string.
-
-    The RPC will respond as if it were implemented by a tile at address ``address`` and
-    the 16-bit RPC id ``rpc_id``.
-
-    Args:
-        address (int): The address of the mock tile this RPC is for
-        rpc_id (int): The number of the RPC
-        arg_format (string): a struct format code (without the <) for the
-            parameter format for this RPC
-        resp_format (string): an optional format code (without the <) for
-            the response format for this RPC
-    """
-
-    if rpc_id < 0 or rpc_id > 0xFFFF:
-        raise RPCInvalidIDError("Invalid RPC ID: {}".format(rpc_id))
-
-    def _rpc_wrapper(func):
-        def _rpc_executor(self, payload):
-            try:
-                args = struct.unpack("<{}".format(arg_format), payload)
-            except struct.error as exc:
-                raise RPCInvalidArgumentsError(str(exc), arg_format=arg_format, payload=binascii.hexlify(payload))
-
-            resp = func(self, *args)
-            if resp_format is not None:
-                try:
-                    return struct.pack("<{}".format(resp_format), *resp)
-                except struct.error as exc:
-                    raise RPCInvalidReturnValueError(str(exc), resp_format=resp_format, resp=repr(resp))
-
-            return resp
-
-        _rpc_executor.rpc_id = rpc_id
-        _rpc_executor.rpc_addr = address
-        _rpc_executor.is_rpc = True
-        return _rpc_executor
-
-    return _rpc_wrapper
-
-
-class VirtualIOTileDevice(object):
-    """A Virtual IOTile device that can be interacted with as if it were a real one
+    This class also implements the required controller status RPC that allows
+    matching it with a proxy object.
 
     Args:
         iotile_id (int): A 32-bit integer that specifies the globally unique ID
@@ -104,64 +78,72 @@ class VirtualIOTileDevice(object):
     """
 
     def __init__(self, iotile_id, name):
-        self._rpc_handlers = {}
-        self.tiles = set()
+        super(VirtualIOTileDevice, self).__init__()
+
+        self._rpc_overlays = {}
+        self._tiles = {}
+
         self.name = name
         self.iotile_id = iotile_id
-        self.pending_data = False
         self.reports = []
         self.traces = []
         self.script = bytearray()
 
-        self.connected = False
-        self.stream_iface_open = False
-        self.trace_iface_open = False
+        self._interface_status = {}
+        self._interface_status['connected'] = False
+        self._interface_status['stream'] = False
+        self._interface_status['trace'] = False
+        self._interface_status['script'] = False
+        self._interface_status['rpc'] = False
 
         # For this device to push streams or tracing data through a VirtualInterface, it
         # needs access to that interface's push channel
         self._push_channel = None
-        self._workers = []
-        self._started = False
 
         # Iterate through all of our member functions and see the ones that are
         # RPCS and add them to the RPC handler table
-        for name, value in inspect.getmembers(self, predicate=inspect.ismethod):
+        for _name, value in inspect.getmembers(self, predicate=inspect.ismethod):
             if hasattr(value, 'is_rpc'):
                 self.register_rpc(value.rpc_addr, value.rpc_id, value)
 
-    def create_worker(self, func, interval, *args, **kwargs):
-        """Spawn a worker thread running func.
+    @property
+    def connected(self):
+        """Whether someone is connected to the virtual device."""
 
-        The worker will be automatically be started when start() is called
-        and terminated when stop() is called on this VirtualIOTileDevice.
-        This must be called only from the main thread, not from a worker thread.
+        return self._interface_status['connected']
 
-        create_worker must not be called after stop() has been called.  If it
-        is called before start() is called, the thread is started when start()
-        is called, otherwise it is started immediately.
+    @connected.setter
+    def connected(self, value):
+        self._interface_status['connected'] = value
 
-        Args:
-            func (callable): Either a function that will be called in a loop
-                with a sleep of interval seconds with *args and **kwargs or
-                a generator function that will be called once and expected to
-                yield periodically so that the worker can check if it should
-                be killed.
-            interval (float): The time interval between invocations of func.
-                This should not be 0 so that the thread doesn't peg the CPU
-                and should be short enough so that the worker checks if it
-                should be killed in a timely fashion.
-            *args: Arguments that are passed to func as positional args
-            **kwargs: Arguments that are passed to func as keyword args
+    @property
+    def stream_iface_open(self):
+        """Whether the streaming interface is opened.
+
+        Deprecated:
+            3.14.5: Use interface_open('stream') instead
         """
 
-        thread = StoppableWorkerThread(func, interval, args, kwargs)
-        self._workers.append(thread)
+        return self._interface_status['stream']
 
-        if self._started:
-            thread.start()
+    @property
+    def trace_iface_open(self):
+        """Whether the tracing interface is opened.
+
+        Deprecated:
+            3.14.5: Use interface_open('trace') instead
+        """
+
+        return self._interface_status['trace']
+
+    @property
+    def pending_data(self):
+        """Whether there are streaming reports waiting to be sent."""
+
+        return len(self.reports) > 0
 
     def start(self, channel):
-        """Start running this virtual device including any necessary worker threads
+        """Start running this virtual device including any necessary worker threads.
 
         Args:
             channel (IOTilePushChannel): the channel with a stream and trace
@@ -172,13 +154,15 @@ class VirtualIOTileDevice(object):
             raise InternalError("The method start() was called twice on VirtualIOTileDevice.")
 
         self._push_channel = channel
-        self._started = True
+        self.start_workers()
 
-        for worker in self._workers:
-            worker.start()
+    def stop(self):
+        """Stop running this virtual device including any worker threads."""
+
+        self.stop_workers()
 
     def stream(self, report):
-        """Stream a report asynchronously
+        """Stream a report asynchronously.
 
         If no one is listening for the report, the report may be dropped,
         otherwise it will be queued for sending
@@ -213,7 +197,7 @@ class VirtualIOTileDevice(object):
         self.stream(report)
 
     def trace(self, data):
-        """Trace data asynchronously
+        """Trace data asynchronously.
 
         If no one is listening for traced data, it will be dropped
         otherwise it will be queued for sending.
@@ -228,17 +212,16 @@ class VirtualIOTileDevice(object):
 
         self._push_channel.trace(data)
 
-    def stop(self):
-        """Synchronously stop this virtual device and any potential workers
-        """
-
-        self._started = False
-
-        for worker in self._workers:
-            worker.stop()
-
     def register_rpc(self, address, rpc_id, func):
-        """Register an RPC handler with the given info
+        """Register a single RPC handler with the given info.
+
+        This function can be used to directly register individual RPCs,
+        rather than delegating all RPCs at a given address to a virtual
+        Tile.
+
+        If calls to this function are mixed with calls to add_tile for
+        the same address, these RPCs will take precedence over what is
+        defined in the tiles.
 
         Args:
             address (int): The address of the mock tile this RPC is for
@@ -251,87 +234,102 @@ class VirtualIOTileDevice(object):
         if rpc_id < 0 or rpc_id > 0xFFFF:
             raise RPCInvalidIDError("Invalid RPC ID: {}".format(rpc_id))
 
-        self.tiles.add(address)
+        if address not in self._rpc_overlays:
+            self._rpc_overlays[address] = RPCDispatcher()
 
-        code = (address << 8) | rpc_id
-        self._rpc_handlers[code] = func
+        self._rpc_overlays[address].add_rpc(rpc_id, func)
 
     def call_rpc(self, address, rpc_id, payload=""):
-        """Call an RPC by its address and ID
+        """Call an RPC by its address and ID.
 
         Args:
             address (int): The address of the mock tile this RPC is for
             rpc_id (int): The number of the RPC
-            payload (string): A byte string of payload parameters up to 20 bytes
+            payload (str): A byte string of payload parameters up to 20 bytes
 
         Returns:
-            string: The response payload from the RPC
+            str: The response payload from the RPC
         """
+
         if rpc_id < 0 or rpc_id > 0xFFFF:
             raise RPCInvalidIDError("Invalid RPC ID: {}".format(rpc_id))
 
-        if address not in self.tiles:
+        if address not in self._rpc_overlays and address not in self._tiles:
             raise TileNotFoundError("Unknown tile address, no registered handler", address=address)
 
-        code = (address << 8) | rpc_id
-        if code not in self._rpc_handlers:
-            raise RPCNotFoundError("address: {}, rpc_id: {}".format(address, rpc_id))
+        overlay = self._rpc_overlays.get(address, None)
+        tile = self._tiles.get(address, None)
+        if overlay is not None and overlay.has_rpc(rpc_id):
+            return overlay.call_rpc(rpc_id, payload)
+        elif tile is not None and tile.has_rpc(rpc_id):
+            return tile.call_rpc(rpc_id, payload)
 
-        return self._rpc_handlers[code](payload)
+        raise RPCNotFoundError("Could not find RPC 0x%X at address %d" % (rpc_id, address))
+
+    def add_tile(self, address, tile):
+        """Add a tile to handle all RPCs at a given address.
+
+        Args:
+            address (int): The address of the tile
+            tile (RPCDispatcher): A tile object that inherits from RPCDispatcher
+        """
+
+        if address in self._tiles:
+            raise ArgumentError("Tried to add two tiles at the same address", address=address)
+
+        self._tiles[address] = tile
 
     def open_rpc_interface(self):
-        """Called when someone opens an RPC interface to the device
-        """
+        """Called when someone opens an RPC interface to the device."""
 
-        pass
+        self._interface_status['rpc'] = True
 
     def close_rpc_interface(self):
-        """Called when someone closes an RPC interface to the device
-        """
+        """Called when someone closes an RPC interface to the device."""
 
-        pass
+        self._interface_status['rpc'] = False
 
     def open_script_interface(self):
-        """Called when someone opens a script interface on this device
-        """
+        """Called when someone opens a script interface on this device."""
 
-        pass
+        self._interface_status['script'] = True
+
+    def close_script_interface(self):
+        """Called when someone closes a script interface on this device."""
+
+        self._interface_status['script'] = False
 
     def open_streaming_interface(self):
-        """Called when someone opens a streaming interface to the device
+        """Called when someone opens a streaming interface to the device.
 
         Returns:
             list: A list of IOTileReport objects that should be sent out
                 the streaming interface.
         """
 
-        self.stream_iface_open = True
-
+        self._interface_status['stream'] = True
         return self.reports
 
+    def close_streaming_interface(self):
+        """Called when someone closes the streaming interface to the device."""
+
+        self._interface_status['script'] = False
+
     def open_tracing_interface(self):
-        """Called when someone opens a tracing interface to the device
+        """Called when someone opens a tracing interface to the device.
 
         Returns:
             list: A list of bytearray objects that should be sent out
                 the tracing interface.
         """
 
-        self.trace_iface_open = True
-
+        self._interface_status['trace'] = True
         return self.traces
 
     def close_tracing_interface(self):
-        """Called when someone closes the tracing interface to the device
-        """
+        """Called when someone closes the tracing interface to the device."""
 
-        self.trace_iface_open = False
-
-    def close_streaming_interface(self):
-        """Called when someone closes the streaming interface to the device
-        """
-
-        self.stream_iface_open = False
+        self._interface_status['trace'] = True
 
     def push_script_chunk(self, chunk):
         """Called when someone pushes a new bit of a TRUB script to this device
