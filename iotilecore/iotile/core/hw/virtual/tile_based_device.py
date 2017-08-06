@@ -18,10 +18,10 @@ class TileBasedVirtualDevice(VirtualIOTileDevice):
     def __init__(self, args):
         iotile_id = args.get('iotile_id')
 
-        if isinstance(iotile_id, basestring, unicode):
+        if isinstance(iotile_id, (basestring, unicode)):
             iotile_id = int(iotile_id, 16)
 
-        tiles = args.get('tiles', {})
+        tiles = args.get('tiles', [])
         name = args.get('name', "No Name")
 
         super(TileBasedVirtualDevice, self).__init__(iotile_id, name)
@@ -47,16 +47,16 @@ class TileBasedVirtualDevice(VirtualIOTileDevice):
 
         super(TileBasedVirtualDevice, self).start(channel)
 
-        for tile in self._tiles:
+        for tile in self._tiles.itervalues():
             tile.start()
 
     def stop(self):
         """Stop running this virtual device including any worker threads."""
 
-        for tile in self._tiles:
+        for tile in self._tiles.itervalues():
             tile.signal_stop()
 
-        for tile in self._tiles:
+        for tile in self._tiles.itervalues():
             tile.wait_stopped()
 
         super(TileBasedVirtualDevice, self).stop()

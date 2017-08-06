@@ -8,6 +8,8 @@ class BaseRunnable(object):
     """A simple class that uses StoppableWorkerThreads for background tasks."""
 
     def __init__(self):
+        super(BaseRunnable, self).__init__()
+
         self._workers = []
         self._started = False
 

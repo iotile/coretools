@@ -6,59 +6,10 @@ from iotile.core.exceptions import InternalError, ArgumentError
 from iotile.core.hw.reports.individual_format import IndividualReadingReport
 from iotile.core.hw.reports.report import IOTileReading
 from .base_runnable import BaseRunnable
-from .common_types import RPCInvalidIDError, RPCNotFoundError, TileNotFoundError, rpc
+from .common_types import RPCInvalidIDError, RPCNotFoundError, TileNotFoundError, RPCDispatcher, rpc  # pylint: disable=W0611; rpc import needed for backwards compatibility
 
 
-class RPCDispatcher(object):
-    """A simple dispatcher that can store and call RPCs."""
-
-    def __init__(self):
-        self._rpcs = {}
-
-    def add_rpc(self, rpc_id, callable):
-        """Add an RPC.
-
-        Args:
-            rpc_id (int): The ID of the RPC
-            callable (callable): The RPC implementation.
-                The signature of callable should be callable(args) taking
-                a bytes object with the argument and returning a bytes object
-                with the response.
-        """
-
-        self._rpcs[rpc_id] = callable
-
-    def has_rpc(self, rpc_id):
-        """Check if an RPC is defined.
-
-        Args:
-            rpc_id (int): The RPC to check
-
-        Returns:
-            bool: Whether it exists
-        """
-
-        return rpc_id in self._rpcs
-
-    def call_rpc(self, rpc_id, payload=bytes()):
-        """Call an RPC by its ID.
-
-        Args:
-            rpc_id (int): The number of the RPC
-            payload (bytes): A byte string of payload parameters up to 20 bytes
-
-        Returns:
-            str: The response payload from the RPC
-        """
-        if rpc_id < 0 or rpc_id > 0xFFFF:
-            raise RPCInvalidIDError("Invalid RPC ID: {}".format(rpc_id))
-
-        if rpc_id not in self._rpcs:
-            raise RPCNotFoundError("rpc_id: {}".format(rpc_id))
-
-        return self._rpcs[rpc_id](payload)
-
-
+# pylint: disable=R0902,R0904; backwards compatibility methods and properties already referenced in other modules
 class VirtualIOTileDevice(BaseRunnable):
     """A Virtual IOTile device that can be interacted with as if it were a real one.
 

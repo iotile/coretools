@@ -3,7 +3,7 @@
 # info@welldone.org
 # http://welldone.org
 #
-# Modifications to this file from the original created at WellDone International 
+# Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
 from iotile.core.hw.hwmanager import HardwareManager
@@ -65,6 +65,18 @@ def realtime_scan_hw():
         pytest.skip('Cannot pass device config because path has [@,;] in it')
 
     hw = HardwareManager('virtual:realtime_test@%s' % conf_file)
+    yield hw
+
+    hw.disconnect()
+
+@pytest.fixture
+def tile_based():
+    conf_file = os.path.join(os.path.dirname(__file__), 'tile_config.json')
+
+    if '@' in conf_file or ',' in conf_file or ';' in conf_file:
+        pytest.skip('Cannot pass device config because path has [@,;] in it')
+
+    hw = HardwareManager('virtual:tile_based@%s' % conf_file)
     yield hw
 
     hw.disconnect()
@@ -168,10 +180,27 @@ def test_realtime_tracing(tracer_hw):
     wrong_data = [x for x in words if (x != 'hello' and x != 'goodbye' and x != '')]
     assert len(wrong_data) == 0
 
+
 def test_virtual_scan(realtime_scan_hw):
     """Make sure we can scan for virtual devices and connect directly without connect_direct
     """
     devices = realtime_scan_hw.scan()
-    
-    assert len(devices) > 0     
+
+    assert len(devices) > 0
     realtime_scan_hw.connect('1')
+
+
+def test_tilebased_device(tile_based):
+    """Make sure we can interact with tile based virtual devices."""
+
+    hw = tile_based
+
+    hw.connect(1)
+    con = hw.controller()
+    tile1 = hw.get(11)
+
+    assert con.add(1, 2) == 3
+    con.count()
+
+    assert tile1.add(3, 5) == 8
+    tile1.count()

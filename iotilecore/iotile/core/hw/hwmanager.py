@@ -39,6 +39,9 @@ class HardwareManager:
     possibly needed to connect using that method.
     """
 
+    # Allow overriding proxies for development by adding them to this shared proxy map
+    DevelopmentProxies = {}
+
     @param("port", "string", desc="transport method to use in the format transport[:port[,connection_string]]")
     @param("record", "path", desc="Optional file to record all RPC calls and responses made on this HardwareManager")
     def __init__(self, port=None, record=None):
@@ -66,6 +69,28 @@ class HardwareManager:
         self.name_map = {TileBusProxyObject.ModuleName(): [TileBusProxyObject]}
 
         self._setup_proxies()
+
+    @classmethod
+    def RegisterDevelopmentProxy(cls, proxy_obj):  # pylint: disable=C0103; class methods are capitalized when expected to be invoked on types
+        """Register a proxy object that should be available for local development.
+
+        Often during development, you need to create a virtual iotile device with
+        its own proxy object.  It's easy to point CoreTools at the virtual device
+        in order to test it, but there did not use to be a good way to load in
+        its proxy object.  This method allows the user to inject a development
+        proxy module to use with the virtual device.
+
+        Args:
+            proxy_obj (TileBusProxyObject): The proxy module class that should be
+                registered.
+        """
+
+        name = proxy_obj.ModuleName()
+
+        if name not in HardwareManager.DevelopmentProxies:
+            HardwareManager.DevelopmentProxies[name] = []
+
+        HardwareManager.DevelopmentProxies[name].append(proxy_obj)
 
     def _setup_proxies(self):
         """
@@ -363,6 +388,9 @@ class HardwareManager:
 
         If no proxy type is found, return None.
         """
+
+        if short_name in HardwareManager.DevelopmentProxies:
+            return HardwareManager.DevelopmentProxies[short_name][0]
 
         if short_name not in self.name_map:
             return None

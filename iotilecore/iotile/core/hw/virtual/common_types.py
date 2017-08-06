@@ -2,6 +2,7 @@
 
 import struct
 import binascii
+import inspect
 from iotile.core.exceptions import IOTileException
 
 
@@ -109,3 +110,59 @@ def tile_rpc(rpc_id, arg_format, resp_format=None):
     """
 
     return rpc(None, rpc_id, arg_format, resp_format)
+
+
+class RPCDispatcher(object):
+    """A simple dispatcher that can store and call RPCs."""
+
+    def __init__(self):
+        super(RPCDispatcher, self).__init__()
+        self._rpcs = {}
+
+        # Add any RPCs defined using decorators on this class
+        for _name, value in inspect.getmembers(self, predicate=inspect.ismethod):
+            if hasattr(value, 'is_rpc'):
+                self.add_rpc(value.rpc_id, value)
+
+    def add_rpc(self, rpc_id, func):
+        """Add an RPC.
+
+        Args:
+            rpc_id (int): The ID of the RPC
+            func (callable): The RPC implementation.
+                The signature of callable should be callable(args) taking
+                a bytes object with the argument and returning a bytes object
+                with the response.
+        """
+
+        self._rpcs[rpc_id] = func
+
+    def has_rpc(self, rpc_id):
+        """Check if an RPC is defined.
+
+        Args:
+            rpc_id (int): The RPC to check
+
+        Returns:
+            bool: Whether it exists
+        """
+
+        return rpc_id in self._rpcs
+
+    def call_rpc(self, rpc_id, payload=bytes()):
+        """Call an RPC by its ID.
+
+        Args:
+            rpc_id (int): The number of the RPC
+            payload (bytes): A byte string of payload parameters up to 20 bytes
+
+        Returns:
+            str: The response payload from the RPC
+        """
+        if rpc_id < 0 or rpc_id > 0xFFFF:
+            raise RPCInvalidIDError("Invalid RPC ID: {}".format(rpc_id))
+
+        if rpc_id not in self._rpcs:
+            raise RPCNotFoundError("rpc_id: {}".format(rpc_id))
+
+        return self._rpcs[rpc_id](payload)

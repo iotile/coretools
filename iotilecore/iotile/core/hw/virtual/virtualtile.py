@@ -4,12 +4,14 @@ import os
 import imp
 import inspect
 import pkg_resources
+from iotile.core.hw.proxy.proxy import TileBusProxyObject
+from iotile.core.hw.hwmanager import HardwareManager
 from iotile.core.exceptions import ExternalError, ArgumentError
 from .base_runnable import BaseRunnable
-from .common_types import tile_rpc
+from .common_types import tile_rpc, RPCDispatcher
 
 
-class VirtualTile(BaseRunnable):
+class VirtualTile(BaseRunnable, RPCDispatcher):
     """A virtual tile.
 
     Tiles have their own RPC based API and can run background
@@ -25,16 +27,19 @@ class VirtualTile(BaseRunnable):
 
     def __init__(self, address, name):
         super(VirtualTile, self).__init__()
+
         self.address = address
         self.name = self._check_convert_name(name)
 
     @classmethod
     def _check_convert_name(cls, name):
-        decoded = name.decode('utf-8')
+        decoded = name.encode('utf-8')
         if len(decoded) < 6:
             decoded += bytes(' ')*(6 - len(decoded))
         elif len(decoded) > 6:
             raise ArgumentError("Virtual tile name is too long, it must be 6 or fewer characters")
+
+        return decoded
 
     def start(self):
         """Start any background workers on this tile."""
@@ -92,6 +97,10 @@ class VirtualTile(BaseRunnable):
         VirtualTile class definition.  That class is loaded and executed as if it
         were installed.
 
+        To facilitate development, if there is a proxy object defined in the same
+        file, it is also added to the HardwareManager proxy registry so that it
+        can be found and used with the device.
+
         Args:
             script_path (string): The path to the script to load
 
@@ -111,18 +120,24 @@ class VirtualTile(BaseRunnable):
             raise ArgumentError("Script did not end with .py", filename=filename)
 
         try:
-            file = None
-            file, pathname, desc = imp.find_module(module_name, [search_dir])
-            mod = imp.load_module(module_name, file, pathname, desc)
+            file_obj = None
+            file_obj, pathname, desc = imp.find_module(module_name, [search_dir])
+            mod = imp.load_module(module_name, file_obj, pathname, desc)
         finally:
-            if file is not None:
-                file.close()
+            if file_obj is not None:
+                file_obj.close()
 
         devs = [x for x in mod.__dict__.itervalues() if inspect.isclass(x) and issubclass(x, VirtualTile) and x != VirtualTile]
         if len(devs) == 0:
             raise ArgumentError("No VirtualTiles subclasses were defined in script", path=script_path)
         elif len(devs) > 1:
             raise ArgumentError("More than one VirtualTiles subclass was defined in script", path=script_path, tiles=devs)
+
+        # Allow automatically injecting associated proxy objects so that we can use this tile with a proxy without
+        # installing it.
+        proxies = [x for x in mod.__dict__.itervalues() if inspect.isclass(x) and issubclass(x, TileBusProxyObject) and x != TileBusProxyObject]
+        for proxy in proxies:
+            HardwareManager.RegisterDevelopmentProxy(proxy)
 
         return devs[0]
 

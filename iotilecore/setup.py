@@ -64,7 +64,7 @@ setup(
             'iotile-core = iotile.core.config_variables:get_variables'
         ],
         'iotile.virtual_device': [
-            'tile_based = iotile.core.hw.virtual.tile_based_device:TileBasedDevice'
+            'tile_based = iotile.core.hw.virtual.tile_based_device:TileBasedVirtualDevice'
         ]
     },
     description="IOTile Core Tools",
