@@ -70,7 +70,16 @@ SetHeadlineCommand.add_required('created_time', FloatVerifier())
 SetHeadlineCommand.add_required('now_time', FloatVerifier())
 SetHeadlineCommand.add_required('no_response', BooleanVerifier())
 
-CommandMessage = OptionsVerifier(HeartbeatCommand, SetHeadlineCommand, QueryHeadlineCommand, QueryMessagesCommand, PostMessageCommand, UpdateStateCommand, ServiceInfoCommand, RegisterServiceCommand, ServiceListCommand, ServiceQueryCommand)
+SendRPCCommand = DictionaryVerifier()
+SendRPCCommand.add_required('type', LiteralVerifier('command'))
+SendRPCCommand.add_required('operation', LiteralVerifier('send_rpc'))
+SendRPCCommand.add_required('name', StringVerifier())
+SendRPCCommand.add_required('rpc_id', IntVerifier())
+SendRPCCommand.add_required('payload', BytesVerifier())
+SendRPCCommand.add_required('timeout', FloatVerifier())
+SendRPCCommand.add_required('no_response', BooleanVerifier())
+
+CommandMessage = OptionsVerifier(SendRPCCommand, HeartbeatCommand, SetHeadlineCommand, QueryHeadlineCommand, QueryMessagesCommand, PostMessageCommand, UpdateStateCommand, ServiceInfoCommand, RegisterServiceCommand, ServiceListCommand, ServiceQueryCommand)
 
 # Possible response and notification payloads
 ServiceInfoPayload = DictionaryVerifier()

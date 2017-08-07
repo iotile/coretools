@@ -38,7 +38,7 @@ class BytesVerifier(Verifier):
                 the reason for the lack of validation.
         """
 
-        if self.encoding == 'none' and not isinstance(obj, [bytes, bytearray]):
+        if self.encoding == 'none' and not isinstance(obj, (bytes, bytearray)):
             raise ValidationError('Byte object was not either bytes or a bytearray', type=obj.__class__.__name__)
         elif self.encoding == 'base64':
             try:

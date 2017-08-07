@@ -1,10 +1,10 @@
 """A websocket client that replicates the state of the supervisor."""
 
+from monotonic import monotonic
+from threading import Lock, Event
+from copy import copy
 from iotile.core.utilities.validating_wsclient import ValidatingWSClient
 from iotile.core.exceptions import ArgumentError
-from monotonic import monotonic
-from threading import Lock
-from copy import copy
 import command_formats
 import states
 
@@ -20,7 +20,7 @@ class ServiceStatusClient(ValidatingWSClient):
     which it was registered.
     """
 
-    def __init__(self, url, logger_name=__file__):
+    def __init__(self, url, logger_name=__name__):
         """Constructor.
 
         Args:
@@ -28,9 +28,12 @@ class ServiceStatusClient(ValidatingWSClient):
                 to connect to.
             logger_name (string): An optional name that errors are logged to
         """
-        super(ServiceStatusClient, self).__init__(url, logger_name)
+        super(ServiceStatusClient, self).__init__(url)
 
         self._state_lock = Lock()
+        self._rpc_lock = Lock()
+        self._queued_rpcs = {}
+
         self.services = {}
         self._name_map = {}
         self._on_change_callback = None
@@ -41,6 +44,8 @@ class ServiceStatusClient(ValidatingWSClient):
         self.add_message_type(command_formats.HeartbeatReceived, self._on_heartbeat)
         self.add_message_type(command_formats.NewMessage, self._on_message)
         self.add_message_type(command_formats.NewHeadline, self._on_headline)
+        self.add_message_type(command_formats.RPCCommand, self._on_rpc_command)
+        self.add_message_type(command_formats.RPCResponse, self._on_rpc_response)
         self.start()
 
         with self._state_lock:
@@ -281,6 +286,51 @@ class ServiceStatusClient(ValidatingWSClient):
 
         return resp['payload']
 
+    def send_rpc(self, name, rpc_id, payload, timeout=1.0):
+        """Send an RPC to a service and synchronously wait for the response.
+
+        Args:
+            name (str): The short name of the service to send the RPC to
+            rpc_id (int): The id of the RPC we want to call
+            payloay (bytes): Any bianry arguments that we want to send
+            timeout (float): The number of seconds to wait for the RPC to finish
+                before timing out and returning
+
+        Returns:
+            dict: A response dictionary with 1 or 2 keys set
+                'result': one of 'success', 'service_not_found',
+                    or 'rpc_not_found', 'timeout'
+                'response': the binary response object if the RPC was successful
+        """
+
+        # We need to acquire the RPC lock so that we cannot get the response callback
+        # before we have queued the in progress
+        with self._rpc_lock:
+            resp = self.send_command('send_rpc', {'name': name, 'rpc_id': rpc_id, 'payload': payload, 'timeout': timeout})
+            result = resp['payload']['result']
+
+            if result == 'service_not_found':
+                return {'result': 'service_not_found'}
+
+            rpc_tag = resp['payload']['rpc_tag']
+            event = Event()
+            self._queued_rpcs[rpc_tag] = [event, None, None]
+
+        signaled = event.wait(timeout=timeout)
+
+        with self._rpc_lock:
+            data = self._queued_rpcs[rpc_tag]
+            del self._queued_rpcs[rpc_tag]
+
+            if not signaled:
+                return {'result': 'timeout'}
+
+            result = data[1]
+            if result != 'success':
+                return {'result': result}
+
+            return {'result': 'success', 'response': data[2]}
+
     def register_service(self, short_name, long_name, allow_duplicate=True):
         """Register a new service with the service manager.
 
@@ -380,3 +430,23 @@ class ServiceStatusClient(ValidatingWSClient):
         # headline changes are only reported if they are not duplicates
         if self._on_change_callback and new_headline:
             self._on_change_callback(name, self.services[name].id, self.services[name].state, False, True)
+
+    def _on_rpc_response(self, resp):
+        """Receive an RPC response for a command that we previously sent."""
+
+        payload = resp['payload']
+        uuid = payload['response_uuid']
+
+        with self._rpc_lock:
+            if uuid not in self._queued_rpcs:
+                return
+
+            data = self._queued_rpcs[uuid]
+            data[1] = payload['result']
+            data[2] = payload['response']
+            data[0].set()
+
+    def _on_rpc_command(self, cmd):
+        """Received an RPC command that we should execute."""
+
+        pass

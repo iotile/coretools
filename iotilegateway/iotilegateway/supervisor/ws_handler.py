@@ -84,7 +84,7 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
                     self.send_error("Service name could not be found")
         elif op == 'register_service':
             try:
-                status = self.manager.add_service(cmd['name'], cmd['long_name'], client_id=self.client_id)
+                status = self.manager.add_service(cmd['name'], cmd['long_name'])
                 if not cmd['no_response']:
                     self.send_response(True, None)
             except ArgumentError:
@@ -140,6 +140,17 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
             except ArgumentError, exc:
                 if not cmd['no_response']:
                     self.send_error(str(exc))
+        elif op == 'send_rpc':
+            try:
+                tag = self.manager.send_rpc_command(cmd['name'], cmd['rpc_id'], cmd['payload'], timeout=cmd['timeout'], sender_client=self.client_id)
+                if not cmd['no_response']:
+                    self.send_response(True, {'result': 'in_progress', 'rpc_tag': tag})
+            except ArgumentError:
+                if not cmd['no_response']:
+                    self.send_response(True, {'result': 'service_not_found'})
+            except Exception as exc:
+                self.logger.exception(exc)
+                self.send_error(str(exc))
         else:
             if not cmd['no_response']:
                 self.send_error("Unknown command: %s" % op)

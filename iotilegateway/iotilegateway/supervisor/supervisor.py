@@ -3,8 +3,24 @@
 import logging
 import threading
 import tornado.ioloop
+from tornado.httpserver import HTTPServer
+from tornado import netutil
+import socket
 from .ws_handler import ServiceWebSocketHandler
 from .service_manager import ServiceManager
+
+
+def bind_unused_port():
+    """Bind a server socket to an available port on localhost.
+
+    Adapted from tornado source code.
+    Returns:
+        (socket, port)
+    """
+    sock = netutil.bind_sockets(None, '127.0.0.1', family=socket.AF_INET,
+                                reuse_port=False)[0]
+    port = sock.getsockname()[1]
+    return sock, port
 
 
 class IOTileSupervisor(threading.Thread):
@@ -38,6 +54,7 @@ class IOTileSupervisor(threading.Thread):
         self._config = config
         self._logger = logging.getLogger(__name__)
 
+        self.port = None
         if 'port' not in config:
             self._config['port'] = 9400
 
@@ -61,8 +78,18 @@ class IOTileSupervisor(threading.Thread):
                 (r'/services', ServiceWebSocketHandler, {'manager': self.service_manager, 'logger': self._logger}),
             ])
 
+
+
+            if port == 'unused':
+                sock, port = bind_unused_port()
+                server = HTTPServer(app, io_loop=self.loop)
+                server.add_sockets([sock])
+                server.start()
+            else:
+                app.listen(port)
+
             self._logger.info("Starting IOTile supervisor service over websockets on port %d", port)
-            app.listen(port)
+            self.port = port
         except Exception:  # pylint: disable=W0703; we want to make sure nothing prevents us from completing initialization in this thread
             self._logger.exception("Error starting supervisor service")
             should_close = True
@@ -70,13 +97,15 @@ class IOTileSupervisor(threading.Thread):
         if should_close:
             self.loop.add_callback(self._stop_loop)
         else:
-            # Notify that we have now loaded everything and are starting operation
-            self.loaded.set()
+            self.loop.add_callback(self._set_loaded)  # Set loaded after we start the loop so that the server is running when loaded is set
 
         self.loop.start()
 
         # The loop has been closed, finish and quit
         self._logger.critical("Done stopping loop")
+
+    def _set_loaded(self):
+        self.loaded.set()
 
     def _stop_loop(self):
         """Cleanly stop the gateway and close down the IOLoop.
