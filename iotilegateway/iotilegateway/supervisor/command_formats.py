@@ -1,6 +1,6 @@
 """Schemas for all of the messages types that we support into the status server."""
 
-from iotile.core.utilities.schema_verify import DictionaryVerifier, IntVerifier, StringVerifier, LiteralVerifier, OptionsVerifier, BooleanVerifier, FloatVerifier
+from iotile.core.utilities.schema_verify import DictionaryVerifier, BytesVerifier, IntVerifier, StringVerifier, LiteralVerifier, OptionsVerifier, BooleanVerifier, FloatVerifier
 
 # Commands that we support
 HeartbeatCommand = DictionaryVerifier()
@@ -91,6 +91,16 @@ MessagePayload.add_required('now_time', FloatVerifier())
 MessagePayload.add_optional('count', IntVerifier())
 MessagePayload.add_optional('id', IntVerifier())
 
+RPCCommandPayload = DictionaryVerifier()
+RPCCommandPayload.add_required('rpc_id', IntVerifier())
+RPCCommandPayload.add_required('payload', BytesVerifier())
+RPCCommandPayload.add_required('response_uuid', StringVerifier())
+
+RPCResponsePayload = DictionaryVerifier()
+RPCResponsePayload.add_required('payload', BytesVerifier())
+RPCResponsePayload.add_required('result', StringVerifier())
+RPCResponsePayload.add_required('response_uuid', StringVerifier())
+
 # Notifications that the SupervisorService can push
 ServiceStatusChanged = DictionaryVerifier()
 ServiceStatusChanged.add_required('type', LiteralVerifier('notification'))
@@ -120,3 +130,15 @@ NewHeadline.add_required('type', LiteralVerifier('notification'))
 NewHeadline.add_required('operation', LiteralVerifier('new_headline'))
 NewHeadline.add_required('name', StringVerifier())
 NewHeadline.add_required('payload', MessagePayload)
+
+RPCCommand = DictionaryVerifier()
+RPCCommand.add_required('type', LiteralVerifier('notification'))
+RPCCommand.add_required('operation', LiteralVerifier('rpc_command'))
+RPCCommand.add_required('name', StringVerifier())
+RPCCommand.add_required('payload', RPCCommandPayload)
+
+RPCResponse = DictionaryVerifier()
+RPCResponse.add_required('type', LiteralVerifier('notification'))
+RPCResponse.add_required('operation', LiteralVerifier('rpc_response'))
+RPCResponse.add_required('name', StringVerifier())
+RPCResponse.add_required('payload', RPCResponsePayload)

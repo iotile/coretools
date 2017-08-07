@@ -71,7 +71,7 @@ class ServiceStatusClient(ValidatingWSClient):
         """
 
         with self._state_lock:
-            if isinstance(name_or_id, int) or isinstance(name_or_id, long):
+            if isinstance(name_or_id, (int, long)):
                 if name_or_id not in self._name_map:
                     raise ArgumentError("Unknown ID used to look up service", id=name_or_id)
 

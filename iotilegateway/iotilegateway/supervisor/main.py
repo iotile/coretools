@@ -1,91 +1,52 @@
+"""iotile-supervisor script main entry point."""
+
 import signal
 import logging
-import sys
-import tornado.ioloop
 import json
 from tornado.options import define, parse_command_line, options
-
 from iotile.core.exceptions import ArgumentError
-from ws_handler import ServiceWebSocketHandler
-from service_manager import ServiceManager
+from .supervisor import IOTileSupervisor
 
-should_close = False
-
-define('config', help="Optional config file for defining expected services and our port for connections")
-
-
-def quit_signal_handler(signum, frame):
-    """Signal handler to catch ^C and cleanly shut down."""
-
-    global should_close
-
-    should_close = True
-    log = logging.getLogger('tornado.general')
-    log.critical('Received stop signal, attempting to stop')
-
-
-def try_quit():
-    """Periodic callback to attempt to cleanly shut down this gateway."""
-    global should_close
-
-    if not should_close:
-        return
-
-    log = logging.getLogger('tornado.general')
-
-    log.critical("Stopping Supervisor Service")
-
-    tornado.ioloop.IOLoop.instance().stop()
-    log.critical('Stopping event loop and shutting down')
+define('config', help="Config file for defining what services we expect to be running")
 
 
 def main():
-    """Main entry point for iotile-supervisor."""
-    global should_close
+    """Main entry point for iotile-gateway."""
 
-    log = logging.getLogger('tornado.general')
+    supervisor = None
+    logging.basicConfig(format='%(levelname)-.1s-%(asctime)-15s-%(module)-10s:%(lineno)-4s %(message)s')
+    log = logging.getLogger(__name__)
 
-    parse_command_line()
+    def quit_signal_handler(signum, frame):  # pylint: disable=W0613
+        """Signal handler to catch ^C and cleanly shut down."""
 
-    config_file = options.config
-    args = {}
+        log.critical("In quit signal handler.")
 
-    if config_file is not None:
-        try:
-            with open(config_file, "rb") as conf:
-                args = json.load(conf)
-        except IOError, exc:
-            raise ArgumentError("Could not open required config file", path=config_file, error=str(exc))
-        except ValueError, exc:
-            raise ArgumentError("Could not parse JSON from config file", path=config_file, error=str(exc))
-        except TypeError, exc:
-            raise ArgumentError("You must pass the path to a json config file", path=config_file)
+        if supervisor is not None:
+            log.critical("Calling stop on supervisor loop")
+            supervisor.stop_from_signal()
 
-    if 'port' not in args:
-        args['port'] = 9400
+    try:
+        parse_command_line()
 
-    if 'expected_services' not in args:
-        args['expected_services'] = {}
+        args = {}
+        config_file = options.config
+        if config_file is not None:
+            try:
+                with open(config_file, "rb") as conf:
+                    args = json.load(conf)
+            except IOError, exc:
+                raise ArgumentError("Could not open required config file", path=config_file, error=str(exc))
+            except ValueError, exc:
+                raise ArgumentError("Could not parse JSON from config file", path=config_file, error=str(exc))
+            except TypeError, exc:
+                raise ArgumentError("You must pass the path to a json config file", path=config_file)
 
-    service_manager = ServiceManager(args['expected_services'])
+        signal.signal(signal.SIGINT, quit_signal_handler)
 
-    loop = tornado.ioloop.IOLoop.instance()
+        supervisor = IOTileSupervisor(args)
+        supervisor.start()
+        supervisor.wait()
 
-    signal.signal(signal.SIGINT, quit_signal_handler)
-
-    # Make sure we have a way to cleanly break out of the event loop on Ctrl-C
-    tornado.ioloop.PeriodicCallback(try_quit, 100).start()
-
-    port = args.get('port')
-
-    app = tornado.web.Application([
-        (r'/services', ServiceWebSocketHandler, {'manager': service_manager, 'logger': log}),
-    ])
-
-    log.info("Starting IOTile supervisor service over websockets on port %d" % port)
-    app.listen(port)
-
-    loop.start()
-
-    # The loop has been closed, finish and quit
-    log.critical("Done stopping loop")
+    except Exception:  # pylint: disable=W0703
+        log.exception("Fatal error starting supervisor")

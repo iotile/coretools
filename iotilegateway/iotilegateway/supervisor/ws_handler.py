@@ -1,14 +1,14 @@
 """A websocket handler for managing running services."""
 
-import logging
 import datetime
 import tornado.websocket
 import tornado.gen
 import msgpack
-from command_formats import CommandMessage
+import uuid
 from iotile.core.exceptions import ArgumentError, ValidationError
+from .command_formats import CommandMessage
 
-
+# pylint: disable=W0223; Tornado data_received method triggers false positive
 class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
     """A websocket interface to ServiceManager."""
 
@@ -16,6 +16,7 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
         """Initialize this handler."""
         self.manager = manager
         self.logger = logger
+        self.client_id = str(uuid.uuid4())
 
     @classmethod
     def decode_datetime(cls, obj):
@@ -44,7 +45,8 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
             self._on_command(cmd)
         except ValidationError:
             if 'operation' in cmd:
-                print("Invalid operation received: %s" % cmd['operation'])
+                self.logger.exception("Invalid operation received: %s", cmd['operation'])
+
             self.send_error('message did not correspond with a known schema')
 
     def _on_command(self, cmd):
@@ -57,7 +59,7 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
 
         del cmd['operation']
         del cmd['type']
-        self.logger.info("Received %s with payload %s", op, cmd)
+        self.logger.debug("Received %s with payload %s", op, cmd)
 
         if op == 'heartbeat':
             try:
@@ -82,7 +84,7 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
                     self.send_error("Service name could not be found")
         elif op == 'register_service':
             try:
-                status = self.manager.add_service(cmd['name'], cmd['long_name'])
+                status = self.manager.add_service(cmd['name'], cmd['long_name'], client_id=self.client_id)
                 if not cmd['no_response']:
                     self.send_response(True, None)
             except ArgumentError:
@@ -166,8 +168,12 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
         except tornado.websocket.WebSocketClosedError:
             pass
 
-    def send_notification(self, name, change_type, change_info):
+    def send_notification(self, name, change_type, change_info, directed_client=None):
         """Send an unsolicited notification to someone."""
+
+        # If the notification is directed, make sure it is directed at us
+        if directed_client is not None and self.client_id != directed_client:
+            return
 
         notif_object = {'type': 'notification', 'operation': change_type, 'name': name}
         if change_info is not None:
