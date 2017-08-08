@@ -1,4 +1,5 @@
 import pytest
+import struct
 from iotile.core.hw.virtual import RPCDispatcher, tile_rpc
 from iotilegateway.supervisor import IOTileSupervisor, ServiceStatusClient
 
@@ -7,6 +8,14 @@ class BasicRPCDispatcher(RPCDispatcher):
     @tile_rpc(0x8000, "LL", "L")
     def add(self, arg1, arg2):
         return [arg1 + arg2]
+
+    @tile_rpc(0x8001, "", "")
+    def throw_exception(self):
+        raise ValueError("Random error")
+
+    @tile_rpc(0x8002, "", "L")
+    def invalid_return(self):
+        return [1, 2]
 
 
 @pytest.fixture(scope="function")
@@ -82,14 +91,14 @@ def test_register_agent(supervisor):
     assert 'service_1' in visor.service_manager.agents
 
 
-def test_send_rpc_timeout(supervisor):
+def test_send_rpc_not_found(supervisor):
     """Make sure we RPCs get forwarded and timeout when not answered."""
 
     _visor, client1, client2 = supervisor
 
     client1.register_agent('service_1')
-    resp = client2.send_rpc('service_1', 0x8000, "", timeout=0.01)
-    assert resp['result'] == 'timeout'
+    resp = client2.send_rpc('service_1', 0x8000, "")
+    assert resp['result'] == 'rpc_not_found'
 
 
 def test_send_rpc_success(rpc_agent):
@@ -100,3 +109,46 @@ def test_send_rpc_success(rpc_agent):
     resp = client2.send_rpc('service_1', 0x8000, b'\x00'*8)
     assert resp['result'] == 'success'
     assert resp['response'] == b'\x00'*4
+
+
+def test_send_rpc_execution(rpc_agent):
+    """Make sure we can send RPCs that are implemented."""
+
+    _visor, client1, client2 = rpc_agent
+
+    args = struct.pack("<LL", 1, 2)
+
+    resp = client2.send_rpc('service_1', 0x8000, args)
+    assert resp['result'] == 'success'
+
+    arg_sum, = struct.unpack("<L", resp['response'])
+    assert arg_sum == 3
+
+
+def test_send_rpc_invalid_args(rpc_agent):
+    """Make sure an exception gets thrown when an RPC has invalid args."""
+
+    _visor, client1, client2 = rpc_agent
+
+    args = struct.pack("<LLL", 1, 2, 3)
+
+    resp = client2.send_rpc('service_1', 0x8000, args)
+    assert resp['result'] == 'invalid_arguments'
+
+
+def test_send_rpc_exception(rpc_agent):
+    """Make sure an exception gets thrown when an RPC has an error processing."""
+
+    _visor, client1, client2 = rpc_agent
+
+    resp = client2.send_rpc('service_1', 0x8001, b'')
+    assert resp['result'] == 'execution_exception'
+
+
+def test_send_rpc_invalid_response(rpc_agent):
+    """Make sure an exception gets thrown when an RPC returns a nonconforming response."""
+
+    _visor, client1, client2 = rpc_agent
+
+    resp = client2.send_rpc('service_1', 0x8002, b'')
+    assert resp['result'] == 'invalid_response'

@@ -152,6 +152,17 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
             except Exception as exc:
                 self.logger.exception(exc)
                 self.send_error(str(exc))
+        elif op =='rpc_response':
+            try:
+                self.manager.send_rpc_response(cmd['response_uuid'], cmd['result'], cmd['response'])
+                if not cmd['no_response']:
+                    self.send_response(True, None)
+            except ArgumentError:
+                if not cmd['no_response']:
+                    self.send_error("RPC timed out so no response could be processedd")
+            except Exception as exc:
+                self.logger.exception(exc)
+                self.send_error(str(exc))
         elif op == 'set_agent':
             try:
                 self.manager.set_agent(cmd['name'], client_id=self.client_id)

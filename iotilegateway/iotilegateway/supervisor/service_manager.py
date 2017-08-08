@@ -327,7 +327,9 @@ class ServiceManager(object):
 
         Args:
             rpc_tag (str): The exact string given in a previous call to send_rpc_command
-            result (str): The result of the operation, which may be "success" or "not_found"
+            result (str): The result of the operation.  The possible values of response are:
+                service_not_found, rpc_not_found, timeout, success, invalid_response,
+                invalid_arguments, execution_exception
             response (bytes): The raw bytes that we should send back as a response.
         """
 

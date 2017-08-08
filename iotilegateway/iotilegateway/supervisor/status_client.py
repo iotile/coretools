@@ -3,7 +3,8 @@
 from monotonic import monotonic
 from threading import Lock, Event
 from copy import copy
-from iotile.core.hw.virtual import RPCDispatcher
+import logging
+from iotile.core.hw.virtual import RPCDispatcher, RPCInvalidArgumentsError, RPCInvalidReturnValueError
 from iotile.core.hw.virtual import tile_rpc as service_rpc
 from iotile.core.utilities.validating_wsclient import ValidatingWSClient
 from iotile.core.exceptions import ArgumentError
@@ -52,6 +53,7 @@ class ServiceStatusClient(ValidatingWSClient):
         self._rpc_dispatcher = dispatcher
         self._queued_rpcs = {}
 
+        self._logger = logging.getLogger(__name__)
         self.services = {}
         self._name_map = {}
         self._on_change_callback = None
@@ -479,7 +481,7 @@ class ServiceStatusClient(ValidatingWSClient):
 
             data = self._queued_rpcs[uuid]
             data[1] = payload['result']
-            data[2] = payload['response']
+            data[2] = payload['payload']
             data[0].set()
 
     def _on_rpc_command(self, cmd):
@@ -493,12 +495,17 @@ class ServiceStatusClient(ValidatingWSClient):
         error_result = None
 
         if self._rpc_dispatcher is None or not self._rpc_dispatcher.has_rpc(rpc_id):
-            self.post_command('rpc_response', {})  # Fixme: include proper things here
+            self.post_command('rpc_response', {'response_uuid': tag, 'result': 'rpc_not_found', 'response': b''})  # Fixme: include proper things here
             return
 
         try:
             response = self._rpc_dispatcher.call_rpc(rpc_id, args)
-            self.post_command('rpc_response', {})
+            self.post_command('rpc_response', {'response_uuid': tag, 'result': 'success', 'response': response})
             return
-        except:
-            pass # Fixme: handle the exception here
+        except RPCInvalidArgumentsError:
+            self.post_command('rpc_response', {'response_uuid': tag, 'result': 'invalid_arguments', 'response': b''})
+        except RPCInvalidReturnValueError:
+            self.post_command('rpc_response', {'response_uuid': tag, 'result': 'invalid_response', 'response': b''})
+        except Exception, exc:
+            self.logger.exception("Exception handling RPC 0x%X", rpc_id)
+            self.post_command('rpc_response', {'response_uuid': tag, 'result': 'execution_exception', 'response': b''})
