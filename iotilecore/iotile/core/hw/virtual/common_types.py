@@ -115,8 +115,8 @@ def tile_rpc(rpc_id, arg_format, resp_format=None):
 class RPCDispatcher(object):
     """A simple dispatcher that can store and call RPCs."""
 
-    def __init__(self):
-        super(RPCDispatcher, self).__init__()
+    def __init__(self, *args, **kwargs):
+        super(RPCDispatcher, self).__init__(*args, **kwargs)
         self._rpcs = {}
 
         # Add any RPCs defined using decorators on this class

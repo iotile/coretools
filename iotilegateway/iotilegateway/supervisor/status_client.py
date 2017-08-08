@@ -3,6 +3,8 @@
 from monotonic import monotonic
 from threading import Lock, Event
 from copy import copy
+from iotile.core.hw.virtual import RPCDispatcher
+from iotile.core.hw.virtual import tile_rpc as service_rpc
 from iotile.core.utilities.validating_wsclient import ValidatingWSClient
 from iotile.core.exceptions import ArgumentError
 import command_formats
@@ -18,20 +20,36 @@ class ServiceStatusClient(ValidatingWSClient):
 
     Each service is assigned a unique number based on the order in
     which it was registered.
-    """
 
-    def __init__(self, url, logger_name=__name__):
-        """Constructor.
+    Other clients can dispatch RPCs to this service if it registers
+    as an RPC agent, and they are handled by forwarding them on to
+    callbacks on the passed dispatcher object which should be a subclass
+    of RPCDispatcher.
 
-        Args:
+    You can automatically register as a service agent by passing the
+    agent parameters.
+
+    Args:
             url (string): The URL of the websocket server that we want
                 to connect to.
+            dispatcher (RPCDispatcher): Optional, the object that contains all of the
+                RPCs that we implement.
+            agent (string): Optional, automatically register as the RPC agent of
+                a given service by specifying its short_name
             logger_name (string): An optional name that errors are logged to
+    """
+
+    def __init__(self, url, dispatcher=None, agent=None, logger_name=__name__):
+        """Constructor.
+
+
         """
+
         super(ServiceStatusClient, self).__init__(url)
 
         self._state_lock = Lock()
         self._rpc_lock = Lock()
+        self._rpc_dispatcher = dispatcher
         self._queued_rpcs = {}
 
         self.services = {}
@@ -52,6 +70,9 @@ class ServiceStatusClient(ValidatingWSClient):
             self.services = self.sync_services()
             for i, name in enumerate(self.services.iterkeys()):
                 self._name_map[i] = name
+
+        if agent is not None:
+            self.register_agent(agent)
 
     def notify_changes(self, callback):
         """Register to receive a callback when a service changes state.
@@ -349,6 +370,21 @@ class ServiceStatusClient(ValidatingWSClient):
         if resp['success'] is not True and not allow_duplicate:
             raise ArgumentError("Service name already registered", short_name=short_name)
 
+    def register_agent(self, short_name):
+        """Register to act as the RPC agent for this service.
+
+        After this cal succeeds, all requests to send RPCs to this service will be routed
+        through this agent.
+
+        Args:
+            short_name (str): A unique short name for this service that functions
+                as an id
+        """
+
+        resp = self.send_command('set_agent', {'name': short_name})
+        if resp['success'] is not True:
+            raise ArgumentError("Could not register as agent", short_name=short_name, reason=resp['reason'])
+
     def _on_status_change(self, update):
         """Update a service that has its status updated."""
 
@@ -449,4 +485,20 @@ class ServiceStatusClient(ValidatingWSClient):
     def _on_rpc_command(self, cmd):
         """Received an RPC command that we should execute."""
 
-        pass
+        payload = cmd['payload']
+        rpc_id = payload['rpc_id']
+        tag = payload['response_uuid']
+        args = payload['payload']
+
+        error_result = None
+
+        if self._rpc_dispatcher is None or not self._rpc_dispatcher.has_rpc(rpc_id):
+            self.post_command('rpc_response', {})  # Fixme: include proper things here
+            return
+
+        try:
+            response = self._rpc_dispatcher.call_rpc(rpc_id, args)
+            self.post_command('rpc_response', {})
+            return
+        except:
+            pass # Fixme: handle the exception here
