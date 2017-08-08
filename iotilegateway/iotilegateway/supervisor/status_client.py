@@ -41,11 +41,6 @@ class ServiceStatusClient(ValidatingWSClient):
     """
 
     def __init__(self, url, dispatcher=None, agent=None, logger_name=__name__):
-        """Constructor.
-
-
-        """
-
         super(ServiceStatusClient, self).__init__(url)
 
         self._state_lock = Lock()

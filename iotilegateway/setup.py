@@ -35,6 +35,9 @@ setup(
         ],
         'iotile.gateway_agent': [
             'websockets = iotilegateway.ws_agent:WebSocketGatewayAgent'
+        ],
+        'iotile.virtual_tile': [
+            'service_delegate = iotilegateway.supervisor.service_tile:ServiceDelegateTile'
         ]
     },
     description="IOTile Core Tools",
