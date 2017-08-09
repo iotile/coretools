@@ -1,11 +1,10 @@
 """A websocket client that replicates the state of the supervisor."""
 
-from monotonic import monotonic
 from threading import Lock, Event
 from copy import copy
 import logging
-from iotile.core.hw.virtual import RPCDispatcher, RPCInvalidArgumentsError, RPCInvalidReturnValueError
-from iotile.core.hw.virtual import tile_rpc as service_rpc
+from monotonic import monotonic
+from iotile.core.hw.virtual import RPCInvalidArgumentsError, RPCInvalidReturnValueError
 from iotile.core.utilities.validating_wsclient import ValidatingWSClient
 from iotile.core.exceptions import ArgumentError
 import command_formats
@@ -486,8 +485,6 @@ class ServiceStatusClient(ValidatingWSClient):
         rpc_id = payload['rpc_id']
         tag = payload['response_uuid']
         args = payload['payload']
-
-        error_result = None
 
         if self._rpc_dispatcher is None or not self._rpc_dispatcher.has_rpc(rpc_id):
             self.post_command('rpc_response', {'response_uuid': tag, 'result': 'rpc_not_found', 'response': b''})  # Fixme: include proper things here

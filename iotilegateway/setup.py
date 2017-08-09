@@ -31,7 +31,8 @@ setup(
     entry_points={
         'console_scripts': [
             'iotile-gateway = iotilegateway.main:main',
-            'iotile-supervisor = iotilegateway.supervisor.main:main'
+            'iotile-supervisor = iotilegateway.supervisor.main:main',
+            'iotile-send-rpc = iotilegateway.supervisor.send_rpc:main'
         ],
         'iotile.gateway_agent': [
             'websockets = iotilegateway.ws_agent:WebSocketGatewayAgent'
