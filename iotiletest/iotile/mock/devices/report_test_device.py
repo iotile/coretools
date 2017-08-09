@@ -1,7 +1,7 @@
 """Reference device for testing the individual report format
 """
 
-from iotile.core.hw.virtual.virtualdevice import VirtualIOTileDevice, rpc, RPCInvalidIDError, RPCNotFoundError, TileNotFoundError
+from iotile.core.hw.virtual.virtualdevice import VirtualIOTileDevice, rpc
 from iotile.core.exceptions import ArgumentError
 from iotile.core.hw.reports import IndividualReadingReport, IOTileReading, SignedListReport
 
@@ -25,7 +25,7 @@ class ReportTestDevice(VirtualIOTileDevice):
                     for the first Reading sent.  Reading IDs will be sequential after
                     starting_id so x, x+1, x+2.
                     Default: 1
-                reading_generator (string): The method for generating readings. 
+                reading_generator (string): The method for generating readings.
                     Options are: sequential, random (default: sequential)
                     random will generate random values between the reading_min and
                     reading_max keys (default: 0, 100)
@@ -37,8 +37,8 @@ class ReportTestDevice(VirtualIOTileDevice):
                     (default: 10).  The only applies to report formats that can contain
                     multiple readings
                 signing_method (int): The signature type to be applied to signed messages
-                    Common values would be 0 for a hash only signature with no origin 
-                    verification functionality or 1 for signing with a user set key.  
+                    Common values would be 0 for a hash only signature with no origin
+                    verification functionality or 1 for signing with a user set key.
                     (default: 0)
                 stream_id (int): The stream that this reading should be sent out
     """
@@ -49,7 +49,7 @@ class ReportTestDevice(VirtualIOTileDevice):
         if isinstance(iotile_id, basestring) or isinstance(iotile_id, unicode):
             iotile_id = int(iotile_id, 16)
 
-        generator = args.get('reading_generator', 'sequential')            
+        generator = args.get('reading_generator', 'sequential')
         self.num_readings = args.get('num_readings', 100)
 
         stream_string = args.get('stream_id', '5001')
@@ -58,7 +58,7 @@ class ReportTestDevice(VirtualIOTileDevice):
         self.signing_method = args.get('signing_method', 0)
         self.start_timestamp = args.get('starting_timestamp', 0)
         self.start_id = args.get('starting_id', 1)
-        
+
         #Now pull in args for the generator
         if generator == 'sequential':
             self.reading_start = args.get('reading_start', 0)
@@ -87,12 +87,12 @@ class ReportTestDevice(VirtualIOTileDevice):
         """
 
         status = (1 << 1) | (1 << 0) #Configured and running
-        
+
         return [0xFFFF, self.name, 1, 0, 0, status]
 
     def _generate_sequential(self):
         readings = []
-        
+
         for i in xrange(self.reading_start, self.num_readings+self.reading_start):
             reading = IOTileReading(i-self.reading_start+self.start_timestamp, self.stream_id, i, reading_id=i-self.reading_start+self.start_id)
             readings.append(reading)

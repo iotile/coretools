@@ -1,10 +1,12 @@
 """A websocket client that replicates the state of the supervisor."""
 
+from threading import Lock, Event
+from copy import copy
+import logging
+from monotonic import monotonic
+from iotile.core.hw.virtual import RPCInvalidArgumentsError, RPCInvalidReturnValueError
 from iotile.core.utilities.validating_wsclient import ValidatingWSClient
 from iotile.core.exceptions import ArgumentError
-from monotonic import monotonic
-from threading import Lock
-from copy import copy
 import command_formats
 import states
 
@@ -18,19 +20,34 @@ class ServiceStatusClient(ValidatingWSClient):
 
     Each service is assigned a unique number based on the order in
     which it was registered.
-    """
 
-    def __init__(self, url, logger_name=__file__):
-        """Constructor.
+    Other clients can dispatch RPCs to this service if it registers
+    as an RPC agent, and they are handled by forwarding them on to
+    callbacks on the passed dispatcher object which should be a subclass
+    of RPCDispatcher.
 
-        Args:
+    You can automatically register as a service agent by passing the
+    agent parameters.
+
+    Args:
             url (string): The URL of the websocket server that we want
                 to connect to.
+            dispatcher (RPCDispatcher): Optional, the object that contains all of the
+                RPCs that we implement.
+            agent (string): Optional, automatically register as the RPC agent of
+                a given service by specifying its short_name
             logger_name (string): An optional name that errors are logged to
-        """
-        super(ServiceStatusClient, self).__init__(url, logger_name)
+    """
+
+    def __init__(self, url, dispatcher=None, agent=None, logger_name=__name__):
+        super(ServiceStatusClient, self).__init__(url)
 
         self._state_lock = Lock()
+        self._rpc_lock = Lock()
+        self._rpc_dispatcher = dispatcher
+        self._queued_rpcs = {}
+
+        self._logger = logging.getLogger(__name__)
         self.services = {}
         self._name_map = {}
         self._on_change_callback = None
@@ -41,12 +58,17 @@ class ServiceStatusClient(ValidatingWSClient):
         self.add_message_type(command_formats.HeartbeatReceived, self._on_heartbeat)
         self.add_message_type(command_formats.NewMessage, self._on_message)
         self.add_message_type(command_formats.NewHeadline, self._on_headline)
+        self.add_message_type(command_formats.RPCCommand, self._on_rpc_command)
+        self.add_message_type(command_formats.RPCResponse, self._on_rpc_response)
         self.start()
 
         with self._state_lock:
             self.services = self.sync_services()
             for i, name in enumerate(self.services.iterkeys()):
                 self._name_map[i] = name
+
+        if agent is not None:
+            self.register_agent(agent)
 
     def notify_changes(self, callback):
         """Register to receive a callback when a service changes state.
@@ -71,7 +93,7 @@ class ServiceStatusClient(ValidatingWSClient):
         """
 
         with self._state_lock:
-            if isinstance(name_or_id, int) or isinstance(name_or_id, long):
+            if isinstance(name_or_id, (int, long)):
                 if name_or_id not in self._name_map:
                     raise ArgumentError("Unknown ID used to look up service", id=name_or_id)
 
@@ -281,6 +303,51 @@ class ServiceStatusClient(ValidatingWSClient):
 
         return resp['payload']
 
+    def send_rpc(self, name, rpc_id, payload, timeout=1.0):
+        """Send an RPC to a service and synchronously wait for the response.
+
+        Args:
+            name (str): The short name of the service to send the RPC to
+            rpc_id (int): The id of the RPC we want to call
+            payloay (bytes): Any bianry arguments that we want to send
+            timeout (float): The number of seconds to wait for the RPC to finish
+                before timing out and returning
+
+        Returns:
+            dict: A response dictionary with 1 or 2 keys set
+                'result': one of 'success', 'service_not_found',
+                    or 'rpc_not_found', 'timeout'
+                'response': the binary response object if the RPC was successful
+        """
+
+        # We need to acquire the RPC lock so that we cannot get the response callback
+        # before we have queued the in progress
+        with self._rpc_lock:
+            resp = self.send_command('send_rpc', {'name': name, 'rpc_id': rpc_id, 'payload': payload, 'timeout': timeout})
+            result = resp['payload']['result']
+
+            if result == 'service_not_found':
+                return {'result': 'service_not_found'}
+
+            rpc_tag = resp['payload']['rpc_tag']
+            event = Event()
+            self._queued_rpcs[rpc_tag] = [event, None, None]
+
+        signaled = event.wait(timeout=timeout)
+
+        with self._rpc_lock:
+            data = self._queued_rpcs[rpc_tag]
+            del self._queued_rpcs[rpc_tag]
+
+            if not signaled:
+                return {'result': 'timeout'}
+
+            result = data[1]
+            if result != 'success':
+                return {'result': result}
+
+            return {'result': 'success', 'response': data[2]}
+
     def register_service(self, short_name, long_name, allow_duplicate=True):
         """Register a new service with the service manager.
 
@@ -298,6 +365,21 @@ class ServiceStatusClient(ValidatingWSClient):
 
         if resp['success'] is not True and not allow_duplicate:
             raise ArgumentError("Service name already registered", short_name=short_name)
+
+    def register_agent(self, short_name):
+        """Register to act as the RPC agent for this service.
+
+        After this cal succeeds, all requests to send RPCs to this service will be routed
+        through this agent.
+
+        Args:
+            short_name (str): A unique short name for this service that functions
+                as an id
+        """
+
+        resp = self.send_command('set_agent', {'name': short_name})
+        if resp['success'] is not True:
+            raise ArgumentError("Could not register as agent", short_name=short_name, reason=resp['reason'])
 
     def _on_status_change(self, update):
         """Update a service that has its status updated."""
@@ -380,3 +462,42 @@ class ServiceStatusClient(ValidatingWSClient):
         # headline changes are only reported if they are not duplicates
         if self._on_change_callback and new_headline:
             self._on_change_callback(name, self.services[name].id, self.services[name].state, False, True)
+
+    def _on_rpc_response(self, resp):
+        """Receive an RPC response for a command that we previously sent."""
+
+        payload = resp['payload']
+        uuid = payload['response_uuid']
+
+        with self._rpc_lock:
+            if uuid not in self._queued_rpcs:
+                return
+
+            data = self._queued_rpcs[uuid]
+            data[1] = payload['result']
+            data[2] = payload['payload']
+            data[0].set()
+
+    def _on_rpc_command(self, cmd):
+        """Received an RPC command that we should execute."""
+
+        payload = cmd['payload']
+        rpc_id = payload['rpc_id']
+        tag = payload['response_uuid']
+        args = payload['payload']
+
+        if self._rpc_dispatcher is None or not self._rpc_dispatcher.has_rpc(rpc_id):
+            self.post_command('rpc_response', {'response_uuid': tag, 'result': 'rpc_not_found', 'response': b''})  # Fixme: include proper things here
+            return
+
+        try:
+            response = self._rpc_dispatcher.call_rpc(rpc_id, args)
+            self.post_command('rpc_response', {'response_uuid': tag, 'result': 'success', 'response': response})
+            return
+        except RPCInvalidArgumentsError:
+            self.post_command('rpc_response', {'response_uuid': tag, 'result': 'invalid_arguments', 'response': b''})
+        except RPCInvalidReturnValueError:
+            self.post_command('rpc_response', {'response_uuid': tag, 'result': 'invalid_response', 'response': b''})
+        except Exception, exc:
+            self.logger.exception("Exception handling RPC 0x%X", rpc_id)
+            self.post_command('rpc_response', {'response_uuid': tag, 'result': 'execution_exception', 'response': b''})

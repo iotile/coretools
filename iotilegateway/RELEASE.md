@@ -2,6 +2,13 @@
 
 All major changes in each released version of IOTileGateway are listed here.
 
+## 1.5.0
+
+- Add support for sending commands to services using IOTileSupervisor
+- Refactor unit testing to make it easier to test tornado servers
+- Refactor and fix IOTileSupervisor code
+- Add iotile-send-rpc command for sending a RPC from the command line
+
 ## 1.4.0
 
 - Fix exception hierarchy

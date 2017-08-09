@@ -118,5 +118,4 @@ class AsyncWebSocketsTestCase(tornado.testing.AsyncTestCase):
                               timeout=get_async_test_timeout())
 
         self._deinitialize()
-
         super(AsyncWebSocketsTestCase, self).tearDown()

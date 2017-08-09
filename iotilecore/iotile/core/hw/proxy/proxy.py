@@ -3,7 +3,7 @@
 # info@welldone.org
 # http://welldone.org
 #
-# Modifications to this file from the original created at WellDone International 
+# Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
 #MIB Proxy Objects
@@ -115,10 +115,10 @@ class TileBusProxyObject (object):
 
     @return_type("map(string, bool)")
     def tile_status(self):
-        """ 
+        """
         Get the current status of this tile
 
-        Returns a 
+        Returns a
         """
         stat = self.status()
 
@@ -147,7 +147,7 @@ class TileBusProxyObject (object):
         if not status & (1<<6):
             if status == 2:
                 raise UnsupportedCommandError(address=self.addr)
-            
+
             raise RPCError("Unknown status code received from RPC call", address=self.addr, status_code=status)
 
 
@@ -197,7 +197,7 @@ class ConfigManager(object):
     performed by the TileBus controller managing the IOTile Device.
 
     This ConfigManager is useful primarily for debugging, checking what values are actually
-    set on a tile and what varibles it supports.  
+    set on a tile and what varibles it supports.
     """
 
     def __init__(self, parent):
@@ -246,7 +246,7 @@ class ConfigManager(object):
 
         Queries metadata about a config variable directly from the tile where it
         is defined.  This information includes its size, where it is stored in RAM,
-        and whether it has a fixed or variable length.  
+        and whether it has a fixed or variable length.
 
         The config variable is identified by its 16-bit numeric id that should match
         the value used to define the variable during the firmware build process in
@@ -262,7 +262,7 @@ class ConfigManager(object):
                 is a fixed or variable size.
         """
 
-        resp = self._proxy.rpc(0, 11, id, result_type =(2, True))
+        resp = self._proxy.rpc(0, 11, id, result_type=(2, True))
 
         err = resp['ints'][0]
         if err != 0:
@@ -272,7 +272,7 @@ class ConfigManager(object):
 
         maxsize = (flags & ~(1 << 15)) & 0xFFFF
         variable_size = bool(flags >> 15)
-        
+
         info = {
             'address': addr,
             'id': id,
@@ -293,7 +293,7 @@ class ConfigManager(object):
 
         Returns:
             bytearray: A raw byte array containing the binary data contained
-                in this config variable.  
+                in this config variable.
         """
 
         offset = 0
@@ -315,17 +315,17 @@ class ConfigManager(object):
     @param("value", "bytes", desc="hexadecimal byte value to set")
     def set_variable(self, id, value):
         """Set the value stored in a config variable
-        
+
         This function wraps the underlying RPC that is used internally in
         IOTile devices for the controller to update a tile's config variables
-        every time the device resets.  
+        every time the device resets.
 
         Since config variables are forbidden from changing while a tile is running,
         using this function directly is discouraged since it's unlikely you will
         calling it before the tile excecutive passes controller to its application.
 
         It is included here mainly for completeness and for advanced use cases
-        where you need to directly set a config variable.  
+        where you need to directly set a config variable.
 
         Normally you should set config variables by adding an entry to the config
         database on the controller, which will then stream the data to the correct
@@ -341,7 +341,7 @@ class ConfigManager(object):
             remaining = len(value) - offset
             if remaining > 16:
                 remaining = 16
-            
+
             resp = self._proxy.rpc(0, 12, id, offset, value[offset:offset+remaining], result_type=(1, False))
             if resp['ints'][0] != 0:
                 raise HardwareError("Error setting config variable", id=id, error_code=resp['ints'][0])

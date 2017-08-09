@@ -1,4 +1,4 @@
-"""Virtual interfaces are ways to connect to a virtual IOTile device like a real one
+"""Virtual interfaces are ways to connect to a virtual IOTile device like a real one.
 
 Virtual things are different from Mock things in that mock things are designed specifically
 to facilitate unit testing and hence do not allow for the complete configurability of behavior.
@@ -79,7 +79,7 @@ class VirtualIOTileInterface(object):
         self._in_progress_trace = None
 
     def start(self, device):
-        """Begin allowing connections to a virtual IOTile device
+        """Begin allowing connections to a virtual IOTile device.
 
         Args:
             device (VirtualIOTileDevice): The python object that implements the IOTile
@@ -91,7 +91,7 @@ class VirtualIOTileInterface(object):
         self.device = device
 
     def process(self):
-        """Process all pending actions, needs to be called periodically after start
+        """Process all pending actions, needs to be called periodically after start.
 
         This function will block for up to 100 ms so that it may be simply called in a tight
         while loop without pegging the CPU to 100%.
@@ -105,14 +105,13 @@ class VirtualIOTileInterface(object):
             pass
 
     def stop(self):
-        """Stop allowing connections to this virtual IOTile device
-        """
+        """Stop allowing connections to this virtual IOTile device."""
 
         if self.device is not None:
             self.device.stop()
 
     def _audit(self, event, **args):
-        """Log an audit event with the given message and parameters
+        """Log an audit event with the given message and parameters.
 
         Args:
             event (string): The event type that we are logging
@@ -131,7 +130,7 @@ class VirtualIOTileInterface(object):
             self.audit_logger.info(audit_evt.message, extra={'event_name': audit_evt.name})
 
     def _defer(self, action, args=None):
-        """Queue an action to be executed the next time process is called
+        """Queue an action to be executed the next time process is called.
 
         This is very useful for callbacks that should be called on the main thread but are queued
         from a different thread.
@@ -147,7 +146,7 @@ class VirtualIOTileInterface(object):
         self.actions.put((action, args))
 
     def _clear_reports(self):
-        """Clear all queued reports and any in progress reports
+        """Clear all queued reports and any in progress reports.
 
         This function should be called when a client disconnects so that
         future clients don't get a partial report streamed to them.
@@ -162,7 +161,7 @@ class VirtualIOTileInterface(object):
         self._in_progress_report = None
 
     def _clear_traces(self):
-        """Clear all queued traces and any in progres traces
+        """Clear all queued traces and any in progres traces.
 
         This function should be called when a client disconnects so that
         future clients don't get old tracing data.
@@ -177,7 +176,7 @@ class VirtualIOTileInterface(object):
         self._in_progress_trace = None
 
     def _queue_reports(self, *reports):
-        """Queue reports for transmission over the streaming interface
+        """Queue reports for transmission over the streaming interface.
 
         The primary reason for this function is to allow for a single implementation
         of encoding and chunking reports for streaming.
@@ -191,7 +190,7 @@ class VirtualIOTileInterface(object):
             self.reports.put(report)
 
     def _queue_traces(self, *traces):
-        """Queue tracing information for transmission over the tracing interface
+        """Queue tracing information for transmission over the tracing interface.
 
         The primary reason for this function is to allow for a single implementation
         of encoding and chunking traces for tracing

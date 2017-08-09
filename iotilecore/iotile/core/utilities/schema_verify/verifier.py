@@ -5,6 +5,7 @@ verification steps and works on dictionaries produced from a variety of sources.
 """
 
 import inspect
+from copy import deepcopy
 from iotile.core.exceptions import ValidationError
 
 class Verifier(object):
@@ -24,6 +25,18 @@ class Verifier(object):
         self.description = None
         if desc is not None:
             self.set_description(desc)
+
+    def clone(self):
+        """Clone this verifier.
+
+        This function is useful for implementing hierarch among verifiers
+        where one or more of the verification steps is shared.
+
+        For example, a dict that always has key1 and key2 can be pulled
+        into a single DictVerifier and cloned for each variant of the dict.
+        """
+
+        return deepcopy(self)
 
     def set_description(self, desc):
         self.description = inspect.cleandoc(desc)

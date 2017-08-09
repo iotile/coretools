@@ -1,0 +1,20 @@
+{
+	"device": 
+	{
+		"iotile_id": 1,
+		"tiles":
+		[
+			{
+				"address": 8,
+				"name": "test/test_hw/virtual_tile.py",
+				"args": {}
+			},
+
+			{
+				"address": 11,
+				"name": "test/test_hw/virtual_tile.py",
+				"args": {}
+			}
+		]
+	}
+}

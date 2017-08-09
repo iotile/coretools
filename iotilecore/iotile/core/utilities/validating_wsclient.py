@@ -32,7 +32,7 @@ class ValidatingWSClient(WebSocketClient):
     match no attached schema are logged and dropped.
     """
 
-    def __init__(self, url, logger_name=__file__):
+    def __init__(self, url, logger_name=__name__):
         """Constructor.
 
         Args:
@@ -224,12 +224,11 @@ class ValidatingWSClient(WebSocketClient):
 
             try:
                 callback(unpacked)
+                return
             except IOTileException, exc:
                 self.logger.error("Exception handling websocket message, exception = %s", str(exc))
             except Exception, exc:
                 self.logger.error("Non-IOTile exception handling websocket message, exception = %s", str(exc))
-            finally:
-                return
 
         self.logger.warn("No handler found for received message, message=%s", str(unpacked))
 

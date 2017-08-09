@@ -31,10 +31,14 @@ setup(
     entry_points={
         'console_scripts': [
             'iotile-gateway = iotilegateway.main:main',
-            'iotile-supervisor = iotilegateway.supervisor.main:main'
+            'iotile-supervisor = iotilegateway.supervisor.main:main',
+            'iotile-send-rpc = iotilegateway.supervisor.send_rpc:main'
         ],
         'iotile.gateway_agent': [
             'websockets = iotilegateway.ws_agent:WebSocketGatewayAgent'
+        ],
+        'iotile.virtual_tile': [
+            'service_delegate = iotilegateway.supervisor.service_tile:ServiceDelegateTile'
         ]
     },
     description="IOTile Core Tools",

@@ -1,14 +1,14 @@
 """A websocket handler for managing running services."""
 
-import logging
 import datetime
 import tornado.websocket
 import tornado.gen
 import msgpack
-from command_formats import CommandMessage
+import uuid
 from iotile.core.exceptions import ArgumentError, ValidationError
+from .command_formats import CommandMessage
 
-
+# pylint: disable=W0223; Tornado data_received method triggers false positive
 class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
     """A websocket interface to ServiceManager."""
 
@@ -16,6 +16,8 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
         """Initialize this handler."""
         self.manager = manager
         self.logger = logger
+        self.client_id = str(uuid.uuid4())
+        self.agent_service = None
 
     @classmethod
     def decode_datetime(cls, obj):
@@ -44,7 +46,8 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
             self._on_command(cmd)
         except ValidationError:
             if 'operation' in cmd:
-                print("Invalid operation received: %s" % cmd['operation'])
+                self.logger.exception("Invalid operation received: %s", cmd['operation'])
+
             self.send_error('message did not correspond with a known schema')
 
     def _on_command(self, cmd):
@@ -57,7 +60,7 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
 
         del cmd['operation']
         del cmd['type']
-        self.logger.info("Received %s with payload %s", op, cmd)
+        self.logger.debug("Received %s with payload %s", op, cmd)
 
         if op == 'heartbeat':
             try:
@@ -138,6 +141,37 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
             except ArgumentError, exc:
                 if not cmd['no_response']:
                     self.send_error(str(exc))
+        elif op == 'send_rpc':
+            try:
+                tag = self.manager.send_rpc_command(cmd['name'], cmd['rpc_id'], cmd['payload'], timeout=cmd['timeout'], sender_client=self.client_id)
+                if not cmd['no_response']:
+                    self.send_response(True, {'result': 'in_progress', 'rpc_tag': tag})
+            except ArgumentError:
+                if not cmd['no_response']:
+                    self.send_response(True, {'result': 'service_not_found'})
+            except Exception as exc:
+                self.logger.exception(exc)
+                self.send_error(str(exc))
+        elif op =='rpc_response':
+            try:
+                self.manager.send_rpc_response(cmd['response_uuid'], cmd['result'], cmd['response'])
+                if not cmd['no_response']:
+                    self.send_response(True, None)
+            except ArgumentError:
+                if not cmd['no_response']:
+                    self.send_error("RPC timed out so no response could be processedd")
+            except Exception as exc:
+                self.logger.exception(exc)
+                self.send_error(str(exc))
+        elif op == 'set_agent':
+            try:
+                self.manager.set_agent(cmd['name'], client_id=self.client_id)
+                self.agent_service = cmd['name']
+                if not cmd['no_response']:
+                    self.send_response(True, None)
+            except ArgumentError, exc:
+                if not cmd['no_response']:
+                    self.send_error(str(exc))
         else:
             if not cmd['no_response']:
                 self.send_error("Unknown command: %s" % op)
@@ -150,7 +184,7 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
             resp_object['payload'] = obj
 
         msg = msgpack.packb(resp_object, default=self.encode_datetime)
-
+        self.logger.debug("Sending response: %s", obj)
         try:
             self.write_message(msg, binary=True)
         except tornado.websocket.WebSocketClosedError:
@@ -162,12 +196,17 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
         msg = msgpack.packb({'type': 'response', 'success': False, 'reason': reason})
 
         try:
+            self.logger.debug("Sending error: %s", reason)
             self.write_message(msg, binary=True)
         except tornado.websocket.WebSocketClosedError:
             pass
 
-    def send_notification(self, name, change_type, change_info):
+    def send_notification(self, name, change_type, change_info, directed_client=None):
         """Send an unsolicited notification to someone."""
+
+        # If the notification is directed, make sure it is directed at us
+        if directed_client is not None and self.client_id != directed_client:
+            return
 
         notif_object = {'type': 'notification', 'operation': change_type, 'name': name}
         if change_info is not None:
@@ -182,6 +221,7 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
 
     def open(self, *args):
         """Register that someone opened a connection."""
+
         self.stream.set_nodelay(True)
         self.manager.add_monitor(self.send_notification)
         self.logger.info('Client connected')
@@ -190,4 +230,12 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
         """Register that someone closed a connection."""
 
         self.manager.remove_monitor(self.send_notification)
+
+        if self.agent_service is not None:
+            try:
+                self.manager.clear_agent(self.agent_service, self.client_id)
+            except ArgumentError:
+                # If we were no longer the registered agent, that is not a problem
+                self.logger.warn("Attempted to clear agent status but was not actually an agent for service: %s", self.agent_service)
+
         self.logger.info('Client disconnected')

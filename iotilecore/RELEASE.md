@@ -2,6 +2,14 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.15.0
+
+- Add support for tile modular tile based virtual devices with a new
+  tile_based virtual device that allows you to configure what tiles it
+  contains
+- Add a VirtualTile class hierarchy to mirror the VirtualIOTileDevice
+  class hierarchy
+
 ## 3.14.5
 
 - Fix argument format on exception call inside virtualdevice
