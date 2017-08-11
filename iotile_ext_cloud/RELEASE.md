@@ -2,6 +2,10 @@
 
 All major changes in each released version of the iotile-ext-cloud plugin are listed here.
 
+## 0.3.1
+
+- Start adding common utility functions
+
 ## 0.3.0
 
 - Add the ability to autologin to iotile.cloud if the user is in an interactive session
