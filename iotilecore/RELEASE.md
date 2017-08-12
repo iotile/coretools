@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.15.1
+
+- Improve the performance of ComponentRegistry by not rescanning all plugins
+  every time it is loaded.
+
 ## 3.15.0
 
 - Add support for tile modular tile based virtual devices with a new
