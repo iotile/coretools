@@ -264,7 +264,7 @@ class VirtualIOTileDevice(BaseRunnable):
     def close_streaming_interface(self):
         """Called when someone closes the streaming interface to the device."""
 
-        self._interface_status['script'] = False
+        self._interface_status['stream'] = False
 
     def open_tracing_interface(self):
         """Called when someone opens a tracing interface to the device.
