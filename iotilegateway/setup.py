@@ -23,7 +23,6 @@ setup(
     install_requires=[
         "tornado>=4.4.0",
         "iotile-core>=3.0.1",
-        "iotile-transport-bled112>=1.0.0",
         "monotonic",
         "msgpack-python>=0.4.8",
         "ws4py>=0.3.5"

@@ -1,4 +1,4 @@
-# This file is copyright Arch Systems, Inc.  
+# This file is copyright Arch Systems, Inc.
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
 from iotile.core.utilities.kvstore_sqlite import SQLiteKVStore
@@ -28,13 +28,27 @@ class ComponentRegistry(object):
 
     def __init__(self):
         self.kvstore = self.BackingType(self.BackingFileName, respect_venv=True)
-        self.plugins = {}
+        self._plugins = None
 
-        for entry in pkg_resources.iter_entry_points('iotile.plugin'):
-            plugin = entry.load()
-            links = plugin()
-            for name, value in links:
-                self.plugins[name] = value
+    @property
+    def plugins(self):
+        """Lazily load iotile plugins only on demand.
+
+        This is a slow operation on computers with a slow FS and
+        is rarely accessed information, so only compute it when it
+        is actually asked for.
+        """
+
+        if self._plugins is None:
+            self._plugins = {}
+
+            for entry in pkg_resources.iter_entry_points('iotile.plugin'):
+                plugin = entry.load()
+                links = plugin()
+                for name, value in links:
+                    self._plugins[name] = value
+
+        return self._plugins
 
     @classmethod
     def SetBackingStore(cls, backing):
@@ -56,7 +70,7 @@ class ComponentRegistry(object):
 
     def add_component(self, component):
         """
-        Register a component with ComponentRegistry. 
+        Register a component with ComponentRegistry.
 
         Component must be a buildable object with a module_settings.json file that
         describes its name and the domain that it is part of.
@@ -169,7 +183,7 @@ class ComponentRegistry(object):
 def _check_registry_type(folder=None):
     """Check if the user has placed a registry_type.txt file to choose the registry type
 
-    If a default registry type file is found, the DefaultBackingType and DefaultBackingFile 
+    If a default registry type file is found, the DefaultBackingType and DefaultBackingFile
     class parameters in ComponentRegistry are updated accordingly.
 
     Args:

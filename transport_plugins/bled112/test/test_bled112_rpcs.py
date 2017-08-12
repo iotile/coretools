@@ -25,7 +25,7 @@ class TestBLED112RPCs(unittest.TestCase):
         util.dummy_serial.RESPONSE_GENERATOR = self.adapter.generate_response
 
         self.scanned_devices = []
-        self.bled = BLED112Adapter('test', self._on_scan_callback, self._on_disconnect_callback)
+        self.bled = BLED112Adapter('test', self._on_scan_callback, self._on_disconnect_callback, stop_check_interval=0.01)
         self._current = None
         self._total = None
 
@@ -46,7 +46,7 @@ class TestBLED112RPCs(unittest.TestCase):
     def test_send_script(self):
         result = self.bled.connect_sync(1, "00:11:22:33:44:55")
         assert result['success'] is True
-        
+
         result = self.bled.open_interface_sync(1, 'script')
         assert result['success'] is True
 

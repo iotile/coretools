@@ -34,7 +34,7 @@ class TestBLED112Reports(unittest.TestCase):
         util.dummy_serial.RESPONSE_GENERATOR = self.adapter.generate_response
 
         self.scanned_devices = []
-        self.bled = BLED112Adapter('test', self._on_scan_callback, self._on_disconnect_callback)
+        self.bled = BLED112Adapter('test', self._on_scan_callback, self._on_disconnect_callback, stop_check_interval=0.01)
         self.bled.add_callback('on_report', self._on_report_callback)
         self.reports = []
 
@@ -45,11 +45,11 @@ class TestBLED112Reports(unittest.TestCase):
     def test_receiving_reports(self):
         result = self.bled.connect_sync(1, "00:11:22:33:44:55")
         assert result['success'] is True
-        
+
         assert len(self.reports) == 0
         result = self.bled.open_interface_sync(1, 'streaming')
         assert result['success'] is True
-        
+
         self._reports_received.wait(1.0)
         assert len(self.reports) == 1
 

@@ -2,6 +2,12 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
+## 1.4.7
+
+- Add a configuration option for the interval with which the BLEDCMDProcessor thread checks
+  for a stop flag.  This allows lowering CPU usage in production settings while still keeping
+  tests fast.
+
 ## 1.4.6
 
 - Fix initialization that can hang if a previous process exited uncleanly without
