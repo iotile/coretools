@@ -26,7 +26,7 @@ class TestBLED112Connections(unittest.TestCase):
         self._connected = threading.Event()
         self._rpcs_enabled = threading.Event()
         self.scanned_devices = []
-        self.bled = BLED112Adapter('test', self._on_scan_callback, self._on_disconnect_callback)
+        self.bled = BLED112Adapter('test', self._on_scan_callback, self._on_disconnect_callback, stop_check_interval=0.01)
 
     def tearDown(self):
         self.bled.stop_sync()
@@ -72,7 +72,7 @@ class TestBLED112Connections(unittest.TestCase):
 
         result = self.bled.open_interface_sync(1, 'rpc')
         assert result['success'] is True
-        
+
         assert self.dev1_ble.notifications_enabled(self.dev1_ble.TBReceiveHeaderChar)
         assert self.dev1_ble.notifications_enabled(self.dev1_ble.TBReceivePayloadChar)
 

@@ -18,7 +18,7 @@ from async_packet import InternalTimeoutError
 BGAPIPacket = namedtuple("BGAPIPacket", ["is_event", "command_class", "command", "payload"])
 
 class BLED112CommandProcessor(threading.Thread):
-    def __init__(self, stream, commands):
+    def __init__(self, stream, commands, stop_check_interval=0.5):
         super(BLED112CommandProcessor, self).__init__()
 
         self._stream = stream
@@ -29,12 +29,13 @@ class BLED112CommandProcessor(threading.Thread):
         self.event_handler = None
         self._current_context = None
         self._current_callback = None
+        self._stop_check_interval = stop_check_interval
 
     def run(self):
         while not self._stop.is_set():
             try:
                 self._process_events()
-                cmdargs, callback, _, context = self._commands.get(timeout=0.01)
+                cmdargs, callback, _, context = self._commands.get(timeout=self._stop_check_interval)
                 cmd = cmdargs[0]
 
                 if len(cmdargs) > 0:
@@ -50,7 +51,7 @@ class BLED112CommandProcessor(threading.Thread):
                     res = getattr(self, cmd)(*args)
                 else:
                     pass #FIXME: Log an error for an invalid command
-                
+
                 inprogress = False
 
                 if len(res) == 2:
@@ -118,12 +119,12 @@ class BLED112CommandProcessor(threading.Thread):
         conns = []
         for event in events:
             handle, flags, addr, addr_type, interval, timeout, lat, bond = unpack("<BB6sBHHHB", event.payload)
-            
+
             if flags != 0:
                 conns.append(handle)
 
         return True, {'max_connections': maxconn, 'active_connections': conns}
-        
+
     def _start_scan(self, active):
         """Begin scanning forever
         """
@@ -169,14 +170,14 @@ class BLED112CommandProcessor(threading.Thread):
             if (event.command_class == 4 and event.command == 2):
                 event_handle, = unpack("B", event.payload[0:1])
                 return event_handle == handle
-            
+
             return False
 
         def end_filter_func(event):
             if (event.command_class == 4 and event.command == 1):
                 event_handle, = unpack("B", event.payload[0:1])
                 return event_handle == handle
-            
+
             return False
 
         payload = struct.pack('<BHHBH', handle, 1, 0xFFFF, 2, code)
@@ -220,7 +221,7 @@ class BLED112CommandProcessor(threading.Thread):
         """
 
         for service in services.itervalues():
-            success, result = self._enumerate_handles(conn, service['start_handle'], 
+            success, result = self._enumerate_handles(conn, service['start_handle'],
                                                       service['end_handle'])
 
             if not success:
@@ -300,14 +301,14 @@ class BLED112CommandProcessor(threading.Thread):
             if event.command_class == 4 and event.command == 4:
                 event_handle, = unpack("B", event.payload[0:1])
                 return event_handle == conn_handle
-            
+
             return False
 
         def end_filter_func(event):
             if event.command_class == 4 and event.command == 1:
                 event_handle, = unpack("B", event.payload[0:1])
                 return event_handle == conn_handle
-            
+
             return False
 
         payload = struct.pack("<BHH", conn_handle, start_handle, end_handle)
@@ -352,7 +353,7 @@ class BLED112CommandProcessor(threading.Thread):
         def handle_error_func(event):
             if (event.command_class == 4 and event.command == 1):
                 event_handle, = unpack("B", event.payload[0:1])
-                return event_handle == conn_handle 
+                return event_handle == conn_handle
 
         events = self._wait_process_events(5.0, lambda x: False, lambda x: handle_value_func(x) or handle_error_func(x))
         if len(events) != 1:
@@ -368,7 +369,7 @@ class BLED112CommandProcessor(threading.Thread):
 
     def _write_handle(self, conn, handle, ack, value, timeout=1.0):
         """Write to a BLE device characteristic by its handle
-        
+
         Args:
             conn (int): The connection handle for the device we should read from
             handle (int): The characteristics handle we should read
@@ -713,7 +714,7 @@ class BLED112CommandProcessor(threading.Thread):
             if response.is_event:
                 if self.event_handler is not None:
                     self.event_handler(response)
-                
+
                 continue
 
             return response
@@ -789,7 +790,7 @@ class BLED112CommandProcessor(threading.Thread):
 
         start_time = time.time()
         end_time = start_time + total_time
-        
+
         while time.time() < end_time:
             events = self._process_events(lambda x: return_filter(x) or end_filter(x), max_events=1)
             acc += events

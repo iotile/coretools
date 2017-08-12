@@ -33,13 +33,23 @@ def packet_length(header):
 
 
 class BLED112Adapter(DeviceAdapter):
-    """Callback based BLED112 wrapper supporting multiple simultaneous connections
+    """Callback based BLED112 wrapper supporting multiple simultaneous connections.
+
+    Optional Keyword Args:
+        stop_check_interval (float): When we close this adapter instance, we need to
+            notify our worker thread with a stop signal.  This is the interval at which
+            the worker thread checks for the signal.  It defaults to 0.5s but is set to
+            a faster value like 10 ms during testing to make tests run faster.  Lower
+            values increase CPU usage in production.
     """
 
     ExpirationTime = 60  # Expire devices 60 seconds after seeing them
 
-    def __init__(self, port, on_scan=None, on_disconnect=None, passive=True):
+    def __init__(self, port, on_scan=None, on_disconnect=None, passive=True, **kwargs):
         super(BLED112Adapter, self).__init__()
+
+        # Get optional configuration flags
+        stop_check_interval = kwargs.get('stop_check_interval', 0.5)
 
         #Make sure that if someone tries to connect to a device immediately after creating the adapter
         #we tell them we need time to accumulate device advertising packets first
@@ -65,7 +75,7 @@ class BLED112Adapter(DeviceAdapter):
         self._serial_port = serial.Serial(port, 256000, timeout=0.01, rtscts=True)
         self._stream = AsyncPacketBuffer(self._serial_port, header_length=4, length_function=packet_length)
         self._commands = Queue()
-        self._command_task = BLED112CommandProcessor(self._stream, self._commands)
+        self._command_task = BLED112CommandProcessor(self._stream, self._commands, stop_check_interval=stop_check_interval)
         self._command_task.event_handler = self._handle_event
         self._command_task.start()
 

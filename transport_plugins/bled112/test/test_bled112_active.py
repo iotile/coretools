@@ -16,7 +16,7 @@ class TestBLED112AdapterActive(unittest.TestCase):
         self.old_serial = serial.Serial
         serial.Serial = util.dummy_serial.Serial
         self.adapter = MockBLED112(3)
-        
+
         self.dev1 = MockIOTileDevice(100, 'TestCN')
         self.dev1_ble = MockBLEDevice("00:11:22:33:44:55", self.dev1)
         self.adapter.add_device(self.dev1_ble)
@@ -26,8 +26,8 @@ class TestBLED112AdapterActive(unittest.TestCase):
         self._scanned_devices_seen = threading.Event()
         self.num_scanned_devices = 0
         self.scanned_devices = []
-        self.bled = BLED112Adapter('test', self._on_scan_callback, 
-                                   self._on_disconnect_callback, passive=False)
+        self.bled = BLED112Adapter('test', self._on_scan_callback,
+                                   self._on_disconnect_callback, passive=False, stop_check_interval=0.01)
 
     def tearDown(self):
         self.bled.stop_sync()
@@ -41,7 +41,7 @@ class TestBLED112AdapterActive(unittest.TestCase):
 
     def _on_scan_callback(self, ad_id, info, expiry):
         self.num_scanned_devices += 1
-        self.scanned_devices.append(info) 
+        self.scanned_devices.append(info)
         self._scanned_devices_seen.set()
 
     def _on_disconnect_callback(self, *args, **kwargs):
