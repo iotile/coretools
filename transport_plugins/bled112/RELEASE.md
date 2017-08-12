@@ -2,6 +2,10 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
+## 1.4.8
+
+- Adjust stop check interval for virtual bled112 interface that needs a faster check time
+
 ## 1.4.7
 
 - Add a configuration option for the interval with which the BLEDCMDProcessor thread checks

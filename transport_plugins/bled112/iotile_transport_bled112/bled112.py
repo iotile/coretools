@@ -49,7 +49,7 @@ class BLED112Adapter(DeviceAdapter):
         super(BLED112Adapter, self).__init__()
 
         # Get optional configuration flags
-        stop_check_interval = kwargs.get('stop_check_interval', 0.5)
+        stop_check_interval = kwargs.get('stop_check_interval', 0.1)
 
         #Make sure that if someone tries to connect to a device immediately after creating the adapter
         #we tell them we need time to accumulate device advertising packets first

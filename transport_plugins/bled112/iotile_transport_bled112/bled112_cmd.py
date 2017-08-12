@@ -18,7 +18,7 @@ from async_packet import InternalTimeoutError
 BGAPIPacket = namedtuple("BGAPIPacket", ["is_event", "command_class", "command", "payload"])
 
 class BLED112CommandProcessor(threading.Thread):
-    def __init__(self, stream, commands, stop_check_interval=0.5):
+    def __init__(self, stream, commands, stop_check_interval=0.01):
         super(BLED112CommandProcessor, self).__init__()
 
         self._stream = stream

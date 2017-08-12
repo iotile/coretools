@@ -69,7 +69,7 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         self._serial_port = serial.Serial(port, 256000, timeout=0.01, rtscts=True)
         self._stream = AsyncPacketBuffer(self._serial_port, header_length=4, length_function=packet_length)
         self._commands = Queue()
-        self._command_task = BLED112CommandProcessor(self._stream, self._commands)
+        self._command_task = BLED112CommandProcessor(self._stream, self._commands, stop_check_interval=0.01)
         self._command_task.event_handler = self._handle_event
         self._command_task.start()
 
