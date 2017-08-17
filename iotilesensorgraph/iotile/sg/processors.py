@@ -77,6 +77,11 @@ def copy_count_a(input_a, *other_inputs, **kwargs):
 
     count = input_a.count()
 
+    input_a.skip_all();
+
+    for input_x in other_inputs:
+        input_x.skip_all()
+
     return [IOTileReading(0, 0, count)]
 
 
