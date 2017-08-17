@@ -1,0 +1,7 @@
+when connected to controller
+{
+        on connect
+        {
+                copy count system input 3 => output 1;
+        }
+}
