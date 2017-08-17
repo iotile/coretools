@@ -6,6 +6,7 @@ from iotile.sg.exceptions import SensorGraphSyntaxError, StreamEmptyError
 from iotile.sg import DataStream, DeviceModel, DataStreamSelector, SlotIdentifier
 from iotile.sg.parser import SensorGraphFileParser
 from iotile.sg.sim import SensorGraphSimulator
+from iotile.sg.known_constants import user_connected
 import iotile.sg.parser.language as language
 from iotile.core.hw.reports import IOTileReading
 
@@ -276,3 +277,29 @@ def test_copy_statement(parser):
     assert val1.value == 0
     assert val2.value == 60
     assert val3.value == 1
+
+def test_copy_count_statement(parser):
+    """Make sure we can copy data count using copy count."""
+
+    parser.parse_file(get_path(u'count.sgf'))
+
+    model = DeviceModel()
+    parser.compile(model=model)
+
+    sg = parser.sensor_graph
+    log = sg.sensor_log
+
+    for x in sg.dump_nodes():
+        print(x)
+
+    sg.load_constants()
+
+    output = log.create_walker(DataStreamSelector.FromString('output 1'))
+
+    sim = SensorGraphSimulator()
+    sim.stop_condition('run_time 3 seconds')
+    sim.step(sg, user_connected, 8) # Simulates a connected user
+    sim.run(sg)
+    print(output);
+    assert output.count() == 1
+    print(output)
