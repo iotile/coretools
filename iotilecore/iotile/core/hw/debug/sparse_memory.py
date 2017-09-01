@@ -38,10 +38,12 @@ class SparseMemory(object):
         if not isinstance(seg_type, DisjointSegment):
             raise ArgumentError("Unsupported segment type")
 
-        segment = MemorySegment(address, address+len(data)-1, len(data), data)
+        segment = MemorySegment(address, address+len(data)-1, len(data), bytearray(data))
         self._segments.append(segment)
 
-    def __getitem__(self, key):
+    def _create_slice(self, key):
+        """Create a slice in a memory segment corresponding to a key."""
+
         if isinstance(key, slice):
             step = key.step
             if step is None:
@@ -54,22 +56,39 @@ class SparseMemory(object):
             end_address = key.stop - 1
 
             start_i, start_seg = self._find_address(start_address)
-            end_i, end_seg = self._find_address(end_address)
+            end_i, _end_seg = self._find_address(end_address)
 
             if start_seg is None or start_i != end_i:
                 raise ArgumentError("Slice would span invalid data in memory", start_address=start_address, end_address=end_address)
 
             block_offset = start_address - start_seg.start_address
             block_length = end_address - start_address + 1
-            return start_seg.data[block_offset:block_offset+block_length]
+
+            return start_seg, block_offset, block_offset + block_length
         elif isinstance(key, int):
             start_i, start_seg = self._find_address(key)
             if start_seg is None:
                 raise ArgumentError("Requested invalid address", address=key)
 
-            return start_seg.data[key - start_seg.start_address]
+            return start_seg, key - start_seg.start_address, None
         else:
             raise ArgumentError("Unknown type of address key", address=key)
+
+    def __getitem__(self, key):
+        seg, start, end = self._create_slice(key)
+
+        if end is None:
+            return seg.data[start]
+
+        return seg.data[start:end]
+
+    def __setitem__(self, key, item):
+        seg, start, end = self._create_slice(key)
+
+        if end is None:
+            seg.data[start] = item
+        else:
+            seg.data[start:end] = item
 
     @classmethod
     def _in_segment(cls, address, segment):
