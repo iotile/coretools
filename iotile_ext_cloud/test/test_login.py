@@ -86,3 +86,24 @@ def test_alternative_domains(registry):
         cloud.refresh_token()
 
     assert registry.get_config('arch:cloud_token') == 'new-token'
+
+def test_check_time():
+    """Make sure we can check if the time is wrong"""
+
+    header = {'Date':'Wed, 01 Sep 2010 17:30:32 GMT'}
+
+    payload = {
+        'jwt': 'big-token',
+        'username': 'user1'
+    }
+
+    manager = ConfigManager()
+
+    with requests_mock.Mocker() as mocker:
+        mocker.get('https://iotile.cloud', headers=header)
+        mocker.post('https://iotile.cloud/api/v1/auth/login/', json=payload)
+        link_cloud(manager, 'user1@random.com', 'password')
+        cloud = IOTileCloud()
+        time_test = cloud.check_time()
+
+    assert time_test == False
