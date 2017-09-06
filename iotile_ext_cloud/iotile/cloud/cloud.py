@@ -102,7 +102,7 @@ class IOTileCloud(object):
 
     @return_type("bool")
     def check_time(self):
-        cloud_time = get_timestamp(requests.get('http://iotile.cloud').headers['Date'][5:-4])
+        cloud_time = get_timestamp(requests.get('https://iotile.cloud').headers['Date'][5:-4])
         curtime = time.time()
         return (curtime < cloud_time + 300 and curtime > cloud_time - 300)
 
