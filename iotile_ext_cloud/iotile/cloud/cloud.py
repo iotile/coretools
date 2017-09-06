@@ -4,6 +4,8 @@
 from io import BytesIO
 import requests
 import getpass
+import time
+from calendar import timegm
 
 from iotile_cloud.api.connection import Api
 from iotile_cloud.api.exceptions import RestHttpBaseException, HttpNotFoundError
@@ -12,6 +14,16 @@ from iotile.core.dev.config import ConfigManager
 from iotile.core.exceptions import ArgumentError, ExternalError
 from iotile.core.utilities.typedargs import context, param, return_type, annotated, type_system
 
+def get_timestamp(utcdate):
+    """ retrieves the UNIX UTC timestamp from formatted text ( 06 Sep 2017 16:50:46 )"""
+    months = {'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6,
+              'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12}
+    utcdate = utcdate.split(' ')
+    year, day = utcdate[2], utcdate[0]
+    month = months[utcdate[1]]
+    utcdate = utcdate[-1].split(':')
+    hour, m, sec = utcdate[0], utcdate[1], utcdate[2]
+    return(timegm(list(map(lambda x: int(x),(year,month,day,hour,m,sec)))))
 
 @context("IOTileCloud")
 class IOTileCloud(object):
@@ -87,6 +99,12 @@ class IOTileCloud(object):
             raise ArgumentError("Device does not exist in cloud database", device_id=device_id, slug=slug)
 
         return dev
+
+    @return_type("bool")
+    def check_time(self):
+        cloud_time = get_timestamp(requests.get('http://iotile.cloud').headers['Date'][5:-4])
+        curtime = time.time()
+        return (curtime < cloud_time + 300 and curtime > cloud_time - 300)
 
     @param("device_id", "integer", desc="ID of the device that we want information about")
     @param("new_sg", "string", desc="The new sensor graph id that we want to load")
