@@ -92,8 +92,8 @@ def test_alternative_domains(registry):
 def test_check_time():
     """Make sure we can check if the time is correct"""
 
-    header_true = {'Date': datetime.datetime.now(tzutc()).strftime('%a, %d %b %Y %X %Z')}
-    header_false = {'Date': 'Wed, 01 Sep 2010 17:30:32 GMT'}
+    json_true = {'now': datetime.datetime.now(tzutc()).strftime('%a, %d %b %Y %X %Z')}
+    json_false = {'now': 'Wed, 01 Sep 2010 17:30:32 GMT'}
     payload = {
         'jwt': 'big-token',
         'username': 'user1'
@@ -106,9 +106,9 @@ def test_check_time():
         mocker.post('https://iotile.cloud/api/v1/auth/login/', json=payload)
         link_cloud(manager, 'user1@random.com', 'password')
         cloud = IOTileCloud()
-        mocker.get('https://iotile.cloud', headers=header_true)
+        mocker.get('https://iotile.cloud/api/v1/server/', json=json_true)
         time_true = cloud.check_time()
-        mocker.get('https://iotile.cloud', headers=header_false)
+        mocker.get('https://iotile.cloud/api/v1/server/', json=json_false)
         time_false = cloud.check_time()
 
     assert time_true == True

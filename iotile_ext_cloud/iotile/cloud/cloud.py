@@ -95,7 +95,7 @@ class IOTileCloud(object):
     @return_type("bool")
     def check_time(self, max_slop = 300):
         """ Check if current system time is consistent with iotile.cloud time"""
-        cloud_time = requests.get('https://iotile.cloud').headers.get('Date', None)
+        cloud_time = requests.get('https://iotile.cloud/api/v1/server/').json()['now']
         if cloud_time is None:
             raise DataError("No date header returned from iotile.cloud")
 
