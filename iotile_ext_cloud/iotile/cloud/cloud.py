@@ -4,6 +4,10 @@
 from io import BytesIO
 import requests
 import getpass
+import time
+import datetime
+from dateutil.tz import tzutc
+import dateutil.parser
 
 from iotile_cloud.api.connection import Api
 from iotile_cloud.api.exceptions import RestHttpBaseException, HttpNotFoundError
@@ -11,7 +15,6 @@ from iotile.core.dev.registry import ComponentRegistry
 from iotile.core.dev.config import ConfigManager
 from iotile.core.exceptions import ArgumentError, ExternalError
 from iotile.core.utilities.typedargs import context, param, return_type, annotated, type_system
-
 
 @context("IOTileCloud")
 class IOTileCloud(object):
@@ -87,6 +90,20 @@ class IOTileCloud(object):
             raise ArgumentError("Device does not exist in cloud database", device_id=device_id, slug=slug)
 
         return dev
+
+    @param("max_slop", "integer", desc="Optional max time difference value")
+    @return_type("bool")
+    def check_time(self, max_slop = 300):
+        """ Check if current system time is consistent with iotile.cloud time"""
+        cloud_time = requests.get('https://iotile.cloud/api/v1/server/').json().get('now', None)
+        if cloud_time is None:
+            raise DataError("No date header returned from iotile.cloud")
+
+        curtime = datetime.datetime.now(tzutc())
+        delta = dateutil.parser.parse(cloud_time) - curtime
+        delta_secs = delta.total_seconds()
+
+        return abs(delta_secs) < max_slop
 
     @param("device_id", "integer", desc="ID of the device that we want information about")
     @param("new_sg", "string", desc="The new sensor graph id that we want to load")

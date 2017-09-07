@@ -1,5 +1,7 @@
 import pytest
 import requests_mock
+import datetime
+from dateutil.tz import tzutc
 from iotile.cloud.cloud import IOTileCloud
 from iotile.cloud.config import link_cloud
 from iotile.core.dev.config import ConfigManager
@@ -86,3 +88,28 @@ def test_alternative_domains(registry):
         cloud.refresh_token()
 
     assert registry.get_config('arch:cloud_token') == 'new-token'
+
+def test_check_time():
+    """Make sure we can check if the time is correct"""
+
+    json_true = {'now': datetime.datetime.now(tzutc()).strftime('%a, %d %b %Y %X %Z')}
+    json_false = {'now': 'Wed, 01 Sep 2010 17:30:32 GMT'}
+    payload = {
+        'jwt': 'big-token',
+        'username': 'user1'
+    }
+
+    manager = ConfigManager()
+
+    with requests_mock.Mocker() as mocker:
+
+        mocker.post('https://iotile.cloud/api/v1/auth/login/', json=payload)
+        link_cloud(manager, 'user1@random.com', 'password')
+        cloud = IOTileCloud()
+        mocker.get('https://iotile.cloud/api/v1/server/', json=json_true)
+        time_true = cloud.check_time()
+        mocker.get('https://iotile.cloud/api/v1/server/', json=json_false)
+        time_false = cloud.check_time()
+
+    assert time_true == True
+    assert time_false == False

@@ -2,7 +2,6 @@
 
 from iotile.core.exceptions import ArgumentError
 
-
 def device_slug_to_id(slug):
     """Convert a d-- device slug to an integer.
 
