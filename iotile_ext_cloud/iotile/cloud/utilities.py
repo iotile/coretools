@@ -50,7 +50,7 @@ def device_slug_from_id(id):
     if (id.startswith('0x')):
         id = id[2:] # remove 0x identifier
 
-    id = id.zfill(16).upper()   # pad to 16 chars and convert to uppercase
+    id = id.zfill(16).lower()   # pad to 16 chars and convert to uppercase
     if (not set(id) <= set(hexdigits)):
         raise ArgumentError("ID cannot contain non hexadecimal characters !")
     if (len(id) > 16):
