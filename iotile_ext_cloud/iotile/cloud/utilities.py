@@ -35,29 +35,22 @@ def device_id_to_slug(id):
     """ Converts a device id into a correct device slug.
 
     Args:
-        id (str) : A device id in either of the following formats :
-            XXXX XXXX XXXX XXXX
-            XXXXXXXXXXXXXXXX
-            0xXXXXXXXXXXXXXXXX
+        id (long) : A device id
     Returns:
         str: The device slug in the d--XXXX-XXXX-XXXX-XXXX format
     Raises:
-        ArgumentError: if the ID is more than 16 chars or if it contains characters outside 0123456789ABCDEF
+        ArgumentError: if the ID is not in the [1, 16**16] range, or if it is not an int
     """
+    if (type(id) == int):
+        id = long(id)
+    elif (type(id) != long):
+        raise ArgumentError("Id is not a number")
+    if (id <= 0 or id > pow(16,16)):
+        raise ArgumentError("Id not in the correct range")
 
-    if not isinstance(id, (str, unicode)):
-        raise ArgumentError("Invalid device id that is not a string", id=id)
+    id = hex(id)[2:-1] # get rid of the 0x and the trailing L
 
-    id = id.replace(' ','') # get rid of the spaces
-
-    if (id.startswith('0x')):
-        id = id[2:] # remove 0x identifier
-
-    id = id.zfill(16).lower()   # pad to 16 chars and convert to uppercase
-    if (not set(id) <= set(hexdigits)):
-        raise ArgumentError("ID cannot contain non hexadecimal characters !")
-    if (len(id) > 16):
-        raise ArgumentError("ID cannot be more than 16 chars !")
+    id = id.zfill(16).lower()   # pad to 16 chars and convert to lowercase
 
     chunks = [id[i:i+4] for i in range(0, len(id), 4)] # get 4 strings of 4 chars
 
