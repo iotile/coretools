@@ -2,8 +2,6 @@
 
 from iotile.core.exceptions import ArgumentError
 
-from string import hexdigits
-
 def device_slug_to_id(slug):
     """Convert a d-- device slug to an integer.
 
@@ -41,9 +39,9 @@ def device_id_to_slug(id):
     Raises:
         ArgumentError: if the ID is not in the [1, 16**16] range, or if it is not an int
     """
-    if (type(id) == int):
+    if isinstance(id,int):
         id = long(id)
-    elif (type(id) != long):
+    elif isinstance(id,long):
         raise ArgumentError("Id is not a number")
     if (id <= 0 or id > pow(16,16)):
         raise ArgumentError("Id not in the correct range")
