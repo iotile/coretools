@@ -41,7 +41,7 @@ def device_id_to_slug(id):
     """
     if isinstance(id,int):
         id = long(id)
-    elif isinstance(id,long):
+    elif not isinstance(id,long):
         raise ArgumentError("Id is not a number")
     if (id <= 0 or id > pow(16,16)):
         raise ArgumentError("Id not in the correct range")

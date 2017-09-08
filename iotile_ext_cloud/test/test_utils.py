@@ -24,7 +24,8 @@ def test_device_slug_to_id():
 def test_device_id_to_slug():
     assert device_id_to_slug(0x10) == 'd--0000-0000-0000-0010'
     assert device_id_to_slug(0x1234abcd5678ef90) == 'd--1234-abcd-5678-ef90'
-
+    assert device_id_to_slug(0x1234L) == 'd--0000-0000-0000-1234'
+    
     with pytest.raises(ArgumentError):
         device_id_to_slug('string')
 
