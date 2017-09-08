@@ -22,14 +22,14 @@ def test_device_slug_to_id():
         device_slug_to_id(0x100)
 
 def test_device_id_to_slug():
-    assert device_id_to_slug('0x10') == 'd--0000-0000-0000-0010'
-    assert device_id_to_slug('1234 aBcD 5678 Ef90') == 'd--1234-abcd-5678-ef90'
+    assert device_id_to_slug(0x10) == 'd--0000-0000-0000-0010'
+    assert device_id_to_slug(0x1234abcd5678ef90) == 'd--1234-abcd-5678-ef90'
 
     with pytest.raises(ArgumentError):
-        device_id_to_slug('12345678901234567')
+        device_id_to_slug('string')
 
     with pytest.raises(ArgumentError):
-        device_id_to_slug('non hexa chars')
+        device_id_to_slug(pow(16,16) + 1)
 
     with pytest.raises(ArgumentError):
-        device_slug_to_id(1234)
+        device_slug_to_id(-5)
