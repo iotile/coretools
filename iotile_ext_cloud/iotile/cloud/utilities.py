@@ -35,7 +35,7 @@ def device_slug_from_id(id):
     """ Converts a device id into a correct device slug.
 
     Args:
-        id (str or int) : A device id in either of the following formats :
+        id (str) : A device id in either of the following formats :
             XXXX XXXX XXXX XXXX
             XXXXXXXXXXXXXXXX
             0xXXXXXXXXXXXXXXXX
@@ -45,7 +45,7 @@ def device_slug_from_id(id):
         ArgumentError: if the ID is more than 16 chars or if it contains characters outside 0123456789ABCDEF
     """
 
-    id = str(id).replace(' ','') # get rid of the spaces
+    id = id.replace(' ','') # get rid of the spaces
 
     if (id.startswith('0x')):
         id = id[2:] # remove 0x identifier
