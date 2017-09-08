@@ -31,7 +31,7 @@ def device_slug_to_id(slug):
     except ValueError as exc:
         raise ArgumentError("Invalid device slug with non-numeric components", error_mesage=str(exc), slug=slug)
 
-def device_slug_from_id(id):
+def device_id_to_slug(id):
     """ Converts a device id into a correct device slug.
 
     Args:
@@ -44,6 +44,9 @@ def device_slug_from_id(id):
     Raises:
         ArgumentError: if the ID is more than 16 chars or if it contains characters outside 0123456789ABCDEF
     """
+
+    if not isinstance(id, (str, unicode)):
+        raise ArgumentError("Invalid device id that is not a string", id=id)
 
     id = id.replace(' ','') # get rid of the spaces
 
