@@ -2,6 +2,10 @@
 
 All major changes in each released version of the iotile-ext-cloud plugin are listed here.
 
+## 0.3.2
+
+- Added another utility function
+
 ## 0.3.1
 
 - Start adding common utility functions
