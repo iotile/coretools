@@ -15,6 +15,7 @@ from iotile.core.dev.registry import ComponentRegistry
 from iotile.core.dev.config import ConfigManager
 from iotile.core.exceptions import ArgumentError, ExternalError
 from iotile.core.utilities.typedargs import context, param, return_type, annotated, type_system
+from utilities import device_id_to_slug
 
 @context("IOTileCloud")
 class IOTileCloud(object):
@@ -90,6 +91,47 @@ class IOTileCloud(object):
             raise ArgumentError("Device does not exist in cloud database", device_id=device_id, slug=slug)
 
         return dev
+
+    @param("fleet_id", "integer", desc="Id of the fleet we want to retrieve")
+    @return_type("basic_dict")
+    def get_fleet(self, fleet_id):
+        """ Returns the devices in the given fleet"""
+        api = self.api
+        if (fleet_id > pow(16,12) or fleet_id < 0):
+            raise ArgumentError("Fleet id outside of bounds")
+        slug = "g--" + device_id_to_slug(fleet_id)[8:]
+        try :
+            return api.fleet(slug).devices.get()
+        except HttpNotFoundError:
+            raise ArgumentError("Fleet does not exist in cloud database", fleet_id=fleet_id, slug=slug)
+
+    @param("device_id", "integer", desc="Id of the device whose fleet we want to retrieve")
+    @return_type("list(string)")
+    def get_fleet_ids_from_device(self, device_id):
+        """ Returns the fleets the device is in"""
+        api = self.api
+
+        slug = device_id_to_slug(device_id)
+        try:
+            return api.fleet.get(device=slug)['results']
+        except HttpNotFoundError:
+            raise ExternalError("Could not find the right URL. Are fleets enabled ?")
+
+    @param("device_id", "integer", desc="Id of the device whose fleet we want to retrieve")
+    @return_type("basic_dict")
+    def get_whitelist(self, device_id):
+        """ Returns the whitelist associated with the given device_id if any"""
+        fleets = self.get_fleet_ids_from_device(device_id)
+        if not fleets:
+            # This is to be expected for devices set to take data from all project, or any device.
+            raise ExternalError("The device isn't in any network !")
+        out = {}
+        for fleet in fleets:
+            devices = self.get_fleet(fleet['id'])['results']
+            for device in devices:
+                if device['device'] not in out:
+                    out[device.pop('device')] = device
+        return out
 
     @param("max_slop", "integer", desc="Optional max time difference value")
     @return_type("bool")
