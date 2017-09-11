@@ -106,9 +106,6 @@ class IOTileCloud(object):
             raise ArgumentError("Fleet does not exist in cloud database", fleet_id=fleet_id, slug=slug)
 
     @param("device_id", "integer", desc="Id of the device whose fleet we want to retrieve")
-    @return_type("list(string)")
-    def get_fleet_ids_from_device(self, device_id):
-        """ Returns the fleets the device is in"""
     @return_type("basic_dict")
     def get_whitelist(self, device_id):
         """ Returns the whitelist associated with the given device_id if any"""
@@ -127,7 +124,6 @@ class IOTileCloud(object):
         for fleet in fleets:
             if fleet['is_network']:
                 devices = self.get_fleet(fleet['id'])['results']
-                print(devices)
                 if len([i for i in devices if i['device'] == slug and i['is_access_point']]):
                     for device in devices:
                         if device['device'] not in out and device['device'] != device_id_to_slug(device_id):
