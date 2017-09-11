@@ -109,28 +109,29 @@ class IOTileCloud(object):
     @return_type("list(string)")
     def get_fleet_ids_from_device(self, device_id):
         """ Returns the fleets the device is in"""
-        api = self.api
-
-        slug = device_id_to_slug(device_id)
-        try:
-            return api.fleet.get(device=slug)['results']
-        except HttpNotFoundError:
-            raise ExternalError("Could not find the right URL. Are fleets enabled ?")
-
-    @param("device_id", "integer", desc="Id of the device whose fleet we want to retrieve")
     @return_type("basic_dict")
     def get_whitelist(self, device_id):
         """ Returns the whitelist associated with the given device_id if any"""
-        fleets = self.get_fleet_ids_from_device(device_id)
+        api = self.api
+        slug = device_id_to_slug(device_id)
+        try:
+            fleets = api.fleet.get(device=slug)['results']
+        except HttpNotFoundError:
+            raise ExternalError("Could not find the right URL. Are fleets enabled ?")
+
         if not fleets:
             # This is to be expected for devices set to take data from all project, or any device.
             raise ExternalError("The device isn't in any network !")
+
         out = {}
         for fleet in fleets:
-            devices = self.get_fleet(fleet['id'])['results']
-            for device in devices:
-                if device['device'] not in out:
-                    out[device.pop('device')] = device
+            if fleet['is_network']:
+                devices = self.get_fleet(fleet['id'])['results']
+                print(devices)
+                if len([i for i in devices if i['device'] == slug and i['is_access_point']]):
+                    for device in devices:
+                        if device['device'] not in out and device['device'] != device_id_to_slug(device_id):
+                            out[device.pop('device')] = device
         return out
 
     @param("max_slop", "integer", desc="Optional max time difference value")
