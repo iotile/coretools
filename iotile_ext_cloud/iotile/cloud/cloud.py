@@ -128,6 +128,8 @@ class IOTileCloud(object):
                     for device in devices:
                         if device['device'] not in out and device['device'] != device_id_to_slug(device_id):
                             out[device.pop('device')] = device
+        if not out:
+            raise ExternalError("No device to manage in these fleets !")
         return out
 
     @param("max_slop", "integer", desc="Optional max time difference value")
