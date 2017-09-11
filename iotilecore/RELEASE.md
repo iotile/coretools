@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.15.3
+
+- Add support for sorting scan results and limiting the number of results returned
+
 ## 3.15.2
 
 - Add support for setting values in SparseMemory object.
