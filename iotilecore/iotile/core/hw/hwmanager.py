@@ -366,7 +366,10 @@ class HardwareManager:
 
     @return_type("list(basic_dict)")
     @param("wait", "float", desc="Time to wait for devices to show up before returning")
-    def scan(self, wait=None):
+    @param("sort", "string", desc="Sort scan results by a key named key")
+    @param("limit", "integer", desc="Limit results to the first n devices")
+    @param("reverse", "bool", desc="Reverse the sort order")
+    def scan(self, wait=None, sort=None, reverse=False, limit=None):
         """Scan for available devices and print a dictionary of information about them.
 
         If wait is specified as a floating point number in seconds, then the default wait times
@@ -378,6 +381,12 @@ class HardwareManager:
         """
 
         devices = self.stream.scan(wait=wait)
+
+        if sort is not None:
+            devices.sort(key=lambda x: x[sort], reverse=reverse)
+
+        if limit is not None:
+            devices = devices[:limit]
 
         #FIXME: Use dictionary format in bled112stream to document information returned about devices
         return devices

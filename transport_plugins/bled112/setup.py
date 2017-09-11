@@ -14,7 +14,8 @@ setup(
     ],
 
     entry_points={'iotile.device_adapter': ['bled112 = iotile_transport_bled112.bled112:BLED112Adapter'],
-                  'iotile.virtual_interface': ['bled112 = iotile_transport_bled112.virtual_bled112:BLED112VirtualInterface']},
+                  'iotile.virtual_interface': ['bled112 = iotile_transport_bled112.virtual_bled112:BLED112VirtualInterface'],
+                  'iotile.config_variables': ['bled112 = iotile_transport_bled112.config_variables:get_variables']},
     description="IOTile BLED112 Transport Plugin",
     author="Arch",
     author_email="info@arch-iot.com",
@@ -29,9 +30,9 @@ setup(
         ],
     long_description="""\
 IOTile BLED112 Transport Plugin
-------
+-------------------------------
 
-A python plugin for the IOTile framework that allows communication with IOTile devices over 
+A python plugin for the IOTile framework that allows communication with IOTile devices over
 Bluetooth Smart using the BLED112 dongle.  See https://www.arch-iot.com.
 """
 )
