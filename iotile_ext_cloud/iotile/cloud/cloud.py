@@ -101,7 +101,9 @@ class IOTileCloud(object):
             raise ArgumentError("Fleet id outside of bounds")
         slug = "g--" + device_id_to_slug(fleet_id)[8:]
         try :
-            return api.fleet(slug).devices.get()
+            results = api.fleet(slug).devices.get()
+            entries = results.get('results', [])
+            return {entry.pop('device'): entry for entry in entries}
         except HttpNotFoundError:
             raise ArgumentError("Fleet does not exist in cloud database", fleet_id=fleet_id, slug=slug)
 
@@ -120,16 +122,19 @@ class IOTileCloud(object):
             # This is to be expected for devices set to take data from all project, or any device.
             raise ExternalError("The device isn't in any network !")
 
+        networks = [self.get_fleet(fleet['id']) for fleet in fleets if fleet.get('is_network', False) is True]
+        networks_to_manage = [x for x in networks if x.get(slug, {}).get('is_access_point', False) is True]
+
         out = {}
-        for fleet in fleets:
-            if fleet['is_network']:
-                devices = self.get_fleet(fleet['id'])['results']
-                if len([i for i in devices if i['device'] == slug and i['is_access_point']]):
-                    for device in devices:
-                        if device['device'] not in out and device['device'] != device_id_to_slug(device_id):
-                            out[device.pop('device')] = device
+        for network in networks_to_manage :
+            out.update(network)
+
         if not out:
             raise ExternalError("No device to manage in these fleets !")
+        # Remove ourselves from the whitelist that we are supposed to manage
+        if slug in out:
+           del out[slug]
+
         return out
 
     @param("max_slop", "integer", desc="Optional max time difference value")
