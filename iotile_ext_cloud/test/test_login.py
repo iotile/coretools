@@ -121,6 +121,12 @@ def test_get_fleet():
               "next":"Null",
               "previous":"Null",
               "results":[{"device":"d--0000-0000-0000-0001","always_on":True,"is_access_point":False}]}
+
+    expected = {
+        "d--0000-0000-0000-0001":{
+            "always_on":True,
+            "is_access_point":False}
+    }
     manager = ConfigManager()
     with requests_mock.Mocker() as mocker:
 
@@ -129,7 +135,7 @@ def test_get_fleet():
         cloud = IOTileCloud()
         mocker.get('https://iotile.cloud/api/v1/fleet/g--0000-0000-0001/devices/', json=test_payload)
         mocker.get('https://iotile.cloud/api/v1/fleet/g--0000-0000-0002/devices/', status_code=404)
-        assert cloud.get_fleet(1) == test_payload
+        assert cloud.get_fleet(1) == expected
         with pytest.raises(ArgumentError):
             cloud.get_fleet(2)
         with pytest.raises(ArgumentError):
