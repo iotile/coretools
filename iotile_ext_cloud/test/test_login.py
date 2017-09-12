@@ -90,7 +90,7 @@ def test_alternative_domains(registry):
     assert registry.get_config('arch:cloud_token') == 'new-token'
 
 def test_check_time():
-    """Make sure we can check if the time is correct"""
+    """ Make sure we can check if the time is correct"""
 
     json_true = {'now': datetime.datetime.now(tzutc()).strftime('%a, %d %b %Y %X %Z')}
     json_false = {'now': 'Wed, 01 Sep 2010 17:30:32 GMT'}
