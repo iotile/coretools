@@ -1,0 +1,103 @@
+{
+  "whitelist_test":
+  {
+      "count": 3,
+      "next": null,
+      "previous": null,
+      "results": [
+          {
+              "id": 3,
+              "name": "Not a network fleet",
+              "slug": "g--0000-0000-0003",
+              "org": "arch-internal",
+              "description": "TEDLT",
+              "created_on": "2017-09-11T22:55:02.517052Z",
+              "created_by": "david",
+              "is_network": false
+          },
+          {
+              "id": 1,
+              "name": "Office Network 0x1bd",
+              "slug": "g--0000-0000-0001",
+              "org": "arch-internal",
+              "description": "Manages Office Temp Sensors",
+              "created_on": "2017-09-08T01:18:38.529127Z",
+              "created_by": "david",
+              "is_network": true
+          },
+          {
+              "id": 2,
+              "name": "Second super important fleet",
+              "slug": "g--0000-0000-0002",
+              "org": "arch-internal",
+              "description": "This is actually only for testing purposes",
+              "created_on": "2017-09-11T22:04:26.940326Z",
+              "created_by": "david",
+              "is_network": true
+          }
+      ]
+  },
+  "whitelist_g1":
+  {
+    "count": 3,
+    "next": null,
+    "previous": null,
+    "results": [
+        {
+            "device": "d--0000-0000-0000-00f7",
+            "always_on": true,
+            "is_access_point": false
+        },
+        {
+            "device": "d--0000-0000-0000-00f8",
+            "always_on": true,
+            "is_access_point": false
+        },
+        {
+            "device": "d--0000-0000-0000-01bd",
+            "always_on": true,
+            "is_access_point": true
+        }
+    ]
+  },
+  "whitelist_g2":
+  {
+    "count": 2,
+    "next": null,
+    "previous": null,
+    "results": [
+        {
+            "device": "d--0000-0000-0000-0003",
+            "always_on": false,
+            "is_access_point": false
+        },
+        {
+            "device": "d--0000-0000-0000-01bd",
+            "always_on": true,
+            "is_access_point": false
+        }
+    ]
+  },
+  "whitelist_g3":
+  {
+    "count": 1,
+    "next": null,
+    "previous": null,
+    "results": [
+        {
+            "device": "d--0000-0000-0000-01bd",
+            "always_on": true,
+            "is_access_point": true
+        }
+    ]
+  },
+  "expected":{
+        "d--0000-0000-0000-00f7": {
+            "always_on": true,
+            "is_access_point": false
+        },
+        "d--0000-0000-0000-00f8": {
+            "always_on": true,
+            "is_access_point": false}
+    }
+}
