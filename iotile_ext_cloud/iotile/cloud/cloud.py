@@ -15,6 +15,7 @@ from iotile.core.dev.registry import ComponentRegistry
 from iotile.core.dev.config import ConfigManager
 from iotile.core.exceptions import ArgumentError, ExternalError
 from iotile.core.utilities.typedargs import context, param, return_type, annotated, type_system
+from utilities import device_id_to_slug
 
 @context("IOTileCloud")
 class IOTileCloud(object):
@@ -90,6 +91,51 @@ class IOTileCloud(object):
             raise ArgumentError("Device does not exist in cloud database", device_id=device_id, slug=slug)
 
         return dev
+
+    @param("fleet_id", "integer", desc="Id of the fleet we want to retrieve")
+    @return_type("basic_dict")
+    def get_fleet(self, fleet_id):
+        """ Returns the devices in the given fleet"""
+        api = self.api
+        if (fleet_id > pow(16,12) or fleet_id < 0):
+            raise ArgumentError("Fleet id outside of bounds")
+        slug = "g--" + device_id_to_slug(fleet_id)[8:]
+        try :
+            results = api.fleet(slug).devices.get()
+            entries = results.get('results', [])
+            return {entry.pop('device'): entry for entry in entries}
+        except HttpNotFoundError:
+            raise ArgumentError("Fleet does not exist in cloud database", fleet_id=fleet_id, slug=slug)
+
+    @param("device_id", "integer", desc="Id of the device whose fleet we want to retrieve")
+    @return_type("basic_dict")
+    def get_whitelist(self, device_id):
+        """ Returns the whitelist associated with the given device_id if any"""
+        api = self.api
+        slug = device_id_to_slug(device_id)
+        try:
+            fleets = api.fleet.get(device=slug)['results']
+        except HttpNotFoundError:
+            raise ExternalError("Could not find the right URL. Are fleets enabled ?")
+
+        if not fleets:
+            # This is to be expected for devices set to take data from all project, or any device.
+            raise ExternalError("The device isn't in any network !")
+
+        networks = [self.get_fleet(fleet['id']) for fleet in fleets if fleet.get('is_network', False) is True]
+        networks_to_manage = [x for x in networks if x.get(slug, {}).get('is_access_point', False) is True]
+
+        out = {}
+        for network in networks_to_manage :
+            out.update(network)
+
+        if not out:
+            raise ExternalError("No device to manage in these fleets !")
+        # Remove ourselves from the whitelist that we are supposed to manage
+        if slug in out:
+           del out[slug]
+
+        return out
 
     @param("max_slop", "integer", desc="Optional max time difference value")
     @return_type("bool")
