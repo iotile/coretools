@@ -2,6 +2,11 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
+## 1.5.0
+
+- Add support for a config variable bled112:active-scan that performs active scans and returns
+  more data about discovered devices.
+
 ## 1.4.8
 
 - Adjust stop check interval for virtual bled112 interface that needs a faster check time

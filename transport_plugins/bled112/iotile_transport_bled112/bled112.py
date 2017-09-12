@@ -11,6 +11,7 @@ import uuid
 import copy
 import serial
 import serial.tools.list_ports
+from iotile.core.dev.config import ConfigManager
 from iotile.core.utilities.packed import unpack
 from iotile.core.exceptions import HardwareError
 from iotile.core.hw.reports.parser import IOTileReportParser
@@ -45,7 +46,7 @@ class BLED112Adapter(DeviceAdapter):
 
     ExpirationTime = 60  # Expire devices 60 seconds after seeing them
 
-    def __init__(self, port, on_scan=None, on_disconnect=None, passive=True, **kwargs):
+    def __init__(self, port, on_scan=None, on_disconnect=None, passive=None, **kwargs):
         super(BLED112Adapter, self).__init__()
 
         # Get optional configuration flags
@@ -70,7 +71,12 @@ class BLED112Adapter(DeviceAdapter):
 
         self.scanning = False
         self.stopped = False
-        self._active_scan = not passive
+
+        if passive is not None:
+            self._active_scan = not passive
+        else:
+            config = ConfigManager()
+            self._active_scan = config.get('bled112:active-scan')
 
         self._serial_port = serial.Serial(port, 256000, timeout=0.01, rtscts=True)
         self._stream = AsyncPacketBuffer(self._serial_port, header_length=4, length_function=packet_length)
@@ -504,11 +510,11 @@ class BLED112Adapter(DeviceAdapter):
         length = len(payload) - 10
 
         if length < 0:
-            return #FIXME: Log an error here
+            return  # FIXME: Log an error here
 
         rssi, packet_type, sender, addr_type, bond, data = unpack("<bB6sBB%ds" % length, payload)
 
-        parsed ={}
+        parsed = {}
         parsed['rssi'] = rssi
         parsed['type'] = packet_type
         parsed['address_raw'] = sender
