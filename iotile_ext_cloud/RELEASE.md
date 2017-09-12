@@ -4,6 +4,10 @@ All major changes in each released version of the iotile-ext-cloud plugin are li
 
 ## 0.3.2
 
+- Support for whitelists and fleets
+
+## 0.3.2
+
 - Added another utility function
 
 ## 0.3.1
