@@ -107,9 +107,10 @@ def test_check_time():
         link_cloud(manager, 'user1@random.com', 'password')
         cloud = IOTileCloud()
         mocker.get('https://iotile.cloud/api/v1/server/', json=json_true)
-        time_true = cloud.check_time()
+        assert cloud.check_time() == True
         mocker.get('https://iotile.cloud/api/v1/server/', json=json_false)
-        time_false = cloud.check_time()
+        assert cloud.check_time() == False
+
 
     assert time_true == True
     assert time_false == False
