@@ -112,5 +112,3 @@ def test_check_time():
         assert cloud.check_time() == False
 
 
-    assert time_true == True
-    assert time_false == False
