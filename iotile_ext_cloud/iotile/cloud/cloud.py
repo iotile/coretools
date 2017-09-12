@@ -129,11 +129,12 @@ class IOTileCloud(object):
         for network in networks_to_manage :
             out.update(network)
 
-        if not out:
-            raise ExternalError("No device to manage in these fleets !")
         # Remove ourselves from the whitelist that we are supposed to manage
         if slug in out:
            del out[slug]
+
+        if not out:
+            raise ExternalError("No device to manage in these fleets !")
 
         return out
 
