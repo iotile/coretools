@@ -91,6 +91,19 @@
         }
     ]
   },
+  "whitelist_g4":
+  {
+    "count": 1,
+    "next": null,
+    "previous": null,
+    "results": [
+        {
+            "device": "d--0000-0000-0000-01bd",
+            "always_on": true,
+            "is_access_point": true
+        }
+    ]
+  },
   "expected":{
         "d--0000-0000-0000-00f7": {
             "always_on": true,
@@ -99,5 +112,23 @@
         "d--0000-0000-0000-00f8": {
             "always_on": true,
             "is_access_point": false}
+    },
+    "empty_whitelist_test":
+    {
+        "count": 1,
+        "next": null,
+        "previous": null,
+        "results": [
+            {
+                "id": 4,
+                "name": "Emptytest",
+                "slug": "g--0000-0000-0004",
+                "org": "arch-internal",
+                "description": "TEDLT",
+                "created_on": "2017-09-11T22:55:02.517052Z",
+                "created_by": "david",
+                "is_network": true
+            }
+        ]
     }
 }

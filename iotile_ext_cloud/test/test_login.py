@@ -150,6 +150,8 @@ def test_get_whitelist():
         p2 = j['whitelist_g2']
         p3 = j['whitelist_g3']
         expected = j['expected']
+        empty_whitelist_test = j['empty_whitelist_test']
+        p4 = j['whitelist_g4']
     payload = {
         'jwt': 'big-token',
         'username': 'user1'
@@ -172,3 +174,8 @@ def test_get_whitelist():
         mocker.get('https://iotile.cloud/api/v1/fleet/g--0000-0000-0002/devices/', json=p2)
         mocker.get('https://iotile.cloud/api/v1/fleet/g--0000-0000-0003/devices/', json=p3)
         assert cloud.get_whitelist(0x1bd) == expected
+        mocker.get('https://iotile.cloud/api/v1/fleet/?device=d--0000-0000-0000-01bd', json=empty_whitelist_test)
+        mocker.get('https://iotile.cloud/api/v1/fleet/g--0000-0000-0004/devices/', json=p4)
+        with pytest.raises(ExternalError):
+            cloud.get_whitelist(0x1bd)
+        
