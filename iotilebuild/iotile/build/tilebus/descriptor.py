@@ -200,9 +200,6 @@ class TBDescriptor:
     def _parse_configvar(self, match):
 
         if 'length' in match:
-            import pdb 
-            pdb.set_trace()
-
             quantity = match['length']
             array = True
         else:
@@ -247,7 +244,6 @@ class TBDescriptor:
             lineno (int): The line number for printing useful error messages
             line (string): The line that we are trying to parse
         """
-        print "F"
         try:
             matched = statement.parseString(line)
         except ParseException, exc:
