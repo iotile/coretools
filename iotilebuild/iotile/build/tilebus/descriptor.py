@@ -9,7 +9,7 @@
 #descriptor.py
 #Define a Domain Specific Language for specifying MIB endpoints
 
-from pyparsing import Word, Regex, nums, hexnums, Literal, Optional, Group, oneOf, QuotedString, ParseException
+from pyparsing import Word, Regex, nums, hexnums, Literal, Optional, Group, oneOf, QuotedString, ParseException, OneOrMore, ZeroOrMore
 from handler import TBHandler
 import sys
 import os.path
@@ -43,6 +43,8 @@ right = Literal(')').suppress()
 colon = Literal(':').suppress()
 leftB = Literal('[').suppress()
 rightB = Literal(']').suppress()
+leftCB = Literal('{').suppress()
+rightCB = Literal('}').suppress()
 comment = Literal('#')
 
 valid_type = oneOf('uint8_t uint16_t uint32_t int8_t int16_t int32_t char')
@@ -53,7 +55,8 @@ include = Literal("#include") + quote + filename("filename") + quote
 interface_def = Literal('interface') + number('interface') + ';'
 
 reqconfig = number("confignum") + colon + Literal('required').suppress() + Literal('config').suppress() + valid_type('type') + symbol('configvar') + Optional(leftB + number('length') + rightB) + ';'
-optconfig = number("confignum") + colon + Literal('optional').suppress() + Literal('config').suppress() + valid_type('type') + symbol('configvar') + Optional(leftB + number('length') + rightB) + "=" + (number('value') | QuotedString(quoteChar='"', unquoteResults=False)('value')) + ';'
+optconfig = number("confignum") + colon + Literal('optional').suppress() + Literal('config').suppress() + valid_type('type') + symbol('configvar') + Optional(leftB + number('length') + rightB) + "=" \
++ (number('value') | QuotedString(quoteChar='"', unquoteResults=False)('value') | (leftCB+(OneOrMore(number+ZeroOrMore(comma))))('value')+rightCB) + ';'
 
 statement = include | cmd_def | comment | assignment_def | interface_def | reqconfig | optconfig
 
@@ -197,6 +200,9 @@ class TBDescriptor:
     def _parse_configvar(self, match):
 
         if 'length' in match:
+            import pdb 
+            pdb.set_trace()
+
             quantity = match['length']
             array = True
         else:
@@ -241,7 +247,7 @@ class TBDescriptor:
             lineno (int): The line number for printing useful error messages
             line (string): The line that we are trying to parse
         """
-
+        print "F"
         try:
             matched = statement.parseString(line)
         except ParseException, exc:
