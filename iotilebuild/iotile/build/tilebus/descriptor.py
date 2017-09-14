@@ -32,7 +32,7 @@ import struct
 symbol = Regex('[_a-zA-Z][_a-zA-Z0-9]*')
 filename = Regex('[_a-zA-Z][_a-zA-Z0-9]*\.mib')
 strval = Regex('"[_a-zA-Z0-9. ]+"')
-number = Regex('((0x[a-fA-F0-9]+)|[0-9]+)').setParseAction(lambda s,l,t: [int(t[0], 0)]) | symbol
+number = Regex('((0x[a-fA-F0-9]+)|[+-]?[0-9]+)').setParseAction(lambda s,l,t: [int(t[0], 0)]) | symbol
 ints = number('num_ints') + Optional(Literal('ints') | Literal('int'))
 has_buffer = (Literal('yes') | Literal('no')).setParseAction(lambda s,l,t: [t[0] == 'yes'])
 comma = Literal(',').suppress()
