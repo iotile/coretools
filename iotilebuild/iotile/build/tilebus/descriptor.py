@@ -9,7 +9,7 @@
 #descriptor.py
 #Define a Domain Specific Language for specifying MIB endpoints
 
-from pyparsing import Word, Regex, nums, hexnums, Literal, Optional, Group, oneOf, QuotedString, ParseException, OneOrMore, ZeroOrMore
+from pyparsing import Word, Regex, nums, hexnums, Literal, Optional, Group, oneOf, QuotedString, ParseException
 from handler import TBHandler
 import sys
 import os.path
@@ -32,7 +32,7 @@ import struct
 symbol = Regex('[_a-zA-Z][_a-zA-Z0-9]*')
 filename = Regex('[_a-zA-Z][_a-zA-Z0-9]*\.mib')
 strval = Regex('"[_a-zA-Z0-9. ]+"')
-number = Regex('((0x[a-fA-F0-9]+)|[+-]?[0-9]+)').setParseAction(lambda s,l,t: [int(t[0], 0)]) | symbol
+number = Regex('((0x[a-fA-F0-9]+)|[0-9]+)').setParseAction(lambda s,l,t: [int(t[0], 0)]) | symbol
 ints = number('num_ints') + Optional(Literal('ints') | Literal('int'))
 has_buffer = (Literal('yes') | Literal('no')).setParseAction(lambda s,l,t: [t[0] == 'yes'])
 comma = Literal(',').suppress()
@@ -43,8 +43,6 @@ right = Literal(')').suppress()
 colon = Literal(':').suppress()
 leftB = Literal('[').suppress()
 rightB = Literal(']').suppress()
-leftCB = Literal('{').suppress()
-rightCB = Literal('}').suppress()
 comment = Literal('#')
 
 valid_type = oneOf('uint8_t uint16_t uint32_t int8_t int16_t int32_t char')
@@ -55,8 +53,7 @@ include = Literal("#include") + quote + filename("filename") + quote
 interface_def = Literal('interface') + number('interface') + ';'
 
 reqconfig = number("confignum") + colon + Literal('required').suppress() + Literal('config').suppress() + valid_type('type') + symbol('configvar') + Optional(leftB + number('length') + rightB) + ';'
-optconfig = number("confignum") + colon + Literal('optional').suppress() + Literal('config').suppress() + valid_type('type') + symbol('configvar') + Optional(leftB + number('length') + rightB) + "=" \
-+ (number('value') | QuotedString(quoteChar='"', unquoteResults=False)('value') | (leftCB+(OneOrMore(number+ZeroOrMore(comma))))('value')+rightCB) + ';'
+optconfig = number("confignum") + colon + Literal('optional').suppress() + Literal('config').suppress() + valid_type('type') + symbol('configvar') + Optional(leftB + number('length') + rightB) + "=" + (number('value') | QuotedString(quoteChar='"', unquoteResults=False)('value')) + ';'
 
 statement = include | cmd_def | comment | assignment_def | interface_def | reqconfig | optconfig
 
@@ -244,6 +241,7 @@ class TBDescriptor:
             lineno (int): The line number for printing useful error messages
             line (string): The line that we are trying to parse
         """
+
         try:
             matched = statement.parseString(line)
         except ParseException, exc:
