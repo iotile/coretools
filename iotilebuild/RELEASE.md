@@ -2,6 +2,9 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.4.4
+ - Add support for reading config variable arrays and writing them properly into config_variables_c.c
+
 ## 2.4.3
 
 - Fix powershell issue with Sphinx that causes the terminal colors to be
