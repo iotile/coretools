@@ -56,7 +56,7 @@ interface_def = Literal('interface') + number('interface') + ';'
 
 reqconfig = number("confignum") + colon + Literal('required').suppress() + Literal('config').suppress() + valid_type('type') + symbol('configvar') + Optional(leftB + number('length') + rightB) + ';'
 optconfig = number("confignum") + colon + Literal('optional').suppress() + Literal('config').suppress() + valid_type('type') + symbol('configvar') + Optional(leftB + number('length') + rightB) + "=" \
-  (number('value') | QuotedString(quoteChar='"', unquoteResults=False)('value') | (leftCB+(OneOrMore(number+ZeroOrMore(comma))))('value')+rightCB) + ';'
+  + (number('value') | QuotedString(quoteChar='"', unquoteResults=False)('value') | (leftCB+(OneOrMore(number+ZeroOrMore(comma))))('value')+rightCB) + ';'
   
 statement = include | cmd_def | comment | assignment_def | interface_def | reqconfig | optconfig
 
