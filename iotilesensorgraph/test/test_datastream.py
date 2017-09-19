@@ -104,37 +104,44 @@ def test_selector_parsing():
     assert stream.match_type == DataStream.OutputType
 
 
-
 def test_stream_selector_id_parsing():
     """Make sure we can parse stream ids."""
 
     stream = DataStreamSelector.FromString('buffered 1')
     assert stream.match_id == 1
-    assert stream.match_system is False
+    assert stream.match_spec == DataStreamSelector.MatchUserOnly
 
     stream = DataStreamSelector.FromString('buffered 0x100')
     assert stream.match_id == 0x100
-    assert stream.match_system is False
+    assert stream.match_spec == DataStreamSelector.MatchUserOnly
 
     stream = DataStreamSelector.FromString(u'buffered 1')
     assert stream.match_id == 1
-    assert stream.match_system is False
+    assert stream.match_spec == DataStreamSelector.MatchUserOnly
 
     stream = DataStreamSelector.FromString(u'buffered 0x100')
     assert stream.match_id == 0x100
-    assert stream.match_system is False
+    assert stream.match_spec == DataStreamSelector.MatchUserOnly
 
     stream = DataStreamSelector.FromString(u'system buffered 0x100')
     assert stream.match_id == 0x100
-    assert stream.match_system is True
+    assert stream.match_spec == DataStreamSelector.MatchSystemOnly
 
     stream = DataStreamSelector.FromString(u'all buffered')
     assert stream.match_id is None
-    assert stream.match_system is False
+    assert stream.match_spec == DataStreamSelector.MatchUserAndBreaks
+
+    stream = DataStreamSelector.FromString(u'all user buffered')
+    assert stream.match_id is None
+    assert stream.match_spec == DataStreamSelector.MatchUserOnly
+
+    stream = DataStreamSelector.FromString(u'all combined buffered')
+    assert stream.match_id is None
+    assert stream.match_spec == DataStreamSelector.MatchCombined
 
     stream = DataStreamSelector.FromString(u'all system buffered')
     assert stream.match_id is None
-    assert stream.match_system is True
+    assert stream.match_spec == DataStreamSelector.MatchSystemOnly
 
 
 def test_matching():
@@ -145,6 +152,22 @@ def test_matching():
     assert not sel.matches(DataStream.FromString('buffered 1'))
     assert not sel.matches(DataStream.FromString('counter 1'))
 
+    sel = DataStreamSelector.FromString(u'all user outputs')
+    assert sel.matches(DataStream.FromString('output 1'))
+    assert not sel.matches(DataStream.FromString('system output 1'))
+    assert not sel.matches(DataStream.FromString('counter 1'))
+
+    sel = DataStreamSelector.FromString(u'all combined outputs')
+    assert sel.matches(DataStream.FromString('output 1'))
+    assert sel.matches(DataStream.FromString('system output 1'))
+    assert not sel.matches(DataStream.FromString('counter 1'))
+
+    sel = DataStreamSelector.FromString(u'all outputs')
+    assert sel.matches(DataStream.FromString('output 1'))
+    assert sel.matches(DataStream.FromString('system output 1024'))
+    assert not sel.matches(DataStream.FromString('system output 1'))
+    assert not sel.matches(DataStream.FromString('counter 1'))
+
 
 def test_encoding():
     """Test data stream and selector encoding."""
@@ -152,8 +175,14 @@ def test_encoding():
     sel = DataStreamSelector.FromString(u'all system output')
     assert sel.encode() == 0x5FFF
 
-    sel = DataStreamSelector.FromString(u'all output')
+    sel = DataStreamSelector.FromString(u'all user output')
     assert sel.encode() == 0x57FF
+
+    sel = DataStreamSelector.FromString(u'all output')
+    assert sel.encode() == 0xD7FF
+
+    sel = DataStreamSelector.FromString(u'all combined output')
+    assert sel.encode() == 0xDFFF
 
     stream = DataStream.FromString('output 1')
     assert stream.encode() == 0x5001

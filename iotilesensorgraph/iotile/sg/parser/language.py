@@ -69,10 +69,12 @@ def _create_primitives():
     slot_id = Literal(u"controller") | (Literal(u'slot') + number)
     slot_id.setParseAction(lambda s,l,t: [SlotIdentifier.FromString(u' '.join([str(x) for x in t]))])
 
+    stream_modifier = Literal("system") | Literal("user") | Literal("combined")
+
     stream = Optional(Literal("system")) + oneOf("buffered unbuffered input output counter constant") + number + Optional(Literal("node"))
     stream.setParseAction(lambda s,l,t: [DataStream.FromString(u' '.join([str(x) for x in t]))])
 
-    all_selector = Optional(Literal("all")) + Optional(Literal("system")) + oneOf("buffered unbuffered inputs outputs counters constants") + Optional(Literal("nodes"))
+    all_selector = Optional(Literal("all")) + Optional(stream_modifier) + oneOf("buffered unbuffered inputs outputs counters constants") + Optional(Literal("nodes"))
     all_selector.setParseAction(lambda s,l,t: [DataStreamSelector.FromString(u' '.join([str(x) for x in t]))])
     one_selector = Optional(Literal("system")) + oneOf("buffered unbuffered input output counter constant") + number + Optional(Literal("node"))
     one_selector.setParseAction(lambda s,l,t: [DataStreamSelector.FromString(u' '.join([str(x) for x in t]))])
