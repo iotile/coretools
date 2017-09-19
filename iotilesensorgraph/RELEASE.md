@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 0.1.2
+
+- Support negative numbers and arrays.
+
 ## 0.1.1
 
 - Fix stream allocation when triggering on an input stream

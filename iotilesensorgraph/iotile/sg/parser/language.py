@@ -37,7 +37,7 @@ def _create_primitives():
 
     semi = Literal(u';').suppress()
     ident = Word(alphas+u"_", alphas + nums + u"_")
-    number = Regex(u'((0x[a-fA-F0-9]+)|[0-9]+)').setParseAction(lambda s, l, t: [int(t[0], 0)])
+    number = Regex(u'((0x[a-fA-F0-9]+)|[+-]?[0-9]+)').setParseAction(lambda s, l, t: [int(t[0], 0)])
     quoted_string = dblQuotedString
 
     comment = Literal('#') + restOfLine
@@ -60,7 +60,7 @@ def _create_primitives():
         u'years': 60*60*24*365,
     }
 
-    config_type = oneOf('uint8_t uint16_t uint32_t string')
+    config_type = oneOf('uint8_t uint16_t uint32_t int8_t int16_t int32_t uint8_t[] uint16_t[] uint32_t[] int8_t[] int16_t[] int32_t[] string')
     comp = oneOf('> < >= <= == ~=')
 
     time_unit = oneOf(u"second seconds minute minutes hour hours day days week weeks month months year years")
