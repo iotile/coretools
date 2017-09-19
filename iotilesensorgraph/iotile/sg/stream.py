@@ -11,7 +11,7 @@ DataStreamSelector: An object that selects a specific stream or a
 
 # For python 2/3 compatibility using future module
 from builtins import str
-from future.utils import python_2_unicode_compatible
+from future.utils import python_2_unicode_compatible, iteritems
 from iotile.core.exceptions import ArgumentError
 
 
@@ -49,6 +49,12 @@ class DataStream(object):
         3: u'input',
         4: u'counter',
         5: u'output'
+    }
+
+    # These streams are globally important system stream codes that
+    # are included by default in all wildcard stream matching.
+    KnownBreakStreams = {
+        1024: 'device_reboot'
     }
 
     def __init__(self, stream_type, stream_id, system=False):
@@ -157,13 +163,40 @@ class DataStreamSelector(object):
         stream_type (int): The type of the stream to match
         stream_id (int): The stream identifier to match.  If None, all
             streams of the given type are matched.
-        system (bool): Whether to match system or user streams.
+        stream_specifier (int): One of the 4 below match specifiers.
+            These control whether user and/or system values are matched.
     """
 
-    def __init__(self, stream_type, stream_id, system):
+    MatchSystemOnly = 1
+    MatchCombined = 2
+    MatchUserOnly = 3
+    MatchUserAndBreaks = 4
+
+    ValidSpecifiers = frozenset([MatchSystemOnly, MatchCombined, MatchUserOnly, MatchUserAndBreaks])
+
+    SpecifierStrings = {
+        MatchSystemOnly: u'system',
+        MatchCombined: u'combined',
+        MatchUserOnly: u'user',
+        MatchUserAndBreaks: u''
+    }
+
+    SpecifierNames = {y: x for x, y in iteritems(SpecifierStrings)}
+
+    SpecifierEncodings = {
+        MatchSystemOnly: (1 << 11),
+        MatchUserOnly: 0,
+        MatchUserAndBreaks: (1 << 15),
+        MatchCombined: (1 << 11) | (1 << 15)
+    }
+
+    def __init__(self, stream_type, stream_id, stream_specifier):
         self.match_type = stream_type
         self.match_id = stream_id
-        self.match_system = system
+        self.match_spec = stream_specifier
+
+        if stream_specifier not in DataStreamSelector.ValidSpecifiers:
+            raise ArgumentError("Unknown stream selector specifier", specifier=stream_specifier, known_specifiers=DataStreamSelector.ValidSpecifiers)
 
     @property
     def input(self):
@@ -193,7 +226,12 @@ class DataStreamSelector(object):
             stream (DataStream): The data stream that we want to convert.
         """
 
-        return DataStreamSelector(stream.stream_type, stream.stream_id, stream.system)
+        if stream.system:
+            specifier = DataStreamSelector.MatchSystemOnly
+        else:
+            specifier = DataStreamSelector.MatchUserOnly
+
+        return DataStreamSelector(stream.stream_type, stream.stream_id, specifier)
 
     @classmethod
     def FromString(cls, string_rep):
@@ -214,13 +252,18 @@ class DataStreamSelector(object):
 
         rep = str(string_rep)
 
+        rep = rep.replace(u'node', '')
+        rep = rep.replace(u'nodes', '')
+
         if rep.startswith(u'all'):
             parts = rep.split()
-            if len(parts) == 3 and parts[1] == u'system':
-                system = True
+
+            spec_string = u''
+
+            if len(parts) == 3:
+                spec_string = parts[1]
                 stream_type = parts[2]
             elif len(parts) == 2:
-                system = False
                 stream_type = parts[1]
             else:
                 raise ArgumentError("Invalid wildcard stream selector", string_rep=string_rep)
@@ -234,27 +277,33 @@ class DataStreamSelector(object):
             except KeyError:
                 raise ArgumentError("Invalid stream type given", stream_type=stream_type, known_types=DataStream.StringToType.keys())
 
-            return DataStreamSelector(stream_type, None, system)
+            stream_spec = DataStreamSelector.SpecifierNames.get(spec_string, None)
+            if stream_spec is None:
+                raise ArgumentError("Invalid stream specifier given (should be system, user, combined or blank)", string_rep=string_rep, spec_string=spec_string)
+
+            return DataStreamSelector(stream_type, None, stream_spec)
 
         # If we're not matching a wildcard stream type, then the match is exactly
         # the same as a DataStream identifier, so use that to match it.
 
         stream = DataStream.FromString(rep)
-        return DataStreamSelector(stream.stream_type, stream.stream_id, stream.system)
+        return DataStreamSelector.FromStream(stream)
 
     def __str__(self):
         type_str = DataStream.TypeToString[self.match_type]
 
         if self.match_id is not None:
-            if self.match_system:
+            if self.match_spec == DataStreamSelector.MatchSystemOnly:
                 return u'system {} {}'.format(type_str, self.match_id)
 
             return u'{} {}'.format(type_str, self.match_id)
         else:
-            if self.match_system:
-                return u'all system {}s'.format(type_str)
+            specifier = DataStreamSelector.SpecifierStrings[self.match_spec]
 
-            return u'all {}s'.format(type_str)
+            if specifier != u'':
+                specifier += u' '
+
+            return u'all {}{}s'.format(specifier, type_str)
 
     def matches(self, stream):
         """Check if this selector matches the given stream
@@ -269,12 +318,18 @@ class DataStreamSelector(object):
         if self.match_type != stream.stream_type:
             return False
 
-        if self.match_id is not None and self.match_id != stream.stream_id:
-            return False
+        if self.match_id is not None:
+            return self.match_id == stream.stream_id
 
-        if self.match_system != stream.system:
-            return False
+        if self.match_spec == DataStreamSelector.MatchUserOnly:
+            return not stream.system
+        elif self.match_spec == DataStreamSelector.MatchSystemOnly:
+            return stream.system
+        elif self.match_spec == DataStreamSelector.MatchUserAndBreaks:
+            return (not stream.system) or (stream.system and (stream.stream_id in DataStream.KnownBreakStreams))
 
+        # The other case is that match_spec is MatchCombined, which matches everything
+        # regardless of system of user flag
         return True
 
     def encode(self):
@@ -288,7 +343,7 @@ class DataStreamSelector(object):
         if match_id is None:
             match_id = (1 << 11) - 1
 
-        return (self.match_type << 12) | (int(self.match_system) << 11) | match_id
+        return (self.match_type << 12) | DataStreamSelector.SpecifierEncodings[self.match_spec] | match_id
 
     def __hash__(self):
         return hash(str(self))
@@ -297,4 +352,4 @@ class DataStreamSelector(object):
         if not isinstance(other, DataStreamSelector):
             return NotImplemented
 
-        return self.match_system == other.match_system and self.match_type == other.match_type and self.match_id == other.match_id
+        return self.match_spec == other.match_spec and self.match_type == other.match_type and self.match_id == other.match_id

@@ -2,6 +2,12 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 0.2.0
+
+- Add support for updated stream selectors that include combined selectors
+  and selectors that include important system break information like reboots
+  in user data streamers.
+
 ## 0.1.2
 
 - Support negative numbers and arrays.
