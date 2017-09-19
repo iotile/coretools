@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 0.8.2
+
+- Attempt to connect to devices several times in device test fixture to workaround
+  temporary connection failures in congested bluetooth environments.
+
 ## 0.8.1
 
 - Add sg_test device that returns random data to RPCs to allow for testing semihosted
