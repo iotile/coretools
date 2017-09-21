@@ -13,3 +13,18 @@ config slot 1
 {
 	set 0x5000 to 10 as uint8_t;
 }
+
+config slot 2
+{
+    set 0x5100 to -10 as int8_t;
+}
+
+config slot 3
+{
+    set 0x5200 to "[10,20,30,40]" as uint8_t[];
+}
+
+config slot 4
+{
+    set 0x5300 to "test" as string;
+}

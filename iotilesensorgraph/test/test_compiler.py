@@ -240,8 +240,12 @@ def test_config_block(parser):
     parser.compile(model=model)
 
     sg = parser.sensor_graph
+    assert len(sg.config_database) == 5
     assert sg.get_config(SlotIdentifier.FromString('controller'), 0x2000) == (u'uint32_t', 5)
     assert sg.get_config(SlotIdentifier.FromString('slot 1'), 0x5000) == (u'uint8_t', 10)
+    assert sg.get_config(SlotIdentifier.FromString('slot 2'), 0x5100) == (u'int8_t', -10)
+    assert sg.get_config(SlotIdentifier.FromString('slot 3'), 0x5200) == (u'uint8_t[]', u'"[10,20,30,40]"')
+    assert sg.get_config(SlotIdentifier.FromString('slot 4'), 0x5300) == (u'string', u'"test"')
 
 
 def test_copy_statement(parser):
