@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 0.2.1
+
+- Add test coverage for negative config variables and arrays
+
 ## 0.2.0
 
 - Add support for updated stream selectors that include combined selectors
