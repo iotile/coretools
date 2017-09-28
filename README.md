@@ -43,6 +43,23 @@ If you want to use the IOTile testing tools (necessary for testing CoreTools amo
 pip install iotile-test
 ```
 
+### Working with Encrypted Device Data
+
+If your devices are configured to protect the report data that they produce, you
+need to install `pycrypto` in order to CoreTools to be able to decrypt report 
+data.  This is only necessary to view encrypted report data and, obviously, 
+also requires that you have access to the device in question's signing key.
+
+Pycrypto can be installed using:
+
+```
+pip install pycrypto
+```
+
+If you are running on Windows, you may not have a compiler installed that is
+able to compile the PyCrypto package.  Microsoft provides a free compiler that
+is easily installed [here](https://www.microsoft.com/en-us/download/details.aspx?id=44266).
+
 ### Installing Support for IOTile Based Devices
 
 CoreTools just gives you the framework to interact with IOTile based devices. 
