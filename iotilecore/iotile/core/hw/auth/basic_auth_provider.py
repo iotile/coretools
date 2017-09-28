@@ -1,26 +1,33 @@
+"""A Basic authentication provider that can just sign with SHA256 hash."""
+
 import hashlib
 import hmac
-import struct
-from .auth_provider import AuthProvider, KnownSignatureMethods
 from iotile.core.exceptions import NotFoundError
+from .auth_provider import AuthProvider
+
 
 class BasicAuthProvider(AuthProvider):
     """Basic default authentication provider that can only calculate sha256 hashes
     """
 
-    def sign(self, device_id, sig_method, data):
-        """Sign a buffer of data on behalf of a device
-
-        This routine only supports hash only signatures
+    def sign_report(self, device_id, root, data, **kwargs):
+        """Sign a buffer of report data on behalf of a device.
 
         Args:
             device_id (int): The id of the device that we should encrypt for
-            sig_method (int): The method of encryption that we should perform
+            root (int): The root key type that should be used to generate the report
             data (bytearray): The data that we should sign
+            **kwargs: There are additional specific keyword args that are required
+                depending on the root key used.  Typically, you must specify
+                - report_id (int): The report id
+                - sent_timestamp (int): The sent timestamp of the report
+
+                These two bits of information are used to construct the per report
+                signing and encryption key from the specific root key type.
 
         Returns:
             dict: The signature and any associated metadata about the signature.
-                The signatured itself must always be a bytearray stored under the
+                The signature itself must always be a bytearray stored under the
                 'signature' key, however additional keys may be present depending
                 on the signature method used.
 
@@ -28,24 +35,29 @@ class BasicAuthProvider(AuthProvider):
             NotFoundError: If the auth provider is not able to sign the data.
         """
 
-        self._check_signature_method(sig_method)
-        method_name = KnownSignatureMethods[sig_method]
+        AuthProvider.VerifyRoot(root)
 
-        if method_name == 'hash_only_sha256':
-            result = bytearray(hashlib.sha256(data).digest())
-        else:
-            raise NotFoundError('unsupported signature method in BasicAuthProvider', method=method_name)
+        if root != AuthProvider.NoKey:
+            raise NotFoundError('unsupported root key in BasicAuthProvider', root_key=root)
 
-        return {'signature': result, 'method': method_name}
+        result = bytearray(hashlib.sha256(data).digest())
+        return {'signature': result, 'root_key': root}
 
-    def verify(self, device_id, sig_method, data, signature):
-        """Verify the signature attached to a buffer of data
+    def verify_report(self, device_id, root, data, signature, **kwargs):
+        """Verify a buffer of report data on behalf of a device.
 
         Args:
             device_id (int): The id of the device that we should encrypt for
-            sig_method (int): The method of signing that was used
-            data (bytearray): The data whose signature we should verify
-            signature (bytearray): The signature attached to data
+            root (int): The root key type that should be used to generate the report
+            data (bytearray): The data that we should verify
+            signature (bytearray): The signature attached to data that we should verify
+            **kwargs: There are additional specific keyword args that are required
+                depending on the root key used.  Typically, you must specify
+                - report_id (int): The report id
+                - sent_timestamp (int): The sent timestamp of the report
+
+                These two bits of information are used to construct the per report
+                signing and encryption key from the specific root key type.
 
         Returns:
             dict: The result of the verification process must always be a bool under the
@@ -53,17 +65,18 @@ class BasicAuthProvider(AuthProvider):
                 signature method used.
 
         Raises:
-            NotFoundError: If the auth provider is not able to verify the data because the method
-                is not supported.
+            NotFoundError: If the auth provider is not able to verify the data due to
+                an error.  If the data is simply not valid, then the function returns
+                normally.
         """
 
-        self._check_signature_method(sig_method)
-        method_name = KnownSignatureMethods[sig_method]
+        AuthProvider.VerifyRoot(root)
 
-        if method_name == 'hash_only_sha256':
-            result = bytearray(hashlib.sha256(data).digest())
-        else:
-            raise NotFoundError('unsupported signature method in BasicAuthProvider', method=method_name)
+        if root != AuthProvider.NoKey:
+            raise NotFoundError('unsupported root key in BasicAuthProvider', root_key=root)
+
+
+        result = bytearray(hashlib.sha256(data).digest())
 
         if len(signature) == 0:
             verified = False

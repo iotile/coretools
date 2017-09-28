@@ -1,12 +1,14 @@
+"""An auth provider that can sign and verify with user keys stored in environment variables."""
+
 import hashlib
 import hmac
-import struct
 import os
-from .auth_provider import AuthProvider, KnownSignatureMethods
 from iotile.core.exceptions import NotFoundError
+from .auth_provider import AuthProvider
+
 
 class EnvAuthProvider(AuthProvider):
-    """Basic authentication provider that can sign and verify using user keys
+    """Authentication provider that can sign and verify using user keys
 
     Keys must be defined in environment variables with the naming scheme:
     USER_KEY_ABCDEFGH where ABCDEFGH is the device uuid in hex prepended with 0s
@@ -40,19 +42,42 @@ class EnvAuthProvider(AuthProvider):
 
         return key
 
-    def sign(self, device_id, sig_method, data):
-        """Sign a buffer of data on behalf of a device
+    @classmethod
+    def _verify_derive_key(cls, device_id, root, **kwargs):
+        report_id = kwargs.get('report_id', None)
+        sent_timestamp = kwargs.get('sent_timestamp', None)
 
-        This routine only supports user key based signing
+        if report_id is None or sent_timestamp is None:
+            raise NotFoundError('report_id or sent_timestamp not provided in EnvAuthProvider.sign_report')
+
+        AuthProvider.VerifyRoot(root)
+
+        if root != AuthProvider.UserKey:
+            raise NotFoundError('unsupported root key in EnvAuthProvider', root_key=root)
+
+        root_key = cls._get_key(device_id)
+        report_key = AuthProvider.DeriveReportKey(root_key, report_id, sent_timestamp)
+
+        return report_key
+
+    def sign_report(self, device_id, root, data, **kwargs):
+        """Sign a buffer of report data on behalf of a device.
 
         Args:
             device_id (int): The id of the device that we should encrypt for
-            sig_method (int): The method of encryption that we should perform
+            root (int): The root key type that should be used to generate the report
             data (bytearray): The data that we should sign
+            **kwargs: There are additional specific keyword args that are required
+                depending on the root key used.  Typically, you must specify
+                - report_id (int): The report id
+                - sent_timestamp (int): The sent timestamp of the report
+
+                These two bits of information are used to construct the per report
+                signing and encryption key from the specific root key type.
 
         Returns:
             dict: The signature and any associated metadata about the signature.
-                The signatured itself must always be a bytearray stored under the
+                The signature itself must always be a bytearray stored under the
                 'signature' key, however additional keys may be present depending
                 on the signature method used.
 
@@ -60,29 +85,30 @@ class EnvAuthProvider(AuthProvider):
             NotFoundError: If the auth provider is not able to sign the data.
         """
 
-        self._check_signature_method(sig_method)
-        method_name = KnownSignatureMethods[sig_method]
+        report_key = self._verify_derive_key(device_id, root, **kwargs)
 
-        if method_name == 'hmac_sha256_user_key':
-            key = self._get_key(device_id)
+        #We sign the SHA256 hash of the message
+        message_hash = hashlib.sha256(data).digest()
+        hmac_calc = hmac.new(report_key, message_hash, hashlib.sha256)
+        result = bytearray(hmac_calc.digest())
 
-            #We sign the SHA256 hash of the message
-            message_hash = hashlib.sha256(data).digest()
-            hmac_calc = hmac.new(key, message_hash, hashlib.sha256)
-            result = bytearray(hmac_calc.digest())
-        else:
-            raise NotFoundError('unsupported signature method in EnvAuthProvider', method=method_name)
+        return {'signature': result, 'root_key': root}
 
-        return {'signature': result, 'method': method_name}
-
-    def verify(self, device_id, sig_method, data, signature):
-        """Verify the signature attached to a buffer of data
+    def verify_report(self, device_id, root, data, signature, **kwargs):
+        """Verify a buffer of report data on behalf of a device.
 
         Args:
             device_id (int): The id of the device that we should encrypt for
-            sig_method (int): The method of signing that was used
-            data (bytearray): The data whose signature we should verify
-            signature (bytearray): The signature attached to data
+            root (int): The root key type that should be used to generate the report
+            data (bytearray): The data that we should verify
+            signature (bytearray): The signature attached to data that we should verify
+            **kwargs: There are additional specific keyword args that are required
+                depending on the root key used.  Typically, you must specify
+                - report_id (int): The report id
+                - sent_timestamp (int): The sent timestamp of the report
+
+                These two bits of information are used to construct the per report
+                signing and encryption key from the specific root key type.
 
         Returns:
             dict: The result of the verification process must always be a bool under the
@@ -90,20 +116,16 @@ class EnvAuthProvider(AuthProvider):
                 signature method used.
 
         Raises:
-            NotFoundError: If the auth provider is not able to verify the data because the method
-                is not supported.
+            NotFoundError: If the auth provider is not able to verify the data due to
+                an error.  If the data is simply not valid, then the function returns
+                normally.
         """
 
-        self._check_signature_method(sig_method)
-        method_name = KnownSignatureMethods[sig_method]
+        report_key = self._verify_derive_key(device_id, root, **kwargs)
 
-        if method_name == 'hmac_sha256_user_key':
-            key = self._get_key(device_id)
-            message_hash = hashlib.sha256(data).digest()
-            hmac_calc = hmac.new(key, message_hash, hashlib.sha256)
-            result = bytearray(hmac_calc.digest())
-        else:
-            raise NotFoundError('unsupported signature method in EnvAuthProvider', method=method_name)
+        message_hash = hashlib.sha256(data).digest()
+        hmac_calc = hmac.new(report_key, message_hash, hashlib.sha256)
+        result = bytearray(hmac_calc.digest())
 
         if len(signature) == 0:
             verified = False
@@ -117,3 +139,83 @@ class EnvAuthProvider(AuthProvider):
 
         return {'verified': verified, 'bit_length': 8*len(signature)}
 
+    def decrypt_report(self, device_id, root, data, **kwargs):
+        """Decrypt a buffer of report data on behalf of a device.
+
+        Args:
+            device_id (int): The id of the device that we should encrypt for
+            root (int): The root key type that should be used to generate the report
+            data (bytearray): The data that we should decrypt
+            **kwargs: There are additional specific keyword args that are required
+                depending on the root key used.  Typically, you must specify
+                - report_id (int): The report id
+                - sent_timestamp (int): The sent timestamp of the report
+
+                These two bits of information are used to construct the per report
+                signing and encryption key from the specific root key type.
+
+        Returns:
+            dict: The decrypted data and any associated metadata about the data.
+                The data itself must always be a bytearray stored under the 'data'
+                key, however additional keys may be present depending on the encryption method
+                used.
+
+        Raises:
+            NotFoundError: If the auth provider is not able to decrypt the data.
+        """
+
+        report_key = self._verify_derive_key(device_id, root, **kwargs)
+
+        try:
+            from Crypto.Cipher import AES
+            import Crypto.Util.Counter
+        except ImportError:
+            raise NotFoundError
+
+        ctr = Crypto.Util.Counter.new(128)
+
+        # We use AES-128 for encryption
+        encryptor = AES.new(bytes(report_key[:16]), AES.MODE_CTR, counter=ctr)
+
+        decrypted = encryptor.decrypt(bytes(data))
+        return {'data': decrypted}
+
+    def encrypt_report(self, device_id, root, data, **kwargs):
+        """Encrypt a buffer of report data on behalf of a device.
+
+        Args:
+            device_id (int): The id of the device that we should encrypt for
+            root (int): The root key type that should be used to generate the report
+            data (bytearray): The data that we should decrypt
+            **kwargs: There are additional specific keyword args that are required
+                depending on the root key used.  Typically, you must specify
+                - report_id (int): The report id
+                - sent_timestamp (int): The sent timestamp of the report
+
+                These two bits of information are used to construct the per report
+                signing and encryption key from the specific root key type.
+
+        Returns:
+            dict: The encrypted data and any associated metadata about the data.
+                The data itself must always be a bytearray stored under the 'data'
+                key, however additional keys may be present depending on the encryption method
+                used.
+
+        Raises:
+            NotFoundError: If the auth provider is not able to decrypt the data.
+        """
+
+        report_key = self._verify_derive_key(device_id, root, **kwargs)
+
+        try:
+            from Crypto.Cipher import AES
+            import Crypto.Util.Counter
+        except ImportError:
+            raise NotFoundError
+
+        # We use AES-128 for encryption
+        ctr = Crypto.Util.Counter.new(128)
+        encryptor = AES.new(bytes(report_key[:16]), AES.MODE_CTR, counter=ctr)
+
+        encrypted = encryptor.encrypt(bytes(data))
+        return {'data': encrypted}

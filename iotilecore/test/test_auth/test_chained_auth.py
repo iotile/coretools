@@ -3,14 +3,7 @@ import os
 import pytest
 from iotile.core.exceptions import *
 from iotile.core.hw.auth.auth_chain import ChainedAuthProvider
-import struct
-import datetime
-import hashlib
-import hmac
 
-def gen_test_data(length):
-    data = bytearray([x for x in xrange(0, length)])
-    return data
 
 def test_key_finding(monkeypatch):
     """Test to make sure we can find keys stored in environment variables
@@ -29,19 +22,19 @@ def test_key_finding(monkeypatch):
     data = bytearray("what do ya want for nothing?")
 
     #Make sure we can find a key if its defined
-    auth.sign(uuid, 1, data)
+    auth.sign_report(uuid, ChainedAuthProvider.UserKey, data, report_id=0, sent_timestamp=0)
 
     #Make sure we throw an error for too short keys
     with pytest.raises(NotFoundError):
-        auth.sign(0xab, 1, data)
+        auth.sign_report(0xab, ChainedAuthProvider.UserKey, data, report_id=0, sent_timestamp=0)
 
     #Make sure we throw an error for keys that aren't hex
     with pytest.raises(NotFoundError):
-        auth.sign(0xac, 1, data)
+        auth.sign_report(0xac, ChainedAuthProvider.UserKey, data, report_id=0, sent_timestamp=0)
 
     #Make sure we throw an error for keys that aren't found
     with pytest.raises(NotFoundError):
-        auth.sign(2, 1, data)
+        auth.sign_report(2, 1, data, report_id=0, sent_timestamp=0)
 
     #Make sure we also find the hash only auth module
-    auth.sign(2, 0, data)
+    auth.sign_report(2, 0, data, report_id=0, sent_timestamp=0)

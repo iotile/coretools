@@ -4,11 +4,9 @@ import pytest
 from iotile.core.exceptions import ExternalError
 from iotile.core.hw.reports.signed_list_format import SignedListReport
 from iotile.core.hw.reports.report import IOTileReading
-import struct
-import datetime
-from copy import deepcopy
 
-def make_sequential(iotile_id, stream, num_readings, give_ids=False, signature_method=0):
+
+def make_sequential(iotile_id, stream, num_readings, give_ids=False, root_key=0):
     readings = []
 
     for i in xrange(0, num_readings):
@@ -19,7 +17,7 @@ def make_sequential(iotile_id, stream, num_readings, give_ids=False, signature_m
 
         readings.append(reading)
 
-    report = SignedListReport.FromReadings(iotile_id, readings, signature_method=signature_method)
+    report = SignedListReport.FromReadings(iotile_id, readings, root_key=root_key)
     return report
 
 def test_basic_parsing():
@@ -37,8 +35,8 @@ def test_basic_parsing():
     for i, reading in enumerate(report.visible_readings):
         assert reading == report2.visible_readings[i]
 
-    assert report2.verified == True
-    assert report.verified == True
+    assert report2.verified is True
+    assert report.verified is True
     assert report.signature_flags == 0
 
 def test_footer_calculation():
@@ -55,13 +53,14 @@ def test_footer_calculation():
     assert report2.highest_id == 10
 
 def test_userkey_signing(monkeypatch):
-    print(os.environ.keys())
+    """Make sure we can sign and encrypt reports."""
+
     monkeypatch.setenv('USER_KEY_00000002', '0000000000000000000000000000000000000000000000000000000000000000')
 
     with pytest.raises(ExternalError):
-        report1 = make_sequential(1, 0x1000, 10, give_ids=True, signature_method=1)
+        report1 = make_sequential(1, 0x1000, 10, give_ids=True, root_key=1)
 
-    report1 = make_sequential(2, 0x1000, 10, give_ids=True, signature_method=1)
+    report1 = make_sequential(2, 0x1000, 10, give_ids=True, root_key=1)
 
     encoded = report1.encode()
     report2 = SignedListReport(encoded)
@@ -69,4 +68,12 @@ def test_userkey_signing(monkeypatch):
     assert report1.signature_flags == 1
     assert report2.signature_flags == 1
     assert report1.verified
+    assert report1.encrypted
     assert report2.verified
+    assert report2.encrypted
+
+    assert len(report2.visible_readings) == 10
+
+    for i, reading in enumerate(report2.visible_readings):
+        assert reading.value == i
+        assert reading.reading_id == (i + 1)

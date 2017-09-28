@@ -118,11 +118,11 @@ class ReportTestDevice(VirtualIOTileDevice):
             reports = [IndividualReadingReport.FromReadings(self.iotile_id, [reading]) for reading in readings]
         elif self.format == 'signed_list':
             if self.report_length == 0:
-                return [SignedListReport.FromReadings(self.iotile_id, [], signature_method=self.signing_method)]
+                return [SignedListReport.FromReadings(self.iotile_id, [], root_key=self.signing_method)]
 
             for i in xrange(0, len(readings), self.report_length):
                 chunk = readings[i:i+self.report_length]
-                report = SignedListReport.FromReadings(self.iotile_id, chunk, signature_method=self.signing_method)
+                report = SignedListReport.FromReadings(self.iotile_id, chunk, root_key=self.signing_method)
                 reports.append(report)
 
         return reports

@@ -83,7 +83,7 @@ class IOTileReport(object):
     Args:
         rawreport (bytearray): The raw data of this report
         signed (bool): Whether this report is signed to specify who it is from
-        encrypted (bool): Whether this report is encrypted\
+        encrypted (bool): Whether this report is encrypted
         received_time (datetime): The time in UTC when this report was received from a device.
             If not received, the time is assumed to be utcnow().
     """
@@ -100,13 +100,11 @@ class IOTileReport(object):
         self.raw_report = rawreport
         self.signed = signed
         self.encrypted = encrypted
-        self.decoded = False
         self.verified = False
 
-        # If we're able to, decode the report immediately
-        if not encrypted:
-            self.visible_readings = self.decode()
-            self.decoded = True
+        # We may not have any visible readings if our report is encrypted
+        # and we do not have access to the decryption key.
+        self.visible_readings = self.decode()
 
     @classmethod
     def HeaderLength(cls):
@@ -132,8 +130,7 @@ class IOTileReport(object):
         raise NotFoundError("IOTileReport decode needs to be overriden")
 
     def encode(self):
-        """Encode this report into a binary blob that could be decoded by a report format's decode method
-        """
+        """Encode this report into a binary blob that could be decoded by a report format's decode method."""
 
         return self.raw_report
 
@@ -162,4 +159,4 @@ class IOTileReport(object):
         return info
 
     def __str__(self):
-        return "IOTile Report of length %d with %d visible readings" % (len(self.raw_report), len(self.visible_readings))
+        return "IOTile Report of length %d with %d visible readings (verified: %s, encrypted: %s)" % (len(self.raw_report), len(self.visible_readings), self.verified, self.encrypted)
