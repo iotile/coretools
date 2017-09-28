@@ -19,7 +19,6 @@ def test_parsing_str():
 
     report = IndividualReadingReport(str(report_data), received_time=received_time)
 
-    assert report.decoded is True
     assert len(report.visible_readings) == 1
     assert report.signed is False
     assert report.encrypted is False
@@ -44,7 +43,6 @@ def test_parsing_bytearray():
 
     report = IndividualReadingReport(bytearray(report_data), received_time=received_time)
 
-    assert report.decoded is True
     assert len(report.visible_readings) == 1
     assert report.signed is False
     assert report.encrypted is False
@@ -75,7 +73,6 @@ def test_fromreadings():
     """
     report = IndividualReadingReport.FromReadings(10, [IOTileReading(3, 1, 2)])
 
-    assert report.decoded is True
     assert len(report.visible_readings) == 1
     assert report.signed is False
     assert report.encrypted is False
