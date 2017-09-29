@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 0.2.2
+
+- Add support for user only and combined streamer selectors based on new
+  firmware support
+
 ## 0.2.1
 
 - Add test coverage for negative config variables and arrays

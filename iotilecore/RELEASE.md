@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.16.0
+
+- Add support for encrypting reports when a signing key is available.
+
 ## 3.15.3
 
 - Add support for sorting scan results and limiting the number of results returned
@@ -29,7 +33,8 @@ All major changes in each released version of IOTileCore are listed here.
 
 ## 3.14.4
 
-- Now using optional kwarg 'arg_format' in TileBusProxyObject's rpc method to allow calling code to not have to manually pack arguments
+- Now using optional kwarg 'arg_format' in TileBusProxyObject's rpc method to
+  allow calling code to not have to manually pack arguments
 
 ## 3.14.3
 

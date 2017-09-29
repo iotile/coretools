@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 0.9.0
+
+- Modify test device to support encryption of data reports when a signing key
+  is available.
+
 ## 0.8.2
 
 - Attempt to connect to devices several times in device test fixture to workaround
