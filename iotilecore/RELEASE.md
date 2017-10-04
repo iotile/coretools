@@ -2,6 +2,12 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.16.1
+
+- Allow StoppableWorkerThread to have no timeout.  This allows for using 
+  generator functions that themselves wait for some external event and hence
+  the extra sleep calls are superfluous.
+
 ## 3.16.0
 
 - Add support for encrypting reports when a signing key is available.
