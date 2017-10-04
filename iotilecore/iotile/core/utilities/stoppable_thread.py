@@ -9,7 +9,7 @@ from iotile.core.exceptions import TimeoutExpiredError
 
 
 class StoppableWorkerThread(threading.Thread):
-    """A worker thread that calls a worker function periodically
+    """A worker thread that calls a worker function periodically.
 
     This class takes a single callable function and calls that
     function with *args and **kwargs in a loop with a configurable
@@ -34,7 +34,14 @@ class StoppableWorkerThread(threading.Thread):
         # In order to keep the thread responsive, we default to checking for our
         # stop signal every 10 milliseconds.  If the execution timeout is less than
         # 10 ms, we use that, otherwise we round it to a multiple of 10 ms
-        if timeout <= 0.01:
+        #
+        # Allow the user to specify no wait time if the function we are calling has
+        # a built-in delay, like it's reading from a file or some other source of
+        # events.
+        if timeout is None:
+            self._wait = 0.0
+            self._wait_count = 0
+        elif timeout <= 0.01:
             self._wait = timeout
             self._wait_count = 1
         else:
@@ -62,7 +69,7 @@ class StoppableWorkerThread(threading.Thread):
         return self._generator
 
     def run(self):
-        """The target routine called to start thread activity
+        """The target routine called to start thread activity.
 
         If the thread is created with a generator function, this iterates
         the generator and checks for a stop condition between each iteration.
@@ -83,7 +90,7 @@ class StoppableWorkerThread(threading.Thread):
 
                     next(gen)
 
-                    for i in xrange(0, self._wait_count):
+                    for _i in xrange(0, self._wait_count):
                         if self._stop_condition.is_set():
                             return
                         time.sleep(self._wait)
@@ -104,7 +111,7 @@ class StoppableWorkerThread(threading.Thread):
                     self._routine(*self._args, **self._kwargs)
 
                     # Wait for the desired interval, checking if we should exit
-                    for i in xrange(0, self._wait_count):
+                    for _i in xrange(0, self._wait_count):
                         if self._stop_condition.is_set():
                             return
 
