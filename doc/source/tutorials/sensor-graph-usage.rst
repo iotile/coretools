@@ -54,7 +54,7 @@ Semihosting a sensor graph is really easy.  You just need to know two things:
 
 - the port string for the DeviceAdapter that you want to use to connect to your
   IOTile device.  This is the same string that you use with the `iotile` tool
-  (i.e. the port string in `iotile hw --port=<port string>`).
+  (i.e. the port string in `iotile hw -\-port=<port string>`).
 - the device id of the device that you want to connect to (like 0xABCD)
 
 Simply pass the port as a `-p` argument to `iotile-sgrun` and the device id in 
@@ -65,7 +65,7 @@ on the device.
 For example, save the following sensor graph a `test.sgf`::
 
 	every 10 seconds
-	{
+	{	
 		call 0x8000 on controller => unbuffered 2;
 		call 0x8002 on controller => unbuffered 2;
 	}
@@ -106,6 +106,9 @@ sensor graph rule on unbuffered 2 == 5::
 
 Note the random timestamps since those were the random times that RPC 0x8000
 on the controller returned 5.  Your results should vary.
+
+You can also watch multiple streams with multiple -w options. Try::
+	(iotile) > iotile-sgrun test.sgf -p virtual:sg_test -d 1 -s 'run_time 1 hour' -w 'output 1' -w 'unbuffered 2'
 
 .. important::
 	

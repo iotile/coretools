@@ -45,8 +45,8 @@ same stream that walk that stream at a different rate.  For example, say you
 have a stream named 'output 1' that has two nodes connected to it.  The first
 node processes readings one at a time every time they come in so its stream
 walker will always stay up to date with the latest reading.  The second node,
- though, could be configured to average its input every 60 readings, so its
- stream walker would accumulate 60 readings before the node fires.
+though, could be configured to average its input every 60 readings, so its
+stream walker would accumulate 60 readings before the node fires.
 
 The key point is that whenever a reading is pushed into a stream, it is as if
 a copy of the value is pushed to each stream walker
@@ -71,7 +71,7 @@ SensorGraph Node
 
 Node Trigger
 	A specific triggering condition that determines when a Node activates
-	is processing function.  Triggers can be based either on the latest value
+	its processing function.  Triggers can be based either on the latest value
 	present in an input or on the number of readings accumulated in the
 	input Stream Walker.
 
@@ -107,7 +107,7 @@ is produced (save the above example as `example.sgf`)::
 	(unbuffered 2 when value == 5) => unbuffered 1024 using copy_latest_a
 	(unbuffered 1024 when count == 1 && constant 1025 always) => unbuffered 1025 using call_rpc
 
-First node that we called the `iotile-sgcompile` program, passed it our
+First we called the `iotile-sgcompile` program, passed it our
 sensor graph file and asked for the output  in the 'node' format, which is the
 generated graph.
 

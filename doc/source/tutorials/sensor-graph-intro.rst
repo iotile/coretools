@@ -169,8 +169,8 @@ Let's start with a complete simple sensor graph that just calls an RPC every
         call 0x8000 on slot 1 => output 1;
     }
 
-Basically we're asking the device t call the RPC with id `0x8000` on the tile
-located in slot once every 10 minutes and to store the output in a stream named
+Basically we're asking the device to call the RPC with id `0x8000` on the tile
+located in `slot 1` once every 10 minutes and to store the output in a stream named
 `output 1`.  Save this file as **simple.sgf** and then you can simulate it
 in the sensor graph simulator named `iotile-sgrun` that is installed by the
 `iotile-sensorgraph` package::
@@ -184,8 +184,8 @@ in the sensor graph simulator named `iotile-sgrun` that is installed by the
     (    3600 s) output 1: 0
 
 In addition to the sensor graph file that we wanted to simulate, we also passed
-a stop condition (-s 'run_time 1 hour') that stops the simulation after 1 hour
-of simulated time has passed.  We also told the simulator to watch (-w) the
+a **stop condition** (-s 'run_time 1 hour') that stops the simulation after 1 hour
+of simulated time has passed.  We also told the simulator to **watch** (-w) the
 stream named 'output 1' and report whenever data was written to it.
 
 The output showed us that a 0 was output ever 10 minutes (600 seconds) for a
@@ -205,7 +205,7 @@ its result in output 1.  Evidently the RPC returned a 0.
 
 You can override this behavior by specifying an explicit return value using
 the `-m` option to the simulation.  Let's say we want to simulate an RPC that
-returns 15 rather than 0::
+returns 15 rather than 0. We simulate by passing a `-m` option that defines the slot and RPC number to return 15::
 
     (iotile) > iotile-sgrun simple.sgf -s 'run_time 1 hour' -w 'output 1' -m 'slot 1:0x8000 = 15'
     (     600 s) output 1: 15
@@ -230,7 +230,7 @@ The syntax for mocking an RPC straightforward::
 
     -m "<slot id>:<rpc number> = <value>"
 
-    - <slot id> should be either the literal value controller or 'slot X'
+    - <slot id> should be either the literal value `controller` or 'slot X'
     where X is a number >= 1.
 
     - <rpc number> should be the same 16 bit number in either decimal or hex
@@ -249,7 +249,7 @@ Adding Control to a SensorGraph
 ###############################
 
 The first sensor graph above just got data via an RPC and then saved it as
-a buffered output.  We used an `every <time>` block to specify how often
+a buffered output.  We used an `every <unit time>` block to specify how often
 we wanted the RPC called.  Now we're going to introduce the `on` block that
 lets us inspect and act on the values we get.
 
@@ -299,7 +299,7 @@ When a user is standing next to an IOTile device, they probably don't want to
 wait 10 minutes to see the next data point, so there needs to be a way to
 trigger faster data outputs when a user is connected to the device.
 
-This functionality is builtin to sensor graph and can be enabled using a `when`
+This functionality is built in to sensor graph and can be enabled using a `when`
 block as in the example below::
 
     every 10 minutes
@@ -327,16 +327,12 @@ block as in the example below::
     }
 
 The `when connected to controller` block specifies actions that should
-only be taken when a user is connected. The `on connect` and `on disconnect`
-blocks are not required if they are unused but are included here for reference.
+only be taken when a user is connected. 
 
 This sensor graph says that when a user is connected two RPCs should be made
 every second and the results stored in unbuffered streams 10 and 11.
 
-The `on connect` and `on disconnect` blocks allow you to do any required setup
-or cleanup on the device that might be necessary to prepare it for high
-resolution outputs and then put it back into low power autonomous mode when the
-user disconnects.
+The `on connect` and `on disconnect` blocks are not required if they are unused but are included here for reference. The `on connect` and `on disconnect` blocks allow you to do any required setup or cleanup on the device that might be necessary to prepare it for high resolution outputs and then put it back into low power autonomous mode when the user disconnects.
 
 Now let's simulate this for 10 seconds::
 
@@ -346,7 +342,7 @@ Now let's simulate this for 10 seconds::
 We didn't see any output because no user was connected and we didn't wait 10
 minutes for a reading.
 
-So let's wait 10 minutes to make sure the readings are happening::
+So let's set the run time to 10 minutes to make sure the readings are happening::
 
     (iotile) > iotile-sgrun simple.sgf -s 'run_time 10 minutes' -w "unbuffered 10" -w "unbuffered 1"
     (     600 s) unbuffered 1: 0
@@ -366,7 +362,7 @@ Now let's simulate a connected user with the `-c` flag::
     (       9 s) unbuffered 10: 0
     (      10 s) unbuffered 10: 0
 
-Notice how we now got realtime outputs now in the stream `unbuffered 10` every
+Notice how we now got realtime outputs now in the stream `[unbuffered 10]` every
 second.
 
 Selecting Data to Stream
@@ -409,7 +405,7 @@ The manual keyword will be covered in the next tutorial but it gives the user
 more flexibility in when the streamer tries to send data.  By default streamers
 are "automatic", which means they try to send data whenever it is available.
 
-You choose whether it data is realtime or historical by specifying the
+You choose whether its data is realtime or historical by specifying the
 keywords `realtime` or `signed` and finally you choose what data to send by
 specify a **Stream Selector**.  This can be just the name of a stream or it can
 be a wildcard like **all outputs**.
