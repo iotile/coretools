@@ -2,10 +2,9 @@
 """
 
 from io import BytesIO
-import requests
 import getpass
-import time
 import datetime
+import requests
 from dateutil.tz import tzutc
 import dateutil.parser
 
@@ -52,8 +51,6 @@ class IOTileCloud(object):
         try:
             token = reg.get_config('arch:cloud_token')
             token_type = reg.get_config('arch:cloud_token_type', default='jwt')
-            print(token)
-            print(token_type)
             self.api.set_token(token, token_type=token_type)
         except ArgumentError:
             # If we are interactive, try to get the user to login for a single
@@ -72,6 +69,10 @@ class IOTileCloud(object):
 
         self.token = self.api.token
         self.token_type = self.api.token_type
+
+    @property
+    def refresh_required(self):
+        return self.token_type == 'jwt'
 
     def _build_streamer_slug(self, device_id, streamer_id):
         idhex = "{:04x}".format(device_id)
@@ -288,6 +289,9 @@ class IOTileCloud(object):
     @annotated
     def refresh_token(self):
         """Attempt to refresh out cloud token with iotile.cloud."""
+
+        if self.token_type != 'jwt':
+            raise DataError("Attempting to refresh a token that does not need to be refreshed", token_type=self.token_type)
 
         conf = ConfigManager()
         domain = conf.get('cloud:server')
