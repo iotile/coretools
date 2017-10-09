@@ -2,6 +2,10 @@
 
 All major changes in each released version of the iotile-ext-cloud plugin are listed here.
 
+## 0.3.5
+
+- Add support for permanent device tokens
+
 ## 0.3.4
 
 - Bugfix for empty whitelist scenario

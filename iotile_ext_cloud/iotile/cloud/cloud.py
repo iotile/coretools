@@ -2,10 +2,9 @@
 """
 
 from io import BytesIO
-import requests
 import getpass
-import time
 import datetime
+import requests
 from dateutil.tz import tzutc
 import dateutil.parser
 
@@ -13,9 +12,10 @@ from iotile_cloud.api.connection import Api
 from iotile_cloud.api.exceptions import RestHttpBaseException, HttpNotFoundError
 from iotile.core.dev.registry import ComponentRegistry
 from iotile.core.dev.config import ConfigManager
-from iotile.core.exceptions import ArgumentError, ExternalError
+from iotile.core.exceptions import ArgumentError, ExternalError, DataError
 from iotile.core.utilities.typedargs import context, param, return_type, annotated, type_system
-from utilities import device_id_to_slug
+from .utilities import device_id_to_slug
+
 
 @context("IOTileCloud")
 class IOTileCloud(object):
@@ -37,6 +37,8 @@ class IOTileCloud(object):
             if they don't have stored credentials
     """
 
+    DEVICE_TOKEN_TYPE = 'a-jwt'
+
     def __init__(self, domain=None, username=None):
         reg = ComponentRegistry()
         conf = ConfigManager()
@@ -48,7 +50,8 @@ class IOTileCloud(object):
 
         try:
             token = reg.get_config('arch:cloud_token')
-            self.api.set_token(token)
+            token_type = reg.get_config('arch:cloud_token_type', default='jwt')
+            self.api.set_token(token, token_type=token_type)
         except ArgumentError:
             # If we are interactive, try to get the user to login for a single
             # session rather than making them call link_cloud to store a cloud token
@@ -65,11 +68,11 @@ class IOTileCloud(object):
                 raise ExternalError("No stored iotile cloud authentication information", suggestion='Call iotile config link_cloud with your iotile cloud username and password')
 
         self.token = self.api.token
+        self.token_type = self.api.token_type
 
-    def _build_device_slug(self, device_id):
-        idhex = "{:04x}".format(device_id)
-
-        return "d--0000-0000-0000-{}".format(idhex)
+    @property
+    def refresh_required(self):
+        return self.token_type == 'jwt'
 
     def _build_streamer_slug(self, device_id, streamer_id):
         idhex = "{:04x}".format(device_id)
@@ -83,7 +86,7 @@ class IOTileCloud(object):
         """Query information about a device by its device id
         """
 
-        slug = self._build_device_slug(device_id)
+        slug = device_id_to_slug(device_id)
 
         try:
             dev = self.api.device(slug).get()
@@ -95,12 +98,15 @@ class IOTileCloud(object):
     @param("fleet_id", "integer", desc="Id of the fleet we want to retrieve")
     @return_type("basic_dict")
     def get_fleet(self, fleet_id):
-        """ Returns the devices in the given fleet"""
+        """ Returns the devices in the given fleet."""
+
         api = self.api
-        if (fleet_id > pow(16,12) or fleet_id < 0):
+        if fleet_id > pow(16, 12) or fleet_id < 0:
             raise ArgumentError("Fleet id outside of bounds")
+
         slug = "g--" + device_id_to_slug(fleet_id)[8:]
-        try :
+
+        try:
             results = api.fleet(slug).devices.get()
             entries = results.get('results', [])
             return {entry.pop('device'): entry for entry in entries}
@@ -126,12 +132,12 @@ class IOTileCloud(object):
         networks_to_manage = [x for x in networks if x.get(slug, {}).get('is_access_point', False) is True]
 
         out = {}
-        for network in networks_to_manage :
+        for network in networks_to_manage:
             out.update(network)
 
         # Remove ourselves from the whitelist that we are supposed to manage
         if slug in out:
-           del out[slug]
+            del out[slug]
 
         if not out:
             raise ExternalError("No device to manage in these fleets !")
@@ -140,8 +146,9 @@ class IOTileCloud(object):
 
     @param("max_slop", "integer", desc="Optional max time difference value")
     @return_type("bool")
-    def check_time(self, max_slop = 300):
+    def check_time(self, max_slop=300):
         """ Check if current system time is consistent with iotile.cloud time"""
+
         cloud_time = requests.get('https://iotile.cloud/api/v1/server/').json().get('now', None)
         if cloud_time is None:
             raise DataError("No date header returned from iotile.cloud")
@@ -155,10 +162,9 @@ class IOTileCloud(object):
     @param("device_id", "integer", desc="ID of the device that we want information about")
     @param("new_sg", "string", desc="The new sensor graph id that we want to load")
     def set_sensorgraph(self, device_id, new_sg):
-        """The the cloud's sensor graph id that informs what kind of device this is
-        """
+        """The the cloud's sensor graph id that informs what kind of device this is."""
 
-        slug = self._build_device_slug(device_id)
+        slug = device_id_to_slug(device_id)
 
         patch = {'sg': new_sg}
 
@@ -183,13 +189,46 @@ class IOTileCloud(object):
         ids = [device['id'] for device in devices['results']]
         return ids
 
+    @param("device_id", "integer", desc="ID of the device that we want to get a permanent token for")
+    def impersonate_device(self, device_id):
+        """Convert our token to a permanent device token.
+
+        This function is most useful for creating virtual IOTile devices whose access to iotile.cloud
+        is based on their device id, not any particular user's account.
+
+        There are a few differences between device tokens and user tokens:
+         - Device tokens never expire and don't need to be refreshed
+         - Device tokens are more restricted in what they can access in IOTile.cloud than user tokens
+
+        Args:
+            device_id (int): The id of the device that we want to get a token for.
+        """
+
+        slug = device_id_to_slug(device_id)
+        token_type = IOTileCloud.DEVICE_TOKEN_TYPE
+
+        try:
+            resp = self.api.device(slug).key.get(type=IOTileCloud.DEVICE_TOKEN_TYPE)
+            token = resp['key']
+        except RestHttpBaseException, exc:
+            raise ExternalError("Error calling method on iotile.cloud", exception=exc, response=exc.response.status_code)
+
+        self.api.set_token(token, token_type=token_type)
+        self.token = token
+        self.token_type = token_type
+
+        reg = ComponentRegistry()
+        reg.set_config('arch:cloud_token', self.token)
+        reg.set_config('arch:cloud_token_type', self.token_type)
+        reg.set_config('arch:cloud_device', slug)
+
     @param("device_id", "integer", desc="ID of the device that we want information about")
     @param("clean", "bool", desc="Also clean old stream data for this device")
     def unclaim(self, device_id, clean=True):
         """Unclaim a device that may have previously been claimed
         """
 
-        slug = self._build_device_slug(device_id)
+        slug = device_id_to_slug(device_id)
 
         payload = {'clean_streams': clean}
 
@@ -215,7 +254,7 @@ class IOTileCloud(object):
         resource = self.api.streamer.report
 
         headers = {}
-        authorization_str = '{0} {1}'.format(resource._store['token_type'], resource._store["token"])
+        authorization_str = '{0} {1}'.format(self.token_type, self.token)
         headers['Authorization'] = authorization_str
 
         resp = requests.post(resource.url(), files=payload, headers=headers, params={'timestamp': timestamp})
@@ -224,7 +263,7 @@ class IOTileCloud(object):
         return count
 
     def highest_acknowledged(self, device_id, streamer):
-        """Get the highest acknowledged reading for a given streamer
+        """Get the highest acknowledged reading for a given streamer.
 
         Args:
             device_id (int): The device whose streamer we are querying
@@ -249,8 +288,11 @@ class IOTileCloud(object):
 
     @annotated
     def refresh_token(self):
-        """Attempt to refresh out cloud token with iotile.cloud
-        """
+        """Attempt to refresh out cloud token with iotile.cloud."""
+
+        if self.token_type != 'jwt':
+            raise DataError("Attempting to refresh a token that does not need to be refreshed", token_type=self.token_type)
+
         conf = ConfigManager()
         domain = conf.get('cloud:server')
 
@@ -264,5 +306,6 @@ class IOTileCloud(object):
 
         # Save token that we just refreshed to the registry and update our own token
         self.token = data['token']
+
         reg = ComponentRegistry()
         reg.set_config('arch:cloud_token', self.token)
