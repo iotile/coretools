@@ -3,6 +3,7 @@
 import getpass
 
 from iotile.core.dev.registry import ComponentRegistry
+from iotile.cloud.cloud import IOTileCloud
 from iotile.core.utilities.typedargs import param
 from iotile.core.exceptions import ArgumentError
 from iotile_cloud.api.connection import Api
@@ -10,7 +11,7 @@ from iotile_cloud.api.connection import Api
 
 @param("username", "string", desc="IOTile cloud username")
 @param("password", "string", desc="IOTile cloud password")
-def link_cloud(self, username=None, password=None):
+def link_cloud(self, username=None, password=None, device_id=None):
     """Create and store a token for interacting with the IOTile Cloud API.
 
     You will need to call link_cloud once for each virtualenv that
@@ -21,13 +22,19 @@ def link_cloud(self, username=None, password=None):
     If you do not pass your username or password it will be prompted from
     you securely on stdin.
 
-    Periodically the token may expire and you will have to relogin.
+    If you are logging in for a user, the token will expire periodically and you
+    will have to relogin.
+
+    If you pass a device_id, you can obtain a limited token for that device
+    that will never expire, assuming you have access to that device.
 
     Args:
         username (string): Your iotile.cloud username.  This is prompted
             from stdin if not provided.
         password (string): Your iotile.cloud password.  This is prompted
             from stdin if not provided.
+        device_id (int): Optional device id to obtain permanent credentials
+            for a device.
     """
 
     reg = ComponentRegistry()
@@ -47,6 +54,11 @@ def link_cloud(self, username=None, password=None):
 
     reg.set_config('arch:cloud_user', cloud.username)
     reg.set_config('arch:cloud_token', cloud.token)
+    reg.set_config('arch:cloud_token_type', cloud.token_type)
+
+    if device_id is not None:
+        cloud = IOTileCloud()
+        cloud.impersonate_device(device_id)
 
 
 def get_variables():
