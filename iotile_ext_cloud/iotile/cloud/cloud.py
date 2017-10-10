@@ -225,8 +225,7 @@ class IOTileCloud(object):
     @param("device_id", "integer", desc="ID of the device that we want information about")
     @param("clean", "bool", desc="Also clean old stream data for this device")
     def unclaim(self, device_id, clean=True):
-        """Unclaim a device that may have previously been claimed
-        """
+        """Unclaim a device that may have previously been claimed."""
 
         slug = device_id_to_slug(device_id)
 

@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.16.2
+
+- Add support for additional virtual_interface audit message then there is an
+  error responding to an RPC that could not be corrected with a retry.
+
 ## 3.16.1
 
 - Allow StoppableWorkerThread to have no timeout.  This allows for using 

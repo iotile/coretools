@@ -2,6 +2,11 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
+## 1.5.1
+
+- Fix bug in virtual_interface that could crash if a client disconnected when an RPC was
+  in flight. (#283)
+
 ## 1.5.0
 
 - Add support for a config variable bled112:active-scan that performs active scans and returns

@@ -343,10 +343,46 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         resp_header = struct.pack("<BBBB", status, 0, 0, len(response))
 
         if len(response) > 0:
-            self._defer(self._send_notification, [self.ReceiveHeaderHandle, resp_header])
-            self._defer(self._send_notification, [self.ReceivePayloadHandle, response])
+            self._defer(self._send_rpc_response, [(self.ReceiveHeaderHandle, resp_header), (self.ReceivePayloadHandle, response)])
         else:
-            self._defer(self._send_notification, [self.ReceiveHeaderHandle, resp_header])
+            self._defer(self._send_rpc_response, [(self.ReceiveHeaderHandle, resp_header)])
+
+    def _send_rpc_response(self, *packets):
+        """Send an RPC response.
+
+        The RPC response is notified in one or two packets depending on whether or not
+        response data is included.  If there is a temporary error sending one of the packets
+        it is retried automatically.  If there is a permanent error, it is logged and the response
+        is abandoned.  This is important because otherwise we can have issues where an RPC
+        response that is sent to a client that disconnected immediately after requesting the RPC
+        can cause the virtual_interface to crash.
+        """
+
+        if len(packets) == 0:
+            return
+
+        handle, payload = packets[0]
+
+        try:
+            self._command_task.sync_command(['_send_notification', handle, payload])
+        except HardwareError, exc:
+            code = exc.params['return_value'].get('code', 0)
+
+            # If we're told we ran out of memory, wait and try again
+            if code == 0x182:
+                time.sleep(.02)
+                self._defer(self._send_rpc_response, packets)
+            elif code == 0x181:  # Invalid state, the other side likely disconnected midstream
+                self._audit('ErrorSendingRPCResponse')
+            else:
+                print("*** EXCEPTION OCCURRED RESPONDING TO RPC ***")
+                traceback.print_exc()
+                print("*** END EXCEPTION ***")
+
+            return
+
+        if len(packets) > 1:
+            self._defer(self._send_rpc_response, packets[1:])
 
     def _send_notification(self, handle, payload):
         """Send a notification over BLE
