@@ -30,7 +30,7 @@ class SemanticVersion(object):
         """Create a new SemanticVersion with the first nonzero value incremented
 
         If this version is 0.0.1, then this will return 0.0.2.  If this version
-        if 0.1.0 then this version will return 0.2.0.  
+        if 0.1.0 then this version will return 0.2.0.
 
         All prerelease information is stripped so 1.0.0-alpha2 becomes 2.0.0.
         """
@@ -56,7 +56,7 @@ class SemanticVersion(object):
         Coexistence classes are defined as a tuple containing the release version
         with everything except the first nonzero entry being zero.  Basically,
         coexistence classes divide version into those that should be compatible
-        based on semantic versioning rules 
+        based on semantic versioning rules
         """
 
         out = self.release_tuple
@@ -90,7 +90,7 @@ class SemanticVersion(object):
     @classmethod
     def ParsePrerelease(cls, prerelease):
         """Parse a prerelease string into a type, number tuple
-        
+
         Args:
             prerelease (string): a prerelease string in the format specified for SemanticVersion
 
@@ -185,7 +185,7 @@ class SemanticVersionRange(object):
         disjuncts (list): A list of lists of 4 tuples that specify the ranges to be matched
             Each tuple should (lower, upper, inclusive_lower, inclusive_upper) where
             lower and upper and SemanticVersions (possibly None) and inclusive_* are
-            bools that determine whether the range condition is <= upper or < upper 
+            bools that determine whether the range condition is <= upper or < upper
             (>= lower, > lower).  Each sublist is joined conjunctively within itself
             and the lists themselves are joined disjunctively.
     """
@@ -196,7 +196,7 @@ class SemanticVersionRange(object):
     def _check_ver_range(self, version, ver_range):
         """Check if version is included in ver_range
         """
-        
+
         lower, upper, lower_inc, upper_inc = ver_range
 
         #If the range extends over everything, we automatically match
@@ -240,7 +240,7 @@ class SemanticVersionRange(object):
 
     def check(self, version):
         """Check that a version is inside this SemanticVersionRange
-        
+
         Args:
             version (SemanticVersion): The version to check
 
@@ -275,6 +275,8 @@ class SemanticVersionRange(object):
         ^X.Y.Z - matches all versions with the same leading nonzero digit
             greater than or equal the given range.
         * - matches everything
+        =X.Y.Z - matches only the exact version given
+
         Args:
             range_string (string): A string specifying the version range
 
@@ -310,6 +312,16 @@ class SemanticVersionRange(object):
             upper = ver.inc_first_nonzero()
 
             conj = (lower, upper, True, False)
+            disjuncts = [[conj]]
+        elif range_string[0] == '=':
+            ver = range_string[1:]
+
+            try:
+                ver = SemanticVersion.FromString(ver)
+            except DataError, err:
+                raise ArgumentError("Could not parse =X.Y.Z version", parse_error=str(err), range_string=range_string)
+
+            conj = (ver, ver, True, True)
             disjuncts = [[conj]]
 
         if disjuncts is None:
