@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.16.3
+
+- Add support for =X.Y.Z version range specifier in addition to the already
+  supported ^X.Y.Z specifier.
+
 ## 3.16.2
 
 - Add support for additional virtual_interface audit message then there is an
