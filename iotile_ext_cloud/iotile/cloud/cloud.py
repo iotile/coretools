@@ -46,9 +46,9 @@ class IOTileCloud(object):
         if domain is None:
             domain = conf.get('cloud:server')
 
-        trusted = conf.get('cloud:trusted')
+        verify = conf.get('cloud:verify')
 
-        self.api = Api(domain=domain, trusted=trusted)
+        self.api = Api(domain=domain, verify=verify)
 
         try:
             token = reg.get_config('arch:cloud_token')
