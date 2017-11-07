@@ -68,5 +68,6 @@ def get_variables():
 
     conf_vars = []
     conf_vars.append(["server", "string", "The domain name to talk to for iotile.cloud operations (including https:// prefix)", 'https://iotile.cloud'])
+    conf_vars.append(["trusted", "bool", "whether the server certificates are trusted", "true"])
 
     return prefix, conf_vars
