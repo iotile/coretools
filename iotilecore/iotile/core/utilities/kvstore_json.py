@@ -72,7 +72,10 @@ class JSONKVStore(object):
             with open(newpath, "wb") as outfile:
                 json.dump(data, outfile)
 
-            os.rename(newpath, self.file)
+            os.rename(
+                os.path.realpath(newpath),
+                os.path.realpath(self.file)
+            )
 
     def get(self, key):
         """Get a value by its key
