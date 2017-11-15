@@ -41,7 +41,7 @@ class VirtualTile(BaseRunnable, RPCDispatcher):
 
         return decoded
 
-    def start(self):
+    def start(self, channel=None):
         """Start any background workers on this tile."""
         self.start_workers()
 
