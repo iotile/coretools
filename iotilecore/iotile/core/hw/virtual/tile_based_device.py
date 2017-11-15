@@ -48,7 +48,7 @@ class TileBasedVirtualDevice(VirtualIOTileDevice):
         super(TileBasedVirtualDevice, self).start(channel)
 
         for tile in self._tiles.itervalues():
-            tile.start()
+            tile.start(channel)
 
     def stop(self):
         """Stop running this virtual device including any worker threads."""
