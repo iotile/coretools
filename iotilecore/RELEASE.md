@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.16.4
+
+- Follow symlinks if needed during the rename operation in JSONKVStore save method
+
 ## 3.16.3
 
 - Add support for =X.Y.Z version range specifier in addition to the already
