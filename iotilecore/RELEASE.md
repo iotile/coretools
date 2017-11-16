@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.16.5
+
+- The tiles of a Tile Based virtual device can now access the device channel
+
 ## 3.16.4
 
 - Follow symlinks if needed during the rename operation in JSONKVStore save method
