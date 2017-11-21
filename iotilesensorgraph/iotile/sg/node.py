@@ -205,6 +205,27 @@ class SGNode(object):
 
         self.inputs[index] = (walker, trigger)
 
+    def input_streams(self):
+        """Return a list of DataStream objects for all singular input streams.
+
+        This function only returns individual streams, not the streams that would
+        be selected from a selector like 'all outputs' for example.
+
+        Returns:
+            list(DataStream): A list of all of the individual DataStreams that are inputs
+                of the node.  Input selectors that select multiple streams are not included
+        """
+
+        streams = []
+
+        for walker, _trigger in self.inputs:
+            if walker.selector is None or not walker.selector.singular:
+                continue
+
+            streams.append(walker.selector.as_stream())
+
+        return streams
+
     def find_input(self, stream):
         """Find the input that responds to this stream.
 

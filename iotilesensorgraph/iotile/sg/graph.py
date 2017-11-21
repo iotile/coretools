@@ -4,6 +4,7 @@ from collections import deque
 from pkg_resources import iter_entry_points
 from .node_descriptor import parse_node_descriptor
 from .slot import SlotIdentifier
+from .stream import DataStream
 from .known_constants import config_user_tick_secs
 from .exceptions import NodeConnectionError, ProcessingFunctionError
 from iotile.core.exceptions import ArgumentError
@@ -114,6 +115,39 @@ class SensorGraph(object):
             raise ArgumentError("Attempted to set the same constant twice", stream=stream, old_value=self.constant_database[stream], new_value=value)
 
         self.constant_database[stream] = value
+
+    def initialize_remaining_constants(self, value=0):
+        """Ensure that all constant streams referenced in the sensor graph have a value.
+
+        Constant streams that are automatically created by the compiler are initialized
+        as part of the compilation process but it's possible that the user references
+        other constant streams but never assigns them an explicit initial value.  This
+        function will initialize them all to a default value (0 if not passed) and
+        return the streams that were so initialized.
+
+        Args:
+            value (int): Optional value to use to initialize all uninitialized constants.
+                Defaults to 0 if not passed.
+
+        Returns:
+            list(DataStream): A list of all of the constant streams that were not previously
+                initialized and were initialized to the given value in this function.
+        """
+
+        remaining = []
+
+        for node, _inputs, _outputs in self.iterate_bfs():
+            streams = node.input_streams() + [node.stream]
+
+            for stream in streams:
+                if stream.stream_type is not DataStream.ConstantType:
+                    continue
+
+                if stream not in self.constant_database:
+                    self.add_constant(stream, value)
+                    remaining.append(stream)
+
+        return remaining
 
     def load_constants(self):
         """Load all constants into their respective streams.

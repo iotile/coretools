@@ -103,6 +103,8 @@ class SensorGraphFileParser(object):
         for statement in self.statements:
             statement.execute(self.sensor_graph, self._scope_stack)
 
+        self.sensor_graph.initialize_remaining_constants()
+
     def parse_statement(self, statement, orig_contents):
         """Parse a statement, possibly called recursively.
 

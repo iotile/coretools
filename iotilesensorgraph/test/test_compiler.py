@@ -231,6 +231,40 @@ def test_on_block(parser):
     assert counter3.count() == 5
 
 
+def test_on_block_dual(parser):
+    """Make sure on with two conditions works."""
+
+    parser.parse_file(get_path(u'basic_on_dual.sgf'))
+
+    model = DeviceModel()
+    parser.compile(model=model)
+
+    sg = parser.sensor_graph
+    log = sg.sensor_log
+    for x in sg.dump_nodes():
+        print(x)
+
+    sg.load_constants()
+
+    counter1 = log.create_walker(DataStreamSelector.FromString('counter 1'))
+
+    sim = SensorGraphSimulator()
+    sim.step(sg, DataStream.FromString('input 1'), 5)
+
+    assert counter1.count() == 0
+
+    sim.step(sg, DataStream.FromString('input 2'), 1)
+    for _i in range(0, 10):
+        sim.step(sg, DataStream.FromString('input 1'), 5)
+
+    assert counter1.count() == 10
+
+    sim.step(sg, DataStream.FromString('input 2'), 0)
+    for _i in range(0, 10):
+        sim.step(sg, DataStream.FromString('input 1'), 5)
+
+    assert counter1.count() == 10
+
 def test_latch_block(parser):
     """Make sure that we can compile and run latch blocks."""
 
