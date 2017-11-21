@@ -113,11 +113,13 @@ def _create_block_bnf():
     if block_bnf is not None:
         return
 
+    trigger_clause = Group(stream_trigger | Group(stream).setResultsName('stream_always') | Group(ident).setResultsName('identifier'))
+
     every_block_id = Group(Literal(u'every').suppress() - time_interval).setResultsName('every_block')
     when_block_id = Group(Literal(u'when').suppress() + Literal("connected").suppress() - Literal("to").suppress() - slot_id).setResultsName('when_block')
     latch_block_id = Group(Literal(u'when').suppress() - stream_trigger).setResultsName('latch_block')
     config_block_id = Group(Literal(u'config').suppress() - slot_id).setResultsName('config_block')
-    on_block_id = Group(Literal(u'on').suppress() + (stream_trigger | Group(stream).setResultsName('stream_always') | Group(ident).setResultsName('identifier'))).setResultsName('on_block')
+    on_block_id = Group(Literal(u'on').suppress() - trigger_clause.setResultsName('triggerA') - Optional((Literal("and") | Literal("or")) - trigger_clause.setResultsName('triggerB'))).setResultsName('on_block')
 
     block_id = every_block_id | when_block_id | latch_block_id | config_block_id | on_block_id
 

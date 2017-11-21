@@ -211,12 +211,30 @@ class DataStreamSelector(object):
         return self.match_type == DataStream.ConstantType
 
     @property
+    def singular(self):
+        """Whether this selector matches only a single stream."""
+
+        return self.match_id is not None
+
+    @property
     def buffered(self):
         return self.match_type == DataStream.BufferedType or self.match_type == DataStream.OutputType
 
     @property
     def output(self):
         return self.match_type == DataStream.OutputType
+
+    def as_stream(self):
+        """Convert this selector to a DataStream.
+
+        This function will only work if this is a singular selector that
+        matches exactly one DataStream.
+        """
+
+        if not self.singular:
+            raise ArgumentError("Attempted to convert a non-singular selector to a data stream, it matches multiple", selector=self)
+
+        return DataStream(self.match_type, self.match_id, self.match_spec == DataStreamSelector.MatchSystemOnly)
 
     @classmethod
     def FromStream(cls, stream):

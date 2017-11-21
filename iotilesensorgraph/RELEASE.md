@@ -2,6 +2,12 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 0.3.1
+
+- Add support for specifying a second condition in an on block.  You can
+  specify up to two named events or stream conditions with a combiner of either
+  'and' or 'or'.
+
 ## 0.3.0
 
 - Add support for generic when blocks that support clock gating on any stream
