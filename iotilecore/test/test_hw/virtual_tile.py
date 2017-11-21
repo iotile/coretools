@@ -26,7 +26,7 @@ class TestTileProxy(TileBusProxyObject):
 
 
 class TestTile(VirtualTile):
-    def __init__(self, address, _args):
+    def __init__(self, address, _args, device=None):
         super(TestTile, self).__init__(address, 'test01')
         self._counter = 0
 

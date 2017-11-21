@@ -33,7 +33,7 @@ class TileBasedVirtualDevice(VirtualIOTileDevice):
             args = desc.get('args', {})
 
             tile_type = VirtualTile.FindByName(name)
-            tile = tile_type(address, args)
+            tile = tile_type(address, args, device=self)
 
             self.add_tile(address, tile)
 
