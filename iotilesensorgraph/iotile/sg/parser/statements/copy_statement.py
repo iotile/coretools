@@ -11,10 +11,12 @@ class CopyStatement(SensorGraphStatement):
     """Copy one stream into another
 
     The form of the statement should be
-    copy [all | count | average] [stream] => <output stream>
+    copy [all | count | average] [stream | number] => <output stream>
 
     If stream is passed, it is the stream that is copied when the current
     scope's trigger fires.  Otherwise the trigger value is copied.
+
+    You can also copy a fixed constant value by passing an explicit number.
 
     If all or count are specified all readings are copied or the count
     of the number of readings is copied instead of just the latest reading.
@@ -33,6 +35,10 @@ class CopyStatement(SensorGraphStatement):
         if 'explicit_input' in parsed:
             self.explicit_input = parsed['explicit_input'][0]
 
+        self.constant_input = None
+        if 'constant_input' in parsed:
+            self.constant_input = parsed['constant_input']
+
         self.output = parsed['output'][0]
 
         super(CopyStatement, self).__init__([])
@@ -50,6 +56,8 @@ class CopyStatement(SensorGraphStatement):
         input_stream = u""
         if self.explicit_input:
             input_stream = u' ' + str(self.explicit_input)
+        elif self.constant_input is not None:
+            input_stream = u' ' + str(self.constant_input)
 
         return u'{}{} => {};'.format(op, input_stream, self.output)
 
@@ -85,5 +93,10 @@ class CopyStatement(SensorGraphStatement):
 
         if self.explicit_input:
             sensor_graph.add_node(u"({} always && {} {}) => {} using {}".format(self.explicit_input, trigger_stream, trigger_cond, self.output, op))
+        elif self.constant_input is not None:
+            const_stream = alloc.allocate_stream(DataStream.ConstantType, attach=True)
+
+            sensor_graph.add_node(u"({} always && {} {}) => {} using {}".format(const_stream, trigger_stream, trigger_cond, self.output, op))
+            sensor_graph.add_constant(const_stream, self.constant_input)
         else:
             sensor_graph.add_node(u"({} {}) => {} using {}".format(trigger_stream, trigger_cond, self.output, op))

@@ -319,6 +319,36 @@ def test_copy_statement(parser):
     assert val2.value == 60
     assert val3.value == 1
 
+
+def test_copy_constant_statement(parser):
+    """Make sure we can copy constant values."""
+
+    parser.parse_file(get_path(u'basic_copy_constant.sgf'))
+
+    model = DeviceModel()
+    parser.compile(model=model)
+
+    sg = parser.sensor_graph
+    log = sg.sensor_log
+    for x in sg.dump_nodes():
+        print(x)
+
+    sg.load_constants()
+
+    output1 = log.create_walker(DataStreamSelector.FromString('output 1'))
+
+    sim = SensorGraphSimulator()
+    sim.stop_condition('run_time 10 seconds')
+    sim.run(sg)
+
+    assert output1.count() == 1
+    assert output1.pop().value == 15
+
+    sim.step(sg, DataStream.FromString('input 1'), 10)
+    assert output1.count() == 1
+    assert output1.pop().value == 0x10
+
+
 def test_copy_count_statement(parser):
     """Make sure we can copy data count using copy count."""
 
