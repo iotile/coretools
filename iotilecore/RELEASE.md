@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.16.6
+
+- The tiles of a Tile Based virtual device can now access the device itself
+
 ## 3.16.5
 
 - The tiles of a Tile Based virtual device can now access the device channel
@@ -22,7 +26,7 @@ All major changes in each released version of IOTileCore are listed here.
 
 ## 3.16.1
 
-- Allow StoppableWorkerThread to have no timeout.  This allows for using 
+- Allow StoppableWorkerThread to have no timeout.  This allows for using
   generator functions that themselves wait for some external event and hence
   the extra sleep calls are superfluous.
 
@@ -81,12 +85,12 @@ All major changes in each released version of IOTileCore are listed here.
 
 ## 3.13.4
 
-- Add better exception message when there are invalid arguments or response 
+- Add better exception message when there are invalid arguments or response
   to a virtual device.
 
 ## 3.13.3
 
-- Make StoppableThread stop faster when you configure a large interval for 
+- Make StoppableThread stop faster when you configure a large interval for
   the thread function to run at.
 
 ## 3.13.2
@@ -126,7 +130,7 @@ All major changes in each released version of IOTileCore are listed here.
 
 ## 3.12.1
 
-- Fix ConfigManager on tile proxy objects.  There was an infinite loop in 
+- Fix ConfigManager on tile proxy objects.  There was an infinite loop in
   list_variables and the other methods were poorly documented.
 
 ## 3.12.0
@@ -149,7 +153,7 @@ All major changes in each released version of IOTileCore are listed here.
 ## 3.10.2
 
 - Add support for forcing the registry to be a specific type; either json or sqlite
-  are currently supported.  You can place a registry_type.txt file containing the 
+  are currently supported.  You can place a registry_type.txt file containing the
   word json or sqlite in the folder next to the component_registry.* file and it will
   choose json or sqlite based on what you put in the file throwing an error if a random
   word is entered.
@@ -194,7 +198,7 @@ All major changes in each released version of IOTileCore are listed here.
 
 - Fix hash calculation to include footer in SignedListReport
 - Add new functionality for waiting in AdapterStream until scanned devices are seen when
-  connect is called for the first time. 
+  connect is called for the first time.
 
 ## 3.8.1
 
@@ -244,7 +248,7 @@ All major changes in each released version of IOTileCore are listed here.
 
 ## 3.5.2
 
-- Add the concept of coexistence classes to SemanticVersion objects so that you 
+- Add the concept of coexistence classes to SemanticVersion objects so that you
   can easily see which are compatible with each other in a semanic versioning sense
 
 ## 3.5.1
@@ -268,7 +272,7 @@ All major changes in each released version of IOTileCore are listed here.
 ## 3.3.0
 
 - Add support for storing release steps in module_settings.json and parsing release steps
-  in IOTile objects.  This will allow iotile-build and others to provide the ability to 
+  in IOTile objects.  This will allow iotile-build and others to provide the ability to
   release built IOTileComponents for public or private distribution automatically.
 
 ## 3.2.0
