@@ -23,9 +23,10 @@ class VirtualTile(BaseRunnable, RPCDispatcher):
         name (str): The 6 character name that should be returned when this
             tile is asked for its status to allow matching it with a proxy
             object.
+        device (TileBasedVirtualDevice) : optional, device on which this tile is running
     """
 
-    def __init__(self, address, name):
+    def __init__(self, address, name, device=None):
         super(VirtualTile, self).__init__()
 
         self.address = address
