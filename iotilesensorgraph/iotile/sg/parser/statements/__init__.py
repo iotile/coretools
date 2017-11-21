@@ -6,6 +6,7 @@ from .copy_statement import CopyStatement
 from .every_block import EveryBlock
 from .on_block import OnBlock
 from .when_block import WhenBlock
+from .latch_block import LatchBlock
 from .streamer_statement import StreamerStatement
 from .trigger_statement import TriggerStatement
 
@@ -21,7 +22,8 @@ statement_map = {
     'trigger_statement': TriggerStatement,
     'every_block': EveryBlock,
     'on_block': OnBlock,
-    'when_block': WhenBlock
+    'when_block': WhenBlock,
+    'latch_block': LatchBlock
 }
 
 __all__ = ['statement_map']

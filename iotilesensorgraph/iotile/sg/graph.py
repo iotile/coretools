@@ -65,7 +65,7 @@ class SensorGraph(object):
                     raise NodeConnectionError("Node has input that refers to another node that has not been created yet", node_descriptor=node_descriptor, input_selector=str(selector), input_index=i)
 
         # Find and load the processing function for this node
-        func = self._find_processing_function(processor)
+        func = self.find_processing_function(processor)
         if func is None:
             raise ProcessingFunctionError("Could not find processing function in installed packages", func_name=processor)
 
@@ -251,7 +251,7 @@ class SensorGraph(object):
             seen.append(curr)
 
     @classmethod
-    def _find_processing_function(cls, name):
+    def find_processing_function(cls, name):
         """Find a processing function by name.
 
         This function searches through installed processing functions

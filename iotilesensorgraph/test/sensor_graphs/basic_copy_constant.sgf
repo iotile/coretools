@@ -1,0 +1,9 @@
+every 10 seconds
+{
+	copy 15 => output 1;
+}
+
+on input 1
+{
+	copy 0x10 => output 1;
+}

@@ -231,6 +231,43 @@ def test_on_block(parser):
     assert counter3.count() == 5
 
 
+def test_latch_block(parser):
+    """Make sure that we can compile and run latch blocks."""
+
+    parser.parse_file(get_path(u'basic_latch.sgf'))
+
+    model = DeviceModel()
+    parser.compile(model=model)
+
+    sg = parser.sensor_graph
+    log = sg.sensor_log
+    for x in sg.dump_nodes():
+        print(x)
+
+    sg.load_constants()
+    assert sg.user_tick() == 1
+
+    # Now make sure it produces the right output
+    counter15 = log.create_walker(DataStreamSelector.FromString('counter 15'))
+
+    sim = SensorGraphSimulator()
+    sim.stop_condition('run_time 60 seconds')
+    sim.run(sg)
+    assert counter15.count() == 0
+
+    sim.step(sg, DataStream.FromString('input 10'), 1)
+    counter15.skip_all()
+
+    sim.run(sg)
+
+    assert counter15.count() == 60
+
+    counter15.skip_all()
+    sim.step(sg, DataStream.FromString('input 10'), 0)
+    sim.run(sg)
+    assert counter15.count() == 0
+
+
 def test_config_block(parser):
     """Make sure config blocks and statement are parsed."""
 
@@ -281,6 +318,36 @@ def test_copy_statement(parser):
     assert val1.value == 0
     assert val2.value == 60
     assert val3.value == 1
+
+
+def test_copy_constant_statement(parser):
+    """Make sure we can copy constant values."""
+
+    parser.parse_file(get_path(u'basic_copy_constant.sgf'))
+
+    model = DeviceModel()
+    parser.compile(model=model)
+
+    sg = parser.sensor_graph
+    log = sg.sensor_log
+    for x in sg.dump_nodes():
+        print(x)
+
+    sg.load_constants()
+
+    output1 = log.create_walker(DataStreamSelector.FromString('output 1'))
+
+    sim = SensorGraphSimulator()
+    sim.stop_condition('run_time 10 seconds')
+    sim.run(sg)
+
+    assert output1.count() == 1
+    assert output1.pop().value == 15
+
+    sim.step(sg, DataStream.FromString('input 1'), 10)
+    assert output1.count() == 1
+    assert output1.pop().value == 0x10
+
 
 def test_copy_count_statement(parser):
     """Make sure we can copy data count using copy count."""

@@ -1,0 +1,18 @@
+meta file_format = "sensorgraph-1.0";
+
+meta name = "NFC300";
+meta version = "1.0.0";
+meta cloud_name = "nfc300-1-0-0";
+
+when value(constant 1) == 1
+{
+	every 1 second
+	{
+		call 0x1000 on slot 1 => counter 15;
+	}
+}
+
+on input 10
+{
+	copy => constant 1;
+}

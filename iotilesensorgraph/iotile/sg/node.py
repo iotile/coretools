@@ -134,6 +134,19 @@ class TrueTrigger(object):
     def __str__(self):
         return u"always"
 
+    def format_trigger(self, stream):
+        """Create a user understandable string like count(stream) >= X.
+
+        Args:
+            stream (DataStream): The stream to use to format ourselves.
+
+        Returns:
+            str: The formatted string
+        """
+
+
+        return u"{}".format(stream)
+
 
 @python_2_unicode_compatible
 class SGNode(object):

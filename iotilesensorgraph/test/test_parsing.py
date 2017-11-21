@@ -76,6 +76,16 @@ def test_language_constructs():
     assert parsed[0]['explicit_tile'] == SlotIdentifier.FromString('slot 1')
     assert parsed[0]['security'] == u'signed'
 
+    # Test parsing copy statements
+    parsed = language.simple_statement.parseString(u'copy unbuffered 1 => unbuffered 2;')
+    assert parsed[0]['explicit_input'][0] == DataStream.FromString('unbuffered 1')
+
+    parsed = language.simple_statement.parseString(u'copy 15 => unbuffered 2;')
+    assert parsed[0]['constant_input'] == 15
+
+    parsed = language.simple_statement.parseString(u'copy 0x20 => unbuffered 2;')
+    assert parsed[0]['constant_input'] == 0x20
+
 
 def test_basic_parsing(parser):
     """Make sure we can parse a basic file without syntax errors."""

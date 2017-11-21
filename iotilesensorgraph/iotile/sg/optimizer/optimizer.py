@@ -1,5 +1,5 @@
 from toposort import toposort_flatten
-from .passes import RemoveCopyLatestPass, ConvertCountOneToAlways
+from .passes import RemoveCopyLatestPass, ConvertCountOneToAlways, ConvertCopyAllToCopyLatest
 
 
 class SensorGraphOptimizer(object):
@@ -15,6 +15,7 @@ class SensorGraphOptimizer(object):
         # Add in our known optimization passes
         self.add_pass('remove-copy', RemoveCopyLatestPass)
         self.add_pass('convert-always', ConvertCountOneToAlways, before=['remove-copy'])
+        self.add_pass('downgrade-copyall', ConvertCopyAllToCopyLatest, before=['convert-always'])
 
     def add_pass(self, name, opt_pass, before=None, after=None):
         """Add an optimization pass to the optimizer.
