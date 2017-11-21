@@ -2,6 +2,13 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 0.3.0
+
+- Add support for generic when blocks that support clock gating on any stream
+  condition
+- Add support for copying a constant value, e.g. inside of on block.  The
+  syntax is `copy number => output stream;`
+
 ## 0.2.2
 
 - Add support for user only and combined streamer selectors based on new
