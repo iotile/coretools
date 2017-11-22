@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileGateway are listed here.
 
+## 1.5.1
+
+- Fix service_delegate tile init
+
 ## 1.5.0
 
 - Add support for sending commands to services using IOTileSupervisor
