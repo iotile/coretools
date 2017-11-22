@@ -18,7 +18,7 @@ class ServiceDelegateTile(VirtualTile):
                 is the supervisor default.
     """
 
-    def __init__(self, address, args):
+    def __init__(self, address, args, device=None):
         name = args['name']
         service = args['service']
         url = args.get('url', 'ws://127.0.0.1:9400/services')
