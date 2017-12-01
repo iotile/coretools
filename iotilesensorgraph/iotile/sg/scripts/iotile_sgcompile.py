@@ -14,7 +14,7 @@ def build_args():
 
     parser = argparse.ArgumentParser(description=u'Compile a sensor graph.')
     parser.add_argument(u'sensor_graph', type=str, help=u"the sensor graph file to load and run.")
-    parser.add_argument(u'-f', u'--format', default=u"nodes", choices=[u'nodes', u'ast', u'snippet', u'ascii'], type=str, help=u"the output format for the compiled result.")
+    parser.add_argument(u'-f', u'--format', default=u"nodes", choices=[u'nodes', u'ast', u'snippet', u'ascii', u'config'], type=str, help=u"the output format for the compiled result.")
     parser.add_argument(u'-o', u'--output', type=str, help=u"the output file to save the results (defaults to stdout)")
     parser.add_argument(u'--disable-optimizer', action="store_true", help=u"disable the sensor graph optimizer completely")
     return parser

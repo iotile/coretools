@@ -2,11 +2,12 @@
 
 from .snippet import format_snippet
 from .ascii import format_ascii
-
+from .config import format_config
 
 known_formats = {
     'snippet': format_snippet,
-    'ascii': format_ascii
+    'ascii': format_ascii,
+    'config': format_config
 }
 
 
