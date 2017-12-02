@@ -33,7 +33,8 @@ setup(
         "msgpack-python>=0.4.8",
         "python-dateutil>=2.6.0",
         "pyreadline>=2.1.0",
-        "python-dateutil>=2.6.0"
+        "python-dateutil>=2.6.0",
+        "future >= 0.16.0"
     ],
     entry_points={
         'console_scripts': [
