@@ -2,6 +2,14 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 0.3.2
+
+- Add support for two new ascii output formats: ascii and config that are 
+  compatible with programmatically loading sensor graphs into iotile devices.
+- Add support for passing hex encoded binary values in set config statements.
+  The syntax is to pass hex:AABBCC with the hex encoded bytes following the hex:
+  prefix.  This is decoded automatically into a bytes object.
+
 ## 0.3.1
 
 - Add support for specifying a second condition in an on block.  You can

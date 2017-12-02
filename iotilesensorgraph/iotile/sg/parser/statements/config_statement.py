@@ -61,4 +61,10 @@ class SetConfigStatement(SensorGraphStatement):
         if self.explicit_type is None or not isinstance(self.identifier, int):
             raise SensorGraphSemanticError("Config variable type definitions are not yet supported")
 
+        if isinstance(self.value, (bytes, bytearray)) and not self.explicit_type == 'binary':
+            raise SensorGraphSemanticError("You must pass the binary variable type when using encoded binary data")
+
+        if not isinstance(self.value, (bytes, bytearray)) and self.explicit_type == 'binary':
+            raise SensorGraphSemanticError("You must pass an encoded binary value with binary type config variables")
+
         sensor_graph.add_config(slot, self.identifier, self.explicit_type, self.value)

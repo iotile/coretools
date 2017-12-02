@@ -1,0 +1,10 @@
+meta file_format = "sensorgraph-1.0";
+
+meta name = "NFC300";
+meta version = "1.0.0";
+meta cloud_name = "nfc300-1-0-0";
+
+config slot 1
+{
+	set 0x2000 to hex:001122aabbcc as binary;
+}

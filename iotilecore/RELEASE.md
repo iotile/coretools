@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.16.7
+
+- Refactor creation/processing of ASCII command files into single utility class
+  CommandFile since it is now being used across various packages.
+
 ## 3.16.6
 
 - The tiles of a Tile Based virtual device can now access the device itself
@@ -12,7 +17,8 @@ All major changes in each released version of IOTileCore are listed here.
 
 ## 3.16.4
 
-- Follow symlinks if needed during the rename operation in JSONKVStore save method
+- Follow symlinks if needed during the rename operation in JSONKVStore save
+  method
 
 ## 3.16.3
 
@@ -27,8 +33,8 @@ All major changes in each released version of IOTileCore are listed here.
 ## 3.16.1
 
 - Allow StoppableWorkerThread to have no timeout.  This allows for using
-  generator functions that themselves wait for some external event and hence
-  the extra sleep calls are superfluous.
+  generator functions that themselves wait for some external event and hence the
+  extra sleep calls are superfluous.
 
 ## 3.16.0
 
@@ -36,7 +42,8 @@ All major changes in each released version of IOTileCore are listed here.
 
 ## 3.15.3
 
-- Add support for sorting scan results and limiting the number of results returned
+- Add support for sorting scan results and limiting the number of results
+  returned
 
 ## 3.15.2
 
