@@ -1,5 +1,6 @@
 """A snippet is a series of commands that can be piped into the iotile tool connected to a device."""
 
+from binascii import hexlify
 
 def format_snippet(sensor_graph):
     """Format this sensor graph as iotile command snippets.
@@ -46,6 +47,10 @@ def format_snippet(sensor_graph):
     for slot, conf_vars in sensor_graph.config_database.items():
         for conf_var, conf_def in conf_vars.items():
             conf_type, conf_val = conf_def
+
+            if conf_type == 'binary':
+                conf_val = 'hex:' + hexlify(conf_val)
+
             output.append("set_variable '{}' {} {} {}".format(slot, conf_var, conf_type, conf_val))
 
     # Restart the device to load in the new sg

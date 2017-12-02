@@ -5,6 +5,8 @@ the load_from_file method.  It closely mirrors the snippet format
 with the arguments enclosed in brackets for easier parsing.
 """
 
+from iotile.core.utilities.command_file import CommandFile
+
 
 def format_ascii(sensor_graph):
     """Format this sensor graph as a loadable ascii file format.
@@ -24,23 +26,16 @@ def format_ascii(sensor_graph):
         str: The ascii output lines concatenated as a single string
     """
 
-    output = []
-
-    output.append("Sensor Graph")
-    output.append("Format: 1.0")
-    output.append("Type: ASCII")
-
-    output.append("")
-    output.append("# Beginning of actual sensor graph data")
+    cmdfile = CommandFile("Sensor Graph", "1.0")
 
     # Clear any old sensor graph
-    output.append(r"set_online {false}")
-    output.append("clear")
-    output.append("reset")
+    cmdfile.add("set_online", False)
+    cmdfile.add("clear")
+    cmdfile.add("reset")
 
     # Load in the nodes
     for node in sensor_graph.dump_nodes():
-        output.append('add_node {%s}' % node)
+        cmdfile.add('add_node', node)
 
     # Load in the streamers
     for streamer in sensor_graph.streamers:
@@ -48,17 +43,15 @@ def format_ascii(sensor_graph):
         if streamer.with_other is not None:
             other = streamer.with_other
 
-        args = "{}, {}, {}, {}, {}, {}".format(streamer.walker.selector, streamer.dest, streamer.automatic, streamer.format, streamer.report_type, other)
-        line = "add_streamer {%s}" % args
-
-        output.append(line)
+        args = [streamer.walker.selector, streamer.dest, streamer.automatic, streamer.format, streamer.report_type, other]
+        cmdfile.add('add_streamer', *args)
 
     # Load all the constants
     for stream, value in sensor_graph.constant_database.items():
-        output.append("push_reading {%s, %s}" % (stream, value))
+        cmdfile.add("push_reading", stream, value)
 
     # Persist the sensor graph
-    output.append("persist")
-    output.append(r"set_online {true}")
+    cmdfile.add("persist")
+    cmdfile.add("set_online", True)
 
-    return "\n".join(output) + '\n'
+    return cmdfile.dump()

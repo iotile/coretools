@@ -81,8 +81,9 @@ class SensorGraph(object):
                 variable is assigned to.
             config_id (int): The 16-bit id of this config_id
             config_type (str): The type of the config variable, currently
-                supported are fixed width integer types and strings
-            value (str|int): The value to assign to the config variable.
+                supported are fixed width integer types, strings and binary
+                blobs.
+            value (str|int|bytes): The value to assign to the config variable.
         """
 
         if slot not in self.config_database:

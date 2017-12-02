@@ -1,4 +1,5 @@
 from pyparsing import Optional, Word, Literal, Forward, alphas, nums, Group, Regex, ZeroOrMore, oneOf, restOfLine, dblQuotedString, StringEnd, Empty
+from binascii import unhexlify
 from ..stream import DataStream, DataStreamSelector
 from ..slot import SlotIdentifier
 
@@ -6,6 +7,7 @@ from ..slot import SlotIdentifier
 ident = None
 rvalue = None
 number = None
+binary = None
 comp = None
 config_type = None
 slot_id = None
@@ -30,7 +32,7 @@ sensor_graph = None
 
 
 def _create_primitives():
-    global ident, rvalue, number, quoted_string, semi, time_interval, slot_id, comp, config_type, stream, comment, stream_trigger, selector
+    global binary, ident, rvalue, number, quoted_string, semi, time_interval, slot_id, comp, config_type, stream, comment, stream_trigger, selector
 
     if ident is not None:
         return
@@ -38,6 +40,7 @@ def _create_primitives():
     semi = Literal(u';').suppress()
     ident = Word(alphas+u"_", alphas + nums + u"_")
     number = Regex(u'((0x[a-fA-F0-9]+)|[+-]?[0-9]+)').setParseAction(lambda s, l, t: [int(t[0], 0)])
+    binary = Regex(u'hex:([a-fA-F0-9][a-fA-F0-9])+').setParseAction(lambda s, l, t: [unhexlify(t[0][4:])])
     quoted_string = dblQuotedString
 
     comment = Literal('#') + restOfLine
@@ -60,7 +63,7 @@ def _create_primitives():
         u'years': 60*60*24*365,
     }
 
-    config_type = oneOf('uint8_t uint16_t uint32_t int8_t int16_t int32_t uint8_t[] uint16_t[] uint32_t[] int8_t[] int16_t[] int32_t[] string')
+    config_type = oneOf('uint8_t uint16_t uint32_t int8_t int16_t int32_t uint8_t[] uint16_t[] uint32_t[] int8_t[] int16_t[] int32_t[] string binary')
     comp = oneOf('> < >= <= == ~=')
 
     time_unit = oneOf(u"second seconds minute minutes hour hours day days week weeks month months year years")
@@ -86,14 +89,14 @@ def _create_primitives():
 
 
 def _create_simple_statements():
-    global ident, rvalue, simple_statement, semi, comp, number, slot_id, callrpc_stmt, generic_statement, streamer_stmt, stream, selector
+    global binary, ident, rvalue, simple_statement, semi, comp, number, slot_id, callrpc_stmt, generic_statement, streamer_stmt, stream, selector
 
     if simple_statement is not None:
         return
 
     meta_stmt = Group(Literal('meta').suppress() + ident + Literal('=').suppress() + rvalue + semi).setResultsName('meta_statement')
     require_stmt = Group(Literal('require').suppress() + ident + comp + rvalue + semi).setResultsName('require_statement')
-    set_stmt = Group(Literal('set').suppress() + (ident | number) + Literal("to").suppress() + rvalue + Optional(Literal('as').suppress() + config_type) + semi).setResultsName('set_statement')
+    set_stmt = Group(Literal('set').suppress() - (ident | number) - Literal("to").suppress() - (rvalue | binary) - Optional(Literal('as').suppress() + config_type) + semi).setResultsName('set_statement')
     callrpc_stmt = Group(Literal("call").suppress() + (ident | number) + Literal("on").suppress() + slot_id + Optional(Literal("=>").suppress() + stream('explicit_stream')) + semi).setResultsName('call_statement')
     streamer_stmt = Group(Optional(Literal("manual")('manual')) + Optional(oneOf(u'encrypted signed')('security')) + Optional(Literal(u'realtime')('realtime')) + Literal('streamer').suppress() -
                           Literal('on').suppress() - selector('selector') - Optional(Literal('to').suppress() - slot_id('explicit_tile')) - Optional(Literal('with').suppress() - Literal('streamer').suppress() - number('with_other')) - semi).setResultsName('streamer_statement')

@@ -319,6 +319,23 @@ def test_config_block(parser):
     assert sg.get_config(SlotIdentifier.FromString('slot 4'), 0x5300) == (u'string', u'"test"')
 
 
+def test_config_block_binary(parser):
+    """Make sure config blocks can parse binary config variables."""
+
+    parser.parse_file(get_path(u'binary_config.sgf'))
+
+    model = DeviceModel()
+    parser.compile(model=model)
+
+    sg = parser.sensor_graph
+    assert len(sg.config_database) == 2
+
+    valtype, val = sg.get_config(SlotIdentifier.FromString('slot 1'), 0x2000)
+
+    assert valtype == u'binary'
+    assert isinstance(val, bytes)
+
+
 def test_copy_statement(parser):
     """Make sure we can copy data using copy."""
 
