@@ -3,13 +3,13 @@
 # info@welldone.org
 # http://welldone.org
 #
-# Modifications to this file from the original created at WellDone International 
+# Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
 #descriptor.py
 #Define a Domain Specific Language for specifying MIB endpoints
 
-from pyparsing import Word, Regex, nums, hexnums, Literal, Optional, Group, oneOf, QuotedString, ParseException, OneOrMore, ZeroOrMore
+from pyparsing import Word, Regex, nums, hexnums, Literal, Optional, Group, oneOf, QuotedString, delimitedList, ParseException, OneOrMore, ZeroOrMore
 from handler import TBHandler
 import sys
 import os.path
@@ -54,15 +54,15 @@ cmd_def = number("cmd_number") + colon + symbol("symbol") + left + ints + comma 
 include = Literal("#include") + quote + filename("filename") + quote
 interface_def = Literal('interface') + number('interface') + ';'
 
-reqconfig = number("confignum") + colon + Literal('required').suppress() + Literal('config').suppress() + valid_type('type') + symbol('configvar') + Optional(leftB + number('length') + rightB) + ';'
-optconfig = number("confignum") + colon + Literal('optional').suppress() + Literal('config').suppress() + valid_type('type') + symbol('configvar') + Optional(leftB + number('length') + rightB) + "=" \
-  + (number('value') | QuotedString(quoteChar='"', unquoteResults=False)('value') | (leftCB+(OneOrMore(number+ZeroOrMore(comma))))('value')+rightCB) + ';'
-  
+reqconfig = number("confignum") + colon + Literal('required').suppress() - Literal('config').suppress() - valid_type('type') - symbol('configvar') - Optional(leftB - number('length') - rightB) - ';'
+optconfig = number("confignum") + colon + Literal('optional').suppress() - Literal('config').suppress() - valid_type('type') - symbol('configvar') - Optional(leftB - number('length') - rightB) - "=" \
+  - (number('value') | QuotedString(quoteChar='"', unquoteResults=False)('value') | (leftCB+Group(delimitedList(number))('value')+rightCB)) + ';'
+
 statement = include | cmd_def | comment | assignment_def | interface_def | reqconfig | optconfig
 
 #Known Variable Type Lengths
-type_lengths = {'uint8_t': 1, 'char': 1, 'int8_t': 1, 'uint16_t': 2, 'int16_t':2, 'uint32_t': 4, 'int32_t': 4} 
-type_codes = {'uint8_t': 'B', 'char': 'B', 'int8_t': 'b', 'uint16_t': 'H', 'int16_t': 'h', 'uint32_t': 'L', 'int32_t': 'l'} 
+type_lengths = {'uint8_t': 1, 'char': 1, 'int8_t': 1, 'uint16_t': 2, 'int16_t':2, 'uint32_t': 4, 'int32_t': 4}
+type_codes = {'uint8_t': 'B', 'char': 'B', 'int8_t': 'b', 'uint16_t': 'H', 'int16_t': 'h', 'uint32_t': 'L', 'int32_t': 'l'}
 
 class TBDescriptor:
     """
@@ -127,7 +127,7 @@ class TBDescriptor:
 
     def _add_cmd(self, num, symbol, num_ints, has_buffer):
         handler = TBHandler.Create(symbol=symbol, ints=num_ints, has_buffer=has_buffer)
-        
+
         if num in self.commands:
             raise DataError("Attempted to add the same command number twice", number=num, old_handler=self.commands[num], new_handler=handler)
 
@@ -177,25 +177,22 @@ class TBDescriptor:
 
         self.variables[var] = val
 
-    def _convert_value_to_bytes(self, value, type):
-        """
-        Given an integer, convert it to an array of bytes
-        """
+    def _value_length(self, value, type):
+        """Given an integer or list of them, convert it to an array of bytes."""
 
         if isinstance(value, int) or isinstance(value, long):
             fmt = '<%s' % (type_codes[type])
             output = struct.pack(fmt, value)
+            return len(output)
         elif isinstance(value, basestring):
-            return bytearray(value)
+            assert value[0] == '"' and value[-1] == '"'
+            return len(value[1:-1]) + 1 # Account for final 0
         else:
-            output_vals = []
+            len_accum = 0
             for x in value:
-                out = self._convert_value_to_bytes(x, type)
-                output_vals.append(out)
+                len_accum += self._value_length(x, type)
 
-            output = [x for itembytes in output_vals for x in itembytes]
-
-        return bytearray(output)
+            return len_accum
 
     def _parse_configvar(self, match):
 
@@ -206,13 +203,19 @@ class TBDescriptor:
             quantity = 1
             array = False
 
-        #FIXME: Properly handle all of the different cases here for arrays, strings and bare values
         if 'value' in match:
-            default_bytevalue = self._convert_value_to_bytes(match['value'], match['type'])
+            default_length = self._value_length(match['value'], match['type'])
             default_value = match['value']
+
+            # Special case, if this is an array and the initializer = {0} then that means an
+            # empty array, not a single value of 0, per standard C idiom.
+            if array is True and match['type'] != 'string' and len(default_value) == 1 and default_value[0] == 0:
+                default_length = 0
+
             required = False
         else:
             default_value = None
+            default_length = 0
             required = True
 
         varname = match['configvar']
@@ -229,11 +232,12 @@ class TBDescriptor:
             flags |= (1 << 6)
 
 
-        config = {'name': varname, 'flags': flags, 'type': vartype, 'array': array, 'total_size': varsize, 'count': quantity, 'required': required, 'default_value': default_value}
+        config = {'name': varname, 'flags': flags, 'type': vartype, 'array': array, 'total_size': varsize,
+                  'count': quantity, 'required': required, 'default_value': default_value, 'default_size': default_length}
 
         if varnum in self.configs:
             raise DataError("Attempted to add the same config variable twice", variable_name=varname, id_number=varnum, defined_variables=self.configs.keys())
-        
+
         self.configs[varnum] = config
 
 
@@ -310,7 +314,7 @@ class TBDescriptor:
         if len(vals) != 2:
             raise DataError("Invalid API Version, should be X.Y", version_string=version)
 
-        return vals     
+        return vals
 
     def get_block(self, config_only=False):
         """
@@ -331,7 +335,7 @@ class TBDescriptor:
 
             if not self.valid:
                 self._validate_information()
-            
+
             mib.set_api_version(*self.variables["APIVersion"])
             mib.set_module_version(*self.variables["ModuleVersion"])
             mib.set_name(self.variables["ModuleName"])

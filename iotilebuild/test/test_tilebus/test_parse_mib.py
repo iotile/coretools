@@ -3,12 +3,12 @@
 # info@welldone.org
 # http://welldone.org
 #
-# Modifications to this file from the original created at WellDone International 
+# Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
 import os.path
 import pytest
-from iotile.build.tilebus.descriptor import TBDescriptor
+from iotile.build.tilebus.descriptor import TBDescriptor, optconfig
 import unittest
 from iotile.core.exceptions import *
 import hashlib
@@ -34,11 +34,13 @@ def _create_tempfile(src=None):
     atexit.register(os.remove, dst.name)
     return dst.name
 
+
 def _load_mib(filename):
     path = os.path.join(os.path.dirname(__file__), filename)
     tb = TBDescriptor(path, include_dirs=[os.path.dirname(__file__)])
     tb._validate_information()
     return tb
+
 
 def test_syntax_error():
     with pytest.raises(DataError) as excinfo:
@@ -49,9 +51,11 @@ def test_syntax_error():
     assert error.params['column'] == 19
     assert error.params['line_number'] == 2
 
+
 def test_incomplete():
     with pytest.raises(DataError):
         desc = _load_mib("incomplete.mib")
+
 
 def test_complete():
     desc = _load_mib("complete.mib")
@@ -69,11 +73,13 @@ def test_complete():
     assert len(desc.variables['ModuleName']) == 6
     assert desc.variables['ModuleName'] == 'test12'
 
+
 def test_extend_name():
     desc = _load_mib("short_name.mib")
 
     assert len(desc.variables['ModuleName']) == 6
     assert desc.variables['ModuleName'] == 'test  '
+
 
 def test_hexvalues():
     desc = _load_mib("hexvalues.mib")
@@ -81,6 +87,7 @@ def test_hexvalues():
     assert desc.variables['RandomVariable'] == 0x100
     assert 0x12ab in desc.commands
     assert 64000 in desc.commands
+
 
 def test_parse_configs():
     desc = _load_mib("configvariables.mib")
@@ -97,56 +104,40 @@ def test_parse_configs():
     assert testvar1['total_size'] == 1
     assert testvar1['name'] == 'testvar1'
 
+
 def test_config_defaults():
     desc = _load_mib("configvariables.mib")
     testvar4 = desc.configs[0x1236]
 
     assert testvar4['required'] == False
     assert testvar4['type'] == 'char'
-    assert testvar4['total_size'] == 15 
+    assert testvar4['total_size'] == 15
 
     print len(testvar4['default_value'])
     print len("test string")
     print testvar4['default_value']
     assert len(testvar4['default_value']) == (len("test string") + 2) #Include the quotes
-    
 
-def test_value_convesion():
-    desc = _load_mib("configvariables.mib")
-
-    buf1 = desc._convert_value_to_bytes(0x10ab, 'uint16_t')
-    assert buf1[0] == 0xab
-    assert buf1[1] == 0x10
-
-    buf2 = desc._convert_value_to_bytes('hello world', 'char')
-    known_val = [ord(x) for x in 'hello world']
-
-    assert len(buf2) == len(known_val)
-    for i in xrange(0, len(buf2)):
-        assert buf2[i] == known_val[i]
-
-    buf3 = desc._convert_value_to_bytes([0xab12, 0xbcde, 0x1234], 'uint16_t')
-    known_val = [0x12, 0xab, 0xde, 0xbc, 0x34, 0x12]
-
-    assert len(buf3) == len(known_val)
-    for i in xrange(0, len(buf3)):
-        assert buf3[i] == known_val[i]
 
 def test_parse_badconfig1():
     with pytest.raises(DataError):
         desc = _load_mib("badconfig1.mib")
 
+
 def test_parse_badconfig2():
     with pytest.raises(DataError):
         desc = _load_mib("badconfig2.mib")
+
 
 def test_long_name():
     with pytest.raises(DataError):
         desc = _load_mib("long_name.mib")
 
+
 def test_include_nonexistent():
     with pytest.raises(ArgumentError):
         desc = _load_mib("invalid_include.mib")
+
 
 def test_good_include():
     desc = _load_mib("valid_include.mib")
@@ -163,6 +154,7 @@ def test_good_include():
 
     assert len(desc.variables['ModuleName']) == 6
     assert desc.variables['ModuleName'] == 'test12'
+
 
 def test_block_generation():
     desc = _load_mib("complete.mib")
@@ -181,3 +173,21 @@ def test_block_generation():
 
     str_rep = str(block)
     print str_rep
+
+
+def test_optconfig_array():
+    """Make sure we can properly parse optional config variables with arrays."""
+
+    statement = "0x8000: optional config uint8_t var[100] = {0};"
+
+    parsed = optconfig.parseString(statement)
+
+    assert parsed[0] == 0x8000
+    assert parsed[1] == 'uint8_t'
+    assert parsed[2] == "var"
+    assert parsed[3] == 100
+    assert list(parsed[5]) == [0]
+
+    statement = "0x8000: optional config uint8_t var[100] = {0, 1, 2, 0x3};"
+    parsed = optconfig.parseString(statement)
+    assert list(parsed[5]) == [0, 1, 2, 3]

@@ -22,11 +22,11 @@ $variable.type __attribute__((section(".required_config"))) $variable.name;
 #continue
 #end if 
 #if $variable.array
-config_${variable.name}_t __attribute__((section(".optional_config"))) $variable.name = {$variable.total_size, 0, #slurp
+config_${variable.name}_t __attribute__((section(".optional_config"))) $variable.name = {$variable.default_size, 0, #slurp
 #if type($variable.default_value)==str
-$variable.default_value}; #slurp
+$variable.default_value};
 #else
-{#echo ','.join(str(x) for x in $variable.default_value)#}}; #slurp
+{#echo ','.join(str(x) for x in $variable.default_value)#}};
 #end if
 #else
 $variable.type __attribute__((section(".optional_config"))) $variable.name = $variable.default_value;
