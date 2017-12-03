@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.4.5
+
+- Fix support for config variable arrays and add support for encoded binary values
+
 ## 2.4.4
 
 - Add support for reading config variable arrays and writing them properly into config_variables_c.c
