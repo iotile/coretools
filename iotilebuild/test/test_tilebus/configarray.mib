@@ -1,0 +1,7 @@
+ModuleName = "test12";
+ModuleVersion = "1.2.3";
+APIVersion = "1.2";
+
+#Optional configuration variables that can be set
+0x1234: optional config uint32_t testvar3[100] = {0, 1, 2, 3};
+0x5: optional config uint32_t testvar3[100] = {0};
