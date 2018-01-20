@@ -25,16 +25,11 @@ setup(
     version=version.version,
     license="LGPLv3",
     install_requires=[
-        "decorator>=3.4.0",
-        "pyparsing>=2.0.3",
-        "six>=1.9.0",
-        "crcmod>=1.7.0",
         "ws4py>=0.3.5",
         "msgpack-python>=0.4.8",
         "python-dateutil>=2.6.0",
-        "pyreadline>=2.1.0",
-        "python-dateutil>=2.6.0",
-        "future >= 0.16.0"
+        "future >= 0.16.0",
+        "typedargs>=0.11.0"
     ],
     entry_points={
         'console_scripts': [

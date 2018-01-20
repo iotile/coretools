@@ -3,16 +3,19 @@
 # info@welldone.org
 # http://welldone.org
 #
-# Modifications to this file from the original created at WellDone International 
+# Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
+from builtins import str
 import sys
 import os
 import shlex
 
-from iotile.core.utilities.typedargs.shell import HierarchicalShell, posix_lex
+from typedargs.shell import HierarchicalShell
 from iotile.core.exceptions import *
-from iotile.core.utilities.typedargs import annotate, type_system
+from typedargs import type_system
 from iotile.core.utilities.rcfile import RCFile
 from iotile.core.dev.registry import ComponentRegistry
 import iotile.core.hw.transport.cmdstream as cmdstream
@@ -24,18 +27,8 @@ def main():
     type_system.interactive = True
     line = sys.argv[1:]
 
-    norc = False
-    if len(line) > 0 and line[0] == '--norc':
-        norc = True
-        line = line[1:]
+    shell = HierarchicalShell('iotile')
 
-    if len(line) > 0 and line[0] == '--rcfile':
-        rc = RCFile('iotile')
-        print rc.path
-        return 0
-
-    shell = HierarchicalShell('iotile', no_rc=norc)
-        
     shell.root_add("registry", "iotile.core.dev.annotated_registry,registry")
     shell.root_add("config", "iotile.core.dev.config,ConfigManager")
     shell.root_add('hw', "iotile.core.hw.hwmanager,HardwareManager")
@@ -48,14 +41,13 @@ def main():
     finished = False
 
     try:
-        while len(line) > 0:
-            line, finished = shell.invoke(line)
+            finished = shell.invoke(line)
     except APIError:
         traceback.print_exc()
         cmdstream.do_final_close()
         return 1
-    except IOTileException as e:
-        print e.format()
+    except IOTileException as exc:
+        print(exc.format())
         #if the command passed on the command line fails, then we should
         #just exit rather than drop the user into a shell.
         cmdstream.do_final_close()
@@ -107,7 +99,7 @@ def main():
             if len(linebuf) > 0 and linebuf[0] == '#':
                 continue
 
-            line = shlex.split(linebuf, posix=posix_lex)
+            line = shlex.split(linebuf, posix=shell.posix_lex)
 
             #Automatically remove enclosing double quotes on windows since they are not removed by shlex in nonposix mode
             def remove_quotes(x):
@@ -116,28 +108,27 @@ def main():
 
                 return x
 
-            if not posix_lex:
+            if not shell.posix_lex:
                 line = map(remove_quotes, line)
 
             #Catch exception outside the loop so we stop invoking submethods if a parent
             #fails because then the context and results would be unpredictable
             try:
-                while len(line) > 0:
-                    line, finished = shell.invoke(line)
-            except APIError as e:
+                finished = shell.invoke(line)
+            except APIError:
                 traceback.print_exc()
-            except IOTileException as e:
-                print e.format()
+            except IOTileException as exc:
+                print(exc.format())
 
             if shell.finished():
                 break
 
-    #Make sure to catch ^C and ^D so that we can cleanly dispose of subprocess resources if 
+    #Make sure to catch ^C and ^D so that we can cleanly dispose of subprocess resources if
     #there are any.
     except EOFError:
-        print ""
+        print("")
     except KeyboardInterrupt:
-        print ""
+        print("")
     finally:
         #Make sure we close any open CMDStream communication channels so that we don't lockup at exit
         cmdstream.do_final_close()

@@ -8,80 +8,9 @@
 
 # IOTile Exceptions
 
-class IOTileException(Exception):
-    """
-    All IOTile API routines, upon encountering unrecoverable errors,
-    will throw an exception that is a subclass of this exception.
-    All other exceptions are caught and rethrown as an APIError
-    for consistency.  Calling methods can assume that all annotated
-    API functions will throw only IOTileException subclasses as defined
-    below.
-    """
+from typedargs.exceptions import KeyValueException as IOTileException
+from typedargs.exceptions import ArgumentError, ValidationError, ConversionError, NotFoundError, TypeSystemError, InternalError
 
-    def __init__(self, msg, **kwargs):
-        self.params = kwargs
-        self.msg = msg
-
-    def format(self):
-        msg = "%s: %s" % (self.__class__.__name__, self.msg)
-
-        if len(self.params) != 0:
-            paramstring = "\n".join([str(key) + ": " + str(val) for key,val in self.params.iteritems()])
-            msg += "\nAdditional Information:\n" + paramstring
-
-        return msg
-
-    def format_msg(self):
-        msg = self.msg
-        if len(self.params) != 0:
-            paramstring = "\n".join([str(key) + ": " + str(val) for key,val in self.params.iteritems()])
-            msg += "\nAdditional Information:\n" + paramstring
-
-        return msg
-
-    def to_dict(self):
-        """Convert this excpetion to a dictionary
-
-        Has a 'reason' key and a dictionary of params
-        """
-
-        out = {}
-        out['reason'] = self.msg
-        out['type'] = self.__class__.__name__
-        out['params'] = self.params
-
-        return out
-
-    def __str__(self):
-        msg = self.format()
-        return msg
-
-class ValidationError(IOTileException):
-    """
-    API routines can impose validation criteria on` their arguments in
-    addition to requiring simply a certain type of argument.  A clasic
-    example is the "path" type which can have validators like "readable"
-    or "exists".  When validation fails, this error is thrown.
-    """
-
-    pass
-
-class ConversionError(IOTileException):
-    """
-    All API functions take typed parameters.  Each type defines conversion
-    operators for python types that are logically related to it.  When no
-    valid conversion exists for the data type passed, this error is thrown.
-    """
-
-    pass
-
-class NotFoundError(IOTileException):
-    """
-    Thrown when an attempt to execute an API method is made and the API
-    method does not exist.
-    """
-
-    pass
 
 class TimeoutExpiredError(IOTileException):
     """
@@ -91,17 +20,6 @@ class TimeoutExpiredError(IOTileException):
 
     pass
 
-class ArgumentError(IOTileException):
-    """
-    The method could not be called with the arguments passed.  This
-    differs from InternalError in that when ArgumentError is returned,
-    it is known that these arguments can never work for this function.
-
-    An example would be passing three arguments to a function requiring
-    4 arguments.
-    """
-
-    pass
 
 class DataError(IOTileException):
     """
@@ -147,14 +65,6 @@ class BuildError(IOTileException):
 
     pass
 
-class TypeSystemError(IOTileException):
-    """
-    There was an error with the IOTile type system.  This can be due to improperly
-    specifying an unknown type or because the required type was not properly loaded
-    from an external module before a function that used that type was needed.
-    """
-
-    pass
 
 class ExternalError(IOTileException):
     """
