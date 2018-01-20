@@ -2,6 +2,12 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.17.0
+
+- Migrate typedargs to a separate package for easier development and add
+  dependency on that package.
+- Make external type loading a lazy process to save startup time.
+
 ## 3.16.7
 
 - Refactor creation/processing of ASCII command files into single utility class
