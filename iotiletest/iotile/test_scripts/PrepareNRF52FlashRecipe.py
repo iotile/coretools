@@ -34,9 +34,6 @@ class PrepareNRF52FlashRecipe(PrepareFlashRecipe):
         
         lines   = [x.rstrip() for x in output.split('\n')]
 
-        import pdb
-        pdb.set_trace()
-        
         maclow  = lines[2]
         machigh = lines[3]
 
