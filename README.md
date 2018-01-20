@@ -1,13 +1,14 @@
 ## Core IOTile Tools
 
-<!-- MarkdownTOC -->
+<!-- MarkdownTOC autolink="true" bracket="round" -->
 
-- [Build Status][build-status]
-- [Installation \(from PyPI\)][installation-from-pypi]
-- [Installing Support for IOTile Based Devices][installing-support-for-iotile-based-devices]
-- [Continuous Deployment][continuous-deployment]
-- [Manually Releasing][manually-releasing]
-- [License][license]
+- [Build Status](#build-status)
+- [Installation \(from PyPI\)](#installation-from-pypi)
+- [Working with Encrypted Device Data](#working-with-encrypted-device-data)
+- [Installing Support for IOTile Based Devices](#installing-support-for-iotile-based-devices)
+- [Continuous Deployment](#continuous-deployment)
+- [Manually Releasing](#manually-releasing)
+- [License](#license)
 
 <!-- /MarkdownTOC -->
 
