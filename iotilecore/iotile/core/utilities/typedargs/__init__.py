@@ -1,5 +1,6 @@
 """Glue package shim to keep imports working since typedargs was broken into new package."""
 
+from __future__ import unicode_literals
 import pkg_resources
 
 
@@ -7,10 +8,11 @@ import pkg_resources
 from typedargs.annotate import param, returns, context, finalizer, takes_cmdline, annotated, return_type, stringable
 from typedargs.typeinfo import type_system, iprint
 
-def load_external_components():
+
+def load_external_components(typesys):
     """Load all external typed defined by iotile plugins.
 
-    This allows plugisn to register their own types for type annotations and
+    This allows plugins to register their own types for type annotations and
     allows all registered iotile components that have associated type libraries to
     add themselves to the global type system.
     """
@@ -24,14 +26,10 @@ def load_external_components():
     typelibs = reduce(lambda x, y: x+y, [reg.find_component(x).type_packages() for x in modules], [])
     for lib in typelibs:
         if lib.endswith('.py'):
-            lib = lib[:-2]
+            lib = lib[:-3]
 
-        type_system.load_external_types(lib)
-
-    # Also search through installed distributions for type libraries
-    for entry in pkg_resources.iter_entry_points('iotile.type_package'):
-        mod = entry.load()
-        type_system.load_type_module(mod)
+        typesys.load_external_types(lib)
 
 
-load_external_components()
+type_system.register_type_source('iotile.type_package', 'Pip installed type packages')
+type_system.register_type_source(load_external_components, 'Local development components')
