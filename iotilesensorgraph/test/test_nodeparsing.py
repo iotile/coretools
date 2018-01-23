@@ -1,7 +1,7 @@
 from builtins import str
 import pytest
 
-from iotile.sg.node_descriptor import parse_node_descriptor
+from iotile.sg.node_descriptor import parse_node_descriptor, parse_binary_descriptor
 from iotile.sg.model import DeviceModel
 from iotile.sg import SensorGraph, SensorLog, DataStream
 
@@ -32,3 +32,15 @@ def test_string_generation():
     sg = SensorGraph(log, model=model)
     sg.add_node('(input 1 when value < 0x10) => buffered node 1 using copy_all_a')
     assert str(sg.nodes[-1]) == u'(input 1 when value < 16) => buffered 1 using copy_all_a'
+
+
+def test_binary_parsing():
+    """Make sure we can parse binary node descriptors."""
+
+    bin_node = b'\x00\x00\x00\x00\x00\x00\x00\x00\x0f\x10\x008\xff\xff\x00\n\n\x00\x00\x00'
+    str_node = parse_binary_descriptor(bin_node)
+    assert str_node == '(system input 0 always) => unbuffered 15 using copy_latest_a'
+
+    bin_node = b'\x00\x00\x00\x00\x01\x00\x00\x00\x01\x00\x010\x020\x02\n\x05\x00\x00\x00'
+    str_node = parse_binary_descriptor(bin_node)
+    assert str_node == '(input 1 always && input 2 when count >= 1) => buffered 1 using copy_all_a'

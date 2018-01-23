@@ -190,6 +190,9 @@ class DataStreamSelector(object):
         MatchCombined: (1 << 11) | (1 << 15)
     }
 
+    SpecifierEncodingMap = {y: x for x, y in iteritems(SpecifierEncodings)}
+    MatchAllCode = (1 << 11) - 1
+
     def __init__(self, stream_type, stream_id, stream_specifier):
         self.match_type = stream_type
         self.match_id = stream_id
@@ -250,6 +253,41 @@ class DataStreamSelector(object):
             specifier = DataStreamSelector.MatchUserOnly
 
         return DataStreamSelector(stream.stream_type, stream.stream_id, specifier)
+
+    @classmethod
+    def FromEncoded(cls, encoded):
+        """Create a DataStreamSelector from an encoded 16-bit value.
+
+        The binary value must be equivalent to what is produced by
+        a call to self.encode() and will turn that value back into
+        a a DataStreamSelector.
+
+        Note that the following operation is a no-op:
+
+        DataStreamSelector.FromEncode(value).encode()
+
+        Args:
+            encoded (int): The encoded binary representation of a
+                DataStreamSelector.
+
+        Returns:
+            DataStreamSelector: The decoded selector.
+        """
+
+        match_spec = encoded & ((1 << 11) | (1 << 15))
+        match_type = (encoded & (0b111 << 12)) >> 12
+        match_id = encoded & ((1 << 11) - 1)
+
+        if match_spec not in cls.SpecifierEncodingMap:
+            raise ArgumentError("Unkown encoded match specifier", match_spec=match_spec, known_specifiers=cls.SpecifierEncodingMap.keys())
+
+        spec_name = cls.SpecifierEncodingMap[match_spec]
+
+        # Handle wildcard matches
+        if match_id == cls.MatchAllCode:
+            match_id = None
+
+        return DataStreamSelector(match_type, match_id, spec_name)
 
     @classmethod
     def FromString(cls, string_rep):
@@ -321,7 +359,10 @@ class DataStreamSelector(object):
             if specifier != u'':
                 specifier += u' '
 
-            return u'all {}{}s'.format(specifier, type_str)
+            if type_str != u'buffered':
+                type_str = type_str + 's'
+
+            return u'all {}{}'.format(specifier, type_str)
 
     def matches(self, stream):
         """Check if this selector matches the given stream

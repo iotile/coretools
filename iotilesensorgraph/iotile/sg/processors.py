@@ -130,4 +130,4 @@ def trigger_streamer(*inputs, **kwargs):
     """
 
     # TODO: This function does nothing currently
-    return [IOTIleReading(0, 0, 0)]
+    return [IOTileReading(0, 0, 0)]
