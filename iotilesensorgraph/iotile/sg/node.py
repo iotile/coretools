@@ -144,7 +144,6 @@ class TrueTrigger(object):
             str: The formatted string
         """
 
-
         return u"{}".format(stream)
 
 

@@ -1,6 +1,6 @@
 # Annotated Registry
 # A wrapper to make the IOTile component registry accessible in the iotile
-# tool.  Since the registry is used internally in the type system it cannot 
+# tool.  Since the registry is used internally in the type system it cannot
 # itself make use of typedargs annotations
 from iotile.core.utilities.typedargs import annotated, param, return_type, context, iprint
 
@@ -29,7 +29,7 @@ class AnnotatedRegistry:
     @param("component", "path", "exists", desc="folder containing component to register")
     def add_component(self, component):
         """
-        Register a component with ComponentRegistry. 
+        Register a component with ComponentRegistry.
 
         Component must be a buildable object with a module_settings.json file that
         describes its name and the domain that it is part of.

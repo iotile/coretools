@@ -23,9 +23,22 @@ import iotile.core.hw.transport.cmdstream as cmdstream
 from multiprocessing import freeze_support
 import traceback
 
-def main():
+def main(argv=None):
+    """Run the iotile shell tool.
+
+    You can optionally pass the arguments that should be run
+    in the argv parameter.  If nothing is passed, the args
+    are pulled from sys.argv.
+
+    The return value of this function is the return value
+    of the shell command.
+    """
+
+    if argv is None:
+        argv = sys.argv[1:]
+
     type_system.interactive = True
-    line = sys.argv[1:]
+    line = argv
 
     shell = HierarchicalShell('iotile')
 
@@ -41,6 +54,7 @@ def main():
     finished = False
 
     try:
+        if len(line) > 0:
             finished = shell.invoke(line)
     except APIError:
         traceback.print_exc()

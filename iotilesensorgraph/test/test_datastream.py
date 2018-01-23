@@ -189,3 +189,25 @@ def test_encoding():
 
     stream = DataStream.FromString('unbuffered 10')
     assert stream.encode() == 0x100a
+
+
+def test_selector_from_encoded():
+    """Make sure we can create a selector from an encoded value."""
+
+    sel = DataStreamSelector.FromEncoded(0x5FFF)
+    assert str(sel) == 'all system outputs'
+
+    sel = DataStreamSelector.FromEncoded(0xD7FF)
+    assert str(sel) == 'all outputs'
+
+    sel = DataStreamSelector.FromEncoded(0x100a)
+    assert str(sel) == 'unbuffered 10'
+
+    assert str(DataStreamSelector.FromEncoded(DataStreamSelector.FromString('all combined output').encode())) == 'all combined outputs'
+
+
+def test_buffered_pluralization():
+    """Make sure we don't incorrectly pluralize buffered streams."""
+
+    sel = DataStreamSelector.FromString('all buffered')
+    assert str(sel) == 'all buffered'
