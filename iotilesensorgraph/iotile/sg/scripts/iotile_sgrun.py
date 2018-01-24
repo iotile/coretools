@@ -122,9 +122,6 @@ def main():
             sim.run(graph, accelerated=not args.realtime)
         except KeyboardInterrupt:
             pass
-    #except IOTileException as exc:
-    #    print(str(exc))
-    #    return 1
     finally:
         if executor is not None:
             executor.hw.close()

@@ -37,3 +37,13 @@ def test_slotid_parsing():
     assert slot1 == slot2
     assert not con == slot1
     assert con != slot1
+
+
+def test_slotid_binary_parsing():
+    """Make sure we can generate and parse binary descriptors."""
+
+    slot_id = SlotIdentifier.FromString('slot 1')
+    assert SlotIdentifier.FromEncoded(slot_id.encode()) == slot_id
+
+    con = SlotIdentifier.FromString('controller')
+    assert SlotIdentifier.FromEncoded(con.encode()) == con
