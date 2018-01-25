@@ -84,6 +84,20 @@ class RemoveCopyLatestPass(object):
                 i = out.find_input(node.stream)
                 _, trigger = out.inputs[i]
 
+                # We can't merge things that could result in producing
+                # multiple readings at a time since then combining the
+                # trigger might change what number of outputs are
+                # produced since:
+                # trigger every 600 copy_latest then trigger every 1 copy_all
+                # would produce one reading every 600 ticks.
+                #
+                # but:
+                # trigger every 1 copy_latest then trigger every 600 copy_all
+                # would produce 600 readings one every 600 ticks.
+                if out.func_name == u'copy_all_a':
+                    can_combine = False
+                    break
+
                 if not self._can_combine(node.inputs[0][1], trigger):
                     can_combine = False
                     break

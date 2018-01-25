@@ -1,0 +1,49 @@
+{
+    "trace": [
+        {
+            "reading_id": 0, 
+            "value": 0, 
+            "stream": "output 34", 
+            "time": 658
+        }, 
+        {
+            "reading_id": 0, 
+            "value": 0, 
+            "stream": "output 33", 
+            "time": 658
+        }, 
+        {
+            "reading_id": 0, 
+            "value": 0, 
+            "stream": "output 35", 
+            "time": 658
+        }, 
+        {
+            "reading_id": 0, 
+            "value": 0, 
+            "stream": "output 34", 
+            "time": 1258
+        }, 
+        {
+            "reading_id": 0, 
+            "value": 0, 
+            "stream": "output 33", 
+            "time": 1258
+        }, 
+        {
+            "reading_id": 0, 
+            "value": 0, 
+            "stream": "output 35", 
+            "time": 1258
+        }
+    ], 
+    "selectors": [
+        "all outputs", 
+        "all system outputs", 
+        "all buffered", 
+        "unbuffered 18", 
+        "unbuffered 15", 
+        "unbuffered 22", 
+        "unbuffered 25"
+    ]
+}

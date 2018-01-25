@@ -80,11 +80,26 @@ def watch_printer(watch, value):
     print("({: 8} s) {}: {}".format(value.raw_time, watch, value.value))
 
 
-def main():
+def main(argv=None):
+    """Main entry point for iotile sensorgraph simulator.
+
+    This is the iotile-sgrun command line program.  It takes
+    an optional set of command line parameters to allow for
+    testing.
+
+    Args:
+        argv (list of str): An optional set of command line
+            parameters.  If not passed, these are taken from
+            sys.argv.
+    """
+
+    if argv is None:
+        argv = sys.argv
+
     try:
         executor = None
         parser = build_args()
-        args = parser.parse_args()
+        args = parser.parse_args(args=argv)
 
         model = DeviceModel()
 
