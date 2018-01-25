@@ -8,7 +8,7 @@ a result of different levels of optimization.
 
 from __future__ import (unicode_literals, absolute_import, print_function)
 import json
-from ..stream import DataStreamSelector
+from ..stream import DataStreamSelector, DataStream
 
 
 class SimulationTrace(list):
@@ -44,11 +44,11 @@ class SimulationTrace(list):
 
         out = {
             'selectors': [str(x) for x in self.selectors],
-            'trace': [{'stream': str(x.stream), 'time': x.raw_time, 'value': x.value, 'reading_id': x.reading_id} for x in self]
+            'trace': [{'stream': str(DataStream.FromEncoded(x.stream)), 'time': x.raw_time, 'value': x.value, 'reading_id': x.reading_id} for x in self]
         }
 
         with open(out_path, "wb") as outfile:
-            json.dump(out, outfile)
+            json.dump(out, outfile, indent=4)
 
     @classmethod
     def FromFile(cls, in_path):

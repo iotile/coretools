@@ -1,5 +1,7 @@
 import pytest
+from typedargs.exceptions import ArgumentError
 from iotile.sg.sim import SensorGraphSimulator
+from iotile.sg.sim.stimulus import SimulationStimulus
 from iotile.sg.slot import SlotIdentifier
 from iotile.sg.known_constants import config_user_tick_secs
 from iotile.sg import DeviceModel, SensorLog, SensorGraph, DataStream
@@ -118,3 +120,27 @@ def test_usertick(usertick_sg):
 
     assert last_input.value == 200
     assert last_output.value == 200
+
+
+def test_stimulus_parsing():
+    """Make sure we can parse stimulus strings."""
+
+    stim1 = SimulationStimulus.FromString('system input 1024 = 10')
+    assert stim1.time == 0
+    assert stim1.value == 10
+    assert str(stim1.stream) == 'system input 1024'
+
+    stim2 = SimulationStimulus.FromString('50 seconds: input 1 = 0x5')
+    assert stim2.time == 50
+    assert stim2.value == 5
+    assert str(stim2.stream) == 'input 1'
+
+    stim3 = SimulationStimulus.FromString('11 minutes: input 1034 = 1')
+    assert stim3.time == 11*60
+
+    with pytest.raises(ArgumentError):
+        SimulationStimulus.FromString("Unknown")
+
+    with pytest.raises(ArgumentError):
+        SimulationStimulus.FromString('unbuffered 1 = 1')
+

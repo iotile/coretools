@@ -20,11 +20,13 @@ def build_args():
     parser.add_argument(u'--stop', u'-s', action=u"append", default=[], type=str, help=u"A stop condition for when the simulation should end.")
     parser.add_argument(u'--realtime', u'-r', action=u"store_true", help=u"A stop condition for when the simulation should end.")
     parser.add_argument(u'--watch', u'-w', action=u"append", default=[], help=u"A stream to watch and print whenever writes are made.")
+    parser.add_argument(u'--trace', u'-t', help=u"Trace all writes to output streams to a file")
     parser.add_argument(u'--disable-optimizer', action="store_true", help=u"disable the sensor graph optimizer completely")
     parser.add_argument(u"--mock-rpc", u"-m", action=u"append", type=str, default=[], help=u"mock an rpc, format should be <slot id>:<rpc_id> = value.  For example -m \"slot 1:0x500a = 10\"")
     parser.add_argument(u"--port", u"-p", help=u"The port to use to connect to a device if we are semihosting")
     parser.add_argument(u"--semihost-device", u"-d", type=lambda x: int(x, 0), help=u"The device id of the device we should semihost this sensor graph on.")
     parser.add_argument(u"-c", u"--connected", action="store_true", help=u"Simulate with a user connected to the device (to enable realtime outputs)")
+    parser.add_argument(u"-i", u"--stimulus", action=u"append", help="Push a value to an input stream at the specified time (or before starting).  The syntax is [time: ][system ]input X = Y where X and Y are integers")
     return parser
 
 
@@ -113,7 +115,13 @@ def main():
             slot, rpc_id, value = process_mock_rpc(mock)
             sim.rpc_executor.mock(slot, rpc_id, value)
 
+        for stim in args.stimulus:
+            sim.stimulus(stim)
+
         graph.load_constants()
+
+        if args.trace is not None:
+            sim.record_trace()
 
         try:
             if args.connected:
@@ -122,6 +130,9 @@ def main():
             sim.run(accelerated=not args.realtime)
         except KeyboardInterrupt:
             pass
+
+        if args.trace is not None:
+            sim.trace.save(args.trace)
     finally:
         if executor is not None:
             executor.hw.close()

@@ -6,6 +6,7 @@ from ..known_constants import system_tick, user_tick, battery_voltage
 from .null_executor import NullRPCExecutor
 from .stop_conditions import TimeBasedStopCondition
 from .trace import SimulationTrace
+from .stimulus import SimulationStimulus
 from iotile.core.exceptions import ArgumentError
 from iotile.core.hw.reports import IOTileReading
 
@@ -40,6 +41,7 @@ class SensorGraphSimulator(object):
     def __init__(self, sensor_graph):
         self.voltage = 3.6
         self.stop_conditions = []
+        self.stimuli = []
         self._known_conditions = []
         self.trace = None
         self.tick_count = 0
@@ -129,6 +131,18 @@ class SensorGraphSimulator(object):
         if include_reset:
             pass  # TODO: include a reset event here
 
+        # Process all stimuli that occur at the start of the simulation
+        i = None
+        for i, stim in enumerate(self.stimuli):
+            if stim.time != 0:
+                break
+
+            reading = IOTileReading(self.tick_count, stim.stream.encode(), stim.value)
+            self.sensor_graph.process_input(stim.stream, reading, self.rpc_executor)
+
+        if i is not None and i > 0:
+            self.stimuli = self.stimuli[i:]
+
         # See if there's a user tick that's set
         user_interval = self.sensor_graph.user_tick()
 
@@ -137,9 +151,21 @@ class SensorGraphSimulator(object):
             now = monotonic()
             next_tick = now + 1.0
 
-            # To match what is done in actual hardware, we incremeent tick count so the first tick
+            # To match what is done in actual hardware, we increment tick count so the first tick
             # is 1.
             self.tick_count += 1
+
+            # Process all stimuli that occur at this tick of the simulation
+            i = None
+            for i, stim in enumerate(self.stimuli):
+                if stim.time != self.tick_count:
+                    break
+
+                reading = IOTileReading(self.tick_count, stim.stream.encode(), stim.value)
+                self.sensor_graph.process_input(stim.stream, reading, self.rpc_executor)
+
+            if i is not None and i > 0:
+                self.stimuli = self.stimuli[i:]
 
             if user_interval != 0 and (self.tick_count % user_interval) == 0:
                 reading = IOTileReading(self.tick_count, user_tick.encode(), self.tick_count)
@@ -175,6 +201,39 @@ class SensorGraphSimulator(object):
                 return True
 
         return False
+
+    def stimulus(self, stimulus):
+        """Add a simulation stimulus at a given time.
+
+        A stimulus is a specific input given to the graph at a specific
+        time to a specific input stream.  The format for specifying a
+        stimulus is:
+        [time: ][system ]input X = Y
+        where X and Y are integers.
+
+        This will cause the simulator to inject this input at the given time.
+        If you specify a time of 0 seconds, it will happen before the simulation
+        starts.  Similarly, if you specify a time of 1 second it will also happen
+        before anything else since the simulations start with a tick value of 1.
+
+        The stimulus is injected before any other things happen at each new tick.
+
+        Args:
+            stimulus (str or SimulationStimulus): A prebuilt stimulus object or
+                a string description of the stimulus of the format:
+                [time: ][system ]input X = Y
+                where time is optional and defaults to 0 seconds if not specified.
+
+        Examples:
+            sim.stimulus('system input 10 = 15')
+            sim.stimulus('1 minute: input 1 = 5')
+        """
+
+        if not isinstance(stimulus, SimulationStimulus):
+            stimulus = SimulationStimulus.FromString(stimulus)
+
+        self.stimuli.append(stimulus)
+        self.stimuli.sort(key=lambda x:x.time)
 
     def stop_condition(self, condition):
         """Add a stop condition to this simulation.
