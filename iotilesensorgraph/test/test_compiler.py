@@ -40,9 +40,9 @@ def test_every_block_compilation(parser):
     counter15 = log.create_walker(DataStreamSelector.FromString('counter 15'))
     counter16 = log.create_walker(DataStreamSelector.FromString('counter 16'))
 
-    sim = SensorGraphSimulator()
+    sim = SensorGraphSimulator(sg)
     sim.stop_condition('run_time 120 seconds')
-    sim.run(sg)
+    sim.run()
 
     assert counter15.count() == 2
     assert counter16.count() == 2
@@ -68,9 +68,9 @@ def test_every_block_with_buffering(parser):
     output1 = log.create_walker(DataStreamSelector.FromString('output 1'))
     buffered1 = log.create_walker(DataStreamSelector.FromString('buffered 1'))
 
-    sim = SensorGraphSimulator()
+    sim = SensorGraphSimulator(sg)
     sim.stop_condition('run_time 120 seconds')
-    sim.run(sg)
+    sim.run()
 
     assert output1.count() == 12
     assert buffered1.count() == 12
@@ -115,9 +115,9 @@ def test_every_block_splitting(parser):
 
     sg.load_constants()
 
-    sim = SensorGraphSimulator()
+    sim = SensorGraphSimulator(sg)
     sim.stop_condition('run_time 120 seconds')
-    sim.run(sg)
+    sim.run()
 
     sg.load_constants()
 
@@ -147,22 +147,22 @@ def test_when_block_clock(parser):
 
     # Now make sure it produces the right output
     counter15 = log.create_walker(DataStreamSelector.FromString('counter 15'))
-    sim = SensorGraphSimulator()
+    sim = SensorGraphSimulator(sg)
     sim.stop_condition('run_time 60 seconds')
-    sim.run(sg)
+    sim.run()
     assert counter15.count() == 0
 
-    sim.step(sg, DataStream.FromString('system input 1025'), 8)
+    sim.step(DataStream.FromString('system input 1025'), 8)
     assert counter15.count() == 1
     counter15.skip_all()
 
-    sim.run(sg)
+    sim.run()
 
     assert counter15.count() == 60
 
     counter15.skip_all()
-    sim.step(sg, DataStream.FromString('system input 1026'), 8)
-    sim.run(sg)
+    sim.step(DataStream.FromString('system input 1026'), 8)
+    sim.run()
     assert counter15.count() == 0
 
 
@@ -181,19 +181,19 @@ def test_when_block_on_event(parser):
 
     sg.load_constants()
 
-    sim = SensorGraphSimulator()
+    sim = SensorGraphSimulator(sg)
 
     # We should only get a reading in unbuffered 1 on connect and unbuffered 2 on disconnect
     with pytest.raises(StreamEmptyError):
         log.inspect_last(DataStream.FromString('unbuffered 2'))
 
-    sim.step(sg, DataStream.FromString('system input 1025'), 8)
+    sim.step(DataStream.FromString('system input 1025'), 8)
     assert log.inspect_last(DataStream.FromString('unbuffered 1')).value == 0
 
     with pytest.raises(StreamEmptyError):
         log.inspect_last(DataStream.FromString('unbuffered 2'))
 
-    sim.step(sg, DataStream.FromString('system input 1026'), 8)
+    sim.step(DataStream.FromString('system input 1026'), 8)
     assert log.inspect_last(DataStream.FromString('unbuffered 2')).value == 0
 
 
@@ -216,15 +216,15 @@ def test_on_block(parser):
     counter2 = log.create_walker(DataStreamSelector.FromString('counter 2'))
     counter3 = log.create_walker(DataStreamSelector.FromString('counter 3'))
 
-    sim = SensorGraphSimulator()
-    sim.step(sg, DataStream.FromString('input 1'), 8)
+    sim = SensorGraphSimulator(sg)
+    sim.step(DataStream.FromString('input 1'), 8)
 
     assert counter1.count() == 0
     assert counter2.count() == 0
     assert counter3.count() == 0
 
     for i in range(0, 10):
-        sim.step(sg, DataStream.FromString('input 1'), 5)
+        sim.step(DataStream.FromString('input 1'), 5)
 
     assert counter1.count() == 10
     assert counter2.count() == 5
@@ -248,20 +248,20 @@ def test_on_block_dual(parser):
 
     counter1 = log.create_walker(DataStreamSelector.FromString('counter 1'))
 
-    sim = SensorGraphSimulator()
-    sim.step(sg, DataStream.FromString('input 1'), 5)
+    sim = SensorGraphSimulator(sg)
+    sim.step(DataStream.FromString('input 1'), 5)
 
     assert counter1.count() == 0
 
-    sim.step(sg, DataStream.FromString('input 2'), 1)
+    sim.step(DataStream.FromString('input 2'), 1)
     for _i in range(0, 10):
-        sim.step(sg, DataStream.FromString('input 1'), 5)
+        sim.step(DataStream.FromString('input 1'), 5)
 
     assert counter1.count() == 10
 
-    sim.step(sg, DataStream.FromString('input 2'), 0)
+    sim.step(DataStream.FromString('input 2'), 0)
     for _i in range(0, 10):
-        sim.step(sg, DataStream.FromString('input 1'), 5)
+        sim.step(DataStream.FromString('input 1'), 5)
 
     assert counter1.count() == 10
 
@@ -284,12 +284,12 @@ def test_latch_block(parser):
     # Now make sure it produces the right output
     counter15 = log.create_walker(DataStreamSelector.FromString('counter 15'))
 
-    sim = SensorGraphSimulator()
+    sim = SensorGraphSimulator(sg)
     sim.stop_condition('run_time 60 seconds')
-    sim.run(sg)
+    sim.run()
     assert counter15.count() == 0
 
-    sim.step(sg, DataStream.FromString('input 10'), 1)
+    sim.step(DataStream.FromString('input 10'), 1)
     counter15.skip_all()
 
     sim.run(sg)
@@ -297,8 +297,8 @@ def test_latch_block(parser):
     assert counter15.count() == 60
 
     counter15.skip_all()
-    sim.step(sg, DataStream.FromString('input 10'), 0)
-    sim.run(sg)
+    sim.step(DataStream.FromString('input 10'), 0)
+    sim.run()
     assert counter15.count() == 0
 
 
@@ -355,9 +355,9 @@ def test_copy_statement(parser):
     output2 = log.create_walker(DataStreamSelector.FromString('output 2'))
     output3 = log.create_walker(DataStreamSelector.FromString('output 3'))
 
-    sim = SensorGraphSimulator()
+    sim = SensorGraphSimulator(sg)
     sim.stop_condition('run_time 60 seconds')
-    sim.run(sg)
+    sim.run()
 
     assert output1.count() == 1
     assert output2.count() == 1
@@ -388,14 +388,14 @@ def test_copy_constant_statement(parser):
 
     output1 = log.create_walker(DataStreamSelector.FromString('output 1'))
 
-    sim = SensorGraphSimulator()
+    sim = SensorGraphSimulator(sg)
     sim.stop_condition('run_time 10 seconds')
-    sim.run(sg)
+    sim.run()
 
     assert output1.count() == 1
     assert output1.pop().value == 15
 
-    sim.step(sg, DataStream.FromString('input 1'), 10)
+    sim.step(DataStream.FromString('input 1'), 10)
     assert output1.count() == 1
     assert output1.pop().value == 0x10
 
@@ -418,10 +418,10 @@ def test_copy_count_statement(parser):
 
     output = log.create_walker(DataStreamSelector.FromString('output 1'))
 
-    sim = SensorGraphSimulator()
+    sim = SensorGraphSimulator(sg)
     sim.stop_condition('run_time 3 seconds')
-    sim.step(sg, user_connected, 8) # Simulates a connected user
-    sim.run(sg)
+    sim.step(user_connected, 8) # Simulates a connected user
+    sim.run()
     print(output);
     assert output.count() == 1
     print(output)

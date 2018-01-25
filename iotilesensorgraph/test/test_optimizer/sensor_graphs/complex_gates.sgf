@@ -1,0 +1,70 @@
+# An example of a complex sensor graph with an
+# internal latch that turns on or off periodic
+# data collection.
+
+on input 1
+{
+    copy => output 36;
+}
+
+# Allow enabling and disabling data collection
+on value(system input 1034) == 0 
+{
+    copy => constant 1;
+    call 0x200e on controller;
+    call 0x8035 on slot 2;
+}
+
+on value(system input 1034) == 1
+{
+    copy => constant 1;
+    call 0x200e on controller;
+    call 0x8036 on slot 2;
+}
+
+# When we turn on start recording if we're in recording mode
+on system input 1024 and value(constant 1) == 1
+{
+    call 0x8036 on slot 2;
+}
+
+# Set up a clock gated by constant 1
+when value(constant 1) == 1
+{
+    every 10 minutes
+    {
+        call 0x8000 on slot 3;
+        call 0x8003 on slot 3 => output 34;
+        call 0x8002 on slot 3 => output 33;
+        call 0x8001 on slot 3 => output 35;
+    }
+}
+
+when connected to controller
+{
+    on connect
+    {
+        trigger streamer 0;
+    }
+
+    every 1 second
+    {
+        call 0x8003 on slot 2 => unbuffered 18;
+
+        call 0x8000 on slot 3;
+        call 0x8003 on slot 3 => unbuffered 15;
+        call 0x8002 on slot 3 => unbuffered 22;
+        call 0x8001 on slot 3 => unbuffered 25;
+    }
+}
+
+
+# Outputs
+manual streamer on all outputs;
+manual streamer on all system outputs with streamer 0;
+manual streamer on all buffered with streamer 0;
+
+realtime streamer on unbuffered 18;
+realtime streamer on unbuffered 15;
+realtime streamer on unbuffered 22;
+realtime streamer on unbuffered 25;

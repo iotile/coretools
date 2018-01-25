@@ -5,6 +5,7 @@ from monotonic import monotonic
 from ..known_constants import system_tick, user_tick, battery_voltage
 from .null_executor import NullRPCExecutor
 from .stop_conditions import TimeBasedStopCondition
+from .trace import SimulationTrace
 from iotile.core.exceptions import ArgumentError
 from iotile.core.hw.reports import IOTileReading
 
@@ -31,21 +32,64 @@ class SensorGraphSimulator(object):
        This results in a semi-hosted sensor graph, where the sensor graph is running
        on your computer but the rpcs are executed on another IOTile Device, which
        can be very useful for exploration and debugging.
+
+    Args:
+        sensor_graph (SensorGraph): The sensor graph that we want to simulate.
     """
 
-    def __init__(self):
+    def __init__(self, sensor_graph):
         self.voltage = 3.6
         self.stop_conditions = []
         self._known_conditions = []
-        self.watch_streams = []
+        self.trace = None
         self.tick_count = 0
+        self.sensor_graph = sensor_graph
         self._start_tick = 0  # the tick on which the current simulation started
         self.rpc_executor = NullRPCExecutor()
 
         # Register known stop conditions
         self._known_conditions.append(TimeBasedStopCondition)
 
-    def step(self, sensor_graph, input_stream, value):
+    def record_trace(self, selectors=None):
+        """Record a trace of readings produced by this simulator.
+
+        This causes the property `self.trace` to be populated with a
+        SimulationTrace object that contains all of the readings that
+        are produced during the course of the simulation.  Only readings
+        that respond to specific selectors are given.
+
+        You can pass whatever selectors you want in the optional selectors
+        argument.  If you pass None, then the default behavior to trace
+        all of the output streams of the sensor graph, which are defined
+        as the streams that are selected by a DataStreamer object in the
+        sensor graph.  This is typically what is meant by sensor graph
+        output.
+
+        You can inspect the current trace by looking at the trace
+        property.  It will initially be an empty list and will be updated
+        with each call to step() or run() that results in new readings
+        responsive to the selectors you pick (or the graph streamers if
+        you did not explicitly pass a list of DataStreamSelector objects).
+
+        Args:
+            selectors (list of DataStreamSelector): The selectors to add watch
+                statements on to produce this trace. This is optional.
+                If it is not specified, a the streamers of the sensor
+                graph are used.
+        """
+
+        if selectors is None:
+            selectors = [x.walker.selector for x in self.sensor_graph.streamers]
+
+        self.trace = SimulationTrace(selectors=selectors)
+
+        for sel in selectors:
+            self.sensor_graph.sensor_log.watch(sel, self._on_trace_callback)
+
+    def _on_trace_callback(self, watch, value):
+        self.trace.append(value)
+
+    def step(self, input_stream, value):
         """Step the sensor graph through one since input.
 
         The internal tick count is not advanced so this function may
@@ -53,16 +97,15 @@ class SensorGraphSimulator(object):
         without simulation time passing.
 
         Args:
-            sensor_graph (SensorGraph): The sensor graph to run
             input_stream (DataStream): The input stream to push the
                 value into
             value (int): The reading value to push as an integer
         """
 
         reading = IOTileReading(input_stream.encode(), self.tick_count, value)
-        sensor_graph.process_input(input_stream, reading, self.rpc_executor)
+        self.sensor_graph.process_input(input_stream, reading, self.rpc_executor)
 
-    def run(self, sensor_graph, include_reset=True, accelerated=True):
+    def run(self, include_reset=True, accelerated=True):
         """Run this sensor graph until a stop condition is hit.
 
         Multiple calls to this function are useful only if
@@ -70,7 +113,6 @@ class SensorGraphSimulator(object):
         cause the second call to not exit immediately.
 
         Args:
-            sensor_graph (SensorGraph): The sensor graph to run
             include_reset (bool): Start the sensor graph run with
                 a reset event to match what would happen when an
                 actual device powers on.
@@ -81,16 +123,16 @@ class SensorGraphSimulator(object):
 
         self._start_tick = self.tick_count
 
-        if self._check_stop_conditions(sensor_graph):
+        if self._check_stop_conditions(self.sensor_graph):
             return
 
         if include_reset:
             pass  # TODO: include a reset event here
 
         # See if there's a user tick that's set
-        user_interval = sensor_graph.user_tick()
+        user_interval = self.sensor_graph.user_tick()
 
-        while not self._check_stop_conditions(sensor_graph):
+        while not self._check_stop_conditions(self.sensor_graph):
             # Process one more one second tick
             now = monotonic()
             next_tick = now + 1.0
@@ -101,15 +143,15 @@ class SensorGraphSimulator(object):
 
             if user_interval != 0 and (self.tick_count % user_interval) == 0:
                 reading = IOTileReading(self.tick_count, user_tick.encode(), self.tick_count)
-                sensor_graph.process_input(user_tick, reading, self.rpc_executor)
+                self.sensor_graph.process_input(user_tick, reading, self.rpc_executor)
 
             if (self.tick_count % 10) == 0:
                 reading = IOTileReading(self.tick_count, system_tick.encode(), self.tick_count)
-                sensor_graph.process_input(system_tick, reading, self.rpc_executor)
+                self.sensor_graph.process_input(system_tick, reading, self.rpc_executor)
 
                 # Every 10 seconds the battery voltage is reported in 16.16 fixed point format in volts
                 reading = IOTileReading(self.tick_count, battery_voltage.encode(), int(self.voltage * 65536))
-                sensor_graph.process_input(battery_voltage, reading, self.rpc_executor)
+                self.sensor_graph.process_input(battery_voltage, reading, self.rpc_executor)
 
             now = monotonic()
 

@@ -95,7 +95,7 @@ def main():
             opt.optimize(parser.sensor_graph, model=model)
 
         graph = parser.sensor_graph
-        sim = SensorGraphSimulator()
+        sim = SensorGraphSimulator(graph)
 
         for stop in args.stop:
             sim.stop_condition(stop)
@@ -117,9 +117,9 @@ def main():
 
         try:
             if args.connected:
-                sim.step(graph, user_connected, 8)
+                sim.step(user_connected, 8)
 
-            sim.run(graph, accelerated=not args.realtime)
+            sim.run(accelerated=not args.realtime)
         except KeyboardInterrupt:
             pass
     finally:

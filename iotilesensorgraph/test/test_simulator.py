@@ -42,9 +42,9 @@ def callrpc_sg():
 def test_basic_sim(basic_sg):
     """Make sure we can run a very simple sensor graph and have it work."""
 
-    sim = SensorGraphSimulator()
+    sim = SensorGraphSimulator(basic_sg)
     sim.stop_condition('run_time 1000 seconds')
-    sim.run(basic_sg)
+    sim.run()
 
     # Make sure the sensor graph ran correctly
     last_input = basic_sg.sensor_log.inspect_last(DataStream.FromString('system input 2'))
@@ -58,9 +58,9 @@ def test_basic_sim(basic_sg):
 def test_rpc_sim(callrpc_sg):
     """Make sure we can run a very simple sensor graph and have it work."""
 
-    sim = SensorGraphSimulator()
+    sim = SensorGraphSimulator(callrpc_sg)
     sim.stop_condition('run_time 1000 seconds')
-    sim.run(callrpc_sg)
+    sim.run()
 
     # Make sure the sensor graph ran correctly
     last_input = callrpc_sg.sensor_log.inspect_last(DataStream.FromString('system input 2'))
@@ -73,10 +73,10 @@ def test_rpc_sim(callrpc_sg):
 def test_multiple_run_calls(callrpc_sg):
     """Make sure we can call run multiple times."""
 
-    sim = SensorGraphSimulator()
+    sim = SensorGraphSimulator(callrpc_sg)
     sim.stop_condition('run_time 100 seconds')
 
-    sim.run(callrpc_sg)
+    sim.run()
 
     # Make sure the sensor graph ran correctly
     last_input = callrpc_sg.sensor_log.inspect_last(DataStream.FromString('system input 2'))
@@ -85,7 +85,7 @@ def test_multiple_run_calls(callrpc_sg):
     assert last_input.value == 100
     assert last_output.value == 0
 
-    sim.run(callrpc_sg)
+    sim.run()
 
     # Make sure the sensor graph ran correctly
     last_input = callrpc_sg.sensor_log.inspect_last(DataStream.FromString('system input 2'))
@@ -98,10 +98,10 @@ def test_multiple_run_calls(callrpc_sg):
 def test_usertick(usertick_sg):
     """Make sure we receive user ticks in the simulation."""
 
-    sim = SensorGraphSimulator()
+    sim = SensorGraphSimulator(usertick_sg)
     sim.stop_condition('run_time 100 seconds')
 
-    sim.run(usertick_sg)
+    sim.run()
 
     # Make sure the sensor graph ran correctly
     last_input = usertick_sg.sensor_log.inspect_last(DataStream.FromString('system input 3'))
@@ -110,7 +110,7 @@ def test_usertick(usertick_sg):
     assert last_input.value == 100
     assert last_output.value == 100
 
-    sim.run(usertick_sg)
+    sim.run()
 
     # Make sure the sensor graph ran correctly
     last_input = usertick_sg.sensor_log.inspect_last(DataStream.FromString('system input 3'))
