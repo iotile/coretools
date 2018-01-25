@@ -1,6 +1,7 @@
 """Configuration object describing a streamer."""
 
 from builtins import str
+from future.utils import viewitems
 from iotile.core.exceptions import ArgumentError
 
 
@@ -26,7 +27,9 @@ class DataStreamer(object):
     """
 
     KnownTypes = {u'broadcast': 1, u'telegram': 1 << 1, u'synchronous': 1 << 2}
+    KnownTypeCodes = {y: x for x, y in viewitems(KnownTypes)}
     KnownFormats = {u'individual': 0, u'hashedlist': 1, u'signedlist_userkey': 2, u'signedlist_devicekey': 3}
+    KnownFormatCodes = {y: x for x,y in viewitems(KnownFormats)}
 
     def __init__(self, walker, dest_tile, report_format, automatic, report_type=u'telegram', with_other=None):
         report_format = str(report_format)

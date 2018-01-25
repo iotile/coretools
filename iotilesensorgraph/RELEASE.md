@@ -2,6 +2,19 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 0.4.0
+
+- Improve the optimization of counter nodes by better downgrading split counters
+  from copy_all to copy_latest when it can be proven that readings will arrive
+  one at a time. (Issue #317)
+- Add ability to simulate sensorgraphs and create traces that can be compared
+  to ensure that the behavior of a sensor graph doesn't change.  (Issue #318)
+- Fix bug in remove_copylatest optimization pass that would produce incorrect
+  results if a node with copy_all_a was connected to a node that had been
+  removed.  (Issue #320)
+- Adds support for defining external stimuli into the sensor graph simulator
+  either via command line or programmatically.  (Issue #321)
+
 ## 0.3.3
 
 - Add support for parsing binary node descriptors.  (Issue #311)

@@ -279,7 +279,7 @@ class DataStreamSelector(object):
         match_id = encoded & ((1 << 11) - 1)
 
         if match_spec not in cls.SpecifierEncodingMap:
-            raise ArgumentError("Unkown encoded match specifier", match_spec=match_spec, known_specifiers=cls.SpecifierEncodingMap.keys())
+            raise ArgumentError("Unknown encoded match specifier", match_spec=match_spec, known_specifiers=cls.SpecifierEncodingMap.keys())
 
         spec_name = cls.SpecifierEncodingMap[match_spec]
 

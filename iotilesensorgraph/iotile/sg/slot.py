@@ -1,7 +1,9 @@
 """Slot identifier parsing of 'slot 1' into SlotIdentifier."""
 
+from __future__ import (unicode_literals, print_function, absolute_import)
 from builtins import str
-from future.utils import python_2_unicode_compatible
+import struct
+from future.utils import python_2_unicode_compatible, viewitems
 from iotile.core.exceptions import ArgumentError
 
 
@@ -25,6 +27,15 @@ class SlotIdentifier(object):
         controller (bool): True if this is a controller tile, in which case
             the slot number must be None.
     """
+
+    KNOWN_MATCH_CODES = {
+        0: 'match_none',
+        1: 'match_slot',
+        2: 'match_controller',
+        3: 'match_name'
+    }
+
+    KNOWN_MATCH_NAMES = {y: x for x,y in viewitems(KNOWN_MATCH_CODES)}
 
     def __init__(self, slot=None, controller=False):
 
@@ -86,6 +97,53 @@ class SlotIdentifier(object):
             raise ArgumentError(u"Could not convert slot identifier to number", descriptor=desc, number=words[1])
 
         return SlotIdentifier(slot=slot_id)
+
+    @classmethod
+    def FromEncoded(cls, bindata):
+        """Create a slot identifier from an encoded binary descriptor.
+
+        These binary descriptors are used to communicate slot targeting
+        to an embedded device.  They are exactly 8 bytes in length.
+
+        Args:
+            bindata (bytes): The 8-byte binary descriptor.
+
+        Returns:
+            SlotIdentifier
+        """
+
+        if len(bindata) != 8:
+            raise ArgumentError("Invalid binary slot descriptor with invalid length", length=len(bindata), expected=8, data=bindata)
+
+        slot, match_op = struct.unpack("<B6xB", bindata)
+
+        match_name = cls.KNOWN_MATCH_CODES.get(match_op)
+        if match_name is None:
+            raise ArgumentError("Unknown match operation specified in binary slot descriptor", operation=match_op, known_match_ops=cls.KNOWN_MATCH_CODES)
+
+        if match_name == 'match_controller':
+            return SlotIdentifier(controller=True)
+
+        if match_name == 'match_slot':
+            return SlotIdentifier(slot=slot)
+
+        raise ArgumentError("Unsupported match operation in binary slot descriptor", match_op=match_name)
+
+    def encode(self):
+        """Encode this slot identifier into a binary descriptor.
+
+        Returns:
+            bytes: The 8-byte encoded slot identifier
+        """
+
+        slot = 0
+        match_op = self.KNOWN_MATCH_NAMES['match_controller']
+
+        if not self.controller:
+            slot = self.slot
+            match_op = self.KNOWN_MATCH_NAMES['match_slot']
+
+        return struct.pack("<B6xB", slot, match_op)
 
     def __str__(self):
         if self.controller:

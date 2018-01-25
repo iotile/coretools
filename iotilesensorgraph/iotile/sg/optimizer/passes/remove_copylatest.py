@@ -40,7 +40,8 @@ class RemoveCopyLatestPass(object):
         # 2. The input is from another node
         # 3. The type of the input is the same as the type of the output
         # 4. There are enough output links in the input node to
-        #    handle all of the downstream connections.
+        #    handle all of the downstream connections.  Note that we will
+        #    reclaim one free output when we do the replacement.
         # 5. The stream is not a sensor graph output
         # 6. The trigger conditions for both inputs and outputs are either
         #    count based or always.
@@ -69,8 +70,8 @@ class RemoveCopyLatestPass(object):
             if input_a.stream.stream_type != node.stream.stream_type:
                 continue
 
-            # Check 4
-            if input_a.free_outputs < len(outputs):
+            # Check 4 (keep in mind we free up one output when we do the swap)
+            if (input_a.free_outputs + 1) < len(outputs):
                 continue
 
             # Check 5
@@ -82,6 +83,20 @@ class RemoveCopyLatestPass(object):
             for out in outputs:
                 i = out.find_input(node.stream)
                 _, trigger = out.inputs[i]
+
+                # We can't merge things that could result in producing
+                # multiple readings at a time since then combining the
+                # trigger might change what number of outputs are
+                # produced since:
+                # trigger every 600 copy_latest then trigger every 1 copy_all
+                # would produce one reading every 600 ticks.
+                #
+                # but:
+                # trigger every 1 copy_latest then trigger every 600 copy_all
+                # would produce 600 readings one every 600 ticks.
+                if out.func_name == u'copy_all_a':
+                    can_combine = False
+                    break
 
                 if not self._can_combine(node.inputs[0][1], trigger):
                     can_combine = False
@@ -99,7 +114,6 @@ class RemoveCopyLatestPass(object):
             return False
 
         sensor_graph.nodes.remove(found_node)
-
         found_input.outputs.remove(found_node)
 
         for output in found_outputs:
@@ -161,9 +175,14 @@ class RemoveCopyLatestPass(object):
         # Otherwise these are both InputTrigger instances, which we can only
         # combine in certain cases.
 
-        # First, it both are count == 1, we can combine them
+        # If the triggers are count == X and count == Y, we can combine them to
+        # count == X*Y
         if trigger1.use_count and trigger2.use_count:
-            if trigger1.reference == 1 and trigger2.reference == 1 and trigger1.comp_string == u'==' and trigger2.comp_string == u'==':
-                return InputTrigger(u'count', u'==', 1)
+            if trigger1.comp_string == u'==' and trigger2.comp_string == u'==':
+                combined_ref = trigger1.reference * trigger2.reference
+
+                # Make sure we won't overflow
+                if combined_ref <= 0xFFFFFFFF:
+                    return InputTrigger(u'count', u'==', combined_ref)
 
         raise ArgumentError("Cannot combine triggers")
