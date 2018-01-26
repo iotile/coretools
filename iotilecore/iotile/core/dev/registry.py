@@ -3,6 +3,7 @@
 
 from iotile.core.utilities.kvstore_sqlite import SQLiteKVStore
 from iotile.core.utilities.kvstore_json import JSONKVStore
+from iotile.core.utilities.kvstore_mem import InMemoryKVStore
 from iotile.core.exceptions import *
 from iotile.core.utilities.paths import settings_directory
 import json
@@ -58,12 +59,15 @@ class ComponentRegistry(object):
         otherwise they will work from different registries that will likely contain different data
         """
 
-        if backing not in ['json', 'sqlite']:
+        if backing not in ['json', 'sqlite', 'memory']:
             raise ArgumentError("Unknown backing store type that is not json or sqlite", backing=backing)
 
         if backing == 'json':
             cls.BackingType = JSONKVStore
             cls.BackingFileName = 'component_registry.json'
+        elif backing == 'memory':
+            cls.BackingType = InMemoryKVStore
+            cls.BackingFileName = None
         else:
             cls.BackingType = SQLiteKVStore
             cls.BackingFileName = 'component_registry.db'

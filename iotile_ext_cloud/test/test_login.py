@@ -90,6 +90,7 @@ def test_alternative_domains(registry):
 
     assert registry.get_config('arch:cloud_token') == 'new-token'
 
+
 def test_check_time():
     """ Make sure we can check if the time is correct"""
 
@@ -112,7 +113,10 @@ def test_check_time():
         mocker.get('https://iotile.cloud/api/v1/server/', json=json_false)
         assert cloud.check_time() == False
 
+
 def test_get_fleet():
+    """Make sure we can get fleets."""
+
     auth_payload = {
         'jwt': 'big-token',
         'username': 'user1'
@@ -140,6 +144,7 @@ def test_get_fleet():
             cloud.get_fleet(2)
         with pytest.raises(ArgumentError):
             cloud.get_fleet(pow(16,12) + 1)
+
 
 def test_get_whitelist():
     """ Make sure we can retrieve the whitelist correctly """
@@ -178,4 +183,4 @@ def test_get_whitelist():
         mocker.get('https://iotile.cloud/api/v1/fleet/g--0000-0000-0004/devices/', json=p4)
         with pytest.raises(ExternalError):
             cloud.get_whitelist(0x1bd)
-        
+

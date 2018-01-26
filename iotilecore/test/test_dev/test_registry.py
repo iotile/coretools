@@ -10,7 +10,7 @@ def tile_path(name):
     return path
 
 
-@pytest.fixture(scope='function', params=['json', 'sqlite'])
+@pytest.fixture(scope='function', params=['json', 'sqlite', 'memory'])
 def registry(request):
     ComponentRegistry.SetBackingStore(request.param)
 
