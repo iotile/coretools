@@ -9,7 +9,8 @@ from iotile.cloud.cloud import IOTileCloud
 def basic_cloud(mock_cloud_private_nossl):
     """A basic mock iotile.cloud initialized with default information.
 
-    There is a single project with 5 devices that have ids 0-5.
+    There is a single project with 5 devices that have ids 1-5 and
+    a second inaccessible project with 1 device (id 6) in it.
     """
 
     ComponentRegistry.SetBackingStore('memory')
