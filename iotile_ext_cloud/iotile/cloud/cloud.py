@@ -7,6 +7,7 @@ import datetime
 import requests
 from dateutil.tz import tzutc
 import dateutil.parser
+from collections import namedtuple
 
 from iotile_cloud.api.connection import Api
 from iotile_cloud.api.exceptions import RestHttpBaseException, HttpNotFoundError
@@ -16,6 +17,7 @@ from iotile.core.exceptions import ArgumentError, ExternalError, DataError
 from iotile.core.utilities.typedargs import context, param, return_type, annotated, type_system
 from .utilities import device_id_to_slug
 
+Acknowledgement = namedtuple("Acknowledgement", ["index", "ack", "selector"])
 
 @context("IOTileCloud")
 class IOTileCloud(object):
@@ -336,6 +338,40 @@ class IOTileCloud(object):
             raise ExternalError("Response fom the cloud did not have last_id set", response=data)
 
         return data['last_id']
+
+    def device_acknowledgements(self, device_id):
+        """Get all streamer acknowledgements for a device by its id.
+
+        Args:
+            device_id (int): The device we are querying
+
+        Returns:
+            list of namedtuples: A list of all acknowledgement values received from the cloud.
+                The namedtuples should have index, ack and selector fields pulled from the corresponding
+                record in the cloud.
+        """
+
+        slug = device_id_to_slug(device_id)
+
+        try:
+            data = self.api.streamer().get(device=slug)
+        except RestHttpBaseException, exc:
+            raise ArgumentError("Could not get information for streamer", device_id=device_id, slug=slug, err=str(exc))
+
+        results = data.get('results', [])
+
+        acknowledgements = []
+
+        for result in results:
+            acknowledgement = Acknowledgement(
+                result.get("index"),
+                result.get("last_id"),
+                result.get("selector")
+            )
+
+            acknowledgements.append(acknowledgement)
+
+        return acknowledgements
 
     @annotated
     def refresh_token(self):
