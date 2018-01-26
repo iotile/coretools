@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.17.1
+
+- Add in memory KV store option to ComponentRegistry that makes unit testing
+  easier by preventing cross-contamination of settings.
+
 ## 3.17.0
 
 - Migrate typedargs to a separate package for easier development and add
