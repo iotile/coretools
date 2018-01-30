@@ -17,6 +17,7 @@ from iotile.core.hw.proxy.proxy import TileBusProxyObject
 from iotile.core.dev.registry import ComponentRegistry
 from iotile.core.hw.transport.adapterstream import AdapterCMDStream
 from iotile.core.dev.config import ConfigManager
+from iotile.core.hw.debug import DebugManager
 import inspect
 import os.path
 import imp
@@ -163,6 +164,21 @@ class HardwareManager:
         """
 
         self.stream.disconnect()
+
+    @annotated
+    def debug(self):
+        """Prepare the device for debugging if supported.
+
+        Some transport mechanisms support a low level debug channel
+        that permits recovery and test operations such as erasing
+        and forcibly reprogramming a device or dumping memory.
+
+        No debug operations are supported, this function will raise
+        an exception.
+        """
+
+        self.stream.enable_debug()
+        return DebugManager(self.stream)
 
     @return_type("bool")
     def heartbeat(self):

@@ -3,9 +3,10 @@
 # info@welldone.org
 # http://welldone.org
 #
-# Modifications to this file from the original created at WellDone International 
+# Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
+from builtins import str
 from command import Command
 from iotile.core.hw.exceptions import *
 import base64
@@ -13,7 +14,7 @@ import base64
 class RPCCommand (Command):
     def __init__(self, address, feature, command, *args):
         """
-        Create an RPC command 
+        Create an RPC command
         """
 
         self.addr = int(address)
@@ -55,6 +56,8 @@ class RPCCommand (Command):
             return self._convert_int(arg), False
         elif isinstance(arg, bytearray):
             return arg, True
+        elif isinstance(arg, str):  # for python 3 compatibility, encode all newstr from future module
+            return bytearray(arg.encode('utf-8')), True
         elif isinstance(arg, basestring):
             return bytearray(arg), True
 

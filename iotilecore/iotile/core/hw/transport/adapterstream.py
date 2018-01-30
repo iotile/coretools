@@ -205,6 +205,21 @@ class AdapterCMDStream(CMDStream):
 
         return self._reports
 
+    def _enable_debug(self):
+        res = self.adapter.open_interface_sync(0, 'debug')
+        if not res['success']:
+            raise HardwareError("Could not open debug interface to device", reason=res['failure_reason'])
+
+    def _debug_command(self, cmd, args, progress_callback=None):
+        def _progress_callback(_finished, _total):
+            pass
+
+        res = self.adapter.debug_sync(0, cmd, args, progress_callback)
+        if not res['success']:
+            raise HardwareError("Could not execute debug command %s on device" % cmd, reason=res['failure_reason'])
+
+        return res.get('return_value')
+
     def _enable_tracing(self):
         self._traces = Queue.Queue()
         res = self.adapter.open_interface_sync(0, 'tracing')

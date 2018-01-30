@@ -171,6 +171,15 @@ class CMDStream(object):
 
         return self._enable_tracing()
 
+    def enable_debug(self):
+        if not hasattr(self, '_enable_debug'):
+            raise StreamOperationNotSupportedError(command="enable_debug")
+
+        return self._enable_debug()
+
+    def debug_command(self, cmd_name, args=None, progress_callback=None):
+        return self._debug_command(cmd_name, args, progress_callback)
+
     def send_highspeed(self, data, progress_callback=None):
         if not self.connected:
             raise HardwareError("Cannot send highspeed data if we are not in a connected state")
