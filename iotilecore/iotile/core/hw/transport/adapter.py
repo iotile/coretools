@@ -35,6 +35,9 @@ class DeviceAdapter(object):
     probe_async
     probe_sync
 
+    debug_async
+    debug_sync
+
     periodic_callback
     can_connect
 
@@ -205,7 +208,9 @@ class DeviceAdapter(object):
     def open_interface_async(self, conn_id, interface, callback):
         """Asynchronously open an interface to this IOTile device
 
-        interface must be one of (rpc, script, streaming)
+        The interface parameter must be one of (rpc, script, streaming,
+        tracing, debug).  Not all interfaces will be supported by all
+        DeviceAdapters.
 
         Args:
             interface (string): The interface to open
@@ -214,7 +219,7 @@ class DeviceAdapter(object):
                 callback(conn_id, adapter_id, success, failure_reason)
         """
 
-        if interface not in set(["rpc", "script", "streaming", "tracing"]):
+        if interface not in set(["rpc", "script", "streaming", "tracing", "debug"]):
             callback(conn_id, self.id, False, "invalid interface name in call to open_interface_async")
             return
 
@@ -226,13 +231,15 @@ class DeviceAdapter(object):
             self._open_streaming_interface(conn_id, callback)
         elif interface == 'tracing':
             self._open_tracing_interface(conn_id, callback)
+        elif interface == 'debug':
+            self._open_debug_interface(conn_id, callback)
         else:
             callback(conn_id, self.id, False, "interface not supported yet")
 
     def open_interface_sync(self, conn_id, interface):
         """Asynchronously open an interface to this IOTile device
 
-        interface must be one of (rpc, script, streaming)
+        interface must be one of (rpc, script, streaming, tracing, debug)
 
         Args:
             interface (string): The interface to open
@@ -336,6 +343,62 @@ class DeviceAdapter(object):
             done.set()
 
         self.send_rpc_async(conn_id, address, rpc_id, payload, timeout, send_rpc_done)
+        done.wait()
+
+        return result
+
+    def debug_async(self, conn_id, cmd_name, cmd_args, progress_callback, callback):
+        """Asynchronously complete a named debug command.
+
+        The command name and arguments are passed to the underlying device adapter
+        and interpreted there.  If the command is long running, progress_callback
+        may be used to provide status updates.  Callback is called when the command
+        has finished.
+
+        Args:
+            conn_id (int): A unique identifer that will refer to this connection
+            cmd_name (string): the name of the debug command we want to invoke
+            cmd_args (dict): any arguments that we want to send with this command.
+            progress_callback (callable): A function to be called with status on our progress, called as:
+                progress_callback(done_count, total_count)
+            callback (callable): A callback for when we have finished the debug command, called as:
+                callback(connection_id, adapter_id, success, retval, failure_reason)
+                'connection_id': the connection id
+                'adapter_id': this adapter's id
+                'success': a bool indicating whether we received a response to our attempted RPC
+                'failure_reason': a string with the reason for the failure if success == False
+                'retval': A command specific dictionary of return value information
+        """
+
+        callback(conn_id, self.id, False, None, "Debug commands are not supported by this DeviceAdapter")
+
+    def debug_sync(self, conn_id, cmd_name, cmd_args, progress_callback):
+        """Asynchronously complete a named debug command.
+
+        The command name and arguments are passed to the underlying device adapter
+        and interpreted there.  If the command is long running, progress_callback
+        may be used to provide status updates.  Callback is called when the command
+        has finished.
+
+        Args:
+            conn_id (int): A unique identifer that will refer to this connection
+            cmd_name (string): the name of the debug command we want to invoke
+            cmd_args (dict): any arguments that we want to send with this command.
+            progress_callback (callable): A function to be called with status on our progress, called as:
+                progress_callback(done_count, total_count)
+        """
+
+        done = threading.Event()
+        result = {}
+
+        def _debug_done(conn_id, adapter_id, success, retval, reason):
+            result['success'] = success
+            result['failure_reason'] = reason
+            result['return_value'] = retval
+
+            done.set()
+
+        self.debug_async(conn_id, cmd_name, cmd_args, progress_callback, _debug_done)
         done.wait()
 
         return result
