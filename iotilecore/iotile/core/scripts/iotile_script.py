@@ -40,6 +40,9 @@ def main(argv=None):
     type_system.interactive = True
     line = argv
 
+    import logging
+    logging.basicConfig(level=logging.INFO)
+
     shell = HierarchicalShell('iotile')
 
     shell.root_add("registry", "iotile.core.dev.annotated_registry,registry")
