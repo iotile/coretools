@@ -7,10 +7,14 @@ initial code bootstrapping.
 """
 
 import os.path
+import os
+import subprocess
+import tempfile
 from typedargs.annotate import context, docannotate
-from iotile.core.exceptions import ArgumentError
+from iotile.core.exceptions import ArgumentError, ExternalError
 from iotile.core.utilities.console import ProgressBar
 from iotile.core.utilities.intelhex import IntelHex
+
 
 @context("DebugManager")
 class DebugManager(object):
@@ -26,7 +30,7 @@ class DebugManager(object):
         self._stream = stream
 
     @docannotate
-    def core_dump(self, out_path, pause=False):
+    def dump_ram(self, out_path, pause=False):
         """Dump all RAM to a binary file.
 
         Args:
@@ -46,7 +50,7 @@ class DebugManager(object):
             outfile.write(ram_contents)
 
     @docannotate
-    def flash(self, in_path, file_format=None):
+    def flash(self, in_path, file_format=None, arch="elf32-littlearm"):
         """Flash a new firmware image to the attached chip.
 
         This flashing takes place over a debug interface and does not require
@@ -67,10 +71,13 @@ class DebugManager(object):
                 input file.  If this is None, the format is automatically
                 inferred from the file suffix.  If given explicitly, you
                 should pass 'elf', 'hex' or 'bin'.
+            arch (str): Optional architecture string if needed to convert
+                ELF file.  If targeting an ARM cortex chip the default value
+                is correct and does not need to be changed.
         """
 
         format_map = {
-            "elf": None,
+            "elf": self._process_elf,
             "hex": self._process_hex,
             "bin": None
         }
@@ -106,3 +113,19 @@ class DebugManager(object):
     def _process_hex(cls, in_path):
         ihex = IntelHex(in_path)
         return ihex.minaddr(), ihex.tobinarray()
+
+    @classmethod
+    def _process_elf(cls, in_path):
+        tmp = tempfile.NamedTemporaryFile(delete=False)
+        tmp.close()
+
+        try:
+            err = subprocess.call(['arm-none-eabi-objcopy', '-O', 'ihex', in_path, tmp.name])
+            if err != 0:
+                raise ExternalError("Cannot convert elf to binary file", error_code=err,
+                                    suggestion="Make sure arm-none-eabi-gcc is installed and in your PATH")
+
+            return cls._process_hex(tmp.name)
+        finally:
+            if os.path.isfile(tmp.name):
+                os.remove(tmp.name)

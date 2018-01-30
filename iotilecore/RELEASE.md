@@ -2,6 +2,13 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.18.0
+
+- (Experimental) Include support for DebugManager that can take advantage of
+  DeviceAdapters that provide a debug interface in order to reflash and/or 
+  download ram from attached devices, without requiring a functioning bootloader
+  or other device support.
+
 ## 3.17.1
 
 - Add in memory KV store option to ComponentRegistry that makes unit testing
