@@ -47,7 +47,11 @@ def get_release_component():
     name, vers = comp.split("-")
 
     if name not in comp_names:
-        raise EnvironmentError("Invalid unknown release component name", name=name, known_names=comp_names.keys())
+        print("Known components:")
+        for comp in comp_names:
+            print("- %s" % comp)
+
+        raise EnvironmentError("Unknown release component name '%s'" % name)
 
     return name, vers
 
