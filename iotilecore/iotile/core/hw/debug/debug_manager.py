@@ -50,7 +50,7 @@ class DebugManager(object):
             outfile.write(ram_contents)
 
     @docannotate
-    def flash(self, in_path, file_format=None, arch="elf32-littlearm"):
+    def flash(self, in_path, file_format=None):
         """Flash a new firmware image to the attached chip.
 
         This flashing takes place over a debug interface and does not require
@@ -71,9 +71,6 @@ class DebugManager(object):
                 input file.  If this is None, the format is automatically
                 inferred from the file suffix.  If given explicitly, you
                 should pass 'elf', 'hex' or 'bin'.
-            arch (str): Optional architecture string if needed to convert
-                ELF file.  If targeting an ARM cortex chip the default value
-                is correct and does not need to be changed.
         """
 
         format_map = {
