@@ -79,6 +79,8 @@ class ReportTestDevice(VirtualIOTileDevice):
         if self.report_length == 0 and self.format != 'individual' and self.num_readings != 0:
             raise ArgumentError("You cannot have a report length of 0 and more than 0 readings because that would be an infinite loop")
 
+        self.acks = {}
+
         super(ReportTestDevice, self).__init__(iotile_id, 'Simple')
 
     @rpc(8, 0x0004, "", "H6sBBBB")
@@ -89,6 +91,17 @@ class ReportTestDevice(VirtualIOTileDevice):
         status = (1 << 1) | (1 << 0) #Configured and running
 
         return [0xFFFF, self.name, 1, 0, 0, status]
+
+    @rpc(8, 0x200f, "HHL", "L")
+    def acknowledge_streamer(self, index, force, acknowledgement):
+        if force or self.acks.get(index, 0) < acknowledgement:
+            self.acks[index] = acknowledgement
+
+        return []
+
+    @rpc(8, 0x200a, "H", "LLLLBBBx")
+    def query_streamer(self, index):
+        return [0, 0, 0, self.acks.get(index, 0), 0, 0, 0]
 
     def _generate_sequential(self):
         readings = []
