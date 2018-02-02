@@ -43,8 +43,10 @@ class ReportTestDevice(VirtualIOTileDevice):
                 stream_id (int): The stream that this reading should be sent out
     """
 
-    def __init__(self, args):
+    def __init__(self, args, module_name=None):
         iotile_id = args.get('iotile_id', 1)
+
+        module_name = module_name[:6] if module_name else "Simple"
 
         if isinstance(iotile_id, basestring) or isinstance(iotile_id, unicode):
             iotile_id = int(iotile_id, 16)
@@ -81,7 +83,7 @@ class ReportTestDevice(VirtualIOTileDevice):
 
         self.acks = {}
 
-        super(ReportTestDevice, self).__init__(iotile_id, 'Simple')
+        super(ReportTestDevice, self).__init__(iotile_id, module_name)
 
     @rpc(8, 0x0004, "", "H6sBBBB")
     def controller_name(self):
