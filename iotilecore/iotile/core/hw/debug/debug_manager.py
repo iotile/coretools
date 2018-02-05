@@ -88,28 +88,45 @@ class DebugManager(object):
         if format_handler is None:
             raise ArgumentError("Unknown file format or file extension", file_format=file_format, known_formats=[x for x in format_map if format_map[x] is not None])
 
-        base_address, data = format_handler(in_path)
-        args = {
-            'base_address': base_address,
-            'data': data
-        }
+        base_addresses, section_data = format_handler(in_path)
+        for base_address, data in zip(base_addresses, section_data):
+            args = {
+                'base_address': base_address,
+                'data': data
+            }
 
-        progress = ProgressBar("Programming Flash")
+            progress = ProgressBar("Programming Flash")
 
-        def _progress_callback(finished, total):
-            progress.count = total
-            progress.progress(finished)
+            def _progress_callback(finished, total):
+                progress.count = total
+                progress.progress(finished)
 
-        try:
-            progress.start()
-            self._stream.debug_command('program_flash', args, _progress_callback)
-        finally:
-            progress.end()
+            try:
+                progress.start()
+                self._stream.debug_command('program_flash', args, _progress_callback)
+            finally:
+                progress.end()
 
     @classmethod
     def _process_hex(cls, in_path):
-        ihex = IntelHex(in_path)
-        return ihex.minaddr(), ihex.tobinarray()
+        """This function returns a list of base addresses and a list of the binary data 
+        for each section.
+        """
+        ihex           = IntelHex(in_path)
+        addresses      = ihex.addresses()
+
+        #Initialize with first start
+        sections_start = [addresses[0]]
+        sections_data  = []
+        #Non-consecutive addresses designate a section. Get section data and new section start
+        for i in range(len(addresses)-1):
+            if(addresses[i+1]-addresses[i]) != 1:
+                sections_data  += [ihex.tobinarray(start=sections_start[-1], end=addresses[i])]
+                sections_start += [addresses[i+1]]
+        #Get final section
+        sections_data += [ihex.tobinarray(start=sections_start[-1], end=addresses[-1])]
+        
+        return sections_start, sections_data
 
     @classmethod
     def _process_elf(cls, in_path):

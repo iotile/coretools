@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.18.2
+
+- Optimized process_hex to return a list of section base addresses and section data
+  to allow programming sections at a time.
+
 ## 3.18.1
 
 - Add support for enable logging in the iotile tool.  This should be useful for
