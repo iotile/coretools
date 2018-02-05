@@ -17,3 +17,11 @@ def test_components():
     """Make sure that we can call non-builtin functions."""
 
     assert main(['registry', 'list_components']) == 0
+
+
+def test_logging():
+    """Make sure we can enable logging."""
+
+    assert main(['-v']) == 0
+    assert main(['-vv', '-i', 'test.logger']) == 0
+    assert main(['-vv', '-e', 'test.logger']) == 0

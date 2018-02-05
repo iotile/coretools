@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.18.1
+
+- Add support for enable logging in the iotile tool.  This should be useful for
+  debugging. (Issue #333)
+
 ## 3.18.0
 
 - (Experimental) Include support for DebugManager that can take advantage of
