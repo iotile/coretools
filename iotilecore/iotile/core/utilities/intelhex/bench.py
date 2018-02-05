@@ -9,6 +9,10 @@
 #!/usr/bin/python
 # (c) Alexander Belchenko, 2007, 2009
 
+# [2013/08] NOTE: This file is keeping for historical reasons.
+# It may or may not work actually with current version of intelhex,
+# and most likely it requires some fixes here and there.
+
 """Benchmarking.
 
 Run each test 3 times and get median value.
@@ -31,13 +35,12 @@ If resulting value is ``q <= 1.0`` it's the best possible result,
 i.e. time increase proportionally to array size.
 """
 
-from cStringIO import StringIO
 import gc
 import sys
 import time
 
 import intelhex
-
+from intelhex.compat import StringIO, range_g
 
 def median(values):
     """Return median value for the list of values.
@@ -72,7 +75,7 @@ def run_readtest_N_times(func, hexstr, n):
     """
     assert n > 0
     times = []
-    for i in xrange(n):
+    for i in range_g(n):
         sio = StringIO(hexstr)
         times.append(run_test(func, sio))
         sio.close()
@@ -87,7 +90,7 @@ def run_writetest_N_times(func, n):
     """
     assert n > 0
     times = []
-    for i in xrange(n):
+    for i in range_g(n):
         sio = StringIO()
         times.append(run_test(func, sio))
         sio.close()
@@ -119,11 +122,11 @@ def get_test_data(n1, offset, n2):
     # make IntelHex object
     ih = intelhex.IntelHex()
     addr = 0
-    for i in xrange(n1):
+    for i in range_g(n1):
         ih[addr] = addr % 256
         addr += 1
     addr += offset
-    for i in xrange(n2):
+    for i in range_g(n2):
         ih[addr] = addr % 256
         addr += 1
     # make hex file
@@ -134,12 +137,11 @@ def get_test_data(n1, offset, n2):
     #
     return n1+n2, hexstr, ih
 
-def get_base_10K():
-    """Base 10K"""
-    return get_test_data(10000, 0, 0)
+def get_base_50K():
+    return get_test_data(50000, 0, 0)
 
-def get_100K():
-    return get_test_data(100000, 0, 0)
+def get_250K():
+    return get_test_data(250000, 0, 0)
 
 def get_100K_100K():
     return get_test_data(100000, 1000000, 100000)
@@ -156,8 +158,8 @@ class Measure(object):
 
     data_set = [
         # (data name, getter)
-        ('base 10K', get_base_10K),     # first should be base numbers
-        ('100K', get_100K),
+        ('base 50K', get_base_50K),     # first should be base numbers
+        ('250K', get_250K),
         ('1M', get_1M),
         ('100K+100K', get_100K_100K),
         ('0+100K', get_0_100K),
@@ -266,7 +268,8 @@ def main(argv=None):
 
         if args:
             raise getopt.GetoptError('Arguments are not used.')
-    except getopt.GetoptError, msg:
+    except getopt.GetoptError:
+        msg = sys.exc_info()[1]     # current exception
         txt = str(msg)
         print(txt)
         return 1
@@ -295,54 +298,54 @@ Some Results
 Python 2.5 @ Windows XP, Intel Celeron M CPU 430 @ 1.73GHz
 
 Read operation:
-base 10K  	  0.031
-100K      	  0.360	  1.161
-1M        	  3.500	  1.129
-100K+100K 	  0.719	  1.160
-0+100K    	  0.360	  1.161
+base 10K      0.031
+100K          0.360   1.161
+1M            3.500   1.129
+100K+100K     0.719   1.160
+0+100K        0.360   1.161
 
 Write operation:
-base 10K  	  0.031
-100K      	  0.297	  0.958
-1M        	  2.953	  0.953
-100K+100K 	  1.328	  2.142
-0+100K    	  0.312	  1.006
+base 10K      0.031
+100K          0.297   0.958
+1M            2.953   0.953
+100K+100K     1.328   2.142
+0+100K        0.312   1.006
 
 
 21/04/2007 revno.46
 Python 2.5 @ Windows XP, Intel Celeron M CPU 430 @ 1.73GHz
 
 Read operation:
-base 10K  	  0.016
-100K      	  0.203	  1.269
-1M        	  2.000	  1.250
-100K+100K 	  0.422	  1.319
-0+100K    	  0.203	  1.269
+base 10K      0.016
+100K          0.203   1.269
+1M            2.000   1.250
+100K+100K     0.422   1.319
+0+100K        0.203   1.269
 
 Write operation:
-base 10K  	  0.031
-100K      	  0.297	  0.958
-1M        	  2.969	  0.958
-100K+100K 	  1.328	  2.142
-0+100K    	  0.312	  1.006
+base 10K      0.031
+100K          0.297   0.958
+1M            2.969   0.958
+100K+100K     1.328   2.142
+0+100K        0.312   1.006
 
 
 22/04/2007 revno.48
 Python 2.5 @ Windows XP, Intel Celeron M CPU 430 @ 1.73GHz
 
 Read operation:
-base 10K  	  0.016
-100K      	  0.187	  1.169
-1M        	  1.891	  1.182
-100K+100K 	  0.406	  1.269
-0+100K    	  0.188	  1.175
+base 10K      0.016
+100K          0.187   1.169
+1M            1.891   1.182
+100K+100K     0.406   1.269
+0+100K        0.188   1.175
 
 Write operation:
-base 10K  	  0.031
-100K      	  0.296	  0.955
-1M        	  2.969	  0.958
-100K+100K 	  1.328	  2.142
-0+100K    	  0.312	  1.006
+base 10K      0.031
+100K          0.296   0.955
+1M            2.969   0.958
+100K+100K     1.328   2.142
+0+100K        0.312   1.006
 
 
 19/08/2008 revno.72
