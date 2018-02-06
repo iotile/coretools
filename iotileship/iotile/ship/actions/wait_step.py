@@ -1,6 +1,6 @@
 import time
 
-class WaitStep (RecipeActionObject):
+class WaitStep (object):
     def __init__(self, args):
         self._seconds = args['seconds']
 

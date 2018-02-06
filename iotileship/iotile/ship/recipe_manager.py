@@ -1,4 +1,6 @@
 import pkg_resources
+import os, sys
+import glob
 from iotile.ship.recipe import RecipeObject
 
 class RecipeManager(object):
@@ -23,10 +25,18 @@ class RecipeManager(object):
         return self._recipe_actions.get(name, None) is not None
 
     def is_valid_recipe(self, recipe_name):
-        return self._recipes.get(recipe, None) is not None
+        return self._recipes.get(recipe_name, None) is not None
 
     def add_recipe_folder(self, recipe_folder):
-        pass
+        for yaml_file in glob.glob("%s/*.yaml" % recipe_folder):
+            recipe = RecipeObject.FromFile(yaml_file, self._recipe_actions)
+            self._recipes[recipe._name] = recipe
+
+        for json_file in glob.glob("%s/*.json" % recipe_folder):
+            recipe = RecipeObject.FromFile(json_file, self._recipe_actions, file_format='json')
+            self._recipes[recipe._name] = recipe
+
+
 
     def get_recipe(self, recipe_name):
         return self._recipes

@@ -1,4 +1,4 @@
-class PromptStep (Object):
+class PromptStep (object):
     def __init__(self, args):
         self._message = args['message']
 
