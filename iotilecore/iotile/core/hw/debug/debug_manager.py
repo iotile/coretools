@@ -112,14 +112,11 @@ class DebugManager(object):
         """This function returns a list of base addresses and a list of the binary data 
         for each segment.
         """
-        ihex            = IntelHex(in_path)
-        segments_start  = []
-        segments_data   = []
+        ihex           = IntelHex(in_path)
+        segments       = ihex.segments()
+        segments_start = [segment[0] for segment in segments]
+        segments_data  = [ihex.tobinarray(start=segment[0], end=segment[1]-1) for segment in segments]
 
-        for segment in ihex.segments():
-            segments_start += [segment[0]]
-            segments_data  += [ihex.tobinarray(start=segment[0], end=segment[1]-1)]
-        
         return segments_start, segments_data
 
     @classmethod
