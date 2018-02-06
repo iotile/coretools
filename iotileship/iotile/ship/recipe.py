@@ -51,14 +51,13 @@ class RecipeObject(object):
         cls._actions_dict = actions_dict
 
         format_map = {
-            "json": cls._process_json,
             "yaml": cls._process_yaml,
         }
-
         format_handler = format_map.get(file_format)
+        
         if format_handler is None:
             raise ArgumentError("Unknown file format or file extension", file_format=file_format, known_formats=[x for x in format_map if format_map[x] is not None])
-        recipe_info = format_handler(path)
+        recipe_info = self._process_yaml(path)
 
         name = recipe_info.get('name')
         description = recipe_info.get('description')
@@ -81,13 +80,6 @@ class RecipeObject(object):
             steps.append(step)
 
         return RecipeObject(name, description, steps)
-
-    @classmethod
-    def _process_json(cls, jsonfile):
-        import json
-        with open(jsonfile, 'rb') as f:
-            info = json.load(f)
-            return info
 
     @classmethod
     def _process_yaml(cls, yamlfile):
