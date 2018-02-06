@@ -36,7 +36,7 @@ class RecipeObject(object):
     def FromFile(cls, path, actions_dict, file_format="yaml"):
         """Create a RecipeObject from a file.
 
-        The file should be a specially constructed yaml or json file
+        The file should be a specially constructed yaml file
         that describes the recipe as well as the actions that it performs.
 
         Args:
@@ -45,7 +45,7 @@ class RecipeObject(object):
                 types that is used to look up all of the steps listed in
                 the recipe file.
             file_format (str): The file format of the recipe file.  Currently
-                we only support yaml and json.
+                we only support yaml.
         """
 
         cls._actions_dict = actions_dict
@@ -57,7 +57,7 @@ class RecipeObject(object):
         
         if format_handler is None:
             raise ArgumentError("Unknown file format or file extension", file_format=file_format, known_formats=[x for x in format_map if format_map[x] is not None])
-        recipe_info = self._process_yaml(path)
+        recipe_info = cls._process_yaml(path)
 
         name = recipe_info.get('name')
         description = recipe_info.get('description')
