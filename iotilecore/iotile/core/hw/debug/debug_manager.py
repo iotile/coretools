@@ -88,28 +88,36 @@ class DebugManager(object):
         if format_handler is None:
             raise ArgumentError("Unknown file format or file extension", file_format=file_format, known_formats=[x for x in format_map if format_map[x] is not None])
 
-        base_address, data = format_handler(in_path)
-        args = {
-            'base_address': base_address,
-            'data': data
-        }
+        base_addresses, section_data = format_handler(in_path)
+        for base_address, data in zip(base_addresses, section_data):
+            args = {
+                'base_address': base_address,
+                'data': data
+            }
 
-        progress = ProgressBar("Programming Flash")
+            progress = ProgressBar("Programming Flash")
 
-        def _progress_callback(finished, total):
-            progress.count = total
-            progress.progress(finished)
+            def _progress_callback(finished, total):
+                progress.count = total
+                progress.progress(finished)
 
-        try:
-            progress.start()
-            self._stream.debug_command('program_flash', args, _progress_callback)
-        finally:
-            progress.end()
+            try:
+                progress.start()
+                self._stream.debug_command('program_flash', args, _progress_callback)
+            finally:
+                progress.end()
 
     @classmethod
     def _process_hex(cls, in_path):
-        ihex = IntelHex(in_path)
-        return ihex.minaddr(), ihex.tobinarray()
+        """This function returns a list of base addresses and a list of the binary data 
+        for each segment.
+        """
+        ihex           = IntelHex(in_path)
+        segments       = ihex.segments()
+        segments_start = [segment[0] for segment in segments]
+        segments_data  = [ihex.tobinarray(start=segment[0], end=segment[1]-1) for segment in segments]
+
+        return segments_start, segments_data
 
     @classmethod
     def _process_elf(cls, in_path):
