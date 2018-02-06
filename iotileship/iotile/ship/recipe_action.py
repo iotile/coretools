@@ -1,3 +1,6 @@
+from __future__ import (unicode_literals, print_function, absolute_import)
+from builtins import str
+
 from iotile.core.exceptions import *
 
 class RecipeActionObject (object):
@@ -17,6 +20,6 @@ class RecipeActionObject (object):
         Args:
             context - currently unused
             progress - function handler with the format func(done, total)
-                       
+
         """
         raise InternalError("_run() called that did not override the default empty transformation", object=self)
