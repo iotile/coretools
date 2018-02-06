@@ -66,12 +66,6 @@ class RecipeManager(object):
             recipe = RecipeObject.FromFile(yaml_file, self._recipe_actions)
             self._recipes[recipe.name] = recipe
 
-        for json_file in glob.glob("%s/*.json" % recipe_folder):
-            recipe = RecipeObject.FromFile(json_file, self._recipe_actions, file_format='json')
-            self._recipes[recipe.name] = recipe
-
-
-
     def get_recipe(self, recipe_name):
         """Get a recipe by name.
 
