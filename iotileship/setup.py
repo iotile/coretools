@@ -28,7 +28,15 @@ setup(
         "pyaml>=17.12.0"
     ],
     include_package_data=True,
-    entry_points={'console_scripts': ['iotile-ship = iotile.ship.scripts.iotile_ship:main']},
+    entry_points={
+        'console_scripts': [
+            'iotile-ship = iotile.ship.scripts.iotile_ship:main'
+        ],
+        'iotile.recipe_action': [
+            'PromptStep = iotile.ship.actions.prompt_step:PromptStep',
+            'WaitStep   = iotile.ship.actions.wait_step:WaitStep'
+        ]
+    },
     description="IOTile Ship Support",
     author="Arch",
     author_email="info@arch-iot.com",

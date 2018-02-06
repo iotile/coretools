@@ -1,5 +1,5 @@
 {
-    "name": "prompt_recipe",
+    "name": "test_basic_json",
     "description": "recipe to test prompt messages",
     "idempotent" : "True",
     "actions":

@@ -1,0 +1,28 @@
+{   
+    "name": "flash_board_recipe",
+    "description": "recipe to test flash_chip messages",
+    "actions":
+    [
+
+        {
+            "name": "FlashBoardStep",
+            "port": "jlink:device=nrf52;serial=50000797",
+            "file": "test/test_recipes/test_fw/s132_nrf52_3.0.0_softdevice.hex"
+        },
+
+        {
+            "name": "FlashBoardStep",
+            "port": "jlink:device=nrf52;serial=50000797",
+            "file": "test/test_recipes/test_fw/execnrf52832_nrf52832_v3.elf"
+        },
+
+        {
+            "name": "FlashBoardStep",
+            "port": "jlink:device=nrf52;serial=50000797",
+            "file": "test/test_recipes/test_fw/connrf52832_nrf52832_v3.elf"
+        }
+
+
+    ]
+   
+}
