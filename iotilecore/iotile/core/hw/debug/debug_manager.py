@@ -110,23 +110,17 @@ class DebugManager(object):
     @classmethod
     def _process_hex(cls, in_path):
         """This function returns a list of base addresses and a list of the binary data 
-        for each section.
+        for each segment.
         """
-        ihex           = IntelHex(in_path)
-        addresses      = ihex.addresses()
+        ihex            = IntelHex(in_path)
+        segments_start  = []
+        segments_data   = []
 
-        #Initialize with first start
-        sections_start = [addresses[0]]
-        sections_data  = []
-        #Non-consecutive addresses designate a section. Get section data and new section start
-        for i in range(len(addresses)-1):
-            if(addresses[i+1]-addresses[i]) != 1:
-                sections_data  += [ihex.tobinarray(start=sections_start[-1], end=addresses[i])]
-                sections_start += [addresses[i+1]]
-        #Get final section
-        sections_data += [ihex.tobinarray(start=sections_start[-1], end=addresses[-1])]
+        for segment in ihex.segments():
+            segments_start += [segment[0]]
+            segments_data  += [ihex.tobinarray(start=segment[0], end=segment[1]-1)]
         
-        return sections_start, sections_data
+        return segments_start, segments_data
 
     @classmethod
     def _process_elf(cls, in_path):
