@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.18.3
+
+- Added RecipeAction FlashBoardStep. Used by iotile-ship
+
 ## 3.18.2
 
 - Optimized process_hex to return a list of section base addresses and section data
