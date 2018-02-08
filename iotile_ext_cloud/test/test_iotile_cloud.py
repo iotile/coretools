@@ -19,10 +19,24 @@ def test_device_info(basic_cloud):
     data = cloud.device_info(1)
     assert data['id'] == 1
     assert data['project'] == proj_id
-
     with pytest.raises(ArgumentError):
         cloud.device_info(10)
 
+def test_set_sensorgraph(basic_cloud):
+    """Make sure we can properly change sensorgraph"""
+    cloud, proj_id, _server = basic_cloud
+    data = cloud.device_info(1)
+    assert data['sg'] == "water-meter-v1-1-0"
+    cloud.set_sensorgraph(1, "water-meter-v1-1-1")
+    assert data['sg'] == "water-meter-v1-1-1"
+
+def test_set_device_template(basic_cloud):
+    """Make sure we can properly change device template"""
+    cloud, proj_id, _server = basic_cloud
+    data = cloud.device_info(1)
+    assert data['template'] == "internaltestingtemplate-v0-1-0"
+    cloud.set_device_template(1, "internaltestingtemplate-v0-1-1", 0)
+    assert data['template'] == "internaltestingtemplate-v0-1-1"
 
 def test_device_list(basic_cloud):
     """Make sure the device_list api works."""

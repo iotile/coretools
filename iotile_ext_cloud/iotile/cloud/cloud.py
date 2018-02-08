@@ -161,9 +161,8 @@ class IOTileCloud(object):
 
     @param("device_id", "integer", desc="ID of the device that we want information about")
     @param("new_sg", "string", desc="The new sensor graph id that we want to load")
-    def set_sensorgraph(self, device_id, new_sg):
+    def set_sensorgraph(self, device_id, new_sg, app_tag=None):
         """The the cloud's sensor graph id that informs what kind of device this is."""
-
         slug = device_id_to_slug(device_id)
 
         patch = {'sg': new_sg}
@@ -175,6 +174,31 @@ class IOTileCloud(object):
                 raise ArgumentError("Error setting sensor graph, invalid value", value=new_sg, error_code=exc.response.status_code)
             else:
                 raise ExternalError("Error calling method on iotile.cloud", exception=exc, response=exc.response.status_code)
+
+    @param("device_id", "integer", desc="ID of the device that we want information about")
+    @param("new_template", "string", desc="The new device template that we want to set")
+    @param("os_tag", "integer", desc="Optional arg to check if the sensorgraph on the cloud matches the os_tag")
+    def set_device_template(self, device_id, new_template, os_tag=None):
+        """Sets the device template for the given device in iotile.cloud."""
+        if os_tag is not None:
+            sg_os_tag = requests.get('https://iotile.cloud/api/v1/dt/moo%s/' % (new_template)).json().get('os_tag', None)
+            if(sg_os_tag != os_tag):
+                raise ArgumentError("Cloud device template os tag mismatch", cloud_sg_os_tag=sg_os_tag, os_tag_set=os_tag)
+
+
+        slug = device_id_to_slug(device_id)
+
+        patch = {'template': new_template}
+        
+        try:
+            self.api.device(slug).patch(patch)
+        except RestHttpBaseException, exc:
+            if exc.response.status_code == 400:
+                raise ArgumentError("Error setting device template, invalid value", value=new_template, error_code=exc.response.status_code)
+            else:
+                raise ExternalError("Error calling method on iotile.cloud", exception=exc, response=exc.response.status_code)
+
+
 
     @param("project_id", "string", desc="Optional ID of the project to download a list of devices from")
     @return_type("list(integer)")
