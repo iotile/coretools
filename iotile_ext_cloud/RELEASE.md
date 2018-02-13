@@ -2,6 +2,12 @@
 
 All major changes in each released version of the iotile-ext-cloud plugin are listed here.
 
+## 0.3.7
+
+- Rerelease of 0.3.6
+- Version 0.3.6 doesn't exist on pypi.
+
+
 ## 0.3.6
 
 - Add support for changing device templates. 
