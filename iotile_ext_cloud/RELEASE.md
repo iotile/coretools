@@ -2,6 +2,11 @@
 
 All major changes in each released version of the iotile-ext-cloud plugin are listed here.
 
+## 0.3.6
+
+- Add support for changing device templates. 
+- Check if device template and sensorgraph has correct os/app tags
+
 ## 0.3.5
 
 - Add support for permanent device tokens
