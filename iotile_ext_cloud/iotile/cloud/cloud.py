@@ -162,9 +162,28 @@ class IOTileCloud(object):
     @param("device_id", "integer", desc="ID of the device that we want information about")
     @param("new_sg", "string", desc="The new sensor graph id that we want to load")
     def set_sensorgraph(self, device_id, new_sg, app_tag=None):
-        """The the cloud's sensor graph id that informs what kind of device this is."""
-        slug = device_id_to_slug(device_id)
+        """The the cloud's sensor graph id that informs what kind of device this is.
+    
+        Is app_tag is passed, verify that the sensorgraph explicitly matches
+        the expected app_tag by making another API call.
 
+        Args:
+            device_id (int): The id of the device that we want to change the sensorgraph for.
+            new_sg (string): Name of a valid sensorgraph that you wish to set the device to
+            app_tag (int): Optional. The intended app_tag of the sensorgraph will be set. If the
+                app_tag passed into this function does not match the app_tag of the sensorgraph
+                in iotile.cloud, raise an error.
+        """
+        try:
+            sg = self.api.sg(new_sg).get()
+        except RestHttpBaseException, exc:
+            raise ExternalError("Error calling method on iotile.cloud", exception=exc, response=exc.response.status_code)
+   
+        if app_tag is not None:
+            if sg.get('app_tag', None) != app_tag:
+                raise ArgumentError("Cloud device template os tag mismatch", value=new_sg, cloud_sg_app_tag=sg.get('app_tag', None), app_tag_set=app_tag)
+
+        slug = device_id_to_slug(device_id)
         patch = {'sg': new_sg}
 
         try:
@@ -179,15 +198,26 @@ class IOTileCloud(object):
     @param("new_template", "string", desc="The new device template that we want to set")
     @param("os_tag", "integer", desc="Optional arg to check if the sensorgraph on the cloud matches the os_tag")
     def set_device_template(self, device_id, new_template, os_tag=None):
-        """Sets the device template for the given device in iotile.cloud."""
-        if os_tag is not None:
-            sg_os_tag = requests.get('https://iotile.cloud/api/v1/dt/moo%s/' % (new_template)).json().get('os_tag', None)
-            if(sg_os_tag != os_tag):
-                raise ArgumentError("Cloud device template os tag mismatch", cloud_sg_os_tag=sg_os_tag, os_tag_set=os_tag)
+        """Sets the device template for the given device in iotile.cloud.
 
+        Is os_tag is passed, verify that the device template explicitly matches
+        the expected os_tag by making another API call.
+        Args:
+            device_id (int): The id of the device that we want to change the device template for.
+            new_template (string): Name of a valid device template that you wish to set the device to
+            os_tag (int): Optional. If the os_tag passed into this function does not match the 
+                os_tag of the device_tmplate in iotile.cloud, raise an error.
+        """
+        try:
+            dt = self.api.dt(new_template).get()
+        except RestHttpBaseException, exc:
+            raise ExternalError("Error calling method on iotile.cloud", exception=exc, response=exc.response.status_code)
+        
+        if os_tag is not None:
+            if dt.get('os_tag', None) != os_tag:
+                raise ArgumentError("Cloud device template os tag mismatch", value=new_template, cloud_sg_os_tag=dt.get('os_tag', None), os_tag_set=os_tag)
 
         slug = device_id_to_slug(device_id)
-
         patch = {'template': new_template}
         
         try:
@@ -197,8 +227,6 @@ class IOTileCloud(object):
                 raise ArgumentError("Error setting device template, invalid value", value=new_template, error_code=exc.response.status_code)
             else:
                 raise ExternalError("Error calling method on iotile.cloud", exception=exc, response=exc.response.status_code)
-
-
 
     @param("project_id", "string", desc="Optional ID of the project to download a list of devices from")
     @return_type("list(integer)")
