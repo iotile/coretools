@@ -181,7 +181,7 @@ class IOTileCloud(object):
    
         if app_tag is not None:
             if sg.get('app_tag', None) != app_tag:
-                raise ArgumentError("Cloud device template os tag mismatch", value=new_sg, cloud_sg_app_tag=sg.get('app_tag', None), app_tag_set=app_tag)
+                raise ArgumentError("Cloud sensorgraph record does not match app tag", value=new_sg, cloud_sg_app_tag=sg.get('app_tag', None), app_tag_set=app_tag)
 
         slug = device_id_to_slug(device_id)
         patch = {'sg': new_sg}
@@ -215,7 +215,7 @@ class IOTileCloud(object):
         
         if os_tag is not None:
             if dt.get('os_tag', None) != os_tag:
-                raise ArgumentError("Cloud device template os tag mismatch", value=new_template, cloud_sg_os_tag=dt.get('os_tag', None), os_tag_set=os_tag)
+                raise ArgumentError("Cloud device template record does not match os tag", value=new_template, cloud_sg_os_tag=dt.get('os_tag', None), os_tag_set=os_tag)
 
         slug = device_id_to_slug(device_id)
         patch = {'template': new_template}
