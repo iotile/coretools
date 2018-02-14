@@ -153,8 +153,7 @@ def test_service_delegate_tile(linked_tile):
     #     - name: 'bsctst'
     HardwareManager.RegisterDevelopmentProxy(BasicRPCDispatcherProxy)
 
-
-    # When we call get(addres) the HardwareManager will ask the tile at that address,
+    # When we call get(address) the HardwareManager will ask the tile at that address,
     # in this case the ServiceDelegateTile what it's 6 character name is.  It will
     # return, in this case 'bsctst' because that's what we put in the config.json
     # file we created in the linked_tile fixture.  The HardwareManager will then
