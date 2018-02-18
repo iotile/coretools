@@ -52,13 +52,12 @@ valid_type = oneOf('uint8_t uint16_t uint32_t int8_t int16_t int32_t char')
 assignment_def = symbol("variable") + "=" + (number('value') | strval('value')) + ';'
 cmd_def = number("cmd_number") + colon + symbol("symbol") + left + ints + comma + has_buffer('has_buffer') + right + ";"
 include = Literal("#include") + quote + filename("filename") + quote
-interface_def = Literal('interface') + number('interface') + ';'
 
 reqconfig = number("confignum") + colon + Literal('required').suppress() - Literal('config').suppress() - valid_type('type') - symbol('configvar') - Optional(leftB - number('length') - rightB) - ';'
 optconfig = number("confignum") + colon + Literal('optional').suppress() - Literal('config').suppress() - valid_type('type') - symbol('configvar') - Optional(leftB - number('length') - rightB) - "=" \
   - (number('value') | QuotedString(quoteChar='"', unquoteResults=False)('value') | (leftCB+Group(delimitedList(number))('value')+rightCB)) + ';'
 
-statement = include | cmd_def | comment | assignment_def | interface_def | reqconfig | optconfig
+statement = include | cmd_def | comment | assignment_def | reqconfig | optconfig
 
 #Known Variable Type Lengths
 type_lengths = {'uint8_t': 1, 'char': 1, 'int8_t': 1, 'uint16_t': 2, 'int16_t':2, 'uint32_t': 4, 'int32_t': 4}
@@ -74,7 +73,6 @@ class TBDescriptor:
     def __init__(self, source, include_dirs=[]):
         self.variables = {}
         self.commands = {}
-        self.interfaces = []
         self.configs = {}
         self.valid = False
 
@@ -96,27 +94,6 @@ class TBDescriptor:
 
                 self._parse_line(line_no+1, line)
 
-    def generate_config_h(self, filename):
-        templ = RecursiveTemplate('configvariables.h', resource_filename(Requirement.parse("iotile-build"), "iotile/build/config/templates"))
-        templ.add({'configvars': self.configs})
-        out = templ.format_temp()
-
-        shutil.move(out, filename)
-
-    def generate_config_c(self, filename):
-        templ = RecursiveTemplate('configvariables.c', resource_filename(Requirement.parse("iotile-build"), "iotile/build/config/templates"))
-        templ.add({'configvars': self.configs})
-        out = templ.format_temp()
-
-        shutil.move(out, filename)
-
-    def generate_config_defaults_as(self, filename):
-        templ = RecursiveTemplate('config_defaults_asm.as', resource_filename(Requirement.parse("iotile-build"), "iotile/build/config/templates"))
-        templ.add({'configvars': self.configs})
-        out = templ.format_temp()
-
-        shutil.move(out, filename)
-
     def _find_include_file(self, filename):
         for d in self.include_dirs:
             path = os.path.join(d, filename)
@@ -126,7 +103,7 @@ class TBDescriptor:
         raise ArgumentError("Could not find included mib file", filename=filename, search_dirs=self.include_dirs)
 
     def _add_cmd(self, num, symbol, num_ints, has_buffer):
-        handler = TBHandler.Create(symbol=symbol, ints=num_ints, has_buffer=has_buffer)
+        handler = TBHandler(symbol=symbol)
 
         if num in self.commands:
             raise DataError("Attempted to add the same command number twice", number=num, old_handler=self.commands[num], new_handler=handler)
@@ -159,13 +136,6 @@ class TBDescriptor:
             return self.variables[number]
 
         raise DataError("Reference to undefined variable %s" % number)
-
-    def _parse_interface(self, match):
-        interface = match['interface']
-        if interface in self.interfaces:
-            raise DataError("Attempted to add the same interface twice", interface=interface)
-
-        self.interfaces.append(interface)
 
     def _parse_assignment(self, match):
         var = match['variable']
@@ -260,8 +230,6 @@ class TBDescriptor:
             self._parse_include(matched)
         elif 'variable' in matched:
             self._parse_assignment(matched)
-        elif 'interface' in matched:
-            self._parse_interface(matched)
         elif 'configvar' in matched:
             self._parse_configvar(matched)
 
@@ -329,9 +297,6 @@ class TBDescriptor:
         if not config_only:
             for key, val in self.commands.iteritems():
                 mib.add_command(key, val)
-
-            for interface in self.interfaces:
-                mib.add_interface(interface)
 
             if not self.valid:
                 self._validate_information()

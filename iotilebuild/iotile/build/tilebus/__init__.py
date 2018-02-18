@@ -1,9 +1,13 @@
-# This file is adapted from python code released by WellDone International
-# under the terms of the LGPLv3.  WellDone International's contact information is
-# info@welldone.org
-# http://welldone.org
-#
-# Modifications to this file from the original created at WellDone International 
-# are copyright Arch Systems Inc.
+"""TileBus RPC description parsing and compilation.
 
-#__init__.py
+This package takes in an interface file (.bus) and compiles
+it into ROM tables that can be loaded into a microcontroller
+device as part of its firmware and allow you to dispatch
+RPCs to C function handlers defined in that firmware.
+"""
+
+from .descriptor import TBDescriptor
+from .block import TBBlock
+from .handler import TBHandler
+
+__all__ = ['TBDescriptor', 'TBBlock', 'TBHandler']

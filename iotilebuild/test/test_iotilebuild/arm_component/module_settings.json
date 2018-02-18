@@ -1,0 +1,36 @@
+{
+	"module_name": "libprogram",
+	
+	"module_targets": 
+	{
+		"libprogram": ["arm"]
+	},
+
+	"modules":
+	{
+		"libprogram":
+		{
+			"version": "1.0.0",
+			
+			"depends": {},
+
+			"products": 
+			{
+				"libprogram_arm.a": "library"
+			}
+		}
+	},
+
+	"architectures":
+	{
+		"arm":
+		{
+			"cflags": ["-mthumb", "-Wall", "-pedantic", "-Wextra", "-Wshadow", "-Os", "-g", "-fno-builtin", "-ffunction-sections", "-fdata-sections"],
+			"asflags": ["-Wall"],
+			"ldflags": ["-mthumb", "-Xlinker", "--gc-sections", "--specs=nano.specs", "-lc", "-lnosys", "-nostartfiles"],
+			"cpu": "cortex-m0plus",
+
+			"chip": "lpc824"
+		}
+	}
+}
