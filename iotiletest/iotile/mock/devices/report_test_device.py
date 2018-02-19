@@ -99,7 +99,7 @@ class ReportTestDevice(VirtualIOTileDevice):
         if force or self.acks.get(index, 0) < acknowledgement:
             self.acks[index] = acknowledgement
 
-        return []
+        return [0]
 
     @rpc(8, 0x200a, "H", "LLLLBBBx")
     def query_streamer(self, index):
