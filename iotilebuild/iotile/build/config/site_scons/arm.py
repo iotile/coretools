@@ -1,4 +1,4 @@
-# This file is copyright Arch Systems, Inc.  
+# This file is copyright Arch Systems, Inc.
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
 from SCons.Script import *
@@ -58,7 +58,7 @@ def build_program(tile, elfname, chip, patch=True):
     #Make sure we don't have a linker script from a dependency and explicity specified
     if len(ldscripts) == 1 and chip.property('linker', None) != None:
         raise BuildError("Linker script specified in dependency and explicitly in module_settings", explicit_script=chip.property('linker'), dependency_script=ldscripts[0])
-    
+
     if len(ldscripts) == 1:
         ldscript = ldscripts[0]
     else:
@@ -93,7 +93,7 @@ def build_program(tile, elfname, chip, patch=True):
 
         ## Now create a command file containing the linker command needed to patch the elf
         outhex = prog_env.Command(prog_env['PATCH_FILE'], outbin, action=prog_env.Action(checksum_creation_action, "Generating checksum file"))
-        
+
         ## Next relink a new version of the binary using that patch file to define the image checksum
         patch_env = prog_env.Clone()
         patch_env['LINKFLAGS'].append(['-Xlinker', '@%s' % patch_env['PATCH_FILE']])
@@ -106,7 +106,7 @@ def build_program(tile, elfname, chip, patch=True):
         prog_env.InstallAs(os.path.join(dirs['output'], output_name), os.path.join(dirs['build'], patched_name))
     else:
         prog_env.InstallAs(os.path.join(dirs['output'], output_name), outfile)
-    
+
     prog_env.InstallAs(os.path.join(dirs['output'], map_name), os.path.join(dirs['build'], map_name))
 
     return os.path.join(dirs['output'], output_name)
@@ -138,7 +138,7 @@ def build_library(tile, libname, chip):
     #or in our dependencies
     tilebus_defs += tile.tilebus_definitions()
     compile_tilebus(tilebus_defs, library_env, header_only=True)
-    
+
     SConscript(os.path.join(dirs['build'], 'SConscript'), exports='library_env')
 
     library_env.InstallAs(os.path.join(dirs['output'], output_name), os.path.join(dirs['build'], output_name))
@@ -160,9 +160,9 @@ def setup_environment(chip):
 
     #Make sure we never get MSVC settings for windows since that has the wrong command line flags for gcc
     if platform.system() == 'Windows':
-        env = Environment(tools=['mingw'], ENV = os.environ)
+        env = Environment(tools=['mingw'], ENV=os.environ)
     else:
-        env = Environment(tools=['default'], ENV = os.environ)
+        env = Environment(tools=['default'], ENV=os.environ)
 
     env['INCPREFIX'] = '-I"'
     env['INCSUFFIX'] = '"'
@@ -178,7 +178,7 @@ def setup_environment(chip):
 
     #AS command line is by default setup for call as directly so we need to modify it to call via *-gcc to allow for preprocessing
     env['ASCOM'] = "$AS $ASFLAGS -o $TARGET -c $SOURCES"
-    
+
     # Setup nice display strings unless we're asked to show raw commands
     if not config.get('build:show-commands'):
         env['CCCOMSTR'] = "Compiling $TARGET"
@@ -211,7 +211,7 @@ def toposort_dependencies(env):
     from toposort import toposort
     liborder = {x.name: set(map(lambda x: x['name'], x.dependencies)) for x in env['DEPENDENCIES']}
     liborder = list(toposort(liborder))
-    
+
     sorted_deps = {}
     sort_count = 0
     for stage in liborder:
@@ -262,10 +262,11 @@ def compile_tilebus(files, env, outdir=None, header_only=False):
     config_h_path = os.path.join(outdir, 'config_variables_c.h')
 
     if header_only:
-        return env.Command([cmdmap_h_path, config_h_path], files, action=env.Action(tb_h_file_creation, "Creating header files from TileBus definitiosn"))
+        return env.Command([cmdmap_h_path, config_h_path], files, action=env.Action(tb_h_file_creation, "Creating header files from TileBus definitions"))
     else:
-        env['MIBFILE'] = '#' + cmdmap_c_path        
+        env['MIBFILE'] = '#' + cmdmap_c_path
         return env.Command([cmdmap_c_path, cmdmap_h_path, config_c_path, config_h_path], files, action=env.Action(tb_c_file_creation, "Compiling TileBus commands and config variables"))
+
 
 def tb_c_file_creation(target, source, env):
     """
@@ -275,12 +276,16 @@ def tb_c_file_creation(target, source, env):
     files = [str(x) for x in source]
 
     try:
-        d = TBDescriptor(files)
+        desc = TBDescriptor(files)
     except pyparsing.ParseException as e:
         raise BuildError("Could not parse tilebus file", parsing_exception=e)
 
-    block = d.get_block()
-    block.create_c(os.path.dirname(str(target[0])))
+    block = desc.get_block()
+    block.render_template(block.CommandFileTemplate, out_path=str(target[0]))
+    block.render_template(block.CommandHeaderTemplate, out_path=str(target[1]))
+    block.render_template(block.ConfigFileTemplate, out_path=str(target[2]))
+    block.render_template(block.ConfigHeaderTemplate, out_path=str(target[3]))
+
 
 def tb_h_file_creation(target, source, env):
     """
@@ -290,12 +295,14 @@ def tb_h_file_creation(target, source, env):
     files = [str(x) for x in source]
 
     try:
-        d = TBDescriptor(files)
+        desc = TBDescriptor(files)
     except pyparsing.ParseException as e:
         raise BuildError("Could not parse tilebus file", parsing_exception=e)
 
-    block = d.get_block(config_only=True)
-    block.create_config_headers(os.path.dirname(str(target[0])))
+    block = desc.get_block(config_only=True)
+    block.render_template(block.CommandHeaderTemplate, out_path=str(target[0]))
+    block.render_template(block.ConfigHeaderTemplate, out_path=str(target[1]))
+
 
 def checksum_creation_action(target, source, env):
     """

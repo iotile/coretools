@@ -1,0 +1,12 @@
+Import('prog_env')
+
+#Return all of the object files generated so that we can build the progra.
+objs = []
+
+srcfiles =  Glob("*.c") + \
+            Glob("cdb/*.c")
+
+for src in srcfiles:
+    objs.append(prog_env.Object(src))
+
+Return("objs")

@@ -154,6 +154,48 @@ class SemanticVersion(object):
 
         return version
 
+    def pep440_string(self):
+        """Convert this version into a python PEP 440 compliant string.
+
+        There is a 1:1 map between versions as specified in these SemanticVersion
+        objects and what is allowed in python packages according to PEP 440.  This
+        function does that conversion and returns a pep440 compliant string.
+
+        Released versions are identical to what is returned by str(self), however,
+        preleases have the following mapping (assuming X.Y.Z is the public release):
+
+        X.Y.Z:
+            X.Y.Z
+
+        X.Y.Z-alphaN:
+            X.Y.ZaN
+
+        X.Y.Z-betaN:
+            X.Y.ZbN
+
+        X.Y.Z-rcN:
+            X.Y.ZrcN
+
+        X.Y.Z-buildN:
+            X.Y.Z.devN
+
+        Returns:
+            str: The PEP 440 compliant version string.
+        """
+
+        if self.is_release:
+            return str(self)
+
+        prerelease_templates = {
+            "build": "%d.%d.%d.dev%d",
+            "alpha": "%d.%d.%da%d",
+            "beta": "%d.%d.%db%d",
+            "rc": "%d.%d.%drc%d"
+        }
+
+        template = prerelease_templates[self.release_type]
+        return template % (self.major, self.minor, self.patch, self.prerelease_number)
+
     def __eq__(self, other):
         return self._ordering_tuple() == other._ordering_tuple()
 

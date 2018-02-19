@@ -2,10 +2,15 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.18.3
+
+- Add support for generating PEP440 compliant version strings in 
+  SemanticVersion. (Issue #342)
+
 ## 3.18.2
 
-- Optimized process_hex to return a list of section base addresses and section data
-  to allow programming sections at a time.
+- Optimized process_hex to return a list of section base addresses and section
+  data to allow programming sections at a time.
 
 ## 3.18.1
 
@@ -15,7 +20,7 @@ All major changes in each released version of IOTileCore are listed here.
 ## 3.18.0
 
 - (Experimental) Include support for DebugManager that can take advantage of
-  DeviceAdapters that provide a debug interface in order to reflash and/or 
+  DeviceAdapters that provide a debug interface in order to reflash and/or
   download ram from attached devices, without requiring a functioning bootloader
   or other device support.
 

@@ -325,6 +325,9 @@ class UnitTest (object):
 
 
 def find_units(parent):
+    if not os.path.exists(parent):
+        return []
+
     files = [f for f in os.listdir(parent) if os.path.isfile(os.path.join(parent, f))]
 
     # only look for files that start with test_
