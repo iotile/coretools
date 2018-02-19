@@ -1,13 +1,13 @@
 language: python
 cache: 
-  pip
+  pip: true
   directories:
   - arm_gcc
 sudo: false
 python:
 - '2.7'
 before_install:
-- [ -d arm_gcc ] || scripts/install_arm_gcc.sh
+- "[ -d arm_gcc ] || scripts/install_arm_gcc.sh"
 - export PATH=$PATH;./arm_gcc/bin
 
 install:
