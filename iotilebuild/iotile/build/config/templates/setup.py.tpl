@@ -2,9 +2,10 @@ from setuptools import setup
 
 setup(
     name="{{ name }}",
-    packages={{ packages }},
-    py_modules={{ modules }},
-    version="{{version }}",
+    packages=[{{ "\"%s\"" % package }}],
+    version="{{ version }}",
     install_requires={{ deps }},
-    entry_points={{ entry_points }}
+    entry_points={{ entry_points }},
+    author="Arch",
+    author_email="info@arch-iot.com"
 )

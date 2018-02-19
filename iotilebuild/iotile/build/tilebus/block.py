@@ -7,9 +7,8 @@
 # are copyright Arch Systems Inc.
 
 from pkg_resources import resource_filename, Requirement
-from jinja2 import Environment, PackageLoader
 from typedargs.exceptions import ArgumentError
-from iotile.build.utilities import template
+from iotile.build.utilities import render_template
 
 
 KNOWN_HARDWARE_TYPES = {
@@ -149,36 +148,6 @@ class TBBlock(object):
 
         self.chip_name = KNOWN_HARDWARE_TYPES.get(self.hw_type, "Unknown Chip (type=%d)" % self.hw_type)
 
-    def create_c(self, folder):
-        """
-        Create a C file that contains a map of all of the mib commands defined in this block
-
-        Also create config files containing definitions for all of the required config variables.
-        """
-
-        temp = template.RecursiveTemplate(TBBlock.CTemplateName, resource_filename(Requirement.parse("iotile-build"), "iotile/build/config/templates"))
-        temp.add(self)
-        temp.render(folder)
-
-        temp = template.RecursiveTemplate(TBBlock.ConfigTemplateName, resource_filename(Requirement.parse("iotile-build"), "iotile/build/config/templates"))
-        temp.add(self)
-        temp.render(folder)
-
-        temp = template.RecursiveTemplate(TBBlock.CTemplateNameHeader, resource_filename(Requirement.parse("iotile-build"), "iotile/build/config/templates"))
-        temp.add(self)
-        temp.render(folder)
-
-        self.create_config_headers(folder)
-
-    def create_config_headers(self, folder):
-        """
-        Create C headers for config variables defined in this block
-        """
-
-        temp = template.RecursiveTemplate(TBBlock.ConfigTemplateNameHeader, resource_filename(Requirement.parse("iotile-build"), "iotile/build/config/templates"))
-        temp.add(self)
-        temp.render(folder)
-
     def render_template(self, template_name, out_path=None):
         """Render a template based on this TileBus Block.
 
@@ -197,14 +166,4 @@ class TBBlock(object):
             string: The rendered template data.
         """
 
-        env = Environment(loader=PackageLoader('iotile.build', 'config/templates'),
-                          trim_blocks=True, lstrip_blocks=True)
-
-        template = env.get_template(template_name)
-        result = template.render(self.to_dict())
-
-        if out_path is not None:
-            with open(out_path, 'wb') as outfile:
-                outfile.write(result)
-
-        return result
+        return render_template(template_name, self.to_dict(), out_path=out_path)

@@ -19,7 +19,7 @@ uint8_t {{command.symbol}}(uint8_t *buffer, unsigned int length, uint8_t *out_bu
 const cdb_slave_entry cdb_command_map[kNumCDBCommands] = 
 {
 {% for id, command in commands | dictsort %}
-    {{'{'}}{{command.symbol}}, id, 0}{%+ if not loop.last %},
+    {{'{'}}{{command.symbol}}, {{"0x%04X" % id}}, 0}{%+ if not loop.last %},
 {% endif %}
 {% endfor %}
 

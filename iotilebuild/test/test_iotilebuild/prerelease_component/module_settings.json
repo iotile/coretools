@@ -10,7 +10,7 @@
 	{
 		"progtest":
 		{
-			"version": "1.0.0",
+			"version": "1.0.0-alpha1",
 			
 			"depends": {},
 			"linker": "firmware/linker/linker.ld",
@@ -18,8 +18,7 @@
 			"products": 
 			{
 				"progtest_arm.elf": "firmware_image",
-				"python/arm_proxy.py": "proxy_module",
-				"python/lib_armtypes": "type_package"
+				"python/arm_proxy.py": "proxy_module"
 			}
 		}
 	},

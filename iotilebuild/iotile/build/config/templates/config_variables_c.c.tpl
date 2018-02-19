@@ -15,7 +15,7 @@
     {% if variable.default_value is string %}
 config_{{ variable.name }}_t __attribute__((section(".optional_config"))) {{variable.name}} = {{'{'}}{{variable.default_size}}, 0, "{{ variable.default_value }}"{{'}'}};
     {% else %}
-config_{{ variable.name }}_t __attribute__((section(".optional_config"))) {{variable.name}} = {{'{'}}{{variable.default_size}}, 0, {{ variable.default_value | join(', ') }}{{'}'}};
+config_{{ variable.name }}_t __attribute__((section(".optional_config"))) {{variable.name}} = {{'{'}}{{variable.default_size}}, 0, {{"{"}}{{ variable.default_value | join(', ') }}{{"}"}}{{'}'}};
     {% endif %}
 {% else %}
 {{ variable.type }} __attribute__((section(".optional_config"))) {{ variable.name }} = {{ variable.default_value }};
@@ -24,20 +24,19 @@ config_{{ variable.name }}_t __attribute__((section(".optional_config"))) {{vari
 
 {% if configs | length > 0 %}
 /* Config Variable Map */
-
 const cdb_config_entry cdb_config_map[kNumTotalConfigs] = 
 {
 {% if configs.values() | selectattr('required') | list | count > 0 %}
     /* Required Config Variables */
 {% for id, config in configs | dictsort if config.required %}
-    {&{{config.name}}, {{id}}, {{config.total_size}}, {{ config.array | int }}{{'}'}}{%+ if loop.index != config | length %},
+    {&{{config.name}}, {{"0x%04X" % id}}, {{config.total_size}}, {{ config.array | int }}{{'}'}}{%+ if loop.index != configs | length %},
 {% endif %}
 {% endfor %}
 
 {% endif %}
     /* Optional Config Variables */
 {% for id, config in configs | dictsort if not config.required %}
-    {&{{config.name}}, {{id}}, {{config.total_size}}, {{ config.array | int }}{{'}'}}{%+ if loop.index != config | length %},
+    {&{{config.name}}, {{"0x%04X" % id}}, {{config.total_size}}, {{ config.array | int }}{{'}'}}{%+ if loop.index != (configs.values() | rejectattr("required") | list | length) %},
 {% endif %}
 {% endfor %}
 };

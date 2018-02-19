@@ -9,16 +9,15 @@
 #descriptor.py
 #Define a Domain Specific Language for specifying MIB endpoints
 
-from pyparsing import Word, Regex, nums, hexnums, Literal, Optional, Group, oneOf, QuotedString, delimitedList, ParseException, OneOrMore, ZeroOrMore
-from handler import TBHandler
-import sys
 import os.path
-from iotile.core.exceptions import *
-import block
+import struct
 import shutil
 from pkg_resources import resource_filename, Requirement
-from iotile.build.utilities.template import RecursiveTemplate
-import struct
+from pyparsing import Regex, Literal, Optional, Group, oneOf, QuotedString, delimitedList, ParseException
+from iotile.core.exceptions import *
+import block
+from .handler import TBHandler
+
 
 #DSL for mib definitions
 #Format:
@@ -55,7 +54,7 @@ include = Literal("#include") + quote + filename("filename") + quote
 
 reqconfig = number("confignum") + colon + Literal('required').suppress() - Literal('config').suppress() - valid_type('type') - symbol('configvar') - Optional(leftB - number('length') - rightB) - ';'
 optconfig = number("confignum") + colon + Literal('optional').suppress() - Literal('config').suppress() - valid_type('type') - symbol('configvar') - Optional(leftB - number('length') - rightB) - "=" \
-  - (number('value') | QuotedString(quoteChar='"', unquoteResults=False)('value') | (leftCB+Group(delimitedList(number))('value')+rightCB)) + ';'
+  - (number('value') | QuotedString(quoteChar='"', unquoteResults=True)('value') | (leftCB+Group(delimitedList(number))('value')+rightCB)) + ';'
 
 statement = include | cmd_def | comment | assignment_def | reqconfig | optconfig
 
@@ -150,19 +149,18 @@ class TBDescriptor:
     def _value_length(self, value, type):
         """Given an integer or list of them, convert it to an array of bytes."""
 
-        if isinstance(value, int) or isinstance(value, long):
+        if isinstance(value, (int, long)):
             fmt = '<%s' % (type_codes[type])
             output = struct.pack(fmt, value)
             return len(output)
         elif isinstance(value, basestring):
-            assert value[0] == '"' and value[-1] == '"'
-            return len(value[1:-1]) + 1 # Account for final 0
-        else:
-            len_accum = 0
-            for x in value:
-                len_accum += self._value_length(x, type)
+            return len(value) + 1 # Account for final 0
 
-            return len_accum
+        len_accum = 0
+        for x in value:
+            len_accum += self._value_length(x, type)
+
+        return len_accum
 
     def _parse_configvar(self, match):
 

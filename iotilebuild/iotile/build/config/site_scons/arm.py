@@ -160,9 +160,9 @@ def setup_environment(chip):
 
     #Make sure we never get MSVC settings for windows since that has the wrong command line flags for gcc
     if platform.system() == 'Windows':
-        env = Environment(tools=['mingw'], ENV = os.environ)
+        env = Environment(tools=['mingw'], ENV=os.environ)
     else:
-        env = Environment(tools=['default'], ENV = os.environ)
+        env = Environment(tools=['default'], ENV=os.environ)
 
     env['INCPREFIX'] = '-I"'
     env['INCSUFFIX'] = '"'
@@ -267,6 +267,7 @@ def compile_tilebus(files, env, outdir=None, header_only=False):
         env['MIBFILE'] = '#' + cmdmap_c_path
         return env.Command([cmdmap_c_path, cmdmap_h_path, config_c_path, config_h_path], files, action=env.Action(tb_c_file_creation, "Compiling TileBus commands and config variables"))
 
+
 def tb_c_file_creation(target, source, env):
     """
     Compile tilebus file into a .h/.c pair for compilation into an ARM object
@@ -275,12 +276,16 @@ def tb_c_file_creation(target, source, env):
     files = [str(x) for x in source]
 
     try:
-        d = TBDescriptor(files)
+        desc = TBDescriptor(files)
     except pyparsing.ParseException as e:
         raise BuildError("Could not parse tilebus file", parsing_exception=e)
 
-    block = d.get_block()
-    block.create_c(os.path.dirname(str(target[0])))
+    block = desc.get_block()
+    block.render_template(block.CommandFileTemplate, out_path=str(target[0]))
+    block.render_template(block.CommandHeaderTemplate, out_path=str(target[1]))
+    block.render_template(block.ConfigFileTemplate, out_path=str(target[2]))
+    block.render_template(block.ConfigHeaderTemplate, out_path=str(target[3]))
+
 
 def tb_h_file_creation(target, source, env):
     """
@@ -290,12 +295,14 @@ def tb_h_file_creation(target, source, env):
     files = [str(x) for x in source]
 
     try:
-        d = TBDescriptor(files)
+        desc = TBDescriptor(files)
     except pyparsing.ParseException as e:
         raise BuildError("Could not parse tilebus file", parsing_exception=e)
 
-    block = d.get_block(config_only=True)
-    block.create_config_headers(os.path.dirname(str(target[0])))
+    block = desc.get_block(config_only=True)
+    block.render_template(block.CommandHeaderTemplate, out_path=str(target[0]))
+    block.render_template(block.ConfigHeaderTemplate, out_path=str(target[1]))
+
 
 def checksum_creation_action(target, source, env):
     """

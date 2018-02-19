@@ -39,7 +39,7 @@ def test_build_command():
     assert 'build' in plugs
 
 
-def test_iotiletool_build(tmpdir):
+def test_build(tmpdir):
     """Make sure we can build a blank component."""
 
     olddir = os.getcwd()
@@ -53,7 +53,7 @@ def test_iotiletool_build(tmpdir):
         os.chdir(olddir)
 
 
-def test_iotiletool_build_nodepends(tmpdir):
+def test_build_nodepends(tmpdir):
     """Make sure we can build a component with no depends key."""
 
     olddir = os.getcwd()
@@ -67,11 +67,25 @@ def test_iotiletool_build_nodepends(tmpdir):
         os.chdir(olddir)
 
 
-def test_iotiletool_build_arm(tmpdir):
+def test_build_arm(tmpdir):
     """Make sure we can build a component with no depends key."""
 
     olddir = os.getcwd()
     builddir = copy_folder('arm_component', tmpdir)
+
+    try:
+        os.chdir(builddir)
+        err = subprocess.check_call(["iotile", "build"])
+        assert err == 0
+    finally:
+        os.chdir(olddir)
+
+
+def test_build_prerelease(tmpdir):
+    """Make sure we can build a component with no depends key."""
+
+    olddir = os.getcwd()
+    builddir = copy_folder('prerelease_component', tmpdir)
 
     try:
         os.chdir(builddir)

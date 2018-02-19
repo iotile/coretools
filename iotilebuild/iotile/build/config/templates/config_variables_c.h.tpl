@@ -30,6 +30,6 @@ extern {{ variable.type }} {{ variable.name }};
 {% if configs | length > 0 %}
 extern const cdb_config_entry cdb_config_map[kNumTotalConfigs];
 {% endif %}
-#endif /*NOEXTERNAPPINFO*/
+#endif /* NOEXTERNAPPINFO */
 
-#endif /*__config_variables_c_h__
+#endif /*__config_variables_c_h__ */
