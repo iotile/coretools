@@ -7,7 +7,7 @@ sudo: false
 python:
 - '2.7'
 before_install:
-- "[ -d arm_gcc ] || scripts/install_arm_gcc.sh"
+- "[ -f arm_gcc/bin/arm-none-eabi-gcc ] || scripts/install_arm_gcc.sh"
 - export PATH=$PATH;./arm_gcc/bin
 
 install:
