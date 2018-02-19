@@ -1,13 +1,22 @@
 language: python
-cache: pip
+cache: 
+  pip
+  directories:
+    - arm_gcc
 sudo: false
 python:
 - '2.7'
 
+before_install:
+- "[ -d arm_gcc ] || scripts/install_arm_gcc.sh"
+- export PATH="$PATH;./arm_gcc"
+
 install:
 - pip install --upgrade -r build_requirements.txt
+
 script:
 - tox -r
+
 deploy:
   skip_cleanup: true
   provider: script
