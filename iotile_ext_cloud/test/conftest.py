@@ -31,4 +31,10 @@ def basic_cloud(mock_cloud_private_nossl):
 
     cloud.quick_add_device(proj2_id)
 
+    cloud.quick_add_sg(slug="water-meter-v1-1-0", app_tag=123)
+    cloud.quick_add_sg(slug="water-meter-v1-1-1", app_tag=124)
+
+    cloud.quick_add_dt(slug="internaltestingtemplate-v0-1-0", os_tag=234)
+    cloud.quick_add_dt(slug="internaltestingtemplate-v0-1-1", os_tag=235)
+
     yield client, proj_id, cloud
