@@ -2,14 +2,16 @@ language: python
 cache: 
   pip: true
   directories:
-  - arm_gcc
+  - ~/arm_gcc
 sudo: false
 python:
 - '2.7'
 before_install:
 - pwd
+- cd ~
 - "[ -f arm_gcc/bin/arm-none-eabi-gcc ] || scripts/install_arm_gcc.sh"
-- export PATH=$PATH:${TRAVIS_BUILD_DIR}/arm_gcc/bin
+- export PATH=$PATH:~/arm_gcc/bin
+- cd ${TRAVIS_BUILD_DIR}
 
 install:
 - pip install --upgrade -r build_requirements.txt
