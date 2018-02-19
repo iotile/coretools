@@ -103,10 +103,19 @@ class RecipeObject(object):
 
         return [step(params) for step, params in self._steps]
 
-    def run(self):
+    def run(self, variables=None):
         """Initialize and run this recipe."""
 
-        initialized_steps = self.prepare()
+        initialized_steps = self.prepare(variables)
 
         for step in initialized_steps:
             step.run()
+
+    def __str__(self):
+        output_string = "========================================\n"
+        output_string += "Recipe: \t%s\n" % (self.name)
+        output_string += "Desciption: \t%s\n" % (self.description)
+        output_string += "========================================\n"
+        for i, step in enumerate(self._steps):
+            output_string += "Step %d: %s\t Description: %s\n " % (i+1, step[0].__name__, step[1].get('description',''))
+        return output_string

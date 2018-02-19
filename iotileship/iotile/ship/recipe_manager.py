@@ -70,10 +70,13 @@ class RecipeManager(object):
         """Get a recipe by name.
 
         Args:
-            recipe_name (str): The name of the recipe to fetch.
+            recipe_name (str): The name of the recipe to fetch. Can be either the
+                yaml file name or the name of the recipe.
         """
-
-        recipe = self._recipes.get(recipe_name)
+        if recipe_name.endswith('.yaml'):
+            recipe = self._recipes.get(RecipeObject.FromFile(recipe_name, self._recipe_actions).name)
+        else:
+            recipe = self._recipes.get(recipe_name)
         if recipe is None:
             raise RecipeNotFoundError("Could not find recipe", recipe_name=recipe_name)
 
