@@ -21,6 +21,7 @@ class TileBusProxyObject (object):
         self.stream = stream
         self.addr = address
         self._config_manager = ConfigManager(self)
+        self._hwmanager = None
 
     @classmethod
     def ModuleName(cls):

@@ -7,6 +7,7 @@
 # are copyright Arch Systems Inc.
 import pkg_resources
 
+import time
 from iotile.core.utilities.typedargs import *
 from Queue import Empty
 from iotile.core.hw.transport import *
@@ -130,6 +131,8 @@ class HardwareManager:
             raise HardwareError("Could not find proxy object for tile", name="'{}'".format(name), known_names=self.name_map.keys())
 
         tile = tile_type(self.stream, address)
+        tile._hwmanager = self
+
         return tile
 
     @annotated
@@ -162,6 +165,9 @@ class HardwareManager:
     def disconnect(self):
         """Attempt to disconnect from a device
         """
+
+        self._trace_queue = None
+        self._stream_queue = None
 
         self.stream.disconnect()
 
@@ -204,12 +210,18 @@ class HardwareManager:
         by disconnecting from the device and then reconnecting to it.
         """
 
+        if self._stream_queue is not None:
+            return
+
         self._stream_queue = self.stream.enable_streaming()
 
     @annotated
     def enable_tracing(self):
         """Enable tracing of realtime debug information over this interface
         """
+
+        if self._trace_queue is not None:
+            return
 
         self._trace_queue = self.stream.enable_tracing()
 
@@ -242,6 +254,63 @@ class HardwareManager:
             return str(self._trace_data)
 
         return binascii.hexlify(self._trace_data)
+
+    def wait_trace(self, size, timeout=None, drop_before=False, progress_callback=None):
+        """Wait for a specific amount of tracing data to be received.
+
+        This function is the equivalent of wait_reports for streaming data.
+        It allows you to block until a specific amount of tracing data has
+        been received.  The optional timeout parameter allows you to stop
+        waiting if you never receive enough tracing data after a specific
+        amount of time.
+
+        Args:
+            size (int): The number of bytes to wait for.
+            timeout (float): The maximum number of seconds to wait for
+                these bytes to be received.
+            drop_before (bool): Truncate all data received until now
+                before waiting for size bytes.
+            progress_callback (callable): An optional progress callback that
+                is called periodically with updates.  It should have the
+                signature progress_callback(received_byte_count, total_byte_count)
+
+        Returns:
+            bytearray: The raw trace data obtained.
+        """
+
+        if drop_before:
+            self._trace_data = bytearray()
+
+        if progress_callback is None:
+            progress_callback = lambda x, y: None
+
+        if len(self._trace_data) >= size:
+            progress_callback(size, size)
+
+            data = self._trace_data[:size]
+            self._trace_data = self._trace_data[size:]
+
+            return data
+
+        progress_callback(len(self._trace_data), size)
+
+        start = time.time()
+        while len(self._trace_data) < size:
+            progress_callback(len(self._trace_data), size)
+            self._accumulate_trace()
+
+            time.sleep(0.1)
+            now = time.time()
+
+            if timeout is not None and ((now - start) > timeout):
+                raise TimeoutExpiredError("Timeout waiting for tracing data", expected_size=size, received_size=len(self._trace_data), timeout=timeout)
+
+        progress_callback(size, size)
+
+        data = self._trace_data[:size]
+        self._trace_data = self._trace_data[size:]
+
+        return data
 
     def _accumulate_trace(self):
         """Copy tracing data from trace queue into _trace_data
