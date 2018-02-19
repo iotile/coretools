@@ -20,7 +20,7 @@ install:
   - set PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%
 
   # We need an arm-gcc compiler for testing iotile-build
-  - if not exist "gcc-arm-none-eabi.zip" curl -L -o gcc-arm-none-eabi.zip https://developer.arm.com/-/media/Files/downloads/gnu-rm/7-2017q4/gcc-arm-none-eabi-7-2017-q4-major-win32.zip?revision=df1b65d3-7c8d-4e82-b114-e0b6ad7c2e6d?product=GNU%20Arm%20Embedded%20Toolchain,ZIP,,Windows,7-2017-q4-major
+  - if not exist "c:\gcc\bin" curl -L -o gcc-arm-none-eabi.zip https://developer.arm.com/-/media/Files/downloads/gnu-rm/7-2017q4/gcc-arm-none-eabi-7-2017-q4-major-win32.zip?revision=df1b65d3-7c8d-4e82-b114-e0b6ad7c2e6d?product=GNU%20Arm%20Embedded%20Toolchain,ZIP,,Windows,7-2017-q4-major
   - unzip -o -q gcc-arm-none-eabi.zip -d c:\gcc\
   - set PATH=%PATH%;c:\gcc\bin
 build: off
