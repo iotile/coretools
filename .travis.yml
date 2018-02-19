@@ -7,8 +7,9 @@ sudo: false
 python:
 - '2.7'
 before_install:
+- pwd
 - "[ -f arm_gcc/bin/arm-none-eabi-gcc ] || scripts/install_arm_gcc.sh"
-- export PATH=$PATH;./arm_gcc/bin
+- export PATH=$PATH:`cwd`/arm_gcc/bin
 
 install:
 - pip install --upgrade -r build_requirements.txt
