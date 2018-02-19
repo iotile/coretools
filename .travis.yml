@@ -2,6 +2,11 @@ language: python
 sudo: false
 python:
 - '2.7'
+addons:
+  apt:
+    packages:
+    - gcc-arm-none-eabi
+
 install:
 - pip install --upgrade -r build_requirements.txt
 script:
