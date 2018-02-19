@@ -5,6 +5,7 @@ python:
 addons:
   apt:
     packages:
+    - gcc-arm-none-eabi
     - libnewlib-arm-none-eabi
 
 install:
