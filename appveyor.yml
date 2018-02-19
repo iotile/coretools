@@ -10,6 +10,10 @@ environment:
     - PYTHON: "C:\\Python27"
     - PYTHON: "C:\\Python27-x64"
 
+# Make sure we don't keep redownloading gcc every time
+cache:
+  c:\gcc -> appveyor.yml
+
 install:
   # We need wheel installed to build wheels
   - "%PYTHON%\\python.exe -m pip install --upgrade -r build_requirements.txt"
