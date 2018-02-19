@@ -3,11 +3,6 @@ cache: pip
 sudo: false
 python:
 - '2.7'
-addons:
-  apt:
-    packages:
-    - gcc-arm-none-eabi
-    - libnewlib-arm-none-eabi
 
 install:
 - pip install --upgrade -r build_requirements.txt

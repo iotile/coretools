@@ -7,10 +7,14 @@
 #define kCDBMagicNumber         0xBAADDAAD
 #define kModuleHardwareType     1
 
-//Slave RPC Handler 
+/* 
+ * Slave RPC Handler
+ */ 
 typedef uint8_t (*cdb_slave_handler)(uint8_t *buffer, unsigned int length, uint8_t *out_buffer, unsigned int *out_length);
 
-//RPC handler table entry format
+/*
+ * RPC handler table entry format
+ */
 typedef struct
 {
     cdb_slave_handler   handler;
@@ -18,7 +22,9 @@ typedef struct
     uint16_t            reserved;
 } cdb_slave_entry;
 
-//Entry for specifying a configuration variable
+/*
+ * Entry for specifying a configuration variable
+ */
 typedef struct
 {
     void                *variable;
@@ -26,12 +32,6 @@ typedef struct
     uint16_t            size: 15;
     uint16_t            variable_size: 1;
 } cdb_config_entry;
-
-typedef struct
-{
-    uint32_t            section_size;
-    uint32_t            vars[];
-} cdb_optional_variables_table_t;
 
 /*
  * Information block about CDB compatile application firmware image
