@@ -12,8 +12,8 @@ import os.path
 import os
 import shutil
 import subprocess
-import pytest
 from iotile.core.dev.registry import ComponentRegistry
+
 
 def copy_folder(local_name, tmpdir):
     """Copy a complete folder by name into a temporary directory."""
@@ -67,7 +67,7 @@ def test_build_nodepends(tmpdir):
     finally:
         os.chdir(olddir)
 
-@pytest.mark.skipif('TRAVIS' in os.environ, reason="ARM compilation not supported on Travis CI yet")
+
 def test_build_arm(tmpdir):
     """Make sure we can build a component with no depends key."""
 
@@ -81,7 +81,7 @@ def test_build_arm(tmpdir):
     finally:
         os.chdir(olddir)
 
-@pytest.mark.skipif('TRAVIS' in os.environ, reason="ARM compilation not supported on Travis CI yet")
+
 def test_build_prerelease(tmpdir):
     """Make sure we can build a component with no depends key."""
 
