@@ -5,29 +5,32 @@
 #
 # Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
-import pkg_resources
-
 import time
-from iotile.core.utilities.typedargs import *
 from Queue import Empty
-from iotile.core.hw.transport import *
-from iotile.core.hw.exceptions import *
-from iotile.core.exceptions import *
-from iotile.core.utilities.typedargs.annotate import param, return_type, finalizer
-from iotile.core.hw.proxy.proxy import TileBusProxyObject
-from iotile.core.dev.registry import ComponentRegistry
-from iotile.core.hw.transport.adapterstream import AdapterCMDStream
-from iotile.core.dev.config import ConfigManager
-from iotile.core.hw.debug import DebugManager
 import inspect
 import os.path
 import imp
 import binascii
 import sys
+import pkg_resources
+import logging
 
+from iotile.core.dev.semver import SemanticVersion
+from iotile.core.hw.transport import *
+from iotile.core.hw.exceptions import *
+from iotile.core.exceptions import *
+from iotile.core.utilities.typedargs.annotate import param, return_type, finalizer, docannotate
+from typedargs import *
+from iotile.core.dev.registry import ComponentRegistry
+from iotile.core.hw.transport.adapterstream import AdapterCMDStream
+from iotile.core.dev.config import ConfigManager
+from iotile.core.hw.debug import DebugManager
+
+from .proxy import TileBusProxyObject
+from .app import IOTileApp
 
 @context("HardwareManager")
-class HardwareManager:
+class HardwareManager(object):
     """
     A module for managing and interacting with IOTile Hardware
 
@@ -43,6 +46,9 @@ class HardwareManager:
 
     # Allow overriding proxies for development by adding them to this shared proxy map
     DevelopmentProxies = {}
+    DevelopmentApps = {}
+
+    logger = logging.getLogger(__name__)
 
     @param("port", "string", desc="transport method to use in the format transport[:port[,connection_string]]")
     @param("record", "path", desc="Optional file to record all RPC calls and responses made on this HardwareManager")
@@ -64,13 +70,19 @@ class HardwareManager:
         self.record = record
 
         self.stream = self._create_stream()
+
         self._stream_queue = None
         self._trace_queue = None
         self._trace_data = bytearray()
-        self.proxies = {'TileBusProxyObject': TileBusProxyObject}
-        self.name_map = {TileBusProxyObject.ModuleName(): [TileBusProxyObject]}
+
+        self._proxies = {'TileBusProxyObject': TileBusProxyObject}
+        self._name_map = {TileBusProxyObject.ModuleName(): [TileBusProxyObject]}
+
+        self._known_apps = {}
+        self._named_apps = {}
 
         self._setup_proxies()
+        self._setup_apps()
 
     @classmethod
     def RegisterDevelopmentProxy(cls, proxy_obj):  # pylint: disable=C0103; class methods are capitalized when expected to be invoked on types
@@ -94,23 +106,94 @@ class HardwareManager:
 
         HardwareManager.DevelopmentProxies[name].append(proxy_obj)
 
+    @classmethod
+    def RegisterDevelopmentApp(cls, app):  # pylint: disable=C0103; class methods are capitalized when expected to be invoked on types
+        """Register an IOTileApp object that should be available for local development.
+
+        Often during development, you need to create a virtual iotile device with
+        its own app object.  It's easy to point CoreTools at the virtual device
+        in order to test it, but there did not use to be a good way to load in
+        its app object.  This method allows the user to inject a development
+        app module to use with the virtual device.
+
+        Args:
+            app (TileBusApp): The app module class that should be
+                registered.
+        """
+
+        app_tag = app.AppTag()
+
+        if app_tag not in HardwareManager.DevelopmentApps:
+            HardwareManager.DevelopmentApps[app_tag] = []
+
+        HardwareManager.DevelopmentApps[app_tag].append(app)
+
     def _setup_proxies(self):
-        """
-        Load in proxy module objects for all of the registered components on this system
-        """
+        """Load in proxy module objects for all of the registered components on this system."""
 
         # Find all of the registered IOTile components and see if we need to add any proxies for them
         reg = ComponentRegistry()
         modules = reg.list_components()
 
         proxies = reduce(lambda x, y: x+y, [reg.find_component(x).proxy_modules() for x in modules], [])
+        proxy_classes = []
         for prox in proxies:
-            self.add_proxies(prox)
+            proxy_classes += self._load_module_classes(prox, TileBusProxyObject)
 
         # Find all installed proxy objects through registered entry points
         for entry in pkg_resources.iter_entry_points('iotile.proxy'):
             mod = entry.load()
-            self._add_proxy_module(mod)
+            proxy_classes += [x for x in mod.__dict__.itervalues() if inspect.isclass(x) and issubclass(x, TileBusProxyObject) and x != TileBusProxyObject]
+
+        for obj in proxy_classes:
+            if obj.__name__ in self._proxies:
+                continue #Don't readd proxies that we already know about
+
+            self._proxies[obj.__name__] = obj
+
+            #Check if this object matches a specific shortened name so that we can
+            #automatically match a hw module to a proxy without user intervention
+            try:
+                short_name = obj.ModuleName()
+                if short_name in self._name_map:
+                    self._name_map[short_name].append(obj)
+                else:
+                    self._name_map[short_name] = [obj]
+            except Exception:  #pylint: disable=broad-except;We don't want this to die if someone loads a misbehaving plugin
+                self.logger.exception("Error importing misbehaving proxy module, skipping.")
+
+    def _setup_apps(self):
+        """Load in all iotile app objects for all registered or installed components on this system."""
+
+        reg = ComponentRegistry()
+        modules = reg.list_components()
+
+        apps = reduce(lambda x, y: x+y, [reg.find_component(x).app_modules() for x in modules], [])
+        app_classes = []
+        for app in apps:
+            app_classes += self._load_module_classes(app, IOTileApp)
+
+        # Find all installed proxy objects through registered entry points
+        for entry in pkg_resources.iter_entry_points('iotile.app'):
+            mod = entry.load()
+            app_classes += [x for x in mod.__dict__.itervalues() if inspect.isclass(x) and issubclass(x, IOTileApp) and x != TileBusProxyObject]
+
+        for app in app_classes:
+            try:
+                matches = app.MatchInfo()
+                name = app.AppName()
+                for tag, ver_range, quality in matches:
+                    if tag not in self._known_apps:
+                        self._known_apps[tag] = []
+
+                    self._known_apps[tag].append((ver_range, quality, app))
+
+                if name in self._named_apps:
+                    self.logger.warn("Added an app module with an existing name, overriding previous app, name=%s", name)
+
+                self._named_apps[name] = app
+            except Exception:  #pylint: disable=broad-except;We don't want this to die if someone loads a misbehaving plugin
+                self.logger.exception("Error importing misbehaving app module, skipping.")
 
     @param("address", "integer", "positive", desc="numerical address of module to get")
     def get(self, address):
@@ -128,12 +211,65 @@ class HardwareManager:
         # Now create the appropriate proxy object based on the name and version of the tile
         tile_type = self.get_proxy(name)
         if tile_type is None:
-            raise HardwareError("Could not find proxy object for tile", name="'{}'".format(name), known_names=self.name_map.keys())
+            raise HardwareError("Could not find proxy object for tile", name="'{}'".format(name), known_names=self._name_map.keys())
 
         tile = tile_type(self.stream, address)
         tile._hwmanager = self
 
         return tile
+
+    @docannotate
+    def app(self, name=None):
+        """Find the best IOTileApp for the device we are connected to.
+
+        Apps are matched by looking at the app tag and version information
+        specified by the connected device.  If no installed app matches, an
+        exception will be thrown.  You can also force the matching of a
+        specific app by using the name parameter.
+
+        Args:
+            name (str): Optional name of the app that you wish to load.
+
+        Returns:
+            IOTileApp show-as context: The IOTileApp class that was loaded
+                for this device.
+        """
+
+        # We perform all app matching by asking the device's controller for its app and os info
+        tile = self._create_proxy('TileBusProxyObject', 8)
+        os_info, app_info = tile.rpc(0x10, 0x08, result_format="12xLL")
+
+        os_tag = os_info  & ((1 << 20) - 1)
+        os_version_str = '%d.%d.%d'  % ((os_info >> 26) & ((1 << 6) - 1), (os_info >> 20) & ((1 << 6) - 1), 0)
+
+        app_tag = app_info & ((1 << 20) - 1)
+        app_version_str = '%d.%d.%d'  % ((app_info >> 26) &  ((1 << 6) - 1), (app_info>>20) & ((1 << 6) - 1), 0)
+
+        os_version = SemanticVersion.FromString(os_version_str)
+        app_version = SemanticVersion.FromString(app_version_str)
+
+        app_class = None
+
+        if name is not None:
+            app_class = self._named_apps.get(name)
+        else:
+            best_match = None
+            matching_tags = self._known_apps.get(app_tag, [])
+            for (ver_range, quality, app) in matching_tags:
+                if ver_range.check(app_version):
+                    if best_match is None:
+                        best_match = (quality, app)
+                    elif quality > best_match[0]:
+                        best_match = (quality, app)
+
+            if best_match is not None:
+                app_class = best_match[1]
+
+        if app_class is None:
+            raise HardwareError("Could not find matching application for device", app_tag=app_tag, explicit_app=name, installed_apps=[x for x in self._named_apps])
+
+        app = app_class(self, (app_tag, app_version), (os_tag, os_version))
+        return app
 
     @annotated
     def controller(self):
@@ -388,66 +524,28 @@ class HardwareManager:
     def close(self):
         self.stream.close()
 
-    @param("path", "path", "readable", desc="path to module to load")
-    @return_type("integer")
-    def add_proxies(self, path):
-        """
-        Add all proxy objects defined in the python module located at path.
+    @classmethod
+    def _load_module_classes(cls, path, base_class):
+        """Load a python module and return all classes that inherit from a given base."""
 
-        The module is loaded and all classes that inherit from TileBusProxyObject
-        are loaded and can be used to interact later with modules of that type.
-
-        Returns the total number of proxies added.
-        """
-
-        d,p = os.path.split(path)
-
-        p,ext = os.path.splitext(p)
+        folder, basename = os.path.split(path)
+        basename, ext = os.path.splitext(basename)
         if ext != '.py' and ext != '.pyc' and ext != "":
-            raise ArgumentError("Passed proxy module is not a python package or module (.py or .pyc)", path=path)
+            raise ArgumentError("Attempted to load module is not a python package or module (.py or .pyc)", path=path)
 
         try:
-            fileobj,pathname,description = imp.find_module(p, [d])
+            fileobj, pathname, description = imp.find_module(basename, [folder])
 
             #Don't load modules twice
-            if p in sys.modules:
-                mod = sys.modules[p]
+            if basename in sys.modules:
+                mod = sys.modules[basename]
             else:
-                mod = imp.load_module(p, fileobj, pathname, description)
-        except ImportError as e:
-            raise ArgumentError("could not import module in order to load external proxy modules", module_path=path, parent_directory=d, module_name=p, error=str(e))
+                mod = imp.load_module(basename, fileobj, pathname, description)
+        except ImportError as exc:
+            raise ArgumentError("could not import module in order to load external proxy modules", module_path=path, parent_directory=folder, module_name=basename, error=str(exc))
 
-        return self._add_proxy_module(mod)
-
-    def _add_proxy_module(self, mod):
-        """Add a proxy module that has already been imported
-
-        Args:
-            mod (module): A python module object that may contain a TileBusProxyObject subclass
-
-        Returns:
-            integer: The number of new TilebusProxyObject classes found
-        """
-
-        num_added = 0
-        for obj in filter(lambda x: inspect.isclass(x) and issubclass(x, TileBusProxyObject) and x != TileBusProxyObject, mod.__dict__.itervalues()):
-            if obj.__name__ in self.proxies:
-                continue #Don't readd proxies that we already know about
-
-            self.proxies[obj.__name__] = obj
-
-            #Check if this object matches a specific shortened name so that we can
-            #automatically match a hw module to a proxy without user intervention
-            if hasattr(obj, 'ModuleName'):
-                short_name = obj.ModuleName()
-                if short_name in self.name_map:
-                    self.name_map[short_name].append(obj)
-                else:
-                    self.name_map[short_name] = [obj]
-
-            num_added += 1
-
-        return num_added
+        # Find all classes in this module that inherit from the given base class
+        return [x for x in mod.__dict__.itervalues() if inspect.isclass(x) and issubclass(x, base_class) and x != base_class]
 
     @return_type("list(basic_dict)")
     @param("wait", "float", desc="Time to wait for devices to show up before returning")
@@ -486,10 +584,10 @@ class HardwareManager:
         if short_name in HardwareManager.DevelopmentProxies:
             return HardwareManager.DevelopmentProxies[short_name][0]
 
-        if short_name not in self.name_map:
+        if short_name not in self._name_map:
             return None
 
-        return self.name_map[short_name][0]
+        return self._name_map[short_name][0]
 
     def _create_proxy(self, proxy, address):
         """
@@ -497,10 +595,10 @@ class HardwareManager:
         at the given address.
         """
 
-        if proxy not in self.proxies:
-            raise UnknownModuleTypeError("unknown proxy module specified", module_type=proxy, known_types=self.proxies.keys())
+        if proxy not in self._proxies:
+            raise UnknownModuleTypeError("unknown proxy module specified", module_type=proxy, known_types=self._proxies.keys())
 
-        proxy_class = self.proxies[proxy]
+        proxy_class = self._proxies[proxy]
         return proxy_class(self.stream, address)
 
     def _create_stream(self):

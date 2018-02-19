@@ -1,2 +1,5 @@
-from pkgutil import extend_path
-__path__ = extend_path(__path__, __name__)
+from .app import IOTileApp
+from .proxy import TileBusProxyObject
+from .hwmanager import HardwareManager
+
+__all__ = ['IOTileApp', 'TileBusProxyObject', 'HardwareManager']
