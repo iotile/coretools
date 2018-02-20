@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.5.1
+
+- Add autobuild_bootstrap_file to combine firmware files into a single bootstrap product
+
 ## 2.5.0 
 
 - Add support for releasing python packages to pypi as a release_step
