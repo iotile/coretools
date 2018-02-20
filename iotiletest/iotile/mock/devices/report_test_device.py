@@ -46,7 +46,7 @@ class ReportTestDevice(VirtualIOTileDevice):
     def __init__(self, args, module_name=None):
         iotile_id = args.get('iotile_id', 1)
 
-        module_name = module_name[:6] if module_name else "Simple"
+        module_name = module_name[:6] if module_name else "Rptdev"
 
         if isinstance(iotile_id, basestring) or isinstance(iotile_id, unicode):
             iotile_id = int(iotile_id, 16)

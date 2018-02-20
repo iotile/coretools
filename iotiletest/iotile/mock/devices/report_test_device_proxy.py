@@ -15,7 +15,7 @@ class ReportTestDeviceProxy(TileBusProxyObject):
     @param("force", "bool", desc="force insertion regardless of sequence check")
     @param("acknowledgement", "integer", desc="value of the acknowledgement")
     def acknowledge_streamer(self, index, force, acknowledgement):
-        error = self.rpc(0x20, 0x0f, index, force, acknowledgement, arg_format="HHL", result_format="L")
+        error, = self.rpc(0x20, 0x0f, index, force, acknowledgement, arg_format="HHL", result_format="L")
 
         return error
 
@@ -24,6 +24,6 @@ class ReportTestDeviceProxy(TileBusProxyObject):
     def query_streamer(self, index):
         a, b, c, ack, d, e, f = self.rpc(0x20, 0x0a, index, arg_format="H", result_format="LLLLBBBx")
 
-        result = {"ack", ack}
+        result = {"ack": ack}
 
         return result

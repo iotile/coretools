@@ -95,7 +95,6 @@ def test_invalid_length_combo():
 
 def test_report_device_rpc(inline_config_report_hw):
     hw = inline_config_report_hw
-    print type(hw), dir(hw)
     proxy = hw.controller()
 
     index = 1
@@ -103,7 +102,8 @@ def test_report_device_rpc(inline_config_report_hw):
     force = False
 
     error = proxy.acknowledge_streamer(index, force, value)
-    assert not error
+    assert error == 0
 
-    r = proxy.query_streamer(index)
-    assert r["ack"] == 99
+    result = proxy.query_streamer(index)
+    print result
+    assert result["ack"] == 99
