@@ -51,9 +51,12 @@ class IOTileApp(object):
         matching with a device by app_tag.
 
         Returns:
-            list of (int, SemanticVersionRange) tuples: A tuple with
-                the app_tag and matching version range for all app
-                tags that this IOTileApp should match with.
+            list of (int, SemanticVersionRange, float) tuples: A tuple with
+                the app_tag and matching version range for all app tags that
+                this IOTileApp should match with.  The third float is a
+                quality number that will be used to break ties when more than
+                one app matches a given device.  Higher is better and the
+                value should be in the range [0, 100].
         """
 
         return []
