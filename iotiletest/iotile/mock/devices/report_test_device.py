@@ -41,12 +41,11 @@ class ReportTestDevice(VirtualIOTileDevice):
                     verification functionality or 1 for signing with a user set key.
                     (default: 0)
                 stream_id (int): The stream that this reading should be sent out
+                module_name (string): The module name of the proxy object to use
     """
 
-    def __init__(self, args, module_name=None):
+    def __init__(self, args):
         iotile_id = args.get('iotile_id', 1)
-
-        module_name = module_name[:6] if module_name else "Rptdev"
 
         if isinstance(iotile_id, basestring) or isinstance(iotile_id, unicode):
             iotile_id = int(iotile_id, 16)
@@ -54,6 +53,7 @@ class ReportTestDevice(VirtualIOTileDevice):
         generator = args.get('reading_generator', 'sequential')
         self.num_readings = args.get('num_readings', 100)
 
+        module_name = args.get('module_name', 'Rptdev')
         stream_string = args.get('stream_id', '5001')
         self.stream_id = int(stream_string, 16)
 
