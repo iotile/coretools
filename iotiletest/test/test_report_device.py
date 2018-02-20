@@ -10,6 +10,7 @@ from iotile.core.hw.hwmanager import HardwareManager
 from iotile.core.hw.reports.signed_list_format import SignedListReport
 from iotile.core.hw.exceptions import *
 from iotile.core.exceptions import *
+import json
 import unittest
 import pytest
 import os.path
@@ -42,6 +43,31 @@ def conf_report_hw():
 
     hw.disconnect()
 
+@pytest.fixture(scope="function")
+def inline_config_report_hw(tmpdir):
+    config = {
+        "device": {
+            "iotile_id": "1",
+            "reading_start": 0,
+            "num_readings": 0,
+            "stream_id": "5001",
+            "format": "signed_list",
+            "report_length": 0,
+            "signing_method": 0
+        }
+    }
+
+    config_obj = tmpdir.join("config.json")
+    config_obj.write(json.dumps(config))
+    config_path = str(config_obj)
+
+    hw = HardwareManager(port="virtual:report_test@%s" % config_path)
+    hw.connect(1)
+
+    yield hw
+
+    hw.disconnect()
+
 def test_config_file(conf_report_hw):
     """Make sure zero length reports work
     """
@@ -67,8 +93,9 @@ def test_invalid_length_combo():
     with pytest.raises(ArgumentError):
         hw = HardwareManager('virtual:report_test@%s' % conf_file)
 
-def test_report_device_rpc(report_hw):
-    hw = report_hw
+def test_report_device_rpc(inline_config_report_hw):
+    hw = inline_config_report_hw
+    print type(hw), dir(hw)
     proxy = hw.controller()
 
     index = 1
