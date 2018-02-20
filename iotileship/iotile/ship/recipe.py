@@ -4,8 +4,9 @@ from builtins import str
 from future.utils import viewitems
 
 from iotile.core.exceptions import ArgumentError
-from iotile.ship.exceptions import RecipeFileInvalid, UnknownRecipeActionType
+from iotile.ship.exceptions import RecipeFileInvalid, UnknownRecipeActionType, RecipeVariableNotPassed
 
+import re
 
 class RecipeObject(object):
     """An object representing a fixed set of processing steps.
@@ -88,7 +89,28 @@ class RecipeObject(object):
             info = yaml.load(f)
             return info
 
-    def prepare(self, variables=None):
+    def _replace_param_variables(self, params, variables):
+        """Replace any parameters passed as {} in the yaml file with the 
+        variable names that are passed in
+        """
+        completed_params = {}
+        for key, value in params.items():
+            #If the entire variable needs to be replaced
+            if type(value).__name__ == 'str':            
+                if value[0] == '{' and value[-1] == '}':
+                    variable_key_name = value[1:-1]
+                    new_value = variables.get(variable_key_name, None)
+                    if new_value is not None:
+                        
+                        completed_params[key] = new_value
+                    else:
+                        raise RecipeVariableNotPassed("Variable undefined, need to pass in through 'variables'", undefined_variable = variable_key_name)
+            #Nothing needs to be replace in the parameter
+            else:
+                completed_params[key] = value
+        return completed_params
+
+    def prepare(self, variables={}):
         """Initialize all steps in this recipe using their parameters.
 
         Args:
@@ -100,10 +122,13 @@ class RecipeObject(object):
             list of RecipeActionObject like instances: The list of instantiated
                 steps that can be used to execute this recipe.
         """
+        initialized_steps = []
+        for step, params in self._steps:
+            completed_params = self._replace_param_variables(params, variables)
+            initialized_steps.append(step(completed_params))
+        return initialized_steps
 
-        return [step(params) for step, params in self._steps]
-
-    def run(self, variables=None):
+    def run(self, variables={}):
         """Initialize and run this recipe."""
 
         initialized_steps = self.prepare(variables)

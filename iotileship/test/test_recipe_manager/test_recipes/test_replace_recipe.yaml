@@ -1,0 +1,6 @@
+name: "test_replace_recipe"
+description: "recipe to test replacement of variables"
+idempotent: True
+actions:
+  - name: "WaitStep"
+    seconds: "{custom_wait_time}"

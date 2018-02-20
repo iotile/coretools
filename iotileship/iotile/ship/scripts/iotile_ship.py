@@ -58,15 +58,12 @@ def main(argv=None):
 
     devices = []
     success = []
-
     devices.extend([int(x, 16) for x in args.uuid])
     for uuid_range in args.uuid_range:
         start, _, end = uuid_range.partition('-')
         start = int(start, 16)
         end = int(end, 16)
         devices.extend(xrange(start, end+1))
-
-
 
     try:
         for dev in devices:

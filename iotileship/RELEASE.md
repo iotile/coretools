@@ -7,4 +7,6 @@ All major changes in each released version of IOTileBuild are listed here.
 - First Release. First definitions of RecipeObjects, RecipeActionObjects, and RecipeManager.
 - RecipeManager pulls in all plugins with recipe_actions from packages
 - Include unit tests for RecipeManager.
+- Console script iotile-ship
+- First pass in variable replacements in recipes
     

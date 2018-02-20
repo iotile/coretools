@@ -9,11 +9,17 @@ pip install iotile-ship
 
 ## Sample Use Case:
 
+Python Script
 ```
 rm = RecipeManager()
 rm.add_recipe_folder('path_to_recipes')
 recipe = rm.get_recipe('recipe_name')
 recipe.run()
+```
+
+Command line
+```
+iotile-ship test_recipe --uuid 0x98
 ```
 
 ## Copyright and license

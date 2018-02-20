@@ -19,3 +19,8 @@ class RecipeNotFoundError(IOTileException):
 class UnknownRecipeActionType(IOTileException):
     """Thrown when RecipceAction passed is unknown."""
     pass
+
+class RecipeVariableNotPassed(IOTileException):
+    """Thrown when user does not pass in a value for a variable parameter
+    in a yaml file"""
+    pass
