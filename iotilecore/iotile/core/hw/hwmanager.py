@@ -47,6 +47,7 @@ class HardwareManager(object):
     # Allow overriding proxies for development by adding them to this shared proxy map
     DevelopmentProxies = {}
     DevelopmentApps = {}
+    DevelopmentAppNames = {}
 
     logger = logging.getLogger(__name__)
 
@@ -107,6 +108,13 @@ class HardwareManager(object):
         HardwareManager.DevelopmentProxies[name].append(proxy_obj)
 
     @classmethod
+    def ClearDevelopmentApps(cls):
+        """Clear all development apps previously registered."""
+
+        cls.DevelopmentAppNames = {}
+        cls.DevelopmentApps = {}
+
+    @classmethod
     def RegisterDevelopmentApp(cls, app):  # pylint: disable=C0103; class methods are capitalized when expected to be invoked on types
         """Register an IOTileApp object that should be available for local development.
 
@@ -121,12 +129,15 @@ class HardwareManager(object):
                 registered.
         """
 
-        app_tag = app.AppTag()
+        matches = app.MatchInfo()
 
-        if app_tag not in HardwareManager.DevelopmentApps:
-            HardwareManager.DevelopmentApps[app_tag] = []
+        for (app_tag, ver_range, quality) in matches:
+            if app_tag not in HardwareManager.DevelopmentApps:
+                HardwareManager.DevelopmentApps[app_tag] = []
 
-        HardwareManager.DevelopmentApps[app_tag].append(app)
+            HardwareManager.DevelopmentApps[app_tag].append((ver_range, quality, app))
+
+        HardwareManager.DevelopmentAppNames[app.AppName()] = app
 
     def _setup_proxies(self):
         """Load in proxy module objects for all of the registered components on this system."""
@@ -251,11 +262,16 @@ class HardwareManager(object):
         app_class = None
 
         if name is not None:
-            app_class = self._named_apps.get(name)
+            if name in self.DevelopmentAppNames:
+                app_class = self.DevelopmentAppNames[name]
+            else:
+                app_class = self._named_apps.get(name)
         else:
             best_match = None
             matching_tags = self._known_apps.get(app_tag, [])
-            for (ver_range, quality, app) in matching_tags:
+            dev_tags = self.DevelopmentApps.get(app_tag, [])
+
+            for (ver_range, quality, app) in matching_tags + dev_tags:
                 if ver_range.check(app_version):
                     if best_match is None:
                         best_match = (quality, app)
