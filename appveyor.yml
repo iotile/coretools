@@ -12,7 +12,8 @@ environment:
 
 # Make sure we don't keep redownloading gcc every time
 cache:
-  c:\gcc -> appveyor.yml
+  - c:\gcc -> appveyor.yml
+  - '%LOCALAPPDATA%\pip\Cache'
 
 install:
   # We need wheel installed to build wheels
