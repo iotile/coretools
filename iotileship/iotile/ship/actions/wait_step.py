@@ -18,4 +18,4 @@ class WaitStep (object):
         self._seconds = args['seconds']
 
     def run(self):
-        time.sleep(self._seconds)
+        time.sleep(float(self._seconds))

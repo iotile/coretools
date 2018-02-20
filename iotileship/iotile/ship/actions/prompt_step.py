@@ -20,4 +20,4 @@ class PromptStep (object):
         self._message = args['message']
 
     def run(self):
-        raw_input(self._message)
+        raw_input(str(self._message))

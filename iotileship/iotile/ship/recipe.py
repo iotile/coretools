@@ -6,8 +6,6 @@ from future.utils import viewitems
 from iotile.core.exceptions import ArgumentError
 from iotile.ship.exceptions import RecipeFileInvalid, UnknownRecipeActionType, RecipeVariableNotPassed
 
-import re
-
 class RecipeObject(object):
     """An object representing a fixed set of processing steps.
 
@@ -101,7 +99,6 @@ class RecipeObject(object):
                     variable_key_name = value[1:-1]
                     new_value = variables.get(variable_key_name, None)
                     if new_value is not None:
-                        
                         completed_params[key] = new_value
                     else:
                         raise RecipeVariableNotPassed("Variable undefined, need to pass in through 'variables'", undefined_variable = variable_key_name)
