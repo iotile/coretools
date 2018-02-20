@@ -82,6 +82,7 @@ class ReportTestDevice(VirtualIOTileDevice):
             raise ArgumentError("You cannot have a report length of 0 and more than 0 readings because that would be an infinite loop")
 
         self.acks = {}
+        self.last_acknowledgement_received = 0
 
         super(ReportTestDevice, self).__init__(iotile_id, module_name)
 
@@ -99,6 +100,9 @@ class ReportTestDevice(VirtualIOTileDevice):
         if force or self.acks.get(index, 0) < acknowledgement:
             self.acks[index] = acknowledgement
 
+        if index == 0:
+            self.last_acknowledgement_received = acknowledgement
+
         return [0]
 
     @rpc(8, 0x200a, "H", "LLLLBBBx")
@@ -109,7 +113,12 @@ class ReportTestDevice(VirtualIOTileDevice):
         readings = []
 
         for i in xrange(self.reading_start, self.num_readings+self.reading_start):
-            reading = IOTileReading(i-self.reading_start+self.start_timestamp, self.stream_id, i, reading_id=i-self.reading_start+self.start_id)
+            if self.last_acknowledgement_received > 0:
+                reading_id = i - self.reading_start + self.last_acknowledgement_received
+            else:
+                reading_id = i - self.reading_start + self.start_id
+
+            reading = IOTileReading(i-self.reading_start+self.start_timestamp, self.stream_id, i, reading_id=reading_id)
             readings.append(reading)
 
         return readings

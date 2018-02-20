@@ -106,4 +106,4 @@ def test_report_device_rpc(inline_config_report_hw):
 
     result = proxy.query_streamer(index)
     print result
-    assert result["ack"] == 99
+    assert result["ack"] == value
