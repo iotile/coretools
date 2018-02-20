@@ -1,39 +1,16 @@
 {
-	"module_name": "libprogram",
-	
-	"module_targets": 
-	{
-		"progtest": ["arm"]
-	},
+	"module_name": "bootstrap_test",
 
 	"modules":
 	{
-		"progtest":
+		"bootstrap_test":
 		{
 			"version": "1.0.0",
-			
-			"depends": {},
-			"linker": "firmware/linker/linker.ld",
 
 			"products": 
 			{
-				"progtest_arm.elf": "firmware_image",
-				"python/arm_proxy.py": "proxy_module",
-				"python/lib_armtypes": "type_package"
+				"test_final.hex": "firmware_image"
 			}
-		}
-	},
-
-	"architectures":
-	{
-		"arm":
-		{
-			"cflags": ["-mthumb", "-Wall", "-Wshadow", "-Os", "-g", "-fno-builtin", "-ffunction-sections", "-fdata-sections"],
-			"asflags": ["-Wall"],
-			"ldflags": ["-mthumb", "-Xlinker", "--gc-sections", "--specs=nano.specs", "-lc", "-lnosys", "-nostartfiles"],
-			"cpu": "cortex-m0plus",
-
-			"chip": "lpc824"
 		}
 	}
 }
