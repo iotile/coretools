@@ -8,7 +8,6 @@ environment:
     # isn't covered by this document) at the time of writing.
 
     - PYTHON: "C:\\Python27"
-    - PYTHON: "C:\\Python27-x64"
 
 # Make sure we don't keep redownloading gcc every time
 cache:
