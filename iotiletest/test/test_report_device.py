@@ -66,3 +66,17 @@ def test_invalid_length_combo():
 
     with pytest.raises(ArgumentError):
         hw = HardwareManager('virtual:report_test@%s' % conf_file)
+
+def test_report_device_rpc(report_hw):
+    hw = report_hw
+    proxy = hw.controller()
+
+    index = 1
+    value = 99
+    force = False
+
+    error = proxy.acknowledge_streamer(index, force, value)
+    assert not error
+
+    r = proxy.query_streamer(index)
+    assert r["ack"] == 99
