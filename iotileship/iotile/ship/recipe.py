@@ -6,6 +6,8 @@ from future.utils import viewitems
 from iotile.core.exceptions import ArgumentError
 from iotile.ship.exceptions import RecipeFileInvalid, UnknownRecipeActionType, RecipeVariableNotPassed
 
+import re
+
 class RecipeObject(object):
     """An object representing a fixed set of processing steps.
 
@@ -87,25 +89,27 @@ class RecipeObject(object):
             info = yaml.load(f)
             return info
 
-    def _replace_param_variables(self, params, variables):
+    def _complete_parameter(self, param, variables):
         """Replace any parameters passed as {} in the yaml file with the 
         variable names that are passed in
         """
-        completed_params = {}
-        for key, value in params.items():
-            #If the entire variable needs to be replaced
-            if type(value).__name__ == 'str':            
-                if value[0] == '{' and value[-1] == '}':
-                    variable_key_name = value[1:-1]
-                    new_value = variables.get(variable_key_name, None)
-                    if new_value is not None:
-                        completed_params[key] = new_value
-                    else:
-                        raise RecipeVariableNotPassed("Variable undefined, need to pass in through 'variables'", undefined_variable = variable_key_name)
-            #Nothing needs to be replace in the parameter
-            else:
-                completed_params[key] = value
-        return completed_params
+        
+        #Only strings can have replaceable values at the moment
+        if type(param).__name__ == 'str': 
+            variables_to_replace = re.findall('\{(.*?)\}', param)
+            for variable_key_name in variables_to_replace:
+                new_variable= variables.get(variable_key_name, None)
+                if new_variable is not None:
+                    param = param.replace("{%s}" % variable_key_name, str(new_variable))
+                else:
+                    raise RecipeVariableNotPassed("Variable undefined, need to pass in through 'variables'", undefined_variable = variable_key_name)
+        elif type(param).__name__ == 'list':
+            for i in range(len(value)):
+                param[i] = self._complete_value(param[i])
+        elif type(param).__name__ == 'dict':
+            for key, value in value.items():
+                param[i] = self._complete_value(value[i])
+        return param
 
     def prepare(self, variables={}):
         """Initialize all steps in this recipe using their parameters.
@@ -121,8 +125,9 @@ class RecipeObject(object):
         """
         initialized_steps = []
         for step, params in self._steps:
-            completed_params = self._replace_param_variables(params, variables)
-            initialized_steps.append(step(completed_params))
+            for key, param in params.items():
+                params[key] = self._complete_parameter(param, variables)
+            initialized_steps.append(step(params))
         return initialized_steps
 
     def run(self, variables={}):
