@@ -36,6 +36,7 @@ def test_iotiletool():
 
 def test_build_command():
     """Make sure iotile.build has been properly registered as a plugin."""
+
     reg = ComponentRegistry()
     plugs = reg.list_plugins()
     assert 'build' in plugs
@@ -43,6 +44,7 @@ def test_build_command():
 
 def test_build(tmpdir):
     """Make sure we can build a blank component."""
+
     olddir = os.getcwd()
     builddir = copy_folder('blank_component', tmpdir)
 
@@ -56,7 +58,7 @@ def test_build(tmpdir):
 
 def test_build_nodepends(tmpdir):
     """Make sure we can build a component with no depends key."""
-    return
+
     olddir = os.getcwd()
     builddir = copy_folder('component_nodependskey', tmpdir)
 
@@ -70,6 +72,7 @@ def test_build_nodepends(tmpdir):
 
 def test_build_arm(tmpdir):
     """Make sure we can build a component with no depends key."""
+
     olddir = os.getcwd()
     builddir = copy_folder('arm_component', tmpdir)
 
@@ -97,6 +100,7 @@ def test_build_python(tmpdir):
 
 def test_build_prerelease(tmpdir):
     """Make sure we can build a component with no depends key."""
+    
     olddir = os.getcwd()
     builddir = copy_folder('prerelease_component', tmpdir)
 
