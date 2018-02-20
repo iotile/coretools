@@ -23,11 +23,12 @@ def build_python_distribution(tile):
     proxies = tile.proxy_modules()
     typelibs = tile.type_packages()
     plugins = tile.proxy_plugins()
+    appmodules = tile.app_modules()
 
     if len(proxies) == 0 and len(typelibs) == 0 and len(plugins) == 0:
         return
 
-    srcnames = [os.path.basename(x) for x in itertools.chain(iter(proxies), iter(typelibs), iter(plugins))]
+    srcnames = [os.path.basename(x) for x in itertools.chain(iter(proxies), iter(typelibs), iter(plugins), iter(appmodules))]
     buildfiles = []
 
     pkg_init = os.path.join(packagedir, '__init__.py')
@@ -86,6 +87,7 @@ def generate_setup_py(target, source, env):
 
     modentries = [os.path.splitext(os.path.basename(x))[0] for x in tile.proxy_modules()]
     pluginentries = [os.path.splitext(os.path.basename(x))[0] for x in tile.proxy_plugins()]
+    appentries = [os.path.splitext(os.path.basename(x))[0] for x in tile.app_modules()]
 
     if len(modentries) > 0:
         entry_points['iotile.proxy'] = ["{0} = {1}.{0}".format(x, tile.support_distribution) for x in modentries]
@@ -93,6 +95,8 @@ def generate_setup_py(target, source, env):
         entry_points['iotile.proxy_plugin'] = ["{0} = {1}.{0}".format(x, tile.support_distribution) for x in pluginentries]
     if len(typelibs) > 0:
         entry_points['iotile.type_package'] = ["{0} = {1}.{0}".format(x, tile.support_distribution) for x in typelibs]
+    if len(appentries) > 0:
+        entry_points['iotile.app'] = ["{0} = {1}.{0}".format(x, tile.support_distribution) for x in appentries]
 
     data['name'] = tile.support_distribution
     data['package'] = tile.support_distribution

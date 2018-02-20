@@ -2,6 +2,12 @@
 
 All major changes in each released version of the iotile-ext-cloud plugin are listed here.
 
+## 0.4.0
+
+- Include cloud_uploader app that can upload data from any standard streaming
+  device to iotile.cloud.  Usage is:
+  iotile hw connect <UUID> app --name cloud_uploader upload
+
 ## 0.3.7
 
 - Rerelease of 0.3.6

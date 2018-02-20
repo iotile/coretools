@@ -143,6 +143,11 @@ class AdapterCMDStream(CMDStream):
             raise HardwareError("Could not open RPC interface on device", reason=res['failure_reason'], connection_string=connection_string)
 
     def _disconnect(self):
+
+        # Close the streaming and tracing interfaces when we disconnect
+        self._reports = None
+        self._traces = None
+
         self.adapter.disconnect_sync(0)
         self.adapter.periodic_callback()
 

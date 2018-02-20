@@ -16,11 +16,12 @@ from iotile.core.utilities.packed import unpack
 import struct
 from iotile.core.exceptions import *
 
-class TileBusProxyObject (object):
+class TileBusProxyObject(object):
     def __init__(self, stream, address):
         self.stream = stream
         self.addr = address
         self._config_manager = ConfigManager(self)
+        self._hwmanager = None
 
     @classmethod
     def ModuleName(cls):
