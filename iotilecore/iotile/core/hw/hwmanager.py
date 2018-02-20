@@ -187,7 +187,7 @@ class HardwareManager(object):
         # Find all installed proxy objects through registered entry points
         for entry in pkg_resources.iter_entry_points('iotile.app'):
             mod = entry.load()
-            app_classes += [x for x in mod.__dict__.itervalues() if inspect.isclass(x) and issubclass(x, IOTileApp) and x != TileBusProxyObject]
+            app_classes += [x for x in mod.__dict__.itervalues() if inspect.isclass(x) and issubclass(x, IOTileApp) and x != IOTileApp]
 
         for app in app_classes:
             try:
@@ -207,15 +207,21 @@ class HardwareManager(object):
                 self.logger.exception("Error importing misbehaving app module, skipping.")
 
     @param("address", "integer", "positive", desc="numerical address of module to get")
-    def get(self, address):
-        """
-        Create a proxy object for a tile by address.
+    @param("basic", "bool", desc="return a basic global proxy rather than a specialized one")
+    def get(self, address, basic=False):
+        """Create a proxy object for a tile by address.
 
-        The correct proxy object is determined by asking the tile for its status information
-        and looking up the appropriate proxy in our list of installed proxy objects
+        The correct proxy object is determined by asking the tile for its
+        status information and looking up the appropriate proxy in our list of
+        installed proxy objects.  If you want to send raw RPCs, you can get a
+        basic TileBusProxyObject by passing basic=True.
         """
 
         tile = self._create_proxy('TileBusProxyObject', address)
+
+        if basic:
+            return tile
+
         name = tile.tile_name()
         version = tile.tile_version()
 
@@ -230,7 +236,7 @@ class HardwareManager(object):
         return tile
 
     @docannotate
-    def app(self, name=None):
+    def app(self, name=None, path=None):
         """Find the best IOTileApp for the device we are connected to.
 
         Apps are matched by looking at the app tag and version information
@@ -240,11 +246,16 @@ class HardwareManager(object):
 
         Args:
             name (str): Optional name of the app that you wish to load.
+            path (str): Optional path to a python file containing the
+                app that you wish to load.
 
         Returns:
             IOTileApp show-as context: The IOTileApp class that was loaded
                 for this device.
         """
+
+        if name is not None and path is not None:
+            raise ArgumentError("You cannot specify both an app name and an app path", name=name, path=path)
 
         # We perform all app matching by asking the device's controller for its app and os info
         tile = self._create_proxy('TileBusProxyObject', 8)
@@ -261,7 +272,16 @@ class HardwareManager(object):
 
         app_class = None
 
-        if name is not None:
+        # If name includes a .py, assume that it points to python file and try to load that.
+        if name is None and path is not None:
+            loaded_classes = self._load_module_classes(path, IOTileApp)
+            if len(loaded_classes) > 1:
+                raise ArgumentError("app called with a python file that contained more than one IOTileApp class", classes=loaded_classes)
+            elif len(loaded_classes) == 0:
+                raise ArgumentError("app called with a python file that did not contain any IOTileApp subclasses")
+
+            app_class = loaded_classes[0]
+        elif name is not None:
             if name in self.DevelopmentAppNames:
                 app_class = self.DevelopmentAppNames[name]
             else:

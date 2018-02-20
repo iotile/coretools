@@ -14,7 +14,8 @@ setup(
 
     entry_points={'iotile.config_function': ['link_cloud = iotile.cloud.config:link_cloud'],
                   'iotile.config_variables': ['iotile-ext-cloud = iotile.cloud.config:get_variables'],
-                  'iotile.plugin': ['cloud = iotile.cloud.plugin:setup_plugin']},
+                  'iotile.plugin': ['cloud = iotile.cloud.plugin:setup_plugin'],
+                  'iotile.app': ['cloud_uploader = iotile.cloud.apps.cloud_uploader']},
 
     description="IOTile.cloud integration into CoreTools",
     author="Arch",
