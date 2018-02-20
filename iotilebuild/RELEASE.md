@@ -2,9 +2,13 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
-## 2.5.1
+## 2.5.2
+- Add autobuild_bootstrap_file to combine firmware files into a single bootstrap product (Issue #350)
 
-- Add autobuild_bootstrap_file to combine firmware files into a single bootstrap product
+## 2.5.1
+- Add support for including app modules in components and support packages. 
+  App modules are like proxies but apply to an entire device rather than just
+  a single tile.  (Issue #303)
 
 ## 2.5.0 
 

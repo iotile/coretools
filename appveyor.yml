@@ -8,11 +8,11 @@ environment:
     # isn't covered by this document) at the time of writing.
 
     - PYTHON: "C:\\Python27"
-    - PYTHON: "C:\\Python27-x64"
 
 # Make sure we don't keep redownloading gcc every time
 cache:
-  c:\gcc -> appveyor.yml
+  - c:\gcc -> appveyor.yml
+  - '%LOCALAPPDATA%\pip\Cache'
 
 install:
   # We need wheel installed to build wheels

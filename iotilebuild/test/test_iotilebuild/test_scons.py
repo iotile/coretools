@@ -81,6 +81,20 @@ def test_build_arm(tmpdir):
         os.chdir(olddir)
 
 
+def test_build_python(tmpdir):
+    """Make sure we can build a component with a full python distribution."""
+
+    olddir = os.getcwd()
+    builddir = copy_folder('python_component', tmpdir)
+
+    try:
+        os.chdir(builddir)
+        err = subprocess.check_call(["iotile", "build"])
+        assert err == 0
+    finally:
+        os.chdir(olddir)
+
+
 def test_build_prerelease(tmpdir):
     """Make sure we can build a component with no depends key."""
     olddir = os.getcwd()

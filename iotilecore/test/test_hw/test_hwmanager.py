@@ -3,7 +3,7 @@
 # info@welldone.org
 # http://welldone.org
 #
-# Modifications to this file from the original created at WellDone International 
+# Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
 from iotile.core.hw.hwmanager import HardwareManager
@@ -28,21 +28,3 @@ class TestHardwareManager(unittest.TestCase):
     def test_unknown_module(self):
         with pytest.raises(UnknownModuleTypeError):
             self.hw._create_proxy('UnknownTileBusModule', 8)
-
-    def test_proxy_loading(self):
-        try:
-            self.hw._create_proxy('EmptyProxy', 8)
-        except UnknownModuleTypeError:
-            pass
-        except:
-            raise
-
-        num = self.hw.add_proxies(os.path.join(os.path.dirname(__file__), 'empty_proxy.py'))
-        assert num == 1
-
-        proxy = self.hw._create_proxy('EmptyProxy', 8)
-        assert proxy.random_method() == True
-
-    def test_wrongpath_proxy(self):
-        with pytest.raises(ValidationError):
-            self.hw.add_proxies(os.path.join(os.path.dirname(__file__), 'empty_proxy'))
