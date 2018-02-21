@@ -10,6 +10,7 @@ from iotile.cloud.config import link_cloud
 import datetime
 from dateutil.tz import tzutc
 from iotile.cloud.cloud import IOTileCloud
+from iotile.cloud.cloud import Acknowledgement
 from iotile.core.dev.registry import ComponentRegistry
 from iotile.core.exceptions import ArgumentError, ExternalError
 
@@ -53,6 +54,20 @@ def test_highest_acknowledged(basic_cloud):
 
     with pytest.raises(ArgumentError):
         cloud.highest_acknowledged(6, 0)
+
+def test_device_acknowledgements(basic_cloud):
+    """Make sure we can get device acknowledgements"""
+
+    cloud, proj_id, _server = basic_cloud
+
+    acknowledgements = cloud.device_acknowledgements(1)
+
+    assert len(acknowledgements) == 2
+
+    acknowledgements.sort(key=lambda x: x.ack)
+
+    assert acknowledgements[0].ack == 100
+    assert acknowledgements[1].ack == 200
 
 def test_set_sensorgraph_basic(basic_cloud):
     """Make sure we can properly change sensorgraph"""
