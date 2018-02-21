@@ -2,6 +2,10 @@
 
 All major changes in each released version of the iotile-ext-cloud plugin are listed here.
 
+## 0.4.1
+
+- Add function to get all streamers for a given device
+
 ## 0.4.0
 
 - Include cloud_uploader app that can upload data from any standard streaming
