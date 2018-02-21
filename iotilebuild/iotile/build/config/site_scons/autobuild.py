@@ -229,6 +229,7 @@ def autobuild_bootstrap_file(file_name, image_list):
     
     full_output_name      = os.path.join(outputbase,file_name)
     full_image_list_names = []
+    temporary_hex_files   = []
 
     for image in image_list:
         root, ext = os.path.splitext(image)
@@ -241,10 +242,10 @@ def autobuild_bootstrap_file(file_name, image_list):
             full_image_list_names.append(file)
         elif file_format == 'elf':
             new_file = file.replace('.elf','.hex')
-            outhex = env.Command(new_file, file, "arm-none-eabi-objcopy -O ihex $SOURCE $TARGET")
-            full_image_list_names.append(new_file)
-            Delete(new_file)
+            env.Command(new_file, file, "arm-none-eabi-objcopy -O ihex $SOURCE $TARGET")
+            temporary_hex_files.append(new_file)
+            
         else:
             raise ArgumentError("Unknown file format or file extension", file_name=file)
 
-    env.Command(full_output_name, full_image_list_names, action=env.Action(arm.merge_hex_executables, "Creating bootstrap file"))
+    env.Command(full_output_name, full_image_list_names+temporary_hex_files, [arm.merge_hex_executables,  Delete(temporary_hex_files)])

@@ -8,6 +8,7 @@
 # Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
+import pytest
 import os.path
 import os
 import shutil
@@ -125,9 +126,10 @@ def test_bootstrap_file(tmpdir):
 
         hexdata = IntelHex(os.path.join('build','output', 'test_hexfile.hex'))
         assert hexdata.segments() == [(0x10001014, 0x10001018)]
-        hexdata = IntelHex(os.path.join('build','output', 'test_elffile.hex'))
-        assert hexdata.segments() == [(0x1800, 0x8000)]
-
+    
+        with pytest.raises(IOError):
+            hexdata = IntelHex(os.path.join('build','output', 'test_elffile.hex'))
+    
         hexdata = IntelHex(os.path.join('build','output', 'test_final.hex'))
         assert hexdata.segments() == [(0x1800, 0x8000), (0x10001014, 0x10001018)]
 
