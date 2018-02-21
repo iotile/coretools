@@ -64,7 +64,7 @@ def test_device_acknowledgements(basic_cloud):
 
     assert len(acknowledgements) == 2
 
-    acknowledgements.sort(key=lambda x: x.ack)
+    acknowledgements.sort(key=lambda x: x.index)
 
     assert acknowledgements[0].ack == 100
     assert acknowledgements[1].ack == 200
