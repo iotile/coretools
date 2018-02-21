@@ -65,6 +65,9 @@ setup(
         'iotile.recipe_action': [
             'FlashBoardStep = iotile.core.hw.debug.flash_board_step:FlashBoardStep',
             'SetUUIDStep = iotile.core.hw.debug.set_uuid_step:SetUUIDStep'
+        ],
+        'iotile.app': [
+            'device_info = iotile.core.hw.app.info_app'
         ]
     },
     description="IOTile Core Tools",

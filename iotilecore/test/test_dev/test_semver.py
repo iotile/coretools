@@ -164,3 +164,12 @@ def test_coexistence():
     ver2 = SemanticVersion.FromString('0.1.1-alpha2')
 
     assert ver.coexistence_class == ver2.coexistence_class
+
+
+def test_pep440():
+    """Make sure we can generate pep440 compliant strings."""
+
+    assert SemanticVersion.FromString('1.2.3-alpha4').pep440_string() == '1.2.3a4'
+    assert SemanticVersion.FromString('1.2.3-beta4').pep440_string() == '1.2.3b4'
+    assert SemanticVersion.FromString('1.2.3-rc4').pep440_string() == '1.2.3rc4'
+    assert SemanticVersion.FromString('1.2.3-build4').pep440_string() == '1.2.3.dev4'

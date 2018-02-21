@@ -41,6 +41,7 @@ class ReportTestDevice(VirtualIOTileDevice):
                     verification functionality or 1 for signing with a user set key.
                     (default: 0)
                 stream_id (int): The stream that this reading should be sent out
+                module_name (string): The module name of the proxy object to use
     """
 
     def __init__(self, args):
@@ -52,6 +53,7 @@ class ReportTestDevice(VirtualIOTileDevice):
         generator = args.get('reading_generator', 'sequential')
         self.num_readings = args.get('num_readings', 100)
 
+        module_name = args.get('module_name', 'Rptdev')
         stream_string = args.get('stream_id', '5001')
         self.stream_id = int(stream_string, 16)
 
@@ -79,7 +81,10 @@ class ReportTestDevice(VirtualIOTileDevice):
         if self.report_length == 0 and self.format != 'individual' and self.num_readings != 0:
             raise ArgumentError("You cannot have a report length of 0 and more than 0 readings because that would be an infinite loop")
 
-        super(ReportTestDevice, self).__init__(iotile_id, 'Simple')
+        self.acks = {}
+        self.last_acknowledgement_received = 0
+
+        super(ReportTestDevice, self).__init__(iotile_id, module_name)
 
     @rpc(8, 0x0004, "", "H6sBBBB")
     def controller_name(self):
@@ -90,11 +95,30 @@ class ReportTestDevice(VirtualIOTileDevice):
 
         return [0xFFFF, self.name, 1, 0, 0, status]
 
+    @rpc(8, 0x200f, "HHL", "L")
+    def acknowledge_streamer(self, index, force, acknowledgement):
+        if force or self.acks.get(index, 0) < acknowledgement:
+            self.acks[index] = acknowledgement
+
+        if index == 0:
+            self.last_acknowledgement_received = acknowledgement
+
+        return [0]
+
+    @rpc(8, 0x200a, "H", "LLLLBBBx")
+    def query_streamer(self, index):
+        return [0, 0, 0, self.acks.get(index, 0), 0, 0, 0]
+
     def _generate_sequential(self):
         readings = []
 
         for i in xrange(self.reading_start, self.num_readings+self.reading_start):
-            reading = IOTileReading(i-self.reading_start+self.start_timestamp, self.stream_id, i, reading_id=i-self.reading_start+self.start_id)
+            if self.last_acknowledgement_received > 0:
+                reading_id = i - self.reading_start + self.last_acknowledgement_received
+            else:
+                reading_id = i - self.reading_start + self.start_id
+
+            reading = IOTileReading(i-self.reading_start+self.start_timestamp, self.stream_id, i, reading_id=reading_id)
             readings.append(reading)
 
         return readings

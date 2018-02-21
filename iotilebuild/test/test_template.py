@@ -1,30 +1,30 @@
+"""Tests to ensure that render_template and render_recursive_template work."""
+
+import os.path
 import pytest
-from pkg_resources import resource_filename, Requirement
-import iotile.build.utilities.template as template
+from iotile.build.utilities import render_recursive_template
 
 
-@pytest.fixture
-def qemu_template():
-    return 'qemu_semihost_unit', resource_filename(Requirement.parse("iotile-build"), "iotile/build/config/templates")
+def test_dryrun():
+    """Make sure we can get a good list of all output files."""
 
+    files, dirs = render_recursive_template('qemu_semihost_unit', {}, "output_folder", dry_run=True)
 
-def test_output_file_iteration(qemu_template):
-    """Make sure output file iteration works."""
+    print(files)
+    assert len(files) == 9
+    assert len(dirs) == 0
 
-    temp = template.RecursiveTemplate(*qemu_template)
+    # Make sure .tpl is stripped
+    assert files['main.c'][0] == 'main.c.tpl'
 
-    outfiles = [x for x in temp.iter_output_files()]
+def test_recursive_render(tmpdir):
+    """Make sure we can actually do a recursive render."""
 
-    assert len(outfiles) == 9
-    assert 'main.c.tpl' in outfiles
+    out_dir = str(tmpdir)
+    files, dirs = render_recursive_template('qemu_semihost_unit', {}, out_dir)
 
+    for file in files.iterkeys():
+        assert os.path.isfile(os.path.join(out_dir, file))
 
-def test_extension_removal(qemu_template):
-    """Make sure output file iteration works."""
-
-    temp = template.RecursiveTemplate(*qemu_template, only_ext='.tpl', remove_ext=True)
-
-    outfiles = [x for x in temp.iter_output_files()]
-
-    assert len(outfiles) == 9
-    assert 'main.c' in outfiles
+    for folder in dirs:
+        assert os.path.isdir(os.path.join(out_dir, folder))

@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 0.9.1
+
+- Add streamer acknowledgeable virtual device
+
 ## 0.9.0
 
 - Modify test device to support encryption of data reports when a signing key

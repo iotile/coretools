@@ -2,6 +2,28 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.5.3
+
+- Rerelease of 2.5.2
+
+## 2.5.2
+
+- Add autobuild_bootstrap_file to combine firmware files into a single bootstrap product (Issue #350)
+
+## 2.5.1
+
+- Add support for including app modules in components and support packages. 
+  App modules are like proxies but apply to an entire device rather than just
+  a single tile.  (Issue #303)
+
+## 2.5.0 
+
+- Add support for releasing python packages to pypi as a release_step
+- Refactor tilebus compiler support to clean up old cruft
+- Add standalone iotile-tbcompile program to provide access to information
+  inside the .bus files. (Issue #340)
+- Add support for prerelease python packages.  (Issue #342)
+
 ## 2.4.5
 
 - Fix support for config variable arrays and add support for encoded binary values

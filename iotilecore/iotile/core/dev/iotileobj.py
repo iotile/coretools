@@ -1,4 +1,4 @@
-# This file is copyright Arch Systems, Inc.  
+# This file is copyright Arch Systems, Inc.
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
 import itertools
@@ -43,10 +43,10 @@ class IOTile(object):
         else:
             #TODO: Remove this other option once all tiles have been converted to have their own name listed out
             modname = settings['modules'].keys()[0]
-        
+
         if modname not in settings['modules']:
             raise DataError("Module name does not correspond with an entry in the modules directory", name=modname, modules=settings['modules'].keys())
-        
+
         modsettings = settings['modules'][modname]
         architectures = {}
         if 'architectures' in settings:
@@ -176,7 +176,7 @@ class IOTile(object):
 
         #Setup our support package information
         self.support_distribution = "iotile_support_{0}_{1}".format(self.short_name, self.parsed_version.major)
-        self.support_wheel = "{0}-{1}-py2-none-any.whl".format(self.support_distribution, self.version)
+        self.support_wheel = "{0}-{1}-py2-none-any.whl".format(self.support_distribution, self.parsed_version.pep440_string())
         self.has_wheel = False
 
         if len(self.proxy_modules()) > 0 or len(self.proxy_plugins()) > 0 or len(self.type_packages()) > 0:
@@ -187,7 +187,7 @@ class IOTile(object):
         Return a list of all include directories that this IOTile could provide other tiles
         """
 
-        #Only return include directories if we're returning everything or we were asked for it 
+        #Only return include directories if we're returning everything or we were asked for it
         if self.filter_prods and 'include_directories' not in self.desired_prods:
             return []
 
@@ -258,6 +258,17 @@ class IOTile(object):
         libs = [os.path.join(self.folder, x) for x in libs]
         return libs
 
+    def app_modules(self):
+        """Return a list of all of the python app module that are provided by this tile."""
+
+        libs = [x[0] for x in self.products.iteritems() if x[1] == 'app_module']
+
+        if self.filter_prods:
+            libs = [x for x in libs if x in self.desired_prods]
+
+        libs = [os.path.join(self.folder, x) for x in libs]
+        return libs
+
     def proxy_plugins(self):
         """
         Return a list of the python proxy plugins that are provided by this tile
@@ -289,7 +300,7 @@ class IOTile(object):
         Return a list of all tilebus definitions that this IOTile could provide other tiles
         """
 
-        #Only return include directories if we're returning everything or we were asked for it 
+        #Only return include directories if we're returning everything or we were asked for it
         if self.filter_prods and 'tilebus_definitions' not in self.desired_prods:
             return []
 

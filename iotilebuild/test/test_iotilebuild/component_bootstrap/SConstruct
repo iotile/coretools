@@ -1,0 +1,3 @@
+import autobuild
+
+autobuild.autobuild_bootstrap_file('test_final.hex',['test_hexfile.hex','test_elffile.elf'])
