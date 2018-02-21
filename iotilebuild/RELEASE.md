@@ -2,6 +2,14 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.5.3
+
+- Rerelease of 2.5.2
+
+## 2.5.2
+
+- Add autobuild_bootstrap_file to combine firmware files into a single bootstrap product (Issue #350)
+
 ## 2.5.1
 
 - Add support for including app modules in components and support packages. 

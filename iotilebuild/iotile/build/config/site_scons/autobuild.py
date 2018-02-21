@@ -211,3 +211,41 @@ def autobuild_documentation(tile):
     env.Command(outfile, docfile, action=env.Action(action, "Building Component Documentation"))
     Alias('documentation', outdir)
     env.Clean(outfile, outdir)
+
+def autobuild_bootstrap_file(file_name, image_list):
+    """Combine multiple firmware images into a single bootstrap hex file.
+    
+    Args:
+        file_name(str): Full name of output bootstrap hex file
+        image_list(list): List of files that will be combined into a single hex file
+            that will be used to flash a chip.
+    """
+    outputbase = os.path.join('build', 'output')
+    env = Environment(tools=[])
+    if platform.system() == 'Windows':
+        env = Environment(tools=['mingw'], ENV=os.environ)
+    else:
+        env = Environment(tools=['default'], ENV=os.environ)
+    
+    full_output_name      = os.path.join(outputbase,file_name)
+    full_image_list_names = []
+    temporary_hex_files   = []
+
+    for image in image_list:
+        root, ext = os.path.splitext(image)
+        if len(ext) == 0:
+            raise ArgumentError("Unknown file format or missing file extension", file_name=image)
+        file_format = ext[1:]
+        file = os.path.join(outputbase, image)
+
+        if file_format == 'hex':
+            full_image_list_names.append(file)
+        elif file_format == 'elf':
+            new_file = file.replace('.elf','.hex')
+            env.Command(new_file, file, "arm-none-eabi-objcopy -O ihex $SOURCE $TARGET")
+            temporary_hex_files.append(new_file)
+            
+        else:
+            raise ArgumentError("Unknown file format or file extension", file_name=file)
+
+    env.Command(full_output_name, full_image_list_names+temporary_hex_files, [arm.merge_hex_executables,  Delete(temporary_hex_files)])

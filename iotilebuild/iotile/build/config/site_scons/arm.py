@@ -13,6 +13,7 @@ import struct
 from iotile.core.dev.config import ConfigManager
 from iotile.core.exceptions import BuildError
 from iotile.core.dev.iotileobj import IOTile
+from iotile.core.utilities.intelhex import IntelHex
 import os
 from dependencies import load_dependencies
 
@@ -343,3 +344,18 @@ def checksum_creation_action(target, source, env):
             checkhex = checkhex[:-1]
 
         f.write("--defsym=__image_checksum=%s\n" % checkhex)
+
+def merge_hex_executables(target, source, env):
+    """
+    Combine all hex files into a singular executable file
+    """
+    output_name = (str(target[0]))
+
+    hex_final = IntelHex()
+    for image in source:
+        file = str(image)    
+        hex_data = IntelHex(file)
+        hex_final.merge(hex_data, overlap='error')
+
+    with open(output_name, 'wb') as f:
+        hex_final.write_hex_file(f)
