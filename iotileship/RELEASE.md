@@ -1,6 +1,6 @@
 # Release Notes
 
-All major changes in each released version of IOTileBuild are listed here.
+All major changes in each released version of IOTileShip are listed here.
 
 ## 0.0.1
 
@@ -9,4 +9,4 @@ All major changes in each released version of IOTileBuild are listed here.
 - Include unit tests for RecipeManager.
 - Console script iotile-ship
 - First pass in variable replacements in recipes
-    
+- PipeSnippetStep

@@ -33,8 +33,9 @@ setup(
             'iotile-ship = iotile.ship.scripts.iotile_ship:main'
         ],
         'iotile.recipe_action': [
-            'PromptStep = iotile.ship.actions.prompt_step:PromptStep',
-            'WaitStep   = iotile.ship.actions.wait_step:WaitStep'
+            'PromptStep         = iotile.ship.actions.prompt_step:PromptStep',
+            'WaitStep           = iotile.ship.actions.wait_step:WaitStep',
+            'PipeSnippetStep    = iotile.ship.actions.pipe_snippet_step:PipeSnippetStep'
         ]
     },
     description="IOTile Ship Support",
