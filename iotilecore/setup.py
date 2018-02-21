@@ -63,8 +63,7 @@ setup(
             'tile_based = iotile.core.hw.virtual.tile_based_device:TileBasedVirtualDevice'
         ],
         'iotile.recipe_action': [
-            'FlashBoardStep = iotile.core.hw.debug.flash_board_step:FlashBoardStep',
-            'SetUUIDStep = iotile.core.hw.debug.set_uuid_step:SetUUIDStep'
+            'FlashBoardStep = iotile.core.hw.debug.flash_board_step:FlashBoardStep'
         ],
         'iotile.app': [
             'device_info = iotile.core.hw.app.info_app'
