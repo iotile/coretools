@@ -1,0 +1,16 @@
+{
+	"module_name": "bootstrap_test",
+
+	"modules":
+	{
+		"bootstrap_test":
+		{
+			"version": "1.0.0",
+
+			"products": 
+			{
+				"test_final.hex": "firmware_image"
+			}
+		}
+	}
+}

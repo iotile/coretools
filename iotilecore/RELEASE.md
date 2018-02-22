@@ -2,6 +2,16 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.19.0
+
+- Add support for IOTileApp objects that match the app tag on an iotile device
+  and provide a high level API container for accessing functionality that is
+  not just implemented by a single tile.  (Issue #303)
+- Add support for waiting for a certain amount of tracing data like 
+  wait_reports.  (Issue #348)
+- Cleanup the enable_streaming and enable_tracing code to allow it to be called
+  multiple times per HardwareManager connection without breaking.
+
 ## 3.18.3
 
 - Add support for generating PEP440 compliant version strings in 

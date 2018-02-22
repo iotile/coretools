@@ -258,6 +258,17 @@ class IOTile(object):
         libs = [os.path.join(self.folder, x) for x in libs]
         return libs
 
+    def app_modules(self):
+        """Return a list of all of the python app module that are provided by this tile."""
+
+        libs = [x[0] for x in self.products.iteritems() if x[1] == 'app_module']
+
+        if self.filter_prods:
+            libs = [x for x in libs if x in self.desired_prods]
+
+        libs = [os.path.join(self.folder, x) for x in libs]
+        return libs
+
     def proxy_plugins(self):
         """
         Return a list of the python proxy plugins that are provided by this tile
