@@ -104,12 +104,12 @@ class RecipeObject(object):
         elif type(param).__name__ == 'list':
             new_param = list(param)
             for i in range(len(new_param)):
-                new_param[i] = self._complete_parameter(new_param[i], variables)
+                new_param[i] = self._complete_parameters(new_param[i], variables)
             return new_param
         elif type(param).__name__ == 'dict':
             new_param = dict(param)
             for key, value in new_param.items():
-                new_param[key] = self._complete_parameter(value, variables)
+                new_param[key] = self._complete_parameters(value, variables)
             return new_param
         else:
             return param

@@ -63,8 +63,6 @@ def test_snippet(get_rm):
         'test_output' : 'Complicated'
     }
     with pytest.raises(ArgumentError):
-        import pdb
-        pdb.set_trace()
         recipe.run(unexpected_variables)
 
     error_variables = {
