@@ -46,3 +46,8 @@ def test_replace_yaml_fail(get_rm):
     recipe = rm.get_recipe('test_replace_recipe')
     with pytest.raises(RecipeVariableNotPassed):
         recipe.run()
+
+def test_snippet(get_rm):
+    rm = get_rm
+    recipe = rm.get_recipe('test_snippet')
+    recipe.run()

@@ -3,4 +3,4 @@ description: "recipe to test replacement of variables"
 idempotent: True
 actions:
   - name: "WaitStep"
-    seconds: "{custom_wait_time}"
+    seconds: "${custom_wait_time}"

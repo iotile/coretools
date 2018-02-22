@@ -9,4 +9,4 @@ All major changes in each released version of IOTileShip are listed here.
 - Include unit tests for RecipeManager.
 - Console script iotile-ship
 - First pass in variable replacements in recipes
-- PipeSnippetStep
+- PromptStep, WaitStep, PipeSnippetStep

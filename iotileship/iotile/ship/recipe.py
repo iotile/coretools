@@ -6,7 +6,7 @@ from future.utils import viewitems
 from iotile.core.exceptions import ArgumentError
 from iotile.ship.exceptions import RecipeFileInvalid, UnknownRecipeActionType, RecipeVariableNotPassed
 
-import re
+from string import Template
 
 class RecipeObject(object):
     """An object representing a fixed set of processing steps.
@@ -92,23 +92,21 @@ class RecipeObject(object):
     def _complete_parameter(self, param, variables):
         """Replace any parameters passed as {} in the yaml file with the 
         variable names that are passed in
-        """
         
-        #Only strings can have replaceable values at the moment
+        Only strings, lists of strings, and dictionaries of strings can have 
+        replaceable values at the moment
+        """
         if type(param).__name__ == 'str': 
-            variables_to_replace = re.findall('\{(.*?)\}', param)
-            for variable_key_name in variables_to_replace:
-                new_variable= variables.get(variable_key_name, None)
-                if new_variable is not None:
-                    param = param.replace("{%s}" % variable_key_name, str(new_variable))
-                else:
-                    raise RecipeVariableNotPassed("Variable undefined, need to pass in through 'variables'", undefined_variable = variable_key_name)
+            try:
+                return Template(param).substitute(variables)
+            except KeyError, e:
+                raise RecipeVariableNotPassed("Variable undefined, need to pass in through 'variables'", undefined_variable = e.message)
         elif type(param).__name__ == 'list':
-            for i in range(len(value)):
-                param[i] = self._complete_value(param[i])
+            for i in range(len(param)):
+                param[i] = self._complete_parameter(param[i], variables)
         elif type(param).__name__ == 'dict':
-            for key, value in value.items():
-                param[i] = self._complete_value(value[i])
+            for key, value in param.items():
+                param[key] = self._complete_parameter(value, variables)
         return param
 
     def prepare(self, variables={}):
@@ -132,7 +130,7 @@ class RecipeObject(object):
 
     def run(self, variables={}):
         """Initialize and run this recipe."""
-
+        print(self._steps)
         initialized_steps = self.prepare(variables)
 
         for step in initialized_steps:
