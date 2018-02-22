@@ -353,8 +353,12 @@ def merge_hex_executables(target, source, env):
 
     hex_final = IntelHex()
     for image in source:
-        file = str(image)    
+        file = str(image)
         hex_data = IntelHex(file)
+
+        #merge will throw errors on mismatched Start Segment Addresses, which we don't need
+        #See <https://stackoverflow.com/questions/26295776/what-are-the-intel-hex-records-type-03-or-05-doing-in-ihex-program-for-arm>
+        hex_data.start_addr = None
         hex_final.merge(hex_data, overlap='error')
 
     with open(output_name, 'wb') as f:
