@@ -1,6 +1,6 @@
 from __future__ import (unicode_literals, print_function, absolute_import)
 from builtins import str
-from iotile.ship.exceptions import RecipeActionMissingParameter, UnexpectedOutput
+from iotile.ship.exceptions import RecipeActionMissingParameter
 from iotile.core.hw.hwmanager import HardwareManager
 from iotile.core.exceptions import ArgumentError
 
@@ -37,7 +37,11 @@ class PipeSnippetStep (object):
 
     def run(self):
         p = Popen(self._context,stdout=PIPE, stdin=PIPE, stderr=STDOUT)
-        outputs = p.communicate(input = '\r\n'.join(self._commands))[0].split('\r\n')
+        out,err = p.communicate(input = '\r\n'.join(self._commands))
+        if err is not None:
+            raise ArgumentError("Output Errored", errors = err, commands = self._commands)
+
+        outputs = out.split('\r\n')
 
         if self._expect is not None:
             for i in range(len(self._commands)):

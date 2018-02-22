@@ -89,7 +89,7 @@ class RecipeObject(object):
             info = yaml.load(f)
             return info
 
-    def _complete_parameter(self, param, variables):
+    def _complete_parameters(self, param, variables):
         """Replace any parameters passed as {} in the yaml file with the 
         variable names that are passed in
         
@@ -102,12 +102,18 @@ class RecipeObject(object):
             except KeyError, e:
                 raise RecipeVariableNotPassed("Variable undefined, need to pass in through 'variables'", undefined_variable = e.message)
         elif type(param).__name__ == 'list':
-            for i in range(len(param)):
-                param[i] = self._complete_parameter(param[i], variables)
+            new_param = list(param)
+            for i in range(len(new_param)):
+                new_param[i] = self._complete_parameter(new_param[i], variables)
+            return new_param
         elif type(param).__name__ == 'dict':
-            for key, value in param.items():
-                param[key] = self._complete_parameter(value, variables)
-        return param
+            new_param = dict(param)
+            for key, value in new_param.items():
+                new_param[key] = self._complete_parameter(value, variables)
+            return new_param
+        else:
+            return param
+        
 
     def prepare(self, variables={}):
         """Initialize all steps in this recipe using their parameters.
@@ -123,16 +129,13 @@ class RecipeObject(object):
         """
         initialized_steps = []
         for step, params in self._steps:
-            for key, param in params.items():
-                params[key] = self._complete_parameter(param, variables)
-            initialized_steps.append(step(params))
+            new_params = self._complete_parameters(params, variables)
+            initialized_steps.append(step(new_params))
         return initialized_steps
 
     def run(self, variables={}):
         """Initialize and run this recipe."""
-        print(self._steps)
         initialized_steps = self.prepare(variables)
-
         for step in initialized_steps:
             step.run()
 

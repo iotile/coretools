@@ -5,6 +5,7 @@ import time
 from iotile.ship.recipe import RecipeObject
 from iotile.ship.recipe_manager import RecipeManager
 from iotile.ship.exceptions import RecipeVariableNotPassed
+from iotile.core.exceptions import ArgumentError
 
 @pytest.fixture
 def get_rm():
@@ -50,4 +51,25 @@ def test_replace_yaml_fail(get_rm):
 def test_snippet(get_rm):
     rm = get_rm
     recipe = rm.get_recipe('test_snippet')
-    recipe.run()
+
+    successful_variables = {
+        'test_commmand' : 'tile_name',
+        'test_output' : 'Simple'
+    }
+    recipe.run(successful_variables)
+
+    unexpected_variables = {
+        'test_commmand' : 'tile_name',
+        'test_output' : 'Complicated'
+    }
+    with pytest.raises(ArgumentError):
+        import pdb
+        pdb.set_trace()
+        recipe.run(unexpected_variables)
+
+    error_variables = {
+        'test_commmand' : '"',
+        'test_output' : 'Simple'
+    }
+    with pytest.raises(ArgumentError):
+        recipe.run(error_variables)
