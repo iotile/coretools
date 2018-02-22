@@ -119,19 +119,16 @@ def test_bootstrap_file(tmpdir):
 
     try:
         os.chdir(builddir)
+        
+        print os.listdir(os.path.join('build','output',builddir))
+
+        hexdata = IntelHex(os.path.join('build','output', 'test1.hex'))
+        assert hexdata.segments() == [(0x10001014, 0x10001018)]
+
         err = subprocess.check_call(["iotile", "build"])
         assert err == 0
 
-        print os.listdir(os.path.join('build','output',builddir))
-
-        hexdata = IntelHex(os.path.join('build','output', 'test_hexfile.hex'))
-        assert hexdata.segments() == [(0x10001014, 0x10001018)]
-    
-        with pytest.raises(IOError):
-            hexdata = IntelHex(os.path.join('build','output', 'test_elffile.hex'))
-    
         hexdata = IntelHex(os.path.join('build','output', 'test_final.hex'))
         assert hexdata.segments() == [(0x1800, 0x8000), (0x10001014, 0x10001018)]
-
     finally:
         os.chdir(olddir)
