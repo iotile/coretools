@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.5.4
+
+- merge_hex_executables now sets IntelHex start_addr to None to prevent error throwing during merge.
+
 ## 2.5.3
 
 - Rerelease of 2.5.2
