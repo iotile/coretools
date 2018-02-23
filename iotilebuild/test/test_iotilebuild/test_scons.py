@@ -125,6 +125,8 @@ def test_bootstrap_file(tmpdir):
         hexdata = IntelHex(os.path.join('build','output', 'test1.hex'))
         assert hexdata.segments() == [(0x10001014, 0x10001018)]
 
+        assert not os.path.isfile(os.path.join('build','output', 'test2.hex'))
+
         err = subprocess.check_call(["iotile", "build"])
         assert err == 0
 
