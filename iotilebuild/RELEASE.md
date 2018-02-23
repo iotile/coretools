@@ -2,6 +2,12 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.5.5
+
+- Fix generation of setup.py for wheel building to properly reference complete
+  version number.
+- Add basic iotile-emulate script for running an elf on qemu. (Experimental)
+
 ## 2.5.4
 
 - merge_hex_executables now sets IntelHex start_addr to None to prevent error throwing during merge.
