@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.19.1
+
+- Added RecipeAction FlashBoardStep. Used by iotile-ship
+
 ## 3.19.0
 
 - Add support for IOTileApp objects that match the app tag on an iotile device
