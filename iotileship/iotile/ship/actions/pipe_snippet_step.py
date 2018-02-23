@@ -40,7 +40,7 @@ class PipeSnippetStep (object):
         out,err = p.communicate(input = '\r\n'.join(self._commands))
         if err is not None:
             raise ArgumentError("Output Errored", errors = err, commands = self._commands)
-
+        print(out)
         outputs = out.split('\r\n')
 
         if self._expect is not None:
