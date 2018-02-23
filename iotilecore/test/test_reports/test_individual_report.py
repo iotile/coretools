@@ -86,8 +86,7 @@ def test_fromreadings():
     assert reading.reading_time is not None
 
 def test_serialization():
-    """Make sure we can turn this report into a dictionary object without losing data
-    """
+    """Make sure we can turn this report into a dictionary object without losing data."""
 
     report_data = make_report(10, 1, 2, 3, 4)
     received_time = datetime.datetime.utcnow()
@@ -98,6 +97,9 @@ def test_serialization():
     assert ser['received_time'] == received_time
     assert ser['origin'] == 10
     assert ser['report_format'] == IndividualReadingReport.ReportType
+
+    str_report = str(report)
+    assert str_report == 'IOTile Report (length: 20, visible readings: 1, visible events: 0, not verified and not encrypted)'
 
 def test_save(tmpdir):
     """Make sure we can save and load this report from a file

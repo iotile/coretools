@@ -5,6 +5,9 @@ All major changes in each released version of IOTileCore are listed here.
 ## 3.19.1
 
 - Added RecipeAction FlashBoardStep. Used by iotile-ship
+- Add support for IOTileEvent and FlexibleDictionaryReport objects to support
+  handling complex data received from or generated on behalf of an IOTile
+  device.
 
 ## 3.19.0
 
