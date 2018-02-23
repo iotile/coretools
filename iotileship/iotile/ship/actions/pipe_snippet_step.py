@@ -27,7 +27,6 @@ class PipeSnippetStep (object):
         if(args.get('commands') is None):
             raise RecipeActionMissingParameter("PromptStep Parameter Missing", parameter_name='commands')
 
-
         self._context = args['context']
         self._commands = args['commands']
         self._expect = args.get('expect',None)
@@ -43,19 +42,15 @@ class PipeSnippetStep (object):
             raise ArgumentError("Output Errored", errors = err, commands = self._commands)
         #Split outputs and remove context strings
         outputs = re.split(r'\r\n\(.*?\) ', out)
-        outputs[0] = re.split(r'\(.*?\) ', outputs[0])[1]
+        outputs[0] = re.split(r'\(.*?\) ', outputs[0])[-1]
         outputs[-1] = outputs[-1].split(' \r\n')[0]
 
-        if self._expect is not None:
-            for i in range(len(self._commands)):
-                print("Command: %s\n Output: %s\n" % (self._commands[i], outputs[i]))
+        for i in range(len(self._commands)):
+            print("Command: %s\n Output: %s\n" % (self._commands[i], outputs[i]))
+            if self._expect is not None:
                 expected_output = self._expect[i]
-                if expected_output is None:
-                    continue
-
-                output  = outputs[i]
-                
-                if output != expected_output:
-                    raise ArgumentError("Unexpected output", command = self._commands[i], expected = expected_output, actual = output)
+                if expected_output is not None:
+                    if outputs[i] != expected_output:
+                        raise ArgumentError("Unexpected output", command = self._commands[i], expected = expected_output, actual = outputs[i])
 
 

@@ -135,8 +135,8 @@ class RecipeObject(object):
     def run(self, variables={}):
         """Initialize and run this recipe."""
         initialized_steps = self.prepare(variables)
-        for step in initialized_steps:
-            print(step)
+        for i, step in enumerate(initialized_steps):
+            print("===> Step %d: %s\t Description: %s" % (i+1, self._steps[i][0].__name__, self._steps[i][1].get('description','')))
             step.run()
 
     def __str__(self):
