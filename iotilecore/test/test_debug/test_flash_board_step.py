@@ -12,7 +12,7 @@ def test_flash_board_step():
         'file': 'test_file',
         'port': 'jlink:device=nrf52;serial=50000797'
     }
-    step = FlashBoardStep(args)
+    step = FlashBoardStep(correct_args)
 
     non_jlink_args = {
         'file': 'test_file',
