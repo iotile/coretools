@@ -136,6 +136,7 @@ class RecipeObject(object):
         """Initialize and run this recipe."""
         initialized_steps = self.prepare(variables)
         for step in initialized_steps:
+            print(step)
             step.run()
 
     def __str__(self):

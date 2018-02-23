@@ -7,9 +7,11 @@ actions:
     context: "iotile hw --port=virtual:simple connect_direct 1 controller"
     commands:
       - "tile_version"
+      - "tile_status"
       - "${test_commmand}"
       - "back"
     expect:
       - "[1, 0, 0]"
+      -
       - "${test_output}"
       - 

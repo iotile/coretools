@@ -3,8 +3,9 @@ from builtins import str
 from iotile.ship.exceptions import RecipeActionMissingParameter
 from iotile.core.hw.hwmanager import HardwareManager
 from iotile.core.exceptions import ArgumentError
-
 from subprocess import PIPE, STDOUT, Popen
+
+import re
 
 
 class PipeSnippetStep (object):
@@ -40,17 +41,19 @@ class PipeSnippetStep (object):
         out,err = p.communicate(input = '\r\n'.join(self._commands))
         if err is not None:
             raise ArgumentError("Output Errored", errors = err, commands = self._commands)
-        print(out)
-        outputs = out.split('\r\n')
+        #Split outputs and remove context strings
+        outputs = re.split(r'\r\n\(.*?\) ', out)
+        outputs[0] = re.split(r'\(.*?\) ', outputs[0])[1]
+        outputs[-1] = outputs[-1].split(' \r\n')[0]
 
         if self._expect is not None:
             for i in range(len(self._commands)):
+                print("Command: %s\n Output: %s\n" % (self._commands[i], outputs[i]))
                 expected_output = self._expect[i]
                 if expected_output is None:
                     continue
 
-                raw_outputs     = outputs[i].split(') ',1)
-                output          = raw_outputs[1] if len(raw_outputs) == 2 else ""
+                output  = outputs[i]
                 
                 if output != expected_output:
                     raise ArgumentError("Unexpected output", command = self._commands[i], expected = expected_output, actual = output)
