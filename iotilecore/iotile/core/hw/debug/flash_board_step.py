@@ -6,12 +6,11 @@ from iotile.core.exceptions import ArgumentError
 class FlashBoardStep (object):
     """A Recipe Step used to flash firmware directly
 
-    Currentlly only supports using jlink to flash. Meant to bootstrap firmware
+    Currently only supports using jlink to flash. Meant to bootstrap firmware
 
     Args:
-        addresses (list[int]): List of slot addresses to check against
-        names     (list[str]): List of tile names to check against
-        versions  (list[str]): List of tile versions to check against.
+        file (str): Firmware file name to flash
+        port (str): Port used. Currently only allows jlink port connections.
     """
     def __init__(self, args):
         if(args.get('file') is None):
