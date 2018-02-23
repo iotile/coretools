@@ -1,4 +1,7 @@
 """Command line script to load and run a sensor graph."""
+from __future__ import (unicode_literals, absolute_import, print_function)
+from builtins import str
+
 import os
 import sys
 import argparse
@@ -53,7 +56,7 @@ def main(argv=None):
     recipe = rm.get_recipe(args.recipe)
 
     if args.info:
-        print recipe
+        print(recipe)
         return 0
 
     devices = []

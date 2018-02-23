@@ -96,24 +96,23 @@ class RecipeObject(object):
         Only strings, lists of strings, and dictionaries of strings can have 
         replaceable values at the moment
         """
-        if type(param).__name__ == 'str': 
-            try:
-                return Template(param).substitute(variables)
-            except KeyError, e:
-                raise RecipeVariableNotPassed("Variable undefined, need to pass in through 'variables'", undefined_variable = e.message)
-        elif type(param).__name__ == 'list':
+        if isinstance(param,list): 
             new_param = list(param)
             for i in range(len(new_param)):
                 new_param[i] = self._complete_parameters(new_param[i], variables)
             return new_param
-        elif type(param).__name__ == 'dict':
+        elif isinstance(param,dict): 
             new_param = dict(param)
             for key, value in new_param.items():
                 new_param[key] = self._complete_parameters(value, variables)
             return new_param
         else:
-            return param
-        
+            try:
+                return Template(param).substitute(variables)
+            except TypeError, e:
+                return param
+            except KeyError, e:
+                raise RecipeVariableNotPassed("Variable undefined, need to pass in through 'variables'", undefined_variable = e.message)        
 
     def prepare(self, variables={}):
         """Initialize all steps in this recipe using their parameters.
