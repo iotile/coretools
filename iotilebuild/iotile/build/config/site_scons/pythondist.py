@@ -25,7 +25,7 @@ def build_python_distribution(tile):
     plugins = tile.proxy_plugins()
     appmodules = tile.app_modules()
 
-    if len(proxies) == 0 and len(typelibs) == 0 and len(plugins) == 0:
+    if len(proxies) == 0 and len(typelibs) == 0 and len(plugins) == 0 and len(appmodules) == 0:
         return
 
     srcnames = [os.path.basename(x) for x in itertools.chain(iter(proxies), iter(typelibs), iter(plugins), iter(appmodules))]
@@ -101,7 +101,7 @@ def generate_setup_py(target, source, env):
     data['name'] = tile.support_distribution
     data['package'] = tile.support_distribution
     data['version'] = tile.parsed_version.pep440_string()
-    data['deps'] = ["{0} ~= {1}.{2}".format(x.support_distribution, x.parsed_version.major, x.parsed_version.minor) for x in _iter_dependencies(tile) if x.has_wheel]
+    data['deps'] = ["{0} ~= {1}".format(x.support_distribution, x.parsed_version.pep440_string()) for x in _iter_dependencies(tile) if x.has_wheel]
     data['entry_points'] = entry_points
 
     outdir = os.path.dirname(str(target[0]))

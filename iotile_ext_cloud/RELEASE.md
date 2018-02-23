@@ -2,6 +2,12 @@
 
 All major changes in each released version of the iotile-ext-cloud plugin are listed here.
 
+## 0.4.2
+
+- Update cloud_uploader app to have a function that just downloads reports
+  without uploading them to the cloud.  This is useful for reusing this app's
+  functionality in other apps.
+
 ## 0.4.1
 
 - Add function to get all streamers for a given device
