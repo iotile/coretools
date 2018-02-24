@@ -179,7 +179,7 @@ class IOTile(object):
         self.support_wheel = "{0}-{1}-py2-none-any.whl".format(self.support_distribution, self.parsed_version.pep440_string())
         self.has_wheel = False
 
-        if len(self.proxy_modules()) > 0 or len(self.proxy_plugins()) > 0 or len(self.type_packages()) > 0:
+        if len(self.proxy_modules()) > 0 or len(self.proxy_plugins()) > 0 or len(self.type_packages()) > 0 or len(self.app_modules()) > 0:
             self.has_wheel = True
 
     def include_directories(self):

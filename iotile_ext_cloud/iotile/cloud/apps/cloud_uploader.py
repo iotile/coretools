@@ -50,7 +50,11 @@ class CloudUploader(IOTileApp):
 
     def _trigger_streamer(self, index):
         error, = self._con.rpc(0x20, 0x10, index, result_format="L")
-        if error != 0:
+
+        # This error code means that the streamer did not have any new data
+        if error == 0x8003801f:
+            self.logger.info("We manually triggered streamer %d but it reported that there were no new readings", index)
+        elif error != 0:
             raise HardwareError("Error triggering streamer", code=error, index=index)
 
     def _streamer_finished(self, index):

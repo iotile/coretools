@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.5.6
+
+- Fix setup.py template to include subpackages as well in the final 
+  support distribution.
+
 ## 2.5.5
 
 - Fix generation of setup.py for wheel building to properly reference complete

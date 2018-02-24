@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.19.2
+
+- Fix IOTile object to properly indicate that it has a support wheel even if
+  the only thing in that wheel is an IOTileApp.
+
 ## 3.19.1
 
 - Added RecipeAction FlashBoardStep. Used by iotile-ship
