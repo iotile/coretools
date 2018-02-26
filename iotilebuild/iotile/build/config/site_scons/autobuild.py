@@ -233,17 +233,17 @@ def autobuild_bootstrap_file(file_name, image_list):
     hex_copy_command_string = []
 
     for image in image_list:
-        root, ext = os.path.splitext(image)
+        input_file = os.path.join(outputbase, image)
+        root, ext = os.path.splitext(input_file)
         if len(ext) == 0:
             raise ArgumentError("Unknown file format or missing file extension", file_name=image)
         file_format = ext[1:]
-        input_file = os.path.join(outputbase, image)
         full_image_list_names.append(input_file)
 
         if file_format == 'hex':
             continue
         elif file_format == 'elf':
-            new_file = input_file.replace('.elf','.hex')
+            new_file = root + '.hex'
             hex_copy_command_string += ["arm-none-eabi-objcopy -O ihex %s %s" % (input_file, new_file)]
             temporary_hex_files.append(new_file)
         else:
