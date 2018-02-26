@@ -8,8 +8,8 @@
 #define kAPIMinorVersion    {{ versions.api[1] }}
 
 #define kModuleMajorVersion {{ versions.module[0] }}
-#define kModuleMinorVersion {{ versions.module[0] }}
-#define kModulePatchVersion {{ versions.module[0] }}
+#define kModuleMinorVersion {{ versions.module[1] }}
+#define kModulePatchVersion {{ versions.module[2] }}
 
 #define kModuleName         "{{ short_name }}"
 

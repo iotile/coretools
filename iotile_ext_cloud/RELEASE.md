@@ -2,6 +2,15 @@
 
 All major changes in each released version of the iotile-ext-cloud plugin are listed here.
 
+## 0.4.4
+
+- Improve cloud_uploader to continue downloading reports even if the manually
+  triggered streamer did not have any new data.
+
+## 0.4.3
+
+- Add support for uploading FlexibleDictionaryReport to iotile.cloud.
+
 ## 0.4.2
 
 - Update cloud_uploader app to have a function that just downloads reports

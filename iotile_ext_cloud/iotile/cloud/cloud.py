@@ -13,6 +13,7 @@ from iotile_cloud.api.connection import Api
 from iotile_cloud.api.exceptions import RestHttpBaseException, HttpNotFoundError
 from iotile.core.dev.registry import ComponentRegistry
 from iotile.core.dev.config import ConfigManager
+from iotile.core.hw.reports import IndividualReadingReport, SignedListReport, FlexibleDictionaryReport
 from iotile.core.exceptions import ArgumentError, ExternalError, DataError
 from iotile.core.utilities.typedargs import context, param, return_type, annotated, type_system
 from .utilities import device_id_to_slug
@@ -165,7 +166,7 @@ class IOTileCloud(object):
     @param("new_sg", "string", desc="The new sensor graph id that we want to load")
     def set_sensorgraph(self, device_id, new_sg, app_tag=None):
         """The the cloud's sensor graph id that informs what kind of device this is.
-    
+
         Is app_tag is passed, verify that the sensorgraph explicitly matches
         the expected app_tag by making another API call.
 
@@ -180,7 +181,7 @@ class IOTileCloud(object):
             sg = self.api.sg(new_sg).get()
         except RestHttpBaseException, exc:
             raise ExternalError("Error calling method on iotile.cloud", exception=exc, response=exc.response.status_code)
-   
+
         if app_tag is not None:
             if sg.get('app_tag', None) != app_tag:
                 raise ArgumentError("Cloud sensorgraph record does not match app tag", value=new_sg, cloud_sg_app_tag=sg.get('app_tag', None), app_tag_set=app_tag)
@@ -207,21 +208,21 @@ class IOTileCloud(object):
         Args:
             device_id (int): The id of the device that we want to change the device template for.
             new_template (string): Name of a valid device template that you wish to set the device to
-            os_tag (int): Optional. If the os_tag passed into this function does not match the 
+            os_tag (int): Optional. If the os_tag passed into this function does not match the
                 os_tag of the device_tmplate in iotile.cloud, raise an error.
         """
         try:
             dt = self.api.dt(new_template).get()
         except RestHttpBaseException, exc:
             raise ExternalError("Error calling method on iotile.cloud", exception=exc, response=exc.response.status_code)
-        
+
         if os_tag is not None:
             if dt.get('os_tag', None) != os_tag:
                 raise ArgumentError("Cloud device template record does not match os tag", value=new_template, cloud_sg_os_tag=dt.get('os_tag', None), os_tag_set=os_tag)
 
         slug = device_id_to_slug(device_id)
         patch = {'template': new_template}
-        
+
         try:
             self.api.device(slug).patch(patch)
         except RestHttpBaseException, exc:
@@ -293,6 +294,18 @@ class IOTileCloud(object):
     def upload_report(self, report):
         """Upload an IOTile report to the cloud.
 
+        This function currently supports uploading the following kinds of
+        reports:
+            SignedListReport
+            FlexibleDictionaryReport
+
+        If you pass an instance of IndividualReadingReport, an exception will
+        be thrown because IOTile.cloud does not support receiving individual
+        readings.  Those are only for local use.
+
+        The filename of the uploaded report will have an extension set based
+        on the type of report that you are uploading.
+
         Args:
             report (IOTileReport): The report that you want to upload.  This should
                 not be an IndividualReadingReport.
@@ -301,8 +314,18 @@ class IOTileCloud(object):
             int: The number of new readings that were accepted by the cloud as novel.
         """
 
+        if isinstance(report, IndividualReadingReport):
+            raise ArgumentError("You cannot upload IndividualReadingReport objects to iotile.cloud", report=report)
+
+        if isinstance(report, SignedListReport):
+            file_ext = ".bin"
+        elif isinstance(report, FlexibleDictionaryReport):
+            file_ext = ".mp"
+        else:
+            raise ArgumentError("Unknown report format passed to upload_report", classname=report.__class__.__name__, report=report)
+
         timestamp = '{}'.format(report.received_time.isoformat())
-        payload = {'file': BytesIO(report.encode())}
+        payload = {'file': ("report" + file_ext, BytesIO(report.encode()))}
 
         resource = self.api.streamer.report
 

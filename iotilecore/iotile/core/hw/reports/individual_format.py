@@ -63,7 +63,7 @@ class IndividualReadingReport(IOTileReport):
         self.origin = uuid
         self.sent_timestamp = sent_timestamp
 
-        return [reading]
+        return [reading], []
 
     def encode(self):
         """Turn this report into a serialized bytearray that could be decoded with a call to decode

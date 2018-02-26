@@ -1,8 +1,8 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name="{{ name }}",
-    packages=[{{ "\"%s\"" % package }}],
+    packages=find_packages(include=["{{ package }}.*", "{{ package }}"]),
     version="{{ version }}",
     install_requires={{ deps }},
     entry_points={{ entry_points }},
