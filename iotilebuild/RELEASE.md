@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.5.7
+
+- Fix regression in command_map_c.h.tpl that incorrectly assigned version 
+  numbers to firmware.
+
 ## 2.5.6
 
 - Fix setup.py template to include subpackages as well in the final 
