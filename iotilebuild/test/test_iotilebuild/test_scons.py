@@ -131,6 +131,7 @@ def test_bootstrap_file(tmpdir):
         assert err == 0
 
         hexdata = IntelHex(os.path.join('build','output', 'test_final.hex'))
-        assert hexdata.segments() == [(0x1800, 0x8000), (0x10001014, 0x10001018)]
+        hexdata_dup = IntelHex(os.path.join('build','output', 'test_final_dup.hex'))
+        assert hexdata.segments() == hexdata_dup.segments()
     finally:
         os.chdir(olddir)
