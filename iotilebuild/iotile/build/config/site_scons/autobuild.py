@@ -221,31 +221,34 @@ def autobuild_bootstrap_file(file_name, image_list):
             that will be used to flash a chip.
     """
     outputbase = os.path.join('build', 'output')
-    env = Environment(tools=[])
     if platform.system() == 'Windows':
         env = Environment(tools=['mingw'], ENV=os.environ)
     else:
         env = Environment(tools=['default'], ENV=os.environ)
     
     full_output_name      = os.path.join(outputbase,file_name)
+    
     full_image_list_names = []
     temporary_hex_files   = []
+    hex_copy_command_string = []
 
     for image in image_list:
-        root, ext = os.path.splitext(image)
+        input_file = os.path.join(outputbase, image)
+        root, ext = os.path.splitext(input_file)
         if len(ext) == 0:
             raise ArgumentError("Unknown file format or missing file extension", file_name=image)
         file_format = ext[1:]
-        file = os.path.join(outputbase, image)
+        full_image_list_names.append(input_file)
 
         if file_format == 'hex':
-            full_image_list_names.append(file)
+            continue
         elif file_format == 'elf':
-            new_file = file.replace('.elf','.hex')
-            env.Command(new_file, file, "arm-none-eabi-objcopy -O ihex $SOURCE $TARGET")
+            new_file = root + '.hex'
+            hex_copy_command_string += ["arm-none-eabi-objcopy -O ihex %s %s" % (input_file, new_file)]
             temporary_hex_files.append(new_file)
-            
         else:
-            raise ArgumentError("Unknown file format or file extension", file_name=file)
-
-    env.Command(full_output_name, full_image_list_names+temporary_hex_files, [arm.merge_hex_executables,  Delete(temporary_hex_files)])
+            raise ArgumentError("Unknown file format or file extension", file_name=input_file)
+    SideEffect(temporary_hex_files, full_output_name)
+    env.Command(full_output_name, full_image_list_names, 
+        hex_copy_command_string + [arm.merge_hex_executables, Delete(temporary_hex_files)]
+    )

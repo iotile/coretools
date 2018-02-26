@@ -354,6 +354,10 @@ def merge_hex_executables(target, source, env):
     hex_final = IntelHex()
     for image in source:
         file = str(image)
+        root, ext = os.path.splitext(file)
+        file_format = ext[1:]
+        if file_format == 'elf':
+            file = root + '.hex'
         hex_data = IntelHex(file)
 
         #merge will throw errors on mismatched Start Segment Addresses, which we don't need

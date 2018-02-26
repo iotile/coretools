@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.5.8
+
+- autobuild_bootstrap_file creates only one command so that temporary hex files
+  are not actual targets.
+
 ## 2.5.7
 
 - Fix regression in command_map_c.h.tpl that incorrectly assigned version 
