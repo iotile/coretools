@@ -248,6 +248,7 @@ def autobuild_bootstrap_file(file_name, image_list):
             temporary_hex_files.append(new_file)
         else:
             raise ArgumentError("Unknown file format or file extension", file_name=input_file)
+    SideEffect(temporary_hex_files, full_output_name)
     env.Command(full_output_name, full_image_list_names, 
         hex_copy_command_string + [arm.merge_hex_executables, Delete(temporary_hex_files)]
     )
