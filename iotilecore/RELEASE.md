@@ -2,6 +2,18 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.19.2
+
+- Fix IOTile object to properly indicate that it has a support wheel even if
+  the only thing in that wheel is an IOTileApp.
+
+## 3.19.1
+
+- Added RecipeAction FlashBoardStep. Used by iotile-ship
+- Add support for IOTileEvent and FlexibleDictionaryReport objects to support
+  handling complex data received from or generated on behalf of an IOTile
+  device.
+
 ## 3.19.0
 
 - Add support for IOTileApp objects that match the app tag on an iotile device

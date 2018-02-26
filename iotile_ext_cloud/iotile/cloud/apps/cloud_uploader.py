@@ -50,7 +50,11 @@ class CloudUploader(IOTileApp):
 
     def _trigger_streamer(self, index):
         error, = self._con.rpc(0x20, 0x10, index, result_format="L")
-        if error != 0:
+
+        # This error code means that the streamer did not have any new data
+        if error == 0x8003801f:
+            self.logger.info("We manually triggered streamer %d but it reported that there were no new readings", index)
+        elif error != 0:
             raise HardwareError("Error triggering streamer", code=error, index=index)
 
     def _streamer_finished(self, index):
@@ -97,9 +101,8 @@ class CloudUploader(IOTileApp):
         time.sleep(1.0)
         self._wait_streamers_finished()
 
-    @docannotate
-    def upload(self, trigger=None, acknowledge=True):
-        """Synchronously get all data from the device and upload it to iotile.cloud.
+    def download(self, trigger=None, acknowledge=True):
+        """Synchronously download all reports from the device.
 
         This function will:
         - acknowledge old data from the device that has safely reached iotile.cloud
@@ -109,13 +112,10 @@ class CloudUploader(IOTileApp):
           streamer, you can specify that using trigger=X where X is in the index
           of the streamer to trigger.
         - wait for all data to be received from the device.
-        - upload all reports to iotile.cloud securely.
 
-        If you want to see details about what is happening, you can capture the
-        logging output.
-
-        This method will use whatever the default iotile.cloud domain and credentials
-        are that are configured in your current virtualenv.
+        The only differnce between this function and upload is that this function
+        will return the reports as a list, rather than uploading them directly
+        to iotile.cloud.
 
         Args:
             trigger (int): If you need to manually trigger a streamer on the device,
@@ -124,6 +124,9 @@ class CloudUploader(IOTileApp):
             acknowledge (bool): If you don't want to send all cloud acknowledgements
                 down to the device before enabling streaming, you can pass False.  The
                 default behavior is True.
+
+        Returns:
+            list of IOTileReport: The list of reports received from the device.
         """
 
         device_id = self._get_uuid()
@@ -158,7 +161,40 @@ class CloudUploader(IOTileApp):
         reports = [x for x in self._hw.iter_reports()]
         signed_reports = [x for x in reports if isinstance(x, SignedListReport)]
 
-        self.logger.info("Received %d signed reports to upload, ignored %d realtime reports", len(signed_reports), len(reports) - len(signed_reports))
+        self.logger.info("Received %d signed reports, ignored %d realtime reports", len(signed_reports), len(reports) - len(signed_reports))
+
+        return signed_reports
+
+    @docannotate
+    def upload(self, trigger=None, acknowledge=True):
+        """Synchronously get all data from the device and upload it to iotile.cloud.
+
+        This function will:
+        - acknowledge old data from the device that has safely reached iotile.cloud
+          unless you pass acknowledge=False
+        - trigger the device to send all of its data.  This happens automatically
+          when we enable_streaming.  However, if you need to manually trigger a
+          streamer, you can specify that using trigger=X where X is in the index
+          of the streamer to trigger.
+        - wait for all data to be received from the device.
+        - upload all reports to iotile.cloud securely.
+
+        If you want to see details about what is happening, you can capture the
+        logging output.
+
+        This method will use whatever the default iotile.cloud domain and credentials
+        are that are configured in your current virtualenv.
+
+        Args:
+            trigger (int): If you need to manually trigger a streamer on the device,
+                you can specify its index here and it will have trigger_streamer called
+                on it before we enter the upload loop.
+            acknowledge (bool): If you don't want to send all cloud acknowledgements
+                down to the device before enabling streaming, you can pass False.  The
+                default behavior is True.
+        """
+
+        signed_reports = self.download(trigger, acknowledge)
 
         for report in signed_reports:
             self.logger.info("Uploading report with ids in (%d, %d)", report.lowest_id, report.highest_id)

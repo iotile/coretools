@@ -164,7 +164,7 @@ class SignedListReport(IOTileReport):
         # If we were not able to verify the report, do not try to parse or decrypt it since we
         # can't guarantee who it came from.
         if not self.verified:
-            return []
+            return [], []
 
         # If the report is encrypted, try to decrypt it before parsing the readings
         if self.encrypted:
@@ -172,7 +172,7 @@ class SignedListReport(IOTileReport):
                 result = signer.decrypt_report(device_id, signature_flags, readings, report_id=report_id, sent_timestamp=sent_timestamp)
                 readings = result['data']
             except NotFoundError:
-                return []
+                return [], []
 
         # Now parse all of the readings
         # Make sure this report has an integer number of readings
@@ -188,4 +188,4 @@ class SignedListReport(IOTileReport):
             parsed = IOTileReading(timestamp, stream, value, time_base=time_base, reading_id=reading_id)
             parsed_readings.append(parsed)
 
-        return parsed_readings
+        return parsed_readings, []

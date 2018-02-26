@@ -77,3 +77,12 @@ def test_userkey_signing(monkeypatch):
     for i, reading in enumerate(report2.visible_readings):
         assert reading.value == i
         assert reading.reading_id == (i + 1)
+
+
+def test_str_conversion():
+    """Make sure str conversion works."""
+
+    report = make_sequential(1, 0x1000, 10, give_ids=True)
+
+    str_report = str(report)
+    assert str_report == 'IOTile Report (length: 204, visible readings: 10, visible events: 0, verified and not encrypted)'

@@ -1,3 +1,4 @@
 import autobuild
 
 autobuild.autobuild_bootstrap_file('test_final.hex',['test1.hex','test2.elf'])
+autobuild.autobuild_bootstrap_file('test_final_dup.hex',['test1.hex','test2.elf'])
