@@ -164,6 +164,7 @@ class IOTileCloud(object):
 
     @param("device_id", "integer", desc="ID of the device that we want information about")
     @param("new_sg", "string", desc="The new sensor graph id that we want to load")
+    @param("app_tag", "integer", desc="Optional arg to check if the device template on the cloud matches the app_tag")
     def set_sensorgraph(self, device_id, new_sg, app_tag=None):
         """The the cloud's sensor graph id that informs what kind of device this is.
 
@@ -224,7 +225,7 @@ class IOTileCloud(object):
         patch = {'template': new_template}
 
         try:
-            self.api.device(slug).patch(patch)
+            self.api.device(slug).patch(patch, staff=1)
         except RestHttpBaseException, exc:
             if exc.response.status_code == 400:
                 raise ArgumentError("Error setting device template, invalid value", value=new_template, error_code=exc.response.status_code)
