@@ -259,7 +259,7 @@ class HardwareManager(object):
 
         # We perform all app matching by asking the device's controller for its app and os info
         tile = self._create_proxy('TileBusProxyObject', 8)
-        os_info, app_info = tile.rpc(0x10, 0x08, result_format="12xLL")
+        device_id, os_info, app_info = tile.rpc(0x10, 0x08, result_format="L8xLL")
 
         os_tag = os_info  & ((1 << 20) - 1)
         os_version_str = '%d.%d.%d'  % ((os_info >> 26) & ((1 << 6) - 1), (os_info >> 20) & ((1 << 6) - 1), 0)
@@ -304,7 +304,7 @@ class HardwareManager(object):
         if app_class is None:
             raise HardwareError("Could not find matching application for device", app_tag=app_tag, explicit_app=name, installed_apps=[x for x in self._named_apps])
 
-        app = app_class(self, (app_tag, app_version), (os_tag, os_version))
+        app = app_class(self, (app_tag, app_version), (os_tag, os_version), device_id)
         return app
 
     @annotated
