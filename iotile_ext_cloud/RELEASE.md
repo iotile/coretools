@@ -2,6 +2,11 @@
 
 All major changes in each released version of the iotile-ext-cloud plugin are listed here.
 
+## 0.4.6
+
+- Fix set_device_template to use staff priveledge to set device_template
+- Fix @param for app_tag in set_sensorgraph
+
 ## 0.4.5
 
 - Fix compatibility with new IOTileApp `__init__` signature.
