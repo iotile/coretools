@@ -71,3 +71,8 @@ def test_snippet(get_rm):
     }
     with pytest.raises(ArgumentError):
         recipe.run(error_variables)
+
+def test_snippet_no_expect(get_rm):
+    rm = get_rm
+    recipe = rm.get_recipe('test_snippet_no_expect')
+    recipe.run()

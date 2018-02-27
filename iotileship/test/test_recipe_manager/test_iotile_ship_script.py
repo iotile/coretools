@@ -31,9 +31,9 @@ def test_basic_single(exitcode):
 
     recipe = os.path.join(os.path.dirname(__file__), 'test_recipes', 'test_basic_recipe.yaml')
 
-    start_time = time.time()
-    retval = main([recipe, '--uuid', '0x0'])
-    total_time = time.time()-start_time
+    start_time  = time.time()
+    retval      = main([recipe, '--uuid', '0x0'])
+    total_time  = time.time()-start_time
 
     assert retval == 0
 
@@ -42,9 +42,9 @@ def test_basic_range(exitcode):
 
     recipe = os.path.join(os.path.dirname(__file__), 'test_recipes', 'test_basic_recipe.yaml')
 
-    start_time = time.time()
-    retval = main([recipe, '--uuid-range', '0x0-0x5'])
-    total_time = time.time()-start_time
+    start_time  = time.time()
+    retval      = main([recipe, '--uuid-range', '0x0-0x5'])
+    total_time  = time.time()-start_time
 
     assert retval == 0
 
@@ -54,8 +54,20 @@ def test_basic_info(exitcode):
 
     recipe = os.path.join(os.path.dirname(__file__), 'test_recipes', 'test_basic_recipe.yaml')
 
-    start_time = time.time()
-    retval = main([recipe, "--info"])
-    total_time = time.time()-start_time
+    start_time  = time.time()
+    retval      = main([recipe, "--info"])
+    total_time  = time.time()-start_time
+
+    assert retval == 0
+
+def test_config(exitcode):
+    """Make sure we can get the info of a recipe."""
+
+    recipe      = os.path.join(os.path.dirname(__file__), 'test_recipes', 'test_snippet.yaml')
+    config_file = os.path.join(os.path.dirname(__file__), 'test_recipes', 'config.yaml')
+
+    start_time  = time.time()
+    retval      = main([recipe, "--config", config_file])
+    total_time  = time.time()-start_time
 
     assert retval == 0

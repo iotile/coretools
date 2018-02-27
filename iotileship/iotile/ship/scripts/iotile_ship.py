@@ -3,6 +3,7 @@ from __future__ import (unicode_literals, absolute_import, print_function)
 from builtins import str
 
 import os
+import shutil
 import sys
 import argparse
 import yaml
@@ -21,7 +22,7 @@ def build_args():
     """Create command line argument parser."""
     list_parser = argparse.ArgumentParser(add_help=False)
     list_parser.add_argument('-l', '--list', action='store_true', help="List all known device preparation scripts and then exit")
-    
+
     parser = argparse.ArgumentParser(description=DESCRIPTION, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument(u'recipe', type=str, help=u"The recipe file to load and run.")
     parser.add_argument('--uuid', action='append', default=[], help="Run script on device given by this uuid")
@@ -29,9 +30,11 @@ def build_args():
     parser.add_argument('--pause', action='store_true', help="Pause and wait for user input after finishing each device")
     parser.add_argument('--max-attempts', type=int, default=1, help="Number of times to attempt the operation (up to a max of 5 times)")
     parser.add_argument('--uuid-range', action='append', default=[], help="Process every device in a range (range should be specified as start-end and is inclusive, e.g ab-cd)")
-    parser.add_argument('--info', action='store_true', help="Lists out all the steps of that recipe, doesn't run the recipe steps")
+    parser.add_argument('-i', '--info', action='store_true', help="Lists out all the steps of that recipe, doesn't run the recipe steps")
+    parser.add_argument('--preserve', action='store_true', help="Preserve temporary folder contents after recipe is completed")
+    parser.add_argument('-c', '--config', help="An optional JSON config file with arguments for the script")
     args, rest = list_parser.parse_known_args()
-    
+
     return parser
 
 def main(argv=None):
@@ -55,10 +58,12 @@ def main(argv=None):
     rm.add_recipe_folder(os.path.dirname(args.recipe))
     recipe = rm.get_recipe(args.recipe)
 
+    #If --info, just print and then end
     if args.info:
         print(recipe)
         return 0
 
+    #Acquiring list of devices
     devices = []
     success = []
     devices.extend([int(x, 16) for x in args.uuid])
@@ -68,27 +73,42 @@ def main(argv=None):
         end = int(end, 16)
         devices.extend(xrange(start, end+1))
 
+    #Creating temporary directory for intermediate files
+    temp_dir = os.path.join(os.path.dirname(args.recipe), 'temp')
+    if os.path.exists(temp_dir):
+        shutil.rmtree(temp_dir)
+    os.mkdir(temp_dir)
+
+    #Creating variables from config file
+    variables = dict()
+    if args.config is not None:
+        with open(args.config, "rb") as conf_file:
+            variables = yaml.load(conf_file)
+    variables['temp_dir'] = temp_dir
+
+    #Attempt to run the recipe on each device
     try:
         for dev in devices:
-            variables = {
-                'UUID': dev
-            }
+            variables['UUID'] = dev
             for i in xrange(0, args.max_attempts):
                 try:
                     recipe.run(variables)
+                    success.append(dev)
                 except IOTileException, exc:
                     print("--> Error on try %d: %s" % (i+1, str(exc)))
                     continue
-            success.append(dev)
+            
             if args.pause:
                 raw_input("--> Waiting for <return> before processing next device")
     except KeyboardInterrupt:
         print("Break received, cleanly exiting...")
 
+    #Delete tempfile by default, will keep folder if --preserve
+    if not args.preserve:
+        shutil.rmtree(temp_dir)
+
     print("\n**FINISHED**\n")
     print("Successfully processed %d devices" % len(success))
-    for dev in success:
-        print("%s" % (dev))
 
     if len(success) != len(devices):
         return 1

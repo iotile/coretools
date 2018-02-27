@@ -63,8 +63,11 @@ class RecipeManager(object):
         """
 
         for yaml_file in glob.glob("%s/*.yaml" % recipe_folder):
-            recipe = RecipeObject.FromFile(yaml_file, self._recipe_actions)
-            self._recipes[recipe.name] = recipe
+            try:
+                recipe = RecipeObject.FromFile(yaml_file, self._recipe_actions)
+                self._recipes[recipe.name] = recipe
+            except:
+                pass
 
     def get_recipe(self, recipe_name):
         """Get a recipe by name.
