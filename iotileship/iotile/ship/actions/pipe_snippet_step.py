@@ -45,12 +45,14 @@ class PipeSnippetStep (object):
         outputs[0] = re.split(r'\(.*?\) ', outputs[0])[-1]
         outputs[-1] = outputs[-1].split(' \r\n')[0]
 
+        return_strings = ""
+
         for i in range(len(self._commands)):
-            print("Command: %s\n Output: %s\n" % (self._commands[i], outputs[i]))
+            return_strings +  "Command: %s\n Output: %s\n" % (self._commands[i], outputs[i])
             if self._expect is not None:
                 expected_output = self._expect[i]
                 if expected_output is not None:
                     if outputs[i] != expected_output:
                         raise ArgumentError("Unexpected output", command = self._commands[i], expected = expected_output, actual = outputs[i])
 
-
+        return (0, return_strings)

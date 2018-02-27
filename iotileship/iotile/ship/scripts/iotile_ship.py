@@ -7,6 +7,7 @@ import shutil
 import sys
 import argparse
 import yaml
+import time
 from builtins import str
 from iotile.core.exceptions import ArgumentError, IOTileException
 from iotile.ship.recipe_manager import RecipeManager
@@ -75,9 +76,8 @@ def main(argv=None):
 
     #Creating temporary directory for intermediate files
     temp_dir = os.path.join(os.path.dirname(args.recipe), 'temp')
-    if os.path.exists(temp_dir):
-        shutil.rmtree(temp_dir)
-    os.mkdir(temp_dir)
+    if not os.path.exists(temp_dir):
+        os.mkdir(temp_dir)
 
     #Creating variables from config file
     variables = dict()
@@ -87,6 +87,7 @@ def main(argv=None):
     variables['temp_dir'] = temp_dir
 
     #Attempt to run the recipe on each device
+    start_time = time.time()
     try:
         for dev in devices:
             variables['UUID'] = dev
@@ -106,9 +107,9 @@ def main(argv=None):
     #Delete tempfile by default, will keep folder if --preserve
     if not args.preserve:
         shutil.rmtree(temp_dir)
-
+    time_elapsed = time.time()- start_time
     print("\n**FINISHED**\n")
-    print("Successfully processed %d devices" % len(success))
+    print("Successfully processed %d devices in %f seconds" % (len(success), time_elapsed))
 
     if len(success) != len(devices):
         return 1

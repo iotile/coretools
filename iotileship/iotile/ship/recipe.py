@@ -8,6 +8,8 @@ from iotile.ship.exceptions import RecipeFileInvalid, UnknownRecipeActionType, R
 
 from string import Template
 
+import time
+
 class RecipeObject(object):
     """An object representing a fixed set of processing steps.
 
@@ -136,8 +138,12 @@ class RecipeObject(object):
         """Initialize and run this recipe."""
         initialized_steps = self.prepare(variables)
         for i, step in enumerate(initialized_steps):
+            start_time = time.time()
             print("===> Step %d: %s\t Description: %s" % (i+1, self._steps[i][0].__name__, self._steps[i][1].get('description','')))
-            step.run()
+            out = step.run()
+            print("======> Time Elapsed: %.2f seconds" % (time.time()-start_time))
+            if out is not None:
+                print(out[1])
 
     def __str__(self):
         output_string = "========================================\n"
