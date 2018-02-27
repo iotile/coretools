@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.19.3
+
+- Pass addition device_id parameter to IOTileApp subclasses so that they know
+  what device they are talking to.
+
 ## 3.19.2
 
 - Fix IOTile object to properly indicate that it has a support wheel even if
