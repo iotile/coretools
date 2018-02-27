@@ -30,12 +30,13 @@ class CloudUploader(IOTileApp):
             connected to.
         os_info (tuple): The os_tag and version of the device we are
             connected to.
+        device_id (int): The UUID of the device that we are connected to.
     """
 
     logger = logging.getLogger(__name__)
 
-    def __init__(self, hw, app_info, os_info):
-        super(CloudUploader, self).__init__(hw, app_info, os_info)
+    def __init__(self, hw, app_info, os_info, device_id):
+        super(CloudUploader, self).__init__(hw, app_info, os_info, device_id)
 
         self._cloud = IOTileCloud()
         self._con = self._hw.get(8, basic=True)

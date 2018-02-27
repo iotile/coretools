@@ -2,6 +2,10 @@
 
 All major changes in each released version of the iotile-ext-cloud plugin are listed here.
 
+## 0.4.5
+
+- Fix compatibility with new IOTileApp `__init__` signature.
+
 ## 0.4.4
 
 - Improve cloud_uploader to continue downloading reports even if the manually

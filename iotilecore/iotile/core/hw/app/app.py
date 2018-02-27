@@ -33,14 +33,16 @@ class IOTileApp(object):
             connected to.
         os_info (tuple): The os_tag and version of the device we are
             connected to.
+        device_id (int): The UUID of the device that we are connected to.
     """
 
-    def __init__(self, hw, app_info, os_info):
+    def __init__(self, hw, app_info, os_info, device_id):
         self._hw = hw
         self._app_tag = app_info[0]
         self._app_version = app_info[1]
         self._os_tag = os_info[0]
         self._os_version = os_info[1]
+        self._device_id = device_id
 
     @classmethod
     def MatchInfo(cls):
