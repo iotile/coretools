@@ -224,6 +224,17 @@ class JLinkAdapter(DeviceAdapter):
 
         callback(conn_id, self.id, True, None)
 
+    def _open_script_interface(self, conn_id, callback):
+        """Enable script streaming interface for this IOTile device
+
+        Args:
+            conn_id (int): the unique identifier for the connection
+            callback (callback): Callback to be called when this command finishes
+                callback(conn_id, adapter_id, success, failure_reason)
+        """
+
+        callback(conn_id, self.id, True, None)
+
     def _open_debug_interface(self, conn_id, callback):
         """Enable debug interface for this IOTile device
 
@@ -269,3 +280,28 @@ class JLinkAdapter(DeviceAdapter):
         # Default to polling for the response every 1 millisecond
         # FIXME, add an exponential polling backoff so that we wait 1, 2, 4, 8, etc ms
         self._control_thread.command(JLinkControlThread.SEND_RPC, _on_finished, self._device_info, self._control_info, address, rpc_id, payload, 0.001, timeout)
+
+    def send_script_async(self, conn_id, data, progress_callback, callback):
+        """Asynchronously send a a script to this IOTile device
+
+        Args:
+            conn_id (int): A unique identifer that will refer to this connection
+            data (string): the script to send to the device
+            progress_callback (callable): A function to be called with status on our progress, called as:
+                progress_callback(done_count, total_count)
+            callback (callable): A callback for when we have finished sending the script.  The callback will be called as"
+                callback(connection_id, adapter_id, success, failure_reason)
+                'connection_id': the connection id
+                'adapter_id': this adapter's id
+                'success': a bool indicating whether we received a response to our attempted RPC
+                'failure_reason': a string with the reason for the failure if success == False
+        """
+
+        def _on_finished(_name, _retval, exception):
+            if exception is not None:
+                callback(conn_id, self.id, False, str(exception))
+                return
+
+            callback(conn_id, self.id, True, None)
+
+        self._control_thread.command(JLinkControlThread.SEND_SCRIPT, _on_finished, self._device_info, self._control_info, data, progress_callback)

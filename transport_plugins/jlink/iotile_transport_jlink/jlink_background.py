@@ -34,6 +34,7 @@ class JLinkControlThread(threading.Thread):
     SEND_RPC = 4
     DUMP_ALL_RAM = 5
     PROGRAM_FLASH = 6
+    SEND_SCRIPT = 7
 
     KNOWN_COMMANDS = {
         STOP: None,
@@ -41,6 +42,7 @@ class JLinkControlThread(threading.Thread):
         FIND_CONTROL: "_find_control_structure",
         VERIFY_CONTROL: "_verify_control_structure",  # Takes device_info, (optional) control_info parameters
         SEND_RPC: "_send_rpc",  # Takes control_info, address, rpc_id, payload, poll_interval, timeout
+        SEND_SCRIPT: "_send_script",  # Takes  device_info, control_info, script, progress_callback
 
         # Debug commands
         DUMP_ALL_RAM: "_dump_all_ram",  # Takes device_info, control_info (ignored), args (ignored)
@@ -137,6 +139,19 @@ class JLinkControlThread(threading.Thread):
         read_data = self._read_memory(read_address, read_length, join=True)
 
         return control_info.format_response(read_data)
+
+    def _send_script(self, device_info, control_info, script, progress_callback):
+        """Send a script by repeatedly sending it as a bunch of RPCs.
+
+        This function doesn't do anything special, it just sends a bunch of RPCs
+        with each chunk of the script until it's finished.
+        """
+
+        for i in xrange(0, len(script), 20):
+            chunk = script[i:i+20]
+            self._send_rpc(device_info, control_info, 8, 0x2101, chunk, 0.001, 1.0)
+            if progress_callback is not None:
+                progress_callback(i + len(chunk), len(script))
 
     def _trigger_rpc(self, device_info):
         """Trigger an RPC in a device specific way."""
