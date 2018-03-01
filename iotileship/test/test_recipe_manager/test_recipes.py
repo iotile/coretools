@@ -76,3 +76,11 @@ def test_snippet_no_expect(get_rm):
     rm = get_rm
     recipe = rm.get_recipe('test_snippet_no_expect')
     recipe.run()
+
+def test_check_cloud_output(get_rm):
+    rm = get_rm
+    recipe = rm.get_recipe('test_check_cloud_outputs')
+
+def test_verify_device_step(get_rm):
+    rm = get_rm
+    recipe = rm.get_recipe('test_verify_device_step')

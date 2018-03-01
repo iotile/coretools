@@ -35,7 +35,9 @@ setup(
         'iotile.recipe_action': [
             'PromptStep         = iotile.ship.actions.prompt_step:PromptStep',
             'WaitStep           = iotile.ship.actions.wait_step:WaitStep',
-            'PipeSnippetStep    = iotile.ship.actions.pipe_snippet_step:PipeSnippetStep'
+            'PipeSnippetStep    = iotile.ship.actions.pipe_snippet_step:PipeSnippetStep',
+            'SyncCloudStep      = iotile.ship.actions.sync_cloud_step:SyncCloudStep',
+            'VerifyDeviceStep   = iotile.ship.actions.verify_device_step:VerifyDeviceStep'
         ]
     },
     description="IOTile Ship Support",
