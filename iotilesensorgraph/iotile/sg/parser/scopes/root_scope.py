@@ -21,7 +21,7 @@ class RootScope(Scope):
         super(RootScope, self).__init__(u"Root Scope", sensor_graph, alloc, None)
 
         self.system_tick = None
-        self.user_tick = None
+        self.fast_tick = None
 
         self._setup()
 
