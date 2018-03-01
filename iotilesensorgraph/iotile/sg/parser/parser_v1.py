@@ -135,7 +135,7 @@ class SensorGraphFileParser(object):
                 parsed = self.parse_statement(child, orig_contents=orig_contents)
                 children.append(parsed)
 
-            statement = statement[0]
+            statement = statement[0][1]
             name = statement.getName()
             is_block = True
         else:

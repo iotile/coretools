@@ -124,7 +124,9 @@ def _create_block_bnf():
     config_block_id = Group(Literal(u'config').suppress() - slot_id).setResultsName('config_block')
     on_block_id = Group(Literal(u'on').suppress() - trigger_clause.setResultsName('triggerA') - Optional((Literal("and") | Literal("or")) - trigger_clause.setResultsName('triggerB'))).setResultsName('on_block')
 
-    block_id = every_block_id | when_block_id | latch_block_id | config_block_id | on_block_id
+    # Keep track of the location where the match started for error handling
+    locator = Empty().setParseAction(lambda s, l, t: l)('location')
+    block_id = Group(locator + (every_block_id | when_block_id | latch_block_id | config_block_id | on_block_id))
 
     block_bnf = Forward()
     statement = generic_statement | block_bnf
