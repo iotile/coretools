@@ -12,7 +12,7 @@ class WaitStep (object):
         seconds (int): The number of seconds to wait.
     """
     def __init__(self, args):
-        if(args.get('seconds') is None):
+        if args.get('seconds') is None:
             raise RecipeActionMissingParameter("WaitStep Parameter Missing", parameter_name='seconds')
 
         self._seconds = args['seconds']

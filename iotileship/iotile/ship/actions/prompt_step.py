@@ -14,7 +14,7 @@ class PromptStep (object):
         message (str): The message that will be displayed
     """
     def __init__(self, args):
-        if(args.get('message') is None):
+        if args.get('message') is None:
             raise RecipeActionMissingParameter("PromptStep Parameter Missing", parameter_name='message')
 
         self._message = args['message']

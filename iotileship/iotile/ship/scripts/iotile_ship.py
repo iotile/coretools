@@ -33,7 +33,7 @@ def build_args():
     parser.add_argument('--uuid-range', action='append', default=[], help="Process every device in a range (range should be specified as start-end and is inclusive, e.g ab-cd)")
     parser.add_argument('-i', '--info', action='store_true', help="Lists out all the steps of that recipe, doesn't run the recipe steps")
     parser.add_argument('--preserve', action='store_true', help="Preserve temporary folder contents after recipe is completed")
-    parser.add_argument('-c', '--config', help="An optional JSON config file with arguments for the script")
+    parser.add_argument('-c', '--config', help="An JSON config file with arguments for the script")
     args, rest = list_parser.parse_known_args()
 
     return parser
@@ -107,9 +107,9 @@ def main(argv=None):
     #Delete tempfile by default, will keep folder if --preserve
     if not args.preserve:
         shutil.rmtree(temp_dir)
-    time_elapsed = time.time()- start_time
+
     print("\n**FINISHED**\n")
-    print("Successfully processed %d devices in %f seconds" % (len(success), time_elapsed))
+    print("Successfully processed %d devices in %f seconds" % (len(success), time.time()- start_time))
 
     if len(success) != len(devices):
         return 1

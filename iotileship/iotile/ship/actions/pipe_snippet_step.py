@@ -22,9 +22,9 @@ class PipeSnippetStep (object):
         expected (list[str]): List of expected piped outputs. Ignores the current context name.
     """
     def __init__(self, args):
-        if(args.get('context') is None):
+        if args.get('context') is None:
             raise RecipeActionMissingParameter("PromptStep Parameter Missing", parameter_name='context')
-        if(args.get('commands') is None):
+        if args.get('commands') is None:
             raise RecipeActionMissingParameter("PromptStep Parameter Missing", parameter_name='commands')
 
         self._context = args['context']
@@ -32,7 +32,7 @@ class PipeSnippetStep (object):
         self._expect = args.get('expect',None)
 
         if self._expect is not None:
-            if(len(self._expect) != len(self._commands)):
+            if len(self._expect) != len(self._commands):
                 raise ArgumentError("Length of expect must match length of commands", parameter_name='commands')
 
     def run(self):
@@ -45,14 +45,13 @@ class PipeSnippetStep (object):
         outputs[0] = re.split(r'\(.*?\) ', outputs[0])[-1]
         outputs[-1] = outputs[-1].split(' \r\n')[0]
 
-        return_strings = ""
+        return_strings = []
 
         for i in range(len(self._commands)):
-            return_strings +  "Command: %s\n Output: %s\n" % (self._commands[i], outputs[i])
+            return_strings +=  ["Command: %s\nOutput: %s" % (self._commands[i], outputs[i])]
             if self._expect is not None:
                 expected_output = self._expect[i]
                 if expected_output is not None:
                     if outputs[i] != expected_output:
                         raise ArgumentError("Unexpected output", command = self._commands[i], expected = expected_output, actual = outputs[i])
-
-        return (0, return_strings)
+        print('\n'.join(return_strings))
