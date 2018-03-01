@@ -1,6 +1,10 @@
 from iotile.core.hw.proxy.proxy import TileBusProxyObject
 from iotile.core.utilities.typedargs.annotate import annotated,param,return_type, context
 
+class StreamerResult(dict):
+    def __init__(self):
+        self.comm_status = 0
+
 @context("ReportTestDeviceProxy")
 class ReportTestDeviceProxy(TileBusProxyObject):
     """A proxy object to correspond with ReportTestDevice
@@ -27,6 +31,7 @@ class ReportTestDeviceProxy(TileBusProxyObject):
     def query_streamer(self, index):
         a, b, c, ack, d, e, f = self.rpc(0x20, 0x0a, index, arg_format="H", result_format="LLLLBBBx")
 
-        result = {"ack": ack}
+        result = StreamerResult()
+        result["ack"] = ack
 
         return result
