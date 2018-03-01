@@ -127,6 +127,10 @@ def test_nested_blocks(parser):
 
     parser.parse_file(get_path('nested_block.sgf'))
 
+    assert parser.statements[0].location.line_no == 1
+    assert parser.statements[0].children[0].location.line_no == 3
+    assert parser.statements[0].children[0].children[0].location.line_no == 5
+
 
 def test_ignoring_comments(parser):
     """Make sure we ignore comments."""

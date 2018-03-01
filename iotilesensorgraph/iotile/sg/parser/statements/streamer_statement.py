@@ -16,9 +16,12 @@ class StreamerStatement(SensorGraphStatement):
     Args:
         parsed(ParseResults): The parsed tokens that make up this
             statement.
+        location (LocationInfo): A namedtuple with information on the line this
+            statement was generated from so that we can log appropriate error
+            messages.
     """
 
-    def __init__(self, parsed):
+    def __init__(self, parsed, location=None):
         realtime = 'realtime' in parsed
         encrypted = 'security' in parsed and parsed['security'] == 'encrypted'
         signed = 'security' in parsed and parsed['security'] == 'signed'
@@ -39,7 +42,7 @@ class StreamerStatement(SensorGraphStatement):
         if realtime and (encrypted or signed):
             raise SensorGraphSemanticError("Realtime streamers cannot be either signed or encrypted")
 
-        super(StreamerStatement, self).__init__([])
+        super(StreamerStatement, self).__init__([], location)
 
         self.dest = dest
         self.selector = selector

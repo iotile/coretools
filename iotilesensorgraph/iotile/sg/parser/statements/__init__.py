@@ -9,6 +9,7 @@ from .when_block import WhenBlock
 from .latch_block import LatchBlock
 from .streamer_statement import StreamerStatement
 from .trigger_statement import TriggerStatement
+from .statement import LocationInfo
 
 
 # All of the known statements in a sensor graph file and their matching tag names
@@ -26,4 +27,4 @@ statement_map = {
     'latch_block': LatchBlock
 }
 
-__all__ = ['statement_map']
+__all__ = ['statement_map', 'LocationInfo']

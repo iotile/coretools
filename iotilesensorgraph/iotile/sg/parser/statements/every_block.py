@@ -13,12 +13,15 @@ class EveryBlock(SensorGraphStatement):
             statement.
         children(list(SensorGraphStatement)): The statements that are
             part of this every block.
+        location (LocationInfo): A namedtuple with information on the line this
+            statement was generated from so that we can log appropriate error
+            messages.
     """
 
-    def __init__(self, parsed, children):
+    def __init__(self, parsed, children, location=None):
         self.interval = parsed[0]
 
-        super(EveryBlock, self).__init__(children)
+        super(EveryBlock, self).__init__(children, location)
 
     def __str__(self):
         return u"every %s" % (str(self.interval),)

@@ -17,12 +17,15 @@ class WhenBlock(SensorGraphStatement):
             statement.
         children(list(SensorGraphStatement)): The statements that are
             part of this when block.
+        location (LocationInfo): A namedtuple with information on the line this
+            statement was generated from so that we can log appropriate error
+            messages.
     """
 
-    def __init__(self, parsed, children):
+    def __init__(self, parsed, children, location=None):
         self.slot_id = parsed[0]
 
-        super(WhenBlock, self).__init__(children)
+        super(WhenBlock, self).__init__(children, location)
 
     def __str__(self):
         return u"when connected to %s" % (str(self.slot_id),)

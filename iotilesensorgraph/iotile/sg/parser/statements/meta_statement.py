@@ -16,13 +16,16 @@ class MetaStatement(SensorGraphStatement):
     Args:
         parsed(ParseResults): The parsed tokens that make up this
             statement.
+        location (LocationInfo): A namedtuple with information on the line this
+            statement was generated from so that we can log appropriate error
+            messages.
     """
 
-    def __init__(self, parsed):
+    def __init__(self, parsed, location=None):
         self.identifier = parsed[0]
         self.value = parsed[1]
 
-        super(MetaStatement, self).__init__([])
+        super(MetaStatement, self).__init__([], location)
 
     def __str__(self):
         return u'meta %s = %s;' % (str(self.identifier), str(self.value))

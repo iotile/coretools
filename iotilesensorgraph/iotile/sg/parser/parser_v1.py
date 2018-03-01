@@ -5,7 +5,7 @@ from builtins import str
 import pyparsing
 
 from .language import get_language, get_statement
-from .statements import statement_map
+from .statements import statement_map, LocationInfo
 from .scopes import RootScope
 from .stream_allocator import StreamAllocator
 from iotile.sg import SensorGraph, SensorLog
@@ -135,6 +135,7 @@ class SensorGraphFileParser(object):
                 parsed = self.parse_statement(child, orig_contents=orig_contents)
                 children.append(parsed)
 
+            locn = statement[0]['location']
             statement = statement[0][1]
             name = statement.getName()
             is_block = True
@@ -160,7 +161,13 @@ class SensorGraphFileParser(object):
         if name not in statement_map:
             raise ArgumentError("Unknown statement in sensor graph file", parsed_statement=statement, name=name)
 
-        if is_block:
-            return statement_map[name](statement, children=children)
+        # Save off our location information so we can give good error and warning information
+        line = pyparsing.line(locn, orig_contents).strip()
+        line_number = pyparsing.lineno(locn, orig_contents)
+        column = pyparsing.col(locn, orig_contents)
+        location_info = LocationInfo(line, line_number, column)
 
-        return statement_map[name](statement)
+        if is_block:
+            return statement_map[name](statement, children=children, location=location_info)
+
+        return statement_map[name](statement, location_info)

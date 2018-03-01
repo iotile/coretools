@@ -20,9 +20,12 @@ class LatchBlock(SensorGraphStatement):
             statement.
         children(list(SensorGraphStatement)): The statements that are
             part of this when block.
+        location (LocationInfo): A namedtuple with information on the line this
+            statement was generated from so that we can log appropriate error
+            messages.
     """
 
-    def __init__(self, parsed, children):
+    def __init__(self, parsed, children, location=None):
         cond = parsed[0]
         trigger_type = cond[0]
         stream = cond[1]
@@ -33,7 +36,7 @@ class LatchBlock(SensorGraphStatement):
         self.stream = stream
         self.trigger = trigger
 
-        super(LatchBlock, self).__init__(children)
+        super(LatchBlock, self).__init__(children, location)
 
     def __str__(self):
         return u"when " + self.trigger.format_trigger(self.stream)

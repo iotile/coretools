@@ -13,16 +13,20 @@ class TriggerStatement(SensorGraphStatement):
     The form of the statement should be
     trigger streamer <index>
 
-    That streamer is manually triggered
+    That streamer is manually triggered.
+
     Args:
         parsed(ParseResults): The parsed tokens that make up this
             statement.
+        location (LocationInfo): A namedtuple with information on the line this
+            statement was generated from so that we can log appropriate error
+            messages.
     """
 
-    def __init__(self, parsed):
+    def __init__(self, parsed, location=None):
         self.index = parsed['index']
 
-        super(TriggerStatement, self).__init__([])
+        super(TriggerStatement, self).__init__([], location)
 
     def __str__(self):
         return u'trigger streamer {};'.format(self.index)
