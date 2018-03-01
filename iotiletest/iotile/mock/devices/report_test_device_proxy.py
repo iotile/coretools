@@ -10,6 +10,9 @@ class ReportTestDeviceProxy(TileBusProxyObject):
     def ModuleName(cls):
         return 'Rptdev'
 
+    def sensor_graph(self):
+        return self
+
     @return_type("integer")
     @param("index", "integer", desc="index of the acknowledgement")
     @param("force", "bool", desc="force insertion regardless of sequence check")
