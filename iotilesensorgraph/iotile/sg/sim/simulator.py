@@ -2,7 +2,7 @@
 
 import time
 from monotonic import monotonic
-from ..known_constants import system_tick, user_tick, battery_voltage
+from ..known_constants import system_tick, fast_tick, tick_1, tick_2, battery_voltage
 from .null_executor import NullRPCExecutor
 from .stop_conditions import TimeBasedStopCondition
 from .trace import SimulationTrace
@@ -143,9 +143,6 @@ class SensorGraphSimulator(object):
         if i is not None and i > 0:
             self.stimuli = self.stimuli[i:]
 
-        # See if there's a user tick that's set
-        user_interval = self.sensor_graph.user_tick()
-
         while not self._check_stop_conditions(self.sensor_graph):
             # Process one more one second tick
             now = monotonic()
@@ -167,9 +164,7 @@ class SensorGraphSimulator(object):
             if i is not None and i > 0:
                 self.stimuli = self.stimuli[i:]
 
-            if user_interval != 0 and (self.tick_count % user_interval) == 0:
-                reading = IOTileReading(self.tick_count, user_tick.encode(), self.tick_count)
-                self.sensor_graph.process_input(user_tick, reading, self.rpc_executor)
+            self._check_additional_ticks(self.tick_count)
 
             if (self.tick_count % 10) == 0:
                 reading = IOTileReading(self.tick_count, system_tick.encode(), self.tick_count)
@@ -185,6 +180,25 @@ class SensorGraphSimulator(object):
             # the remaining slice of this tick.
             if (not accelerated) and (now < next_tick):
                 time.sleep(next_tick - now)
+
+    def _check_additional_ticks(self, tick_value):
+        fast_interval = self.sensor_graph.get_tick('fast')
+        tick_1 = self.sensor_graph.get_tick('user1')
+        tick_2 = self.sensor_graph.get_tick('user2')
+
+        readings = []
+
+        if fast_interval != 0 and (tick_value % fast_interval) == 0:
+            readings.append(IOTileReading(self.tick_count, fast_tick.encode(), self.tick_count))
+
+        if tick_1 != 0 and (tick_value % tick_1) == 0:
+            readings.append(IOTileReading(self.tick_count, tick_1.encode(), self.tick_count))
+
+        if tick_2 != 0 and (tick_value % tick_2) == 0:
+            readings.append(IOTileReading(self.tick_count, tick_2.encode(), self.tick_count))
+
+        for reading in readings:
+            self.sensor_graph.process_input(fast_tick, reading, self.rpc_executor)
 
     def _check_stop_conditions(self, sensor_graph):
         """Check if any of our stop conditions are met.

@@ -3,7 +3,8 @@ from ...stream import DataStream
 from ...slot import SlotIdentifier
 from ...node import InputTrigger
 from ...exceptions import SensorGraphSemanticError
-from ...known_constants import system_tick, user_tick, config_user_tick_secs
+from ...known_constants import (system_tick, fast_tick, config_fast_tick_secs, tick_1,
+                                config_tick1_secs, tick_2, config_tick2_secs)
 
 
 class RootScope(Scope):
@@ -32,14 +33,15 @@ class RootScope(Scope):
 
         # Create a root system tick and user tick node
         systick = self.allocator.allocate_stream(DataStream.CounterType, attach=True)
-        usertick = self.allocator.allocate_stream(DataStream.CounterType, attach=True)
+        fasttick = self.allocator.allocate_stream(DataStream.CounterType, attach=True)
+        # user1 = self.allocator.allocate_stream.allocate_stream(DataStream.CounterType, attach=True)
 
         self.sensor_graph.add_node("({} always) => {} using copy_all_a".format(system_tick, systick))
-        self.sensor_graph.add_node("({} always) => {} using copy_all_a".format(user_tick, usertick))
-        self.sensor_graph.add_config(SlotIdentifier.FromString('controller'), config_user_tick_secs, 'uint32_t', 1)
+        self.sensor_graph.add_node("({} always) => {} using copy_all_a".format(fast_tick, fasttick))
+        self.sensor_graph.add_config(SlotIdentifier.FromString('controller'), config_fast_tick_secs, 'uint32_t', 1)
 
         self.system_tick = systick
-        self.user_tick = usertick
+        self.fast_tick = fasttick
 
     def trigger_chain(self):
         """Return a NodeInput tuple for creating a node.
@@ -62,7 +64,7 @@ class RootScope(Scope):
             tick = self.allocator.attach_stream(self.system_tick)
             count = interval // 10
         else:
-            tick = self.allocator.attach_stream(self.user_tick)
+            tick = self.allocator.attach_stream(self.fast_tick)
             count = interval
 
         trigger = InputTrigger(u'count', '>=', count)

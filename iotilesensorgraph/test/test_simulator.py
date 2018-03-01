@@ -3,7 +3,7 @@ from typedargs.exceptions import ArgumentError
 from iotile.sg.sim import SensorGraphSimulator
 from iotile.sg.sim.stimulus import SimulationStimulus
 from iotile.sg.slot import SlotIdentifier
-from iotile.sg.known_constants import config_user_tick_secs
+from iotile.sg.known_constants import config_fast_tick_secs
 from iotile.sg import DeviceModel, SensorLog, SensorGraph, DataStream
 from iotile.core.hw.reports import IOTileReading
 
@@ -25,7 +25,7 @@ def usertick_sg():
     sg = SensorGraph(log, model=model)
 
     sg.add_node('(system input 3 always) => counter 1 using copy_latest_a')
-    sg.add_config(SlotIdentifier.FromString('controller'), config_user_tick_secs, 'uint32_t', 2)
+    sg.add_config(SlotIdentifier.FromString('controller'), config_fast_tick_secs, 'uint32_t', 2)
 
     return sg
 

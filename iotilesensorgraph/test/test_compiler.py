@@ -143,7 +143,7 @@ def test_when_block_clock(parser):
         print(x)
 
     sg.load_constants()
-    assert sg.user_tick() == 1
+    assert sg.get_tick('fast') == 1
 
     # Now make sure it produces the right output
     counter15 = log.create_walker(DataStreamSelector.FromString('counter 15'))
@@ -279,7 +279,7 @@ def test_latch_block(parser):
         print(x)
 
     sg.load_constants()
-    assert sg.user_tick() == 1
+    assert sg.get_tick('fast') == 1
 
     # Now make sure it produces the right output
     counter15 = log.create_walker(DataStreamSelector.FromString('counter 15'))

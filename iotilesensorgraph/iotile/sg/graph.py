@@ -5,7 +5,7 @@ from pkg_resources import iter_entry_points
 from .node_descriptor import parse_node_descriptor
 from .slot import SlotIdentifier
 from .stream import DataStream
-from .known_constants import config_user_tick_secs
+from .known_constants import config_fast_tick_secs, config_tick1_secs, config_tick2_secs
 from .exceptions import NodeConnectionError, ProcessingFunctionError
 from iotile.core.exceptions import ArgumentError
 from iotile.core.hw.reports import IOTileReading
@@ -200,27 +200,40 @@ class SensorGraph(object):
 
         return False
 
-    def user_tick(self):
-        """Check the config variables to see if there is a user tick.
+    def get_tick(self, name):
+        """Check the config variables to see if there is a configurable tick.
 
-        Sensor Graph has a built-in 10 second tick that is sent every 10 seconds
-        to allow for triggering timed events.  Users can also set up another tick
-        at a different, usually faster interval for their own purposes.
+        Sensor Graph has a built-in 10 second tick that is sent every 10
+        seconds to allow for triggering timed events.  There is a second
+        'user' tick that is generated internally by the sensorgraph compiler
+        and used for fast operations and finally there are several field
+        configurable ticks that can be used for setting up configurable
+        timers.
 
-        This is done by setting a config variable on the controller with the desired
-        tick interval, which is then interpreted by this function.
+        This is done by setting a config variable on the controller with the
+        desired tick interval, which is then interpreted by this function.
 
-        The appropriate config_id to use is listed in known_constants.py
+        The appropriate config_id to use is listed in `known_constants.py`
 
         Returns:
-            int: 0 if the user tick is disabled, otherwise the number of seconds
+            int: 0 if the tick is disabled, otherwise the number of seconds
                 between each tick
         """
+
+        name_map = {
+            'fast': config_fast_tick_secs,
+            'user1': config_tick1_secs,
+            'user2': config_tick2_secs
+        }
+
+        config = name_map.get(name)
+        if config is None:
+            raise ArgumentError("Unknown tick requested", name=name)
 
         slot = SlotIdentifier.FromString('controller')
 
         try:
-            var = self.get_config(slot, config_user_tick_secs)
+            var = self.get_config(slot, config)
             return var[1]
         except ArgumentError:
             return 0
