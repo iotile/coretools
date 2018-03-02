@@ -113,6 +113,8 @@ class StreamAllocator(object):
             self._allocated_streams[stream] = (new_stream, 1, curr_stream)
 
             # If we are splitting a constant stream, make sure we also duplicate the initialization value
+            # FIXME: If there is no default value for the stream, that is probably a warning since all constant
+            #        streams should be initialized with a value.
             if curr_stream.stream_type == DataStream.ConstantType and curr_stream in self.sensor_graph.constant_database:
                 self.sensor_graph.add_constant(new_stream, self.sensor_graph.constant_database[curr_stream])
 
