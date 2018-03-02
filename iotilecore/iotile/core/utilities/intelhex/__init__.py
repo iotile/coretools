@@ -3,7 +3,7 @@
 # info@welldone.org
 # http://welldone.org
 #
-# Modifications to this file from the original created at WellDone International 
+# Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
 # Copyright (c) 2005-2018, Alexander Belchenko
@@ -49,7 +49,7 @@ from bisect import bisect_right
 import os
 import sys
 
-from compat import (
+from .compat import (
     IntTypes,
     StrType,
     StringIO,
@@ -63,7 +63,7 @@ from compat import (
     range_l,
     )
 
-from getsizeof import total_size
+from .getsizeof import total_size
 
 
 class _DeprecatedParam(object):
@@ -152,7 +152,7 @@ class IntelHex(object):
                 if not self._buf.get(addr, None) is None:
                     raise AddressOverlapError(address=addr, line=line)
                 self._buf[addr] = bin[i]
-                addr += 1   # FIXME: addr should be wrapped 
+                addr += 1   # FIXME: addr should be wrapped
                             # BUT after 02 record (at 64K boundary)
                             # and after 04 record (at 4G boundary)
 
@@ -297,7 +297,7 @@ class IntelHex(object):
     def _get_start_end(self, start=None, end=None, size=None):
         """Return default values for start and end if they are None.
         If this IntelHex object is empty then it's error to
-        invoke this method with both start and end as None. 
+        invoke this method with both start and end as None.
         """
         if (start,end) == (None,None) and self._buf == {}:
             raise EmptyIntelHexError
@@ -324,7 +324,7 @@ class IntelHex(object):
         return start, end
 
     def tobinarray(self, start=None, end=None, pad=_DEPRECATED, size=None):
-        ''' Convert this object to binary form as array. If start and end 
+        ''' Convert this object to binary form as array. If start and end
         unspecified, they will be inferred from the data.
         @param  start   start address of output bytes.
         @param  end     end address of output bytes (inclusive).
@@ -427,7 +427,7 @@ class IntelHex(object):
 
     def addresses(self):
         '''Returns all used addresses in sorted order.
-        @return         list of occupied data addresses in sorted order. 
+        @return         list of occupied data addresses in sorted order.
         '''
         aa = dict_keys(self._buf)
         aa.sort()
@@ -753,7 +753,7 @@ class IntelHex(object):
             self._buf[addr+i] = a[i]
 
     def getsz(self, addr):
-        """Get zero-terminated bytes string from given address. Will raise 
+        """Get zero-terminated bytes string from given address. Will raise
         NotEnoughDataError exception if a hole is encountered before a 0.
         """
         i = 0
@@ -789,7 +789,7 @@ class IntelHex(object):
         width = int(width)
         if tofile is None:
             tofile = sys.stdout
-            
+
         # start addr possibly
         if self.start_addr is not None:
             cs = self.start_addr.get('CS')
@@ -844,7 +844,7 @@ class IntelHex(object):
                                   in overlapping region.
 
         @raise  TypeError       if other is not instance of IntelHex
-        @raise  ValueError      if other is the same object as self 
+        @raise  ValueError      if other is the same object as self
                                 (it can't merge itself)
         @raise  ValueError      if overlap argument has incorrect value
         @raise  AddressOverlapError    on overlapped data
@@ -898,7 +898,7 @@ class IntelHex(object):
         beginings = [addresses[b+1] for b in breaks]
         beginings.insert(0, addresses[0])
         return [(a, b+1) for (a, b) in zip(beginings, endings)]
-        
+
     def get_memory_size(self):
         """Returns the approximate memory footprint for data."""
         n = sys.getsizeof(self)
@@ -986,7 +986,7 @@ class IntelHex16bit(IntelHex):
     def maxaddr(self):
         '''Get maximal address of HEX content in 16-bit mode.
 
-        @return         maximal address used in this object 
+        @return         maximal address used in this object
         '''
         aa = dict_keys(self._buf)
         if aa == []:
@@ -1160,7 +1160,7 @@ class Record(object):
 
     def eof():
         """Return End of File record as a string.
-        @return         String representation of Intel Hex EOF record 
+        @return         String representation of Intel Hex EOF record
         """
         return ':00000001FF'
     eof = staticmethod(eof)

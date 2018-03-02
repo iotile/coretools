@@ -6,14 +6,14 @@
 # Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 import time
-from Queue import Empty
 import inspect
 import os.path
 import imp
 import binascii
 import sys
-import pkg_resources
 import logging
+from queue import Empty
+import pkg_resources
 
 from iotile.core.dev.semver import SemanticVersion
 from iotile.core.hw.transport import *

@@ -8,6 +8,8 @@ a result of different levels of optimization.
 
 from __future__ import (unicode_literals, absolute_import, print_function)
 import json
+from iotile.core.hw.reports import IOTileReading
+from typedargs.exceptions import ArgumentError
 from ..stream import DataStreamSelector, DataStream
 
 
@@ -68,6 +70,6 @@ class SimulationTrace(list):
             raise ArgumentError("Invalid trace file format", keys=in_data.keys(), expected=('trace', 'selectors'))
 
         selectors = [DataStreamSelector.FromString(x) for x in in_data['selectors']]
-        readings = [IOTileReading(DataStream.FromString(x['stream']).encode(), x['value'], reading_id=x['reading_id']) for x in in_data['trace']]
+        readings = [IOTileReading(x['time'], DataStream.FromString(x['stream']).encode(), x['value'], reading_id=x['reading_id']) for x in in_data['trace']]
 
         return SimulationTrace(readings, selectors=selectors)

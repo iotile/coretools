@@ -24,9 +24,12 @@ class CopyStatement(SensorGraphStatement):
     Args:
         parsed(ParseResults): The parsed tokens that make up this
             statement.
+        location (LocationInfo): A namedtuple with information on the line this
+            statement was generated from so that we can log appropriate error
+            messages.
     """
 
-    def __init__(self, parsed):
+    def __init__(self, parsed, location=None):
         self.all = 'modifier' in parsed and parsed['modifier'] == u'all'
         self.count = 'modifier' in parsed and parsed['modifier'] == u'count'
         self.average = 'modifier' in parsed and parsed['modifier'] == u'average'
@@ -41,7 +44,7 @@ class CopyStatement(SensorGraphStatement):
 
         self.output = parsed['output'][0]
 
-        super(CopyStatement, self).__init__([])
+        super(CopyStatement, self).__init__([], location)
 
     def __str__(self):
         op = u'copy'

@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## HEAD
+
+- Minor python 3 compatibility adjustments on iotile-core
+
 ## 3.19.3
 
 - Pass addition device_id parameter to IOTileApp subclasses so that they know

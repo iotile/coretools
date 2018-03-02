@@ -5,7 +5,7 @@ on the input node to accomodate all outputs or if there is a
 triggering condition on an input other than intput A that triggers
 the node to copy.
 """
-
+import logging
 from iotile.core.exceptions import ArgumentError
 from iotile.sg.node import TrueTrigger, FalseTrigger, InputTrigger
 from iotile.sg import DataStreamSelector
@@ -21,7 +21,7 @@ class RemoveCopyLatestPass(object):
     """
 
     def __init__(self):
-        pass
+        self.logger = logging.getLogger(__name__)
 
     def run(self, sensor_graph, model):
         """Run this optimization pass on the sensor graph
@@ -37,19 +37,21 @@ class RemoveCopyLatestPass(object):
         # Try to remove a node whose operation is copy_latest_a
         # It inherently does nothing, so it can be removed if:
         # 1. There is only one input triggering it
-        # 2. The input is from another node
+        # 2. The input is from another node (i.e. not a global sg input)
         # 3. The type of the input is the same as the type of the output
         # 4. There are enough output links in the input node to
         #    handle all of the downstream connections.  Note that we will
         #    reclaim one free output when we do the replacement.
+        #    If there are multiple nodes that write to this input, all
+        #    must have an available output.
         # 5. The stream is not a sensor graph output
         # 6. The trigger conditions for both inputs and outputs are either
-        #    count based or always.
+        #    count based or always or value based with the same value.
         #
-        # For each node, check if 1-4 are valid so we can remove it
+        # For each node, check if 1-6 are valid so we can remove it
 
         found_node = None
-        found_input = None
+        found_inputs = None
         found_outputs = None
 
         for node, inputs, outputs in sensor_graph.iterate_bfs():
@@ -61,17 +63,22 @@ class RemoveCopyLatestPass(object):
                 continue
 
             # Check 2
-            if len(inputs) != 1:
+            if len(inputs) == 0:
                 continue
 
-            input_a = inputs[0]
+            can_combine = True
+            for curr_input in inputs:
+                # Check 3
+                if curr_input.stream.stream_type != node.stream.stream_type:
+                    can_combine = False
+                    break
 
-            # Check 3
-            if input_a.stream.stream_type != node.stream.stream_type:
-                continue
+                # Check 4 (keep in mind we free up one output when we do the swap)
+                if (curr_input.free_outputs + 1) < len(outputs):
+                    can_combine = False
+                    break
 
-            # Check 4 (keep in mind we free up one output when we do the swap)
-            if (input_a.free_outputs + 1) < len(outputs):
+            if not can_combine:
                 continue
 
             # Check 5
@@ -79,7 +86,6 @@ class RemoveCopyLatestPass(object):
                 continue
 
             # Check 6
-            can_combine = True
             for out in outputs:
                 i = out.find_input(node.stream)
                 _, trigger = out.inputs[i]
@@ -106,7 +112,7 @@ class RemoveCopyLatestPass(object):
                 continue
 
             found_node = node
-            found_input = input_a
+            found_inputs = inputs
             found_outputs = outputs
             break
 
@@ -114,7 +120,9 @@ class RemoveCopyLatestPass(object):
             return False
 
         sensor_graph.nodes.remove(found_node)
-        found_input.outputs.remove(found_node)
+
+        for input_node in found_inputs:
+            input_node.outputs.remove(found_node)
 
         for output in found_outputs:
             i = output.find_input(found_node.stream)
@@ -125,7 +133,12 @@ class RemoveCopyLatestPass(object):
             sensor_graph.sensor_log.destroy_walker(old_walker)
 
             output.inputs[i] = (new_walker, new_trigger)
-            found_input.connect_output(output)
+
+            for input_node in found_inputs:
+                input_node.connect_output(output)
+
+        if found_node in sensor_graph.roots:
+            sensor_graph.roots.remove(found_node)
 
         sensor_graph.sensor_log.destroy_walker(found_node.inputs[0][0])
         return True
@@ -177,6 +190,10 @@ class RemoveCopyLatestPass(object):
 
         # If the triggers are count == X and count == Y, we can combine them to
         # count == X*Y
+        #
+        # If the triggers are count >= X and count == 1 then this is the same
+        # as just count >= X since every time that triggers the next node
+        # will trigger immediately and consume everything down to 0.
         if trigger1.use_count and trigger2.use_count:
             if trigger1.comp_string == u'==' and trigger2.comp_string == u'==':
                 combined_ref = trigger1.reference * trigger2.reference
@@ -184,5 +201,13 @@ class RemoveCopyLatestPass(object):
                 # Make sure we won't overflow
                 if combined_ref <= 0xFFFFFFFF:
                     return InputTrigger(u'count', u'==', combined_ref)
+            elif trigger1.comp_string in [u">=", u"<=", u"<", u">"] and trigger2.comp_string == u"==" and trigger2.reference == 1:
+                return InputTrigger(u'count', trigger1.comp_string, trigger1.reference)
+
+        elif trigger1.use_count is False and trigger2.use_count is False:
+            # If these are value triggers then we can combine them if the
+            # value is the same
+            if trigger1.comp_string == u"==" and trigger2.comp_string == u"==" and trigger1.reference == trigger2.reference:
+                return InputTrigger(u"value", trigger1.comp_string, trigger1.reference)
 
         raise ArgumentError("Cannot combine triggers")

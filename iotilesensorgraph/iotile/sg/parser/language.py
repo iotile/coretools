@@ -1,4 +1,4 @@
-from pyparsing import Optional, Word, Literal, Forward, alphas, nums, Group, Regex, ZeroOrMore, oneOf, restOfLine, dblQuotedString, StringEnd, Empty
+from pyparsing import Optional, Word, Literal, Forward, alphas, nums, Group, Regex, ZeroOrMore, oneOf, restOfLine, QuotedString, StringEnd, Empty
 from binascii import unhexlify
 from ..stream import DataStream, DataStreamSelector
 from ..slot import SlotIdentifier
@@ -15,6 +15,7 @@ stream = None
 selector = None
 stream_trigger = None
 time_interval = None
+tick_interval = None
 quoted_string = None
 semi = None
 comment = None
@@ -32,7 +33,7 @@ sensor_graph = None
 
 
 def _create_primitives():
-    global binary, ident, rvalue, number, quoted_string, semi, time_interval, slot_id, comp, config_type, stream, comment, stream_trigger, selector
+    global binary, ident, rvalue, number, quoted_string, semi, tick_interval, time_interval, slot_id, comp, config_type, stream, comment, stream_trigger, selector
 
     if ident is not None:
         return
@@ -41,7 +42,7 @@ def _create_primitives():
     ident = Word(alphas+u"_", alphas + nums + u"_")
     number = Regex(u'((0x[a-fA-F0-9]+)|[+-]?[0-9]+)').setParseAction(lambda s, l, t: [int(t[0], 0)])
     binary = Regex(u'hex:([a-fA-F0-9][a-fA-F0-9])+').setParseAction(lambda s, l, t: [unhexlify(t[0][4:])])
-    quoted_string = dblQuotedString
+    quoted_string = QuotedString(quoteChar='"', escChar="\\", unquoteResults=True)
 
     comment = Literal('#') + restOfLine
 
@@ -66,8 +67,10 @@ def _create_primitives():
     config_type = oneOf('uint8_t uint16_t uint32_t int8_t int16_t int32_t uint8_t[] uint16_t[] uint32_t[] int8_t[] int16_t[] int32_t[] string binary')
     comp = oneOf('> < >= <= == ~=')
 
+    # Time intervals are all based on internal system clocks so we include a 'system' tag
     time_unit = oneOf(u"second seconds minute minutes hour hours day days week weeks month months year years")
-    time_interval = (number + time_unit).setParseAction(lambda s, l, t: [t[0]*time_unit_multipliers[t[1]]])
+    time_interval = (number + time_unit).setParseAction(lambda s, l, t: [t[0]*time_unit_multipliers[t[1]], 'system'])
+    tick_interval = (number + (Literal("tick_1") | Literal("tick_2"))).setParseAction(lambda s, l, t: [t[0], t[1]])
 
     slot_id = Literal(u"controller") | (Literal(u'slot') + number)
     slot_id.setParseAction(lambda s,l,t: [SlotIdentifier.FromString(u' '.join([str(x) for x in t]))])
@@ -118,13 +121,15 @@ def _create_block_bnf():
 
     trigger_clause = Group(stream_trigger | Group(stream).setResultsName('stream_always') | Group(ident).setResultsName('identifier'))
 
-    every_block_id = Group(Literal(u'every').suppress() - time_interval).setResultsName('every_block')
+    every_block_id = Group(Literal(u'every').suppress() - (time_interval | tick_interval)).setResultsName('every_block')
     when_block_id = Group(Literal(u'when').suppress() + Literal("connected").suppress() - Literal("to").suppress() - slot_id).setResultsName('when_block')
     latch_block_id = Group(Literal(u'when').suppress() - stream_trigger).setResultsName('latch_block')
     config_block_id = Group(Literal(u'config').suppress() - slot_id).setResultsName('config_block')
     on_block_id = Group(Literal(u'on').suppress() - trigger_clause.setResultsName('triggerA') - Optional((Literal("and") | Literal("or")) - trigger_clause.setResultsName('triggerB'))).setResultsName('on_block')
 
-    block_id = every_block_id | when_block_id | latch_block_id | config_block_id | on_block_id
+    # Keep track of the location where the match started for error handling
+    locator = Empty().setParseAction(lambda s, l, t: l)('location')
+    block_id = Group(locator + (every_block_id | when_block_id | latch_block_id | config_block_id | on_block_id))
 
     block_bnf = Forward()
     statement = generic_statement | block_bnf

@@ -15,9 +15,12 @@ class CallRPCStatement(SensorGraphStatement):
     Args:
         parsed(ParseResults): The parsed tokens that make up this
             statement.
+        location (LocationInfo): A namedtuple with information on the line this
+            statement was generated from so that we can log appropriate error
+            messages.
     """
 
-    def __init__(self, parsed):
+    def __init__(self, parsed, location=None):
         self.rpc_id = parsed[0]
         self.slot_id = parsed[1]
 
@@ -25,13 +28,13 @@ class CallRPCStatement(SensorGraphStatement):
         if 'explicit_stream' in parsed:
             self.stream = parsed['explicit_stream'][0]
 
-        super(CallRPCStatement, self).__init__([])
+        super(CallRPCStatement, self).__init__([], location)
 
     def __str__(self):
         if self.stream is not None:
             return u'call 0x%X on %s => %s;' % (self.rpc_id, str(self.slot_id), str(self.stream))
 
-        return u'call 0x%X;' % (self.rpc_id, str(self.slot_id), str(self.stream))
+        return u'call 0x%X on %s;' % (self.rpc_id, str(self.slot_id))
 
     def execute(self, sensor_graph, scope_stack):
         """Execute this statement on the sensor_graph given the current scope tree.

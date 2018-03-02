@@ -3,9 +3,9 @@
 # info@welldone.org
 # http://welldone.org
 #
-# Modifications to this file from the original created at WellDone International 
+# Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
-from recordedstream import RecordedStream
-from cmdstream import CMDStream
-from websocketstream import WebSocketStream
+from .recordedstream import RecordedStream
+from .cmdstream import CMDStream
+from .websocketstream import WebSocketStream

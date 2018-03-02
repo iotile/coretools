@@ -7,9 +7,9 @@
 # are copyright Arch Systems Inc.
 
 from builtins import str
-from command import Command
-from iotile.core.hw.exceptions import *
+from .command import Command
 import base64
+
 
 class RPCCommand (Command):
     def __init__(self, address, feature, command, *args):
@@ -96,59 +96,3 @@ class RPCCommand (Command):
             fmtd += bytearray(20 - len(fmtd))
 
         return fmtd
-
-    #FIXME: Update these to correspond with the new error codes
-    def parse_result(self, num_ints, buff):
-        parsed = {'ints':[], 'buffer':"", 'error': 'No Error', 'is_error': False}
-
-        status_code = self.status
-        complete_status = self.complete_status & 0b01111111
-
-        #Check for a command stream layer error
-        if self.complete_status == 254:
-            parsed['error'] = self.result
-            parsed['status'] = self.complete_status
-            parsed['is_error'] = True
-
-            return parsed
-
-        parsed['status'] = complete_status
-
-        #Check if the module was not found
-        if self.complete_status == 0xFF:
-            parsed['error'] = 'Module at address ' + str(self.addr) + ' not found.'
-            parsed['is_error'] = True
-            return parsed
-
-        #Check for protocol defined errors
-        if not complete_status & (1<<6):
-            #This is a protocol defined error since the App Defined bit is not set
-            if status_code == 0:
-                parsed['error'] = 'Module Busy'
-            elif status_code == 1:
-                parsed['error'] = 'Checksum Error'
-            elif status_code == 2:
-                parsed['error'] = 'Unsupported Command'
-            else:
-                parsed['error'] = 'Unrecognized MIB status code'
-
-            parsed['is_error'] = True
-            return parsed
-
-        #Otherwise, parse the results according to the type information given
-        size = len(self.result)
-
-        if size < 2*num_ints:
-            raise RPCException(300, 'Return value too short to unpack : %s' % self.result)
-        elif buff == False and size != 2*num_ints:
-            raise RPCException(301, 'Return value does not match return type: %s' % self.result)
-
-        for i in xrange(0, num_ints):
-            low = ord(self.result[2*i])
-            high = ord(self.result[2*i + 1])
-            parsed['ints'].append((high << 8) | low)
-
-        if buff:
-            parsed['buffer'] = self.result[2*num_ints:]
-
-        return parsed

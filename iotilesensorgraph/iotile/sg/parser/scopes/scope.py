@@ -99,12 +99,17 @@ class Scope(object):
 
         raise SensorGraphSemanticError("There is no trigger chain in this scope since no triggering criteria have been set", scope=self.name)
 
-    def clock(self, interval):
+    def clock(self, interval, basis):
         """Return a NodeInput tuple for triggering an event every interval.
 
         Args:
             interval (int): The interval (in seconds) at which this input should
                 trigger.
+            basis (str): The basis to use for calculating the interval.  This
+                can either be system, tick_1 or tick_2.  System means that the
+                clock will use either the fast or regular builtin tick.  Passing
+                tick_1 or tick_2 will cause the clock to be generated based on
+                the selected tick.
         """
 
         raise SensorGraphSemanticError("There is not default clock defined in this scope", scope=self.name)

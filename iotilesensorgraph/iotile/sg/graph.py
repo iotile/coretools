@@ -2,13 +2,14 @@
 
 from collections import deque
 from pkg_resources import iter_entry_points
+from toposort import toposort_flatten
+from iotile.core.exceptions import ArgumentError
+from iotile.core.hw.reports import IOTileReading
 from .node_descriptor import parse_node_descriptor
 from .slot import SlotIdentifier
 from .stream import DataStream
-from .known_constants import config_user_tick_secs
+from .known_constants import config_fast_tick_secs, config_tick1_secs, config_tick2_secs
 from .exceptions import NodeConnectionError, ProcessingFunctionError
-from iotile.core.exceptions import ArgumentError
-from iotile.core.hw.reports import IOTileReading
 
 
 class SensorGraph(object):
@@ -25,8 +26,11 @@ class SensorGraph(object):
         self.roots = []
         self.nodes = []
         self.streamers = []
+
         self.constant_database = {}
+        self.metadata_database = {}
         self.config_database = {}
+
         self.sensor_log = sensor_log
         self.model = model
 
@@ -64,6 +68,14 @@ class SensorGraph(object):
 
                 if not found and selector.buffered:
                     raise NodeConnectionError("Node has input that refers to another node that has not been created yet", node_descriptor=node_descriptor, input_selector=str(selector), input_index=i)
+
+        # Also make sure we add this node's output to any other existing node's inputs
+        # this is important for constant nodes that may be written from multiple places
+        # FIXME: Make sure when we emit nodes, they are topologically sorted
+        for other_node in self.nodes:
+            for selector, trigger in other_node.inputs:
+                if selector.matches(node.stream):
+                    node.connect_output(other_node)
 
         # Find and load the processing function for this node
         func = self.find_processing_function(processor)
@@ -116,6 +128,26 @@ class SensorGraph(object):
             raise ArgumentError("Attempted to set the same constant twice", stream=stream, old_value=self.constant_database[stream], new_value=value)
 
         self.constant_database[stream] = value
+
+    def add_metadata(self, name, value):
+        """Attach a piece of metadata to this sensorgraph.
+
+        Metadata is not used during the simulation of a sensorgraph but allows
+        it to convey additional context that may be used during code
+        generation.  For example, associating an `app_tag` with a sensorgraph
+        allows the snippet code generator to set that app_tag on a device when
+        programming the sensorgraph.
+
+        Arg:
+            name (str): The name of the metadata that we wish to associate with this
+                sensorgraph.
+            value (object): The value we wish to store.
+        """
+
+        if name in self.metadata_database:
+            raise ArgumentError("Attempted to set the same metadata value twice", name=name, old_value=self.metadata_database[name], new_value=value)
+
+        self.metadata_database[name] = value
 
     def initialize_remaining_constants(self, value=0):
         """Ensure that all constant streams referenced in the sensor graph have a value.
@@ -200,27 +232,40 @@ class SensorGraph(object):
 
         return False
 
-    def user_tick(self):
-        """Check the config variables to see if there is a user tick.
+    def get_tick(self, name):
+        """Check the config variables to see if there is a configurable tick.
 
-        Sensor Graph has a built-in 10 second tick that is sent every 10 seconds
-        to allow for triggering timed events.  Users can also set up another tick
-        at a different, usually faster interval for their own purposes.
+        Sensor Graph has a built-in 10 second tick that is sent every 10
+        seconds to allow for triggering timed events.  There is a second
+        'user' tick that is generated internally by the sensorgraph compiler
+        and used for fast operations and finally there are several field
+        configurable ticks that can be used for setting up configurable
+        timers.
 
-        This is done by setting a config variable on the controller with the desired
-        tick interval, which is then interpreted by this function.
+        This is done by setting a config variable on the controller with the
+        desired tick interval, which is then interpreted by this function.
 
-        The appropriate config_id to use is listed in known_constants.py
+        The appropriate config_id to use is listed in `known_constants.py`
 
         Returns:
-            int: 0 if the user tick is disabled, otherwise the number of seconds
+            int: 0 if the tick is disabled, otherwise the number of seconds
                 between each tick
         """
+
+        name_map = {
+            'fast': config_fast_tick_secs,
+            'user1': config_tick1_secs,
+            'user2': config_tick2_secs
+        }
+
+        config = name_map.get(name)
+        if config is None:
+            raise ArgumentError("Unknown tick requested", name=name)
 
         slot = SlotIdentifier.FromString('controller')
 
         try:
-            var = self.get_config(slot, config_user_tick_secs)
+            var = self.get_config(slot, config)
             return var[1]
         except ArgumentError:
             return 0
@@ -284,6 +329,31 @@ class SensorGraph(object):
 
             working_set.extend(curr.outputs)
             seen.append(curr)
+
+    def sort_nodes(self):
+        """Topologically sort all of our nodes.
+
+        Topologically sorting our nodes makes nodes that are inputs to other
+        nodes come first in the list of nodes.  This is important to do before
+        programming a sensorgraph into an embedded device whose engine assumes
+        a topologically sorted graph.
+
+        The sorting is done in place on self.nodes
+        """
+
+        node_map = {id(node): i for i, node in enumerate(self.nodes)}
+        node_deps = {}
+
+        for node, inputs, _outputs in self.iterate_bfs():
+            node_index = node_map[id(node)]
+
+            deps = {node_map[id(x)] for x in inputs}
+            node_deps[node_index] = deps
+
+        # Now that we have our dependency tree properly built, topologically
+        # sort the nodes and reorder them.
+        node_order = toposort_flatten(node_deps)
+        self.nodes = [self.nodes[x] for x in node_order]
 
     @classmethod
     def find_processing_function(cls, name):

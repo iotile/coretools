@@ -21,9 +21,12 @@ class OnBlock(SensorGraphStatement):
             statement.
         children(list(SensorGraphStatement)): The statements that are
             part of this on block.
+        location (LocationInfo): A namedtuple with information on the line this
+            statement was generated from so that we can log appropriate error
+            messages.
     """
 
-    def __init__(self, parsed, children):
+    def __init__(self, parsed, children, location=None):
         trigger_a = parsed[0]
 
         self.trigger_a = self._parse_trigger(trigger_a)
@@ -35,7 +38,7 @@ class OnBlock(SensorGraphStatement):
             self.trigger_b = None
             self.combiner = None
 
-        super(OnBlock, self).__init__(children)
+        super(OnBlock, self).__init__(children, location)
 
     def _format_trigger(self, trigger_def):
         if trigger_def.explicit_stream is not None:
