@@ -7,7 +7,7 @@ def test_device_slug_to_id():
     """Convert a string device slug to a number."""
 
     assert device_slug_to_id('d--0000-0000-0000-0010') == 0x10
-    assert device_slug_to_id('d--100a-0000-0000-0000') == 0x100a000000000000
+    assert device_slug_to_id('d--1234-0000-0000-0001') == 1
 
     with pytest.raises(ArgumentError):
         device_slug_to_id('0000-0000-0000-0000')
@@ -26,7 +26,7 @@ def test_device_id_to_slug():
     """Ensure we can convert device ids to slugs."""
 
     assert device_id_to_slug(0x10) == 'd--0000-0000-0000-0010'
-    assert device_id_to_slug(0x1234abcd5678ef90) == 'd--1234-abcd-5678-ef90'
+    assert device_id_to_slug(0x1234abcd5678ef90) == 'd--0000-abcd-5678-ef90'
     assert device_id_to_slug(0x1234L) == 'd--0000-0000-0000-1234'
 
     with pytest.raises(ArgumentError):

@@ -1,6 +1,6 @@
 """Common utility functions used across iotile.cloud packages."""
 
-from iotile_clout.utils.gid import IOTileDeviceSlug
+from iotile_cloud.utils.gid import IOTileDeviceSlug
 from iotile.core.exceptions import ArgumentError
 
 
@@ -21,11 +21,11 @@ def device_slug_to_id(slug):
         raise ArgumentError("Invalid device slug that is not a string", slug=slug)
 
     try:
-        device_slug = IOTileDeviceSlug(id)
+        device_slug = IOTileDeviceSlug(slug)
     except Exception:
-        raise ArgumentError("Unable to recognize {} as a device id".format(id))
+        raise ArgumentError("Unable to recognize {} as a device id".format(slug))
 
-    return device_slug.id
+    return device_slug.get_id()
 
 
 def device_id_to_slug(id):
