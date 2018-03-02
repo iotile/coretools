@@ -6,7 +6,7 @@ from collections import namedtuple
 import json
 import os.path
 from iotile.core.exceptions import *
-from semver import SemanticVersion, SemanticVersionRange
+from .semver import SemanticVersion, SemanticVersionRange
 
 ReleaseStep = namedtuple('ReleaseStep', ['provider', 'args'])
 

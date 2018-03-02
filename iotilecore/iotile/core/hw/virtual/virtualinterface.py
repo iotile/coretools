@@ -6,7 +6,7 @@ Virtual things are designed to allow the same level of configurability and robus
 thing.
 """
 
-from Queue import Queue, Empty
+from queue import Queue, Empty
 import logging
 from iotile.core.exceptions import ArgumentError
 import iotile.core.hw.virtual.audit as audit

@@ -8,7 +8,7 @@ from iotile.core.exceptions import *
 from iotile.core.utilities.paths import settings_directory
 import json
 import os.path
-from iotileobj import IOTile
+from .iotileobj import IOTile
 import pkg_resources
 import imp
 import sys

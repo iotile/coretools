@@ -1,4 +1,4 @@
-# This file is copyright Arch Systems, Inc.  
+# This file is copyright Arch Systems, Inc.
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
 #Sqlite3 textual key value store
@@ -29,7 +29,7 @@ class SQLiteKVStore(object):
             folder = sys.prefix
 
         if not os.path.exists(folder):
-            os.makedirs(folder, 0755)
+            os.makedirs(folder, 0o755)
 
         dbfile = os.path.join(folder, name)
         self.connection = sqlite3.connect(dbfile)
@@ -54,7 +54,7 @@ class SQLiteKVStore(object):
 
         vals = self.cursor.fetchall()
         return vals
-        
+
     def get(self, id):
         query = 'select value from KVStore where key is ?'
         self.cursor.execute(query, (id,))
@@ -62,7 +62,7 @@ class SQLiteKVStore(object):
         val = self.cursor.fetchone()
         if val is None:
             raise KeyError("id not in key-value store: %s" % str(id))
-        
+
         return val[0]
 
     def remove(self, key):
