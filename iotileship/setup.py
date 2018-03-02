@@ -16,8 +16,6 @@
 from setuptools import setup, find_packages
 import version
 
-embedded_scons = "0.0.1"
-
 setup(
     name="iotile-ship",
     packages=find_packages(exclude=("test",)),

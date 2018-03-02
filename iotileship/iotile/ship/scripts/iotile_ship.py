@@ -1,15 +1,13 @@
 """Command line script to load and run a sensor graph."""
 from __future__ import (unicode_literals, absolute_import, print_function)
 from builtins import str
-
 import os
 import shutil
 import sys
+import time
 import argparse
 import yaml
-import time
-from builtins import str
-from iotile.core.exceptions import ArgumentError, IOTileException
+from iotile.core.exceptions import IOTileException
 from iotile.ship.recipe_manager import RecipeManager
 
 DESCRIPTION = \
@@ -21,9 +19,6 @@ u"""Load and run an iotile recipe
 
 def build_args():
     """Create command line argument parser."""
-    list_parser = argparse.ArgumentParser(add_help=False)
-    list_parser.add_argument('-l', '--list', action='store_true', help="List all known device preparation scripts and then exit")
-
     parser = argparse.ArgumentParser(description=DESCRIPTION, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument(u'recipe', type=str, help=u"The recipe file to load and run.")
     parser.add_argument('--uuid', action='append', default=[], help="Run script on device given by this uuid")
@@ -34,14 +29,13 @@ def build_args():
     parser.add_argument('-i', '--info', action='store_true', help="Lists out all the steps of that recipe, doesn't run the recipe steps")
     parser.add_argument('--preserve', action='store_true', help="Preserve temporary folder contents after recipe is completed")
     parser.add_argument('-c', '--config', help="An JSON config file with arguments for the script")
-    args, rest = list_parser.parse_known_args()
 
     return parser
 
 def main(argv=None):
     """Main entry point for iotile-ship recipe runner.
 
-    This is the iotile-ship command line program. 
+    This is the iotile-ship command line program.
 
     Args:
         argv (list of str): An optional set of command line
@@ -98,7 +92,7 @@ def main(argv=None):
                 except IOTileException, exc:
                     print("--> Error on try %d: %s" % (i+1, str(exc)))
                     continue
-            
+
             if args.pause:
                 raw_input("--> Waiting for <return> before processing next device")
     except KeyboardInterrupt:
@@ -113,5 +107,4 @@ def main(argv=None):
 
     if len(success) != len(devices):
         return 1
-    
     return 0

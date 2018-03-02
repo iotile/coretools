@@ -1,9 +1,8 @@
 from __future__ import (unicode_literals, print_function, absolute_import)
 from builtins import str
+import time
 from iotile.core.hw.hwmanager import HardwareManager
 from iotile.core.exceptions import ArgumentError
-from iotile.core.hw.reports import SignedListReport
-import time
 
 class VerifyDeviceStep(object):
     """A Recipe Step used to verify that a device is setup as expected
@@ -40,9 +39,68 @@ class VerifyDeviceStep(object):
 
         self._realtime_streams  = args.get('realtime_streams')
         self._tile_versions     = args.get('tile_versions')
-        
 
-    def run(self):    
+    def _verify_tile_versions(self, hw):
+        """Verify that the tiles have the correct versions
+        """
+        for tile, expected_tile_version in self._tile_versions.items():
+            actual_tile_version = str(hw.get(tile).tile_version())
+            if expected_tile_version != actual_tile_version:
+                raise ArgumentError("Tile has incorrect firmware", tile=tile, \
+                    expected_version=expected_tile_version, actual_version=actual_tile_version)
+
+    def _verify_os_app_settings(self, hw):
+        """Change os and app tags/versions and verify that they've been changed
+        """
+        con = hw.controller()
+        rb = con.remote_bridge()
+        rb.create_script()
+        if self._os_tag is not None:
+            rb.add_setversion_action('os', self._os_tag, self._os_version)
+        if self._app_tag is not None:
+            rb.add_setversion_action('app', self._app_tag, self._app_version)
+        info = con.test_interface().get_info()
+        rb.send_script()
+        rb.wait_script()
+
+        info = con.test_interface().get_info()
+        if self._os_tag is not None:
+            if info['os_tag'] != self._os_tag:
+                raise ArgumentError("Incorrect os_tag", actual_os_tag=info['os_tag'],\
+                        expected_os_tag=self._os_tag)
+        if self._app_tag is not None:
+            if info['app_tag'] != self._app_tag:
+                raise ArgumentError("Incorrect app_tag", actual_os_tag=info['app_tag'],\
+                        expected_os_tag=self._app_tag)
+        if self._os_version is not None:
+            if info['os_version'] != self._os_version:
+                raise ArgumentError("Incorrect os_version", actual_os_version=info['os_version'],\
+                        expected_os_version=self._os_version)
+        if self._app_version is not None:
+            if info['app_version'] != self._app_version:
+                raise ArgumentError("Incorrect app_version", actual_os_version=info['app_version'],\
+                        expected_os_version=self._app_version)
+
+    def _verify_realtime_streams(self, hw):
+        """Check that the realtime streams are being produced
+        """
+        hw.enable_streaming()
+        print("--> Testing realtime data (takes 2 seconds)")
+        time.sleep(2.1)
+        reports = [x for x in hw.iter_reports()]
+        reports_seen = {key: 0 for key in self._realtime_streams}
+
+        for report in reports:
+            stream_value = report.visible_readings[0].stream
+            if reports_seen.get(stream_value) is not None:
+                reports_seen[stream_value] += 1
+
+        for stream in reports_seen.keys():
+            if reports_seen[stream] < 2:
+                raise ArgumentError("Realtime Stream not pushing any reports", stream=hex(stream), \
+                    reports_seen=reports_seen[stream])
+
+    def run(self):
         with HardwareManager(port=self._port) as hw:
             if self._connect is not None:
                 hw.connect(self._connect)
@@ -60,58 +118,3 @@ class VerifyDeviceStep(object):
             if self._realtime_streams is not None:
                 print('--> Verifying realtime streams')
                 self._verify_realtime_streams(hw)
-
-
-    def _verify_tile_versions(self, hw):
-        for tile, expected_tile_version in self._tile_versions.items():
-            actual_tile_version = str(hw.get(tile).tile_version())
-            if expected_tile_version != actual_tile_version:
-                raise ArgumentError("Tile has incorrect firmware", tile=tile, 
-                    expected_version=expected_tile_version, actual_version=actual_tile_version)
-
-    def _verify_os_app_settings(self, hw):
-        con = hw.controller()
-        rb = con.remote_bridge()
-        rb.create_script()
-        if self._os_tag is not None:
-            rb.add_setversion_action('os', self._os_tag, self._os_version)
-        if self._app_tag is not None:
-            rb.add_setversion_action('app', self._app_tag, self._app_version)
-        info = con.test_interface().get_info()
-        rb.send_script()
-        rb.wait_script()
-
-        info = con.test_interface().get_info()
-        if self._os_tag is not None:
-            if info['os_tag'] !=  self._os_tag:
-                raise ArgumentError("Incorrect os_tag", actual_os_tag = info['os_tag'],
-                        expected_os_tag = self._os_tag)
-        if self._app_tag is not None:
-            if info['app_tag'] !=  self._app_tag:
-                raise ArgumentError("Incorrect app_tag", actual_os_tag = info['app_tag'],
-                        expected_os_tag = self._app_tag)
-        if self._os_version is not None:
-            if info['os_version'] !=  self._os_version:
-                raise ArgumentError("Incorrect os_version", actual_os_version = info['os_version'],
-                        expected_os_version = self._os_version)
-        if self._app_version is not None:
-            if info['app_version'] !=  self._app_version:
-                raise ArgumentError("Incorrect app_version", actual_os_version = info['app_version'],
-                        expected_os_version = self._app_version)
-
-    def _verify_realtime_streams(self, hw):
-        hw.enable_streaming()
-        con = hw.controller()
-        print("--> Testing realtime data (takes 2 seconds)")
-        time.sleep(2.1)
-        reports = [x for x in hw.iter_reports()]
-        reports_seen = {key: 0 for key in self._realtime_streams}
-
-        for report in reports:
-            stream_value = report.visible_readings[0].stream
-            if reports_seen.get(stream_value) is not None:
-                 reports_seen[stream_value] += 1
-
-        for stream in reports_seen.keys():
-            if reports_seen[stream] < 2:
-                raise ArgumentError("Realtime Stream not pushing any reports", stream=hex(stream), reports_seen=reports_seen[stream])

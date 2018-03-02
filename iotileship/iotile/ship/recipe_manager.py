@@ -1,9 +1,8 @@
 from __future__ import (unicode_literals, print_function, absolute_import)
 from builtins import str
 
-import pkg_resources
-import os, sys
 import glob
+import pkg_resources
 from iotile.ship.recipe import RecipeObject
 from iotile.ship.exceptions import RecipeNotFoundError
 
