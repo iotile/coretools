@@ -2,6 +2,18 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## HEAD
+
+- Add dead code elimination for nodes that produce no visible output.  This
+  improvement is necessary for the introduction of additional user ticks since
+  they will generate a lot of unnecessary nodes in case the user wants to use 
+  them.
+- Improve remove-copylatest optimization pass.  We can now optimize cases where
+  the copy-latest is on a constant node with multiple other nodes writing to
+  that constant node.
+- Topologically sort nodes during compilation to avoid issues when node lists
+  are programmed into an IOTile device.  (Issue #315)
+
 ## 0.4.0
 
 - Improve the optimization of counter nodes by better downgrading split counters

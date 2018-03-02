@@ -1,5 +1,7 @@
+"""Iterative sensor graph optimizer."""
+
 from toposort import toposort_flatten
-from .passes import RemoveCopyLatestPass, ConvertCountOneToAlways, ConvertCopyAllToCopyLatest, RemoveDeadCodePass
+from .passes import RemoveCopyLatestPass, ConvertCountOneToAlways, ConvertCopyAllToCopyLatest, RemoveDeadCodePass, RemoveConstantsPass
 
 
 class SensorGraphOptimizer(object):
@@ -17,6 +19,7 @@ class SensorGraphOptimizer(object):
         self.add_pass('convert-always', ConvertCountOneToAlways, before=['remove-copy'])
         self.add_pass('downgrade-copyall', ConvertCopyAllToCopyLatest, before=['convert-always'])
         self.add_pass('remove-dead-code', RemoveDeadCodePass, before=['remove-copy', 'convert_always', 'downgrade-copyall'])
+        self.add_pass('remove-constants', RemoveConstantsPass, after=['remove-copy', 'remove-dead-code'])
 
     def add_pass(self, name, opt_pass, before=None, after=None):
         """Add an optimization pass to the optimizer.
@@ -66,7 +69,8 @@ class SensorGraphOptimizer(object):
             if opt not in pass_deps:
                 pass_deps[opt] = set()
 
-            pass_deps[opt].update(*[x for x in after])
+            for after_pass in after:
+                pass_deps[opt].add(after_pass)
 
             # For passes that we are before, we may need to
             # preemptively add them to the list early

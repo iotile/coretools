@@ -104,6 +104,7 @@ class SensorGraphFileParser(object):
             statement.execute(self.sensor_graph, self._scope_stack)
 
         self.sensor_graph.initialize_remaining_constants()
+        self.sensor_graph.sort_nodes()
 
     def parse_statement(self, statement, orig_contents):
         """Parse a statement, possibly called recursively.

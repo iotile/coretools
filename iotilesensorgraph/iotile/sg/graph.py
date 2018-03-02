@@ -2,6 +2,7 @@
 
 from collections import deque
 from pkg_resources import iter_entry_points
+from toposort import toposort_flatten
 from iotile.core.exceptions import ArgumentError
 from iotile.core.hw.reports import IOTileReading
 from .node_descriptor import parse_node_descriptor
@@ -328,6 +329,31 @@ class SensorGraph(object):
 
             working_set.extend(curr.outputs)
             seen.append(curr)
+
+    def sort_nodes(self):
+        """Topologically sort all of our nodes.
+
+        Topologically sorting our nodes makes nodes that are inputs to other
+        nodes come first in the list of nodes.  This is important to do before
+        programming a sensorgraph into an embedded device whose engine assumes
+        a topologically sorted graph.
+
+        The sorting is done in place on self.nodes
+        """
+
+        node_map = {id(node): i for i, node in enumerate(self.nodes)}
+        node_deps = {}
+
+        for node, inputs, _outputs in self.iterate_bfs():
+            node_index = node_map[id(node)]
+
+            deps = {node_map[id(x)] for x in inputs}
+            node_deps[node_index] = deps
+
+        # Now that we have our dependency tree properly built, topologically
+        # sort the nodes and reorder them.
+        node_order = toposort_flatten(node_deps)
+        self.nodes = [self.nodes[x] for x in node_order]
 
     @classmethod
     def find_processing_function(cls, name):
