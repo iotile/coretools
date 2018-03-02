@@ -1,6 +1,7 @@
 from __future__ import (unicode_literals, print_function, absolute_import)
 from builtins import str
 import re
+import shlex
 from subprocess import PIPE, STDOUT, Popen
 from iotile.ship.exceptions import RecipeActionMissingParameter
 from iotile.core.exceptions import ArgumentError
@@ -36,7 +37,7 @@ class PipeSnippetStep(object):
                     parameter_name='commands')
 
     def run(self):
-        process = Popen(self._context, stdout=PIPE, stdin=PIPE, stderr=STDOUT)
+        process = Popen(shlex.split(self._context), stdout=PIPE, stdin=PIPE, stderr=STDOUT)
         out, err = process.communicate(input='\r\n'.join(self._commands))
         if err is not None:
             raise ArgumentError("Output Errored", errors=err, commands=self._commands)
