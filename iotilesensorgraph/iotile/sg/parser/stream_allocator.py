@@ -112,6 +112,10 @@ class StreamAllocator(object):
             self.sensor_graph.add_node(copy_desc)
             self._allocated_streams[stream] = (new_stream, 1, curr_stream)
 
+            # If we are splitting a constant stream, make sure we also duplicate the initialization value
+            if curr_stream.stream_type == DataStream.ConstantType and curr_stream in self.sensor_graph.constant_database:
+                self.sensor_graph.add_constant(new_stream, self.sensor_graph.constant_database[curr_stream])
+
             return new_stream
 
         self._allocated_streams[stream] = (curr_stream, count + 1, prev)

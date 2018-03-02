@@ -2,13 +2,13 @@
 
 from collections import deque
 from pkg_resources import iter_entry_points
+from iotile.core.exceptions import ArgumentError
+from iotile.core.hw.reports import IOTileReading
 from .node_descriptor import parse_node_descriptor
 from .slot import SlotIdentifier
 from .stream import DataStream
 from .known_constants import config_fast_tick_secs, config_tick1_secs, config_tick2_secs
 from .exceptions import NodeConnectionError, ProcessingFunctionError
-from iotile.core.exceptions import ArgumentError
-from iotile.core.hw.reports import IOTileReading
 
 
 class SensorGraph(object):
@@ -25,8 +25,11 @@ class SensorGraph(object):
         self.roots = []
         self.nodes = []
         self.streamers = []
+
         self.constant_database = {}
+        self.metadata_database = {}
         self.config_database = {}
+
         self.sensor_log = sensor_log
         self.model = model
 
@@ -124,6 +127,26 @@ class SensorGraph(object):
             raise ArgumentError("Attempted to set the same constant twice", stream=stream, old_value=self.constant_database[stream], new_value=value)
 
         self.constant_database[stream] = value
+
+    def add_metadata(self, name, value):
+        """Attach a piece of metadata to this sensorgraph.
+
+        Metadata is not used during the simulation of a sensorgraph but allows
+        it to convey additional context that may be used during code
+        generation.  For example, associating an `app_tag` with a sensorgraph
+        allows the snippet code generator to set that app_tag on a device when
+        programming the sensorgraph.
+
+        Arg:
+            name (str): The name of the metadata that we wish to associate with this
+                sensorgraph.
+            value (object): The value we wish to store.
+        """
+
+        if name in self.metadata_database:
+            raise ArgumentError("Attempted to set the same metadata value twice", name=name, old_value=self.metadata_database[name], new_value=value)
+
+        self.metadata_database[name] = value
 
     def initialize_remaining_constants(self, value=0):
         """Ensure that all constant streams referenced in the sensor graph have a value.

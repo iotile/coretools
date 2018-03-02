@@ -50,6 +50,8 @@ def format_snippet(sensor_graph):
 
             if conf_type == 'binary':
                 conf_val = 'hex:' + hexlify(conf_val)
+            elif isinstance(conf_val, str):
+                conf_val = '"%s"' % conf_val
 
             output.append("set_variable '{}' {} {} {}".format(slot, conf_var, conf_type, conf_val))
 

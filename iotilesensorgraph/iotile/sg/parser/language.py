@@ -1,4 +1,4 @@
-from pyparsing import Optional, Word, Literal, Forward, alphas, nums, Group, Regex, ZeroOrMore, oneOf, restOfLine, dblQuotedString, StringEnd, Empty
+from pyparsing import Optional, Word, Literal, Forward, alphas, nums, Group, Regex, ZeroOrMore, oneOf, restOfLine, QuotedString, StringEnd, Empty
 from binascii import unhexlify
 from ..stream import DataStream, DataStreamSelector
 from ..slot import SlotIdentifier
@@ -42,7 +42,7 @@ def _create_primitives():
     ident = Word(alphas+u"_", alphas + nums + u"_")
     number = Regex(u'((0x[a-fA-F0-9]+)|[+-]?[0-9]+)').setParseAction(lambda s, l, t: [int(t[0], 0)])
     binary = Regex(u'hex:([a-fA-F0-9][a-fA-F0-9])+').setParseAction(lambda s, l, t: [unhexlify(t[0][4:])])
-    quoted_string = dblQuotedString
+    quoted_string = QuotedString(quoteChar='"', escChar="\\", unquoteResults=True)
 
     comment = Literal('#') + restOfLine
 

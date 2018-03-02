@@ -265,6 +265,7 @@ def test_on_block_dual(parser):
 
     assert counter1.count() == 11
 
+
 def test_latch_block(parser):
     """Make sure that we can compile and run latch blocks."""
 
@@ -317,8 +318,8 @@ def test_config_block(parser):
     assert sg.get_config(SlotIdentifier.FromString('controller'), 0x2000) == (u'uint32_t', 5)
     assert sg.get_config(SlotIdentifier.FromString('slot 1'), 0x5000) == (u'uint8_t', 10)
     assert sg.get_config(SlotIdentifier.FromString('slot 2'), 0x5100) == (u'int8_t', -10)
-    assert sg.get_config(SlotIdentifier.FromString('slot 3'), 0x5200) == (u'uint8_t[]', u'"[10,20,30,40]"')
-    assert sg.get_config(SlotIdentifier.FromString('slot 4'), 0x5300) == (u'string', u'"test"')
+    assert sg.get_config(SlotIdentifier.FromString('slot 3'), 0x5200) == (u'uint8_t[]', u'[10,20,30,40]')
+    assert sg.get_config(SlotIdentifier.FromString('slot 4'), 0x5300) == (u'string', u'test')
 
 
 def test_config_block_binary(parser):
@@ -337,6 +338,21 @@ def test_config_block_binary(parser):
     assert valtype == u'binary'
     assert isinstance(val, bytes)
 
+
+def test_meta_statement(parser):
+    """Make sure we properly store metadata."""
+
+    parser.parse_file(get_path(u'basic_meta_file.sgf'))
+
+    model = DeviceModel()
+    parser.compile(model=model)
+
+    sg = parser.sensor_graph
+
+    assert sg.metadata_database['name'] == 'NFC300'
+    assert sg.metadata_database['version'] == '1.0.0'
+    assert sg.metadata_database['cloud_name'] == 'nfc300-1-0-0'
+    assert sg.metadata_database['app_tag'] == 1024
 
 def test_copy_statement(parser):
     """Make sure we can copy data using copy."""
@@ -424,6 +440,6 @@ def test_copy_count_statement(parser):
     sim.stop_condition('run_time 3 seconds')
     sim.step(user_connected, 8) # Simulates a connected user
     sim.run()
-    print(output);
+    print(output)
     assert output.count() == 1
     print(output)
