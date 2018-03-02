@@ -1,6 +1,6 @@
 # Release Notes
 
-All major changes in each released version of IOTileTest are listed here.
+All major changes in each released version of iotile-sensorgraph are listed here.
 
 ## 0.5.0
 
