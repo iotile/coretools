@@ -31,8 +31,7 @@ Read the latest [Documentation](http://coretools.readthedocs.io/en/latest/)!
 |IOTile-Build  |[![PyPI version](https://badge.fury.io/py/iotile-build.svg)](https://badge.fury.io/py/iotile-build)           |
 |IOTile-Gateway|[![PyPI version](https://badge.fury.io/py/iotile-gateway.svg)](https://badge.fury.io/py/iotile-gateway)       |
 |IOTile-SensorGraph|[![PyPI version](https://badge.fury.io/py/iotile-sensorgraph.svg)](https://badge.fury.io/py/iotile-sensorgraph)|
-|IOTile-Ship|[![PyPI version](https://badge.fury.io/py/iotile-ship.svg)](https://badge.fury.io/py/iotile-ship)
-        |
+|IOTile-Ship|[![PyPI version](https://badge.fury.io/py/iotile-ship.svg)](https://badge.fury.io/py/iotile-ship)                |
 |IOTile-Test   |[![PyPI version](https://badge.fury.io/py/iotile-test.svg)](https://badge.fury.io/py/iotile-test)             |
 |IOTile-Cloud  |[![PyPI version](https://badge.fury.io/py/iotile-ext-cloud.svg)](https://badge.fury.io/py/iotile-ext-cloud)   |
 |BLED112-Plugin|[![PyPI version](https://badge.fury.io/py/iotile-transport-bled112.svg)](https://badge.fury.io/py/iotile-transport-bled112)|
