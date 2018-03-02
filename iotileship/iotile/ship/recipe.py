@@ -1,11 +1,10 @@
 from __future__ import (unicode_literals, print_function, absolute_import)
+import time
 from builtins import str
-
+from string import Template
 from future.utils import viewitems
-
 from iotile.core.exceptions import ArgumentError
-from iotile.ship.exceptions import RecipeFileInvalid, UnknownRecipeActionType
-
+from iotile.ship.exceptions import RecipeFileInvalid, UnknownRecipeActionType, RecipeVariableNotPassed
 
 class RecipeObject(object):
     """An object representing a fixed set of processing steps.
@@ -54,26 +53,30 @@ class RecipeObject(object):
             "yaml": cls._process_yaml,
         }
         format_handler = format_map.get(file_format)
-        
+
         if format_handler is None:
-            raise ArgumentError("Unknown file format or file extension", file_format=file_format, known_formats=[x for x in format_map if format_map[x] is not None])
+            raise ArgumentError("Unknown file format or file extension", file_format=file_format, \
+                known_formats=[x for x in format_map if format_map[x] is not None])
         recipe_info = cls._process_yaml(path)
 
         name = recipe_info.get('name')
         description = recipe_info.get('description')
 
         if name is None or description is None:
-            raise RecipeFileInvalid("Recipe file must contain a name and description", path=path, name=name, description=description)
+            raise RecipeFileInvalid("Recipe file must contain a name and description", path=path, \
+                name=name, description=description)
 
         steps = []
         for i, action in enumerate(recipe_info.get('actions', [])):
             action_name = action.get('name')
             if action_name is None:
-                raise RecipeFileInvalid("Action is missing required name parameter", parameters=action, path=path)
+                raise RecipeFileInvalid("Action is missing required name parameter", \
+                    parameters=action, path=path)
 
             action_class = actions_dict.get(action_name)
             if action_class is None:
-                raise UnknownRecipeActionType("Unknown step specified in recipe", action=action_name, step=i + 1, path=path)
+                raise UnknownRecipeActionType("Unknown step specified in recipe", \
+                    action=action_name, step=i + 1, path=path)
 
             remaining_params = {x: y for x, y in viewitems(action) if x != 'name'}
             step = (action_class, remaining_params)
@@ -88,7 +91,33 @@ class RecipeObject(object):
             info = yaml.load(f)
             return info
 
-    def prepare(self, variables=None):
+    def _complete_parameters(self, param, variables):
+        """Replace any parameters passed as {} in the yaml file with the
+        variable names that are passed in
+
+        Only strings, lists of strings, and dictionaries of strings can have
+        replaceable values at the moment
+        """
+        if isinstance(param, list):
+            new_param = list(param)
+            for i in range(len(new_param)):
+                new_param[i] = self._complete_parameters(new_param[i], variables)
+            return new_param
+        elif isinstance(param, dict):
+            new_param = dict(param)
+            for key, value in new_param.items():
+                new_param[key] = self._complete_parameters(value, variables)
+            return new_param
+        else:
+            try:
+                return Template(param).substitute(variables)
+            except TypeError, e:
+                return param
+            except KeyError, e:
+                raise RecipeVariableNotPassed("Variable undefined, need to pass in \
+                    through 'variables'", undefined_variable=e.message)
+
+    def prepare(self, variables):
         """Initialize all steps in this recipe using their parameters.
 
         Args:
@@ -100,13 +129,32 @@ class RecipeObject(object):
             list of RecipeActionObject like instances: The list of instantiated
                 steps that can be used to execute this recipe.
         """
+        initialized_steps = []
+        if variables is None:
+            variables = dict()
+        for step, params in self._steps:
+            new_params = self._complete_parameters(params, variables)
+            initialized_steps.append(step(new_params))
+        return initialized_steps
 
-        return [step(params) for step, params in self._steps]
-
-    def run(self):
+    def run(self, variables=None):
         """Initialize and run this recipe."""
+        initialized_steps = self.prepare(variables)
+        for i, step in enumerate(initialized_steps):
+            start_time = time.time()
+            print("===> Step %d: %s\t Description: %s" % (i+1, self._steps[i][0].__name__, \
+                self._steps[i][1].get('description', '')))
+            out = step.run()
+            print("======> Time Elapsed: %.2f seconds" % (time.time()-start_time))
+            if out is not None:
+                print(out[1])
 
-        initialized_steps = self.prepare()
-
-        for step in initialized_steps:
-            step.run()
+    def __str__(self):
+        output_string = "========================================\n"
+        output_string += "Recipe: \t%s\n" % (self.name)
+        output_string += "Desciption: \t%s\n" % (self.description)
+        output_string += "========================================\n"
+        for i, step in enumerate(self._steps):
+            output_string += "Step %d: %s\t Description: %s\n " % \
+            (i+1, step[0].__name__, step[1].get('description', ''))
+        return output_string

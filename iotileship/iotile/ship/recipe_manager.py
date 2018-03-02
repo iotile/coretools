@@ -1,9 +1,8 @@
 from __future__ import (unicode_literals, print_function, absolute_import)
 from builtins import str
 
-import pkg_resources
-import os, sys
 import glob
+import pkg_resources
 from iotile.ship.recipe import RecipeObject
 from iotile.ship.exceptions import RecipeNotFoundError
 
@@ -63,17 +62,23 @@ class RecipeManager(object):
         """
 
         for yaml_file in glob.glob("%s/*.yaml" % recipe_folder):
-            recipe = RecipeObject.FromFile(yaml_file, self._recipe_actions)
-            self._recipes[recipe.name] = recipe
+            try:
+                recipe = RecipeObject.FromFile(yaml_file, self._recipe_actions)
+                self._recipes[recipe.name] = recipe
+            except:
+                pass
 
     def get_recipe(self, recipe_name):
         """Get a recipe by name.
 
         Args:
-            recipe_name (str): The name of the recipe to fetch.
+            recipe_name (str): The name of the recipe to fetch. Can be either the
+                yaml file name or the name of the recipe.
         """
-
-        recipe = self._recipes.get(recipe_name)
+        if recipe_name.endswith('.yaml'):
+            recipe = self._recipes.get(RecipeObject.FromFile(recipe_name, self._recipe_actions).name)
+        else:
+            recipe = self._recipes.get(recipe_name)
         if recipe is None:
             raise RecipeNotFoundError("Could not find recipe", recipe_name=recipe_name)
 

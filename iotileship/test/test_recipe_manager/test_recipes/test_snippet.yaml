@@ -1,0 +1,17 @@
+name: "test_snippet"
+description: "recipe to test prompt messages"
+idempotent: True
+actions:
+  - description: "Test snippet piping"
+    name: "PipeSnippetStep"
+    context: "iotile hw --port=virtual:simple connect_direct 1 controller"
+    commands:
+      - "tile_version"
+      - "tile_status"
+      - "${test_commmand}"
+      - "back"
+    expect:
+      - "[1, 0, 0]"
+      -
+      - "${test_output}"
+      - 

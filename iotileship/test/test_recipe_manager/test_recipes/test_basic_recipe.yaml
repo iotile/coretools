@@ -2,7 +2,6 @@ name: "test_basic_yaml"
 description: "recipe to test prompt messages"
 idempotent: True
 actions:
-  - name: "PromptStep"
-    message: "Connect JLink to tile 1"
-  - name: "WaitStep"
-    seconds: 2
+  - description: "Wait for 0.2 seconds"
+    name: "WaitStep"
+    seconds: 0.2

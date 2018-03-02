@@ -16,8 +16,6 @@
 from setuptools import setup, find_packages
 import version
 
-embedded_scons = "0.0.1"
-
 setup(
     name="iotile-ship",
     packages=find_packages(exclude=("test",)),
@@ -33,8 +31,11 @@ setup(
             'iotile-ship = iotile.ship.scripts.iotile_ship:main'
         ],
         'iotile.recipe_action': [
-            'PromptStep = iotile.ship.actions.prompt_step:PromptStep',
-            'WaitStep   = iotile.ship.actions.wait_step:WaitStep'
+            'PromptStep         = iotile.ship.actions.prompt_step:PromptStep',
+            'WaitStep           = iotile.ship.actions.wait_step:WaitStep',
+            'PipeSnippetStep    = iotile.ship.actions.pipe_snippet_step:PipeSnippetStep',
+            'SyncCloudStep      = iotile.ship.actions.sync_cloud_step:SyncCloudStep',
+            'VerifyDeviceStep   = iotile.ship.actions.verify_device_step:VerifyDeviceStep'
         ]
     },
     description="IOTile Ship Support",
