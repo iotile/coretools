@@ -1,0 +1,29 @@
+name: "test_verify_device_step"
+description: "recipe to test verify device step"
+idempotent: True
+actions:
+  - description:  "Test Device"
+    name:         "VerifyDeviceStep"
+    port:         "bled112"
+    connect:      "0"
+    app_tag:      0
+    os_tag:       0
+    app_version:  '0.0'
+    os_version:   '0.0'
+    tile_versions:
+        8:            (2, 11, 4)
+        12:           (2, 1, 1)
+    realtime_streams:
+      - 0x1012
+      - 0x1013
+
+  - description:  "Test Device Partial"
+    name:         "VerifyDeviceStep"
+    port:         "bled112"
+    app_tag:      0
+    tile_versions:
+        8:            (2, 11, 4)
+        12:           (2, 1, 1)
+    realtime_streams:
+      - 0x1012
+      - 0x1013
