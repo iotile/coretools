@@ -15,6 +15,7 @@ stream = None
 selector = None
 stream_trigger = None
 time_interval = None
+tick_interval = None
 quoted_string = None
 semi = None
 comment = None
@@ -32,7 +33,7 @@ sensor_graph = None
 
 
 def _create_primitives():
-    global binary, ident, rvalue, number, quoted_string, semi, time_interval, slot_id, comp, config_type, stream, comment, stream_trigger, selector
+    global binary, ident, rvalue, number, quoted_string, semi, tick_interval, time_interval, slot_id, comp, config_type, stream, comment, stream_trigger, selector
 
     if ident is not None:
         return
@@ -66,8 +67,10 @@ def _create_primitives():
     config_type = oneOf('uint8_t uint16_t uint32_t int8_t int16_t int32_t uint8_t[] uint16_t[] uint32_t[] int8_t[] int16_t[] int32_t[] string binary')
     comp = oneOf('> < >= <= == ~=')
 
+    # Time intervals are all based on internal system clocks so we include a 'system' tag
     time_unit = oneOf(u"second seconds minute minutes hour hours day days week weeks month months year years")
-    time_interval = (number + time_unit).setParseAction(lambda s, l, t: [t[0]*time_unit_multipliers[t[1]]])
+    time_interval = (number + time_unit).setParseAction(lambda s, l, t: [t[0]*time_unit_multipliers[t[1]], 'system'])
+    tick_interval = (number + (Literal("tick_1") | Literal("tick_2"))).setParseAction(lambda s, l, t: [t[0], t[1]])
 
     slot_id = Literal(u"controller") | (Literal(u'slot') + number)
     slot_id.setParseAction(lambda s,l,t: [SlotIdentifier.FromString(u' '.join([str(x) for x in t]))])
@@ -118,7 +121,7 @@ def _create_block_bnf():
 
     trigger_clause = Group(stream_trigger | Group(stream).setResultsName('stream_always') | Group(ident).setResultsName('identifier'))
 
-    every_block_id = Group(Literal(u'every').suppress() - time_interval).setResultsName('every_block')
+    every_block_id = Group(Literal(u'every').suppress() - (time_interval | tick_interval)).setResultsName('every_block')
     when_block_id = Group(Literal(u'when').suppress() + Literal("connected").suppress() - Literal("to").suppress() - slot_id).setResultsName('when_block')
     latch_block_id = Group(Literal(u'when').suppress() - stream_trigger).setResultsName('latch_block')
     config_block_id = Group(Literal(u'config').suppress() - slot_id).setResultsName('config_block')

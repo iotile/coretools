@@ -43,8 +43,11 @@ class TriggerScope(Scope):
         trigger_stream = self.allocator.attach_stream(self.trigger_stream)
         return (trigger_stream, self.trigger_cond)
 
-    def clock(self, interval):
+    def clock(self, interval, basis):
         """Return a NodeInput tuple for triggering an event every interval.
+
+        We request each distinct type of clock at most once and combine it with our
+        latch stream each time it is requested.
 
         Args:
             interval (int): The interval (in seconds) at which this input should

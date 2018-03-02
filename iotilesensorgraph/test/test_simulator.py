@@ -3,7 +3,7 @@ from typedargs.exceptions import ArgumentError
 from iotile.sg.sim import SensorGraphSimulator
 from iotile.sg.sim.stimulus import SimulationStimulus
 from iotile.sg.slot import SlotIdentifier
-from iotile.sg.known_constants import config_fast_tick_secs
+from iotile.sg.known_constants import config_fast_tick_secs, config_tick1_secs, config_tick2_secs
 from iotile.sg import DeviceModel, SensorLog, SensorGraph, DataStream
 from iotile.core.hw.reports import IOTileReading
 
@@ -26,6 +26,34 @@ def usertick_sg():
 
     sg.add_node('(system input 3 always) => counter 1 using copy_latest_a')
     sg.add_config(SlotIdentifier.FromString('controller'), config_fast_tick_secs, 'uint32_t', 2)
+
+    return sg
+
+
+@pytest.fixture
+def tick1_sg():
+    """A sensorgrah that listens to tick1."""
+
+    model = DeviceModel()
+    log = SensorLog(model=model)
+    sg = SensorGraph(log, model=model)
+
+    sg.add_node('(system input 5 always) => counter 1 using copy_latest_a')
+    sg.add_config(SlotIdentifier.FromString('controller'), config_tick1_secs, 'uint32_t', 2)
+
+    return sg
+
+
+@pytest.fixture
+def tick2_sg():
+    """A sensorgrah that listens to tick1."""
+
+    model = DeviceModel()
+    log = SensorLog(model=model)
+    sg = SensorGraph(log, model=model)
+
+    sg.add_node('(system input 6 always) => counter 1 using copy_latest_a')
+    sg.add_config(SlotIdentifier.FromString('controller'), config_tick2_secs, 'uint32_t', 2)
 
     return sg
 
@@ -117,6 +145,33 @@ def test_usertick(usertick_sg):
     # Make sure the sensor graph ran correctly
     last_input = usertick_sg.sensor_log.inspect_last(DataStream.FromString('system input 3'))
     last_output = usertick_sg.sensor_log.inspect_last(DataStream.FromString('counter 1'))
+
+    assert last_input.value == 200
+    assert last_output.value == 200
+
+
+def test_tick1(tick1_sg):
+    """Make sure we receive tick_1 ticks in the simulation."""
+
+    assert tick1_sg.get_tick('user1') == 2
+
+    sim = SensorGraphSimulator(tick1_sg)
+    sim.stop_condition('run_time 100 seconds')
+
+    sim.run()
+
+    # Make sure the sensor graph ran correctly
+    last_input = tick1_sg.sensor_log.inspect_last(DataStream.FromString('system input 5'))
+    last_output = tick1_sg.sensor_log.inspect_last(DataStream.FromString('counter 1'))
+
+    assert last_input.value == 100
+    assert last_output.value == 100
+
+    sim.run()
+
+    # Make sure the sensor graph ran correctly
+    last_input = tick1_sg.sensor_log.inspect_last(DataStream.FromString('system input 5'))
+    last_output = tick1_sg.sensor_log.inspect_last(DataStream.FromString('counter 1'))
 
     assert last_input.value == 200
     assert last_output.value == 200

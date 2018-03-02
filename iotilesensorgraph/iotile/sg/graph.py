@@ -65,6 +65,14 @@ class SensorGraph(object):
                 if not found and selector.buffered:
                     raise NodeConnectionError("Node has input that refers to another node that has not been created yet", node_descriptor=node_descriptor, input_selector=str(selector), input_index=i)
 
+        # Also make sure we add this node's output to any other existing node's inputs
+        # this is important for constant nodes that may be written from multiple places
+        # FIXME: Make sure when we emit nodes, they are topologically sorted
+        for other_node in self.nodes:
+            for selector, trigger in other_node.inputs:
+                if selector.matches(node.stream):
+                    node.connect_output(other_node)
+
         # Find and load the processing function for this node
         func = self.find_processing_function(processor)
         if func is None:

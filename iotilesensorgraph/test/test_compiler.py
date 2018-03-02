@@ -33,7 +33,7 @@ def test_every_block_compilation(parser):
     for x in sg.dump_nodes():
         print(x)
 
-    assert len(sg.nodes) == 5
+    assert len(sg.nodes) == 7
 
     sg.load_constants()
     # Now make sure it produces the right output
@@ -61,7 +61,7 @@ def test_every_block_with_buffering(parser):
     for x in sg.dump_nodes():
         print(x)
 
-    assert len(sg.nodes) == 5
+    assert len(sg.nodes) == 7
 
     sg.load_constants()
     # Now make sure it produces the right output
@@ -105,7 +105,7 @@ def test_every_block_splitting(parser):
     for x in sg.dump_nodes():
         print(x)
 
-    assert len(sg.nodes) == 8
+    assert len(sg.nodes) == 10
 
     # Now make sure it produces the right output
     counter15 = log.create_walker(DataStreamSelector.FromString('counter 15'))
@@ -257,13 +257,13 @@ def test_on_block_dual(parser):
     for _i in range(0, 10):
         sim.step(DataStream.FromString('input 1'), 5)
 
-    assert counter1.count() == 10
+    assert counter1.count() == 11
 
     sim.step(DataStream.FromString('input 2'), 0)
     for _i in range(0, 10):
         sim.step(DataStream.FromString('input 1'), 5)
 
-    assert counter1.count() == 10
+    assert counter1.count() == 11
 
 def test_latch_block(parser):
     """Make sure that we can compile and run latch blocks."""
@@ -290,9 +290,11 @@ def test_latch_block(parser):
     assert counter15.count() == 0
 
     sim.step(DataStream.FromString('input 10'), 1)
+    assert log.inspect_last(DataStream.FromString('constant 1')).value == 1
+    assert log.inspect_last(DataStream.FromString('constant 1024')).value == 1
     counter15.skip_all()
 
-    sim.run(sg)
+    sim.run()
 
     assert counter15.count() == 60
 

@@ -78,6 +78,8 @@ class RemoveDeadCodePass(object):
 
             sensor_graph.nodes.remove(node)
 
+            # FIXME: Check if we need to destroy any walkers here
+
             return True
 
         return False

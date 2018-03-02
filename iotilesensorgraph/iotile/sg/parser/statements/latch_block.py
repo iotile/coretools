@@ -4,7 +4,7 @@ from future.utils import python_2_unicode_compatible
 from .statement import SensorGraphStatement
 from ...node import InputTrigger
 from ...stream import DataStream
-from ..scopes import ClockScope
+from ..scopes import GatedClockScope
 
 
 @python_2_unicode_compatible
@@ -51,18 +51,9 @@ class LatchBlock(SensorGraphStatement):
                 how this statement allocates clocks or other stream resources.
         """
 
-        parent = scope_stack[-1]
-        alloc = parent.allocator
-
-        # We want to create a gated clock that only fires when the latching constant is true
-        clock_stream = alloc.allocate_stream(DataStream.CounterType)  # Don't attach because it's not an input anywhere
-
-        parent_clock = parent.clock(1)
-
-        sensor_graph.add_node(u"({} {} && {} {}) => {} using copy_latest_a".format(parent_clock[0], parent_clock[1], self.stream, self.trigger, clock_stream))
         sensor_graph.add_constant(self.stream, 0)
 
-        new_scope = ClockScope(sensor_graph, scope_stack, (clock_stream, InputTrigger(u'count', u'==', 1)), 1)
+        new_scope = GatedClockScope(sensor_graph, scope_stack, (self.stream, self.trigger))
         scope_stack.append(new_scope)
 
     def execute_after(self, sensor_graph, scope_stack):

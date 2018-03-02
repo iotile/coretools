@@ -183,22 +183,21 @@ class SensorGraphSimulator(object):
 
     def _check_additional_ticks(self, tick_value):
         fast_interval = self.sensor_graph.get_tick('fast')
-        tick_1 = self.sensor_graph.get_tick('user1')
-        tick_2 = self.sensor_graph.get_tick('user2')
-
-        readings = []
+        tick_1_interval = self.sensor_graph.get_tick('user1')
+        tick_2_interval = self.sensor_graph.get_tick('user2')
 
         if fast_interval != 0 and (tick_value % fast_interval) == 0:
-            readings.append(IOTileReading(self.tick_count, fast_tick.encode(), self.tick_count))
-
-        if tick_1 != 0 and (tick_value % tick_1) == 0:
-            readings.append(IOTileReading(self.tick_count, tick_1.encode(), self.tick_count))
-
-        if tick_2 != 0 and (tick_value % tick_2) == 0:
-            readings.append(IOTileReading(self.tick_count, tick_2.encode(), self.tick_count))
-
-        for reading in readings:
+            reading = IOTileReading(self.tick_count, fast_tick.encode(), self.tick_count)
             self.sensor_graph.process_input(fast_tick, reading, self.rpc_executor)
+
+        if tick_1_interval != 0 and (tick_value % tick_1_interval) == 0:
+            reading = IOTileReading(self.tick_count, tick_1.encode(), self.tick_count)
+            self.sensor_graph.process_input(tick_1, reading, self.rpc_executor)
+
+        if tick_2_interval != 0 and (tick_value % tick_2_interval) == 0:
+            reading = IOTileReading(self.tick_count, tick_2.encode(), self.tick_count)
+            self.sensor_graph.process_input(tick_2, reading, self.rpc_executor)
+
 
     def _check_stop_conditions(self, sensor_graph):
         """Check if any of our stop conditions are met.
