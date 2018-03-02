@@ -42,10 +42,7 @@ class PipeSnippetStep(object):
         if err is not None:
             raise ArgumentError("Output Errored", errors=err, commands=self._commands)
         #Split outputs and remove context strings
-        outputs = re.split(r'\r\n\(.*?\) ', out)
-        outputs[0] = re.split(r'\(.*?\) ', outputs[0])[-1]
-        outputs[-1] = outputs[-1].split(' \r\n')[0]
-
+        outputs = [section.split(') ')[-1].strip() for section in out.split('\n(')]
         return_strings = []
 
         for i in range(len(self._commands)):
