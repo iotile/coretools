@@ -60,10 +60,6 @@ def fleet_id_to_slug(id):
         ArgumentError: if the ID is not in the [1, 16**12] range, or if not a valid string
     """
 
-    if isinstance(id, int):
-        if id >= pow(16, 12) or id < 0:
-            raise ArgumentError("Fleet id outside of bounds")
-
     try:
         fleet_slug = IOTileFleetSlug(id)
     except ValueError:

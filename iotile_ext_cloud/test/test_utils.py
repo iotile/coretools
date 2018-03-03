@@ -56,6 +56,9 @@ def test_fleet_id_to_slug():
     assert fleet_id_to_slug(0x1234L) == 'g--0000-0000-1234'
 
     with pytest.raises(ArgumentError):
+        fleet_id_to_slug('string')
+
+    with pytest.raises(ArgumentError):
         # Only 48bits allowed
         fleet_id_to_slug(pow(16,12))
 
