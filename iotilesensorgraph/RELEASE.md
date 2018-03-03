@@ -1,6 +1,28 @@
 # Release Notes
 
-All major changes in each released version of IOTileTest are listed here.
+All major changes in each released version of iotile-sensorgraph are listed here.
+
+## 0.5.1
+
+- Add support for subtract statement.  This complete support for all currently
+  supported embedded processing nodes.  You can current subtract a constant
+  stream from any other stream.
+
+## 0.5.0
+
+- Add dead code elimination for nodes that produce no visible output.  This
+  improvement is necessary for the introduction of additional user ticks since
+  they will generate a lot of unnecessary nodes in case the user wants to use 
+  them.
+- Improve remove-copylatest optimization pass.  We can now optimize cases where
+  the copy-latest is on a constant node with multiple other nodes writing to
+  that constant node.
+- Topologically sort nodes during compilation to avoid issues when node lists
+  are programmed into an IOTile device.  (Issue #315)
+- Add support for removing unnecessary constant values that may be present
+  after optimization.
+- Adds the ability to specify an app_tag/app_version in an SGF file and output
+  the right programming commands as a snippet.
 
 ## 0.4.0
 

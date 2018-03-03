@@ -4,8 +4,8 @@ from iotile.core.exceptions import *
 from iotile.core.hw.commands import RPCCommand
 from iotile.core.hw.reports.parser import IOTileReportParser
 import threading
-from Queue import Queue, Empty
-from cmdstream import CMDStream
+from queue import Queue, Empty
+from .cmdstream import CMDStream
 import msgpack
 import datetime
 import time
@@ -22,7 +22,7 @@ class WSIOTileClient(WebSocketClient):
     def start(self):
         try:
             self.connect()
-        except Exception, exc:
+        except Exception as exc:
            raise HardwareError("Unable to connect to websockets host", reason=str(exc))
 
         self.connection_established.wait()

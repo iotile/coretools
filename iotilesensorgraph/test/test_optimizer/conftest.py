@@ -41,3 +41,22 @@ def complex_gate_opt():
     raw_sg = compile_sg('complex_gates.sgf')
     optimizer.optimize(raw_sg, model=model)
     return raw_sg
+
+
+@pytest.fixture(scope='module')
+def usertick_gate():
+    """An sg with complex gating using a user tick."""
+
+    return compile_sg('user_tick.sgf')
+
+
+@pytest.fixture(scope='module')
+def usertick_gate_opt():
+    """Optimize the user tick sensor graph."""
+
+    model = DeviceModel()
+    optimizer = SensorGraphOptimizer()
+
+    raw_sg = compile_sg('user_tick.sgf')
+    optimizer.optimize(raw_sg, model=model)
+    return raw_sg

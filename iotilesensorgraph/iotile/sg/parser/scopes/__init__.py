@@ -1,6 +1,5 @@
 from .root_scope import RootScope
 from .trigger_scope import TriggerScope
-from .clock_scope import ClockScope
+from .gated_clock_scope import GatedClockScope
 
-__all__ = ['RootScope', 'TriggerScope', 'ClockScope']
-
+__all__ = ['RootScope', 'TriggerScope', 'GatedClockScope']

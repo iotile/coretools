@@ -131,3 +131,19 @@ def trigger_streamer(*inputs, **kwargs):
 
     # TODO: This function does nothing currently
     return [IOTileReading(0, 0, 0)]
+
+
+def subtract_a_from_b(*inputs, **kwargs):
+    """Subtract stream a from stream b.
+
+    Returns:
+        list(IOTileReading)
+    """
+
+    try:
+        value_a = inputs[0].pop()
+        value_b = inputs[1].pop()
+
+        return [IOTileReading(0, 0, value_b.value - value_a.value)]
+    except StreamEmptyError:
+        return []

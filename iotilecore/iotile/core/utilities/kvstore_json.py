@@ -38,7 +38,7 @@ class JSONKVStore(object):
             folder = sys.prefix
 
         if not os.path.exists(folder):
-            os.makedirs(folder, 0755)
+            os.makedirs(folder, 0o755)
 
         jsonfile = os.path.join(folder, name)
 

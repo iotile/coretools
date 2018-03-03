@@ -1,8 +1,8 @@
 """An adapter class that takes a DeviceAdapter and produces a CMDStream compatible interface
 """
 from copy import deepcopy
-import Queue
-from cmdstream import CMDStream
+import queue
+from .cmdstream import CMDStream
 import datetime
 import time
 from iotile.core.exceptions import HardwareError
@@ -172,7 +172,7 @@ class AdapterCMDStream(CMDStream):
                     res = self.adapter.open_interface_sync(0, 'tracing')
                     if not res['success']:
                         raise HardwareError("Could not open tracing interface to device", reason=res['failure_reason'])
-        except HardwareError, exc:
+        except HardwareError as exc:
             raise HardwareError("Device disconnected unexpectedly and we could not reconnect", reconnect_error=exc)
 
     def _send_rpc(self, address, feature, cmd, payload, **kwargs):
@@ -203,7 +203,7 @@ class AdapterCMDStream(CMDStream):
         self.adapter.send_script_sync(0, str(data), progress_callback)
 
     def _enable_streaming(self):
-        self._reports = Queue.Queue()
+        self._reports = queue.Queue()
         res = self.adapter.open_interface_sync(0, 'streaming')
         if not res['success']:
             raise HardwareError("Could not open streaming interface to device", reason=res['failure_reason'])
@@ -226,7 +226,7 @@ class AdapterCMDStream(CMDStream):
         return res.get('return_value')
 
     def _enable_tracing(self):
-        self._traces = Queue.Queue()
+        self._traces = queue.Queue()
         res = self.adapter.open_interface_sync(0, 'tracing')
         if not res['success']:
             raise HardwareError("Could not open tracing interface to device", reason=res['failure_reason'])

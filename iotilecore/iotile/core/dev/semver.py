@@ -347,7 +347,7 @@ class SemanticVersionRange(object):
 
             try:
                 ver = SemanticVersion.FromString(ver)
-            except DataError, err:
+            except DataError as err:
                 raise ArgumentError("Could not parse ^X.Y.Z version", parse_error=str(err), range_string=range_string)
 
             lower = ver
@@ -360,7 +360,7 @@ class SemanticVersionRange(object):
 
             try:
                 ver = SemanticVersion.FromString(ver)
-            except DataError, err:
+            except DataError as err:
                 raise ArgumentError("Could not parse =X.Y.Z version", parse_error=str(err), range_string=range_string)
 
             conj = (ver, ver, True, True)

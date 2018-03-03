@@ -48,6 +48,8 @@ class ConvertCopyAllToCopyLatest(object):
         # This check can be done if there is 1 input and it is count == 1
         # and the stream type is input or unbuffered
 
+        did_downgrade = False
+
         for node, inputs, _outputs in sensor_graph.iterate_bfs():
             can_downgrade = False
 
@@ -74,6 +76,7 @@ class ConvertCopyAllToCopyLatest(object):
                         break
 
             if can_downgrade:
+                did_downgrade = True
                 node.set_func(u'copy_latest_a', sensor_graph.find_processing_function(u'copy_latest_a'))
 
-        return can_downgrade
+        return did_downgrade

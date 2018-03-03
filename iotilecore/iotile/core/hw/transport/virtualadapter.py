@@ -91,7 +91,7 @@ class VirtualDeviceAdapter(DeviceAdapter):
         self.devices = loaded_devs
         self.scan_interval = self.get_config('scan_interval', 1.0)
         self.last_scan = None
-        
+
         self.set_config('probe_required', True)
         self.set_config('probe_supported', True)
 
@@ -146,7 +146,7 @@ class VirtualDeviceAdapter(DeviceAdapter):
             try:
                 with open(config, "rb") as conf:
                     data = json.load(conf)
-            except IOError, exc:
+            except IOError as exc:
                 raise ArgumentError("Could not open config file", error=str(exc), path=config)
 
             if 'device' not in data:

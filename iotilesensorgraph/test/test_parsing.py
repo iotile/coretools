@@ -27,11 +27,11 @@ def test_language_constructs():
 
     # Test block id parsing
     parsed = language.block_id.parseString('every 1 day')
-    assert parsed.asList()[0][0] == 60*60*24
+    assert parsed.asList()[0][1][0] == 60*60*24
 
     # Test block parsing
     parsed = language.block_bnf.parseString('every 1 day {}')
-    assert parsed.asList()[0][0][0] == 60*60*24
+    assert parsed.asList()[0][0][1][0] == 60*60*24
 
     # Test stream parsing
     parsed = language.stream.parseString('output 1')
@@ -43,7 +43,7 @@ def test_language_constructs():
 
     # Test block with statement parsing
     parsed = language.block_bnf.parseString(u'every 1 day { call 0x5001 on slot 2 => output 1; }')
-    assert parsed.asList()[0][0][0] == 60*60*24
+    assert parsed.asList()[0][0][1][0] == 60*60*24
 
     # Test parsing stream_trigger
     parsed = language.stream_trigger.parseString(u'value(input 2) == 10')
@@ -54,28 +54,41 @@ def test_language_constructs():
 
     # Test parsing on block with identifier
     parsed = language.block_bnf.parseString(u'on test_identifier {}')
-    assert parsed[0][0][0][0].getName() == u'identifier'
-    assert parsed[0][0][0][0][0] == u'test_identifier'
+    print(parsed)
+    assert parsed[0][0][1][0][0].getName() == u'identifier'
+    assert parsed[0][0][1][0][0][0] == u'test_identifier'
 
     parsed = language.block_bnf.parseString(u'on value(input 2) >= 5 {}')
-    assert parsed[0][0][0][0].getName() == u'stream_trigger'
-    assert parsed[0][0][0][0][0] == u'value'
-    assert parsed[0][0][0][0][1] == DataStream.FromString('input 2')
-    assert parsed[0][0][0][0][2] == u'>='
-    assert parsed[0][0][0][0][3] == 5
+    assert parsed[0][0][1][0][0].getName() == u'stream_trigger'
+    assert parsed[0][0][1][0][0][0] == u'value'
+    assert parsed[0][0][1][0][0][1] == DataStream.FromString('input 2')
+    assert parsed[0][0][1][0][0][2] == u'>='
+    assert parsed[0][0][1][0][0][3] == 5
 
     # Test parsing on block with 2 conditions
     parsed = language.block_bnf.parseString(u'on test_identifier and hello_id {}')
-    assert parsed[0][0][0][0].getName() == u'identifier'
-    assert parsed[0][0][0][0][0] == u'test_identifier'
-    assert parsed[0][0][2][0].getName() == u'identifier'
-    assert parsed[0][0][2][0][0] == u'hello_id'
-    assert parsed[0][0][1] == u'and'
+    assert parsed[0][0][1][0][0].getName() == u'identifier'
+    assert parsed[0][0][1][0][0][0] == u'test_identifier'
+    assert parsed[0][0][1][2][0].getName() == u'identifier'
+    assert parsed[0][0][1][2][0][0] == u'hello_id'
+    assert parsed[0][0][1][1] == u'and'
 
     parsed = language.block_bnf.parseString(u'on test_identifier or value(constant 1) == 2 {}')
-    assert parsed[0][0][0][0].getName() == u'identifier'
-    assert parsed[0][0][0][0][0] == u'test_identifier'
-    assert parsed[0][0][1] == u'or'
+    assert parsed[0][0][1][0][0].getName() == u'identifier'
+    assert parsed[0][0][1][0][0][0] == u'test_identifier'
+    assert parsed[0][0][1][1] == u'or'
+
+    # Test parsing subtract statements
+    parsed = language.subtract_stmt.parseString(u"subtract constant 1 => unbuffered 2, default 10;")
+    assert parsed[0].getName() == 'subtract_statement'
+    assert parsed[0][0] == DataStream.FromString('constant 1')
+    assert parsed[0][1] == DataStream.FromString('unbuffered 2')
+    assert parsed[0]['default'] == 10
+
+    parsed = language.subtract_stmt.parseString(u"subtract constant 1 => unbuffered 2;")
+    assert parsed[0].getName() == 'subtract_statement'
+    assert parsed[0][0] == DataStream.FromString('constant 1')
+    assert parsed[0][1] == DataStream.FromString('unbuffered 2')
 
     # Test parser streamer statements
     parsed = language.streamer_stmt.parseString(u'manual streamer on output 1;')
@@ -125,6 +138,10 @@ def test_nested_blocks(parser):
     """Make sure we can parse nested blocks."""
 
     parser.parse_file(get_path('nested_block.sgf'))
+
+    assert parser.statements[0].location.line_no == 1
+    assert parser.statements[0].children[0].location.line_no == 3
+    assert parser.statements[0].children[0].children[0].location.line_no == 5
 
 
 def test_ignoring_comments(parser):

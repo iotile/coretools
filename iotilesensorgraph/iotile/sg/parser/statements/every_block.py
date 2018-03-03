@@ -13,15 +13,22 @@ class EveryBlock(SensorGraphStatement):
             statement.
         children(list(SensorGraphStatement)): The statements that are
             part of this every block.
+        location (LocationInfo): A namedtuple with information on the line this
+            statement was generated from so that we can log appropriate error
+            messages.
     """
 
-    def __init__(self, parsed, children):
+    def __init__(self, parsed, children, location=None):
         self.interval = parsed[0]
+        self.basis = parsed[1]
 
-        super(EveryBlock, self).__init__(children)
+        super(EveryBlock, self).__init__(children, location)
 
     def __str__(self):
-        return u"every %s" % (str(self.interval),)
+        if self.basis == 'system':
+            return u"every %s" % (str(self.interval),)
+
+        return u"every %d %s" % (self.interval, self.basis)
 
     def execute_before(self, sensor_graph, scope_stack):
         """Execute statement before children are executed.
@@ -34,7 +41,7 @@ class EveryBlock(SensorGraphStatement):
         """
 
         parent = scope_stack[-1]
-        new_scope = TriggerScope(sensor_graph, scope_stack, parent.clock(self.interval))
+        new_scope = TriggerScope(sensor_graph, scope_stack, parent.clock(self.interval, basis=self.basis))
         scope_stack.append(new_scope)
 
     def execute_after(self, sensor_graph, scope_stack):

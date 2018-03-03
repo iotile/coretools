@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 0.9.3
+
+- Use UTF-8 encoding on the string returned as controller name
+
 ## 0.9.2
 
 - Additions to make the streamer acknowledgeable virtual device fully testable

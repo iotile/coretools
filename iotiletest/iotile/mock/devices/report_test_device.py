@@ -93,7 +93,7 @@ class ReportTestDevice(VirtualIOTileDevice):
 
         status = (1 << 1) | (1 << 0) #Configured and running
 
-        return [0xFFFF, self.name, 1, 0, 0, status]
+        return [0xFFFF, self.name.encode("utf-8"), 1, 0, 0, status]
 
     @rpc(8, 0x200f, "HHL", "L")
     def acknowledge_streamer(self, index, force, acknowledgement):

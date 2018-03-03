@@ -1,7 +1,7 @@
 """Test to make sure we can create and use SensorGraph objects."""
 
 from iotile.sg import SensorGraph, DeviceModel, SensorLog, DataStream, SlotIdentifier
-from iotile.sg.known_constants import config_user_tick_secs
+from iotile.sg.known_constants import config_fast_tick_secs
 from iotile.core.hw.reports import IOTileReading
 
 
@@ -26,10 +26,10 @@ def test_usertick():
     log = SensorLog(model=model)
     sg = SensorGraph(log, model=model)
 
-    assert sg.user_tick() == 0
+    assert sg.get_tick('fast') == 0
 
-    sg.add_config(SlotIdentifier.FromString('controller'), config_user_tick_secs, 'uint32_t', 1)
-    assert sg.user_tick() == 1
+    sg.add_config(SlotIdentifier.FromString('controller'), config_fast_tick_secs, 'uint32_t', 1)
+    assert sg.get_tick('fast') == 1
 
 
 def test_iteration():

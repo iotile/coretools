@@ -39,8 +39,21 @@ def format_snippet(sensor_graph):
     # Persist the sensor graph
     output.append("persist")
 
-    # Load in the config variables if any
     output.append("back")
+
+    # If we have an app tag and version set program them in
+    app_tag = sensor_graph.metadata_database.get('app_tag')
+    app_version = sensor_graph.metadata_database.get('app_version')
+
+    if app_tag is not None:
+        if app_version is None:
+            app_version = "0.0"
+
+        output.append("test_interface")
+        output.append("set_version app %d --version '%s'" % (app_tag, app_version))
+        output.append("back")
+
+    # Load in the config variables if any
     output.append("config_database")
     output.append("clear_variables")
 
@@ -50,6 +63,8 @@ def format_snippet(sensor_graph):
 
             if conf_type == 'binary':
                 conf_val = 'hex:' + hexlify(conf_val)
+            elif isinstance(conf_val, str):
+                conf_val = '"%s"' % conf_val
 
             output.append("set_variable '{}' {} {} {}".format(slot, conf_var, conf_type, conf_val))
 
