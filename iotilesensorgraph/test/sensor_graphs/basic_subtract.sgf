@@ -1,0 +1,14 @@
+on input 1
+{
+	subtract constant 1 => unbuffered 1, default 10;
+}
+
+on input 2
+{
+	subtract constant 1 => unbuffered 2;
+}
+
+on input 3
+{
+	subtract constant 2 => unbuffered 3;
+}

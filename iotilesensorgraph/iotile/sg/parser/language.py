@@ -23,6 +23,7 @@ comment = None
 streamer_stmt = None
 
 callrpc_stmt = None
+subtract_stmt = None
 simple_statement = None
 generic_statement = None
 
@@ -92,7 +93,7 @@ def _create_primitives():
 
 
 def _create_simple_statements():
-    global binary, ident, rvalue, simple_statement, semi, comp, number, slot_id, callrpc_stmt, generic_statement, streamer_stmt, stream, selector
+    global binary, ident, rvalue, simple_statement, semi, comp, number, slot_id, subtract_stmt, callrpc_stmt, generic_statement, streamer_stmt, stream, selector
 
     if simple_statement is not None:
         return
@@ -103,10 +104,11 @@ def _create_simple_statements():
     callrpc_stmt = Group(Literal("call").suppress() + (ident | number) + Literal("on").suppress() + slot_id + Optional(Literal("=>").suppress() + stream('explicit_stream')) + semi).setResultsName('call_statement')
     streamer_stmt = Group(Optional(Literal("manual")('manual')) + Optional(oneOf(u'encrypted signed')('security')) + Optional(Literal(u'realtime')('realtime')) + Literal('streamer').suppress() -
                           Literal('on').suppress() - selector('selector') - Optional(Literal('to').suppress() - slot_id('explicit_tile')) - Optional(Literal('with').suppress() - Literal('streamer').suppress() - number('with_other')) - semi).setResultsName('streamer_statement')
-    copy_stmt = Group(Literal("copy").suppress() - Optional(oneOf("all count average")('modifier')) - Optional(stream('explicit_input') | number('constant_input')) - Literal("=>") - stream("output") - semi).setResultsName('copy_statement')
+    copy_stmt = Group(Literal("copy").suppress() - Optional(oneOf("all count average")('modifier')) - Optional(stream('explicit_input') | number('constant_input')) - Literal("=>").suppress() - stream("output") - semi).setResultsName('copy_statement')
+    subtract_stmt = Group(Literal("subtract").suppress() - stream('subtract_input') - Literal('=>').suppress() - stream('stream') - Optional(Literal(",").suppress() - Literal('default') - number('default'))).setResultsName('subtract_statement')
     trigger_stmt = Group(Literal("trigger") - Literal("streamer") - number('index') - semi).setResultsName('trigger_statement')
 
-    simple_statement = meta_stmt | require_stmt | set_stmt | callrpc_stmt | streamer_stmt | trigger_stmt | copy_stmt
+    simple_statement = meta_stmt | require_stmt | set_stmt | callrpc_stmt | streamer_stmt | trigger_stmt | copy_stmt | subtract_stmt
 
     # In generic statements, keep track of the location where the match started for error handling
     locator = Empty().setParseAction(lambda s, l, t: l)('location')

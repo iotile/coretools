@@ -2,6 +2,12 @@
 
 All major changes in each released version of iotile-sensorgraph are listed here.
 
+## 0.5.1
+
+- Add support for subtract statement.  This complete support for all currently
+  supported embedded processing nodes.  You can current subtract a constant
+  stream from any other stream.
+
 ## 0.5.0
 
 - Add dead code elimination for nodes that produce no visible output.  This

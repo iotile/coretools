@@ -78,6 +78,18 @@ def test_language_constructs():
     assert parsed[0][0][1][0][0][0] == u'test_identifier'
     assert parsed[0][0][1][1] == u'or'
 
+    # Test parsing subtract statements
+    parsed = language.subtract_stmt.parseString(u"subtract constant 1 => unbuffered 2, default 10;")
+    assert parsed[0].getName() == 'subtract_statement'
+    assert parsed[0][0] == DataStream.FromString('constant 1')
+    assert parsed[0][1] == DataStream.FromString('unbuffered 2')
+    assert parsed[0]['default'] == 10
+
+    parsed = language.subtract_stmt.parseString(u"subtract constant 1 => unbuffered 2;")
+    assert parsed[0].getName() == 'subtract_statement'
+    assert parsed[0][0] == DataStream.FromString('constant 1')
+    assert parsed[0][1] == DataStream.FromString('unbuffered 2')
+
     # Test parser streamer statements
     parsed = language.streamer_stmt.parseString(u'manual streamer on output 1;')
     assert parsed[0]['selector'] == DataStreamSelector.FromString('output 1')

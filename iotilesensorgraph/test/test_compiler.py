@@ -2,7 +2,7 @@ import pdb
 
 import os
 import pytest
-from iotile.sg.exceptions import SensorGraphSyntaxError, StreamEmptyError
+from iotile.sg.exceptions import SensorGraphSyntaxError, SensorGraphSemanticError, StreamEmptyError
 from iotile.sg import DataStream, DeviceModel, DataStreamSelector, SlotIdentifier
 from iotile.sg.parser import SensorGraphFileParser
 from iotile.sg.sim import SensorGraphSimulator
@@ -387,6 +387,51 @@ def test_copy_statement(parser):
     assert val1.value == 0
     assert val2.value == 60
     assert val3.value == 1
+
+
+def test_subtract_statement(parser):
+    """Make sure we can copy data using subtract."""
+
+    parser.parse_file(get_path(u'basic_subtract.sgf'))
+
+    model = DeviceModel()
+    parser.compile(model=model)
+
+    sg = parser.sensor_graph
+    log = sg.sensor_log
+    for x in sg.dump_nodes():
+        print(x)
+
+    sg.load_constants()
+
+    output1 = log.create_walker(DataStreamSelector.FromString('unbuffered 1'))
+    output2 = log.create_walker(DataStreamSelector.FromString('unbuffered 2'))
+    output3 = log.create_walker(DataStreamSelector.FromString('unbuffered 3'))
+
+    sg.process_input(DataStream.FromString('input 1'), IOTileReading(0, 0, 15), None)
+    sg.process_input(DataStream.FromString('input 2'), IOTileReading(0, 0, 20), None)
+    sg.process_input(DataStream.FromString('input 3'), IOTileReading(0, 0, 25), None)
+
+    assert output1.count() == 1
+    assert output2.count() == 1
+    assert output3.count() == 1
+
+    val1 = output1.pop()
+    val2 = output2.pop()
+    val3 = output3.pop()
+
+    assert val1.value == 5
+    assert val2.value == 10
+    assert val3.value == 25
+
+def test_subtract_nonconstant(parser):
+    """Make we we raise an error if you subtract a nonconstant stream."""
+
+    parser.parse_file(get_path(u'basic_subtract_error.sgf'))
+
+    model = DeviceModel()
+    with pytest.raises(SensorGraphSemanticError):
+        parser.compile(model=model)
 
 
 def test_copy_constant_statement(parser):
