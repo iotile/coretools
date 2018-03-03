@@ -9,6 +9,7 @@ from .when_block import WhenBlock
 from .latch_block import LatchBlock
 from .streamer_statement import StreamerStatement
 from .trigger_statement import TriggerStatement
+from .subtract_statement import SubtractStatement
 from .statement import LocationInfo
 
 
@@ -21,6 +22,7 @@ statement_map = {
     'copy_statement': CopyStatement,
     'streamer_statement': StreamerStatement,
     'trigger_statement': TriggerStatement,
+    'subtract_statement': SubtractStatement,
     'every_block': EveryBlock,
     'on_block': OnBlock,
     'when_block': WhenBlock,
