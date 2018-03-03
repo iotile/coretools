@@ -1,6 +1,6 @@
 """Common utility functions used across iotile.cloud packages."""
 
-from iotile_cloud.utils.gid import IOTileDeviceSlug
+from iotile_cloud.utils.gid import IOTileDeviceSlug, IOTileFleetSlug
 from iotile.core.exceptions import ArgumentError
 
 
@@ -22,7 +22,7 @@ def device_slug_to_id(slug):
 
     try:
         device_slug = IOTileDeviceSlug(slug)
-    except Exception:
+    except ValueError:
         raise ArgumentError("Unable to recognize {} as a device id".format(slug))
 
     return device_slug.get_id()
@@ -33,16 +33,40 @@ def device_id_to_slug(id):
 
     Args:
         id (long) : A device id
-        id (string) : A device slug in the form of XXXX, XXXX-XXXX-XXXX-XXXX, d--XXXX, d--XXXX-XXXX-XXXX-XXXX
+        id (string) : A device slug in the form of XXXX, XXXX-XXXX-XXXX, d--XXXX, d--XXXX-XXXX-XXXX-XXXX
     Returns:
         str: The device slug in the d--XXXX-XXXX-XXXX-XXXX format
     Raises:
-        ArgumentError: if the ID is not in the [1, 16**16] range, or if not a valid string
+        ArgumentError: if the ID is not in the [1, 16**12] range, or if not a valid string
     """
 
     try:
         device_slug = IOTileDeviceSlug(id)
-    except Exception:
+    except ValueError:
         raise ArgumentError("Unable to recognize {} as a device id".format(id))
 
     return str(device_slug)
+
+
+def fleet_id_to_slug(id):
+    """ Converts a fleet id into a correct fleet slug.
+
+    Args:
+        id (long) : A fleet id
+        id (string) : A device slug in the form of XXXX, XXXX-XXXX-XXXX, g--XXXX, g--XXXX-XXXX-XXXX
+    Returns:
+        str: The device slug in the g--XXXX-XXXX-XXX format
+    Raises:
+        ArgumentError: if the ID is not in the [1, 16**12] range, or if not a valid string
+    """
+
+    if isinstance(id, int):
+        if id >= pow(16, 12) or id < 0:
+            raise ArgumentError("Fleet id outside of bounds")
+
+    try:
+        fleet_slug = IOTileFleetSlug(id)
+    except ValueError:
+        raise ArgumentError("Unable to recognize {} as a fleet id".format(id))
+
+    return str(fleet_slug)
