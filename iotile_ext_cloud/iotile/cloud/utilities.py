@@ -21,7 +21,7 @@ def device_slug_to_id(slug):
         raise ArgumentError("Invalid device slug that is not a string", slug=slug)
 
     try:
-        device_slug = IOTileDeviceSlug(slug)
+        device_slug = IOTileDeviceSlug(slug, allow_64bits=False)
     except ValueError:
         raise ArgumentError("Unable to recognize {} as a device id".format(slug))
 
@@ -41,7 +41,7 @@ def device_id_to_slug(id):
     """
 
     try:
-        device_slug = IOTileDeviceSlug(id)
+        device_slug = IOTileDeviceSlug(id, allow_64bits=False)
     except ValueError:
         raise ArgumentError("Unable to recognize {} as a device id".format(id))
 
