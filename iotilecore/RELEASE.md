@@ -2,9 +2,10 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
-## HEAD
+## 3.20.0
 
 - Minor python 3 compatibility adjustments on iotile-core
+- Add hardware_version and check_hardware RPCs to proxy for all tiles
 
 ## 3.19.3
 
