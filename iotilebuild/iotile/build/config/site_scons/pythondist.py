@@ -105,6 +105,11 @@ def generate_setup_py(target, source, env):
     data['package'] = tile.support_distribution
     data['version'] = tile.parsed_version.pep440_string()
     data['deps'] = ["{0} ~= {1}".format(x.support_distribution, x.parsed_version.pep440_string()) for x in _iter_dependencies(tile) if x.has_wheel]
+
+    # If there are some python packages needed, we add them to the list of dependencies required
+    if tile.support_wheel_depends:
+        data['deps'] += tile.support_wheel_depends
+
     data['entry_points'] = entry_points
 
     outdir = os.path.dirname(str(target[0]))
