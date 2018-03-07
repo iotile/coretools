@@ -6,6 +6,7 @@ from iotile.sg.exceptions import SensorGraphSyntaxError, SensorGraphSemanticErro
 from iotile.sg import DataStream, DeviceModel, DataStreamSelector, SlotIdentifier
 from iotile.sg.parser import SensorGraphFileParser
 from iotile.sg.sim import SensorGraphSimulator
+from iotile.sg import compile_sgf
 from iotile.sg.known_constants import user_connected
 import iotile.sg.parser.language as language
 from iotile.core.hw.reports import IOTileReading
@@ -74,6 +75,16 @@ def test_every_block_with_buffering(parser):
 
     assert output1.count() == 12
     assert buffered1.count() == 12
+
+
+def test_onefunction_compiler():
+    """Make sure compile_sgf works."""
+
+    sg = compile_sgf(get_path(u'basic_output.sgf'), optimize=False)
+    assert len(sg.nodes) == 7
+
+    sg2 = compile_sgf(get_path(u'basic_output.sgf'))
+    assert len(sg2.nodes) < len(sg.nodes)
 
 
 def test_streamers(parser):
