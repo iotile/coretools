@@ -9,7 +9,7 @@ def compare_binary_data(data, reference_file):
     with open(in_path, "rb") as in_file:
         ref_data = in_file.read()
 
-    assert data == ref_data
+    assert data == bytearray(ref_data)
 
 
 def test_script_output_format(usertick_gate_opt):
