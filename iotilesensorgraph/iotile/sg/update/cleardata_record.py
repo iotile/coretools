@@ -80,4 +80,4 @@ class ClearDataRecord(SendErrorCheckingRPCRecord):
         return ClearDataRecord(address=address)
 
     def __str__(self):
-        return "Clear all sensorgrapgh readings"
+        return "Clear all sensorgraph readings"

@@ -13,6 +13,10 @@ from iotile.core.exceptions import ArgumentError
 def format_script(sensor_graph):
     """Create a binary script containing this sensor graph.
 
+    This function produces a repeatable script by applying a known sorting
+    order to all constants and config variables when iterating over those
+    dictionaries.
+
     Args:
         sensor_graph (SensorGraph): the sensor graph that we want to format
 
@@ -33,13 +37,13 @@ def format_script(sensor_graph):
     for streamer in sensor_graph.streamers:
         records.append(AddStreamerRecord(streamer, address=8))
 
-    for stream, value in viewitems(sensor_graph.constant_database):
+    for stream, value in sorted(viewitems(sensor_graph.constant_database), key=lambda x: x[0]):
         records.append(SetConstantRecord(stream, value, address=8))
 
     records.append(PersistGraphRecord(address=8))
 
-    for slot in sensor_graph.config_database:
-        for config_id in sensor_graph.config_database[slot]:
+    for slot in sorted(sensor_graph.config_database, key=lambda x: x.encode()):
+        for config_id in sorted(sensor_graph.config_database[slot]):
             config_type, value = sensor_graph.config_database[slot][config_id]
             byte_value = _convert_to_bytes(config_type, value)
 
@@ -53,10 +57,6 @@ def format_script(sensor_graph):
         records.append(SetDeviceTagRecord(app_tag=app_tag, app_version=app_version))
 
     script = UpdateScript(records)
-
-    for i, record in enumerate(script.records):
-        print("%d: %s" % (i+1, record))
-
     return script.encode()
 
 
