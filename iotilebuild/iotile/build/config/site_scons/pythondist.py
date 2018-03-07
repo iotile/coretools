@@ -88,6 +88,7 @@ def generate_setup_py(target, source, env):
     modentries = [os.path.splitext(os.path.basename(x))[0] for x in tile.proxy_modules()]
     pluginentries = [os.path.splitext(os.path.basename(x))[0] for x in tile.proxy_plugins()]
     appentries = [os.path.splitext(os.path.basename(x))[0] for x in tile.app_modules()]
+    buildentries = [os.path.splitext(os.path.basename(x))[0] for x in tile.build_steps()]
 
     if len(modentries) > 0:
         entry_points['iotile.proxy'] = ["{0} = {1}.{0}".format(x, tile.support_distribution) for x in modentries]
@@ -97,6 +98,8 @@ def generate_setup_py(target, source, env):
         entry_points['iotile.type_package'] = ["{0} = {1}.{0}".format(x, tile.support_distribution) for x in typelibs]
     if len(appentries) > 0:
         entry_points['iotile.app'] = ["{0} = {1}.{0}".format(x, tile.support_distribution) for x in appentries]
+    if len(buildentries) > 0:
+        entry_points['iotile.recipe_action'] = ["{0} = {1}.{0}".format(x, tile.support_distribution) for x in buildentries]
 
     data['name'] = tile.support_distribution
     data['package'] = tile.support_distribution

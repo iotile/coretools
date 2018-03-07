@@ -179,7 +179,8 @@ class IOTile(object):
         self.support_wheel = "{0}-{1}-py2-none-any.whl".format(self.support_distribution, self.parsed_version.pep440_string())
         self.has_wheel = False
 
-        if len(self.proxy_modules()) > 0 or len(self.proxy_plugins()) > 0 or len(self.type_packages()) > 0 or len(self.app_modules()) > 0:
+        if len(self.proxy_modules()) > 0 or len(self.proxy_plugins()) > 0 or len(self.type_packages()) > 0 or len(self.app_modules()) > 0 or \
+           len(self.build_steps()) > 0:
             self.has_wheel = True
 
     def include_directories(self):
@@ -262,6 +263,17 @@ class IOTile(object):
         """Return a list of all of the python app module that are provided by this tile."""
 
         libs = [x[0] for x in self.products.iteritems() if x[1] == 'app_module']
+
+        if self.filter_prods:
+            libs = [x for x in libs if x in self.desired_prods]
+
+        libs = [os.path.join(self.folder, x) for x in libs]
+        return libs
+
+    def build_steps(self):
+        """Return a list of all of the python build steps that are provided by this tile."""
+
+        libs = [x[0] for x in self.products.iteritems() if x[1] == 'build_step']
 
         if self.filter_prods:
             libs = [x for x in libs if x in self.desired_prods]
