@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileGateway are listed here.
 
+## 1.5.2
+
+- Fix tornado dependency to exclude v5.0.0 until we are properly compatible.
+
 ## 1.5.1
 
 - Fix service_delegate tile init
