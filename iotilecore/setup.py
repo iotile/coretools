@@ -34,7 +34,8 @@ setup(
     entry_points={
         'console_scripts': [
             'iotile = iotile.core.scripts.iotile_script:main',
-            'virtual_device = iotile.core.scripts.virtualdev_script:main'
+            'virtual_device = iotile.core.scripts.virtualdev_script:main',
+            'iotile-updateinfo = iotile.core.scripts.iotile_updateinfo_script:main'
         ],
         'iotile.cmdstream': [
             'ws = iotile.core.hw.transport.websocketstream:WebSocketStream',

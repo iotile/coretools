@@ -227,7 +227,7 @@ class SensorGraph(object):
         """
 
         for streamer in self.streamers:
-            if streamer.walker.matches(stream):
+            if streamer.selector.matches(stream):
                 return True
 
         return False
