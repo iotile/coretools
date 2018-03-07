@@ -2,9 +2,13 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
-## HEAD
+## 3.20.0
 
 - Minor python 3 compatibility adjustments on iotile-core
+- Add support for UpdateScript and UpdateRecord objects to allow for creating
+  device updating scripts directly via CoreTools
+- Add iotile-updateinfo script that will print out everything that a `.trub
+  update file does.
 
 ## 3.19.3
 
