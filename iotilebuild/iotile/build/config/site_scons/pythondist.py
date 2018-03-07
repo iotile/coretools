@@ -98,7 +98,7 @@ def generate_setup_py(target, source, env):
         entry_points['iotile.type_package'] = ["{0} = {1}.{0}".format(x, tile.support_distribution) for x in typelibs]
     if len(appentries) > 0:
         entry_points['iotile.app'] = ["{0} = {1}.{0}".format(x, tile.support_distribution) for x in appentries]
-    if len(appentries) > 0:
+    if len(buildentries) > 0:
         entry_points['iotile.recipe_action'] = ["{0} = {1}.{0}".format(x, tile.support_distribution) for x in buildentries]
 
     data['name'] = tile.support_distribution
