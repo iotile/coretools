@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.20.1
+
+- Add `python_depends` option in `module_settings.py` to install python
+dependencies. (Issue #387)
+
 ## 3.20.0
 
 - Minor python 3 compatibility adjustments on iotile-core
