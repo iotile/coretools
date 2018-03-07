@@ -54,6 +54,9 @@ def format_script(sensor_graph):
 
     script = UpdateScript(records)
 
+    for i, record in enumerate(script.records):
+        print("%d: %s" % (i+1, record))
+
     return script.encode()
 
 
