@@ -37,7 +37,7 @@ def format_script(sensor_graph):
     for streamer in sensor_graph.streamers:
         records.append(AddStreamerRecord(streamer, address=8))
 
-    for stream, value in sorted(viewitems(sensor_graph.constant_database), key=lambda x: x[0]):
+    for stream, value in sorted(viewitems(sensor_graph.constant_database), key=lambda x: x[0].encode()):
         records.append(SetConstantRecord(stream, value, address=8))
 
     records.append(PersistGraphRecord(address=8))
