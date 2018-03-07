@@ -10,6 +10,8 @@ All major changes in each released version of IOTileCore are listed here.
 - Add iotile-updateinfo script that will print out everything that a `.trub
   update file does.
 - Update TileBusProxyObject to add support for hardware_version RPC calls.
+- Add support for having components create custom build steps as part of their
+  build products.
 
 ## 3.19.3
 

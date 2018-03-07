@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.5.9
+
+- Add support for building custom build_steps in python support wheels.
+
 ## 2.5.8
 
 - autobuild_bootstrap_file creates only one command so that temporary hex files
