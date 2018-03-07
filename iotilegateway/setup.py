@@ -21,7 +21,7 @@ setup(
     version=version.version,
     license="LGPLv3",
     install_requires=[
-        "tornado>=4.4.0",
+        "tornado>=4.4.0,<5",
         "iotile-core>=3.0.1",
         "monotonic",
         "msgpack-python>=0.4.8",
