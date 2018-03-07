@@ -10,8 +10,8 @@ def compare_binary_data(data, reference_file):
     with open(in_path, "rb") as in_file:
         ref_data = in_file.read()
 
-    print("Data: %s" % binascii.hexlify(data[:16]))
-    print("Ref : %s" % binascii.hexlify(ref_data[:16]))
+    print("Data: %s" % binascii.hexlify(data[:32]))
+    print("Ref : %s" % binascii.hexlify(ref_data[:32]))
 
     assert data == bytearray(ref_data)
 
