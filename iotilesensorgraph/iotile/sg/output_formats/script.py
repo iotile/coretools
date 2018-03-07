@@ -17,7 +17,7 @@ def format_script(sensor_graph):
         sensor_graph (SensorGraph): the sensor graph that we want to format
 
     Returns:
-        bytes: The binary script data.
+        bytearray: The binary script data.
 
     """
 
@@ -54,7 +54,7 @@ def format_script(sensor_graph):
 
     script = UpdateScript(records)
 
-    return bytes(script.encode())
+    return script.encode()
 
 
 def _convert_to_bytes(type_name, value):
