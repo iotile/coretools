@@ -5,7 +5,7 @@ import itertools
 from collections import namedtuple
 import json
 import os.path
-import sys
+from past.builtins import basestring
 from iotile.core.exceptions import *
 from .semver import SemanticVersion, SemanticVersionRange
 
@@ -153,13 +153,8 @@ class IOTile(object):
                 raise DataError("module must have a python_depends key that is a list of strings",
                                 found=str(self.settings['python_depends']))
 
-            if sys.version_info.major >= 3:
-                str_type = str
-            else:
-                str_type = basestring
-
             for python_depend in self.settings['python_depends']:
-                if not isinstance(python_depend, str_type):
+                if not isinstance(python_depend, basestring):
                     raise DataError("module must have a python_depends key that is a list of strings",
                                     found=str(self.settings['python_depends']))
 
