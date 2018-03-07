@@ -5,7 +5,6 @@ a streamer stored in an IOTile device's embedded firmware.
 """
 
 from __future__ import (unicode_literals, absolute_import, print_function)
-from builtins import str
 import struct
 from typedargs.exceptions import ArgumentError
 from .slot import SlotIdentifier
@@ -57,21 +56,23 @@ def parse_binary_descriptor(bindata):
     else:
         raise ArgumentError("Unknown trigger type for streamer", trigger_code=trigger)
 
-    manual = "manual " if not auto else ""
-    realtime = "realtime " if format_name == 'individual' else ""
+    return DataStreamer(selector, dest_id, format_name, auto, type_name, with_other=with_other)
 
-    security = ""
-    if format_name == 'signedlist_userkey':
-        security = "signed "
 
-    to_slot = ""
-    if not dest_id.controller:
-        to_slot = " to " + str(dest_id)
+def create_binary_descriptor(streamer):
+    """Create a packed binary descriptor of a DataStreamer object.
 
-    with_statement = ""
-    if with_other is not None:
-        with_statement = " with streamer %d" % with_other
+    Args:
+        streamer (DataStreamer): The streamer to create a packed descriptor for
 
-    template = "{manual}{security}{realtime}streamer on {selector}{to_slot}{with_other}"
-    return template.format(manual=manual, security=security, realtime=realtime, selector=selector,
-                           with_other=with_statement, to_slot=to_slot)
+    Returns:
+        bytes: A packed 14-byte streamer descriptor.
+    """
+
+    trigger = 0
+    if streamer.automatic:
+        trigger = 1
+    elif streamer.with_other is not None:
+        trigger = (1 << 7) | streamer.with_other
+
+    return struct.pack("<8sHBBBx", streamer.dest.encode(), streamer.selector.encode(), trigger, streamer.KnownFormats[streamer.format], streamer.KnownTypes[streamer.report_type])

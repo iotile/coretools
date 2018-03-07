@@ -68,8 +68,7 @@ class StreamerStatement(SensorGraphStatement):
                 how this statement allocates clocks or other stream resources.
         """
 
-        walker = sensor_graph.sensor_log.create_walker(self.selector)
-        streamer = DataStreamer(walker, self.dest, self.report_format, self.auto, with_other=self.with_other)
+        streamer = DataStreamer(self.selector, self.dest, self.report_format, self.auto, with_other=self.with_other)
         sensor_graph.add_streamer(streamer)
 
     def __str__(self):

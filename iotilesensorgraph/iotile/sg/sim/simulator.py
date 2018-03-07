@@ -81,7 +81,7 @@ class SensorGraphSimulator(object):
         """
 
         if selectors is None:
-            selectors = [x.walker.selector for x in self.sensor_graph.streamers]
+            selectors = [x.selector for x in self.sensor_graph.streamers]
 
         self.trace = SimulationTrace(selectors=selectors)
 

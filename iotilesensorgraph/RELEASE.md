@@ -2,6 +2,15 @@
 
 All major changes in each released version of iotile-sensorgraph are listed here.
 
+## 0.6.0
+
+- Add support for directly creating binary device updating scripts from an sgf
+  file. There is a new `-f script` output format supportd in `iotile-sgcompile`
+- Add UpdateRecord objects for all major sensorgraph update actions so that
+  iotile-updateinfo can decode and display nice data on sensorgraph updates.
+- Add single function for compiling and optimizing a sensorgraph: compile_sgf.
+  This is accessible at iotile.sg.compile_sgf.
+
 ## 0.5.1
 
 - Add support for subtract statement.  This complete support for all currently

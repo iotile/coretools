@@ -73,6 +73,58 @@ class TileBusProxyObject(object):
             sleep(0.1)
             return self.rpc(feature, cmd, *args, **kw)
 
+    @return_type("string")
+    def hardware_version(self):
+        """Return the embedded hardware version string for this tile.
+
+        The hardware version is an up to 10 byte user readable string that is
+        meant to encode any necessary information about the specific hardware
+        that this tile is running on.  For example, if you have multiple
+        assembly variants of a given tile, you could encode that information
+        here.
+
+        Returns:
+            str: The hardware vesrion read from the tile.
+        """
+        res = self.rpc(0x00, 0x02, result_type=(0, True))
+
+        #Result is a string but with zero appended to the end to make it a fixed 10 byte
+        #size
+        binary_version = res['buffer']
+
+        ver = ""
+
+        for x in binary_version:
+            if x != 0:
+                ver += chr(x)
+
+        return ver
+
+    @param("expected", "string", desc="The hardware string we expect to find")
+    @return_type("bool")
+    def check_hardware(self, expected):
+        """Make sure the hardware version is what we expect.
+
+        This convenience function is meant for ensuring that we are talking to
+        a tile that has the correct hardware version.
+
+        Args:
+            expected (str): The expected hardware string that is compared
+                against what is reported by the hardware_version RPC.
+
+        Returns:
+            bool: true if the hardware is the expected version, false otherwise
+        """
+
+        if len(expected) < 10:
+            expected += '\0'*(10 - len(expected))
+
+        err, = self.rpc(0x00, 0x03, expected, result_format="L")
+        if err == 0:
+            return True
+
+        return False
+
     @return_type("basic_dict")
     def status(self):
         """
