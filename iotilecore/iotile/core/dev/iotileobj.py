@@ -5,6 +5,7 @@ import itertools
 from collections import namedtuple
 import json
 import os.path
+import sys
 from iotile.core.exceptions import *
 from .semver import SemanticVersion, SemanticVersionRange
 
@@ -143,6 +144,26 @@ class IOTile(object):
                 raise DataError("module must have a depends key that is a dictionary", found=str(self.settings['depends']))
 
             archs_with_deps.append(self.settings['depends'].iteritems())
+
+        #Find all python package needed
+        self.support_wheel_depends = []
+
+        if 'python_depends' in self.settings:
+            if not isinstance(self.settings['python_depends'], list):
+                raise DataError("module must have a python_depends key that is a list of strings",
+                                found=str(self.settings['python_depends']))
+
+            if sys.version_info.major >= 3:
+                str_type = str
+            else:
+                str_type = basestring
+
+            for python_depend in self.settings['python_depends']:
+                if not isinstance(python_depend, str_type):
+                    raise DataError("module must have a python_depends key that is a list of strings",
+                                    found=str(self.settings['python_depends']))
+
+                self.support_wheel_depends.append(python_depend)
 
         #Also search through overlays to architectures that are defined in this module_settings.json file
         #and see if those overlays contain dependencies.

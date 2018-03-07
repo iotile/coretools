@@ -71,6 +71,19 @@ def test_build_nodepends(tmpdir):
         os.chdir(olddir)
 
 
+def test_build_with_python_depends(tmpdir):
+    """Make sure we can build a component with a python package dependency"""
+    olddir = os.getcwd()
+    builddir = copy_folder('component_pythondepends', tmpdir)
+
+    try:
+        os.chdir(builddir)
+        err = subprocess.check_call(["iotile", "build"])
+        assert err == 0
+    finally:
+        os.chdir(olddir)
+
+
 def test_build_arm(tmpdir):
     """Make sure we can build a component with no depends key."""
 
@@ -101,7 +114,7 @@ def test_build_python(tmpdir):
 
 def test_build_prerelease(tmpdir):
     """Make sure we can build a component with no depends key."""
-    
+
     olddir = os.getcwd()
     builddir = copy_folder('prerelease_component', tmpdir)
 
@@ -112,6 +125,7 @@ def test_build_prerelease(tmpdir):
     finally:
         os.chdir(olddir)
 
+
 def test_bootstrap_file(tmpdir):
     """Make sure we can create a bootstrap file"""
     olddir = os.getcwd()
@@ -119,19 +133,19 @@ def test_bootstrap_file(tmpdir):
 
     try:
         os.chdir(builddir)
-        
-        print os.listdir(os.path.join('build','output',builddir))
 
-        hexdata = IntelHex(os.path.join('build','output', 'test1.hex'))
+        print os.listdir(os.path.join('build', 'output', builddir))
+
+        hexdata = IntelHex(os.path.join('build', 'output', 'test1.hex'))
         assert hexdata.segments() == [(0x10001014, 0x10001018)]
 
-        assert not os.path.isfile(os.path.join('build','output', 'test2.hex'))
+        assert not os.path.isfile(os.path.join('build', 'output', 'test2.hex'))
 
         err = subprocess.check_call(["iotile", "build"])
         assert err == 0
 
-        hexdata = IntelHex(os.path.join('build','output', 'test_final.hex'))
-        hexdata_dup = IntelHex(os.path.join('build','output', 'test_final_dup.hex'))
+        hexdata = IntelHex(os.path.join('build', 'output', 'test_final.hex'))
+        hexdata_dup = IntelHex(os.path.join('build', 'output', 'test_final_dup.hex'))
         assert hexdata.segments() == hexdata_dup.segments()
     finally:
         os.chdir(olddir)
