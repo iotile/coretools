@@ -12,6 +12,7 @@ from builtins import str, input
 from future.utils import viewitems
 import sys
 import os
+import threading
 import traceback
 import argparse
 import logging
@@ -38,6 +39,22 @@ before the first command you pass otherwise the global arguments will be
 interpreted as arguments to your commands.**
 """
 
+def timeout_thread_handler(timeout, stop_event):
+    """A background thread to kill the process if it takes too long.
+
+    Args:
+        timeout (float): The number of seconds to wait before killing
+            the process.
+        stop_event (Event): An optional event to cleanly stop the background
+            thread if required during testing.
+    """
+
+    stop_happened = stop_event.wait(timeout)
+    if stop_happened is False:
+        print("Killing program due to %f second timeout" % timeout)
+
+    os._exit(2)
+
 
 def create_parser():
     """Create the argument parser for iotile."""
@@ -48,6 +65,7 @@ def create_parser():
     parser.add_argument('-i', '--include', action="append", default=[], help="Only include the specified loggers")
     parser.add_argument('-e', '--exclude', action="append", default=[], help="Exclude the specified loggers, including all others")
     parser.add_argument('-q', '--quit', action="store_true", help="Do not spawn a shell after executing any commands")
+    parser.add_argument('-t', '--timeout', type=float, help="Do not allow this process to run for more than a specified number of seconds.")
     parser.add_argument('commands', nargs=argparse.REMAINDER, help="The command(s) to execute")
 
     return parser
@@ -64,9 +82,8 @@ def parse_global_args(argv):
         argv (list): The command line for this command
 
     Returns:
-        list, bool: The remaining arguments if any that should be passed to the
-            HierarchicalShell and a bool indicating if we should immediately quit
-            after executing commands passed on the command line.
+        Namespace: The parsed arguments, with all of the commands that should
+            be executed in an iotile shell as the attribute 'commands'
     """
 
     parser = create_parser()
@@ -114,7 +131,7 @@ def parse_global_args(argv):
     else:
         root.addHandler(logging.NullHandler())
 
-    return args.commands, args.quit
+    return args
 
 
 def setup_completion(shell):
@@ -160,10 +177,18 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
 
-    argv, quit_immediately = parse_global_args(argv)
+    args = parse_global_args(argv)
 
     type_system.interactive = True
-    line = argv
+    line = args.commands
+
+    timeout_thread = None
+    timeout_stop_event = threading.Event()
+
+    if args.timeout:
+        timeout_thread = threading.Thread(target=timeout_thread_handler, args=(args.timeout, timeout_stop_event))
+        timeout_thread.daemon = True
+        timeout_thread.start()
 
     shell = HierarchicalShell('iotile')
 
@@ -195,10 +220,8 @@ def main(argv=None):
         return 1
 
     # If the user tells us to never spawn a shell, make sure we don't
-    if quit_immediately:
-        finished = True
-
-    if finished:
+    # Also, if we finished our command and there is no context, quit now
+    if args.quit or finished:
         cmdstream.do_final_close()
         return 0
 
@@ -223,6 +246,8 @@ def main(argv=None):
                 finished = shell.invoke_string(linebuf)
             except KeyboardInterrupt:
                 print("")
+                if timeout_stop_event.is_set():
+                    break
             except IOTileException as exc:
                 print(exc.format())
             except Exception:  #pylint:disable=broad-except; We want to make sure the iotile tool never crashes when in interactive shell mode
@@ -240,3 +265,8 @@ def main(argv=None):
     finally:
         #Make sure we close any open CMDStream communication channels so that we don't lockup at exit
         cmdstream.do_final_close()
+
+    # Make sure we cleanly join our timeout thread before exiting
+    if timeout_thread is not None:
+        timeout_stop_event.set()
+        timeout_thread.join()
