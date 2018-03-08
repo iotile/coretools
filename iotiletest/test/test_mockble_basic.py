@@ -1,3 +1,4 @@
+from __future__ import print_function
 import unittest
 import pytest
 import os.path
@@ -30,8 +31,8 @@ class TestMockBLEBasic(unittest.TestCase):
         """
 
         header = struct.pack("<BBBBB", 0, 0, 0xFF, 0xFF, 127)
-        
-        success, notif = self.ble._handle_write(self.ble.TBSendPayloadChar, "")
+
+        success, notif = self.ble._handle_write(self.ble.TBSendPayloadChar, b"")
         assert success is True
         assert len(notif) == 0
 
@@ -42,7 +43,6 @@ class TestMockBLEBasic(unittest.TestCase):
         char_id, resp_header = notif[0]
         assert self.ble.find_uuid(char_id)[0] == self.ble.TBReceiveHeaderChar
 
-        print len(resp_header)
         status, _, resp_len, _ = struct.unpack("<BBBB", resp_header)
         assert status == 0xFF
         assert resp_len == 0
@@ -53,12 +53,11 @@ class TestMockBLEBasic(unittest.TestCase):
 
         header = struct.pack("<BBBBB", 0, 0, 0x04, 0x00, 8)
 
-        success, notif = self.ble._handle_write(self.ble.TBSendPayloadChar, "")
+        success, notif = self.ble._handle_write(self.ble.TBSendPayloadChar, b"")
         assert success is True
         assert len(notif) == 0
 
         success, notif = self.ble._handle_write(self.ble.TBSendHeaderChar, header)
-        print notif
         assert success is True
         assert len(notif) == 2
 

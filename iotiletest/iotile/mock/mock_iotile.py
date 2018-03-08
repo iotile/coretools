@@ -1,9 +1,7 @@
 """Mock IOTile device class for testing other components interactions with IOTile devices
 """
 
-import struct
-import functools
-import inspect
+from __future__ import print_function, absolute_import
 from iotile.core.hw.virtual.virtualdevice import VirtualIOTileDevice, rpc, RPCInvalidIDError, RPCNotFoundError, TileNotFoundError
 
 class MockIOTileDevice(VirtualIOTileDevice):

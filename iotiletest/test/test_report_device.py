@@ -3,7 +3,7 @@
 # info@welldone.org
 # http://welldone.org
 #
-# Modifications to this file from the original created at WellDone International 
+# Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
 from iotile.core.hw.hwmanager import HardwareManager
@@ -105,5 +105,4 @@ def test_report_device_rpc(inline_config_report_hw):
     assert error == 0
 
     result = proxy.query_streamer(index)
-    print result
     assert result["ack"] == value

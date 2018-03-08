@@ -33,9 +33,9 @@ class TestMockBLEBasic(unittest.TestCase):
     def test_rpc(self):
         self.adapter.connect_sync(1, 'test')
 
-        res = self.adapter.send_rpc_sync(1, 8, 4, '', 1.0) 
+        res = self.adapter.send_rpc_sync(1, 8, 4, b'', 1.0)
         assert len(res['payload']) == 6
-        assert res['payload'] == 'TestCN'
+        assert res['payload'] == b'TestCN'
 
     def test_advertisement(self):
         self.adapter.advertise()

@@ -1,6 +1,8 @@
 """Reference device for testing the individual report format
 """
 
+from builtins import range, str
+from past.builtins import basestring
 from iotile.core.hw.virtual.virtualdevice import VirtualIOTileDevice, rpc
 from iotile.core.exceptions import ArgumentError
 from iotile.core.hw.reports import IndividualReadingReport, IOTileReading, SignedListReport
@@ -47,7 +49,7 @@ class ReportTestDevice(VirtualIOTileDevice):
     def __init__(self, args):
         iotile_id = args.get('iotile_id', 1)
 
-        if isinstance(iotile_id, basestring) or isinstance(iotile_id, unicode):
+        if isinstance(iotile_id, basestring):
             iotile_id = int(iotile_id, 16)
 
         generator = args.get('reading_generator', 'sequential')
@@ -93,7 +95,11 @@ class ReportTestDevice(VirtualIOTileDevice):
 
         status = (1 << 1) | (1 << 0) #Configured and running
 
-        return [0xFFFF, self.name.encode("utf-8"), 1, 0, 0, status]
+        name = self.name
+        if isinstance(self.name, str):
+            name = name.encode('utf-8')
+
+        return [0xFFFF, name, 1, 0, 0, status]
 
     @rpc(8, 0x200f, "HHL", "L")
     def acknowledge_streamer(self, index, force, acknowledgement):
@@ -112,7 +118,7 @@ class ReportTestDevice(VirtualIOTileDevice):
     def _generate_sequential(self):
         readings = []
 
-        for i in xrange(self.reading_start, self.num_readings+self.reading_start):
+        for i in range(self.reading_start, self.num_readings+self.reading_start):
             if self.last_acknowledgement_received > 0:
                 reading_id = i - self.reading_start + self.last_acknowledgement_received
             else:
@@ -144,7 +150,7 @@ class ReportTestDevice(VirtualIOTileDevice):
             if self.report_length == 0:
                 return [SignedListReport.FromReadings(self.iotile_id, [], root_key=self.signing_method)]
 
-            for i in xrange(0, len(readings), self.report_length):
+            for i in range(0, len(readings), self.report_length):
                 chunk = readings[i:i+self.report_length]
                 report = SignedListReport.FromReadings(self.iotile_id, chunk, root_key=self.signing_method)
                 reports.append(report)
