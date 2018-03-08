@@ -1,4 +1,4 @@
-language: python
+pip inlanguage: python
 cache: 
   pip: true
   directories:
@@ -6,6 +6,7 @@ cache:
 sudo: false
 python:
 - '2.7'
+- '3.6'
 before_install:
 - pwd
 - cd ~
@@ -14,6 +15,7 @@ before_install:
 - cd ${TRAVIS_BUILD_DIR}
 
 install:
+- pip install tox-travis
 - pip install --upgrade -r build_requirements.txt
 
 script:
