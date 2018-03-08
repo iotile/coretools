@@ -8,7 +8,7 @@
 
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
-from builtins import str
+from builtins import str, input
 from future.utils import viewitems
 import sys
 import os
@@ -174,13 +174,11 @@ def main(argv=None):
     for key, val in viewitems(plugins):
         shell.root_add(key, val)
 
-    if len(line) == 0:
-        return 0
-
     finished = False
 
     try:
-        finished = shell.invoke(line)
+        if len(line) > 0:
+            finished = shell.invoke(line)
     except IOTileException as exc:
         print(exc.format())
         #if the command passed on the command line fails, then we should
@@ -204,7 +202,7 @@ def main(argv=None):
     try:
         while True:
             try:
-                linebuf = raw_input("(%s) " % shell.context_name())
+                linebuf = input("(%s) " % shell.context_name())
 
                 # Skip comments automatically
                 if len(linebuf) > 0 and linebuf[0] == '#':
