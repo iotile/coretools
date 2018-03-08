@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.5.12
+
+- Fix naming of custom build steps
+
 ## 2.5.11
 
 - Fix support for building custom build steps
