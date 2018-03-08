@@ -24,11 +24,14 @@ def build_python_distribution(tile):
     typelibs = tile.type_packages()
     plugins = tile.proxy_plugins()
     appmodules = tile.app_modules()
+    buildentries = tile.build_steps()
 
-    if len(proxies) == 0 and len(typelibs) == 0 and len(plugins) == 0 and len(appmodules) == 0:
+    buildentry_modules = [x.split(':')[0] for x in buildentries]
+
+    if len(proxies) == 0 and len(typelibs) == 0 and len(plugins) == 0 and len(appmodules) == 0 and len(buildentries) == 0:
         return
 
-    srcnames = [os.path.basename(x) for x in itertools.chain(iter(proxies), iter(typelibs), iter(plugins), iter(appmodules))]
+    srcnames = [os.path.basename(x) for x in itertools.chain(iter(proxies), iter(buildentry_modules), iter(typelibs), iter(plugins), iter(appmodules))]
     buildfiles = []
 
     pkg_init = os.path.join(packagedir, '__init__.py')
@@ -88,7 +91,10 @@ def generate_setup_py(target, source, env):
     modentries = [os.path.splitext(os.path.basename(x))[0] for x in tile.proxy_modules()]
     pluginentries = [os.path.splitext(os.path.basename(x))[0] for x in tile.proxy_plugins()]
     appentries = [os.path.splitext(os.path.basename(x))[0] for x in tile.app_modules()]
-    buildentries = [os.path.splitext(os.path.basename(x))[0] for x in tile.build_steps()]
+
+    buildentries = tile.build_steps()
+    buildentry_parsed = [x.split(':') for x in buildentries]
+    buildentries = [(os.path.splitext(os.path.basename(x[0]))[0], x[1]) for x in buildentry_parsed]
 
     if len(modentries) > 0:
         entry_points['iotile.proxy'] = ["{0} = {1}.{0}".format(x, tile.support_distribution) for x in modentries]
@@ -99,7 +105,7 @@ def generate_setup_py(target, source, env):
     if len(appentries) > 0:
         entry_points['iotile.app'] = ["{0} = {1}.{0}".format(x, tile.support_distribution) for x in appentries]
     if len(buildentries) > 0:
-        entry_points['iotile.recipe_action'] = ["{0} = {1}.{0}".format(x, tile.support_distribution) for x in buildentries]
+        entry_points['iotile.recipe_action'] = ["{0} = {2}.{0}:{1}".format(x[0], x[1], tile.support_distribution) for x in buildentries]
 
     data['name'] = tile.support_distribution
     data['package'] = tile.support_distribution

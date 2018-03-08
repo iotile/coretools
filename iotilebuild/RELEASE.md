@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.5.11
+
+- Fix support for building custom build steps
+
 ## 2.5.10
 
 - Add python dependencies given in the `python_depends` option in module_settings.json, to the
