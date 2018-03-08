@@ -1,6 +1,8 @@
 """A sparse memory map for debugging purposes
 """
 
+from __future__ import unicode_literals
+from builtins import range
 from collections import namedtuple
 import binascii
 import string
@@ -124,14 +126,14 @@ class SparseMemory(object):
 
     @classmethod
     def _iter_groups(cls, data, chunk_length):
-        for i in xrange(0, len(data), chunk_length):
+        for i in range(0, len(data), chunk_length):
             yield data[i:i+chunk_length]
 
     @classmethod
     def _format_line(cls, start_address, data):
-        hexdata = binascii.hexlify(data)
-        spaced_hex = ' '.join([hexdata[i:i+2] for i in xrange(0, len(hexdata), 2)])
-        separated_hex = spaced_hex[0:len(spaced_hex)/2] + ' ' + spaced_hex[len(spaced_hex)/2:]
+        hexdata = binascii.hexlify(data).decode('utf-8')
+        spaced_hex = ' '.join([hexdata[i:i+2] for i in range(0, len(hexdata), 2)])
+        separated_hex = spaced_hex[0:len(spaced_hex)//2] + ' ' + spaced_hex[len(spaced_hex)//2:]
 
         asciidata = ''
 

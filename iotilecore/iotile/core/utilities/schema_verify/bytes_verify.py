@@ -1,6 +1,6 @@
 import base64
 import binascii
-from verifier import Verifier
+from .verifier import Verifier
 from iotile.core.exceptions import ValidationError, ArgumentError
 
 

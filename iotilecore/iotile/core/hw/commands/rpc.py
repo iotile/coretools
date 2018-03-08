@@ -6,7 +6,7 @@
 # Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
-from builtins import str
+from builtins import str, int
 from .command import Command
 import base64
 
@@ -52,13 +52,13 @@ class RPCCommand (Command):
         return out
 
     def _pack_arg(self, arg):
-        if isinstance(arg, int) or isinstance(arg, long):
+        if isinstance(arg, int):
             return self._convert_int(arg), False
         elif isinstance(arg, bytearray):
             return arg, True
         elif isinstance(arg, str):  # for python 3 compatibility, encode all newstr from future module
             return bytearray(arg.encode('utf-8')), True
-        elif isinstance(arg, basestring):
+        elif isinstance(arg, bytes):
             return bytearray(arg), True
 
         raise ValueError("Unknown argument type could not be converted for rpc call.")

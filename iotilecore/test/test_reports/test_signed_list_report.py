@@ -1,3 +1,4 @@
+from builtins import range
 import unittest
 import os
 import pytest
@@ -9,7 +10,7 @@ from iotile.core.hw.reports.report import IOTileReading
 def make_sequential(iotile_id, stream, num_readings, give_ids=False, root_key=0):
     readings = []
 
-    for i in xrange(0, num_readings):
+    for i in range(0, num_readings):
         if give_ids:
             reading = IOTileReading(i, stream, i, reading_id=i+1)
         else:

@@ -1,3 +1,4 @@
+from builtins import range
 import pytest
 import threading
 import sys
@@ -59,7 +60,7 @@ def test_running_generator():
     items = queue.Queue()
 
     def thread_func(shared_queue):
-        for i in xrange(0, 3):
+        for i in range(0, 3):
             shared_queue.put(i)
             yield
 

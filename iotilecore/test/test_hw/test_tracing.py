@@ -57,4 +57,4 @@ def test_ascii_tracing(conf_ascii_tracing):
 
     hw.enable_tracing()
 
-    assert hw.dump_trace('raw') == 'hello this is an acsii data stream that is somewhat long'
+    assert hw.dump_trace('raw') == b'hello this is an acsii data stream that is somewhat long'

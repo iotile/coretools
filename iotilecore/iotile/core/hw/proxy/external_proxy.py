@@ -1,9 +1,10 @@
-# This file is copyright Arch Systems, Inc.  
+# This file is copyright Arch Systems, Inc.
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
 # external_proxy.py
 # Routines for importing proxy modules from registered components on your computer
 
+from future.utils import itervalues
 import pkg_resources
 from iotile.core.dev.registry import ComponentRegistry
 from proxy import TileBusProxyObject
@@ -14,10 +15,11 @@ import imp
 import inspect
 import sys
 
+
 def find_proxy(component, proxy_name=None, obj_type=TileBusProxyObject):
     """
     Search through the registered component data base for a proxy or proxy plugin module provided by
-    a specific component optionally having a specific name.  
+    a specific component optionally having a specific name.
 
     Proxy modules must inherit from TileBusProxyObject. Proxy plugin modules must inherit from TileBusProxyPlugin
     """
@@ -49,7 +51,7 @@ def find_proxy(component, proxy_name=None, obj_type=TileBusProxyObject):
 
 def find_proxy_plugin(component, plugin_name):
     """ Attempt to find a proxy plugin provided by a specifc component
-    
+
     Args:
         component (string): The name of the component that provides the plugin
         plugin_name (string): The name of the plugin to load
@@ -77,7 +79,7 @@ def find_proxy_plugin(component, plugin_name):
 
     for entry in pkg_resources.iter_entry_points('iotile.proxy_plugin'):
         module = entry.load()
-        objs = [obj for obj in module.__dict__.itervalues() if inspect.isclass(obj) and issubclass(obj, TileBusProxyPlugin) and obj != TileBusProxyPlugin]
+        objs = [obj for obj in itervalues(module.__dict__) if inspect.isclass(obj) and issubclass(obj, TileBusProxyPlugin) and obj != TileBusProxyPlugin]
         for obj in objs:
             if obj.__name__ == plugin_name:
                 return obj
@@ -112,4 +114,4 @@ def import_proxy(path, obj_type):
         raise ArgumentError("could not import module in order to load external proxy modules", module_path=path, parent_directory=d, module_name=p, error=str(e))
 
     num_added = 0
-    return [obj for obj in filter(lambda x: inspect.isclass(x) and issubclass(x, obj_type) and x != obj_type, mod.__dict__.itervalues())]
+    return [obj for obj in itervalues(mod.__dict__) if inspect.isclass(x) and issubclass(x, obj_type) and x != obj_type]

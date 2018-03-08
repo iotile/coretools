@@ -112,7 +112,7 @@ class ConfigManager(object):
                 type information.
         """
 
-        known_vars = [x for x in sorted(self._known_variables.iterkeys()) if fnmatch.fnmatchcase(x, glob)]
+        known_vars = [x for x in sorted(self._known_variables) if fnmatch.fnmatchcase(x, glob)]
         return ['- ' + self._format_variable(x, self._known_variables[x]) for x in known_vars]
 
     @param("name", "string", desc="Config variable to find")

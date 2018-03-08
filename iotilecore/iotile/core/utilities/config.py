@@ -3,11 +3,12 @@
 # info@welldone.org
 # http://welldone.org
 #
-# Modifications to this file from the original created at WellDone International 
+# Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
 #config.py
 
+from builtins import range
 import os
 import json
 
@@ -52,7 +53,7 @@ class ConfigFile:
 
 		val = self.conf[keys[0]]
 
-		for i in xrange(1, len(keys)):
+		for i in range(1, len(keys)):
 			val = val[keys[i]]
 
 		return val
@@ -70,5 +71,5 @@ def merge_dicts(a, b):
             	a[key] = b[key]
         else:
             a[key] = b[key]
-    
+
     return a

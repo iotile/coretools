@@ -1,4 +1,5 @@
-from verifier import Verifier
+from builtins import int
+from .verifier import Verifier
 from iotile.core.exceptions import ValidationError
 
 
@@ -24,8 +25,8 @@ class IntVerifier(Verifier):
                 the reason for the lack of validation.
         """
 
-        if not isinstance(obj, int) and not isinstance(obj, long):
-            raise ValidationError("Object is not a int", reason='object is not a int', object=obj)
+        if not isinstance(obj, int):
+            raise ValidationError("Object is not a int", reason='object is not a int', object=obj, type=type(obj), int_type=int)
 
         return obj
 

@@ -1,6 +1,7 @@
 """IOTileReport subclass for readings packaged as individual readings
 """
 
+from builtins import range
 import datetime
 import struct
 from .report import IOTileReport, IOTileReading
@@ -111,7 +112,7 @@ class SignedListReport(IOTileReport):
         except NotFoundError:
             raise ExternalError("Could not sign report because no AuthProvider supported the requested signature method for the requested device", device_id=uuid, root_key=root_key)
 
-        footer = struct.pack("16s", str(signature['signature'][:16]))
+        footer = struct.pack("16s", bytes(signature['signature'][:16]))
         footer = bytearray(footer)
 
         data = signed_data + footer
@@ -181,7 +182,7 @@ class SignedListReport(IOTileReport):
         time_base = self.received_time - datetime.timedelta(seconds=sent_timestamp)
         parsed_readings = []
 
-        for i in xrange(0, len(readings), 16):
+        for i in range(0, len(readings), 16):
             reading = readings[i:i+16]
             stream, _, reading_id, timestamp, value = unpack("<HHLLL", reading)
 

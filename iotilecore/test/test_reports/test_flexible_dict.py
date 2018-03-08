@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 import msgpack
 from datetime import datetime
 from iotile.core.hw.reports import FlexibleDictionaryReport
@@ -49,7 +50,7 @@ def test_decoding_flexible_report():
         ]
     }
 
-    encoded = msgpack.packb(data)
+    encoded = msgpack.packb(data, use_bin_type=True)
 
     report = FlexibleDictionaryReport(encoded, False, False)
 

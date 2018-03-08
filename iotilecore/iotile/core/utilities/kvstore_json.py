@@ -64,12 +64,12 @@ class JSONKVStore(object):
         """
 
         if platform.system() == 'Windows':
-            with open(self.file, "wb") as outfile:
+            with open(self.file, "w") as outfile:
                 json.dump(data, outfile)
         else:
             newpath = self.file + '.new'
 
-            with open(newpath, "wb") as outfile:
+            with open(newpath, "w") as outfile:
                 json.dump(data, outfile)
 
             os.rename(

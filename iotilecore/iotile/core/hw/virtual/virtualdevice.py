@@ -34,7 +34,7 @@ class VirtualIOTileDevice(BaseRunnable):
         self._rpc_overlays = {}
         self._tiles = {}
 
-        self.name = name
+        self.name = name.encode('utf-8')
         self.iotile_id = iotile_id
         self.reports = []
         self.traces = []

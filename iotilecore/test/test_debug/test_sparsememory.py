@@ -1,3 +1,4 @@
+from builtins import range
 import pytest
 from iotile.core.hw.debug import SparseMemory
 from iotile.core.exceptions import ArgumentError
@@ -6,15 +7,15 @@ from iotile.core.exceptions import ArgumentError
 @pytest.fixture(scope='function')
 def single_segment():
     mem = SparseMemory()
-    mem.add_segment(0, bytearray(xrange(0, 256)))
+    mem.add_segment(0, bytearray(range(0, 256)))
     return mem
 
 
 @pytest.fixture
 def multi_segment(scope='function'):
     mem = SparseMemory()
-    mem.add_segment(0, bytearray(xrange(0, 256)))
-    mem.add_segment(8192, bytearray(xrange(0, 256)))
+    mem.add_segment(0, bytearray(range(0, 256)))
+    mem.add_segment(8192, bytearray(range(0, 256)))
     return mem
 
 
@@ -71,4 +72,4 @@ def test_stringify(single_segment):
 def test_multistringify(multi_segment):
     mem = multi_segment
 
-    print str(mem)
+    print(str(mem))

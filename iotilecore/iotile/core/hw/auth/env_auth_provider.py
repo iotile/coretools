@@ -2,6 +2,7 @@
 
 import hashlib
 import hmac
+import binascii
 import os
 from iotile.core.exceptions import NotFoundError
 from .auth_provider import AuthProvider
@@ -33,7 +34,7 @@ class EnvAuthProvider(AuthProvider):
             raise NotFoundError("User key in variable is not the correct length, should be 64 hex characters", device_id=device_id, key_value=key_var)
 
         try:
-            key = key_var.decode('hex')
+            key = binascii.unhexlify(key_var)
         except ValueError:
             raise NotFoundError("User key in variable could not be decoded from hex", device_id=device_id, key_value=key_var)
 
