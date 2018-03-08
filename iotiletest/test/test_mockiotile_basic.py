@@ -16,4 +16,4 @@ class TestHardwareManager(unittest.TestCase):
         """
 
         name = self.dev.call_rpc(0x08, 0x0004)
-        assert name == 'TestCN'
+        assert name == b'TestCN'

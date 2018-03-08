@@ -1,4 +1,4 @@
-from verifier import Verifier
+from .verifier import Verifier
 from iotile.core.exceptions import ValidationError
 
 

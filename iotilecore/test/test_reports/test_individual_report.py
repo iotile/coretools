@@ -17,7 +17,7 @@ def test_parsing_str():
     report_data = make_report(10, 1, 2, 3, 4)
     received_time = datetime.datetime.utcnow()
 
-    report = IndividualReadingReport(str(report_data), received_time=received_time)
+    report = IndividualReadingReport(bytes(report_data), received_time=received_time)
 
     assert len(report.visible_readings) == 1
     assert report.signed is False
@@ -94,6 +94,8 @@ def test_serialization():
     report = IndividualReadingReport(report_data, received_time=received_time)
 
     ser = report.serialize()
+    print(ser)
+
     assert ser['received_time'] == received_time
     assert ser['origin'] == 10
     assert ser['report_format'] == IndividualReadingReport.ReportType
@@ -112,7 +114,7 @@ def test_save(tmpdir):
     report = IndividualReadingReport(report_data, received_time=received_time)
     report.save(str(p))
 
-    data = p.read()
+    data = p.read("rb")
 
     report2 = IndividualReadingReport(data, received_time=received_time)
 

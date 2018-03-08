@@ -34,7 +34,7 @@ class VirtualIOTileDevice(BaseRunnable):
         self._rpc_overlays = {}
         self._tiles = {}
 
-        self.name = name
+        self.name = name.encode('utf-8')
         self.iotile_id = iotile_id
         self.reports = []
         self.traces = []
@@ -190,16 +190,16 @@ class VirtualIOTileDevice(BaseRunnable):
 
         self._rpc_overlays[address].add_rpc(rpc_id, func)
 
-    def call_rpc(self, address, rpc_id, payload=""):
+    def call_rpc(self, address, rpc_id, payload=b""):
         """Call an RPC by its address and ID.
 
         Args:
             address (int): The address of the mock tile this RPC is for
             rpc_id (int): The number of the RPC
-            payload (str): A byte string of payload parameters up to 20 bytes
+            payload (bytes): A byte string of payload parameters up to 20 bytes
 
         Returns:
-            str: The response payload from the RPC
+            bytes: The response payload from the RPC
         """
 
         if rpc_id < 0 or rpc_id > 0xFFFF:

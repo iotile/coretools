@@ -1,3 +1,4 @@
+from builtins import range
 import unittest
 import os
 import pytest
@@ -8,7 +9,7 @@ import hmac
 
 
 def gen_test_data(length):
-    data = bytearray([x for x in xrange(0, length)])
+    data = bytearray([x for x in range(0, length)])
     return data
 
 

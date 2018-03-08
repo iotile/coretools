@@ -1,5 +1,6 @@
 """A virtual tile that ensapsulates resuable behavior."""
 
+from future.utils import itervalues
 import os
 import imp
 import inspect
@@ -128,7 +129,7 @@ class VirtualTile(BaseRunnable, RPCDispatcher):
             if file_obj is not None:
                 file_obj.close()
 
-        devs = [x for x in mod.__dict__.itervalues() if inspect.isclass(x) and issubclass(x, VirtualTile) and x != VirtualTile]
+        devs = [x for x in itervalues(mod.__dict__) if inspect.isclass(x) and issubclass(x, VirtualTile) and x != VirtualTile]
         if len(devs) == 0:
             raise ArgumentError("No VirtualTiles subclasses were defined in script", path=script_path)
         elif len(devs) > 1:
@@ -136,7 +137,7 @@ class VirtualTile(BaseRunnable, RPCDispatcher):
 
         # Allow automatically injecting associated proxy objects so that we can use this tile with a proxy without
         # installing it.
-        proxies = [x for x in mod.__dict__.itervalues() if inspect.isclass(x) and issubclass(x, TileBusProxyObject) and x != TileBusProxyObject]
+        proxies = [x for x in itervalues(mod.__dict__) if inspect.isclass(x) and issubclass(x, TileBusProxyObject) and x != TileBusProxyObject]
         for proxy in proxies:
             HardwareManager.RegisterDevelopmentProxy(proxy)
 

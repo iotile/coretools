@@ -1,7 +1,10 @@
 """A mock DeviceAdapter that just connects to a python MockIOTileDevice
 """
+
+from __future__ import print_function, absolute_import
+from future.utils import viewitems
 from iotile.core.hw.transport.adapter import DeviceAdapter
-from mock_iotile import RPCInvalidIDError, TileNotFoundError, RPCNotFoundError
+from .mock_iotile import RPCInvalidIDError, TileNotFoundError, RPCNotFoundError
 
 class MockDeviceAdapter(DeviceAdapter):
     """A mock DeviceAdapter that connects to one or more python MockIOTileDevices
@@ -20,7 +23,7 @@ class MockDeviceAdapter(DeviceAdapter):
         return True
 
     def advertise(self):
-        for conn_string, device in self.devices.iteritems():
+        for conn_string, device in viewitems(self.devices):
             info = {'uuid': device.iotile_id, 'connection_string': conn_string, 'signal_strength': 0}
             self._trigger_callback('on_scan', self.id, info, 0)
 
@@ -47,7 +50,7 @@ class MockDeviceAdapter(DeviceAdapter):
 
         device = self.connections[connection_id]
         device.open_rpc_interface()
-        
+
         callback(connection_id, self.id, True, "")
 
     def _open_script_interface(self, connection_id, callback):
@@ -57,7 +60,7 @@ class MockDeviceAdapter(DeviceAdapter):
 
         device = self.connections[connection_id]
         device.open_script_interface()
-        
+
         callback(connection_id, self.id, True, "")
 
     def _open_streaming_interface(self, connection_id, callback):
@@ -67,7 +70,7 @@ class MockDeviceAdapter(DeviceAdapter):
 
         device = self.connections[connection_id]
         reports = device.open_streaming_interface()
-        
+
         callback(connection_id, self.id, True, "")
 
         for report in reports:

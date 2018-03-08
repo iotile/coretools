@@ -7,7 +7,7 @@ from iotile.core.utilities.typedargs import annotated, param, return_type, conte
 _name_ = "Developer"
 
 #Outside accessible API for this package
-from registry import ComponentRegistry
+from .registry import ComponentRegistry
 
 @annotated
 def registry():

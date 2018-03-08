@@ -89,7 +89,7 @@ def main(argv=None):
                 try:
                     recipe.run(variables)
                     success.append(dev)
-                except IOTileException, exc:
+                except IOTileException as exc:
                     print("--> Error on try %d: %s" % (i+1, str(exc)))
                     continue
 

@@ -1,6 +1,7 @@
 # This file is copyright Arch Systems, Inc.
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
+from future.utils import viewitems, itervalues
 import itertools
 from collections import namedtuple
 import json
@@ -40,13 +41,13 @@ class IOTile(object):
         if 'modules' not in settings or len(settings['modules']) == 0:
             raise DataError("No modules defined in module_settings.json file")
         elif len(settings['modules']) > 1:
-            raise DataError("Mulitple modules defined in module_settings.json file", modules=settings['modules'].keys())
+            raise DataError("Mulitple modules defined in module_settings.json file", modules=[x for x in settings['modules']])
         else:
             #TODO: Remove this other option once all tiles have been converted to have their own name listed out
-            modname = settings['modules'].keys()[0]
+            modname = list(settings['modules'])[0]
 
         if modname not in settings['modules']:
-            raise DataError("Module name does not correspond with an entry in the modules directory", name=modname, modules=settings['modules'].keys())
+            raise DataError("Module name does not correspond with an entry in the modules directory", name=modname, modules=[x for x in settings['modules']])
 
         modsettings = settings['modules'][modname]
         architectures = {}
@@ -114,7 +115,7 @@ class IOTile(object):
             self.output_folder = self.folder
 
             if 'dependency_versions' in settings:
-                self.dependency_versions = {x: SemanticVersion.FromString(y) for x,y in settings['dependency_versions'].iteritems()}
+                self.dependency_versions = {x: SemanticVersion.FromString(y) for x,y in viewitems(settings['dependency_versions'])}
         else:
             self.release = False
             self.output_folder = os.path.join(self.folder, 'build', 'output')
@@ -138,12 +139,12 @@ class IOTile(object):
         #file.
         self.dependencies = []
 
-        archs_with_deps = [y['depends'].iteritems() for x,y in architectures.iteritems() if 'depends' in y]
+        archs_with_deps = [viewitems(y['depends']) for x, y in viewitems(architectures) if 'depends' in y]
         if 'depends' in self.settings:
             if not isinstance(self.settings['depends'], dict):
                 raise DataError("module must have a depends key that is a dictionary", found=str(self.settings['depends']))
 
-            archs_with_deps.append(self.settings['depends'].iteritems())
+            archs_with_deps.append(viewitems(self.settings['depends']))
 
         #Find all python package needed
         self.support_wheel_depends = []
@@ -163,9 +164,9 @@ class IOTile(object):
         #Also search through overlays to architectures that are defined in this module_settings.json file
         #and see if those overlays contain dependencies.
         if 'overlays' in self.settings:
-            for overlay_arch in self.settings['overlays'].itervalues():
+            for overlay_arch in itervalues(self.settings['overlays']):
                 if 'depends' in overlay_arch:
-                    archs_with_deps.append(overlay_arch['depends'].iteritems())
+                    archs_with_deps.append(viewitems(overlay_arch['depends']))
 
         found_deps = set()
         for dep, _ in itertools.chain(*archs_with_deps):
@@ -222,12 +223,12 @@ class IOTile(object):
         Return a list of all libraries produced by this IOTile that could be provided to other tiles
         """
 
-        libs = [x[0] for x in self.products.iteritems() if x[1] == 'library']
+        libs = [x[0] for x in viewitems(self.products) if x[1] == 'library']
 
         if self.filter_prods:
             libs = [x for x in libs if x in self.desired_prods]
 
-        badlibs = filter(lambda x: not x.startswith('lib'), libs)
+        badlibs = [x for x in libs if not x.startswith('lib')]
         if len(badlibs) > 0:
             raise DataError("A library product was listed in a module's products without the name starting with lib", bad_libraries=badlibs)
 
@@ -239,7 +240,7 @@ class IOTile(object):
         Return a list of the python type packages that are provided by this tile
         """
 
-        libs = [x[0] for x in self.products.iteritems() if x[1] == 'type_package']
+        libs = [x[0] for x in viewitems(self.products) if x[1] == 'type_package']
 
         if self.filter_prods:
             libs = [x for x in libs if x in self.desired_prods]
@@ -253,7 +254,7 @@ class IOTile(object):
         Return a list of the linker scripts that are provided by this tile
         """
 
-        ldscripts = [x[0] for x in self.products.iteritems() if x[1] == 'linker_script']
+        ldscripts = [x[0] for x in viewitems(self.products) if x[1] == 'linker_script']
 
         if self.filter_prods:
             ldscripts = [x for x in ldscripts if x in self.desired_prods]
@@ -267,7 +268,7 @@ class IOTile(object):
         Return a list of the python proxy modules that are provided by this tile
         """
 
-        libs = [x[0] for x in self.products.iteritems() if x[1] == 'proxy_module']
+        libs = [x[0] for x in viewitems(self.products) if x[1] == 'proxy_module']
 
         if self.filter_prods:
             libs = [x for x in libs if x in self.desired_prods]
@@ -278,7 +279,7 @@ class IOTile(object):
     def app_modules(self):
         """Return a list of all of the python app module that are provided by this tile."""
 
-        libs = [x[0] for x in self.products.iteritems() if x[1] == 'app_module']
+        libs = [x[0] for x in viewitems(self.products) if x[1] == 'app_module']
 
         if self.filter_prods:
             libs = [x for x in libs if x in self.desired_prods]
@@ -289,7 +290,7 @@ class IOTile(object):
     def build_steps(self):
         """Return a list of all of the python build steps that are provided by this tile."""
 
-        libs = [x[0] for x in self.products.iteritems() if x[1] == 'build_step']
+        libs = [x[0] for x in viewitems(self.products) if x[1] == 'build_step']
 
         if self.filter_prods:
             libs = [x for x in libs if x in self.desired_prods]
@@ -302,7 +303,7 @@ class IOTile(object):
         Return a list of the python proxy plugins that are provided by this tile
         """
 
-        libs = [x[0] for x in self.products.iteritems() if x[1] == 'proxy_plugin']
+        libs = [x[0] for x in viewitems(self.products) if x[1] == 'proxy_plugin']
 
         if self.filter_prods:
             libs = [x for x in libs if x in self.desired_prods]
@@ -315,7 +316,7 @@ class IOTile(object):
         Return a list of the python proxy plugins that are provided by this tile
         """
 
-        libs = [x[0] for x in self.products.iteritems() if x[1] == 'firmware_image']
+        libs = [x[0] for x in viewitems(self.products) if x[1] == 'firmware_image']
 
         if self.filter_prods:
             libs = [x for x in libs if x in self.desired_prods]

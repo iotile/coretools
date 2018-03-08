@@ -18,7 +18,7 @@ def test_key_finding(monkeypatch):
 
     auth = EnvAuthProvider()
 
-    data = bytearray("what do ya want for nothing?")
+    data = bytearray("what do ya want for nothing?".encode('utf-8'))
 
     #Make sure we can find a key if its defined
     auth.sign_report(uuid, 1, data, report_id=0, sent_timestamp=0)
@@ -40,7 +40,7 @@ def test_unsupported_methods():
     """Make sure we correctly pass on operations we don't support."""
 
     auth = EnvAuthProvider()
-    data = bytearray("what do ya want for nothing?")
+    data = bytearray("what do ya want for nothing?".encode('utf-8'))
 
     with pytest.raises(NotFoundError):
         auth.sign_report(1, 0, data, report_id=0, sent_timestamp=0)

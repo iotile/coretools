@@ -143,7 +143,7 @@ class CommandFile(object):
                 arg = str(arg)
 
             if "," in arg or arg.startswith(" ") or arg.endswith(" ") or arg.startswith("hex:"):
-                arg = "hex:{}".format(hexlify(arg.encode('utf-8')))
+                arg = "hex:{}".format(hexlify(arg.encode('utf-8')).decode('utf-8'))
 
             args.append(arg)
 
@@ -177,7 +177,7 @@ class CommandFile(object):
             arg = arg[1:-1]
             args = arg.split(",")
 
-        proc =[]
+        proc = []
 
         for arg in args:
             if arg.startswith("hex:"):

@@ -1,6 +1,9 @@
 """A Mock BLE device that will properly respond to RPCs, scripts and streaming over BLE
 """
 
+from __future__ import print_function, absolute_import
+from builtins import bytes
+from future.utils import viewitems, itervalues
 import struct
 import uuid
 import logging
@@ -161,8 +164,8 @@ class MockBLEDevice(object):
         return struct.pack("<BH%ds" % len(uuid_bytes), props, handle, uuid_bytes)
 
     def find_uuid(self, handle):
-        for serv_uuid, serv  in self.services.iteritems():
-            for char_uuid, handles in serv.iteritems():
+        for serv_uuid, serv  in viewitems(self.services):
+            for char_uuid, handles in viewitems(serv):
                 for iterhandle, handle_type in handles:
                     if iterhandle == handle:
                         return char_uuid, handle_type
@@ -170,8 +173,8 @@ class MockBLEDevice(object):
         raise ValueError("Could not find UUID for handle %d" % handle)
 
     def find_handle(self, uuid, desired_type='value'):
-        for _, serv  in self.services.iteritems():
-            for char_uuid, handles in serv.iteritems():
+        for _, serv  in viewitems(self.services):
+            for char_uuid, handles in viewitems(serv):
                 if char_uuid != uuid:
                     continue
 
@@ -186,15 +189,15 @@ class MockBLEDevice(object):
         return self.services.keys()
 
     def iter_handles(self, start, end):
-        for key, val in self.handles.iteritems():
+        for key, val in viewitems(self.handles):
             if key >= start and key <= end:
                 yield val
 
     def min_handle(self, service):
-        return min([min(x, key=lambda y: y[0]) for x in self.services[service].itervalues()])[0]
+        return min([min(x, key=lambda y: y[0]) for x in itervalues(self.services[service])])[0]
 
     def max_handle(self, service):
-        return max([max(x, key=lambda y: y[0]) for x in self.services[service].itervalues()])[0]
+        return max([max(x, key=lambda y: y[0]) for x in itervalues(self.services[service])])[0]
 
     def read_handle(self, handle):
         if handle in self.values:
@@ -205,7 +208,7 @@ class MockBLEDevice(object):
 
     def write_handle(self, handle, value):
         """Process a write to a BLE attribute by its handle
-        
+
         This function handles all writes from clients to the the MockBLEDevice.
         It keeps track of what handles correspond with special IOTIle service
         actions and dispatches them to a MockIOTileObject as needed.
@@ -255,12 +258,12 @@ class MockBLEDevice(object):
             return True, []
         elif char_id == self.TBSendHeaderChar:
             return True, self._call_rpc(value)
-        
+
         self.logger.info("Received write on unknown characteristic: {}".format(char_id))
         raise WriteToUnhandledCharacteristic("write on unknown characteristic", char_id=char_id, value=value)
 
     def _call_rpc(self, header):
-        length, _, cmd, feature, address = struct.unpack("<BBBBB", str(header))
+        length, _, cmd, feature, address = struct.unpack("<BBBBB", bytes(header))
         rpc_id = (feature << 8) |  cmd
 
         self.logger.info("Calling RPC 0x%x at address %d", rpc_id, address)
@@ -269,7 +272,7 @@ class MockBLEDevice(object):
 
         status = 0
         try:
-            response = self.device.call_rpc(address, rpc_id, str(payload))
+            response = self.device.call_rpc(address, rpc_id, bytes(payload))
         except (RPCInvalidIDError, RPCNotFoundError):
             status = 1 #FIXME: Insert the correct ID here
             response = ""

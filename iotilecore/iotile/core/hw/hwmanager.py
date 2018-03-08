@@ -5,6 +5,9 @@
 #
 # Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
+from builtins import range
+from future.utils import itervalues
+from functools import reduce
 import time
 import inspect
 import os.path
@@ -154,7 +157,7 @@ class HardwareManager(object):
         # Find all installed proxy objects through registered entry points
         for entry in pkg_resources.iter_entry_points('iotile.proxy'):
             mod = entry.load()
-            proxy_classes += [x for x in mod.__dict__.itervalues() if inspect.isclass(x) and issubclass(x, TileBusProxyObject) and x != TileBusProxyObject]
+            proxy_classes += [x for x in itervalues(mod.__dict__) if inspect.isclass(x) and issubclass(x, TileBusProxyObject) and x != TileBusProxyObject]
 
         for obj in proxy_classes:
             if obj.__name__ in self._proxies:
@@ -187,7 +190,7 @@ class HardwareManager(object):
         # Find all installed proxy objects through registered entry points
         for entry in pkg_resources.iter_entry_points('iotile.app'):
             mod = entry.load()
-            app_classes += [x for x in mod.__dict__.itervalues() if inspect.isclass(x) and issubclass(x, IOTileApp) and x != IOTileApp]
+            app_classes += [x for x in itervalues(mod.__dict__) if inspect.isclass(x) and issubclass(x, IOTileApp) and x != IOTileApp]
 
         for app in app_classes:
             try:
@@ -423,9 +426,9 @@ class HardwareManager(object):
         self._accumulate_trace()
 
         if encoding == 'raw':
-            return str(self._trace_data)
+            return bytes(self._trace_data)
 
-        return binascii.hexlify(self._trace_data)
+        return binascii.hexlify(self._trace_data).decode('utf-8')
 
     def wait_trace(self, size, timeout=None, drop_before=False, progress_callback=None):
         """Wait for a specific amount of tracing data to be received.
@@ -532,7 +535,7 @@ class HardwareManager(object):
 
         reports = []
 
-        for i in xrange(0, num_reports):
+        for i in range(0, num_reports):
             try:
                 report = self._stream_queue.get(timeout=timeout)
                 reports.append(report)
@@ -581,7 +584,7 @@ class HardwareManager(object):
             raise ArgumentError("could not import module in order to load external proxy modules", module_path=path, parent_directory=folder, module_name=basename, error=str(exc))
 
         # Find all classes in this module that inherit from the given base class
-        return [x for x in mod.__dict__.itervalues() if inspect.isclass(x) and issubclass(x, base_class) and x != base_class]
+        return [x for x in itervalues(mod.__dict__) if inspect.isclass(x) and issubclass(x, base_class) and x != base_class]
 
     @return_type("list(basic_dict)")
     @param("wait", "float", desc="Time to wait for devices to show up before returning")

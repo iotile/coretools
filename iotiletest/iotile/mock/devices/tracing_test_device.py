@@ -1,6 +1,7 @@
 """Basic virtual IOTile device class for testing tracing data from an IOTile device
 """
 
+from builtins import range
 import binascii
 from iotile.core.hw.virtual.virtualdevice import VirtualIOTileDevice, rpc, RPCInvalidIDError, RPCNotFoundError, TileNotFoundError
 
@@ -29,17 +30,17 @@ class TracingTestDevice(VirtualIOTileDevice):
         iotile_id = args.get('iotile_id', 1)
         super(TracingTestDevice, self).__init__(iotile_id, 'Simple')
 
-        data = bytearray("Hello world, this is tracing data!")
+        data = bytearray("Hello world, this is tracing data!".encode('utf-8'))
 
         if 'hex_data' in args:
             data = bytearray(binascii.unhexlify(args['hex_data']))
 
         if 'ascii_data' in args:
-            data = bytearray(args['ascii_data'].encode('ascii'))
+            data = bytearray(args['ascii_data'].encode('utf-8'))
 
         # Create chunks of tracing data in 20 byte segments to simulate
         # what typically comes from real devices
-        for i in xrange(0, len(data), 20):
+        for i in range(0, len(data), 20):
             self.traces.append(data[i:i+20])
 
     @rpc(8, 0x0004, "", "H6sBBBB")

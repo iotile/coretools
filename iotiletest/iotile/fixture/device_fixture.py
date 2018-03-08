@@ -1,3 +1,4 @@
+from builtins import range
 import pytest
 from iotile.core.hw.hwmanager import HardwareManager
 from iotile.core.exceptions import HardwareError
@@ -33,7 +34,7 @@ def device(port, device_id):
         # device advertisement, so attempt the connection several times
         # before giving up to improve test robustness.
         max_attempts = 3
-        for _i in xrange(0, max_attempts):
+        for _i in range(0, max_attempts):
             try:
                 hw.connect(device_id)
                 break
@@ -51,7 +52,7 @@ def per_test_device(port, device_id):
     """
     with HardwareManager(port=port) as hw:
         max_attempts = 3
-        for _i in xrange(0, max_attempts):
+        for _i in range(0, max_attempts):
             try:
                 hw.connect(device_id)
                 break

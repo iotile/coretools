@@ -8,6 +8,7 @@
 
 #MIB Proxy Objects
 
+from builtins import range
 from iotile.core.hw.commands import RPCCommand
 from iotile.core.hw.exceptions import *
 from iotile.core.utilities.typedargs import return_type, annotated, param, context
@@ -39,7 +40,7 @@ class TileBusProxyObject(object):
         is not successful.
         """
 
-        if kw.has_key('arg_format'):
+        if 'arg_format' in kw:
             packed_args = struct.pack("<{}".format(kw['arg_format']), *args)
             status, payload = self.stream.send_rpc(self.addr, feature, cmd, packed_args, **kw)
         else:
@@ -135,7 +136,7 @@ class TileBusProxyObject(object):
 
         status = {
             'hw_type': hw_type,
-            'name': name,
+            'name': name.decode('utf-8'),
             'version': (major, minor, patch),
             'status': status
         }
@@ -212,7 +213,7 @@ class TileBusProxyObject(object):
         elif buff == False and size != 2*num_ints:
             raise RPCError('Return value was not the correct size', expected_size=2*num_ints, actual_size=size, status_code=status, payload=payload)
 
-        for i in xrange(0, num_ints):
+        for i in range(0, num_ints):
             low = (payload[2*i])
             high = (payload[2*i + 1])
             parsed['ints'].append((high << 8) | low)
@@ -390,7 +391,7 @@ class ConfigManager(object):
             value (bytearray): The data to store in the config variable
         """
 
-        for offset in xrange(0, len(value), 16):
+        for offset in range(0, len(value), 16):
             remaining = len(value) - offset
             if remaining > 16:
                 remaining = 16

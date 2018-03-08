@@ -19,7 +19,7 @@ def test_key_finding(monkeypatch):
     auth = ChainedAuthProvider()
 
 
-    data = bytearray("what do ya want for nothing?")
+    data = bytearray("what do ya want for nothing?".encode('utf-8'))
 
     #Make sure we can find a key if its defined
     auth.sign_report(uuid, ChainedAuthProvider.UserKey, data, report_id=0, sent_timestamp=0)

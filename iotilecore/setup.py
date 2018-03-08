@@ -26,7 +26,7 @@ setup(
     license="LGPLv3",
     install_requires=[
         "ws4py>=0.3.5",
-        "msgpack-python>=0.4.8",
+        "msgpack>=0.5.5",
         "python-dateutil>=2.6.0",
         "future >= 0.16.0",
         "typedargs>=0.11.0"
@@ -80,6 +80,10 @@ setup(
         "Development Status :: 5 - Production/Stable",
         "License :: OSI Approved :: GNU Library or Lesser General Public License (LGPL)",
         "Operating System :: OS Independent",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 2",
+        "Programming Language :: Python :: 2.7",
         "Topic :: Software Development :: Libraries :: Python Modules"
         ],
     long_description="""\

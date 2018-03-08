@@ -1,6 +1,7 @@
 """A websocket client that validates messages received and dispatches them."""
 
 from ws4py.client.threadedclient import WebSocketClient
+from future.utils import viewitems
 import threading
 import msgpack
 import datetime
@@ -131,7 +132,7 @@ class ValidatingWSClient(WebSocketClient):
             timeout (float): The maximum time to wait for a response
         """
 
-        msg = {x: y for x, y in args.iteritems()}
+        msg = {x: y for x, y in viewitems(args)}
         msg['type'] = 'command'
         msg['operation'] = command
         msg['no_response'] = False
@@ -155,7 +156,7 @@ class ValidatingWSClient(WebSocketClient):
             args (dict): Optional arguments
         """
 
-        msg = {x: y for x, y in args.iteritems()}
+        msg = {x: y for x, y in viewitems(args)}
         msg['type'] = 'command'
         msg['operation'] = command
         msg['no_response'] = True

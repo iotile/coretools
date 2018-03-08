@@ -1,3 +1,4 @@
+from future.utils import itervalues, viewitems
 import pkg_resources
 import json
 import os
@@ -5,7 +6,7 @@ import traceback
 import imp
 import inspect
 import time
-from adapter import DeviceAdapter
+from .adapter import DeviceAdapter
 from iotile.core.exceptions import ArgumentError
 from iotile.core.hw.virtual.virtualdevice import RPCInvalidIDError, TileNotFoundError, RPCNotFoundError, VirtualIOTileDevice
 
@@ -47,7 +48,7 @@ class VirtualAdapterAsyncChannel(object):
         """Find the connection corresponding to an iotile_id
         """
 
-        for conn_id, dev in self.adapter.connections.iteritems():
+        for conn_id, dev in viewitems(self.adapter.connections):
             if dev.iotile_id == iotile_id:
                 return conn_id
 
@@ -128,7 +129,7 @@ class VirtualDeviceAdapter(DeviceAdapter):
             if file is not None:
                 file.close()
 
-        devs = filter(lambda x: inspect.isclass(x) and issubclass(x, VirtualIOTileDevice) and x != VirtualIOTileDevice, mod.__dict__.itervalues())
+        devs = [x for x in itervalues(mod.__dict__) if inspect.isclass(x) and issubclass(x, VirtualIOTileDevice) and x != VirtualIOTileDevice]
         if len(devs) == 0:
             raise ArgumentError("No VirtualIOTileDevice subclasses were defined in script", path=script_path)
         elif len(devs) > 1:
@@ -196,7 +197,7 @@ class VirtualDeviceAdapter(DeviceAdapter):
                 callback(connection_id, self.id, False, "could not find device to connect to")
             return
 
-        if id_number in [x.iotile_id for x in self.connections.itervalues()]:
+        if id_number in [x.iotile_id for x in itervalues(self.connections)]:
             if callback is not None:
                 callback(connection_id, self.id, False, "device was already connected to")
             return
@@ -345,19 +346,19 @@ class VirtualDeviceAdapter(DeviceAdapter):
 
         status = (1 << 6)
         try:
-            response = dev.call_rpc(address, rpc_id, str(payload))
+            response = dev.call_rpc(address, rpc_id, bytes(payload))
             if len(response) > 0:
                 status |= (1 << 7)
         except (RPCInvalidIDError, RPCNotFoundError):
             status = 2
-            response = ""
+            response = bytes()
         except TileNotFoundError:
             status = 0xFF
-            response = ""
+            response = bytes()
         except Exception:
             #Don't allow exceptions or we will deadlock
             status = 3
-            response = ""
+            response = bytes()
 
             print("*** EXCEPTION OCCURRED IN RPC ***")
             traceback.print_exc()
@@ -409,11 +410,11 @@ class VirtualDeviceAdapter(DeviceAdapter):
 
     def periodic_callback(self):
         if self.last_scan is None or time.time() > (self.scan_interval + self.last_scan):
-            for dev in self.devices.itervalues():
+            for dev in itervalues(self.devices):
                 self._send_scan_event(dev)
 
     def stop_sync(self):
-        for dev in self.devices.itervalues():
+        for dev in itervalues(self.devices):
             dev.stop()
 
     def probe_async(self, callback):
@@ -426,7 +427,7 @@ class VirtualDeviceAdapter(DeviceAdapter):
                     failure_reason: None if success is True, otherwise a reason for why we could not probe
         """
 
-        for dev in self.devices.itervalues():
+        for dev in itervalues(self.devices):
                 self._send_scan_event(dev)
 
         callback(self.id, True, None)

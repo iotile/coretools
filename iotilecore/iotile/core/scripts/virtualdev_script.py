@@ -1,3 +1,4 @@
+from future.utils import itervalues
 import argparse
 import pkg_resources
 import sys
@@ -16,7 +17,7 @@ def main():
     list_parser.add_argument('-l', '--list', action='store_true', help="List all known installed interfaces and devices and then exit")
 
     parser = argparse.ArgumentParser(description="Serve acess to a virtual IOTile device using a virtual IOTile interface")
-    
+
     parser.add_argument('interface', help="The name of the virtual device interface to use")
     parser.add_argument('device', help="The name of the virtual device to create")
     parser.add_argument('-c', '--config', help="An optional JSON config file with arguments for the interface and device")
@@ -103,7 +104,7 @@ def import_device_script(script_path):
         if file is not None:
             file.close()
 
-    devs = filter(lambda x: inspect.isclass(x) and issubclass(x, VirtualIOTileDevice) and x != VirtualIOTileDevice, mod.__dict__.itervalues())
+    devs = [x for x in itervalues(mod.__dict__) if inspect.isclass(x) and issubclass(x, VirtualIOTileDevice) and x != VirtualIOTileDevice]
     if len(devs) == 0:
         print("No VirtualIOTileDevice subclasses were defined in script")
         sys.exit(1)
@@ -131,7 +132,7 @@ def instantiate_device(virtual_dev, config):
     if 'device' in config:
         conf = config['device']
 
-    #If we're given a path to a script, try to load and use that rather than search for an installed module 
+    #If we're given a path to a script, try to load and use that rather than search for an installed module
     if virtual_dev.endswith('.py'):
         dev = import_device_script(virtual_dev)
         return dev(conf)

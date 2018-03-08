@@ -1,4 +1,5 @@
-from verifier import Verifier
+from past.builtins import basestring
+from .verifier import Verifier
 from iotile.core.exceptions import ValidationError
 
 
@@ -25,7 +26,7 @@ class StringVerifier(Verifier):
         """
 
         if not isinstance(obj, basestring):
-            raise ValidationError("Object is not a string", reason='object is not a string', object=obj)
+            raise ValidationError("Object is not a string", reason='object is not a string', object=obj, type=type(obj), str_type=str)
 
         return obj
 
@@ -37,5 +38,4 @@ class StringVerifier(Verifier):
         """
 
         desc = self.format_name('String')
-        return self.wrap_lines(desc, indent_level, indent=indent_size)
-
+        return self.wrap_lines(desc, indent_level, indent_size=indent_size)

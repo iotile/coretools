@@ -68,7 +68,7 @@ class RecordedStream (CMDStream):
 		with open(self.filepath, "r") as f:
 			data = json.load(f)
 
-		for dev in data.iterkeys():
+		for dev in data:
 			res = data[dev]
 			self.recording[dev] = {}
 

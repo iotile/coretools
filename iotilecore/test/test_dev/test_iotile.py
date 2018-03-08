@@ -61,9 +61,9 @@ def test_load_invaliddepends():
 def test_deprange_parsing():
     tile = load_tile('dep_version_comp')
 
-    print tile.dependencies[0]['required_version_string']
+    print(tile.dependencies[0]['required_version_string'])
     reqver = tile.dependencies[0]['required_version']
-    print reqver._disjuncts[0][0]
+    print(reqver._disjuncts[0][0])
 
     assert reqver.check(SemanticVersion.FromString('1.0.0'))
     assert reqver.check(SemanticVersion.FromString('1.1.0'))
@@ -117,7 +117,7 @@ def test_depfinding_overlays():
     assert len(tile.dependencies) == 5
 
     deps = set([x['name'] for x in tile.dependencies])
-    
+
     assert 'dep1' in deps
     assert 'dep2' in deps
     assert 'dep3' in deps

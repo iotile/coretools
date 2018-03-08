@@ -1,6 +1,7 @@
 """A thread that can be stopped
 """
 
+from builtins import range
 import threading
 import inspect
 import traceback
@@ -26,10 +27,11 @@ class StoppableWorkerThread(threading.Thread):
 
     def __init__(self, routine, timeout=0.1, args=None, kwargs=None):
         self._routine = routine
-        self._args = args
-        self._kwargs = kwargs
+        self._worker_args = args
+        self._worker_kwargs = kwargs
         self._stop_condition = threading.Event()
         self._running = threading.Event()
+
 
         # In order to keep the thread responsive, we default to checking for our
         # stop signal every 10 milliseconds.  If the execution timeout is less than
@@ -51,11 +53,11 @@ class StoppableWorkerThread(threading.Thread):
         self._generator = inspect.isgeneratorfunction(routine)
 
 
-        if self._args is None:
-            self._args = []
+        if self._worker_args is None:
+            self._worker_args = []
 
-        if self._kwargs is None:
-            self._kwargs = {}
+        if self._worker_kwargs is None:
+            self._worker_kwargs = {}
 
         super(StoppableWorkerThread, self).__init__()
 
@@ -80,7 +82,7 @@ class StoppableWorkerThread(threading.Thread):
 
         if self._generator:
             try:
-                gen = self._routine(*self._args, **self._kwargs)
+                gen = self._routine(*self._worker_args, **self._worker_kwargs)
 
                 while True:
                     if self._stop_condition.is_set():
@@ -90,7 +92,7 @@ class StoppableWorkerThread(threading.Thread):
 
                     next(gen)
 
-                    for _i in xrange(0, self._wait_count):
+                    for _i in range(0, self._wait_count):
                         if self._stop_condition.is_set():
                             return
                         time.sleep(self._wait)
@@ -108,10 +110,10 @@ class StoppableWorkerThread(threading.Thread):
 
                     self._running.set()
 
-                    self._routine(*self._args, **self._kwargs)
+                    self._routine(*self._worker_args, **self._worker_kwargs)
 
                     # Wait for the desired interval, checking if we should exit
-                    for _i in xrange(0, self._wait_count):
+                    for _i in range(0, self._wait_count):
                         if self._stop_condition.is_set():
                             return
 

@@ -9,6 +9,7 @@
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 from builtins import str
+from future.utils import viewitems
 import sys
 import os
 import traceback
@@ -42,7 +43,7 @@ def create_parser():
     """Create the argument parser for iotile."""
     parser = argparse.ArgumentParser(description=DESCRIPTION, formatter_class=argparse.RawDescriptionHelpFormatter)
 
-    parser.add_argument('-v', '--verbose', action="count", help="Increase logging level (goes error, warn, info, debug)")
+    parser.add_argument('-v', '--verbose', action="count", default=0, help="Increase logging level (goes error, warn, info, debug)")
     parser.add_argument('-l', '--logfile', help="The file where we should log all logging messages")
     parser.add_argument('-i', '--include', action="append", default=[], help="Only include the specified loggers")
     parser.add_argument('-e', '--exclude', action="append", default=[], help="Exclude the specified loggers, including all others")
@@ -170,7 +171,7 @@ def main(argv=None):
 
     reg = ComponentRegistry()
     plugins = reg.list_plugins()
-    for key, val in plugins.iteritems():
+    for key, val in viewitems(plugins):
         shell.root_add(key, val)
 
     if len(line) == 0:

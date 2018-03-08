@@ -111,9 +111,9 @@ class RecipeObject(object):
         else:
             try:
                 return Template(param).substitute(variables)
-            except TypeError, e:
+            except TypeError as e:
                 return param
-            except KeyError, e:
+            except KeyError as e:
                 raise RecipeVariableNotPassed("Variable undefined, need to pass in \
                     through 'variables'", undefined_variable=e.message)
 

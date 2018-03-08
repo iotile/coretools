@@ -64,8 +64,8 @@ def test_carrot():
 
     ver_range = SemanticVersionRange.FromString('^0.0.1')
 
-    print "Lower: %s" % ver_range._disjuncts[0][0][0]
-    print "Upper: %s" % ver_range._disjuncts[0][0][1]
+    print("Lower: %s" % ver_range._disjuncts[0][0][0])
+    print("Upper: %s" % ver_range._disjuncts[0][0][1])
 
     assert ver_range.check(SemanticVersion.FromString('0.0.1'))
     assert not ver_range.check(SemanticVersion.FromString('0.0.2'))
@@ -75,8 +75,8 @@ def test_carrot():
 
     ver_range = SemanticVersionRange.FromString('^0.1.0')
 
-    print "Lower: %s" % ver_range._disjuncts[0][0][0]
-    print "Upper: %s" % ver_range._disjuncts[0][0][1]
+    print("Lower: %s" % ver_range._disjuncts[0][0][0])
+    print("Upper: %s" % ver_range._disjuncts[0][0][1])
 
     assert ver_range.check(SemanticVersion.FromString('0.1.0'))
     assert ver_range.check(SemanticVersion.FromString('0.1.1'))
@@ -86,8 +86,8 @@ def test_carrot():
 
     ver_range = SemanticVersionRange.FromString('^2.0.0')
 
-    print "Lower: %s" % ver_range._disjuncts[0][0][0]
-    print "Upper: %s" % ver_range._disjuncts[0][0][1]
+    print("Lower: %s" % ver_range._disjuncts[0][0][0])
+    print("Upper: %s" % ver_range._disjuncts[0][0][1])
 
     assert ver_range.check(SemanticVersion.FromString('2.0.0'))
     assert ver_range.check(SemanticVersion.FromString('2.1.1'))
@@ -100,8 +100,8 @@ def test_carrot():
     #Make sure prerelease checking works in lower bound
     ver_range = SemanticVersionRange.FromString('^2.0.0-alpha2')
 
-    print "Lower: %s" % ver_range._disjuncts[0][0][0]
-    print "Upper: %s" % ver_range._disjuncts[0][0][1]
+    print("Lower: %s" % ver_range._disjuncts[0][0][0])
+    print("Upper: %s" % ver_range._disjuncts[0][0][1])
 
     assert ver_range.check(SemanticVersion.FromString('2.0.0'))
     assert ver_range.check(SemanticVersion.FromString('2.1.1'))

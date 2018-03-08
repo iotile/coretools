@@ -293,8 +293,13 @@ class IOTileReport(object):
 
         info = {}
         info['received_time'] = self.received_time
-        info['encoded_report'] = str(self.encode())
-        info['report_format'] = ord(info['encoded_report'][0])  # Report format is the first byte of the encoded report
+        info['encoded_report'] = bytes(self.encode())
+
+        # Handle python 2 / python 3 differences
+        report_format = info['encoded_report'][0]
+        if not isinstance(report_format, int):
+            report_format = ord(report_format)
+        info['report_format'] = report_format  # Report format is the first byte of the encoded report
         info['origin'] = self.origin
 
         return info

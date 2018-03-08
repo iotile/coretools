@@ -1,4 +1,4 @@
-from verifier import Verifier
+from .verifier import Verifier
 from iotile.core.exceptions import ValidationError
 
 
@@ -37,7 +37,7 @@ class OptionsVerifier(Verifier):
             try:
                 obj = option.verify(obj)
                 return obj
-            except ValidationError, exc:
+            except ValidationError as exc:
                 exceptions['option_%d' % (i+1)] = exc.params['reason']
 
         raise ValidationError("Object did not match any of a set of options", reason="object did not match any given option (first failure = '%s')" % exceptions['option_1'], **exceptions)

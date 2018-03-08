@@ -1,3 +1,4 @@
+from builtins import range
 import unittest
 import os
 import pytest
@@ -15,14 +16,14 @@ def make_report(uuid, stream, value, timestamp, sent_time):
 def make_sequential(iotile_id, stream, num_readings, give_ids=False):
     readings = []
 
-    for i in xrange(0, num_readings):
+    for i in range(0, num_readings):
         if give_ids:
             reading = IOTileReading(i, stream, i, reading_id=i+1)
         else:
             reading = IOTileReading(i, stream, i)
 
         readings.append(reading)
-        
+
     report = SignedListReport.FromReadings(iotile_id, readings)
     return report.encode()
 
@@ -77,11 +78,11 @@ class TestReportParser(unittest.TestCase):
         report_data = report_data1 + report_data2
 
         assert self.parser.state == self.parser.WaitingForReportType
-        
+
         self.parser.add_data(report_data[:1])
         assert len(self.parser.reports) == 0
         assert self.parser.state == self.parser.WaitingForCompleteReport
-        
+
         self.parser.add_data(report_data[1:19])
         assert self.parser.state == self.parser.WaitingForCompleteReport
         assert len(self.parser.reports) == 0
@@ -129,7 +130,7 @@ class TestReportParser(unittest.TestCase):
         assert self.parser.state == self.parser.WaitingForReportType
 
         #Make sure the readings in report2 are correct
-        for i in xrange(0, len(report2.visible_readings)):
+        for i in range(0, len(report2.visible_readings)):
             reading = report2.visible_readings[i]
 
             assert reading.value == i

@@ -172,7 +172,7 @@ def test_realtime_tracing(tracer_hw):
 
     time.sleep(.1)
 
-    trace_data = tracer_hw.dump_trace('raw')
+    trace_data = tracer_hw.dump_trace('raw').decode('utf-8')
 
     assert len(trace_data) > 0
     words = trace_data.split(' ')
