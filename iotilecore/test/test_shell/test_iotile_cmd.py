@@ -22,6 +22,6 @@ def test_components():
 def test_logging():
     """Make sure we can enable logging."""
 
-    assert main(['-v']) == 0
-    assert main(['-vv', '-i', 'test.logger']) == 0
-    assert main(['-vv', '-e', 'test.logger']) == 0
+    assert main(['-v', '-q']) == 0
+    assert main(['-vv', '-i', 'test.logger', '-q']) == 0
+    assert main(['-vv', '-e', 'test.logger', '-q']) == 0

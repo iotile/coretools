@@ -47,6 +47,7 @@ def create_parser():
     parser.add_argument('-l', '--logfile', help="The file where we should log all logging messages")
     parser.add_argument('-i', '--include', action="append", default=[], help="Only include the specified loggers")
     parser.add_argument('-e', '--exclude', action="append", default=[], help="Exclude the specified loggers, including all others")
+    parser.add_argument('-q', '--quit', action="store_true", help="Do not spawn a shell after executing any commands")
     parser.add_argument('commands', nargs=argparse.REMAINDER, help="The command(s) to execute")
 
     return parser
@@ -63,8 +64,9 @@ def parse_global_args(argv):
         argv (list): The command line for this command
 
     Returns:
-        list: The remaining arguments if any that should be passed to the
-            HierarchicalShell.
+        list, bool: The remaining arguments if any that should be passed to the
+            HierarchicalShell and a bool indicating if we should immediately quit
+            after executing commands passed on the command line.
     """
 
     parser = create_parser()
@@ -112,7 +114,7 @@ def parse_global_args(argv):
     else:
         root.addHandler(logging.NullHandler())
 
-    return args.commands
+    return args.commands, args.quit
 
 
 def setup_completion(shell):
@@ -158,7 +160,7 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
 
-    argv = parse_global_args(argv)
+    argv, quit_immediately = parse_global_args(argv)
 
     type_system.interactive = True
     line = argv
@@ -191,6 +193,10 @@ def main(argv=None):
         traceback.print_exc()
         cmdstream.do_final_close()
         return 1
+
+    # If the user tells us to never spawn a shell, make sure we don't
+    if quit_immediately:
+        finished = True
 
     if finished:
         cmdstream.do_final_close()
