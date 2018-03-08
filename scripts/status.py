@@ -1,5 +1,6 @@
-"""Check whether there are changes since the last released version of a component
-"""
+"""Check whether there are changes since the last released version of a component."""
+
+from __future__ import unicode_literals, print_function, absolute_import
 import subprocess
 import cmdln
 import sys

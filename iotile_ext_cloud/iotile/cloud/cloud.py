@@ -178,7 +178,7 @@ class IOTileCloud(object):
         """
         try:
             sg = self.api.sg(new_sg).get()
-        except RestHttpBaseException, exc:
+        except RestHttpBaseException as exc:
             raise ExternalError("Error calling method on iotile.cloud", exception=exc, response=exc.response.status_code)
 
         if app_tag is not None:
@@ -190,7 +190,7 @@ class IOTileCloud(object):
 
         try:
             self.api.device(slug).patch(patch)
-        except RestHttpBaseException, exc:
+        except RestHttpBaseException as exc:
             if exc.response.status_code == 400:
                 raise ArgumentError("Error setting sensor graph, invalid value", value=new_sg, error_code=exc.response.status_code)
             else:
@@ -212,7 +212,7 @@ class IOTileCloud(object):
         """
         try:
             dt = self.api.dt(new_template).get()
-        except RestHttpBaseException, exc:
+        except RestHttpBaseException as exc:
             raise ExternalError("Error calling method on iotile.cloud", exception=exc, response=exc.response.status_code)
 
         if os_tag is not None:
@@ -224,7 +224,7 @@ class IOTileCloud(object):
 
         try:
             self.api.device(slug).patch(patch, staff=1)
-        except RestHttpBaseException, exc:
+        except RestHttpBaseException as exc:
             if exc.response.status_code == 400:
                 raise ArgumentError("Error setting device template, invalid value", value=new_template, error_code=exc.response.status_code)
             else:
@@ -264,7 +264,7 @@ class IOTileCloud(object):
         try:
             resp = self.api.device(slug).key.get(type=IOTileCloud.DEVICE_TOKEN_TYPE)
             token = resp['key']
-        except RestHttpBaseException, exc:
+        except RestHttpBaseException as exc:
             raise ExternalError("Error calling method on iotile.cloud", exception=exc, response=exc.response.status_code)
 
         self.api.set_token(token, token_type=token_type)
@@ -287,7 +287,7 @@ class IOTileCloud(object):
 
         try:
             self.api.device(slug).unclaim.post(payload)
-        except RestHttpBaseException, exc:
+        except RestHttpBaseException as exc:
             raise ExternalError("Error calling method on iotile.cloud", exception=exc, response=exc.response.status_code)
 
     def upload_report(self, report):
@@ -353,7 +353,7 @@ class IOTileCloud(object):
 
         try:
             data = self.api.streamer(slug).get()
-        except RestHttpBaseException, exc:
+        except RestHttpBaseException as exc:
             raise ArgumentError("Could not get information for streamer", device_id=device_id, streamer_id=streamer, slug=slug, err=str(exc))
 
         if 'last_id' not in data:
@@ -377,7 +377,7 @@ class IOTileCloud(object):
 
         try:
             data = self.api.streamer().get(device=slug)
-        except RestHttpBaseException, exc:
+        except RestHttpBaseException as exc:
             raise ArgumentError("Could not get information for streamer", device_id=device_id, slug=slug, err=str(exc))
 
         results = data.get('results', [])

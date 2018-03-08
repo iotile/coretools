@@ -1,3 +1,4 @@
+from __future__ import unicode_literals, print_function, absolute_import
 import os
 import time
 import subprocess
@@ -7,12 +8,15 @@ import components
 
 
 def run_test(component, args):
-    distribution, subdir = components.comp_names[component]
+    distribution, subdir, python3_compat = components.comp_names[component]
 
     currdir = os.getcwd()
 
     testcmd = ['pytest'] + list(args)
     output_status = 0
+
+    if sys.version_info.major >= 3 and not python3_compat:
+        return None, ""
 
     try:
         os.chdir(subdir)
@@ -49,7 +53,7 @@ class TestProcessor(cmdln.Cmdln):
         failed = False
         failed_outputs = []
 
-        for comp_name in sorted(components.comp_names.iterkeys()):
+        for comp_name in sorted(components.comp_names):
             start = time.time()
             sys.stdout.write("Testing {}: ".format(comp_name))
             sys.stdout.flush()
@@ -58,7 +62,9 @@ class TestProcessor(cmdln.Cmdln):
 
             duration = end - start
 
-            if status != 0:
+            if status is None:
+                print("SKIPPED ON PYTHON 3")
+            elif status != 0:
                 failed = True
                 failed_outputs.append(output)
                 print("FAILED (%.1f seconds)" % duration)
@@ -69,7 +75,7 @@ class TestProcessor(cmdln.Cmdln):
             print("----------------------- ERROR LOG STARTS ------------------")
 
             for output in failed_outputs:
-                sys.stdout.write(output)
+                sys.stdout.write(output.decode('utf-8'))
                 sys.stdout.flush()
 
             print("----------------------- ERROR LOG ENDS --------------------")

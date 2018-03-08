@@ -26,7 +26,7 @@ setup(
     license="LGPLv3",
     install_requires=[
         "ws4py>=0.3.5",
-        "msgpack-python>=0.4.8",
+        "msgpack>=0.5.5",
         "python-dateutil>=2.6.0",
         "future >= 0.16.0",
         "typedargs>=0.11.0"

@@ -2,23 +2,19 @@
 
 Usage: python release.py <component_name>-<expected version>
 
-Component name should be one of:
-    iotilecore
-    iotilebuild
-    iotilegateway
-    iotile_transport_bled112
+Component name should be one of the components defined in components.py
 
 The version must match the version encoded in version.py in the respective
 subdirectory for the component for the release to proceed.
 """
 
+from __future__ import unicode_literals, print_function, absolute_import
 import sys
 import os
+import glob
 import requests
 import setuptools.sandbox
-import subprocess
 from twine.commands.upload import upload
-import glob
 from components import comp_names
 
 def send_slack_message(message):
@@ -37,8 +33,6 @@ def send_slack_message(message):
 def get_release_component():
     """Split the argument passed on the command line into a component name and expected version
     """
-
-    global comp_names
 
     if len(sys.argv) < 2:
         raise EnvironmentError("Usage: python release.py <component_name>-<version>")
@@ -59,7 +53,7 @@ def check_version(component, expected_version):
     """Make sure the package version in setuptools matches what we expect it to be
     """
 
-    _, relative_compath = comp_names[component]
+    _, relative_compath, _py3 = comp_names[component]
 
     compath = os.path.realpath(os.path.abspath(relative_compath))
     sys.path.insert(0, compath)
@@ -73,7 +67,7 @@ def build_component(component):
     """Create an sdist and a wheel for the desired component
     """
 
-    _, relative_compath = comp_names[component]
+    _, relative_compath, _py3 = comp_names[component]
 
     curr = os.getcwd()
     os.chdir(relative_compath)
@@ -97,7 +91,7 @@ def upload_component(component):
         pypi_pass = None
         print("No PYPI user information in environment")
 
-    _, relative_compath = comp_names[component]
+    _, relative_compath, _py3 = comp_names[component]
     distpath = os.path.join(relative_compath, 'dist', '*')
     distpath = os.path.realpath(os.path.abspath(distpath))
     dists = glob.glob(distpath)
@@ -111,7 +105,7 @@ def upload_component(component):
     upload(dists, 'pypi', False, None, pypi_user, pypi_pass, None, None, '~/.pypirc', False, None, None, None)
 
 def get_release_notes(component, version):
-    _, relative_compath = comp_names[component]
+    _, relative_compath, _py3 = comp_names[component]
     notes_path = os.path.join(relative_compath, 'RELEASE.md')
 
     try:

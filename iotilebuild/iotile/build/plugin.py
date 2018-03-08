@@ -1,14 +1,16 @@
+from __future__ import unicode_literals
+
 def setup_plugin():
-    u = unicode('build')
-    v = unicode('iotile.build.build.build,build')
-    
-    d = unicode('depends')
-    dv = unicode('iotile.build.dev,DependencyManager')
+    u = 'build'
+    v = 'iotile.build.build.build,build'
 
-    b = unicode('release')
-    bv = unicode('iotile.build.release.release,release')
+    d = 'depends'
+    dv = 'iotile.build.dev,DependencyManager'
 
-    p = unicode('pull')
-    pv = unicode('iotile.build.dev.pull_release,pull')
+    b = 'release'
+    bv = 'iotile.build.release.release,release'
+
+    p = 'pull'
+    pv = 'iotile.build.dev.pull_release,pull'
 
     return [(u,v), (d,dv), (b, bv), (p,pv)]
