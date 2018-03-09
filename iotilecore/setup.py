@@ -67,7 +67,8 @@ setup(
             'FlashBoardStep = iotile.core.hw.debug.flash_board_step:FlashBoardStep'
         ],
         'iotile.app': [
-            'device_info = iotile.core.hw.app.info_app'
+            'device_info = iotile.core.hw.app.info_app',
+            'device_updater = iotile.core.hw.app.updater_app'
         ]
     },
     description="IOTile Core Tools",

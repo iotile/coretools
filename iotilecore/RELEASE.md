@@ -2,6 +2,12 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.20.3
+
+- Add `device_updater` app that allows you to run an update script on any
+  iotile device.  Usage is: iotile hw app --name device_updater
+- Additional python 3 compatibility fixes.
+
 ## 3.20.2
 
 - Fix bug with undefined variable in external_proxy.py
