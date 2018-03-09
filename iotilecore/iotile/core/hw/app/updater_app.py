@@ -97,6 +97,8 @@ class DeviceUpdater(IOTileApp):
                 for i, record in enumerate(script.records):
                     print("%02d: %s" % (i + 1, str(record)))
 
+                print("")
+
             do_load = self._prompt_yesno("Are you sure you want to program this script (y/n)? ")
             if not do_load:
                 print("Aborting device update due to user request")
