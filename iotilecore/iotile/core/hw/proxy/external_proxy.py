@@ -114,4 +114,4 @@ def import_proxy(path, obj_type):
         raise ArgumentError("could not import module in order to load external proxy modules", module_path=path, parent_directory=d, module_name=p, error=str(e))
 
     num_added = 0
-    return [obj for obj in itervalues(mod.__dict__) if inspect.isclass(x) and issubclass(x, obj_type) and x != obj_type]
+    return [obj for obj in itervalues(mod.__dict__) if inspect.isclass(obj) and issubclass(obj, obj_type) and obj != obj_type]
