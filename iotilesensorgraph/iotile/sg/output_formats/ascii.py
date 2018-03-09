@@ -5,6 +5,7 @@ the load_from_file method.  It closely mirrors the snippet format
 with the arguments enclosed in brackets for easier parsing.
 """
 
+from future.utils import viewitems
 from iotile.core.utilities.command_file import CommandFile
 
 
@@ -47,7 +48,7 @@ def format_ascii(sensor_graph):
         cmdfile.add('add_streamer', *args)
 
     # Load all the constants
-    for stream, value in sensor_graph.constant_database.items():
+    for stream, value in sorted(viewitems(sensor_graph.constant_database), key=lambda x: x[0].encode()):
         cmdfile.add("push_reading", stream, value)
 
     # Persist the sensor graph

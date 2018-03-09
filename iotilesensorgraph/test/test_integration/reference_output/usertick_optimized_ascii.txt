@@ -42,23 +42,23 @@ add_streamer {unbuffered 18,controller,True,individual,telegram,255}
 add_streamer {unbuffered 15,controller,True,individual,telegram,255}
 add_streamer {unbuffered 22,controller,True,individual,telegram,255}
 add_streamer {unbuffered 25,controller,True,individual,telegram,255}
-push_reading {constant 1028,819254}
-push_reading {constant 1039,819203}
-push_reading {constant 1033,884737}
-push_reading {constant 1035,1}
-push_reading {constant 1034,0}
+push_reading {constant 1,0}
 push_reading {constant 1024,532494}
 push_reading {constant 1025,819253}
 push_reading {constant 1026,532494}
 push_reading {constant 1027,819254}
+push_reading {constant 1028,819254}
+push_reading {constant 1030,884736}
 push_reading {constant 1031,884739}
 push_reading {constant 1032,884738}
-push_reading {constant 1,0}
+push_reading {constant 1033,884737}
+push_reading {constant 1034,0}
+push_reading {constant 1035,1}
+push_reading {constant 1036,0}
+push_reading {constant 1039,819203}
 push_reading {constant 1040,884736}
-push_reading {constant 1030,884736}
+push_reading {constant 1041,884739}
 push_reading {constant 1042,884738}
 push_reading {constant 1043,884737}
-push_reading {constant 1036,0}
-push_reading {constant 1041,884739}
 persist
 set_online {True}
