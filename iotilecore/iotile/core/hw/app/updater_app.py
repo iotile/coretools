@@ -104,6 +104,10 @@ class DeviceUpdater(IOTileApp):
 
         status, _err = self._query_status()
 
+        if status != self.IdleStatus and not confirm:
+            print("ERROR: Loading script would require user confirmation to override an incomplete prior update.")
+            return
+
         if status in (self.ReceivedScript, self.ReceivingScript, self.WaitingForScript):
             if status == self.ReceivedScript:
                 print("There is a script currently loaded in the device that was never run.")
