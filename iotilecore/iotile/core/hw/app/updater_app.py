@@ -116,9 +116,10 @@ class DeviceUpdater(IOTileApp):
             elif status in (self.ReceivingScript, self.WaitingForScript):
                 print("WARNING: The device is currently waiting for script data from a previous update.")
                 print("         Make sure that no one else is currently connected to this device before proceeding.")
+
             clear = self._prompt_yesno("Do you want to clear the current script to program this one (y/n)? ")
             if not clear:
-                print("Aborting device update because there was already a script loaded")
+                print("Aborting device update because the device was not idle")
                 return
 
             print("Clearing loaded script (this can take up to 10 seconds)")
