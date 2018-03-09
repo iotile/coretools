@@ -200,7 +200,6 @@ class DeviceUpdater(IOTileApp):
         if err != 0:
             raise HardwareError("Error resetting script", error_code=err)
 
-
     def _wait_script(self):
         """Trigger a script and then synchronously wait for it to finish processing."""
 
