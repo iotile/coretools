@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.20.2
+
+- Fix bug with undefined variable in external_proxy.py
+
 ## 3.20.1
 
 - Add `python_depends` option in `module_settings.py` to install python
