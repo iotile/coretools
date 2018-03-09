@@ -1,0 +1,66 @@
+disable
+clear
+reset
+add_node "(system input 3 always) => counter 1025 using copy_latest_a"
+add_node "(system input 5 always) => counter 1026 using copy_latest_a"
+add_node "(input 1 always) => unbuffered 1024 using copy_latest_a"
+add_node "(system input 1034 when value == 0) => unbuffered 1025 using copy_latest_a"
+add_node "(system input 1034 when value == 1) => unbuffered 1028 using copy_latest_a"
+add_node "(system input 1025 always) => unbuffered 1035 using copy_latest_a"
+add_node "(system input 1026 always) => unbuffered 1036 using copy_latest_a"
+add_node "(unbuffered 1024 always) => output 36 using copy_latest_a"
+add_node "(unbuffered 1025 always) => constant 1 using copy_latest_a"
+add_node "(unbuffered 1025 when count == 1 && constant 1024 always) => unbuffered 1026 using call_rpc"
+add_node "(unbuffered 1025 when count == 1 && constant 1025 always) => unbuffered 1027 using call_rpc"
+add_node "(unbuffered 1028 always) => constant 1 using copy_latest_a"
+add_node "(unbuffered 1028 when count == 1 && constant 1026 always) => unbuffered 1029 using call_rpc"
+add_node "(unbuffered 1028 when count == 1 && constant 1027 always) => unbuffered 1030 using call_rpc"
+add_node "(constant 1035 always && unbuffered 1035 when value == 8) => constant 1034 using copy_latest_a"
+add_node "(constant 1036 always && unbuffered 1036 when value == 8) => constant 1034 using copy_latest_a"
+add_node "(system input 1024 always && constant 1 when value == 1) => unbuffered 1031 using copy_latest_a"
+add_node "(counter 1026 always && constant 1 when value == 1) => counter 1028 using copy_latest_a"
+add_node "(counter 1025 always && constant 1034 when value == 1) => counter 1031 using copy_latest_a"
+add_node "(unbuffered 1031 when count == 1 && constant 1028 always) => unbuffered 1033 using call_rpc"
+add_node "(counter 1028 when count >= 60 && constant 1030 always) => unbuffered 1034 using call_rpc"
+add_node "(counter 1028 when count >= 60 && constant 1031 always) => output 34 using call_rpc"
+add_node "(counter 1028 when count >= 60 && constant 1032 always) => output 33 using call_rpc"
+add_node "(counter 1031 when count >= 1 && constant 1039 always) => unbuffered 18 using call_rpc"
+add_node "(counter 1031 when count >= 1 && constant 1040 always) => unbuffered 1039 using call_rpc"
+add_node "(counter 1031 when count >= 1 && constant 1041 always) => unbuffered 15 using call_rpc"
+add_node "(counter 1031 when count >= 1) => counter 1033 using copy_latest_a"
+add_node "(counter 1028 when count >= 60 && constant 1033 always) => output 35 using call_rpc"
+add_node "(counter 1033 when count == 1 && constant 1042 always) => unbuffered 22 using call_rpc"
+add_node "(counter 1033 when count == 1 && constant 1043 always) => unbuffered 25 using call_rpc"
+add_streamer 'all outputs' 'controller' False hashedlist telegram
+add_streamer 'all system outputs' 'controller' False hashedlist telegram --withother 0
+add_streamer 'all buffered' 'controller' False hashedlist telegram --withother 0
+add_streamer 'unbuffered 18' 'controller' True individual telegram
+add_streamer 'unbuffered 15' 'controller' True individual telegram
+add_streamer 'unbuffered 22' 'controller' True individual telegram
+add_streamer 'unbuffered 25' 'controller' True individual telegram
+set_constant 'constant 1028' 819254
+set_constant 'constant 1039' 819203
+set_constant 'constant 1033' 884737
+set_constant 'constant 1035' 1
+set_constant 'constant 1034' 0
+set_constant 'constant 1024' 532494
+set_constant 'constant 1025' 819253
+set_constant 'constant 1026' 532494
+set_constant 'constant 1027' 819254
+set_constant 'constant 1031' 884739
+set_constant 'constant 1032' 884738
+set_constant 'constant 1' 0
+set_constant 'constant 1040' 884736
+set_constant 'constant 1030' 884736
+set_constant 'constant 1042' 884738
+set_constant 'constant 1043' 884737
+set_constant 'constant 1036' 0
+set_constant 'constant 1041' 884739
+persist
+back
+config_database
+clear_variables
+set_variable 'controller' 8192 uint32_t 1
+set_variable 'controller' 8194 uint32_t 10
+back
+reset
