@@ -7,6 +7,7 @@ static configuration information that defines how the IOTile device is configure
 
 from iotile.core.utilities.command_file import CommandFile
 from binascii import hexlify
+from future.utils import viewitems
 
 
 def format_config(sensor_graph):
@@ -21,8 +22,8 @@ def format_config(sensor_graph):
 
     cmdfile = CommandFile("Config Variables", "1.0")
 
-    for slot, conf_vars in sensor_graph.config_database.items():
-        for conf_var, conf_def in conf_vars.items():
+    for slot in sorted(sensor_graph.config_database, key=lambda x: x.encode()):
+        for conf_var, conf_def in sorted(viewitems(sensor_graph.config_database[slot])):
             conf_type, conf_val = conf_def
 
             if conf_type == 'binary':

@@ -1,0 +1,6 @@
+Config Variables
+Format: 1.0
+Type: ASCII
+
+set_variable {controller,8192,uint32_t,1}
+set_variable {controller,8194,uint32_t,10}

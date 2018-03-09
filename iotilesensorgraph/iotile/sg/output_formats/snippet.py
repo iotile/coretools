@@ -1,6 +1,8 @@
 """A snippet is a series of commands that can be piped into the iotile tool connected to a device."""
 
 from binascii import hexlify
+from future.utils import viewitems
+
 
 def format_snippet(sensor_graph):
     """Format this sensor graph as iotile command snippets.
@@ -25,7 +27,7 @@ def format_snippet(sensor_graph):
 
     # Load in the streamers
     for streamer in sensor_graph.streamers:
-        line = "add_streamer '{}' '{}' {} {} {}".format(streamer.walker.selector, streamer.dest, streamer.automatic, streamer.format, streamer.report_type)
+        line = "add_streamer '{}' '{}' {} {} {}".format(streamer.selector, streamer.dest, streamer.automatic, streamer.format, streamer.report_type)
 
         if streamer.with_other is not None:
             line += ' --withother {}'.format(streamer.with_other)
@@ -33,7 +35,7 @@ def format_snippet(sensor_graph):
         output.append(line)
 
     # Load all the constants
-    for stream, value in sensor_graph.constant_database.items():
+    for stream, value in sorted(viewitems(sensor_graph.constant_database), key=lambda x: x[0].encode()):
         output.append("set_constant '{}' {}".format(stream, value))
 
     # Persist the sensor graph

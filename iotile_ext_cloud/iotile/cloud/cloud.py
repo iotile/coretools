@@ -1,6 +1,7 @@
 """Routines for interacting with IOTile cloud from the command line
 """
 
+from builtins import input
 from io import BytesIO
 import getpass
 import datetime
@@ -60,7 +61,7 @@ class IOTileCloud(object):
             # session rather than making them call link_cloud to store a cloud token
             if type_system.interactive:
                 if username is None:
-                    username = raw_input("Please enter your (%s) username: " % domain)
+                    username = input("Please enter your (%s) username: " % domain)
 
                 password = getpass.getpass('Please enter the (%s) password for %s: ' % (domain, username))
                 ok_resp = self.api.login(email=username, password=password)
