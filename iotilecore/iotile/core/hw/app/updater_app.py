@@ -227,7 +227,6 @@ class DeviceUpdater(IOTileApp):
             if error != 0:
                 raise HardwareError("Error executing remote script", error_code=error)
 
-
         iprint("Waiting for script to finish executing")
         while status != 0:
             if type_system.interactive:
