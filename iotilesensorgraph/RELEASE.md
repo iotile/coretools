@@ -2,6 +2,10 @@
 
 All major changes in each released version of iotile-sensorgraph are listed here.
 
+## 0.6.1
+
+- Fix regression in ascii and snippet output formats caused by changes in 0.6.0.
+
 ## 0.6.0
 
 - Add support for directly creating binary device updating scripts from an sgf

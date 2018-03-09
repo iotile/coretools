@@ -43,7 +43,7 @@ def format_ascii(sensor_graph):
         if streamer.with_other is not None:
             other = streamer.with_other
 
-        args = [streamer.walker.selector, streamer.dest, streamer.automatic, streamer.format, streamer.report_type, other]
+        args = [streamer.selector, streamer.dest, streamer.automatic, streamer.format, streamer.report_type, other]
         cmdfile.add('add_streamer', *args)
 
     # Load all the constants

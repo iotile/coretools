@@ -25,7 +25,7 @@ def format_snippet(sensor_graph):
 
     # Load in the streamers
     for streamer in sensor_graph.streamers:
-        line = "add_streamer '{}' '{}' {} {} {}".format(streamer.walker.selector, streamer.dest, streamer.automatic, streamer.format, streamer.report_type)
+        line = "add_streamer '{}' '{}' {} {} {}".format(streamer.selector, streamer.dest, streamer.automatic, streamer.format, streamer.report_type)
 
         if streamer.with_other is not None:
             line += ' --withother {}'.format(streamer.with_other)
