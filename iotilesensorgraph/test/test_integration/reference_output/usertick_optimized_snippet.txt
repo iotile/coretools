@@ -38,24 +38,24 @@ add_streamer 'unbuffered 18' 'controller' True individual telegram
 add_streamer 'unbuffered 15' 'controller' True individual telegram
 add_streamer 'unbuffered 22' 'controller' True individual telegram
 add_streamer 'unbuffered 25' 'controller' True individual telegram
-set_constant 'constant 1028' 819254
-set_constant 'constant 1039' 819203
-set_constant 'constant 1033' 884737
-set_constant 'constant 1035' 1
-set_constant 'constant 1034' 0
+set_constant 'constant 1' 0
 set_constant 'constant 1024' 532494
 set_constant 'constant 1025' 819253
 set_constant 'constant 1026' 532494
 set_constant 'constant 1027' 819254
+set_constant 'constant 1028' 819254
+set_constant 'constant 1030' 884736
 set_constant 'constant 1031' 884739
 set_constant 'constant 1032' 884738
-set_constant 'constant 1' 0
+set_constant 'constant 1033' 884737
+set_constant 'constant 1034' 0
+set_constant 'constant 1035' 1
+set_constant 'constant 1036' 0
+set_constant 'constant 1039' 819203
 set_constant 'constant 1040' 884736
-set_constant 'constant 1030' 884736
+set_constant 'constant 1041' 884739
 set_constant 'constant 1042' 884738
 set_constant 'constant 1043' 884737
-set_constant 'constant 1036' 0
-set_constant 'constant 1041' 884739
 persist
 back
 config_database
