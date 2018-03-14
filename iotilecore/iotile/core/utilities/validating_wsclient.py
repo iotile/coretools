@@ -86,7 +86,7 @@ class ValidatingWSClient(WebSocketClient):
 
         try:
             self.connect()
-        except Exception, exc:
+        except Exception as exc:
             raise InternalError("Unable to connect to websockets host", reason=str(exc))
 
         flag = self._connected.wait(timeout=timeout)
@@ -106,7 +106,7 @@ class ValidatingWSClient(WebSocketClient):
 
         try:
             self.close()
-        except Exception, exc:
+        except Exception as exc:
             raise InternalError("Unable to disconnect from websockets host", reason=str(exc))
 
         flag = self._disconnection_finished.wait(timeout=timeout)
@@ -211,7 +211,7 @@ class ValidatingWSClient(WebSocketClient):
 
         try:
             unpacked = self._unpack(message.data)
-        except Exception, exc:
+        except Exception as exc:
             self.logger.error("Corrupt message received, parse exception = %s", str(exc))
             return
 
@@ -220,15 +220,15 @@ class ValidatingWSClient(WebSocketClient):
         for validator, callback in self.validators:
             try:
                 validator.verify(unpacked)
-            except ValidationError, exc:
+            except ValidationError:
                 continue
 
             try:
                 callback(unpacked)
                 return
-            except IOTileException, exc:
+            except IOTileException as exc:
                 self.logger.error("Exception handling websocket message, exception = %s", str(exc))
-            except Exception, exc:
+            except Exception as exc:
                 self.logger.error("Non-IOTile exception handling websocket message, exception = %s", str(exc))
 
         self.logger.warn("No handler found for received message, message=%s", str(unpacked))

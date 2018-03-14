@@ -37,11 +37,11 @@ def main():
         try:
             with open(config_file, "rb") as conf:
                 args = json.load(conf)
-        except IOError, exc:
+        except IOError as exc:
             raise ArgumentError("Could not open required config file", path=config_file, error=str(exc))
-        except ValueError, exc:
+        except ValueError as exc:
             raise ArgumentError("Could not parse JSON from config file", path=config_file, error=str(exc))
-        except TypeError, exc:
+        except TypeError:
             raise ArgumentError("You must pass the path to a json config file", path=config_file)
 
         signal.signal(signal.SIGINT, quit_signal_handler)

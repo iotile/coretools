@@ -1,11 +1,9 @@
 import os
 import binascii
 import base64
-import threading
-import time
 import datetime
 import logging
-import Queue
+import queue
 import uuid
 from iotile.core.exceptions import IOTileException, ArgumentError, HardwareError
 from iotile.core.hw.transport.adapter import DeviceAdapter

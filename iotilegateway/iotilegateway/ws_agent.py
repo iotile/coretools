@@ -2,6 +2,7 @@ import tornado.web
 import logging
 from wshandler import WebSocketHandler
 
+
 class WebSocketGatewayAgent(object):
     """A gateway agent for connecting to an IOTile gateway over websockets
 
@@ -9,7 +10,7 @@ class WebSocketGatewayAgent(object):
         manager (DeviceManager): A device manager provided
             by iotile-gateway.
         loop (IOLoop): A tornado IOLoop that this agent
-            shold integrate into.
+            should integrate into.
         args (dict): A dictionary of arguments for configuring
             this agent.
     """

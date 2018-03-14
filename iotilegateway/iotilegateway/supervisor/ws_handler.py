@@ -8,6 +8,7 @@ import uuid
 from iotile.core.exceptions import ArgumentError, ValidationError
 from .command_formats import CommandMessage
 
+
 # pylint: disable=W0223; Tornado data_received method triggers false positive
 class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
     """A websocket interface to ServiceManager."""
@@ -68,7 +69,7 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
 
                 if not cmd['no_response']:
                     self.send_response(True, None)
-            except Exception, exc:
+            except Exception as exc:
                 if not cmd['no_response']:
                     self.send_error(str(exc))
         elif op == 'list_services':
@@ -122,7 +123,7 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
                 self.manager.update_state(cmd['name'], cmd['new_status'])
                 if not cmd['no_response']:
                     self.send_response(True, None)
-            except ArgumentError, exc:
+            except ArgumentError as exc:
                 if not cmd['no_response']:
                     self.send_error(str(exc))
         elif op == 'post_message':
@@ -130,7 +131,7 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
                 self.manager.send_message(cmd['name'], cmd['level'], cmd['message'])
                 if not cmd['no_response']:
                     self.send_response(True, None)
-            except ArgumentError, exc:
+            except ArgumentError as exc:
                 if not cmd['no_response']:
                     self.send_error(str(exc))
         elif op == 'set_headline':
@@ -138,7 +139,7 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
                 self.manager.set_headline(cmd['name'], cmd['level'], cmd['message'])
                 if not cmd['no_response']:
                     self.send_response(True, None)
-            except ArgumentError, exc:
+            except ArgumentError as exc:
                 if not cmd['no_response']:
                     self.send_error(str(exc))
         elif op == 'send_rpc':
@@ -152,7 +153,7 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
             except Exception as exc:
                 self.logger.exception(exc)
                 self.send_error(str(exc))
-        elif op =='rpc_response':
+        elif op == 'rpc_response':
             try:
                 self.manager.send_rpc_response(cmd['response_uuid'], cmd['result'], cmd['response'])
                 if not cmd['no_response']:
@@ -169,7 +170,7 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
                 self.agent_service = cmd['name']
                 if not cmd['no_response']:
                     self.send_response(True, None)
-            except ArgumentError, exc:
+            except ArgumentError as exc:
                 if not cmd['no_response']:
                     self.send_error(str(exc))
         else:
