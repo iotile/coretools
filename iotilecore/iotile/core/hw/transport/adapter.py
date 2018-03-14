@@ -77,7 +77,7 @@ class DeviceAdapter(object):
         self.config = {}
 
     def set_id(self, adapter_id):
-        """Set an ID that this adapater uses to identify itself when making callbacks
+        """Set an ID that this adapter uses to identify itself when making callbacks
         """
 
         self.id = adapter_id

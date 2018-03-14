@@ -6,6 +6,7 @@ import threading
 import msgpack
 import datetime
 import logging
+import uuid
 from iotile.core.exceptions import IOTileException, InternalError, ValidationError, TimeoutExpiredError
 from iotile.core.utilities.schema_verify import Verifier, DictionaryVerifier, StringVerifier, LiteralVerifier, OptionsVerifier
 
@@ -48,6 +49,9 @@ class ValidatingWSClient(WebSocketClient):
         self._disconnection_finished = threading.Event()
 
         self._command_lock = threading.Lock()
+
+        self.control_data = str(uuid.uuid4())
+        self._pong_received = threading.Event()
 
         self._last_response = None
         self._response_received = threading.Event()
@@ -147,6 +151,24 @@ class ValidatingWSClient(WebSocketClient):
 
             self._response_received.clear()
             return self._last_response
+
+    def send_ping(self, timeout=10.0):
+        """Send a ping message to keep connection alive and to verify
+        if the server is still there."""
+
+        self.ping(self.control_data)
+
+        flag = self._pong_received.wait(timeout=timeout)
+        if not flag:
+            raise TimeoutExpiredError("Timeout waiting for pong response")
+
+        self._pong_received.clear()
+
+    def ponged(self, pong):
+        """Pong message received after a ping was sent"""
+
+        if str(pong) == self.control_data:
+            self._pong_received.set()
 
     def post_command(self, command, args):
         """Post a command asynchronously and don't wait for a response.

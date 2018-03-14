@@ -74,7 +74,7 @@ class WebSocketDeviceAdapter(DeviceAdapter):
 
     def periodic_callback(self):
         try:
-            self.client.send_command('ping', {})
+            self.client.send_ping()
         except TimeoutExpiredError:
             self.logger.error('No more connected to the websocket server. Stopping all...')
             connections = self.connections.get_connections()
