@@ -1,11 +1,9 @@
 import os
 import binascii
 import base64
-import threading
-import time
 import datetime
 import logging
-import Queue
+import queue
 import uuid
 from iotile.core.exceptions import IOTileException, ArgumentError, HardwareError
 from iotile.core.hw.transport.adapter import DeviceAdapter
@@ -68,7 +66,7 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
 
         self.client.subscribe(self.prefix + 'devices/+/data/advertisement', self._on_advertisement, ordered=False)
 
-        self._deferred = Queue.Queue()
+        self._deferred = queue.Queue()
 
         self.set_config('minimum_scan_time', 5.0)
         self.set_config('probe_supported', True)
@@ -141,7 +139,7 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
             data (string): the script to send to the device
             progress_callback (callable): A function to be called with status on our progress, called as:
                 progress_callback(done_count, total_count)
-            callback (callable): A callback for when we have finished sending the script.  The callback will be called as"
+            callback (callable): A callback for when we have finished sending the script. The callback will be called as
                 callback(connection_id, adapter_id, success, failure_reason)
                 'connection_id': the connection id
                 'adapter_id': this adapter's id
@@ -318,7 +316,7 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
             try:
                 action = self._deferred.get(False)
                 action()
-            except Queue.Empty:
+            except queue.Empty:
                 break
             except Exception:
                 self._logger.exception('Exception in periodic callback')
@@ -384,12 +382,12 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
     def _on_advertisement(self, sequence, topic, message):
         try:
             # FIXME: We need a global topic validator to validate these messages
-            #message = self.topics.validate_message(['advertisement'], message_type, message)
+            # message = self.topics.validate_message(['advertisement'], message_type, message)
 
             del message['operation']
             del message['type']
             self._trigger_callback('on_scan', self.id, message, 60.) # FIXME: Get the timeout from somewhere
-        except IOTileException, exc:
+        except IOTileException as exc:
             pass
 
     def _on_report(self, sequence, topic, message):
@@ -475,7 +473,6 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
         Args:
             sequence (int): The sequence number of the packet received
             topic (string): The topic this message was received on
-            message_type (string): The type of the packet received
             message (dict): The message itself
         """
 

@@ -3,6 +3,7 @@ from iotile.core.exceptions import ArgumentError
 
 MISSING = object()
 
+
 class DeviceAdapter(object):
     """Classes that encapsulate access to IOTile devices over a particular communication channel
 
@@ -10,7 +11,7 @@ class DeviceAdapter(object):
     can be controlled and send data. Examples area a bluetooth low energy communication channel
     or USB.  In order to fit into the rest of the IOTile tooling systems, only a few functions
     need to be implemented in a DeviceAdapter as shown below.  At its core, DeviceAdapters need
-    to be able to connect/discconect from a device, open/close an interface on the device, send RPCs
+    to be able to connect/disconnect from a device, open/close an interface on the device, send RPCs
     and send scripts.
 
     The interface to a DeviceAdapter is:
@@ -76,7 +77,7 @@ class DeviceAdapter(object):
         self.config = {}
 
     def set_id(self, adapter_id):
-        """Set an ID that this adapater uses to identify itself when making callbacks
+        """Set an ID that this adapter uses to identify itself when making callbacks
         """
 
         self.id = adapter_id
@@ -132,11 +133,11 @@ class DeviceAdapter(object):
         """Asynchronously connect to a device
 
         Args:
-            connection_id (int): A unique identifer that will refer to this connection
+            connection_id (int): A unique identifier that will refer to this connection
             connection_string (string): A DeviceAdapter specific string that can be used to connect to
                 a device using this DeviceAdapter.
             callback (callable): A function that will be called when the connection attempt finishes as
-                callback(conection_id, adapter_id, success: bool, failure_reason: string or None)
+                callback(connection_id, adapter_id, success: bool, failure_reason: string or None)
         """
 
         if callback is not None:
@@ -146,14 +147,14 @@ class DeviceAdapter(object):
         """Synchronously connect to a device
 
         Args:
-            connection_id (int): A unique identifer that will refer to this connection
+            connection_id (int): A unique identifier that will refer to this connection
             connection_string (string): A DeviceAdapter specific string that can be used to connect to
                 a device using this DeviceAdapter.
 
         Returns:
             dict: A dictionary with two elements
                 'success': a bool with the result of the connection attempt
-                'failure_reaon': a string with the reason for the failure if we failed
+                'failure_reason': a string with the reason for the failure if we failed
         """
 
         calldone = threading.Event()
@@ -173,7 +174,7 @@ class DeviceAdapter(object):
         """Asynchronously disconnect from a connected device
 
         Args:
-            conn_id (int): A unique identifer that will refer to this connection
+            conn_id (int): A unique identifier that will refer to this connection
             callback (callback): A callback that will be called as
                 callback(conn_id, adapter_id, success, failure_reason)
         """
@@ -184,12 +185,12 @@ class DeviceAdapter(object):
         """Synchronously disconnect from a connected device
 
         Args:
-            conn_id (int): A unique identifer that will refer to this connection
+            conn_id (int): A unique identifier that will refer to this connection
 
         Returns:
             dict: A dictionary with two elements
                 'success': a bool with the result of the connection attempt
-                'failure_reaon': a string with the reason for the failure if we failed
+                'failure_reason': a string with the reason for the failure if we failed
         """
 
         done = threading.Event()
@@ -214,7 +215,7 @@ class DeviceAdapter(object):
 
         Args:
             interface (string): The interface to open
-            conn_id (int): A unique identifer that will refer to this connection
+            conn_id (int): A unique identifier that will refer to this connection
             callback (callable):  A callback that will be called as
                 callback(conn_id, adapter_id, success, failure_reason)
         """
@@ -243,12 +244,12 @@ class DeviceAdapter(object):
 
         Args:
             interface (string): The interface to open
-            conn_id (int): A unique identifer that will refer to this connection
+            conn_id (int): A unique identifier that will refer to this connection
 
         Returns:
             dict: A dictionary with four elements
                 'success': a bool with the result of the connection attempt
-                'failure_reaon': a string with the reason for the failure if we failed
+                'failure_reason': a string with the reason for the failure if we failed
         """
 
         done = threading.Event()
@@ -296,7 +297,7 @@ class DeviceAdapter(object):
         """Asynchronously send an RPC to this IOTile device
 
         Args:
-            conn_id (int): A unique identifer that will refer to this connection
+            conn_id (int): A unique identifier that will refer to this connection
             address (int): the addres of the tile that we wish to send the RPC to
             rpc_id (int): the 16-bit id of the RPC we want to call
             payload (bytearray): the payload of the command
@@ -317,8 +318,8 @@ class DeviceAdapter(object):
         """Synchronously send an RPC to this IOTile device
 
         Args:
-            conn_id (int): A unique identifer that will refer to this connection
-            address (int): the addres of the tile that we wish to send the RPC to
+            conn_id (int): A unique identifier that will refer to this connection
+            address (int): the address of the tile that we wish to send the RPC to
             rpc_id (int): the 16-bit id of the RPC we want to call
             payload (bytearray): the payload of the command
             timeout (float): the number of seconds to wait for the RPC to execute
@@ -356,7 +357,7 @@ class DeviceAdapter(object):
         has finished.
 
         Args:
-            conn_id (int): A unique identifer that will refer to this connection
+            conn_id (int): A unique identifier that will refer to this connection
             cmd_name (string): the name of the debug command we want to invoke
             cmd_args (dict): any arguments that we want to send with this command.
             progress_callback (callable): A function to be called with status on our progress, called as:
@@ -381,7 +382,7 @@ class DeviceAdapter(object):
         has finished.
 
         Args:
-            conn_id (int): A unique identifer that will refer to this connection
+            conn_id (int): A unique identifier that will refer to this connection
             cmd_name (string): the name of the debug command we want to invoke
             cmd_args (dict): any arguments that we want to send with this command.
             progress_callback (callable): A function to be called with status on our progress, called as:
@@ -407,11 +408,11 @@ class DeviceAdapter(object):
         """Asynchronously send a a script to this IOTile device
 
         Args:
-            conn_id (int): A unique identifer that will refer to this connection
+            conn_id (int): A unique identifier that will refer to this connection
             data (string): the script to send to the device
             progress_callback (callable): A function to be called with status on our progress, called as:
                 progress_callback(done_count, total_count)
-            callback (callable): A callback for when we have finished sending the script.  The callback will be called as"
+            callback (callable): A callback for when we have finished sending the script. The callback will be called as
                 callback(connection_id, adapter_id, success, failure_reason)
                 'connection_id': the connection id
                 'adapter_id': this adapter's id
@@ -425,7 +426,7 @@ class DeviceAdapter(object):
         """Asynchronously send a a script to this IOTile device
 
         Args:
-            conn_id (int): A unique identifer that will refer to this connection
+            conn_id (int): A unique identifier that will refer to this connection
             data (string): the script to send to the device
             progress_callback (callable): A function to be called with status on our progress, called as:
                 progress_callback(done_count, total_count)

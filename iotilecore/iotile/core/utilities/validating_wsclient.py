@@ -6,6 +6,7 @@ import threading
 import msgpack
 import datetime
 import logging
+import uuid
 from iotile.core.exceptions import IOTileException, InternalError, ValidationError, TimeoutExpiredError
 from iotile.core.utilities.schema_verify import Verifier, DictionaryVerifier, StringVerifier, LiteralVerifier, OptionsVerifier
 
@@ -49,6 +50,9 @@ class ValidatingWSClient(WebSocketClient):
 
         self._command_lock = threading.Lock()
 
+        self.control_data = str(uuid.uuid4())
+        self._pong_received = threading.Event()
+
         self._last_response = None
         self._response_received = threading.Event()
 
@@ -86,7 +90,7 @@ class ValidatingWSClient(WebSocketClient):
 
         try:
             self.connect()
-        except Exception, exc:
+        except Exception as exc:
             raise InternalError("Unable to connect to websockets host", reason=str(exc))
 
         flag = self._connected.wait(timeout=timeout)
@@ -106,7 +110,7 @@ class ValidatingWSClient(WebSocketClient):
 
         try:
             self.close()
-        except Exception, exc:
+        except Exception as exc:
             raise InternalError("Unable to disconnect from websockets host", reason=str(exc))
 
         flag = self._disconnection_finished.wait(timeout=timeout)
@@ -124,7 +128,7 @@ class ValidatingWSClient(WebSocketClient):
         self.send(packed, binary=True)
 
     def send_command(self, command, args, timeout=10.0):
-        """Send a command any synchronously wait for a response.
+        """Send a command and synchronously wait for a response.
 
         Args:
             command (string): The command name
@@ -147,6 +151,24 @@ class ValidatingWSClient(WebSocketClient):
 
             self._response_received.clear()
             return self._last_response
+
+    def send_ping(self, timeout=10.0):
+        """Send a ping message to keep connection alive and to verify
+        if the server is still there."""
+
+        self.ping(self.control_data)
+
+        flag = self._pong_received.wait(timeout=timeout)
+        if not flag:
+            raise TimeoutExpiredError("Timeout waiting for pong response")
+
+        self._pong_received.clear()
+
+    def ponged(self, pong):
+        """Pong message received after a ping was sent"""
+
+        if str(pong) == self.control_data:
+            self._pong_received.set()
 
     def post_command(self, command, args):
         """Post a command asynchronously and don't wait for a response.
@@ -211,7 +233,7 @@ class ValidatingWSClient(WebSocketClient):
 
         try:
             unpacked = self._unpack(message.data)
-        except Exception, exc:
+        except Exception as exc:
             self.logger.error("Corrupt message received, parse exception = %s", str(exc))
             return
 
@@ -220,15 +242,15 @@ class ValidatingWSClient(WebSocketClient):
         for validator, callback in self.validators:
             try:
                 validator.verify(unpacked)
-            except ValidationError, exc:
+            except ValidationError:
                 continue
 
             try:
                 callback(unpacked)
                 return
-            except IOTileException, exc:
+            except IOTileException as exc:
                 self.logger.error("Exception handling websocket message, exception = %s", str(exc))
-            except Exception, exc:
+            except Exception as exc:
                 self.logger.error("Non-IOTile exception handling websocket message, exception = %s", str(exc))
 
         self.logger.warn("No handler found for received message, message=%s", str(unpacked))
