@@ -128,7 +128,7 @@ class ValidatingWSClient(WebSocketClient):
         self.send(packed, binary=True)
 
     def send_command(self, command, args, timeout=10.0):
-        """Send a command any synchronously wait for a response.
+        """Send a command and synchronously wait for a response.
 
         Args:
             command (string): The command name
