@@ -9,21 +9,17 @@
 #build.py
 #Return the build settings json file.
 
-import json as json
-from iotile.core.dev.iotileobj import IOTile
+from __future__ import print_function, absolute_import
 import sys
-from iotile.core.utilities.typedargs.annotate import *
-from iotile.core.exceptions import *
-from collections import namedtuple
 from copy import deepcopy
 import itertools
 import os
-import subprocess
-import platform
-from cStringIO import StringIO
-import re
-import os
+from collections import namedtuple
 from pkg_resources import resource_filename, Requirement
+from typedargs.annotate import takes_cmdline
+from iotile.core.exceptions import BuildError, InternalError, ArgumentError, DataError
+from iotile.core.dev.iotileobj import IOTile
+
 
 @takes_cmdline
 def build(args):
@@ -48,57 +44,6 @@ def build(args):
     sys.argv = all_args + list(args)
     SCons.Script.main()
 
-def build_other(directory, artifacts=[]):
-    """
-    Invoke SCons to build a project in another directory.
-
-    All output is suppressed by default.
-    """
-
-    old_cwd = os.getcwd()
-
-    try:
-        os.chdir(directory)
-
-        if isinstance(artifacts, basestring):
-            if artifacts == "":
-                artifacts = []
-            else:
-                artifacts = [artifacts]
-
-        artifact_paths = [os.path.join('build', 'output', x) for x in artifacts]
-
-        site_tools = os.path.join(resource_filename(Requirement.parse("iotile-build"), "iotile/build/config"), 'site_scons')
-        site_path = os.path.abspath(site_tools)
-        all_args = ['iotile', 'build'] + artifact_paths
-
-        #Call this in a subprocess since SCons can't do repeated calls into SCons.Script.main()
-        #because it sets global state about what nodes are present
-        p = subprocess.Popen(all_args, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-        output, output_err = p.communicate()
-
-        return p.returncode, output, output_err
-    finally:
-        os.chdir(old_cwd)
-
-def build_iotile(iotile, artifacts=[]):
-    """
-    Build all products in an IOTile
-    """
-
-    #If there's no SConstruct then there's nothing to build
-    buildfile = os.path.join(iotile.folder, 'SConstruct')
-    if not os.path.exists(buildfile):
-        return
-
-    retval, stdout, stderr = build_other(iotile.folder)
-    if retval != 0:
-        print '*** START BUILD ERROR OUTPUT ***'
-        print stderr
-        print '*** END BUILD ERROR OUTPUT ***'
-
-        raise BuildError('Error building IOTile', name=iotile.name, path=iotile.folder)
-
 
 def merge_dicts(a, b):
     "merges b into a"
@@ -114,11 +59,12 @@ def merge_dicts(a, b):
 
     return a
 
-MISSING = object()
 
+MISSING = object()
 ModuleSettings = namedtuple('ModuleSettings', ['overlays', 'settings'])
 
-class TargetSettings (object):
+
+class TargetSettings(object):
     """
     A class that contains a dictionary of all the settings defined for
     a given chip in a ChipFamily.  The settings are a combination of
@@ -135,16 +81,21 @@ class TargetSettings (object):
         return self.name.replace('/', '_').replace(":", "_")
 
     def arch_name(self):
-        mod, arch = self.name.split(':')
+        """Create a filename friendly architecture representation."""
+        _mod, arch = self.name.split(':')
         return arch.replace('/', "_")
 
     def arch_list(self):
         return self.name.split(':')[1]
 
     def archs(self, as_list=False):
-        """
-        Return a set containing all of the architectures used in this TargetSettings
-        object.
+        """Return all of the architectures for this target.
+
+        Args:
+            as_list (bool): Return a list instead of the default set object.
+
+        Returns:
+            set or list: All of the architectures used in this TargetSettings object.
         """
 
         archs = self.arch_list().split('/')
@@ -218,7 +169,7 @@ class TargetSettings (object):
         together into a list.
         """
 
-        props = [y for x,y in self.settings.iteritems() if x.endswith(suffix)]
+        props = [y for x, y in self.settings.iteritems() if x.endswith(suffix)]
         properties = itertools.chain(*props)
 
         processed_props = [x for x in properties]
@@ -244,21 +195,14 @@ class TargetSettings (object):
 
         return fullpaths
 
-    def extra_sources(self):
+    @classmethod
+    def extra_sources(cls):
         """
         If the architectures have specified that extra source files be included, return a list of paths to
         those source files.
         """
 
         raise BuildError("Extra sources no longer supported")
-        paths = MomoPaths()
-        base = paths.modules
-
-        srcs = [y for x,y in self.settings.iteritems() if x.endswith('sources')]
-        sources = itertools.chain(*srcs)
-
-        fullpaths = [os.path.normpath(os.path.join(base, x)) for x in sources]
-        return fullpaths
 
     def arch_prefixes(self):
         """
@@ -277,16 +221,17 @@ class TargetSettings (object):
         return prefixes
 
 
-class ArchitectureGroup:
+class ArchitectureGroup(object):
     """A list of build architectures that may be used for building an IOTile Component.
 
-    ArchitectureGroup objects are a collection of architectures, which are dictionaries
-    that define properties relevant to buildign an IOTile Component.  Examples of these
-    properties are: include paths, libraries, python proxy objects, etc.
+    ArchitectureGroup objects are a collection of architectures, which are
+    dictionaries that define properties relevant to building an IOTile
+    Component.  Examples of these properties are: include paths, libraries,
+    python proxy objects, etc.
 
-    Whenever an IOTile component is built, it is always built targeting a list of
-    architectures, whose properties are then merged together to create the final
-    dictionary of properties that is used to build the component.
+    Whenever an IOTile component is built, it is always built targeting a list
+    of architectures, whose properties are then merged together to create the
+    final dictionary of properties that is used to build the component.
     """
 
     def __init__(self, modulefile):
@@ -294,13 +239,10 @@ class ArchitectureGroup:
         """
 
         parent = os.path.dirname(modulefile)
-        if parent is '':
+        if parent == '':
             parent = '.'
 
         tile = IOTile(parent)
-
-        with open(modulefile, 'rb') as fileobj:
-            modsettings = json.load(fileobj)
 
         family = {}
         family['modules'] = {}
@@ -310,12 +252,9 @@ class ArchitectureGroup:
         for dep in tile.dependencies:
             self._load_dependency(tile, dep, family)
 
-        if "modules" in modsettings:
-            merge_dicts(family['modules'], modsettings['modules'].copy())
-        if "module_targets" in modsettings:
-            merge_dicts(family['module_targets'], modsettings['module_targets'].copy())
-        if "architectures" in modsettings:
-            merge_dicts(family['architectures'], modsettings['architectures'].copy())
+        merge_dicts(family['modules'], {tile.name: tile.settings.copy()})
+        merge_dicts(family['module_targets'], {tile.name: [x for x in tile.targets]})
+        merge_dicts(family['architectures'], tile.architectures.copy())
 
         #There is always a none architecture that doesn't have any settings.
         self.archs = {'none': {}}
@@ -329,19 +268,21 @@ class ArchitectureGroup:
 
     @classmethod
     def _load_dependency(cls, tile, dep, family):
-        """Load a dependency from build/deps/<unique_id>.
-        """
+        """Load a dependency from build/deps/<unique_id>."""
 
-        depfolder = dep['unique_id']
-        deppath = os.path.join(tile.folder, 'build', 'deps', depfolder, 'module_settings.json')
+        depname = dep['unique_id']
+        depdir = os.path.join(tile.folder, 'build', 'deps', depname)
+        deppath = os.path.join(depdir, 'module_settings.json')
+
+        if not os.path.exists(deppath):
+            raise BuildError("Could not find dependency", dependency=dep)
 
         try:
-            with open(deppath, "rb") as fileobj:
-                deptile = json.load(fileobj)
-        except IOError as e:
-            raise BuildError("Could not find dependency", dependency=dep)
-        if "architectures" in deptile:
-            merge_dicts(family['architectures'], deptile['architectures'].copy())
+            deptile = IOTile(depdir)
+        except DataError as exc:
+            raise BuildError("Could not find dependency", dependency=dep, error=exc)
+
+        merge_dicts(family['architectures'], deptile.architectures.copy())
 
     def find(self, name, module=None):
         """
@@ -351,16 +292,16 @@ class ArchitectureGroup:
         return self._load_target(name, module)
 
     def targets(self, module):
-        """
-        Return a sequence of all of the targets for the specified module.
-        Modules that have no entry in module_targets in build_settings.json
-        target all family defined targets by default.
+        """Find the targets for a given module.
+
+        Returns:
+            list: A sequence of all of the targets for the specified module.
         """
 
-        if module in self.module_targets:
-            return [self.find(x, module) for x in self.module_targets[module]]
+        if module not in self.module_targets:
+            raise BuildError("Could not find module in targets()", module=module)
 
-        return [self.find(x, module) for x in self.known_targets.keys()]
+        return [self.find(x, module) for x in self.module_targets[module]]
 
     def for_all_targets(self, module, func, filter_func=None):
         """Call func once for all of the targets of this module.

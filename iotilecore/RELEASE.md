@@ -2,6 +2,14 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## HEAD
+
+- Add support for a new module_settings.json format that has fewer levels of
+  nesting.  The old format was designed for accommodating more than one module
+  per file but we no longer support that so we don't need all of the extraneous
+  dictionaries.  The IOTile class now supports parsing both kinds of files and
+  stores some more information that is in different places in the two formats.
+
 ## 3.20.3
 
 - Add `device_updater` app that allows you to run an update script on any

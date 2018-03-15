@@ -1,16 +1,18 @@
 # This file is copyright Arch Systems, Inc.
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
-from future.utils import viewitems, itervalues
 import itertools
 from collections import namedtuple
 import json
 import os.path
+from future.utils import viewitems, itervalues
 from past.builtins import basestring
-from iotile.core.exceptions import *
+from iotile.core.exceptions import DataError, ExternalError
 from .semver import SemanticVersion, SemanticVersionRange
 
 ReleaseStep = namedtuple('ReleaseStep', ['provider', 'args'])
+ReleaseInfo = namedtuple('ReleaseInfo', ['release_date', 'dependency_versions'])
+TileInfo = namedtuple('TileInfo', ['module_name', 'settings', 'architectures', 'targets', 'release_data'])
 
 
 class IOTile(object):
@@ -21,39 +23,87 @@ class IOTile(object):
     that its build produces and include it as a dependency in another build process.
     """
 
+    V1_FORMAT = "v1"
+    V2_FORMAT = "v2"
+
     def __init__(self, folder):
         self.folder = folder
         self.filter_prods = False
 
-        self._load_settings()
-
-    def _load_settings(self):
         modfile = os.path.join(self.folder, 'module_settings.json')
 
         try:
-            with open(modfile, "r") as f:
-                settings = json.load(f)
+            with open(modfile, "r") as infile:
+                settings = json.load(infile)
         except IOError:
             raise ExternalError("Could not load module_settings.json file, make sure this directory is an IOTile component", path=self.folder)
+
+        file_format = settings.get('file_format', IOTile.V1_FORMAT)
+        if file_format == IOTile.V1_FORMAT:
+            info = self._find_v1_settings(settings)
+        elif file_format == IOTile.V2_FORMAT:
+            info = self._find_v2_settings(settings)
+        else:
+            raise DataError("Unknown file format in module_settings.json", format=file_format, path=modfile)
+
+        self._load_settings(info)
+
+    def _find_v1_settings(self, settings):
+        """Parse a v1 module_settings.json file.
+
+        V1 is the older file format that requires a modules dictionary with a
+        module_name and modules key that could in theory hold information on
+        multiple modules in a single directory.
+        """
 
         if 'module_name' in settings:
             modname = settings['module_name']
         if 'modules' not in settings or len(settings['modules']) == 0:
             raise DataError("No modules defined in module_settings.json file")
         elif len(settings['modules']) > 1:
-            raise DataError("Mulitple modules defined in module_settings.json file", modules=[x for x in settings['modules']])
+            raise DataError("Multiple modules defined in module_settings.json file", modules=[x for x in settings['modules']])
         else:
-            #TODO: Remove this other option once all tiles have been converted to have their own name listed out
             modname = list(settings['modules'])[0]
 
         if modname not in settings['modules']:
             raise DataError("Module name does not correspond with an entry in the modules directory", name=modname, modules=[x for x in settings['modules']])
 
+        release_info = self._load_release_info(settings)
         modsettings = settings['modules'][modname]
-        architectures = {}
-        if 'architectures' in settings:
-            architectures = settings['architectures']
+        architectures = settings.get('architectures', {})
 
+        target_defs = settings.get('module_targets', {})
+        targets = target_defs.get(modname, [])
+
+        return TileInfo(modname, modsettings, architectures, targets, release_info)
+
+    @classmethod
+    def _load_release_info(cls, settings):
+        if settings.get('release', False) is False:
+            return None
+
+        if 'release_date' not in settings:
+            raise DataError("Release mode IOTile component did not include a release date")
+
+        import dateutil.parser
+        release_date = dateutil.parser.parse(settings['release_date'])
+        dependency_versions = {x: SemanticVersion.FromString(y) for x, y in viewitems(settings.get('dependency_versions', {}))}
+
+        return ReleaseInfo(release_date, dependency_versions)
+
+    def _find_v2_settings(self, settings):
+        archs = settings.get('architectures', {})
+        mod_name = settings.get('module_name')
+        release_info = self._load_release_info(settings)
+
+        targets = settings.get('targets', [])
+
+        return TileInfo(mod_name, settings, archs, targets, release_info)
+
+    def _load_settings(self, info):
+        """Load settings for a module."""
+
+        modname, modsettings, architectures, targets, release_info = info
         self.settings = modsettings
 
         #Name is converted to all lowercase to canonicalize it
@@ -67,6 +117,7 @@ class IOTile(object):
         self.name = key
         self.unique_id = key.replace('/', '_')
         self.short_name = modname
+        self.targets = targets
 
         self.full_name = "Undefined"
         if "full_name" in self.settings:
@@ -104,18 +155,11 @@ class IOTile(object):
         self.dependency_versions = {}
 
         #If this is a release IOTile component, check for release information
-        if 'release' in settings and settings['release'] is True:
+        if release_info is not None:
             self.release = True
-
-            if 'release_date' not in settings:
-                raise DataError("Release mode IOTile component did not include a release date")
-
-            import dateutil.parser
-            self.release_date = dateutil.parser.parse(settings['release_date'])
+            self.release_date = release_info.release_date
             self.output_folder = self.folder
-
-            if 'dependency_versions' in settings:
-                self.dependency_versions = {x: SemanticVersion.FromString(y) for x,y in viewitems(settings['dependency_versions'])}
+            self.dependency_versions = release_info.dependency_versions
         else:
             self.release = False
             self.output_folder = os.path.join(self.folder, 'build', 'output')
@@ -125,8 +169,8 @@ class IOTile(object):
             if os.path.exists(os.path.join(self.output_folder, 'module_settings.json')):
                 release_settings = os.path.join(self.output_folder, 'module_settings.json')
 
-                with open(release_settings, 'rb') as f:
-                    release_dict = json.load(f)
+                with open(release_settings, 'rb') as infile:
+                    release_dict = json.load(infile)
 
                 import dateutil.parser
                 self.release_date = dateutil.parser.parse(release_dict['release_date'])
@@ -139,7 +183,7 @@ class IOTile(object):
         #file.
         self.dependencies = []
 
-        archs_with_deps = [viewitems(y['depends']) for x, y in viewitems(architectures) if 'depends' in y]
+        archs_with_deps = [viewitems(y['depends']) for _x, y in viewitems(architectures) if 'depends' in y]
         if 'depends' in self.settings:
             if not isinstance(self.settings['depends'], dict):
                 raise DataError("module must have a depends key that is a dictionary", found=str(self.settings['depends']))
@@ -163,10 +207,9 @@ class IOTile(object):
 
         #Also search through overlays to architectures that are defined in this module_settings.json file
         #and see if those overlays contain dependencies.
-        if 'overlays' in self.settings:
-            for overlay_arch in itervalues(self.settings['overlays']):
-                if 'depends' in overlay_arch:
-                    archs_with_deps.append(viewitems(overlay_arch['depends']))
+        for overlay_arch in itervalues(self.settings.get('overlays', {})):
+            if 'depends' in overlay_arch:
+                archs_with_deps.append(viewitems(overlay_arch['depends']))
 
         found_deps = set()
         for dep, _ in itertools.chain(*archs_with_deps):
@@ -191,13 +234,16 @@ class IOTile(object):
 
             found_deps.add(name)
 
-        #Setup our support package information
+        # Store any architectures that we find in this json file for future reference
+        self.architectures = architectures
+
+        # Setup our support package information
         self.support_distribution = "iotile_support_{0}_{1}".format(self.short_name, self.parsed_version.major)
         self.support_wheel = "{0}-{1}-py2-none-any.whl".format(self.support_distribution, self.parsed_version.pep440_string())
         self.has_wheel = False
 
-        if len(self.proxy_modules()) > 0 or len(self.proxy_plugins()) > 0 or len(self.type_packages()) > 0 or len(self.app_modules()) > 0 or \
-           len(self.build_steps()) > 0:
+        if len(self.proxy_modules()) > 0 or len(self.proxy_plugins()) > 0 or len(self.type_packages()) > 0 or \
+           len(self.app_modules()) > 0 or len(self.build_steps()) > 0:
             self.has_wheel = True
 
     def include_directories(self):

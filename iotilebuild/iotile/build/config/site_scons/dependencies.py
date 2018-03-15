@@ -1,13 +1,11 @@
-# This file is copyright Arch Systems, Inc.  
+# This file is copyright Arch Systems, Inc.
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
-from iotile.core.exceptions import *
-import iotile.core
-from iotile.build.build.build import build_iotile
-from iotile.core.dev.registry import ComponentRegistry
+import os
+from iotile.core.exceptions import BuildError, ArgumentError
 from iotile.core.dev.iotileobj import IOTile
 from SCons.Environment import Environment
-import os
+
 
 def load_dependencies(orig_tile, build_env):
     """Load all tile dependencies and filter only the products from each that we use
@@ -28,7 +26,7 @@ def load_dependencies(orig_tile, build_env):
     #The raw keys come back as name,version
     arch_deps = {}
     for key, value in raw_arch_deps.iteritems():
-        name,_,_ = key.partition(',')
+        name, _, _ = key.partition(',')
         arch_deps[name] = value
 
     for dep in orig_tile.dependencies:
@@ -51,23 +49,23 @@ def load_dependencies(orig_tile, build_env):
 
     return dep_targets
 
+
 def _iter_dependencies(tile):
     for dep in tile.dependencies:
         try:
-            tile = IOTile(os.path.join('build', 'deps', dep['unique_id']))
-            yield tile
+            yield IOTile(os.path.join('build', 'deps', dep['unique_id']))
         except (ArgumentError, EnvironmentError):
             raise BuildError("Could not find required dependency", name=dep['name'])
 
+
 def find_dependency_wheels(tile):
     """Return a list of all python wheel objects created by dependencies of this tile
-    
+
     Args:
         tile (IOTile): Tile that we should scan for dependencies
 
     Returns:
-        list: A list of paths to dependency wheels 
+        list: A list of paths to dependency wheels
     """
 
     return [os.path.join(x.folder, 'python', x.support_wheel) for x in _iter_dependencies(tile) if x.has_wheel]
-    
