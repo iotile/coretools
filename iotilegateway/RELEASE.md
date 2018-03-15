@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileGateway are listed here.
 
+## 1.5.3
+
+- Rerelease of 1.5.2 with < 5.0.0 version spec instead of <= 5.0.0 in setup.py
+
 ## 1.5.2
 
 - Fix tornado dependency to exclude v5.0.0 until we are properly compatible.
