@@ -16,6 +16,7 @@ import itertools
 import os
 from collections import namedtuple
 from pkg_resources import resource_filename, Requirement
+from future.utils import viewitems
 from typedargs.annotate import takes_cmdline
 from iotile.core.exceptions import BuildError, InternalError, ArgumentError, DataError
 from iotile.core.dev.iotileobj import IOTile
@@ -169,7 +170,7 @@ class TargetSettings(object):
         together into a list.
         """
 
-        props = [y for x, y in self.settings.iteritems() if x.endswith(suffix)]
+        props = [y for x, y in viewitems(self.settings) if x.endswith(suffix)]
         properties = itertools.chain(*props)
 
         processed_props = [x for x in properties]
@@ -252,8 +253,8 @@ class ArchitectureGroup(object):
         for dep in tile.dependencies:
             self._load_dependency(tile, dep, family)
 
-        merge_dicts(family['modules'], {tile.name: tile.settings.copy()})
-        merge_dicts(family['module_targets'], {tile.name: [x for x in tile.targets]})
+        merge_dicts(family['modules'], {tile.short_name: tile.settings.copy()})
+        merge_dicts(family['module_targets'], {tile.short_name: [x for x in tile.targets]})
         merge_dicts(family['architectures'], tile.architectures.copy())
 
         #There is always a none architecture that doesn't have any settings.
@@ -376,7 +377,7 @@ class ArchitectureGroup(object):
 
     def _load_module_targets(self, family):
         if "module_targets" in family:
-            for mod, targets in family['module_targets'].iteritems():
+            for mod, targets in viewitems(family['module_targets']):
                 for target in targets:
                     if not self.validate_target(target):
                         raise InternalError("Module %s targets unknown architectures '%s'" % (mod, target))
@@ -393,8 +394,7 @@ class ArchitectureGroup(object):
         if "architectures" not in family:
             raise InternalError("required architectures key not in build_settings.json for desired family")
 
-
-        for key, val in family['architectures'].iteritems():
+        for key, val in viewitems(family['architectures']):
             if not isinstance(val, dict):
                 raise InternalError("All entries under chip_settings must be dictionaries")
 

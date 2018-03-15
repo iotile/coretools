@@ -2,6 +2,13 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## HEAD
+
+- Add support for a new module_settings.json format that has fewer levels of
+  nesting.  The old format was designed for accommodating more than one module
+  per file but we no longer support that so we don't need all of the extraneous
+  dictionaries.
+
 ## 2.5.12
 
 - Fix naming of custom build steps
