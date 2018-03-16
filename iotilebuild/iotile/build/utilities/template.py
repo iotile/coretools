@@ -13,9 +13,53 @@
 import os.path
 import os
 import shutil
+from past.builtins import basestring
 from pkg_resources import resource_filename, Requirement
-from jinja2 import Environment, PackageLoader
+from jinja2 import Environment, PackageLoader, FileSystemLoader
 from typedargs.exceptions import ArgumentError
+
+
+def render_template_inplace(template_path, info, dry_run=False):
+    """Render a template file in place.
+
+    This function expects template path to be a path to a file
+    that ends in .tpl.  It will be rendered to a file in the
+    same directory with the .tpl suffix removed.
+
+    Args:
+        template_path (str): The path to the template file
+            that we want to render in place.
+        info (dict): A dictionary of variables passed into the template to
+            perform substitutions.
+        dry_run (bool): Whether to actually render the output file or just return
+            the file path that would be generated.
+
+    Returns:
+        str: The path to the output file generated.
+    """
+
+    basedir = os.path.dirname(template_path)
+    template_name = os.path.basename(template_path)
+
+    if not template_name.endswith('.tpl'):
+        raise ArgumentError("You must specify a filename that ends in .tpl", filepath=template_path)
+
+    out_path = os.path.join(basedir, template_name[:-4])
+
+    if basedir == '':
+        basedir = '.'
+
+    env = Environment(loader=FileSystemLoader(basedir),
+                      trim_blocks=True, lstrip_blocks=True)
+
+    template = env.get_template(template_name)
+    result = template.render(info)
+
+    if not dry_run:
+        with open(out_path, 'wb') as outfile:
+            outfile.write(result)
+
+    return out_path
 
 
 def render_template(template_name, info, out_path=None):
@@ -51,7 +95,7 @@ def render_template(template_name, info, out_path=None):
     return result
 
 
-def render_recursive_template(template_folder, info, out_folder, dry_run=False):
+def render_recursive_template(template_folder, info, out_folder, preserve=None, dry_run=False):
     """Copy a directory tree rendering all templates found within.
 
     This function inspects all of the files in template_folder recursively.
@@ -74,6 +118,11 @@ def render_recursive_template(template_folder, info, out_folder, dry_run=False):
             be generated.
         dry_run (bool): Whether to actually render output files or just return
             the files that would be generated.
+        preserve (list of str): A list of file names relative to the start of the
+            template folder that we are rendering that end in .tpl but should not
+            be rendered and should not have their .tpl suffix removed.  This allows
+            you to partially render a template so that you can render a specific
+            file later.
 
     Returns:
         dict, list: The dict is map of output file path (relative to
@@ -82,6 +131,14 @@ def render_recursive_template(template_folder, info, out_folder, dry_run=False):
             SCons. The list is a list of all of the directories that would need
             to be created to hold these files (not including out_folder).
     """
+
+    if isinstance(preserve, basestring):
+        raise ArgumentError("You must pass a list of strings to preserve, not a string", preserve=preserve)
+
+    if preserve is None:
+        preserve = []
+
+    preserve = set(preserve)
 
     template_dir = os.path.join(resource_filename(Requirement.parse("iotile-build"), "iotile/build/config/templates"))
     indir = os.path.abspath(os.path.join(template_dir, template_folder))
@@ -100,7 +157,7 @@ def render_recursive_template(template_folder, info, out_folder, dry_run=False):
             in_abspath = os.path.abspath(os.path.join(dirpath, file))
             in_path = os.path.relpath(os.path.join(dirpath, file), start=indir)
 
-            if file.endswith(".tpl"):
+            if file.endswith(".tpl") and not in_path in preserve:
                 out_path = in_path[:-4]
             else:
                 out_path = in_path
@@ -120,7 +177,7 @@ def render_recursive_template(template_folder, info, out_folder, dry_run=False):
 
         for out_rel, (in_path, in_abspath) in file_map.iteritems():
             out_path = os.path.join(out_folder, out_rel)
-            if not in_path.endswith(".tpl"):
+            if in_path in preserve or not in_path.endswith(".tpl"):
                 shutil.copyfile(in_abspath, out_path)
             else:
                 # jinja needs to have unix path separators regardless of the platform and a relative path
