@@ -21,6 +21,8 @@ from typedargs.annotate import takes_cmdline
 from iotile.core.exceptions import BuildError, InternalError, ArgumentError, DataError
 from iotile.core.dev.iotileobj import IOTile
 
+SCONS_VERSION = "3.0.1"
+
 
 @takes_cmdline
 def build(args):
@@ -32,7 +34,7 @@ def build(args):
     # Do some sluething work to find scons if it's not installed into an importable
     # place, as it is usually not.
     try:
-        scons_path = os.path.join(resource_filename(Requirement.parse("iotile-build"), "iotile/build/config"), 'scons-local-2.5.1')
+        scons_path = os.path.join(resource_filename(Requirement.parse("iotile-build"), "iotile/build/config"), 'scons-local-{}'.format(SCONS_VERSION))
         sys.path.insert(0, scons_path)
         import SCons.Script
     except ImportError:
