@@ -60,6 +60,11 @@ def test_complex_gate_optimization(complex_gate, complex_gate_opt):
     assert len(sim2.trace) == 3
     assert sim1.trace == sim2.trace
 
+    #Check that number of trigger streamer commands is same for optimized and unoptimized
+    trigger_nodes = filter(lambda x: x.func_name == 'trigger_streamer', complex_gate.nodes)
+    trigger_nodes_opt = filter(lambda x: x.func_name == 'trigger_streamer', complex_gate_opt.nodes)
+
+    assert len(trigger_nodes) == len(trigger_nodes_opt)
 
 def test_user_tick_optimization(usertick_gate, usertick_gate_opt):
     """Make sure the optimized version runs identically to the unoptimized."""

@@ -66,6 +66,10 @@ class RemoveDeadCodePass(object):
                 # its weird for the user to be saving useless data to flash
                 continue
 
+            # Check 6
+            if node.func_name == u'trigger_streamer':
+                continue
+
             # If all of the checks above have passed, we have found a useless
             # node, let's remove it and return True so we run the pass again
             # and look for additional nodes that are now made useles because
