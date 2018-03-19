@@ -2,8 +2,10 @@
 """
 
 from builtins import range
+from past.builtins import basestring
 import binascii
-from iotile.core.hw.virtual.virtualdevice import VirtualIOTileDevice, rpc, RPCInvalidIDError, RPCNotFoundError, TileNotFoundError
+from iotile.core.hw.virtual.virtualdevice import VirtualIOTileDevice, rpc
+
 
 class TracingTestDevice(VirtualIOTileDevice):
     """Mock IOTileDevice that sends tracing data from the device
@@ -28,6 +30,10 @@ class TracingTestDevice(VirtualIOTileDevice):
 
     def __init__(self, args):
         iotile_id = args.get('iotile_id', 1)
+
+        if isinstance(iotile_id, basestring):
+            iotile_id = int(iotile_id, 16)
+
         super(TracingTestDevice, self).__init__(iotile_id, 'Simple')
 
         data = bytearray("Hello world, this is tracing data!".encode('utf-8'))

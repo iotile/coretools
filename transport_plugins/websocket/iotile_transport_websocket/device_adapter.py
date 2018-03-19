@@ -10,6 +10,10 @@ ReportSchema = DictionaryVerifier()
 ReportSchema.add_required('type', LiteralVerifier('report'))
 ReportSchema.add_required('payload', Verifier())
 
+TraceSchema = DictionaryVerifier()
+TraceSchema.add_required('type', LiteralVerifier('trace'))
+TraceSchema.add_required('payload', Verifier())
+
 
 class WebSocketDeviceAdapter(DeviceAdapter):
     """ A device adapter allowing connections to devices over websockets
@@ -35,6 +39,7 @@ class WebSocketDeviceAdapter(DeviceAdapter):
         path = "ws://{0}/iotile/v2".format(port)
         self.client = ValidatingWSClient(path)
         self.client.add_message_type(ReportSchema, self.on_report_chunk_received)
+        self.client.add_message_type(TraceSchema, self.on_trace_chunk_received)
         self.client.start()
 
         self.connections = ConnectionManager(self.id)
@@ -259,8 +264,12 @@ class WebSocketDeviceAdapter(DeviceAdapter):
         # FIXME: async after creating WebSocketHandler2
         self.connections.finish_operation(connection_id, result['success'], result.get('reason', None))
 
-    def on_report_chunk_received(self, report):
-        self.parser.add_data(bytearray(report['payload']))
+    def on_trace_chunk_received(self, trace_chunk):
+        # TODO: replace None by connection_id, received from 'server'
+        self._trigger_callback('on_trace', None, bytearray(trace_chunk['payload']))
+
+    def on_report_chunk_received(self, report_chunk):
+        self.parser.add_data(bytearray(report_chunk['payload']))
 
     def _on_report(self, report, connection_id):
         self.logger.info('Received report: {}'.format(str(report)))

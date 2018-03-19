@@ -81,8 +81,8 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         if (not self.streaming_data) and (not self.reports.empty()):
             self._stream_data()
 
-        # if (not self.tracing_data) and (not self.traces.empty()):
-        #     self._send_trace()
+        if (not self.tracing_data) and (not self.traces.empty()):
+            self._send_trace()
 
     def on_new_client(self, client, server):
         self.logger.info('Client connected with id {}'.format(client['id']))
@@ -197,6 +197,17 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
                 if reports is not None:
                     self._queue_reports(*reports)
                 self._audit('StreamingInterfaceOpened')
+        elif interface == 'tracing':
+            if self.tracing_enabled:
+                self.tracing_enabled = False
+                self.device.close_tracing_interface()
+                self._audit('TracingInterfaceClosed')
+            else:
+                self.tracing_enabled = True
+                traces = self.device.open_tracing_interface()
+                if traces is not None:
+                    self._queue_traces(*traces)
+                self._audit('TracingInterfaceOpened')
         else:
             raise ArgumentError('Unknown interface')
 
@@ -223,6 +234,20 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
 
         try:
             message = msgpack.packb(report, default=self.encode_datetime)
+            self.server.send_message(self.client, message, binary=True)
+        except Exception as err:
+            self.logger.exception(err)
+
+    def send_trace(self, payload=None):
+        if payload is None:
+            raise ArgumentError("Can't send empty trace")
+
+        trace = {'type': 'trace', 'payload': payload}
+
+        self.logger.debug('Sending trace: {}'.format(trace))
+
+        try:
+            message = msgpack.packb(trace, default=self.encode_datetime)
             self.server.send_message(self.client, message, binary=True)
         except Exception as err:
             self.logger.exception(err)
@@ -273,8 +298,6 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
                 new chunk from the pending reports.
         """
 
-        # If we failed to transmit a chunk, we will be requeued with an argument
-
         self.streaming_data = True
 
         if chunk is None:
@@ -294,6 +317,39 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
             if return_value.get('code', 0) == 0x182:
                 time.sleep(.02)
                 self._defer(self._stream_data, [chunk])
+            elif return_value.get('code', 0) == 0x181:  # Invalid state, the other side likely disconnected midstream
+                self._audit('ErrorStreamingReport')
+            else:
+                self.logger.exception(err)
+                self._audit('ErrorStreamingReport')
+
+    def _send_trace(self, chunk=None):
+        """Stream tracing data to the ble client in 20 byte chunks
+
+        Args:
+            chunk (bytearray): A chunk that should be sent instead of requesting a
+                new chunk from the pending reports.
+        """
+
+        self.tracing_data = True
+
+        if chunk is None:
+            chunk = self._next_tracing_chunk(20)
+
+        if chunk is None or len(chunk) == 0:
+            self.tracing_data = False
+            return
+
+        try:
+            self.send_trace(chunk)
+            self._defer(self._send_trace)
+        except HardwareError as err:
+            return_value = err.params['return_value']
+
+            # If we're told we ran out of memory, wait and try again
+            if return_value.get('code', 0) == 0x182:
+                time.sleep(.02)
+                self._defer(self._send_trace, [chunk])
             elif return_value.get('code', 0) == 0x181:  # Invalid state, the other side likely disconnected midstream
                 self._audit('ErrorStreamingReport')
             else:
