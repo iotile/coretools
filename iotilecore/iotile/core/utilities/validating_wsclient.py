@@ -116,6 +116,7 @@ class ValidatingWSClient(WebSocketClient):
         flag = self._disconnection_finished.wait(timeout=timeout)
         if not flag:
             raise TimeoutExpiredError("Disconnection attempt from host timed out")
+        self._disconnection_finished.clear()
 
     def send_message(self, obj):
         """Send a packed message.
