@@ -18,6 +18,7 @@ add_node "(unbuffered 1028 when count == 1 && constant 1027 always) => unbuffere
 add_node "(constant 1035 always && unbuffered 1035 when value == 8) => constant 1034 using copy_latest_a"
 add_node "(constant 1036 always && unbuffered 1036 when value == 8) => constant 1034 using copy_latest_a"
 add_node "(system input 1024 always && constant 1 when value == 1) => unbuffered 1031 using copy_latest_a"
+add_node "(unbuffered 1035 when count == 1 && constant 1038 always) => unbuffered 1038 using trigger_streamer"
 add_node "(counter 1026 always && constant 1 when value == 1) => counter 1028 using copy_latest_a"
 add_node "(counter 1025 always && constant 1034 when value == 1) => counter 1031 using copy_latest_a"
 add_node "(unbuffered 1031 when count == 1 && constant 1028 always) => unbuffered 1033 using call_rpc"
@@ -51,6 +52,7 @@ set_constant 'constant 1033' 884737
 set_constant 'constant 1034' 0
 set_constant 'constant 1035' 1
 set_constant 'constant 1036' 0
+set_constant 'constant 1038' 0
 set_constant 'constant 1039' 819203
 set_constant 'constant 1040' 884736
 set_constant 'constant 1041' 884739
