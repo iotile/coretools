@@ -18,3 +18,5 @@ TracingInterfaceClosed = AuditEvent('TracingInterfaceClosed', 'A client closed t
 ErrorStreamingTrace = AuditEvent('ErrorStreamingTrace', 'There was an error sending tracing data to the client, further tracing has been stopped', frozenset(), frozenset())
 RPCReceived = AuditEvent('RPCReceived', 'An RPC has been processed (id=%(rpc_id)s, address=%(address)s, payload="%(payload)s"), status=%(status)d, response="%(response)s"', frozenset(['rpc_id', 'address', 'payload', 'status', 'response']), frozenset())
 ErrorSendingRPCResponse = AuditEvent('ErrorSendingRPCResponse', 'There was a permanent error sending and RPC response', frozenset(), frozenset())
+ScriptInterfaceOpened = AuditEvent('ScriptInterfaceOpened', 'A client opened the script interface on this device', frozenset(), frozenset())
+ScriptInterfaceClosed = AuditEvent('ScriptInterfaceClosed', 'A client closed the script interface on this device', frozenset(), frozenset())
