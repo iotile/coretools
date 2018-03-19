@@ -179,8 +179,8 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
         """Asynchronously send an RPC to this IOTile device
 
         Args:
-            conn_id (int): A unique identifer that will refer to this connection
-            address (int): the addres of the tile that we wish to send the RPC to
+            conn_id (int): A unique identifier that will refer to this connection
+            address (int): the address of the tile that we wish to send the RPC to
             rpc_id (int): the 16-bit id of the RPC we want to call
             payload (bytearray): the payload of the command
             timeout (float): the number of seconds to wait for the RPC to execute

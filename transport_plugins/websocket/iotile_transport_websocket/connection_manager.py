@@ -352,7 +352,6 @@ class ConnectionManager(threading.Thread):
 
         # Make sure we are not reusing an id that is currently connected to something
         if self._get_connection_state(conn_id) != self.Disconnected:
-            print(self._connections[conn_id])
             callback(conn_id, self.id, False, 'Connection ID is already in use for another connection')
             return
 
@@ -409,7 +408,7 @@ class ConnectionManager(threading.Thread):
         else:
             data['state'] = self.Idle
             data['microstate'] = None
-            data['action'] = None
+            del data['action']
             callback(conn_id, self.id, True, None)
 
     def unexpected_disconnect(self, conn_or_internal_id):
@@ -564,7 +563,7 @@ class ConnectionManager(threading.Thread):
 
             data['state'] = self.Idle
             data['microstate'] = None
-            data['action'] = None
+            del data['action']
             callback(conn_id, self.id, False, reason)
         else:
             del self._connections[conn_id]
@@ -661,6 +660,6 @@ class ConnectionManager(threading.Thread):
 
         data['state'] = self.Idle
         data['microstate'] = None
-        data['action'] = None
+        del data['action']
 
         callback(conn_id, self.id, success, *args)
