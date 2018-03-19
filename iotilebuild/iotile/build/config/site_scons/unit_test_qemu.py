@@ -4,8 +4,8 @@ import unit_test
 import os
 import arm
 from SCons.Environment import Environment
-from pkg_resources import resource_filename, Requirement
-import iotile.build.utilities.template as template
+from SCons.Script import Copy, Builder
+from iotile.build.utilities import render_recursive_template, render_template_inplace
 from cfileparser import ParsedCFile
 
 
@@ -17,26 +17,7 @@ class QEMUSemihostedUnitTest(unit_test.UnitTest):
     a generic Cortex M processor.
     """
 
-    UnitTemplate = "qemu_semihost_unit"
-
-    def __init__(self, files, ignore_extra_attributes=False):
-        """Constructor.
-
-        Args:
-            files (list): A list of files to include in the unit test
-        """
-
-        super(QEMUSemihostedUnitTest, self).__init__(files, ignore_extra_attributes)
-
-        self.template = template.RecursiveTemplate(QEMUSemihostedUnitTest.UnitTemplate, resource_filename(Requirement.parse("iotile-build"), "iotile/build/config/templates"), remove_ext=True, only_ext=".tpl")
-
-        # Make a note that we are adding all of our template files as intermediates
-        for outfile in self.template.iter_output_files():
-            self.add_intermediate(outfile, 'objects')
-
-        for outfile in files:
-            filename = os.path.basename(outfile)
-            self.add_intermediate(filename, 'objects')
+    UNIT_TEMPLATE = "qemu_semihost_unit"
 
     def _find_test_functions(self, infile, arch):
         """Parse the unit test file and search for functions that start with `test_`."""
@@ -50,26 +31,9 @@ class QEMUSemihostedUnitTest(unit_test.UnitTest):
 
         test_dir = self.build_dirs(target)['objects']
 
-        # Copy over the test file itself
-        for file in self.files:
-            filename = os.path.basename(file)
-            shutil.copyfile(file, os.path.join(test_dir, filename))
+        _c_files, _all_files = self._copy_files(test_dir)
 
-        # Now copy over all of the test files so that we can find unity.h
-        self.template.add({'tests': []})
-        self.template.render(test_dir)
-        self.template.clear()
-
-        # Now search for test functions
-        test_file = os.path.join(test_dir, os.path.basename(self.files[0]))
-        test_functions = self._find_test_functions(test_file, target)
-
-        # Now recreate the test from the template with test files included
-        self.template.add({'tests': test_functions})
-        self.template.render(test_dir)
-        self.template.clear()
-
-        # Now create the ELF containing the unit test
+        # Compile all .c files to .o files
         test_elf = self._create_objects(target)
 
         # Now create a task to run the test
@@ -78,6 +42,27 @@ class QEMUSemihostedUnitTest(unit_test.UnitTest):
 
         self._run_test(logpath, statuspath, test_elf)
         summary_env['TESTS'].append(statuspath)
+
+    def _copy_files(self, target_dir):
+        """Copy test harness and file-under-test."""
+
+        builder = Builder(action=recursive_template_action,
+                          emitter=recursive_template_emitter)
+
+        # Render the template
+        env = Environment(tools=[], BUILDERS={'render': builder})
+        env['RECURSIVE_TEMPLATE'] = self.UNIT_TEMPLATE
+        template_files = env.render([os.path.join(target_dir, '.timestamp')], [])
+
+        test_files = []
+        for infile in self.files:
+            test_file = env.Command([os.path.join(target_dir, os.path.basename(infile))], [infile], action=Copy("$TARGET", "$SOURCE"))
+            test_files.append(test_file)
+
+        all_files = template_files + test_files
+        c_files = [str(x) for x in all_files if str(x).endswith('.c')]
+
+        return c_files, all_files
 
     def _create_objects(self, target):
         elfname = 'qemu_unit_test'
@@ -89,9 +74,12 @@ class QEMUSemihostedUnitTest(unit_test.UnitTest):
 
         prog_env = arm.setup_environment(target)
 
+        # Convert main.c.tpl into main.c
+        _main_c = prog_env.Command([os.path.join(build_dirs['objects'], 'main.c')], [os.path.join(build_dirs['objects'], os.path.basename(self.files[0])), os.path.join(build_dirs['objects'], 'main.c.tpl')], action=generate_main_c)
+
         prog_env['OUTPUT'] = output_name
         prog_env['BUILD_DIR'] = build_dirs['objects']
-        prog_env['OUTPUT_PATH'] = os.path.join(build_dirs['objects'], output_name)
+        prog_env['OUTPUT_PATH'] = os.path.join(build_dirs['test'], output_name)
         prog_env['MODULE'] = elfname
 
         ldscript = os.path.join(build_dirs['objects'], 'qemu_semihost.ld')
@@ -149,3 +137,33 @@ def run_qemu_command(target, source, env):
             statusfile.write('PASSED')
         else:
             statusfile.write('FAILED')
+
+
+def generate_main_c(target, source, env):
+    """Parse the unit test file and search for functions that start with `test_`."""
+
+    parsed = ParsedCFile(str(source[0]), env['ARCH'])
+    test_functions = parsed.defined_functions(criterion=lambda x: x.startswith('test_'))
+
+    render_template_inplace(str(source[1]), {'tests': test_functions})
+
+
+def recursive_template_emitter(target, source, env):
+    """Emit all of the files generated by a recursive template."""
+
+    outdir = os.path.dirname(str(target[0]))
+
+    files, _dirs = render_recursive_template(env['RECURSIVE_TEMPLATE'], {}, outdir, preserve=["main.c.tpl"], dry_run=True)
+    target.extend([os.path.join(outdir, x) for x in files])
+
+    for outfile in files:
+        source.append(files[outfile][1])
+
+    return target, source
+
+
+def recursive_template_action(target, source, env):
+    """Render a recursive template."""
+
+    outdir = os.path.dirname(str(target[0]))
+    render_recursive_template(env['RECURSIVE_TEMPLATE'], {}, outdir, preserve=["main.c.tpl"])

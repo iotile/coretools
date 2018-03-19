@@ -126,6 +126,20 @@ def test_build_prerelease(tmpdir):
         os.chdir(olddir)
 
 
+def test_unit_testing(tmpdir):
+    """Make sure we can build and run unit tests."""
+
+    olddir = os.getcwd()
+    builddir = copy_folder('comp_with_tests', tmpdir)
+
+    try:
+        os.chdir(builddir)
+        err = subprocess.check_call(["iotile", "build", "build/test"])
+        assert err == 0
+    finally:
+        os.chdir(olddir)
+
+
 def test_bootstrap_file(tmpdir):
     """Make sure we can create a bootstrap file"""
     olddir = os.getcwd()

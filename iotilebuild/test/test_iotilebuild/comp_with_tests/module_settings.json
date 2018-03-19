@@ -1,0 +1,26 @@
+{
+	"file_format": "v2",
+	"module_name": "arm_comp",
+	"targets": ["arm"],
+	"version": "1.0.0",
+
+	"products": 
+	{
+		"arm_comp_arm.elf": "firmware_image"
+	},
+
+	"depends": {},
+
+	"architectures":
+	{
+		"arm":
+		{
+			"cflags": ["-mthumb", "-Wall", "-Wshadow", "-Os", "-g", "-fno-builtin", "-ffunction-sections", "-fdata-sections"],
+			"asflags": ["-Wall"],
+			"ldflags": ["-mthumb", "-Xlinker", "--gc-sections", "--specs=nano.specs", "-lc", "-lnosys", "-nostartfiles"],
+			"cpu": "cortex-m0plus",
+			"linker": "linker/linker.ld",
+			"chip": "lpc824"
+		}
+	}
+}

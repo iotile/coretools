@@ -84,7 +84,7 @@ class UnitTest (object):
 
         if obj == 'rawlog':
             name = self.name + '@' + chip.arch_name() + '.raw'
-            return os.path.join(dirs['objects'], name)
+            return os.path.join(dirs['test'], name)
         elif obj == 'log':
             name = self.name + '@' + chip.arch_name() + '.log'
             return os.path.join(dirs['logs'], name)
@@ -125,6 +125,7 @@ class UnitTest (object):
         apply if all of the architectures in the unit test are contained in the module_target.
         """
 
+        print(module_targets)
         for mod_target in module_targets:
             found = False
             if self.targets is not None:
