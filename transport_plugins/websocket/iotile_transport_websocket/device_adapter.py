@@ -24,27 +24,31 @@ ProgressNotification.add_required('total_count', IntVerifier())
 
 
 class WebSocketDeviceAdapter(DeviceAdapter):
-    """ A device adapter allowing connections to devices over websockets
+    """ A device adapter allowing connections to devices over WebSockets
 
     Args:
-        port (string): A url for the websocket server in form of server:port/path
+        port (string): A url for the WebSocket server in form of server:port
     """
 
     def __init__(self, port):
         super(WebSocketDeviceAdapter, self).__init__()
 
+        # Configuration
         self.set_config('default_timeout', 10.0)
         self.set_config('expiration_time', 60.0)
         self.set_config('probe_supported', True)
         self.set_config('probe_required', True)
         self.mtu = int(self.get_config('mtu', 60*1024))  # Split script payloads larger than this
 
+        # Set logger
         self.logger = logging.getLogger('ws.manager')
-        self.logger.setLevel(logging.DEBUG)
+        self.logger.setLevel(logging.DEBUG)  # TODO: remove this line
         self.logger.addHandler(logging.NullHandler())
 
+        # Report parser
         self.parser = IOTileReportParser(report_callback=self._on_report, error_callback=self._on_report_error)
 
+        # WebSocket client
         path = "ws://{0}/iotile/v2".format(port)
         self.client = ValidatingWSClient(path)
         self.client.add_message_type(ReportSchema, self.on_report_chunk_received)
@@ -52,6 +56,7 @@ class WebSocketDeviceAdapter(DeviceAdapter):
         self.client.add_message_type(ProgressNotification, self.on_progress_script)
         self.client.start()
 
+        # To manage multiple connections
         self.connections = ConnectionManager(self.id)
         self.connections.start()
 
@@ -138,8 +143,7 @@ class WebSocketDeviceAdapter(DeviceAdapter):
         callback(self.id, result.get('success', False), result.get('reason', None))
 
     def stop_sync(self):
-        """Synchronously stop this adapter
-        """
+        """Synchronously stop this adapter."""
 
         connections = self.connections.get_connections()
 
@@ -159,7 +163,7 @@ class WebSocketDeviceAdapter(DeviceAdapter):
             connection_id (int): A unique identifier that will refer to this connection
             address (int): the address of the tile that we wish to send the RPC to
             rpc_id (int): the 16-bit id of the RPC we want to call
-            payload (bytearray): the payload of the command
+            payload (bytes): the payload of the command
             timeout (float): the number of seconds to wait for the RPC to execute
             callback (callable): A callback for when we have finished the RPC.  The callback will be called as"
                 callback(connection_id, adapter_id, success, failure_reason, status, payload)
@@ -192,7 +196,7 @@ class WebSocketDeviceAdapter(DeviceAdapter):
             raise HardwareError(reason)
 
         payload = result.get('payload')
-        status = 0xFF
+        status = 0xFF  # Default value, meaning that an error occurred
         return_value = bytearray()
 
         if payload is not None:
@@ -234,11 +238,14 @@ class WebSocketDeviceAdapter(DeviceAdapter):
 
         self.connections.begin_operation(connection_id, 'script', callback, self.get_config('default_timeout'))
 
+        # Count number of chunks to send
         nb_chunks = 1
         if len(data) > self.mtu:
             nb_chunks = len(data) // self.mtu
             if len(data) % self.mtu != 0:
                 nb_chunks += 1
+
+        result = {}
 
         # Send the script out possibly in multiple chunks if it's larger than our maximum transmit unit
         for i in range(0, nb_chunks):
@@ -341,22 +348,59 @@ class WebSocketDeviceAdapter(DeviceAdapter):
         self.connections.finish_operation(connection_id, result['success'], result.get('reason', None))
 
     def on_trace_chunk_received(self, trace_chunk):
+        """Callback function called when a trace chunk is received.
+
+        Args:
+            trace_chunk (dict): The received trace chunk information
+        """
+
         # TODO: replace None by connection_id, received from 'server'
         self._trigger_callback('on_trace', None, bytearray(trace_chunk['payload']))
 
     def on_report_chunk_received(self, report_chunk):
+        """Callback function called when a report chunk is received.
+
+        Args:
+            report_chunk (dict): The received report chunk information
+        """
+
         self.parser.add_data(bytearray(report_chunk['payload']))
 
-    def _on_report(self, report, connection_id):
+    def _on_report(self, report, context):
+        """Callback function called when a report has been fully received and parsed.
+
+        Args:
+            report (IOTileReport): The report instance
+            context (any): The context passed to the report parser (here is probably the connection_id)
+
+        Returns:
+            False to delete the report from internal storage
+        """
+
+        # TODO: pass the connection_id to the parser context to have it here
         self.logger.info('Received report: {}'.format(str(report)))
-        self._trigger_callback('on_report', connection_id, report)
+        self._trigger_callback('on_report', context, report)
 
         return False
 
-    def _on_report_error(self, code, message, connection_id):
+    def _on_report_error(self, code, message, context):
+        """Callback function called when an error occurred while parsing a report.
+
+        Args:
+            code (int): Error code
+            message (str): The failure reason
+            context (any): The context passed to the report parser (here is probably the connection_id)
+        """
+
         self.logger.error("Report Error, code={}, message={}".format(code, message))
 
     def on_progress_script(self, notification):
+        """Callback function called when a progress notification about a script upload is received.
+
+        Args:
+            notification (dict): The received notification containing the progress information
+        """
+
         try:
             context = self.connections.get_context(notification['connection_id'])
         except ArgumentError:

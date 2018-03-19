@@ -1,5 +1,8 @@
 """A VirtualInterface that provides access to a virtual IOTile device through websocket"""
 
+# This file is copyright Arch Systems, Inc.
+# Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
+
 import binascii
 import datetime
 import logging
@@ -13,7 +16,16 @@ from websocket_server import WebsocketServer
 
 
 class WebSocketVirtualInterface(VirtualIOTileInterface):
+    """ Run a simple WebSocket server and provide an interface between it and a virtual device.
 
+    Args:
+        args (dict): A dictionary of arguments used to configure this interface.
+            Supported args are:
+
+                port (int):
+                    The port on which the server will listen (default: 5120)
+
+    """
     def __init__(self, args):
         super(WebSocketVirtualInterface, self).__init__()
 
@@ -22,18 +34,24 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         else:
             port = 5120
 
+        # Set logger
         self.logger = logging.getLogger('virtual.websocket')
-        self.logger.setLevel(logging.DEBUG)
+        self.logger.setLevel(logging.DEBUG)  # TODO: remove this line
         self.logger.addHandler(logging.NullHandler())
 
+        # Initialize states
+        # - Interfaces
         self.streaming_enabled = False
         self.tracing_enabled = False
+        self.script_enabled = False
+        # - Current action
         self.streaming_data = False
         self.tracing_data = False
-        self.script_enabled = False
 
+        # WebSocket client
         self.client = None
 
+        # WebSocket server
         self.server = WebsocketServer(port, host='localhost', loglevel=logging.DEBUG)
         self.server.set_fn_new_client(self.on_new_client)
         self.server.set_fn_client_left(self.on_client_disconnect)
@@ -46,36 +64,48 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
 
     @classmethod
     def decode_datetime(cls, obj):
+        """Decode a msgpack'ed datetime."""
+
         if b'__datetime__' in obj:
             obj = datetime.datetime.strptime(obj[b'as_str'].decode(), "%Y%m%dT%H:%M:%S.%f")
         return obj
 
     @classmethod
     def encode_datetime(cls, obj):
+        """Encode a msgpack'ed datetime."""
+
         if isinstance(obj, datetime.datetime):
             obj = {'__datetime__': True, 'as_str': obj.strftime("%Y%m%dT%H:%M:%S.%fZ").encode()}
         return obj
 
     def start(self, device):
+        """Start serving access to this VirtualIOTileDevice
+
+        Args:
+            device (VirtualIOTileDevice): The device we will be providing access to
+        """
+
         super(WebSocketVirtualInterface, self).start(device)
 
         self.server_thread.start()
 
     def stop(self):
+        """Safely shut down this interface."""
+
         super(WebSocketVirtualInterface, self).stop()
 
         if self.device.connected:
-            self.disconnect_device()
+            self._disconnect_device()
 
         if self.client is not None:
+            # Send closing packet
             self.server.server_close()
 
         self.server.shutdown()
         self.server_thread.join()
 
     def process(self):
-        """Periodic nonblocking processes
-        """
+        """Periodic nonblocking processes."""
 
         super(WebSocketVirtualInterface, self).process()
 
@@ -86,18 +116,62 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
             self._send_trace()
 
     def on_new_client(self, client, server):
+        """Callback function called when a WebSocket client connects on the server.
+
+        Args:
+            client (dict): A dictionary containing client information
+                id (int):
+                    A unique client ID
+                address (tuple):
+                    Tuple containing (client IP address, client port)
+                handler (WebSocketHandler):
+                    An instance of the websocket handler (which is a stream to send/receive messages)
+
+            server (WebsocketServer): The server instance
+        """
+
         self.logger.info('Client connected with id {}'.format(client['id']))
         self.client = client
 
     def on_client_disconnect(self, client, server):
+        """Callback function called when a WebSocket client disconnects from the server.
+
+        Args:
+            client (dict): A dictionary containing client information
+                id (int):
+                    A unique client ID
+                address (tuple):
+                    Tuple containing (client IP address, client port)
+                handler (WebSocketHandler):
+                    An instance of the websocket handler (which is a stream to send/receive messages)
+
+            server (WebsocketServer): The server instance
+        """
+
         self.logger.info('Client {} disconnected'.format(client['id']))
 
         if self.device.connected:
-            self.disconnect_device()
+            # Disconnect the virtual device
+            self._disconnect_device()
 
         self.client = None
 
     def on_message(self, client, server, message):
+        """Callback function called when a message is received on the WebSocket server.
+
+        Args:
+            client (dict): A dictionary containing client information
+                id (int):
+                    A unique client ID
+                address (tuple):
+                    Tuple containing (client IP address, client port)
+                handler (WebSocketHandler):
+                    An instance of the websocket handler (which is a stream to send/receive messages)
+
+            server (WebsocketServer): The server instance
+            message (bytes): The raw received message (msgpack'ed)
+        """
+
         message = msgpack.unpackb(message, raw=False, object_hook=self.decode_datetime)
 
         if message['type'] == 'command':
@@ -107,6 +181,12 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
             self.logger.error('Received message with unknown type: {}'.format(message))
 
     def handle_command(self, cmd):
+        """Execute the action matching the received command.
+
+        Args:
+            cmd (dict): Command information, like 'operation' name or some parameters needed to execute the action
+        """
+
         op = cmd['operation']
 
         response = None
@@ -117,11 +197,11 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
             response = {'devices': devices}
 
         elif op == 'connect':
-            self.connect_device()
+            self._connect_device()
             response = {'connection_id': self.device.iotile_id}
 
         elif op == 'disconnect':
-            self.disconnect_device()
+            self._disconnect_device()
 
         elif op == 'open_interface':
             interface = cmd['interface']
@@ -170,17 +250,29 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
                 self.send_response(response)
 
     def _call_rpc(self, address, rpc_id, payload):
+        """Call an RPC on the virtual device by its address and ID.
+
+        Args:
+            address (int): The address of the mock tile this RPC is for
+            rpc_id (int): The number of the RPC
+            payload (bytes): A byte string of payload parameters up to 20 bytes
+
+        Returns:
+            status (int): The status code
+            return_value: response payload from the RPC
+        """
+
         try:
             return_value = self.device.call_rpc(address, rpc_id, payload)
-            status = (1 << 7)
+            status = (1 << 7)  # RPC executed with success
             if len(return_value) > 0:
-                status |= (1 << 6)
+                status |= (1 << 6)  # RPC returned data that should be read
 
         except (RPCInvalidIDError, RPCNotFoundError):
-            status = (1 << 1)
+            status = (1 << 1)  # Indicates RPC address or id not correct
             return_value = ''
         except TileNotFoundError:
-            status = 0xFF
+            status = 0xFF  # Indicates RPC had an error
             return_value = ''
 
         self._audit("RPCReceived",
@@ -193,6 +285,8 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         return status, return_value
 
     def _generate_scan_response(self):
+        """Return a dict containing the virtual device information to send a scan response."""
+
         return [
             {
                 'connection_string': self.device.iotile_id,
@@ -204,9 +298,18 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         ]
 
     def open_interface(self, interface):
+        """Open a given interface on the virtual device.
+        Args:
+            interface (str): name of the interface
+
+        Raises:
+            ArgumentError: If interface not found
+        """
+
         if interface == 'rpc':
             self.device.open_rpc_interface()
             self._audit('RPCInterfaceOpened')
+
         elif interface == 'streaming':
             if self.streaming_enabled:
                 self.streaming_enabled = False
@@ -218,6 +321,7 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
                 if reports is not None:
                     self._queue_reports(*reports)
                 self._audit('StreamingInterfaceOpened')
+
         elif interface == 'tracing':
             if self.tracing_enabled:
                 self.tracing_enabled = False
@@ -229,6 +333,7 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
                 if traces is not None:
                     self._queue_traces(*traces)
                 self._audit('TracingInterfaceOpened')
+
         elif interface == 'script':
             if self.script_enabled:
                 self.script_enabled = False
@@ -238,10 +343,16 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
                 self.script_enabled = True
                 self.device.open_script_interface()
                 self._audit('ScriptInterfaceOpened')
+
         else:
             raise ArgumentError('Unknown interface')
 
     def send_response(self, payload=None):
+        """Send a command response indicating it has been executed with success.
+        Args:
+            payload (dict): data to send with the response
+        """
+
         response = {'type': 'response', 'success': True}
         if payload is not None:
             response['payload'] = payload
@@ -250,6 +361,14 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         self._send_message(response)
 
     def send_report(self, payload=None):
+        """Send a report chunk.
+        Args:
+            payload (bytes): data to send with the report chunk
+
+        Raises:
+            ArgumentError: If payload is empty
+        """
+
         if payload is None:
             raise ArgumentError("Can't send empty report")
 
@@ -259,6 +378,14 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         self._send_message(report)
 
     def send_trace(self, payload=None):
+        """Send a trace chunk.
+        Args:
+            payload (bytes): data to send with the trace chunk
+
+        Raises:
+            ArgumentError: If payload is empty
+        """
+
         if payload is None:
             raise ArgumentError("Can't send empty trace")
 
@@ -268,6 +395,16 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         self._send_message(trace)
 
     def send_progress(self, operation, payload=None):
+        """Send a progress notification (used when uploading script for example).
+
+        Args:
+            operation (str): name of the operation currently in progress
+            payload (dict): data to send with the notification
+
+        Raises:
+            ArgumentError: If payload is empty
+        """
+
         if payload is None:
             raise ArgumentError("Can't send empty report")
 
@@ -277,23 +414,38 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         self._send_message(progress)
 
     def send_error(self, reason):
+        """Send an error message containing the failure reason
+        Args:
+            reason (str): the failure reason
+        """
+
         error = {'type': 'response', 'success': False, 'reason': reason}
 
         self.logger.debug('Sending error: {}'.format(error))
         self._send_message(error)
 
     def _send_message(self, payload):
+        """Send a binary message to the WebSocket connected client, after having msgpack'ed it
+
+        Args:
+            payload (dict): data to send
+        """
+
         try:
             message = msgpack.packb(payload, default=self.encode_datetime)
             self.server.send_message(self.client, message, binary=True)
         except Exception as err:
             self.logger.exception(err)
 
-    def connect_device(self):
+    def _connect_device(self):
+        """Connect to the virtual device."""
+
         self.device.connected = True
         self._audit('ClientConnected')
 
-    def disconnect_device(self):
+    def _disconnect_device(self):
+        """Disconnect from the virtual device after cleaning it."""
+
         self.clean_device()
         self.device.connected = False
         self._audit('ClientDisconnected')
@@ -317,10 +469,10 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         self._clear_traces()
 
     def _stream_data(self, chunk=None):
-        """Stream reports to the websocket client in 20 byte chunks
+        """Stream reports to the WebSocket client in 20 byte chunks
 
         Args:
-            chunk (bytearray): A chunk that should be sent instead of requesting a
+            chunk (bytes): A chunk that should be sent instead of requesting a
                 new chunk from the pending reports.
         """
 
@@ -350,10 +502,10 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
                 self._audit('ErrorStreamingReport')
 
     def _send_trace(self, chunk=None):
-        """Stream tracing data to the ble client in 20 byte chunks
+        """Stream tracing data to the WebSocket client in 20 byte chunks
 
         Args:
-            chunk (bytearray): A chunk that should be sent instead of requesting a
+            chunk (bytes): A chunk that should be sent instead of requesting a
                 new chunk from the pending reports.
         """
 
@@ -390,3 +542,14 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         """
 
         self.device.push_script_chunk(chunk)
+
+#LUNDI:
+    # TODO: faire messages.py pour verifier commandes (cf awsiot) : pour virtual_websocket ET device_adapter
+
+# => PR
+
+# TODO: faire nouveau WebSocketHandler2 pour de vrai
+# TODO: ecrire tests
+
+# TODO: convertir fonctions device_adapter.py en async -> voir avec Tim parce que contraire au ValidatingWSClient
+# TODO: faire progress_callback pour script (quand async) + tester script -> voir avec Tim
