@@ -364,7 +364,7 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
 
         try:
             self._command_task.sync_command(['_send_notification', handle, payload])
-        except HardwareError, exc:
+        except HardwareError as exc:
             code = exc.params['return_value'].get('code', 0)
 
             # If we're told we ran out of memory, wait and try again
@@ -415,7 +415,7 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         try:
             self._send_notification(self.StreamingHandle, chunk)
             self._defer(self._stream_data)
-        except HardwareError, exc:
+        except HardwareError as exc:
             retval = exc.params['return_value']
 
             # If we're told we ran out of memory, wait and try again
@@ -450,7 +450,7 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         try:
             self._send_notification(self.TracingHandle, chunk)
             self._defer(self._send_trace)
-        except HardwareError, exc:
+        except HardwareError as exc:
             retval = exc.params['return_value']
 
             # If we're told we ran out of memory, wait and try again

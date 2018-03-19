@@ -1,10 +1,11 @@
 import logging
+from builtins import range
 from iotile.core.hw.transport.adapter import DeviceAdapter
 from iotile.core.utilities.validating_wsclient import ValidatingWSClient
 from iotile.core.hw.reports.parser import IOTileReportParser
 from iotile.core.exceptions import ArgumentError, HardwareError
 from connection_manager import ConnectionManager
-from iotile.core.utilities.schema_verify import Verifier, DictionaryVerifier, LiteralVerifier
+from iotile.core.utilities.schema_verify import Verifier, DictionaryVerifier, LiteralVerifier, IntVerifier
 
 ReportSchema = DictionaryVerifier()
 ReportSchema.add_required('type', LiteralVerifier('report'))
@@ -13,6 +14,13 @@ ReportSchema.add_required('payload', Verifier())
 TraceSchema = DictionaryVerifier()
 TraceSchema.add_required('type', LiteralVerifier('trace'))
 TraceSchema.add_required('payload', Verifier())
+
+ProgressNotification = DictionaryVerifier()
+ProgressNotification.add_required('type', LiteralVerifier('notification'))
+ProgressNotification.add_required('operation', LiteralVerifier('send_script'))
+ProgressNotification.add_required('connection_id', IntVerifier())
+ProgressNotification.add_required('done_count', IntVerifier())
+ProgressNotification.add_required('total_count', IntVerifier())
 
 
 class WebSocketDeviceAdapter(DeviceAdapter):
@@ -29,6 +37,7 @@ class WebSocketDeviceAdapter(DeviceAdapter):
         self.set_config('expiration_time', 60.0)
         self.set_config('probe_supported', True)
         self.set_config('probe_required', True)
+        self.mtu = int(self.get_config('mtu', 60*1024))  # Split script payloads larger than this
 
         self.logger = logging.getLogger('ws.manager')
         self.logger.setLevel(logging.DEBUG)
@@ -40,6 +49,7 @@ class WebSocketDeviceAdapter(DeviceAdapter):
         self.client = ValidatingWSClient(path)
         self.client.add_message_type(ReportSchema, self.on_report_chunk_received)
         self.client.add_message_type(TraceSchema, self.on_trace_chunk_received)
+        self.client.add_message_type(ProgressNotification, self.on_progress_script)
         self.client.start()
 
         self.connections = ConnectionManager(self.id)
@@ -57,7 +67,13 @@ class WebSocketDeviceAdapter(DeviceAdapter):
         """
 
         context = {}
-        self.connections.begin_connection(connection_id, connection_string, callback, context, self.get_config('default_timeout'))
+        self.connections.begin_connection(
+            connection_id,
+            connection_string,
+            callback,
+            context,
+            self.get_config('default_timeout')
+        )
 
         try:
             result = self.client.send_command('connect', {})
@@ -192,6 +208,66 @@ class WebSocketDeviceAdapter(DeviceAdapter):
             return_value
         )
 
+    def send_script_async(self, connection_id, data, progress_callback, callback):
+        """Asynchronously send a a script to this IOTile device
+
+        Args:
+            connection_id (int): A unique identifier that will refer to this connection
+            data (string): the script to send to the device
+            progress_callback (callable): A function to be called with status on our progress, called as:
+                progress_callback(done_count, total_count)
+            callback (callable): A callback for when we have finished sending the script. The callback will be called as
+                callback(connection_id, adapter_id, success, failure_reason)
+                'connection_id': the connection id
+                'adapter_id': this adapter's id
+                'success': a bool indicating whether we received a response to our attempted RPC
+                'failure_reason': a string with the reason for the failure if success == False
+        """
+
+        try:
+            context = self.connections.get_context(connection_id)
+        except ArgumentError:
+            callback(connection_id, self.id, False, "Could not find connection information")
+            return
+
+        context['progress_callback'] = progress_callback
+
+        self.connections.begin_operation(connection_id, 'script', callback, self.get_config('default_timeout'))
+
+        nb_chunks = 1
+        if len(data) > self.mtu:
+            nb_chunks = len(data) // self.mtu
+            if len(data) % self.mtu != 0:
+                nb_chunks += 1
+
+        # Send the script out possibly in multiple chunks if it's larger than our maximum transmit unit
+        for i in range(0, nb_chunks):
+            start = i * self.mtu
+            chunk = data[start:start + self.mtu]
+
+            try:
+                result = self.client.send_command('send_script', {
+                    'script': chunk,
+                    'connection_id': connection_id,
+                    'fragment_count': nb_chunks,
+                    'fragment_index': i
+                })
+                if not result['success']:
+                    raise Exception(result['reason'])
+            except Exception as err:
+                reason = "Error while sending command 'send_rpc' to ws server: {}".format(err)
+                self.connections.finish_operation(connection_id, False, reason)
+                raise HardwareError(reason)
+
+        if 'progress_callback' in context:
+            del context['progress_callback']
+
+        self.connections.finish_operation(
+            connection_id,
+            result.get('success', False),
+            result.get('failure_reason', None)
+        )
+
     def _open_rpc_interface(self, connection_id, callback):
         """Enable RPC interface for this IOTile device
 
@@ -279,6 +355,20 @@ class WebSocketDeviceAdapter(DeviceAdapter):
 
     def _on_report_error(self, code, message, connection_id):
         self.logger.error("Report Error, code={}, message={}".format(code, message))
+
+    def on_progress_script(self, notification):
+        try:
+            context = self.connections.get_context(notification['connection_id'])
+        except ArgumentError:
+            self.logger.warn(
+                "Dropping message that does not correspond with a known connection, message={}"
+                .format(notification)
+            )
+            return
+
+        progress_callback = context.get('progress_callback', None)
+        if progress_callback is not None:
+            progress_callback(notification['done_count'], notification['total_count'])
 
     def periodic_callback(self):
         """Periodic cleanup tasks to maintain this adapter."""

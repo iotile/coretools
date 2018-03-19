@@ -30,6 +30,7 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         self.tracing_enabled = False
         self.streaming_data = False
         self.tracing_data = False
+        self.script_enabled = False
 
         self.client = None
 
@@ -138,6 +139,26 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
                 self.logger.error('Error while sending RPC: {}'.format(err))
                 error = str(err)
 
+        elif op == 'send_script':
+            try:
+                index = cmd['fragment_index']
+                count = cmd['fragment_count']
+                connection_id = cmd['connection_id']
+
+                self._send_script(cmd['script'])
+
+                # Sending progress notification
+                if index < count - 1:
+                    self.send_progress('send_script', {
+                        'connection_id': connection_id,
+                        'done_count': index,
+                        'total_count': count
+                    })
+                    return
+            except Exception as err:
+                self.logger.error('Error while sending script: {}'.format(err))
+                error = str(err)
+
         else:
             error = 'Command {} not supported'.format(op)
             self.logger.error('Received command not supported: {}'.format(op))
@@ -208,6 +229,15 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
                 if traces is not None:
                     self._queue_traces(*traces)
                 self._audit('TracingInterfaceOpened')
+        elif interface == 'script':
+            if self.script_enabled:
+                self.script_enabled = False
+                self.device.close_script_interface()
+                self._audit('ScriptInterfaceClosed')
+            else:
+                self.script_enabled = True
+                self.device.open_script_interface()
+                self._audit('ScriptInterfaceOpened')
         else:
             raise ArgumentError('Unknown interface')
 
@@ -217,12 +247,7 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
             response['payload'] = payload
 
         self.logger.debug('Sending response: {}'.format(response))
-
-        try:
-            message = msgpack.packb(response, default=self.encode_datetime)
-            self.server.send_message(self.client, message, binary=True)
-        except Exception as err:
-            self.logger.exception(err)
+        self._send_message(response)
 
     def send_report(self, payload=None):
         if payload is None:
@@ -231,12 +256,7 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         report = {'type': 'report', 'payload': payload}
 
         self.logger.debug('Sending report: {}'.format(report))
-
-        try:
-            message = msgpack.packb(report, default=self.encode_datetime)
-            self.server.send_message(self.client, message, binary=True)
-        except Exception as err:
-            self.logger.exception(err)
+        self._send_message(report)
 
     def send_trace(self, payload=None):
         if payload is None:
@@ -245,20 +265,26 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         trace = {'type': 'trace', 'payload': payload}
 
         self.logger.debug('Sending trace: {}'.format(trace))
+        self._send_message(trace)
 
-        try:
-            message = msgpack.packb(trace, default=self.encode_datetime)
-            self.server.send_message(self.client, message, binary=True)
-        except Exception as err:
-            self.logger.exception(err)
+    def send_progress(self, operation, payload=None):
+        if payload is None:
+            raise ArgumentError("Can't send empty report")
+
+        progress = {'type': 'notification', 'operation': operation, 'payload': payload}
+
+        self.logger.debug('Sending progress: {}'.format(progress))
+        self._send_message(progress)
 
     def send_error(self, reason):
         error = {'type': 'response', 'success': False, 'reason': reason}
 
         self.logger.debug('Sending error: {}'.format(error))
+        self._send_message(error)
 
+    def _send_message(self, payload):
         try:
-            message = msgpack.packb(error)
+            message = msgpack.packb(payload, default=self.encode_datetime)
             self.server.send_message(self.client, message, binary=True)
         except Exception as err:
             self.logger.exception(err)
@@ -355,3 +381,12 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
             else:
                 self.logger.exception(err)
                 self._audit('ErrorStreamingReport')
+
+    def _send_script(self, chunk):
+        """Send a script to the connected device.
+
+        Args:
+            chunk (bytes): The binary script to send to the device
+        """
+
+        self.device.push_script_chunk(chunk)
