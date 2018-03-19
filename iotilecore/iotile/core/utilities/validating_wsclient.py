@@ -251,8 +251,10 @@ class ValidatingWSClient(WebSocketClient):
                 return
             except IOTileException as exc:
                 self.logger.error("Exception handling websocket message, exception = %s", str(exc))
+                return
             except Exception as exc:
                 self.logger.error("Non-IOTile exception handling websocket message, exception = %s", str(exc))
+                return
 
         self.logger.warn("No handler found for received message, message=%s", str(unpacked))
 
