@@ -50,7 +50,7 @@ def build_python_distribution(tile):
         outfile = os.path.join(outsrcdir, infile)
         buildfile = os.path.join(packagedir, infile)
 
-        env.Command(outfile, inpath, Copy("$TARGET", "$SOURCE"))
+        env.Command(outfile, inpath, [Mkdir(outsrcdir), Copy("$TARGET", "$SOURCE")])
         env.Command(buildfile, [inpath, pkg_init], Copy("$TARGET", "$SOURCE"))
 
         buildfiles.append(buildfile)
@@ -65,6 +65,7 @@ def build_python_distribution(tile):
     env.Command([os.path.join(builddir, 'setup.py'), wheel_output], ['module_settings.json'] + buildfiles,
                 action=Action(generate_setup_py, "Building python distribution"))
 
+    env.Depends(sdist_output, wheel_output)
     env.Command([os.path.join(outdir, tile.support_wheel)], [wheel_output], Copy("$TARGET", "$SOURCE"))
     env.Command([os.path.join(outdir, support_sdist)], [sdist_output], Copy("$TARGET", "$SOURCE"))
 
