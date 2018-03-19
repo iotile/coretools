@@ -53,6 +53,7 @@ STATUS_GOING_AWAY = 1001
 STATUS_PROTOCOL_ERROR = 1002
 STATUS_WRONG_DATA_TYPE = 1003
 
+
 # -------------------------------- API ---------------------------------
 
 class API:
