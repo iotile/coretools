@@ -13,6 +13,7 @@ from iotile.core.hw.virtual.virtualdevice import RPCInvalidIDError, RPCNotFoundE
 from iotile.core.hw.virtual.virtualinterface import VirtualIOTileInterface
 from iotile.core.exceptions import ArgumentError, HardwareError
 from websocket_server import WebsocketServer
+import messages
 
 
 class WebSocketVirtualInterface(VirtualIOTileInterface):
@@ -174,76 +175,60 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
 
         message = msgpack.unpackb(message, raw=False, object_hook=self.decode_datetime)
 
-        if message['type'] == 'command':
-            self.handle_command(message)
-        else:
-            self.send_error('Unknown type')
-            self.logger.error('Received message with unknown type: {}'.format(message))
-
-    def handle_command(self, cmd):
-        """Execute the action matching the received command.
-
-        Args:
-            cmd (dict): Command information, like 'operation' name or some parameters needed to execute the action
-        """
-
-        op = cmd['operation']
-
         response = None
         error = None
 
-        if op == 'scan':
+        if messages.ProbeCommand.matches(message):
             devices = self._generate_scan_response()
             response = {'devices': devices}
 
-        elif op == 'connect':
+        elif messages.ConnectCommand.matches(message):
             self._connect_device()
             response = {'connection_id': self.device.iotile_id}
 
-        elif op == 'disconnect':
+        elif messages.DisconnectCommand.matches(message):
             self._disconnect_device()
 
-        elif op == 'open_interface':
-            interface = cmd['interface']
+        elif messages.OpenInterfaceCommand.matches(message):
+            interface = message['interface']
             try:
                 self.open_interface(interface)
             except ArgumentError as err:
                 self.logger.error('Unknown interface received: {}'.format(interface))
                 error = str(err)
 
-        elif op == 'send_rpc':
+        elif messages.RPCCommand.matches(message):
             try:
-                status, return_value = self._call_rpc(cmd['address'], cmd['rpc_id'], cmd['payload'])
+                status, return_value = self._call_rpc(message['address'], message['rpc_id'], message['payload'])
                 response = {'return_value': return_value, 'status': status}
             except Exception as err:
                 self.logger.error('Error while sending RPC: {}'.format(err))
                 error = str(err)
 
-        elif op == 'send_script':
+        elif messages.ScriptCommand.matches(message):
             try:
-                index = cmd['fragment_index']
-                count = cmd['fragment_count']
-                connection_id = cmd['connection_id']
+                index = message['fragment_index']
+                count = message['fragment_count']
+                connection_id = message['connection_id']
 
-                self._send_script(cmd['script'])
+                self._send_script(message['script'])
 
                 # Sending progress notification
                 if index < count - 1:
-                    self.send_progress('send_script', {
+                    self.send_notification('send_script', {
                         'connection_id': connection_id,
                         'done_count': index,
                         'total_count': count
                     })
-                    return
             except Exception as err:
                 self.logger.error('Error while sending script: {}'.format(err))
                 error = str(err)
 
         else:
-            error = 'Command {} not supported'.format(op)
-            self.logger.error('Received command not supported: {}'.format(op))
+            self.logger.error('Received command not supported: {}'.format(message))
+            error = 'Command {} not supported'.format(message)
 
-        if not cmd['no_response']:
+        if not message.get('no_response', False):
             if error is not None:
                 self.send_error(error)
             else:
@@ -350,7 +335,7 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
     def send_response(self, payload=None):
         """Send a command response indicating it has been executed with success.
         Args:
-            payload (dict): data to send with the response
+            payload (any): data to send with the response
         """
 
         response = {'type': 'response', 'success': True}
@@ -360,58 +345,23 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         self.logger.debug('Sending response: {}'.format(response))
         self._send_message(response)
 
-    def send_report(self, payload=None):
-        """Send a report chunk.
+    def send_notification(self, operation, payload=None):
+        """Send a notification (meaning a 'unexpected' message from the server to the client).
         Args:
-            payload (bytes): data to send with the report chunk
+            operation (str): name of the operation
+            payload (any): data to send with the report chunk
 
         Raises:
             ArgumentError: If payload is empty
         """
 
         if payload is None:
-            raise ArgumentError("Can't send empty report")
+            raise ArgumentError("Can't send empty notification ({})".format(operation))
 
-        report = {'type': 'report', 'payload': payload}
+        notification = {'type': 'notification', 'operation': operation, 'payload': payload}
 
-        self.logger.debug('Sending report: {}'.format(report))
-        self._send_message(report)
-
-    def send_trace(self, payload=None):
-        """Send a trace chunk.
-        Args:
-            payload (bytes): data to send with the trace chunk
-
-        Raises:
-            ArgumentError: If payload is empty
-        """
-
-        if payload is None:
-            raise ArgumentError("Can't send empty trace")
-
-        trace = {'type': 'trace', 'payload': payload}
-
-        self.logger.debug('Sending trace: {}'.format(trace))
-        self._send_message(trace)
-
-    def send_progress(self, operation, payload=None):
-        """Send a progress notification (used when uploading script for example).
-
-        Args:
-            operation (str): name of the operation currently in progress
-            payload (dict): data to send with the notification
-
-        Raises:
-            ArgumentError: If payload is empty
-        """
-
-        if payload is None:
-            raise ArgumentError("Can't send empty report")
-
-        progress = {'type': 'notification', 'operation': operation, 'payload': payload}
-
-        self.logger.debug('Sending progress: {}'.format(progress))
-        self._send_message(progress)
+        self.logger.debug('Sending notification ({}): {}'.format(operation, notification))
+        self._send_message(notification)
 
     def send_error(self, reason):
         """Send an error message containing the failure reason
@@ -486,7 +436,7 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
             return
 
         try:
-            self.send_report(chunk)
+            self.send_notification('report', chunk)
             self._defer(self._stream_data)
         except HardwareError as err:
             return_value = err.params['return_value']
@@ -519,7 +469,7 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
             return
 
         try:
-            self.send_trace(chunk)
+            self.send_notification('trace', chunk)
             self._defer(self._send_trace)
         except HardwareError as err:
             return_value = err.params['return_value']
@@ -542,14 +492,3 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         """
 
         self.device.push_script_chunk(chunk)
-
-#LUNDI:
-    # TODO: faire messages.py pour verifier commandes (cf awsiot) : pour virtual_websocket ET device_adapter
-
-# => PR
-
-# TODO: faire nouveau WebSocketHandler2 pour de vrai
-# TODO: ecrire tests
-
-# TODO: convertir fonctions device_adapter.py en async -> voir avec Tim parce que contraire au ValidatingWSClient
-# TODO: faire progress_callback pour script (quand async) + tester script -> voir avec Tim
