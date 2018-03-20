@@ -3,24 +3,9 @@ from builtins import range
 from iotile.core.hw.transport.adapter import DeviceAdapter
 from iotile.core.utilities.validating_wsclient import ValidatingWSClient
 from iotile.core.hw.reports.parser import IOTileReportParser
-from iotile.core.exceptions import ArgumentError, HardwareError
+from iotile.core.exceptions import ArgumentError, HardwareError, ValidationError
 from connection_manager import ConnectionManager
-from iotile.core.utilities.schema_verify import Verifier, DictionaryVerifier, LiteralVerifier, IntVerifier
-
-ReportSchema = DictionaryVerifier()
-ReportSchema.add_required('type', LiteralVerifier('report'))
-ReportSchema.add_required('payload', Verifier())
-
-TraceSchema = DictionaryVerifier()
-TraceSchema.add_required('type', LiteralVerifier('trace'))
-TraceSchema.add_required('payload', Verifier())
-
-ProgressNotification = DictionaryVerifier()
-ProgressNotification.add_required('type', LiteralVerifier('notification'))
-ProgressNotification.add_required('operation', LiteralVerifier('send_script'))
-ProgressNotification.add_required('connection_id', IntVerifier())
-ProgressNotification.add_required('done_count', IntVerifier())
-ProgressNotification.add_required('total_count', IntVerifier())
+import messages
 
 
 class WebSocketDeviceAdapter(DeviceAdapter):
@@ -51,9 +36,9 @@ class WebSocketDeviceAdapter(DeviceAdapter):
         # WebSocket client
         path = "ws://{0}/iotile/v2".format(port)
         self.client = ValidatingWSClient(path)
-        self.client.add_message_type(ReportSchema, self.on_report_chunk_received)
-        self.client.add_message_type(TraceSchema, self.on_trace_chunk_received)
-        self.client.add_message_type(ProgressNotification, self.on_progress_script)
+        self.client.add_message_type(messages.ReportNotification, self.on_report_chunk_received)
+        self.client.add_message_type(messages.TraceNotification, self.on_trace_chunk_received)
+        self.client.add_message_type(messages.ProgressNotification, self.on_progress_script)
         self.client.start()
 
         # To manage multiple connections
@@ -82,8 +67,13 @@ class WebSocketDeviceAdapter(DeviceAdapter):
 
         try:
             result = self.client.send_command('connect', {})
+            messages.ConnectionResponse.verify(result)
+        except ValidationError as err:
+            reason = "Wrong response received from ws server after sending 'connect' command: {}". format(err)
+            self.connections.finish_connection(connection_id, False, reason)
+            raise HardwareError(reason)
         except Exception as err:
-            reason = "Error while sending command 'connect' to ws server: {}".format(err)
+            reason = "Error while sending 'connect' command to ws server: {}".format(err)
             self.connections.finish_connection(connection_id, False, reason)
             raise HardwareError(reason)
 
@@ -110,8 +100,13 @@ class WebSocketDeviceAdapter(DeviceAdapter):
 
         try:
             result = self.client.send_command('disconnect', {})
+            messages.DisconnectionResponse.verify(result)
+        except ValidationError as err:
+            reason = "Wrong response received from ws server after sending 'disconnect' command: {}". format(err)
+            self.connections.finish_disconnection(connection_id, False, reason)
+            raise HardwareError(reason)
         except Exception as err:
-            reason = "Error while sending command 'disconnect' to ws server: {}".format(err)
+            reason = "Error while sending 'disconnect' command to ws server: {}".format(err)
             self.connections.finish_disconnection(connection_id, False, reason)
             raise HardwareError(reason)
 
@@ -129,9 +124,13 @@ class WebSocketDeviceAdapter(DeviceAdapter):
         """
 
         try:
-            result = self.client.send_command('scan', {})
+            result = self.client.send_command('probe', {})
+            messages.ProbeResponse.verify(result)
+        except ValidationError as err:
+            reason = "Wrong response received from ws server after sending 'probe' command: {}". format(err)
+            raise HardwareError(reason)
         except Exception as err:
-            reason = "Error while sending command 'scan' to ws server: {}".format(err)
+            reason = "Error while sending 'probe' command to ws server: {}".format(err)
             raise HardwareError(reason)
 
         # FIXME: async after creating WebSocketHandler2
@@ -190,8 +189,13 @@ class WebSocketDeviceAdapter(DeviceAdapter):
                 'payload': payload,
                 'timeout': timeout
             })
+            messages.RPCResponse.verify(result)
+        except ValidationError as err:
+            reason = "Wrong response received from ws server after sending 'send_rpc' command: {}". format(err)
+            self.connections.finish_operation(connection_id, False, reason, None, None)
+            raise HardwareError(reason)
         except Exception as err:
-            reason = "Error while sending command 'send_rpc' to ws server: {}".format(err)
+            reason = "Error while sending 'send_rpc' command to ws server: {}".format(err)
             self.connections.finish_operation(connection_id, False, reason, None, None)
             raise HardwareError(reason)
 
@@ -259,10 +263,15 @@ class WebSocketDeviceAdapter(DeviceAdapter):
                     'fragment_count': nb_chunks,
                     'fragment_index': i
                 })
+                messages.ScriptResponse.verify(result)
                 if not result['success']:
                     raise Exception(result['reason'])
+            except ValidationError as err:
+                reason = "Wrong response received from ws server after sending 'send_script' command: {}". format(err)
+                self.connections.finish_operation(connection_id, False, reason)
+                raise HardwareError(reason)
             except Exception as err:
-                reason = "Error while sending command 'send_rpc' to ws server: {}".format(err)
+                reason = "Error while sending 'send_script' command to ws server: {}".format(err)
                 self.connections.finish_operation(connection_id, False, reason)
                 raise HardwareError(reason)
 
@@ -339,8 +348,13 @@ class WebSocketDeviceAdapter(DeviceAdapter):
 
         try:
             result = self.client.send_command('open_interface', {'interface': interface})
+            messages.OpenInterfaceResponse.verify(result)
+        except ValidationError as err:
+            reason = "Wrong response received from ws server after sending 'open_interface' command: {}". format(err)
+            self.connections.finish_operation(connection_id, False, reason)
+            raise HardwareError(reason)
         except Exception as err:
-            reason = "Error while sending command 'open_interface' to ws server: {}".format(err)
+            reason = "Error while sending 'open_interface' command to ws server: {}".format(err)
             self.connections.finish_connection(connection_id, False, reason)
             raise HardwareError(reason)
 
@@ -401,8 +415,10 @@ class WebSocketDeviceAdapter(DeviceAdapter):
             notification (dict): The received notification containing the progress information
         """
 
+        payload = notification['payload']
+
         try:
-            context = self.connections.get_context(notification['connection_id'])
+            context = self.connections.get_context(payload['connection_id'])
         except ArgumentError:
             self.logger.warn(
                 "Dropping message that does not correspond with a known connection, message={}"
@@ -412,7 +428,7 @@ class WebSocketDeviceAdapter(DeviceAdapter):
 
         progress_callback = context.get('progress_callback', None)
         if progress_callback is not None:
-            progress_callback(notification['done_count'], notification['total_count'])
+            progress_callback(payload['done_count'], payload['total_count'])
 
     def periodic_callback(self):
         """Periodic cleanup tasks to maintain this adapter."""
