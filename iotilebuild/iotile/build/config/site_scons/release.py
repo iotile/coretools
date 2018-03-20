@@ -1,4 +1,4 @@
-# This file is copyright Arch Systems, Inc.  
+# This file is copyright Arch Systems, Inc.
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
 from SCons.Script import *
@@ -43,27 +43,21 @@ def copy_tilebus_definitions(tile):
 
         infile = tbdef
         outfile = os.path.join(destdir, tbname)
-        env.Command([outfile], [infile], Copy(outfile, infile))
+        env.Command([outfile], [infile], Copy("$TARGET", "$SOURCE"))
 
 def copy_linker_scripts(tile):
     destdir = os.path.join('build', 'output', 'linker')
 
     linkers = tile.linker_scripts()
     env = Environment(tools=[])
-    
+
     for linker in linkers:
         linkername = os.path.basename(linker)
         srcfile = os.path.join("firmware", 'linker', linkername)
         destfile = os.path.join(destdir, linkername)
 
-        env.Command([destfile], [srcfile], Copy(destfile, srcfile))
+        env.Command([destfile], [srcfile], Copy("$TARGET", "$SOURCE"))
 
-def copy_python(tile):
-    """Copy all python proxy objects, type libraries and proxy plugins to build/output/python
-    """
-
-    #FIXME: Copy python files
-    pass
 
 def copy_include_dirs(tile):
     """Copy all include directories that this tile defines as products in build/output/include
@@ -96,7 +90,7 @@ def copy_include_dirs(tile):
                 if filename.endswith(".h"):
                     infile = os.path.join(folder, filename)
                     outfile = os.path.join(finaldir, relfolder, filename)
-                    env.Command([outfile], [infile], Copy(outfile, infile))
+                    env.Command([outfile], [infile], Copy("$TARGET", "$SOURCE"))
 
         seen_dirs.add(inc)
 
@@ -110,10 +104,10 @@ def copy_extra_files(tile):
         return
 
     outputbase = os.path.join('build', 'output')
-        
+
     for src, dest in tile.settings['copy_files'].iteritems():
         outputfile = os.path.join(outputbase, dest)
-        env.Command([outputfile], [src], Copy(outputfile, src))
+        env.Command([outputfile], [src], Copy("$TARGET", "$SOURCE"))
 
 
 def copy_dependency_docs(tile):
@@ -127,9 +121,9 @@ def copy_dependency_docs(tile):
     for dep in tile.dependencies:
         depdir = os.path.join(depbase, dep['unique_id'], 'doc', dep['unique_id'])
         outputdir = os.path.join(outputbase, dep['unique_id'])
-        
+
         if os.path.exists(depdir):
-            env.Command([outputdir], [depdir], Copy(outputdir, depdir))
+            env.Command([outputdir], [depdir], Copy("$TARGET", "$SOURCE"))
 
 def copy_dependency_images(tile):
     """Copy all documentation from dependencies into build/output/doc folder
@@ -148,5 +142,5 @@ def copy_dependency_images(tile):
         for image in deptile.firmware_images():
             name = os.path.basename(image)
             input_path = os.path.join(depdir, name)
-            output_path = os.path.join(outputdir, name) 
-            env.Command([output_path], [input_path], Copy(output_path, input_path))
+            output_path = os.path.join(outputdir, name)
+            env.Command([output_path], [input_path], Copy("$TARGET", "$SOURCE"))
