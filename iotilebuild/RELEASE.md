@@ -2,12 +2,14 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
-## HEAD
+## 2.6.0
 
 - Add support for a new module_settings.json format that has fewer levels of
   nesting.  The old format was designed for accommodating more than one module
   per file but we no longer support that so we don't need all of the extraneous
   dictionaries.
+- Add support for running semihosted unit tests on qemu.
+- Update embedded scons to 3.0.1 for python 3 compatibility.
 
 ## 2.5.12
 
