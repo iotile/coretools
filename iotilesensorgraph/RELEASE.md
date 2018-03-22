@@ -2,6 +2,10 @@
 
 All major changes in each released version of iotile-sensorgraph are listed here.
 
+## 0.6.2
+
+- Fix dead_code_elimination to not get rid of trigger_streamer nodes.
+
 ## 0.6.1
 
 - Fix regression in ascii and snippet output formats caused by changes in 0.6.0.
