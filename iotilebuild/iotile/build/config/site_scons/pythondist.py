@@ -45,12 +45,28 @@ def build_python_distribution(tile):
         Touch(pkg_init)
         ])
 
+    # Make sure build/output/python/src exists
+    # We create a timestamp placeholder file so that other people can depend
+    # on this directory and we always delete it so that we reclean everything
+    # up and don't have any old files.
+    outsrcnode = env.Command(os.path.join(outsrcdir, ".timestamp"), [], [
+        Delete(outsrcdir),
+        Mkdir(outsrcdir),
+        Touch(os.path.join(outsrcdir, ".timestamp"))])
+
     for infile in srcnames:
         inpath = os.path.join(srcdir, infile)
         outfile = os.path.join(outsrcdir, infile)
         buildfile = os.path.join(packagedir, infile)
 
-        env.Command(outfile, inpath, Copy("$TARGET", "$SOURCE"))
+        if os.path.isdir(inpath):
+            srclist = inpath
+        else:
+            srclist = [inpath]
+
+        target = env.Command(outfile, srclist, Copy("$TARGET", "$SOURCE"))
+        env.Depends(target, outsrcnode)
+
         env.Command(buildfile, [inpath, pkg_init], Copy("$TARGET", "$SOURCE"))
 
         buildfiles.append(buildfile)
@@ -65,6 +81,7 @@ def build_python_distribution(tile):
     env.Command([os.path.join(builddir, 'setup.py'), wheel_output], ['module_settings.json'] + buildfiles,
                 action=Action(generate_setup_py, "Building python distribution"))
 
+    env.Depends(sdist_output, wheel_output)
     env.Command([os.path.join(outdir, tile.support_wheel)], [wheel_output], Copy("$TARGET", "$SOURCE"))
     env.Command([os.path.join(outdir, support_sdist)], [sdist_output], Copy("$TARGET", "$SOURCE"))
 

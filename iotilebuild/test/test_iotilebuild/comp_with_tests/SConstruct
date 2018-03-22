@@ -1,0 +1,3 @@
+from autobuild import autobuild_arm_program
+
+autobuild_arm_program('arm_comp')

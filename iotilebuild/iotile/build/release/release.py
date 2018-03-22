@@ -27,11 +27,12 @@ class DirtyReleaseFailureError(ReleaseFailureError):
 
 
 @param("component", "path", desc="Path to the iotile object that we should release")
-def release(component="."):
-    """Release an IOTile component using release providers
+@param("cloud", "bool", desc="Whether we are running this function from a CI/CD server")
+def release(component=".", cloud=False):
+    """Release an IOTile component using release providers.
 
-    Releasing an IOTile component means packaging up the products of its build process and storing 
-    them somewhere.  The module_settings.json file of the IOTile component should have a 
+    Releasing an IOTile component means packaging up the products of its build process and storing
+    them somewhere.  The module_settings.json file of the IOTile component should have a
     "release_steps" key that lists the release providers that will be used to release the various
     build products.  There are usually multiple release providers to, for example, send firmware
     images somewhere for future download, post the documentation and upload python support wheels
@@ -50,6 +51,12 @@ def release(component="."):
 
     if not comp.can_release:
         raise ArgumentError("Attemping to release an IOTile component that does not specify release_steps and hence is not releasable", suggestion="Update module_settings.json to include release_steps", component=comp)
+
+    # A component can specify that it should only be releasable in a clean continuous integration/continuous deployment
+    # server.  If that's the case then do not allow `iotile release` to work unless the cloud parameter is set to
+    # indicate that we're in such a setting.
+    if comp.settings.get('cloud_release', False) and not cloud:
+        raise ArgumentError("Attempting to release an IOTile component locally when it specifies that it can only be released using a clean CI/CD server", suggestion="Use iotile release --cloud if you are running in a CI/CD server")
 
     configured_provs = []
 
@@ -71,7 +78,7 @@ def release(component="."):
                     configured_provs[j].unstage()
             except Exception, unstage_exc:
                 raise DirtyReleaseFailureError("Error staging release (COULD NOT ROLL BACK)", failed_step=i, original_exception=exc, operation='staging', failed_unstage=j, unstage_exception=unstage_exc)
-            
+
             raise CleanReleaseFailureError("Error staging release (cleanly rolled back)", failed_step=i, original_exception=exc, operation='staging')
         except Exception, exc:
             raise DirtyReleaseFailureError("Error staging release due to unknown exception type (DID NOT ATTEMPT ROLL BACK)", failed_step=i, original_exception=exc, operation='staging')
@@ -87,7 +94,7 @@ def release(component="."):
                     configured_provs[j].unrelease()
             except Exception, unstage_exc:
                 raise DirtyReleaseFailureError("Error performing release (COULD NOT ROLL BACK)", failed_step=i, original_exception=exc, operation='release', failed_unrelease=j, unrelease_exception=unstage_exc)
-            
+
             raise CleanReleaseFailureError("Error performing release (cleanly rolled back)", failed_step=i, original_exception=exc, operation='release')
         except Exception, exc:
             raise DirtyReleaseFailureError("Error performing release due to unknown exception type (DID NOT ATTEMPT ROLL BACK)", failed_step=i, original_exception=exc, operation='release')
@@ -97,9 +104,6 @@ def _find_release_providers():
     provs = {}
 
     for entry in pkg_resources.iter_entry_points('iotile.build.release_provider'):
-        name = entry.name
-        prov = entry.load()
-
-        provs[name] = prov
+        provs[entry.name] = entry.load()
 
     return provs

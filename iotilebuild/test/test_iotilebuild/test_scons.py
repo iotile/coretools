@@ -13,6 +13,7 @@ import os.path
 import os
 import shutil
 import subprocess
+from distutils.spawn import find_executable
 from iotile.core.dev.registry import ComponentRegistry
 from iotile.core.utilities.intelhex import IntelHex
 
@@ -121,6 +122,20 @@ def test_build_prerelease(tmpdir):
     try:
         os.chdir(builddir)
         err = subprocess.check_call(["iotile", "build"])
+        assert err == 0
+    finally:
+        os.chdir(olddir)
+
+@pytest.mark.skipif(find_executable('qemu-system-gnuarmeclipse') is None, reason="qemu emulator not installed")
+def test_unit_testing(tmpdir):
+    """Make sure we can build and run unit tests."""
+
+    olddir = os.getcwd()
+    builddir = copy_folder('comp_with_tests', tmpdir)
+
+    try:
+        os.chdir(builddir)
+        err = subprocess.check_call(["iotile", "build", "build/test"])
         assert err == 0
     finally:
         os.chdir(olddir)

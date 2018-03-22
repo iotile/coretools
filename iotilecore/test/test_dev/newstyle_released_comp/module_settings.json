@@ -1,0 +1,48 @@
+{
+	"file_format": "v2",
+	"module_name": "tile_gpio",
+
+	"overlays":
+	{
+		"lpc824":
+		{
+			"defines":
+			{
+				"kModuleHardwareType":	"kLPC824HardwareType"
+			}
+		}
+	},
+	
+	"depends":
+	{
+		"iotile_standard_library/common": ["include_directories"],
+		"iotile_standard_library/liblpc824": ["include_directories", "liblpc824_lpc824.a"],
+		"iotile_standard_library/libcortexm0p_runtime": ["include_directories", "cortex_m0p_cdb_application.ld", "libcortexm0p_runtime_lpc824.a"]
+	},
+
+	"domain": "iotile_standard_library",
+
+	"defines":
+	{
+		"kVoltageControlPin": 9,
+		"kVoltageSourcePin1": 8,
+		"kVoltageSourcePin2": 23,
+		"kVoltageSensePin2": 14,
+		"kVoltageSenseChannel2": 2, 
+		"kSensePin": 6,
+		"kSenseChannel": 1
+	},
+
+	"products":
+	{
+		"python/gpio1_proxy.py": "proxy_module"
+	},
+
+	"release": true,
+
+	"release_date": "3/15/2018 14:42:00Z",
+	"dependency_version": 
+	{
+
+	}
+}

@@ -5,10 +5,8 @@ on a qemu based emulator.
 """
 
 from __future__ import (unicode_literals, print_function, absolute_import)
-from builtins import str
 import sys
 import argparse
-from iotile.core.exceptions import ArgumentError, IOTileException
 import subprocess
 
 
@@ -51,7 +49,7 @@ def main(raw_args=None):
     test_args = ['qemu-system-gnuarmeclipse', '-verbose', '-verbose', '-board', 'STM32F0-Discovery', '-nographic', '-monitor', 'null', '-serial', 'null', '--semihosting-config', 'enable=on,target=native', '-d', 'unimp,guest_errors']
 
     if args.firmware_image:
-        test_args += [ '-image', args.firmware_image]
+        test_args += ['-image', args.firmware_image]
 
     if args.gdb:
         test_args += ['--gdb', 'tcp::%d' % args.gdb]

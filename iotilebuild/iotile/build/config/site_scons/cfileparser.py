@@ -9,6 +9,7 @@
 from pycparser import parse_file, c_ast
 import utilities
 
+
 class FunctionDefinitionRecorder(c_ast.NodeVisitor):
     def __init__(self):
         self.defined_functions = []
@@ -18,7 +19,8 @@ class FunctionDefinitionRecorder(c_ast.NodeVisitor):
         self.defined_functions.append(node.decl.name)
         self.def_locations.append(node.decl.coord)
 
-class ParsedCFile:
+
+class ParsedCFile(object):
     """
     An object allowing one to explore the AST of a C file.  The file is
     parsed using pycparser and various convenience routines are given to
