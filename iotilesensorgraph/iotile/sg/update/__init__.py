@@ -13,7 +13,6 @@ from .cleardata_record import ClearDataRecord
 from .setonline_record import SetGraphOnlineRecord
 from .clearconfigs_record import ClearConfigVariablesRecord
 from .setconstant_record import SetConstantRecord
-from .setversion_record import SetDeviceTagRecord
 
 __all__ = ['AddNodeRecord', 'AddStreamerRecord', 'SetConfigRecord', 'PersistGraphRecord', 'ResetGraphRecord',
-           'SetGraphOnlineRecord', 'ClearDataRecord', 'ClearConfigVariablesRecord', 'SetConstantRecord', 'SetDeviceTagRecord']
+           'SetGraphOnlineRecord', 'ClearDataRecord', 'ClearConfigVariablesRecord', 'SetConstantRecord']

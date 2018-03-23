@@ -4,6 +4,7 @@ from __future__ import unicode_literals, absolute_import, print_function
 from builtins import input
 import time
 import sys
+import logging
 from typedargs.annotate import context, docannotate
 from typedargs import iprint, type_system
 from iotile.core.exceptions import HardwareError
@@ -36,6 +37,7 @@ class DeviceUpdater(IOTileApp):
     def __init__(self, hw, app_info, os_info, device_id):
         super(DeviceUpdater, self).__init__(hw, app_info, os_info, device_id)
 
+        self._logger = logging.getLogger(__name__)
         self._con = hw.get(8, basic=True)
 
     @classmethod
@@ -239,13 +241,18 @@ class DeviceUpdater(IOTileApp):
             time.sleep(0.1)
             try:
                 status, error = self._query_status()
-
-                if error != 0:
-                    raise HardwareError("Error executing remote script", error_code=error)
             except HardwareError:
                 error_count += 1
                 if error_count > 10:
+                    if type_system.interactive:
+                        sys.stdout.write('\n')
+
                     raise HardwareError("Too many errors waiting for script to finish execution", error=str(HardwareError))
+
+            if error != 0:
+                if type_system.interactive:
+                    sys.stdout.write('\n')
+                raise HardwareError("Error executing remote script", error_code=error)
 
         if type_system.interactive:
             sys.stdout.write('\n')

@@ -9,7 +9,9 @@
 
 			"products": 
 			{
-				"test_final.hex": "firmware_image"
+				"test_final.hex": "firmware_image",
+				"test1.hex": "firmware_image",
+				"test2.elf": "firmware_image"
 			}
 		}
 	}

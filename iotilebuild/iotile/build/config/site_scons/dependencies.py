@@ -4,7 +4,6 @@
 import os
 from iotile.core.exceptions import BuildError, ArgumentError
 from iotile.core.dev.iotileobj import IOTile
-from SCons.Environment import Environment
 
 
 def load_dependencies(orig_tile, build_env):

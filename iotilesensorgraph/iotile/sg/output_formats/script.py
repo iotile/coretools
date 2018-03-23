@@ -4,8 +4,8 @@ from __future__ import unicode_literals, absolute_import, print_function
 import struct
 from future.utils import viewitems
 from iotile.sg.update import (AddNodeRecord, AddStreamerRecord, SetConfigRecord, SetConstantRecord,
-                              SetGraphOnlineRecord, PersistGraphRecord, ClearDataRecord, ResetGraphRecord,
-                              SetDeviceTagRecord)
+                              SetGraphOnlineRecord, PersistGraphRecord, ClearDataRecord, ResetGraphRecord)
+from iotile.core.hw.update.records import SetDeviceTagRecord
 from iotile.core.hw.update import UpdateScript
 from iotile.core.exceptions import ArgumentError
 
