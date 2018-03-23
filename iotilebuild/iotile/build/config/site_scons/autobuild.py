@@ -242,7 +242,6 @@ def autobuild_trub_script(file_name, slot_assignments, os_info=None):
     build_update_script(file_name, slot_assignments, os_info)
 
 
-BOOTSTRAP_INTERMEDIATES = set()
 def autobuild_bootstrap_file(file_name, image_list):
     """Combine multiple firmware images into a single bootstrap hex file.
 
