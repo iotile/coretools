@@ -2,7 +2,7 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
-## HEAD
+## 2.6.1
 
 - Add support for hiding the firmware images contained in dependency tiles
 - Add a ProductResolver class that can find products of dependencies or the
