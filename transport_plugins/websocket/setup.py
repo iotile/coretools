@@ -19,6 +19,9 @@ setup(
         ],
         'iotile.virtual_interface': [
             'websocket = iotile_transport_websocket.virtual_websocket:WebSocketVirtualInterface'
+        ],
+        'iotile.gateway_agent': [
+            'websockets2 = iotile_transport_websocket.gateway_agent:WebSocketGatewayAgent'
         ]
     },
     description="IOTile Websocket Transport Plugin",

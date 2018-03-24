@@ -9,11 +9,13 @@ import logging
 import msgpack
 import threading
 import time
+from builtins import bytes
+from future.utils import viewitems
 from iotile.core.hw.virtual.virtualdevice import RPCInvalidIDError, RPCNotFoundError, TileNotFoundError
 from iotile.core.hw.virtual.virtualinterface import VirtualIOTileInterface
-from iotile.core.exceptions import ArgumentError, HardwareError
+from iotile.core.exceptions import HardwareError
 from websocket_server import WebsocketServer
-import messages
+from protocol import commands, operations
 
 
 class WebSocketVirtualInterface(VirtualIOTileInterface):
@@ -36,7 +38,7 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
             port = 5120
 
         # Set logger
-        self.logger = logging.getLogger('virtual.websocket')
+        self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)  # TODO: remove this line
         self.logger.addHandler(logging.NullHandler())
 
@@ -45,6 +47,7 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         self.streaming_enabled = False
         self.tracing_enabled = False
         self.script_enabled = False
+        self.debug_enabled = False
         # - Current action
         self.streaming_data = False
         self.tracing_data = False
@@ -79,6 +82,20 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
             obj = {'__datetime__': True, 'as_str': obj.strftime("%Y%m%dT%H:%M:%S.%fZ").encode()}
         return obj
 
+    @classmethod
+    def _uuid_to_connection_string(cls, uuid):
+        return str(uuid)
+
+    @classmethod
+    def _connection_string_to_uuid(cls, connection_string):
+        return int(connection_string)
+
+    def _get_connection_id(self, connection_string):
+        if self.device is None or not self.device.connected:
+            return None
+
+        return int(connection_string)
+
     def start(self, device):
         """Start serving access to this VirtualIOTileDevice
 
@@ -90,31 +107,16 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
 
         self.server_thread.start()
 
-    def stop(self):
-        """Safely shut down this interface."""
-
-        super(WebSocketVirtualInterface, self).stop()
-
-        if self.device.connected:
-            self._disconnect_device()
-
-        if self.client is not None:
-            # Send closing packet
-            self.server.server_close()
-
-        self.server.shutdown()
-        self.server_thread.join()
-
     def process(self):
         """Periodic nonblocking processes."""
 
         super(WebSocketVirtualInterface, self).process()
 
         if (not self.streaming_data) and (not self.reports.empty()):
-            self._stream_data()
+            self._stream_data(self.device.iotile_id)
 
         if (not self.tracing_data) and (not self.traces.empty()):
-            self._send_trace()
+            self._send_trace(self.device.iotile_id)
 
     def on_new_client(self, client, server):
         """Callback function called when a WebSocket client connects on the server.
@@ -133,6 +135,617 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
 
         self.logger.info('Client connected with id {}'.format(client['id']))
         self.client = client
+
+    def send_response(self, operation, **kwargs):
+        """Send a command response indicating it has been executed with success.
+        Args:
+            operation (str): The name of the operation which asked for a response
+            **kwargs (str): Data to send with the response
+        """
+
+        response = dict({
+            'type': 'response',
+            'success': True,
+            'operation': operation},
+            **kwargs
+        )
+
+        self.logger.debug('Sending response: {}'.format(response))
+        self._send_message(response)
+
+    def send_notification(self, operation, **kwargs):
+        """Send a notification (meaning a 'unexpected' message from the server to the client).
+        Args:
+            operation(str): The name of the operation matching the notification
+            **kwargs: Data to send with the notification
+        """
+
+        notification = dict({
+            'type': 'notification',
+            'operation': operation},
+            **kwargs
+        )
+
+        self.logger.debug('Sending notification ({}): {}'.format(operation, notification))
+        self._send_message(notification)
+
+    def send_error(self, operation, failure_reason, **kwargs):
+        """Send an error message containing the failure reason
+        Args:
+            operation (str): The name of the operation which triggered the error
+            failure_reason (str): The reason of the failure
+            **kwargs: Data to send with the report chunk
+        """
+
+        error = dict({
+            'type': 'response',
+            'operation': operation,
+            'success': False,
+            'failure_reason': failure_reason},
+            **kwargs
+        )
+
+        self.logger.error('Sending error: {}'.format(error))
+        self._send_message(error)
+
+    def _send_message(self, payload):
+        """Send a binary message to the WebSocket connected client, after having msgpack'ed it
+
+        Args:
+            payload (dict): data to send
+        """
+
+        try:
+            message = msgpack.packb(payload, use_bin_type=True, default=self.encode_datetime)
+            self.server.send_message(self.client, message, binary=True)
+        except Exception as err:
+            self.logger.exception(err)
+
+    def on_message(self, client, server, message):
+        """Callback function called when a message is received on the WebSocket server.
+
+        Args:
+            client (dict): A dictionary containing client information
+                id (int):
+                    A unique client ID
+                address (tuple):
+                    Tuple containing (client IP address, client port)
+                handler (WebSocketHandler):
+                    An instance of the websocket handler (which is a stream to send/receive messages)
+
+            server (WebsocketServer): The server instance
+            message (bytes): The raw received message (msgpack'ed)
+        """
+
+        try:
+            message = msgpack.unpackb(message, raw=False, object_hook=self.decode_datetime)
+
+            connection_string = message.get('connection_string', None)
+
+            if commands.Scan.matches(message):
+                devices = self._simulate_scan_response()
+                self._send_scan_result(devices)
+
+            elif commands.Connect.matches(message):
+                self._connect_to_device(connection_string)
+
+            elif commands.Disconnect.matches(message):
+                self._disconnect_from_device(connection_string)
+
+            elif commands.OpenInterface.matches(message):
+                self._open_interface(connection_string, message['interface'])
+
+            elif commands.CloseInterface.matches(message):
+                self._close_interface(connection_string, message['interface'])
+
+            elif commands.SendRPC.matches(message):
+                self._send_rpc(
+                    connection_string,
+                    message['address'],
+                    message['rpc_id'],
+                    message['payload']
+                )
+
+            elif commands.SendScript.matches(message):
+                self._send_script(
+                    connection_string,
+                    message['script'],
+                    (message['fragment_index'], message['fragment_count'])
+                )
+
+            else:
+                self.send_error(
+                    message.get('operation', operations.UNKNOWN),
+                    'Received command not supported: {}'.format(message)
+                )
+
+        except Exception as err:
+            self.logger.exception('Error while handling received message')
+            self.send_error(operations.UNKNOWN, 'Exception raised: {}'.format(err))
+
+    def _simulate_scan_response(self):
+        """Return a dict containing the virtual device information to send a scan response."""
+
+        return {
+            self.device.iotile_id: {
+                'connection_string': self.device.iotile_id,
+                'pending_data': self.device.pending_data,
+                'name': self.device.name,
+                'connected': self.device.connected,
+                'uuid': self.device.iotile_id,
+                'signal_strength': 0
+            }
+        }
+
+    def _send_scan_result(self, devices):
+        for uuid, info in viewitems(devices):
+            connection_string = self._uuid_to_connection_string(uuid)
+            converted_device = {
+                'uuid': uuid,
+                'user_connected': 'user_connected' in info,
+                'connection_string': connection_string,
+                'signal_strength': info['signal_strength'],
+            }
+
+            self.send_notification(operations.NOTIFY_DEVICE_FOUND, device=converted_device)
+
+        self.send_response(operations.SCAN)
+
+    def _connect_to_device(self, connection_string):
+        """Connect to the virtual device."""
+
+        operation = operations.CONNECT
+        error = None
+
+        if self.device.connected:
+            error = 'Already connected to this device: {}'.format(connection_string)
+
+        else:
+            uuid = self._connection_string_to_uuid(connection_string)
+            if uuid != self.device.iotile_id:
+                error = 'Unknown device with uuid={}'.format(uuid)
+            else:
+                self.device.connected = True
+                self._audit('ClientConnected')
+
+        if error is not None:
+            self.send_error(operation, error, connection_string=connection_string)
+        else:
+            self.send_response(operation, connection_string=connection_string)
+
+    def _disconnect_from_device(self, connection_string):
+        """Disconnect from the virtual device after cleaning it."""
+
+        operation = operations.DISCONNECT
+        connection_id = self._get_connection_id(connection_string)
+
+        error = None
+
+        if connection_id is not None:
+            self.clean_device()
+            self.device.connected = False
+            self._audit('ClientDisconnected')
+        else:
+            error = 'Disconnection when there was no connection'
+
+        if error is not None:
+            self.send_error(operation, error, connection_string=connection_string)
+        else:
+            self.send_response(operation, connection_string=connection_string)
+
+    def _simulate_open_interface(self, connection_id, interface):
+        """Open a given interface on the virtual device.
+        Args:
+            interface (str): name of the interface
+
+        Raises:
+            ArgumentError: If interface not found
+        """
+
+        error = None
+
+        if not self.device.connected:
+            error = 'Not connected to the device'
+        elif connection_id != self.device.iotile_id:
+            error = 'Wrong connection id: given={}, known={}'.format(connection_id, self.device.iotile_id)
+
+        if error is None:
+            if interface == 'rpc':
+                self.device.open_rpc_interface()
+                self._audit('RPCInterfaceOpened')
+
+            elif interface == 'streaming':
+                if self.streaming_enabled:
+                    error = 'Streaming interface already opened'
+                else:
+                    self.streaming_enabled = True
+                    reports = self.device.open_streaming_interface()
+                    if reports is not None:
+                        self._queue_reports(*reports)
+                    self._audit('StreamingInterfaceOpened')
+
+            elif interface == 'tracing':
+                if self.tracing_enabled:
+                    error = 'Tracing interface already opened'
+                else:
+                    self.tracing_enabled = True
+                    traces = self.device.open_tracing_interface()
+                    if traces is not None:
+                        self._queue_traces(*traces)
+                    self._audit('TracingInterfaceOpened')
+
+            elif interface == 'script':
+                if self.script_enabled:
+                    error = 'Script interface already opened'
+                else:
+                    self.script_enabled = True
+                    self.device.open_script_interface()
+                    self._audit('ScriptInterfaceOpened')
+
+            elif interface == 'debug':
+                if self.debug_enabled:
+                    error = 'Debug interface already opened'
+                else:
+                    self.debug_enabled = True
+                    self.device.open_debug_interface()
+                    self._audit('DebugInterfaceOpened')
+
+            else:
+                error = 'Unknown interface received: {}'.format(interface)
+
+        result = {
+            'success': error is None
+        }
+        if error is not None:
+            result['reason'] = error
+
+        return result
+
+    def _open_interface(self, connection_string, interface):
+        operation = operations.OPEN_INTERFACE
+        connection_id = self._get_connection_id(connection_string)
+
+        error = None
+
+        if connection_id is not None:
+            result = self._simulate_open_interface(connection_id, interface)
+
+            if not result['success']:
+                error = 'An error occurred while opening interface: {}'.format(result['reason'])
+        else:
+            error = 'Attempt to open IOTile interface when there was no connection'
+
+        if error is not None:
+            self.send_error(operation, error, connection_string=connection_string)
+        else:
+            self.send_response(operation, connection_string=connection_string)
+
+    def _simulate_close_interface(self, connection_id, interface):
+        """Close a given interface on the virtual device.
+        Args:
+            interface (str): name of the interface
+
+        Raises:
+            ArgumentError: If interface not found
+        """
+
+        error = None
+
+        if not self.device.connected:
+            error = 'Not connected to the device'
+        elif connection_id != self.device.iotile_id:
+            error = 'Wrong connection id: given={}, known={}'.format(connection_id, self.device.iotile_id)
+
+        if error is None:
+            if interface == 'rpc':
+                self.device.close_rpc_interface()
+                self._audit('RPCInterfaceClosed')
+
+            elif interface == 'streaming':
+                if self.streaming_enabled:
+                    self.streaming_enabled = False
+                    self.device.close_streaming_interface()
+                    self._audit('StreamingInterfaceClosed')
+                else:
+                    error = 'Streaming interface already closed'
+
+            elif interface == 'tracing':
+                if self.tracing_enabled:
+                    self.tracing_enabled = False
+                    self.device.close_tracing_interface()
+                    self._audit('TracingInterfaceClosed')
+                else:
+                    error = 'Tracing interface already closed'
+
+            elif interface == 'script':
+                if self.script_enabled:
+                    self.script_enabled = False
+                    self.device.close_script_interface()
+                    self._audit('ScriptInterfaceClosed')
+                else:
+                    error = 'Script interface already closed'
+
+            elif interface == 'debug':
+                if self.debug_enabled:
+                    self.debug_enabled = False
+                    self.device.close_debug_interface()
+                    self._audit('DebugInterfaceClosed')
+                else:
+                    error = 'Debug interface already closed'
+
+            else:
+                error = 'Unknown interface received: {}'.format(interface)
+
+        result = {
+            'success': error is None
+        }
+        if error is not None:
+            result['reason'] = error
+
+        return result
+
+    def _close_interface(self, connection_string, interface):
+        operation = operations.CLOSE_INTERFACE
+        connection_id = self._get_connection_id(connection_string)
+
+        error = None
+
+        if connection_id is not None:
+            result = self._simulate_close_interface(connection_id, interface)
+
+            if not result['success']:
+                error = 'An error occurred while closing interface: {}'.format(result['reason'])
+        else:
+            error = 'Attempt to close IOTile interface when there was no connection'
+
+        if error is not None:
+            self.send_error(operation, error, connection_string=connection_string)
+        else:
+            self.send_response(operation, connection_string=connection_string)
+
+    def _simulate_send_rpc(self, connection_id, address, feature, command, payload):
+        """Send an RPC to an IOTile device
+
+        Args:
+            connection_id (int): The connection id returned from a previous call to connect()
+            address (int): the address of the tile that you want to talk to
+            feature (int): the high byte of the rpc id
+            command (int): the low byte of the rpc id
+            payload (string): the payload to send (up to 20 bytes)
+
+        Returns:
+            result (dict): The result of the operation. Contains:
+                status (int): Status code of the result
+                payload (any): The result returned by the RPC
+        """
+
+        error = None
+
+        if not self.device.connected:
+            error = 'Not connected to the device'
+        elif connection_id != self.device.iotile_id:
+            error = 'Wrong connection id: given={}, known={}'.format(connection_id, self.device.iotile_id)
+
+        return_value = None
+        status = None
+
+        if error is None:
+            rpc_id = (feature << 8) | command
+
+            try:
+                return_value = self.device.call_rpc(address, rpc_id, payload)
+                status = (1 << 7)  # RPC executed with success
+                if len(return_value) > 0:
+                    status |= (1 << 6)  # RPC returned data that should be read
+
+            except (RPCInvalidIDError, RPCNotFoundError):
+                status = (1 << 1)  # Indicates RPC address or id not correct
+                return_value = ''
+            except TileNotFoundError:
+                status = 0xFF  # Indicates RPC had an error
+                return_value = ''
+
+            self._audit("RPCReceived",
+                        rpc_id=rpc_id,
+                        address=address,
+                        payload=binascii.hexlify(payload),
+                        status=status,
+                        response=binascii.hexlify(return_value))
+
+        result = {
+            'success': error is None
+        }
+        if error is None:
+            result['payload'] = return_value
+            result['status'] = status
+        else:
+            result['reason'] = error
+
+        return result
+
+    def _send_rpc(self, connection_string, address, rpc_id, payload):
+        operation = operations.SEND_RPC
+        connection_id = self._get_connection_id(connection_string)
+
+        error = None
+        return_value = None
+        status = None
+
+        if connection_id is not None:
+            feature = rpc_id >> 8
+            command = rpc_id & 0xFF
+            result = self._simulate_send_rpc(
+                connection_id,
+                address,
+                feature,
+                command,
+                str(payload)
+            )
+
+            if result['success']:
+                return_value = result['payload']
+                status = result['status']
+            else:
+                error = result['reason']
+        else:
+            error = 'Attempt to send an RPC when there was no connection'
+
+        if error is not None:
+            self.send_error(operation, error, connection_string=connection_string)
+        else:
+            self.send_response(operation, connection_string=connection_string, return_value=return_value, status=status)
+
+    def _simulate_send_script(self, connection_id, script, progress_callback):
+        connection_string = self._uuid_to_connection_string(connection_id)
+
+        chunk_size = 20
+        script_length = len(script)
+        total_count = script_length // chunk_size
+        if script_length % chunk_size != 0:
+            total_count += 1
+
+        for index in range(total_count):
+            first_index = index * chunk_size
+            last_index = min(first_index + chunk_size, script_length)
+
+            self.device.push_script_chunk(script[first_index:last_index])
+
+            progress_callback(connection_string, index, total_count)
+            time.sleep(0.05)
+
+    def _send_script(self, connection_string, chunk, chunk_status):
+        """Send a script to the connected device.
+
+        Args:
+            chunk (bytes): The binary script to send to the device
+        """
+
+        operation = operations.SEND_SCRIPT
+        connection_id = self._get_connection_id(connection_string)
+
+        if connection_id is None:
+            self.send_error(operation, 'Received script chunk from unknown connection: {}'.format(connection_string))
+            return
+
+        # Check and see if we have the entire script or if we need to accumulate it
+        index, count = chunk_status
+        if index == 0:
+            self.script = bytes()
+
+        self.script += chunk
+
+        # If there is more than one chunk and we aren't on the last one, wait until we receive them
+        # all before sending them on to the device as a unit
+        if index != count - 1:
+            return
+
+        error = None
+
+        try:
+            self._simulate_send_script(connection_id, self.script, self._notify_progress)
+
+        except Exception as exc:
+            self.logger.exception('Error in manager send_script')
+            error = 'Internal error: {}'.format(str(exc))
+
+        if error:
+            self.send_error(operation, error, connection_string=connection_string)
+        else:
+            self.send_response(operation, connection_string=connection_string)
+
+    def _notify_progress(self, connection_string, done_count, total_count):
+        self.send_notification(operations.NOTIFY_PROGRESS,
+                               connection_string=connection_string,
+                               done_count=done_count,
+                               total_count=total_count)
+
+    def _stream_data(self, device_uuid, chunk=None):
+        """Stream reports to the WebSocket client in 20 byte chunks
+
+        Args:
+            chunk (bytes): A chunk that should be sent instead of requesting a
+                new chunk from the pending reports.
+        """
+
+        connection_string = self._uuid_to_connection_string(device_uuid)
+
+        self.streaming_data = True
+
+        if chunk is None:
+            chunk = self._next_streaming_chunk(20)
+
+        if chunk is None or len(chunk) == 0:
+            self.streaming_data = False
+            return
+
+        try:
+            self.send_notification(operations.NOTIFY_REPORT, connection_string=connection_string, payload=chunk)
+            self._defer(self._stream_data, [device_uuid])
+        except HardwareError as err:
+            return_value = err.params['return_value']
+
+            # If we're told we ran out of memory, wait and try again
+            if return_value.get('code', 0) == 0x182:
+                time.sleep(.02)
+                self._defer(self._stream_data, [device_uuid, chunk])
+            elif return_value.get('code', 0) == 0x181:  # Invalid state, the other side likely disconnected midstream
+                self._audit('ErrorStreamingReport')
+            else:
+                self.logger.exception(err)
+                self._audit('ErrorStreamingReport')
+
+    def _send_trace(self, device_uuid, chunk=None):
+        """Stream tracing data to the WebSocket client in 20 byte chunks
+
+        Args:
+            chunk (bytes): A chunk that should be sent instead of requesting a
+                new chunk from the pending reports.
+        """
+
+        connection_string = self._uuid_to_connection_string(device_uuid)
+
+        self.tracing_data = True
+
+        if chunk is None:
+            chunk = self._next_tracing_chunk(20)
+
+        if chunk is None or len(chunk) == 0:
+            self.tracing_data = False
+            return
+
+        try:
+            self.send_notification(operations.NOTIFY_TRACE, connection_string=connection_string, payload=chunk)
+            self._defer(self._send_trace, [device_uuid])
+        except HardwareError as err:
+            return_value = err.params['return_value']
+
+            # If we're told we ran out of memory, wait and try again
+            if return_value.get('code', 0) == 0x182:
+                time.sleep(0.02)
+                self._defer(self._send_trace, [device_uuid, chunk])
+            elif return_value.get('code', 0) == 0x181:  # Invalid state, the other side likely disconnected midstream
+                self._audit('ErrorStreamingReport')
+            else:
+                self.logger.exception(err)
+                self._audit('ErrorStreamingReport')
+
+    def clean_device(self):
+        """Clean up after a client disconnects
+
+        This resets any open interfaces on the virtual device and clears any
+        in progress traces and streams.
+        """
+
+        if self.streaming_enabled:
+            self.device.close_streaming_interface()
+            self.streaming_enabled = False
+
+        if self.tracing_enabled:
+            self.device.close_tracing_interface()
+            self.tracing_enabled = False
+
+        self._clear_reports()
+        self._clear_traces()
 
     def on_client_disconnect(self, client, server):
         """Callback function called when a WebSocket client disconnects from the server.
@@ -153,342 +766,34 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
 
         if self.device.connected:
             # Disconnect the virtual device
-            self._disconnect_device()
+            connection_string = self._uuid_to_connection_string(self.device.iotile_id)
+            self._disconnect_from_device(connection_string)
 
         self.client = None
 
-    def on_message(self, client, server, message):
-        """Callback function called when a message is received on the WebSocket server.
+    def stop(self):
+        """Safely shut down this interface."""
 
-        Args:
-            client (dict): A dictionary containing client information
-                id (int):
-                    A unique client ID
-                address (tuple):
-                    Tuple containing (client IP address, client port)
-                handler (WebSocketHandler):
-                    An instance of the websocket handler (which is a stream to send/receive messages)
+        super(WebSocketVirtualInterface, self).stop()
 
-            server (WebsocketServer): The server instance
-            message (bytes): The raw received message (msgpack'ed)
-        """
+        if self.device.connected:
+            connection_string = self._uuid_to_connection_string(self.device.iotile_id)
+            self._disconnect_from_device(connection_string)
 
-        message = msgpack.unpackb(message, raw=False, object_hook=self.decode_datetime)
+        if self.client is not None:
+            # Send closing packet
+            self.server.server_close()
 
-        response = None
-        error = None
+        self.server.shutdown()
+        self.server_thread.join()
 
-        if messages.ProbeCommand.matches(message):
-            devices = self._generate_scan_response()
-            response = {'devices': devices}
 
-        elif messages.ConnectCommand.matches(message):
-            self._connect_device()
-            response = {'connection_id': self.device.iotile_id}
+# TODO: faire scan dans periodic_callback
 
-        elif messages.DisconnectCommand.matches(message):
-            self._disconnect_device()
+# A TESTER
+# TODO: ecrire tests
+# TODO: tester script -> utilser hw.send_highspeed en envoyant
+# n'importe quoi (et comparer a la fin avec device.script)
 
-        elif messages.OpenInterfaceCommand.matches(message):
-            interface = message['interface']
-            try:
-                self.open_interface(interface)
-            except ArgumentError as err:
-                self.logger.error('Unknown interface received: {}'.format(interface))
-                error = str(err)
-
-        elif messages.RPCCommand.matches(message):
-            try:
-                status, return_value = self._call_rpc(message['address'], message['rpc_id'], message['payload'])
-                response = {'return_value': return_value, 'status': status}
-            except Exception as err:
-                self.logger.error('Error while sending RPC: {}'.format(err))
-                error = str(err)
-
-        elif messages.ScriptCommand.matches(message):
-            try:
-                index = message['fragment_index']
-                count = message['fragment_count']
-                connection_id = message['connection_id']
-
-                self._send_script(message['script'])
-
-                # Sending progress notification
-                if index < count - 1:
-                    self.send_notification('send_script', {
-                        'connection_id': connection_id,
-                        'done_count': index,
-                        'total_count': count
-                    })
-            except Exception as err:
-                self.logger.error('Error while sending script: {}'.format(err))
-                error = str(err)
-
-        else:
-            self.logger.error('Received command not supported: {}'.format(message))
-            error = 'Command {} not supported'.format(message)
-
-        if not message.get('no_response', False):
-            if error is not None:
-                self.send_error(error)
-            else:
-                self.send_response(response)
-
-    def _call_rpc(self, address, rpc_id, payload):
-        """Call an RPC on the virtual device by its address and ID.
-
-        Args:
-            address (int): The address of the mock tile this RPC is for
-            rpc_id (int): The number of the RPC
-            payload (bytes): A byte string of payload parameters up to 20 bytes
-
-        Returns:
-            status (int): The status code
-            return_value: response payload from the RPC
-        """
-
-        try:
-            return_value = self.device.call_rpc(address, rpc_id, payload)
-            status = (1 << 7)  # RPC executed with success
-            if len(return_value) > 0:
-                status |= (1 << 6)  # RPC returned data that should be read
-
-        except (RPCInvalidIDError, RPCNotFoundError):
-            status = (1 << 1)  # Indicates RPC address or id not correct
-            return_value = ''
-        except TileNotFoundError:
-            status = 0xFF  # Indicates RPC had an error
-            return_value = ''
-
-        self._audit("RPCReceived",
-                    rpc_id=rpc_id,
-                    address=address,
-                    payload=binascii.hexlify(payload),
-                    status=status,
-                    response=binascii.hexlify(return_value))
-
-        return status, return_value
-
-    def _generate_scan_response(self):
-        """Return a dict containing the virtual device information to send a scan response."""
-
-        return [
-            {
-                'connection_string': self.device.iotile_id,
-                'pending_data': self.device.pending_data,
-                'name': self.device.name,
-                'connected': self.device.connected,
-                'uuid': self.device.iotile_id
-            }
-        ]
-
-    def open_interface(self, interface):
-        """Open a given interface on the virtual device.
-        Args:
-            interface (str): name of the interface
-
-        Raises:
-            ArgumentError: If interface not found
-        """
-
-        if interface == 'rpc':
-            self.device.open_rpc_interface()
-            self._audit('RPCInterfaceOpened')
-
-        elif interface == 'streaming':
-            if self.streaming_enabled:
-                self.streaming_enabled = False
-                self.device.close_streaming_interface()
-                self._audit('StreamingInterfaceClosed')
-            else:
-                self.streaming_enabled = True
-                reports = self.device.open_streaming_interface()
-                if reports is not None:
-                    self._queue_reports(*reports)
-                self._audit('StreamingInterfaceOpened')
-
-        elif interface == 'tracing':
-            if self.tracing_enabled:
-                self.tracing_enabled = False
-                self.device.close_tracing_interface()
-                self._audit('TracingInterfaceClosed')
-            else:
-                self.tracing_enabled = True
-                traces = self.device.open_tracing_interface()
-                if traces is not None:
-                    self._queue_traces(*traces)
-                self._audit('TracingInterfaceOpened')
-
-        elif interface == 'script':
-            if self.script_enabled:
-                self.script_enabled = False
-                self.device.close_script_interface()
-                self._audit('ScriptInterfaceClosed')
-            else:
-                self.script_enabled = True
-                self.device.open_script_interface()
-                self._audit('ScriptInterfaceOpened')
-
-        else:
-            raise ArgumentError('Unknown interface')
-
-    def send_response(self, payload=None):
-        """Send a command response indicating it has been executed with success.
-        Args:
-            payload (any): data to send with the response
-        """
-
-        response = {'type': 'response', 'success': True}
-        if payload is not None:
-            response['payload'] = payload
-
-        self.logger.debug('Sending response: {}'.format(response))
-        self._send_message(response)
-
-    def send_notification(self, operation, payload=None):
-        """Send a notification (meaning a 'unexpected' message from the server to the client).
-        Args:
-            operation (str): name of the operation
-            payload (any): data to send with the report chunk
-
-        Raises:
-            ArgumentError: If payload is empty
-        """
-
-        if payload is None:
-            raise ArgumentError("Can't send empty notification ({})".format(operation))
-
-        notification = {'type': 'notification', 'operation': operation, 'payload': payload}
-
-        self.logger.debug('Sending notification ({}): {}'.format(operation, notification))
-        self._send_message(notification)
-
-    def send_error(self, reason):
-        """Send an error message containing the failure reason
-        Args:
-            reason (str): the failure reason
-        """
-
-        error = {'type': 'response', 'success': False, 'reason': reason}
-
-        self.logger.debug('Sending error: {}'.format(error))
-        self._send_message(error)
-
-    def _send_message(self, payload):
-        """Send a binary message to the WebSocket connected client, after having msgpack'ed it
-
-        Args:
-            payload (dict): data to send
-        """
-
-        try:
-            message = msgpack.packb(payload, default=self.encode_datetime)
-            self.server.send_message(self.client, message, binary=True)
-        except Exception as err:
-            self.logger.exception(err)
-
-    def _connect_device(self):
-        """Connect to the virtual device."""
-
-        self.device.connected = True
-        self._audit('ClientConnected')
-
-    def _disconnect_device(self):
-        """Disconnect from the virtual device after cleaning it."""
-
-        self.clean_device()
-        self.device.connected = False
-        self._audit('ClientDisconnected')
-
-    def clean_device(self):
-        """Clean up after a client disconnects
-
-        This resets any open interfaces on the virtual device and clears any
-        in progress traces and streams.
-        """
-
-        if self.streaming_enabled:
-            self.device.close_streaming_interface()
-            self.streaming_enabled = False
-
-        if self.tracing_enabled:
-            self.device.close_tracing_interface()
-            self.tracing_enabled = False
-
-        self._clear_reports()
-        self._clear_traces()
-
-    def _stream_data(self, chunk=None):
-        """Stream reports to the WebSocket client in 20 byte chunks
-
-        Args:
-            chunk (bytes): A chunk that should be sent instead of requesting a
-                new chunk from the pending reports.
-        """
-
-        self.streaming_data = True
-
-        if chunk is None:
-            chunk = self._next_streaming_chunk(20)
-
-        if chunk is None or len(chunk) == 0:
-            self.streaming_data = False
-            return
-
-        try:
-            self.send_notification('report', chunk)
-            self._defer(self._stream_data)
-        except HardwareError as err:
-            return_value = err.params['return_value']
-
-            # If we're told we ran out of memory, wait and try again
-            if return_value.get('code', 0) == 0x182:
-                time.sleep(.02)
-                self._defer(self._stream_data, [chunk])
-            elif return_value.get('code', 0) == 0x181:  # Invalid state, the other side likely disconnected midstream
-                self._audit('ErrorStreamingReport')
-            else:
-                self.logger.exception(err)
-                self._audit('ErrorStreamingReport')
-
-    def _send_trace(self, chunk=None):
-        """Stream tracing data to the WebSocket client in 20 byte chunks
-
-        Args:
-            chunk (bytes): A chunk that should be sent instead of requesting a
-                new chunk from the pending reports.
-        """
-
-        self.tracing_data = True
-
-        if chunk is None:
-            chunk = self._next_tracing_chunk(20)
-
-        if chunk is None or len(chunk) == 0:
-            self.tracing_data = False
-            return
-
-        try:
-            self.send_notification('trace', chunk)
-            self._defer(self._send_trace)
-        except HardwareError as err:
-            return_value = err.params['return_value']
-
-            # If we're told we ran out of memory, wait and try again
-            if return_value.get('code', 0) == 0x182:
-                time.sleep(.02)
-                self._defer(self._send_trace, [chunk])
-            elif return_value.get('code', 0) == 0x181:  # Invalid state, the other side likely disconnected midstream
-                self._audit('ErrorStreamingReport')
-            else:
-                self.logger.exception(err)
-                self._audit('ErrorStreamingReport')
-
-    def _send_script(self, chunk):
-        """Send a script to the connected device.
-
-        Args:
-            chunk (bytes): The binary script to send to the device
-        """
-
-        self.device.push_script_chunk(chunk)
+# TODO: voir avec Tim pour BytesVerifier qui marche pas car str == bytes pour py2 -> probleme: soit encoder
+# (en base64 ou hex), soit tester sur py3 avec non unicode variable
