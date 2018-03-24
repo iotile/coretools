@@ -1,11 +1,12 @@
 import logging
-from builtins import range
+import monotonic
+from builtins import bytes, range
 from iotile.core.hw.transport.adapter import DeviceAdapter
 from iotile.core.utilities.validating_wsclient import ValidatingWSClient
 from iotile.core.hw.reports.parser import IOTileReportParser
-from iotile.core.exceptions import ArgumentError, HardwareError, ValidationError
+from iotile.core.exceptions import ArgumentError, HardwareError
 from connection_manager import ConnectionManager
-import messages
+from protocol import notifications, operations, responses
 
 
 class WebSocketDeviceAdapter(DeviceAdapter):
@@ -15,35 +16,52 @@ class WebSocketDeviceAdapter(DeviceAdapter):
         port (string): A url for the WebSocket server in form of server:port
     """
 
-    def __init__(self, port):
+    def __init__(self, port, autoprobe_interval=None):
         super(WebSocketDeviceAdapter, self).__init__()
 
         # Configuration
         self.set_config('default_timeout', 10.0)
         self.set_config('expiration_time', 60.0)
-        self.set_config('probe_supported', True)
+        self.set_config('maximum_connections', 100)
         self.set_config('probe_required', True)
-        self.mtu = int(self.get_config('mtu', 60*1024))  # Split script payloads larger than this
+        self.set_config('probe_supported', True)
 
         # Set logger
-        self.logger = logging.getLogger('ws.manager')
+        self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)  # TODO: remove this line
         self.logger.addHandler(logging.NullHandler())
-
-        # Report parser
-        self.parser = IOTileReportParser(report_callback=self._on_report, error_callback=self._on_report_error)
 
         # WebSocket client
         path = "ws://{0}/iotile/v2".format(port)
         self.client = ValidatingWSClient(path)
-        self.client.add_message_type(messages.ReportNotification, self.on_report_chunk_received)
-        self.client.add_message_type(messages.TraceNotification, self.on_trace_chunk_received)
-        self.client.add_message_type(messages.ProgressNotification, self.on_progress_script)
+
+        self.client.add_message_type(responses.Connect, self._on_connection_finished)
+        self.client.add_message_type(responses.Disconnect, self._on_disconnection_finished)
+        self.client.add_message_type(responses.Scan, self._on_probe_finished)
+        self.client.add_message_type(responses.SendRPC, self._on_rpc_finished)
+        self.client.add_message_type(responses.SendScript, self._on_script_finished)
+        self.client.add_message_type(responses.OpenInterface, self._on_interface_opened)
+        self.client.add_message_type(responses.CloseInterface, self._on_interface_closed)
+        self.client.add_message_type(responses.Unknown, self._on_unknown_response)
+        self.client.add_message_type(notifications.DeviceFound, self._on_device_found)
+        self.client.add_message_type(notifications.Report, self._on_report_chunk_received)
+        self.client.add_message_type(notifications.Trace, self._on_trace_chunk_received)
+        self.client.add_message_type(notifications.Progress, self._on_progress_notification)
+        self.client.disconnection_callback = self._on_websocket_disconnect
+
         self.client.start()
 
         # To manage multiple connections
         self.connections = ConnectionManager(self.id)
         self.connections.start()
+
+        self.probe_callback = None
+        self.last_probe = 0
+        self.autoprobe_interval = float(autoprobe_interval) if autoprobe_interval is not None else None
+
+    def can_connect(self):
+        connections = self.connections.get_connections()
+        return len(connections) < self.get_config('maximum_connections')
 
     def connect_async(self, connection_id, connection_string, callback):
         """Connect to a device by its connection_string
@@ -51,12 +69,15 @@ class WebSocketDeviceAdapter(DeviceAdapter):
         Args:
             connection_id (int): A unique integer set by the caller for referring to this connection
                 once created
-            connection_string (string): A device id of the form d--XXXX-YYYY-ZZZZ-WWWW
+            connection_string (string): A DeviceAdapter specific string that can be used to connect to
+                a device using this DeviceAdapter.
             callback (callable): A callback function called when the connection has succeeded or
                 failed
         """
 
-        context = {}
+        context = {
+            'connection_string': connection_string
+        }
         self.connections.begin_connection(
             connection_id,
             connection_string,
@@ -66,19 +87,18 @@ class WebSocketDeviceAdapter(DeviceAdapter):
         )
 
         try:
-            result = self.client.send_command('connect', {})
-            messages.ConnectionResponse.verify(result)
-        except ValidationError as err:
-            reason = "Wrong response received from ws server after sending 'connect' command: {}". format(err)
-            self.connections.finish_connection(connection_id, False, reason)
-            raise HardwareError(reason)
+            self.send_command_async(operations.CONNECT, connection_string=connection_string)
         except Exception as err:
-            reason = "Error while sending 'connect' command to ws server: {}".format(err)
-            self.connections.finish_connection(connection_id, False, reason)
-            raise HardwareError(reason)
+            failure_reason = "Error while sending 'connect' command to ws server: {}".format(err)
+            self.connections.finish_connection(connection_id, False, failure_reason)
+            raise HardwareError(failure_reason)
 
-        # FIXME: async after creating WebSocketHandler2
-        self.connections.finish_connection(connection_id, result['success'], result.get('reason', None))
+    def _on_connection_finished(self, response):
+        self.connections.finish_connection(
+            response['connection_string'],
+            response['success'],
+            response.get('failure_reason', None)
+        )
 
     def disconnect_async(self, connection_id, callback):
         """Asynchronously disconnect from a device that has previously been connected
@@ -91,27 +111,28 @@ class WebSocketDeviceAdapter(DeviceAdapter):
         """
 
         try:
-            self.connections.get_connection_id(connection_id)
+            context = self.connections.get_context(connection_id)
         except ArgumentError:
             callback(connection_id, self.id, False, "Could not find connection information")
             return
 
+        connection_string = context['connection_string']
+
         self.connections.begin_disconnection(connection_id, callback, self.get_config('default_timeout'))
 
         try:
-            result = self.client.send_command('disconnect', {})
-            messages.DisconnectionResponse.verify(result)
-        except ValidationError as err:
-            reason = "Wrong response received from ws server after sending 'disconnect' command: {}". format(err)
-            self.connections.finish_disconnection(connection_id, False, reason)
-            raise HardwareError(reason)
+            self.send_command_async(operations.DISCONNECT, connection_string=connection_string)
         except Exception as err:
-            reason = "Error while sending 'disconnect' command to ws server: {}".format(err)
-            self.connections.finish_disconnection(connection_id, False, reason)
-            raise HardwareError(reason)
+            failure_reason = "Error while sending 'disconnect' command to ws server: {}".format(err)
+            self.connections.finish_disconnection(connection_id, False, failure_reason)
+            raise HardwareError(failure_reason)
 
-        # FIXME: async after creating WebSocketHandler2
-        self.connections.finish_disconnection(connection_id, result['success'], result.get('reason', None))
+    def _on_disconnection_finished(self, response):
+        self.connections.finish_disconnection(
+            response['connection_string'],
+            response['success'],
+            response.get('failure_reason', None)
+        )
 
     def probe_async(self, callback):
         """Probe for visible devices connected to this DeviceAdapter.
@@ -123,37 +144,28 @@ class WebSocketDeviceAdapter(DeviceAdapter):
                     failure_reason: None if success is True, otherwise a reason for why we could not probe
         """
 
+        if self.probe_callback is not None:
+            raise HardwareError("Already waiting for a scan result...")
+
+        self.probe_callback = callback
+        self.last_probe = monotonic.monotonic()
+
         try:
-            result = self.client.send_command('probe', {})
-            messages.ProbeResponse.verify(result)
-        except ValidationError as err:
-            reason = "Wrong response received from ws server after sending 'probe' command: {}". format(err)
-            raise HardwareError(reason)
+            self.send_command_async(operations.SCAN)
         except Exception as err:
-            reason = "Error while sending 'probe' command to ws server: {}".format(err)
-            raise HardwareError(reason)
+            self.probe_callback = None
+            raise HardwareError("Error while sending 'probe' command to ws server: {}".format(err))
 
-        # FIXME: async after creating WebSocketHandler2
-        payload = result.get('payload', None)
-        if payload is not None:
-            for dev in payload.get('devices', []):
-                self._trigger_callback('on_scan', self.id, dev, self.get_config('expiration_time'))
+    def _on_device_found(self, response):
+        self._trigger_callback('on_scan', self.id, response['device'], self.get_config('expiration_time'))
 
-        callback(self.id, result.get('success', False), result.get('reason', None))
+    def _on_probe_finished(self, response):
+        if self.probe_callback is not None:
+            self.probe_callback(self.id, response['success'], response.get('failure_reason', None))
+            self.probe_callback = None
 
-    def stop_sync(self):
-        """Synchronously stop this adapter."""
-
-        connections = self.connections.get_connections()
-
-        for connection in connections:
-            try:
-                self.disconnect_sync(connection)
-            except HardwareError:
-                pass
-
-        self.client.stop()
-        self.connections.stop()
+        if not response['success']:
+            raise HardwareError(response['failure_reason'])
 
     def send_rpc_async(self, connection_id, address, rpc_id, payload, timeout, callback):
         """Asynchronously send an RPC to this IOTile device
@@ -175,45 +187,34 @@ class WebSocketDeviceAdapter(DeviceAdapter):
         """
 
         try:
-            self.connections.get_connection_id(connection_id)
+            context = self.connections.get_context(connection_id)
         except ArgumentError:
             callback(connection_id, self.id, False, "Could not find connection information", None, None)
             return
 
+        connection_string = context['connection_string']
+
         self.connections.begin_operation(connection_id, 'rpc', callback, timeout)
 
         try:
-            result = self.client.send_command('send_rpc', {
-                'address': address,
-                'rpc_id': rpc_id,
-                'payload': payload,
-                'timeout': timeout
-            })
-            messages.RPCResponse.verify(result)
-        except ValidationError as err:
-            reason = "Wrong response received from ws server after sending 'send_rpc' command: {}". format(err)
-            self.connections.finish_operation(connection_id, False, reason, None, None)
-            raise HardwareError(reason)
+            self.send_command_async(operations.SEND_RPC,
+                                    connection_string=connection_string,
+                                    address=address,
+                                    rpc_id=rpc_id,
+                                    payload=payload,
+                                    timeout=timeout)
         except Exception as err:
-            reason = "Error while sending 'send_rpc' command to ws server: {}".format(err)
-            self.connections.finish_operation(connection_id, False, reason, None, None)
-            raise HardwareError(reason)
+            failure_reason = "Error while sending 'send_rpc' command to ws server: {}".format(err)
+            self.connections.finish_operation(connection_id, False, failure_reason, None, None)
+            raise HardwareError(failure_reason)
 
-        payload = result.get('payload')
-        status = 0xFF  # Default value, meaning that an error occurred
-        return_value = bytearray()
-
-        if payload is not None:
-            status = payload.get('status', status)
-            return_value = payload.get('return_value', return_value)
-
-        # FIXME: async after creating WebSocketHandler2
+    def _on_rpc_finished(self, response):
         self.connections.finish_operation(
-            connection_id,
-            result['success'],
-            result.get('reason', None),
-            status,
-            return_value
+            response['connection_string'],
+            response['success'],
+            response.get('failure_reason', None),
+            response['status'],
+            response['return_value']
         )
 
     def send_script_async(self, connection_id, data, progress_callback, callback):
@@ -238,50 +239,52 @@ class WebSocketDeviceAdapter(DeviceAdapter):
             callback(connection_id, self.id, False, "Could not find connection information")
             return
 
+        connection_string = context['connection_string']
         context['progress_callback'] = progress_callback
 
         self.connections.begin_operation(connection_id, 'script', callback, self.get_config('default_timeout'))
 
+        mtu = int(self.get_config('mtu', 60*1024))  # Split script payloads larger than this
+
         # Count number of chunks to send
         nb_chunks = 1
-        if len(data) > self.mtu:
-            nb_chunks = len(data) // self.mtu
-            if len(data) % self.mtu != 0:
+        if len(data) > mtu:
+            nb_chunks = len(data) // mtu
+            if len(data) % mtu != 0:
                 nb_chunks += 1
-
-        result = {}
 
         # Send the script out possibly in multiple chunks if it's larger than our maximum transmit unit
         for i in range(0, nb_chunks):
-            start = i * self.mtu
-            chunk = data[start:start + self.mtu]
+            start = i * mtu
+            chunk = data[start:start + mtu]
 
             try:
-                result = self.client.send_command('send_script', {
-                    'script': chunk,
-                    'connection_id': connection_id,
-                    'fragment_count': nb_chunks,
-                    'fragment_index': i
-                })
-                messages.ScriptResponse.verify(result)
-                if not result['success']:
-                    raise Exception(result['reason'])
-            except ValidationError as err:
-                reason = "Wrong response received from ws server after sending 'send_script' command: {}". format(err)
-                self.connections.finish_operation(connection_id, False, reason)
-                raise HardwareError(reason)
+                self.send_command_async(operations.SEND_SCRIPT,
+                                        connection_string=connection_string,
+                                        script=chunk,
+                                        fragment_count=nb_chunks,
+                                        fragment_index=i)
             except Exception as err:
-                reason = "Error while sending 'send_script' command to ws server: {}".format(err)
-                self.connections.finish_operation(connection_id, False, reason)
-                raise HardwareError(reason)
+                failure_reason = "Error while sending 'send_script' command to ws server: {}".format(err)
+                self.connections.finish_operation(connection_id, False, failure_reason)
+                raise HardwareError(failure_reason)
+
+    def _on_script_finished(self, response):
+        connection_string = response['connection_string']
+
+        try:
+            context = self.connections.get_context(connection_string)
+        except ArgumentError:
+            self.logger.warn('Received script response for unknown connection: {}'.format(connection_string))
+            return
 
         if 'progress_callback' in context:
             del context['progress_callback']
 
         self.connections.finish_operation(
-            connection_id,
-            result.get('success', False),
-            result.get('failure_reason', None)
+            connection_string,
+            response.get('success', False),
+            response.get('failure_reason', None)
         )
 
     def _open_rpc_interface(self, connection_id, callback):
@@ -315,6 +318,15 @@ class WebSocketDeviceAdapter(DeviceAdapter):
                 callback(connection_id, adapter_id, success, failure_reason)
         """
 
+        try:
+            context = self.connections.get_context(connection_id)
+        except ArgumentError:
+            callback(connection_id, self.id, False, "Could not find connection information")
+            return
+
+        context['parser'] = IOTileReportParser(report_callback=self._on_report, error_callback=self._on_report_error)
+        context['parser'].context = connection_id
+
         self._open_interface(connection_id, 'tracing', callback)
 
     def _open_script_interface(self, connection_id, callback):
@@ -328,6 +340,17 @@ class WebSocketDeviceAdapter(DeviceAdapter):
 
         self._open_interface(connection_id, 'script', callback)
 
+    def _open_debug_interface(self, connection_id, callback):
+        """Enable debug interface for this IOTile device
+
+        Args:
+            connection_id (int): the unique identifier for the connection
+            callback (callback): Callback to be called when this command finishes
+                callback(connection_id, adapter_id, success, failure_reason)
+        """
+
+        self._open_interface(connection_id, 'debug', callback)
+
     def _open_interface(self, connection_id, interface, callback):
         """Open an interface on this device
 
@@ -339,46 +362,150 @@ class WebSocketDeviceAdapter(DeviceAdapter):
         """
 
         try:
-            self.connections.get_connection_id(connection_id)
+            context = self.connections.get_context(connection_id)
         except ArgumentError:
             callback(connection_id, self.id, False, "Could not find connection information")
             return
 
+        connection_string = context['connection_string']
+
         self.connections.begin_operation(connection_id, 'open_interface', callback, self.get_config('default_timeout'))
 
         try:
-            result = self.client.send_command('open_interface', {'interface': interface})
-            messages.OpenInterfaceResponse.verify(result)
-        except ValidationError as err:
-            reason = "Wrong response received from ws server after sending 'open_interface' command: {}". format(err)
-            self.connections.finish_operation(connection_id, False, reason)
-            raise HardwareError(reason)
+            self.send_command_async(
+                operations.OPEN_INTERFACE,
+                connection_string=connection_string,
+                interface=interface
+            )
         except Exception as err:
-            reason = "Error while sending 'open_interface' command to ws server: {}".format(err)
-            self.connections.finish_connection(connection_id, False, reason)
-            raise HardwareError(reason)
+            failure_reason = "Error while sending 'open_interface' command to ws server: {}".format(err)
+            self.connections.finish_operation(connection_id, False, failure_reason)
+            raise HardwareError(failure_reason)
 
-        # FIXME: async after creating WebSocketHandler2
-        self.connections.finish_operation(connection_id, result['success'], result.get('reason', None))
+    def _on_interface_opened(self, response):
+        self.connections.finish_operation(
+            response['connection_string'],
+            response['success'],
+            response.get('failure_reason', None)
+        )
 
-    def on_trace_chunk_received(self, trace_chunk):
-        """Callback function called when a trace chunk is received.
+    def _close_rpc_interface(self, connection_id, callback):
+        """Disable RPC interface for this IOTile device
 
         Args:
-            trace_chunk (dict): The received trace chunk information
+            connection_id (int): the unique identifier for the connection
+            callback (callback): Callback to be called when this command finishes
+                callback(connection_id, adapter_id, success, failure_reason)
         """
 
-        # TODO: replace None by connection_id, received from 'server'
-        self._trigger_callback('on_trace', None, bytearray(trace_chunk['payload']))
+        self._close_interface(connection_id, 'rpc', callback)
 
-    def on_report_chunk_received(self, report_chunk):
+    def _close_streaming_interface(self, connection_id, callback):
+        """Disable streaming interface for this IOTile device
+
+        Args:
+            connection_id (int): the unique identifier for the connection
+            callback (callback): Callback to be called when this command finishes
+                callback(connection_id, adapter_id, success, failure_reason)
+        """
+
+        self._close_interface(connection_id, 'streaming', callback)
+
+    def _close_tracing_interface(self, connection_id, callback):
+        """Disable tracing interface for this IOTile device
+
+        Args:
+            connection_id (int): the unique identifier for the connection
+            callback (callback): Callback to be called when this command finishes
+                callback(connection_id, adapter_id, success, failure_reason)
+        """
+
+        self._close_interface(connection_id, 'tracing', callback)
+
+    def _close_script_interface(self, connection_id, callback):
+        """Disable script interface for this IOTile device
+
+        Args:
+            connection_id (int): the unique identifier for the connection
+            callback (callback): Callback to be called when this command finishes
+                callback(connection_id, adapter_id, success, failure_reason)
+        """
+
+        self._close_interface(connection_id, 'script', callback)
+
+    def _close_debug_interface(self, connection_id, callback):
+        """Disable debug interface for this IOTile device
+
+        Args:
+            connection_id (int): the unique identifier for the connection
+            callback (callback): Callback to be called when this command finishes
+                callback(connection_id, adapter_id, success, failure_reason)
+        """
+
+        self._close_interface(connection_id, 'debug', callback)
+
+    def _close_interface(self, connection_id, interface, callback):
+        """Close an interface on this device
+
+        Args:
+            connection_id (int): the unique identifier for the connection
+            interface (string): the interface name to open
+            callback (callback): Callback to be called when this command finishes
+                callback(connection_id, adapter_id, success, failure_reason)
+        """
+
+        try:
+            context = self.connections.get_context(connection_id)
+        except ArgumentError:
+            callback(connection_id, self.id, False, "Could not find connection information")
+            return
+
+        connection_string = context['connection_string']
+
+        self.connections.begin_operation(connection_id, 'close_interface', callback, self.get_config('default_timeout'))
+
+        try:
+            self.send_command_async(
+                operations.CLOSE_INTERFACE,
+                connection_string=connection_string,
+                interface=interface
+            )
+        except Exception as err:
+            failure_reason = "Error while sending 'close_interface' command to ws server: {}".format(err)
+            self.connections.finish_operation(connection_id, False, failure_reason)
+            raise HardwareError(failure_reason)
+
+    def _on_interface_closed(self, response):
+        self.connections.finish_operation(
+            response['connection_string'],
+            response['success'],
+            response.get('failure_reason', None)
+        )
+
+    def _on_report_chunk_received(self, report_chunk):
         """Callback function called when a report chunk is received.
 
         Args:
             report_chunk (dict): The received report chunk information
         """
 
-        self.parser.add_data(bytearray(report_chunk['payload']))
+        try:
+            context = self.connections.get_context(report_chunk['connection_string'])
+        except ArgumentError:
+            self.logger.warn(
+                "Dropping report message that does not correspond with a known connection, connection_string={}"
+                .format(report_chunk['connection_string'])
+            )
+            return
+
+        if 'parser' not in context:
+            self.logger.warn(
+                "No parser found for given connection, connection_string={}"
+                .format(report_chunk['connection_string'])
+            )
+            return
+
+        context['parser'].add_data(bytes(report_chunk['payload']))
 
     def _on_report(self, report, context):
         """Callback function called when a report has been fully received and parsed.
@@ -391,7 +518,6 @@ class WebSocketDeviceAdapter(DeviceAdapter):
             False to delete the report from internal storage
         """
 
-        # TODO: pass the connection_id to the parser context to have it here
         self.logger.info('Received report: {}'.format(str(report)))
         self._trigger_callback('on_report', context, report)
 
@@ -402,35 +528,103 @@ class WebSocketDeviceAdapter(DeviceAdapter):
 
         Args:
             code (int): Error code
-            message (str): The failure reason
+            message (str): The failure failure_reason
             context (any): The context passed to the report parser (here is probably the connection_id)
         """
 
         self.logger.error("Report Error, code={}, message={}".format(code, message))
 
-    def on_progress_script(self, notification):
-        """Callback function called when a progress notification about a script upload is received.
+    def _on_trace_chunk_received(self, trace_chunk):
+        """Callback function called when a trace chunk is received.
+
+        Args:
+            trace_chunk (dict): The received trace chunk information
+        """
+
+        try:
+            connection_id = self.connections.get_connection_id(trace_chunk['connection_string'])
+        except ArgumentError:
+            self.logger.warn(
+                "Dropping trace message that does not correspond with a known connection, connection_string={}"
+                .format(trace_chunk['connection_string'])
+            )
+            return
+
+        self._trigger_callback('on_trace', connection_id, bytes(trace_chunk['payload']))
+
+    def _on_progress_notification(self, notification):
+        """Callback function called when a progress notification is received.
 
         Args:
             notification (dict): The received notification containing the progress information
         """
 
-        payload = notification['payload']
-
         try:
-            context = self.connections.get_context(payload['connection_id'])
+            context = self.connections.get_context(notification['connection_string'])
         except ArgumentError:
             self.logger.warn(
-                "Dropping message that does not correspond with a known connection, message={}"
+                "Dropping progress message that does not correspond with a known connection, message={}"
                 .format(notification)
             )
             return
 
         progress_callback = context.get('progress_callback', None)
         if progress_callback is not None:
-            progress_callback(payload['done_count'], payload['total_count'])
+            progress_callback(notification['done_count'], notification['total_count'])
+
+    def send_command_async(self, operation, **kwargs):
+        """Send a command and do not wait for the response (which should be handled by a callback function).
+
+        Args:
+            operation (string): The operation name
+            **kwargs: Optional arguments
+        """
+
+        message = dict({
+            'type': 'command',
+            'operation': operation
+        }, **kwargs)
+
+        self.client.send_message(message)
+
+    def _on_websocket_disconnect(self):
+        self.logger.info('Disconnected from the WebSocket server')
+
+        if self.probe_callback is not None:
+            self.probe_callback(self.id, True, None)
+            self.probe_callback = None
+
+        for connection_id in self.connections.get_connections():
+            self.connections.unexpected_disconnect(connection_id)
+            self._trigger_callback('on_disconnect', self.id, connection_id)
+
+    def _on_unknown_response(self, response):
+        if response['success']:
+            self.logger.info('Message with unknown operation received: {}'.format(response))
+
+        else:
+            self.logger.error('Error with unknown operation received: {}'.format(response))
+
+    def stop_sync(self):
+        """Synchronously stop this adapter."""
+
+        for connection_id in self.connections.get_connections():
+            try:
+                self.disconnect_sync(connection_id)
+            except HardwareError:
+                pass
+
+        self.client.stop()
+        self.connections.stop()
 
     def periodic_callback(self):
-        """Periodic cleanup tasks to maintain this adapter."""
+        now = monotonic.monotonic()
 
-        pass
+        if self.probe_callback is not None:
+            if (now - self.last_probe) > self.get_config('default_timeout'):
+                self.probe_callback(self.id, False, 'Timeout while waiting for scan response')
+
+        elif self.autoprobe_interval is not None:
+            if self.client.connected and (now - self.last_probe) > self.autoprobe_interval:
+                self.logger.info('Refreshing probe results...')
+                self.probe_async(lambda adapter_id, success, failure_reason: None)

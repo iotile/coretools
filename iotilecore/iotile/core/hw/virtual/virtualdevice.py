@@ -280,7 +280,7 @@ class VirtualIOTileDevice(BaseRunnable):
     def close_tracing_interface(self):
         """Called when someone closes the tracing interface to the device."""
 
-        self._interface_status['trace'] = True
+        self._interface_status['trace'] = False
 
     def push_script_chunk(self, chunk):
         """Called when someone pushes a new bit of a TRUB script to this device
