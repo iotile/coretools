@@ -345,11 +345,10 @@ def checksum_creation_action(target, source, env):
 
         f.write("--defsym=__image_checksum=%s\n" % checkhex)
 
+
 def merge_hex_executables(target, source, env):
-    """
-    Combine all hex files into a singular executable file
-    """
-    output_name = (str(target[0]))
+    """Combine all hex files into a singular executable file."""
+    output_name = str(target[0])
 
     hex_final = IntelHex()
     for image in source:
@@ -367,3 +366,55 @@ def merge_hex_executables(target, source, env):
 
     with open(output_name, 'wb') as f:
         hex_final.write_hex_file(f)
+
+
+CONVERTED_HEX_FILES = set()
+def ensure_image_is_hex(input_path):
+    """Return a path to a hex version of a firmware image.
+
+    If the input file is already in hex format then input_path
+    is returned and nothing is done.  If it is not in hex format
+    then an SCons action is added to convert it to hex and the
+    target output file path is returned.
+
+    A cache is kept so that each file is only converted once.
+
+    Args:
+        input_path (str): A path to a firmware image.
+
+    Returns:
+        str: The path to a hex version of input_path, this may
+            be equal to input_path if it is already in hex format.
+    """
+
+    family = utilities.get_family('module_settings.json')
+    target = family.platform_independent_target()
+    build_dir = target.build_dirs()['build']
+
+    if platform.system() == 'Windows':
+        env = Environment(tools=['mingw'], ENV=os.environ)
+    else:
+        env = Environment(tools=['default'], ENV=os.environ)
+
+    input_path = str(input_path)
+    image_name = os.path.basename(input_path)
+
+    root, ext = os.path.splitext(image_name)
+    if len(ext) == 0:
+        raise BuildError("Unknown file format or missing file extension in ensure_image_is_hex", file_name=input_path)
+
+    file_format = ext[1:]
+
+    if file_format == 'hex':
+        return input_path
+
+    if file_format == 'elf':
+        new_file = os.path.join(build_dir, root + '.hex')
+
+        if new_file not in CONVERTED_HEX_FILES:
+            env.Command(new_file, input_path, action=Action("arm-none-eabi-objcopy -O ihex $SOURCE $TARGET", "Creating intel hex file from: $SOURCE"))
+            CONVERTED_HEX_FILES.add(new_file)
+
+        return new_file
+
+    raise BuildError("Unknown file format extension in ensure_image_is_hex", file_name=input_path, extension=file_format)

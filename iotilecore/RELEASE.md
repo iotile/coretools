@@ -2,6 +2,14 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.21.1
+
+- Move SetDeviceTagRecord into iotile-core.
+- Update device_updater app to be more robust in reconnecting to a device when
+  running scripts that involve the device resetting itself multiple times.
+- Update AdapterStream to allow multiple reconnection attempts when an RPC is
+  set during an interrupted connection.
+
 ## 3.21.0
 
 - Add support for a new module_settings.json format that has fewer levels of

@@ -26,7 +26,9 @@ def parse_binary_descriptor(bindata):
             understand.
 
     Returns:
-        str: A string description of the streamer.
+        DataStreamer: A DataStreamer object representing the streamer.  You
+            can get a useful human readable string by calling str() on the
+            return value.
     """
 
     if len(bindata) != 14:

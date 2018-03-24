@@ -306,6 +306,15 @@ class ArchitectureGroup(object):
 
         return [self.find(x, module) for x in self.module_targets[module]]
 
+    def platform_independent_target(self):
+        """Return a generic TargetSettings for the 'none' target.
+
+        This target can be used for building products that do not
+        correspond with any particular target platform.
+        """
+
+        return self.find('none', self.tile.short_name)
+
     def for_all_targets(self, module, func, filter_func=None):
         """Call func once for all of the targets of this module.
         """

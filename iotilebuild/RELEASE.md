@@ -2,6 +2,17 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.6.1
+
+- Add support for hiding the firmware images contained in dependency tiles
+- Add a ProductResolver class that can find products of dependencies or the
+  current tile being built.  This allows specifying products by name and having
+  them automatically resolved to the correct path.
+- Fix autobuild_bootstrap to use intermediate folder so that all intermediate
+  build products are inspectable and not generated directly in build/output.
+- Add autobuild_trub_script function that can generate OTA scripts given a list
+  of firmware images to assign to tiles.
+
 ## 2.6.0
 
 - Add support for a new module_settings.json format that has fewer levels of

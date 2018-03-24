@@ -158,7 +158,6 @@ class AdapterCMDStream(CMDStream):
 
         try:
             if self.connection_interrupted:
-                self.connected = False
                 self._connect_direct(self.connection_string)
                 self.connection_interrupted = False
                 self.connected = True

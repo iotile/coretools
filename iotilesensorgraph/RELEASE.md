@@ -2,6 +2,10 @@
 
 All major changes in each released version of iotile-sensorgraph are listed here.
 
+## 0.6.3
+
+- Move SetDeviceTagRecord into iotile-core since it is used in iotile-build now.
+
 ## 0.6.2
 
 - Fix dead_code_elimination to not get rid of trigger_streamer nodes.
