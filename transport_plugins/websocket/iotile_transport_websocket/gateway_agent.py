@@ -4,7 +4,7 @@ from wshandler import WebSocketHandler
 
 
 class WebSocketGatewayAgent(object):
-    """A gateway agent for connecting to an IOTile gateway over WebSockets
+    """A gateway agent for connecting to an IOTile gateway over WebSockets (v2, working with WebSocketDeviceAdapter)
 
     Args:
         manager (DeviceManager): A device manager provided

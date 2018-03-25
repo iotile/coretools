@@ -1,5 +1,3 @@
-"""A VirtualInterface that provides access to a virtual IOTile device through websocket"""
-
 # This file is copyright Arch Systems, Inc.
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
@@ -19,7 +17,7 @@ from protocol import commands, operations
 
 
 class WebSocketVirtualInterface(VirtualIOTileInterface):
-    """ Run a simple WebSocket server and provide an interface between it and a virtual device.
+    """ Run a simple WebSocket server and provide a virtual interface between it and a virtual device.
 
     Args:
         args (dict): A dictionary of arguments used to configure this interface.
@@ -84,13 +82,41 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
 
     @classmethod
     def _uuid_to_connection_string(cls, uuid):
+        """Get the connection string from the uuid of a device.
+
+        Args:
+            uuid (int): The unique identifier of the device
+
+        Returns:
+            connection_string (str): The connection string designing the same device as the given uuid
+        """
+
         return str(uuid)
 
     @classmethod
     def _connection_string_to_uuid(cls, connection_string):
+        """Get the uuid of a device from a connection string.
+
+        Args:
+            connection_string (str): The connection string (probably received from external script)
+
+        Returns:
+            uuid (int): The unique identifier of the device
+        """
+
         return int(connection_string)
 
     def _get_connection_id(self, connection_string):
+        """Get the connection id (meaning a id to identify the connection only from this side)
+        from the connection string.
+
+        Args:
+            connection_string (str): The connection string (probably received from external script)
+
+        Returns:
+            connection_id (int): The connection id
+        """
+
         if self.device is None or not self.device.connected:
             return None
 
@@ -108,7 +134,7 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         self.server_thread.start()
 
     def process(self):
-        """Periodic nonblocking processes."""
+        """Periodic nonblocking processes. Used to check if there are reports or traces to send."""
 
         super(WebSocketVirtualInterface, self).process()
 
@@ -264,7 +290,7 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
             self.send_error(operations.UNKNOWN, 'Exception raised: {}'.format(err))
 
     def _simulate_scan_response(self):
-        """Return a dict containing the virtual device information to send a scan response."""
+        """Return a dict containing the virtual device information to simulate a scan response."""
 
         return {
             self.device.iotile_id: {
@@ -278,6 +304,13 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         }
 
     def _send_scan_result(self, devices):
+        """Send scan results by sending one notification per device found and, at the end, a final response
+        indicating than the scan is done.
+
+        Args:
+            devices (dict): The scanned devices to send (uuid as key, multiple info as value)
+        """
+
         for uuid, info in viewitems(devices):
             connection_string = self._uuid_to_connection_string(uuid)
             converted_device = {
@@ -292,7 +325,11 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         self.send_response(operations.SCAN)
 
     def _connect_to_device(self, connection_string):
-        """Connect to the virtual device."""
+        """Connect to the device matching the given connection_string.
+
+        Args:
+            connection_string (str): The connection string of the device to connect to.
+        """
 
         operation = operations.CONNECT
         error = None
@@ -305,6 +342,7 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
             if uuid != self.device.iotile_id:
                 error = 'Unknown device with uuid={}'.format(uuid)
             else:
+                # For virtual device, we simulate connection
                 self.device.connected = True
                 self._audit('ClientConnected')
 
@@ -314,7 +352,11 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
             self.send_response(operation, connection_string=connection_string)
 
     def _disconnect_from_device(self, connection_string):
-        """Disconnect from the virtual device after cleaning it."""
+        """Disconnect from the device matching the given connection_string after cleaning it.
+
+        Args:
+            connection_string (str): The connection string of the device to disconnect from.
+        """
 
         operation = operations.DISCONNECT
         connection_id = self._get_connection_id(connection_string)
@@ -323,6 +365,7 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
 
         if connection_id is not None:
             self.clean_device()
+            # For virtual device, we simulate disconnection
             self.device.connected = False
             self._audit('ClientDisconnected')
         else:
@@ -334,16 +377,17 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
             self.send_response(operation, connection_string=connection_string)
 
     def _simulate_open_interface(self, connection_id, interface):
-        """Open a given interface on the virtual device.
-        Args:
-            interface (str): name of the interface
+        """Simulate opening a given interface on a device, with same inputs as the real open_interface method
+        in DeviceManager, but use a virtual device instead.
 
-        Raises:
-            ArgumentError: If interface not found
+        Args:
+            connection_id (int): The identifier of the connection used only from this side
+            interface (str): The name of the interface
         """
 
         error = None
 
+        # If device not connected or try to open interface on wrong device: error
         if not self.device.connected:
             error = 'Not connected to the device'
         elif connection_id != self.device.iotile_id:
@@ -402,6 +446,13 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         return result
 
     def _open_interface(self, connection_string, interface):
+        """Open a given interface on the device matching the connection_string given.
+
+        Args:
+            connection_string (str): The identifier (connection_string) of the connection
+            interface (str): The name of the interface to open
+        """
+
         operation = operations.OPEN_INTERFACE
         connection_id = self._get_connection_id(connection_string)
 
@@ -421,16 +472,17 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
             self.send_response(operation, connection_string=connection_string)
 
     def _simulate_close_interface(self, connection_id, interface):
-        """Close a given interface on the virtual device.
-        Args:
-            interface (str): name of the interface
+        """Simulate closing a given interface on a device, with same inputs as the real close_interface method
+        in DeviceManager, but use a virtual device instead.
 
-        Raises:
-            ArgumentError: If interface not found
+        Args:
+            connection_id (int): The identifier of the connection used only from this side
+            interface (str): The name of the interface
         """
 
         error = None
 
+        # If device not connected or try to open interface on wrong device: error
         if not self.device.connected:
             error = 'Not connected to the device'
         elif connection_id != self.device.iotile_id:
@@ -485,6 +537,13 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         return result
 
     def _close_interface(self, connection_string, interface):
+        """Close a given interface on the device matching the connection_string given.
+
+        Args:
+            connection_string (str): The identifier (connection_string) of the connection
+            interface (str): The name of the interface to close
+        """
+
         operation = operations.CLOSE_INTERFACE
         connection_id = self._get_connection_id(connection_string)
 
@@ -504,7 +563,8 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
             self.send_response(operation, connection_string=connection_string)
 
     def _simulate_send_rpc(self, connection_id, address, feature, command, payload):
-        """Send an RPC to an IOTile device
+        """Simulate sending an RPC to an IOTile device, with same inputs as the real send_rpc method
+        in DeviceManager, but use a virtual device instead.
 
         Args:
             connection_id (int): The connection id returned from a previous call to connect()
@@ -530,7 +590,7 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         status = None
 
         if error is None:
-            rpc_id = (feature << 8) | command
+            rpc_id = (feature << 8) | command  # Calculate the RPC id from the feature and the command values
 
             try:
                 return_value = self.device.call_rpc(address, rpc_id, payload)
@@ -564,6 +624,15 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         return result
 
     def _send_rpc(self, connection_string, address, rpc_id, payload):
+        """Send an RPC to the IOTile device matching the given connection_string.
+
+        Args:
+            connection_string (str): The connection string of the device
+            address (int): the address of the tile that you want to talk to
+            rpc_id (int): ID of the RPC to send
+            payload (string): the payload to send (up to 20 bytes)
+        """
+
         operation = operations.SEND_RPC
         connection_id = self._get_connection_id(connection_string)
 
@@ -572,8 +641,8 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         status = None
 
         if connection_id is not None:
-            feature = rpc_id >> 8
-            command = rpc_id & 0xFF
+            feature = rpc_id >> 8  # Calculate the feature value from RPC id
+            command = rpc_id & 0xFF  # Calculate the command value from RPC id
             result = self._simulate_send_rpc(
                 connection_id,
                 address,
@@ -596,6 +665,16 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
             self.send_response(operation, connection_string=connection_string, return_value=return_value, status=status)
 
     def _simulate_send_script(self, connection_id, script, progress_callback):
+        """Simulate sending a script to an IOTile device, with same inputs as the real send_rpc method
+        in DeviceManager, but use a virtual device instead.
+
+        Args:
+            connection_id (int): The connection id returned from a previous call to connect()
+            script (bytes): The whole script to send to the device
+            progress_callback (func): A callback to call to indicate the progress of the script upload.
+                Must be called like progress_callback(connection_string, done_count, total_count)
+        """
+
         connection_string = self._uuid_to_connection_string(connection_id)
 
         chunk_size = 20
@@ -611,13 +690,17 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
             self.device.push_script_chunk(script[first_index:last_index])
 
             progress_callback(connection_string, index, total_count)
-            time.sleep(0.05)
+            time.sleep(0.05)  # Wait a bit to simulate a fast transfer
 
     def _send_script(self, connection_string, chunk, chunk_status):
-        """Send a script to the connected device.
+        """Send a script to the device matching the given connection_string. Wait for receiving all chunks
+        before sending it to the device.
 
         Args:
-            chunk (bytes): The binary script to send to the device
+            connection_string (str): The connection string of the device
+            chunk (bytes): A chunk of the script to send (up to 20 bytes)
+            chunk_status (tuple): Contains information as the current chunk index and the total of chunk which
+                                compose the script.
         """
 
         operation = operations.SEND_SCRIPT
@@ -654,6 +737,15 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
             self.send_response(operation, connection_string=connection_string)
 
     def _notify_progress(self, connection_string, done_count, total_count):
+        """Send a notification containing the current progress of the given operation. The progress is computed
+        from done_count/total_count.
+
+        Args:
+            connection_string (str): The connection string of the device where the operation is in progress
+            done_count (int): Number of chunks already processed
+            total_count (int): Number of total chunks to proceed
+        """
+
         self.send_notification(operations.NOTIFY_PROGRESS,
                                connection_string=connection_string,
                                done_count=done_count,
@@ -663,6 +755,7 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         """Stream reports to the WebSocket client in 20 byte chunks
 
         Args:
+            device_uuid (int): The uuid of the device which sent the report
             chunk (bytes): A chunk that should be sent instead of requesting a
                 new chunk from the pending reports.
         """
@@ -698,6 +791,7 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         """Stream tracing data to the WebSocket client in 20 byte chunks
 
         Args:
+            device_uuid (int): The uuid of the device which sent the trace
             chunk (bytes): A chunk that should be sent instead of requesting a
                 new chunk from the pending reports.
         """
@@ -788,12 +882,8 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         self.server_thread.join()
 
 
-# TODO: faire scan dans periodic_callback
-
 # A TESTER
 # TODO: ecrire tests
 # TODO: tester script -> utilser hw.send_highspeed en envoyant
 # n'importe quoi (et comparer a la fin avec device.script)
-
-# TODO: voir avec Tim pour BytesVerifier qui marche pas car str == bytes pour py2 -> probleme: soit encoder
-# (en base64 ou hex), soit tester sur py3 avec non unicode variable
+# TODO: tester payload purement binaire (sur py3 avec non unicode variable, ...)

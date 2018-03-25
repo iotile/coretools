@@ -1,3 +1,6 @@
+# This file is copyright Arch Systems, Inc.
+# Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
+
 import logging
 import monotonic
 from builtins import bytes, range
@@ -14,6 +17,7 @@ class WebSocketDeviceAdapter(DeviceAdapter):
 
     Args:
         port (string): A url for the WebSocket server in form of server:port
+        autoprobe_interval (int): If not None, run a probe refresh every `autoprobe_interval` seconds
     """
 
     def __init__(self, port, autoprobe_interval=None):
@@ -55,16 +59,23 @@ class WebSocketDeviceAdapter(DeviceAdapter):
         self.connections = ConnectionManager(self.id)
         self.connections.start()
 
+        # Probe variables
         self.probe_callback = None
         self.last_probe = 0
-        self.autoprobe_interval = float(autoprobe_interval) if autoprobe_interval is not None else None
+        self.autoprobe_interval = int(autoprobe_interval) if autoprobe_interval is not None else None
 
     def can_connect(self):
+        """Check if this adapter can take another connection
+
+        Returns:
+            bool: whether there is room for one more connection
+        """
+
         connections = self.connections.get_connections()
         return len(connections) < self.get_config('maximum_connections')
 
     def connect_async(self, connection_id, connection_string, callback):
-        """Connect to a device by its connection_string
+        """Asynchronously connect to a device by its connection_string
 
         Args:
             connection_id (int): A unique integer set by the caller for referring to this connection
@@ -94,6 +105,12 @@ class WebSocketDeviceAdapter(DeviceAdapter):
             raise HardwareError(failure_reason)
 
     def _on_connection_finished(self, response):
+        """Callback function called when a connection has finished.
+
+        Args:
+            response (dict): The response data
+        """
+
         self.connections.finish_connection(
             response['connection_string'],
             response['success'],
@@ -128,6 +145,12 @@ class WebSocketDeviceAdapter(DeviceAdapter):
             raise HardwareError(failure_reason)
 
     def _on_disconnection_finished(self, response):
+        """Callback function called when a disconnection has finished.
+
+        Args:
+            response (dict): The response data
+        """
+
         self.connections.finish_disconnection(
             response['connection_string'],
             response['success'],
@@ -135,7 +158,7 @@ class WebSocketDeviceAdapter(DeviceAdapter):
         )
 
     def probe_async(self, callback):
-        """Probe for visible devices connected to this DeviceAdapter.
+        """Asynchronously probe for visible devices connected to this DeviceAdapter.
 
         Args:
             callback (callable): A callback for when the probe operation has completed.
@@ -157,13 +180,27 @@ class WebSocketDeviceAdapter(DeviceAdapter):
             raise HardwareError("Error while sending 'probe' command to ws server: {}".format(err))
 
     def _on_device_found(self, response):
+        """Callback function called when a new device has been scanned by the probe.
+
+        Args:
+            response (dict): The response data
+        """
+
         self._trigger_callback('on_scan', self.id, response['device'], self.get_config('expiration_time'))
 
     def _on_probe_finished(self, response):
+        """Callback function called when a probe has finished.
+
+        Args:
+            response (dict): The response data
+        """
+
         if self.probe_callback is not None:
             self.probe_callback(self.id, response['success'], response.get('failure_reason', None))
             self.probe_callback = None
 
+        # As probe is not handled by the connection manager (because there is no connection_id/connection_string),
+        # we have to throw errors manually
         if not response['success']:
             raise HardwareError(response['failure_reason'])
 
@@ -209,6 +246,12 @@ class WebSocketDeviceAdapter(DeviceAdapter):
             raise HardwareError(failure_reason)
 
     def _on_rpc_finished(self, response):
+        """Callback function called when an RPC command has finished.
+
+        Args:
+            response (dict): The response data (eventually contains data returned by the RPC)
+        """
+
         self.connections.finish_operation(
             response['connection_string'],
             response['success'],
@@ -270,6 +313,12 @@ class WebSocketDeviceAdapter(DeviceAdapter):
                 raise HardwareError(failure_reason)
 
     def _on_script_finished(self, response):
+        """Callback function called when a script has been fully sent to a device.
+
+        Args:
+            response (dict): The response
+        """
+
         connection_string = response['connection_string']
 
         try:
@@ -278,6 +327,7 @@ class WebSocketDeviceAdapter(DeviceAdapter):
             self.logger.warn('Received script response for unknown connection: {}'.format(connection_string))
             return
 
+        # Remove the progress callback as it is not needed anymore
         if 'progress_callback' in context:
             del context['progress_callback']
 
@@ -299,18 +349,7 @@ class WebSocketDeviceAdapter(DeviceAdapter):
         self._open_interface(connection_id, 'rpc', callback)
 
     def _open_streaming_interface(self, connection_id, callback):
-        """Enable streaming interface for this IOTile device
-
-        Args:
-            connection_id (int): the unique identifier for the connection
-            callback (callback): Callback to be called when this command finishes
-                callback(connection_id, adapter_id, success, failure_reason)
-        """
-
-        self._open_interface(connection_id, 'streaming', callback)
-
-    def _open_tracing_interface(self, connection_id, callback):
-        """Enable tracing interface for this IOTile device
+        """Enable streaming interface for this IOTile device (to receive reports).
 
         Args:
             connection_id (int): the unique identifier for the connection
@@ -324,8 +363,20 @@ class WebSocketDeviceAdapter(DeviceAdapter):
             callback(connection_id, self.id, False, "Could not find connection information")
             return
 
+        # Create a parser to parse reports
         context['parser'] = IOTileReportParser(report_callback=self._on_report, error_callback=self._on_report_error)
         context['parser'].context = connection_id
+
+        self._open_interface(connection_id, 'streaming', callback)
+
+    def _open_tracing_interface(self, connection_id, callback):
+        """Enable tracing interface for this IOTile device
+
+        Args:
+            connection_id (int): the unique identifier for the connection
+            callback (callback): Callback to be called when this command finishes
+                callback(connection_id, adapter_id, success, failure_reason)
+        """
 
         self._open_interface(connection_id, 'tracing', callback)
 
@@ -352,7 +403,7 @@ class WebSocketDeviceAdapter(DeviceAdapter):
         self._open_interface(connection_id, 'debug', callback)
 
     def _open_interface(self, connection_id, interface, callback):
-        """Open an interface on this device
+        """Asynchronously open an interface on the device
 
         Args:
             connection_id (int): the unique identifier for the connection
@@ -383,6 +434,12 @@ class WebSocketDeviceAdapter(DeviceAdapter):
             raise HardwareError(failure_reason)
 
     def _on_interface_opened(self, response):
+        """Callback function called when an interface has been opened.
+
+        Args:
+            response (dict): The response data
+        """
+
         self.connections.finish_operation(
             response['connection_string'],
             response['success'],
@@ -445,7 +502,7 @@ class WebSocketDeviceAdapter(DeviceAdapter):
         self._close_interface(connection_id, 'debug', callback)
 
     def _close_interface(self, connection_id, interface, callback):
-        """Close an interface on this device
+        """Asynchronously close an interface on the device
 
         Args:
             connection_id (int): the unique identifier for the connection
@@ -476,6 +533,12 @@ class WebSocketDeviceAdapter(DeviceAdapter):
             raise HardwareError(failure_reason)
 
     def _on_interface_closed(self, response):
+        """Callback function called when an interface has been closed.
+
+        Args:
+            response (dict): The response data
+        """
+
         self.connections.finish_operation(
             response['connection_string'],
             response['success'],
@@ -588,6 +651,9 @@ class WebSocketDeviceAdapter(DeviceAdapter):
         self.client.send_message(message)
 
     def _on_websocket_disconnect(self):
+        """Callback function called when we have been disconnected from the server (by error or not).
+        Allows to clean all if the disconnection was unexpected."""
+
         self.logger.info('Disconnected from the WebSocket server')
 
         if self.probe_callback is not None:
@@ -599,6 +665,13 @@ class WebSocketDeviceAdapter(DeviceAdapter):
             self._trigger_callback('on_disconnect', self.id, connection_id)
 
     def _on_unknown_response(self, response):
+        """Callback function called when we receive a response with an '<unknown>' operation. This could happen
+        for example if an error independent of the operation occurred.
+
+        Args:
+            response (dict): The response data
+        """
+
         if response['success']:
             self.logger.info('Message with unknown operation received: {}'.format(response))
 
@@ -618,13 +691,17 @@ class WebSocketDeviceAdapter(DeviceAdapter):
         self.connections.stop()
 
     def periodic_callback(self):
+        """Periodically help maintain adapter internal state."""
+
         now = monotonic.monotonic()
 
         if self.probe_callback is not None:
+            # Currently probing: check if not timed out
             if (now - self.last_probe) > self.get_config('default_timeout'):
                 self.probe_callback(self.id, False, 'Timeout while waiting for scan response')
 
         elif self.autoprobe_interval is not None:
+            # Probe every `autoprobe_interval` seconds to keep up to date scan results
             if self.client.connected and (now - self.last_probe) > self.autoprobe_interval:
                 self.logger.info('Refreshing probe results...')
                 self.probe_async(lambda adapter_id, success, failure_reason: None)

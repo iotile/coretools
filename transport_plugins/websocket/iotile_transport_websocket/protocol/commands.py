@@ -1,3 +1,5 @@
+"""List of commands handled by the WebSocket plugin."""
+
 from iotile.core.utilities.schema_verify import DictionaryVerifier, Verifier, \
     EnumVerifier, FloatVerifier, IntVerifier, LiteralVerifier, StringVerifier
 import operations

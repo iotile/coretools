@@ -1,3 +1,5 @@
+"""List of operations handled by the WebSocket plugin."""
+
 CONNECT = 'connect'
 CLOSE_INTERFACE = 'close_interface'
 DISCONNECT = 'disconnect'
