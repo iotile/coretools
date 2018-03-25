@@ -161,6 +161,11 @@ class DeviceManager(object):
 
     @tornado.gen.coroutine
     def probe_async(self):
+        """Coroutine to probe all adapters which can, to update the scanned devices.
+        Returns:
+            dict: A dictionary mapping UUIDs to device information dictionaries (self.scanned_devices)
+        """
+
         for adapter_id, manager in viewitems(self.adapters):
             if manager.get_config('probe_supported', False):
                 yield tornado.gen.Task(manager.probe_async)

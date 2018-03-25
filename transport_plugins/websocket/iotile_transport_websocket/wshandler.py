@@ -1,3 +1,6 @@
+# This file is copyright Arch Systems, Inc.
+# Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
+
 import datetime
 import logging
 import msgpack
@@ -22,6 +25,14 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         self.connections = {}
 
     def initialize(self, manager):
+        """Initialize socket handler. Called every time a client call the websocket server
+        address (cf gateway_agent.py). Used to get the DeviceManager of the gateway.
+        /!\ : called before __init__
+
+        Args:
+            manager (DeviceManager): The device manager of the gateway.
+        """
+
         self.manager = manager
 
     @classmethod
@@ -42,13 +53,40 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
     @classmethod
     def _uuid_to_connection_string(cls, uuid):
+        """Get the connection string from the uuid of a device.
+
+        Args:
+            uuid (int): The unique identifier of the device
+
+        Returns:
+            connection_string (str): The connection string designing the same device as the given uuid
+        """
+
         return str(uuid)
 
     @classmethod
     def _connection_string_to_uuid(cls, connection_string):
+        """Get the uuid of a device from a connection string.
+
+        Args:
+            connection_string (str): The connection string (probably received from external script)
+
+        Returns:
+            uuid (int): The unique identifier of the device
+        """
+
         return int(connection_string)
 
     def _get_connection_data(self, connection_string):
+        """Get all connection data from the connection string.
+
+        Args:
+            connection_string (str): The connection string (probably received from external script)
+
+        Returns:
+            data (dict): The connection data (contains connection_id, monitors, ...)
+        """
+
         if connection_string not in self.connections:
             self.logger.warn('No connection found for connection_string={}'.format(connection_string))
             return None
@@ -56,6 +94,16 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         return self.connections[connection_string]
 
     def _get_connection_id(self, connection_string):
+        """Get the connection id (meaning a id to identify the connection only from this side)
+        from the connection string.
+
+        Args:
+            connection_string (str): The connection string (probably received from external script)
+
+        Returns:
+            connection_id (int): The connection id
+        """
+
         data = self._get_connection_data(connection_string)
 
         if data is None:
@@ -64,7 +112,9 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         return data['connection_id']
 
     def open(self, *args):
-        self.set_nodelay(True)
+        """Called when a client connects on the WebSocket server."""
+
+        self.set_nodelay(True)  # To not buffer small messages, and send them immediately
         self.logger.info('Client connected')
 
     def send_response(self, operation, **kwargs):
@@ -134,6 +184,12 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
     @tornado.gen.coroutine
     def on_message(self, message):
+        """Callback function called when a message is received on the WebSocket server.
+
+        Args:
+            message (bytes): The raw received message (msgpack'ed)
+        """
+
         try:
 
             message = msgpack.unpackb(message, raw=False, object_hook=self.decode_datetime)
@@ -183,6 +239,13 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             self.send_error(operations.UNKNOWN, 'Exception raised: {}'.format(err))
 
     def _send_scan_result(self, devices):
+        """Send scan results by sending one notification per device found and, at the end, a final response
+        indicating than the scan is done.
+
+        Args:
+            devices (dict): The scanned devices to send (uuid as key, multiple info as value)
+        """
+
         for uuid, info in viewitems(devices):
             connection_string = self._uuid_to_connection_string(uuid)
             converted_device = {
@@ -198,6 +261,12 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
     @tornado.gen.coroutine
     def _connect_to_device(self, connection_string):
+        """Connect to the device matching the given connection_string.
+
+        Args:
+            connection_string (str): The connection string of the device to connect to.
+        """
+
         operation = operations.CONNECT
         error = None
 
@@ -226,6 +295,12 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
     @tornado.gen.coroutine
     def _disconnect_from_device(self, connection_string):
+        """Disconnect from the device matching the given connection_string and properly close the connection.
+
+        Args:
+            connection_string (str): The connection string of the device to disconnect from.
+        """
+
         operation = operations.DISCONNECT
         connection_id = self._get_connection_id(connection_string)
 
@@ -249,6 +324,13 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
     @tornado.gen.coroutine
     def _open_interface(self, connection_string, interface):
+        """Open a given interface on the device matching the connection_string given.
+
+        Args:
+            connection_string (str): The identifier (connection_string) of the connection
+            interface (str): The name of the interface to open
+        """
+
         operation = operations.OPEN_INTERFACE
         connection_id = self._get_connection_id(connection_string)
 
@@ -269,6 +351,13 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
     @tornado.gen.coroutine
     def _close_interface(self, connection_string, interface):
+        """Close a given interface on the device matching the connection_string given.
+
+        Args:
+            connection_string (str): The identifier (connection_string) of the connection
+            interface (str): The name of the interface to close
+        """
+
         operation = operations.CLOSE_INTERFACE
         connection_id = self._get_connection_id(connection_string)
 
@@ -289,6 +378,15 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
     @tornado.gen.coroutine
     def _send_rpc(self, connection_string, address, rpc_id, payload, timeout):
+        """Send an RPC to the IOTile device matching the given connection_string.
+
+        Args:
+            connection_string (str): The connection string of the device
+            address (int): the address of the tile that you want to talk to
+            rpc_id (int): ID of the RPC to send
+            payload (string): the payload to send (up to 20 bytes)
+        """
+
         operation = operations.SEND_RPC
         connection_id = self._get_connection_id(connection_string)
 
@@ -297,8 +395,8 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         status = None
 
         if connection_id is not None:
-            feature = rpc_id >> 8
-            command = rpc_id & 0xFF
+            feature = rpc_id >> 8  # Calculate the feature value from RPC id
+            command = rpc_id & 0xFF  # Calculate the command value from RPC id
             result = yield self.manager.send_rpc(
                 connection_id,
                 address,
@@ -323,6 +421,16 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
     @tornado.gen.coroutine
     def _send_script(self, connection_string, chunk, chunk_status):
+        """Send a script to the device matching the given connection_string. Wait for receiving all chunks
+        before sending it to the device.
+
+        Args:
+            connection_string (str): The connection string of the device
+            chunk (bytes): A chunk of the script to send (up to 20 bytes)
+            chunk_status (tuple): Contains information as the current chunk index and the total of chunk which
+                                compose the script.
+        """
+
         operation = operations.SEND_SCRIPT
 
         connection_data = self._get_connection_data(connection_string)
@@ -365,9 +473,27 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             self.send_response(operation, connection_string=connection_string)
 
     def _notify_progress_async(self, loop, connection_string, done_count, total_count):
+        """Add a synchronous notify progress function to the event loop.
+
+        Args:
+            loop (tornado.loop): The event loop
+            connection_string (str): The connection string of the device where the operation is in progress
+            done_count (int): Number of chunks already processed
+            total_count (int): Number of total chunks to proceed
+        """
+
         loop.add_callback(self._notify_progress_sync, connection_string, done_count, total_count)
 
     def _notify_progress_sync(self, connection_string, done_count, total_count):
+        """Send a notification containing the current progress of the given operation. The progress is computed
+        from done_count/total_count.
+
+        Args:
+            connection_string (str): The connection string of the device where the operation is in progress
+            done_count (int): Number of chunks already processed
+            total_count (int): Number of total chunks to proceed
+        """
+
         self.send_notification(
             operations.NOTIFY_PROGRESS,
             connection_string=connection_string,
@@ -376,6 +502,14 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         )
 
     def _notify_report(self, device_uuid, event_name, report):
+        """Stream a report to the WebSocket client. Called by the report_monitor.
+
+        Args:
+            device_uuid (int): The uuid of the device which sent the report
+            event_name: 'report'
+            report (IOTileReport): The report to send.
+        """
+
         connection_string = self._uuid_to_connection_string(device_uuid)
 
         if connection_string not in self.connections:
@@ -389,6 +523,14 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         )
 
     def _notify_trace(self, device_uuid, event_name, trace):
+        """Stream tracing data to the WebSocket client. Called by the trace_monitor.
+
+        Args:
+            device_uuid (int): The uuid of the device which sent the report
+            event_name: 'report'
+            trace (bytes): The trace to send.
+        """
+
         connection_string = self._uuid_to_connection_string(device_uuid)
 
         if connection_string not in self.connections:
@@ -399,6 +541,12 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
     @tornado.gen.coroutine
     def _close_connection(self, connection_string):
+        """Properly close a connection: disconnect client if still connected, remove monitors, remove connection data.
+
+        Args:
+            connection_string (str): The connection string of the device
+        """
+
         connection_data = self._get_connection_data(connection_string)
 
         if connection_data['connection_id'] is not None:
@@ -407,11 +555,17 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         if connection_data['report_monitor'] is not None:
             self.manager.remove_monitor(connection_data['report_monitor'])
 
+        if connection_data['trace_monitor'] is not None:
+            self.manager.remove_monitor(connection_data['trace_monitor'])
+
         del self.connections[connection_string]
         self.logger.debug('Connection closed with device, connection_string={}'.format(connection_string))
 
     @tornado.gen.coroutine
     def on_close(self):
+        """Callback function called when a WebSocket client disconnects. We properly close all connections
+        with the devices."""
+
         for connection_string in list(self.connections.keys()):
             yield self._close_connection(connection_string)
 

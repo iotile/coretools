@@ -1,3 +1,5 @@
+"""List of responses handled by the WebSocket plugin."""
+
 from iotile.core.utilities.schema_verify import BooleanVerifier, DictionaryVerifier, Verifier, IntVerifier, \
     LiteralVerifier, OptionsVerifier, StringVerifier
 import operations
