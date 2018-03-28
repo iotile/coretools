@@ -4,6 +4,7 @@ from iotile.core.exceptions import InternalError
 from iotile.core.hw.virtual import VirtualTile, RPCNotFoundError, RPCInvalidArgumentsError, RPCInvalidReturnValueError, TileNotFoundError
 from iotilegateway.supervisor import ServiceStatusClient
 
+
 class ServiceDelegateTile(VirtualTile):
     """A tile that delegates all RPCs to a service using the IOTileSupervisor.
 

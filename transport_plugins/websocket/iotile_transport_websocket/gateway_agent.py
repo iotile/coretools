@@ -1,6 +1,6 @@
 import tornado.web
 import logging
-from wshandler import WebSocketHandler
+from .wshandler import WebSocketHandler
 
 
 class WebSocketGatewayAgent(object):

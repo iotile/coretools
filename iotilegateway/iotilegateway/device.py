@@ -448,7 +448,7 @@ class DeviceManager(object):
 
         if success:
             resp['status'] = status
-            resp['payload'] = str(payload)
+            resp['payload'] = payload
         else:
             resp['reason'] = failure_reason
 

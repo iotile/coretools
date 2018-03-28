@@ -4,7 +4,7 @@ from monotonic import monotonic
 from collections import namedtuple
 import uuid
 from iotile.core.exceptions import ArgumentError
-import states
+from . import states
 
 InFlightRPC = namedtuple('InFlightRPC', ['sender', 'service', 'sent_timestamp', 'timeout'])
 

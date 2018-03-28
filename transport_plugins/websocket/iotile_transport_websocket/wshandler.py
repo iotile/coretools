@@ -10,7 +10,7 @@ import tornado.ioloop
 import tornado.websocket
 from future.utils import viewitems
 from builtins import bytes
-from protocol import commands, operations
+from .protocol import commands, operations
 
 
 class WebSocketHandler(tornado.websocket.WebSocketHandler):
@@ -410,6 +410,8 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             )
 
             if result['success']:
+                print('------------PAYLOAD -------------')
+                print(result['payload'], type(result['payload']))
                 return_value = base64.b64encode(result['payload'])
                 status = result['status']
             else:
