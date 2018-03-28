@@ -1,7 +1,7 @@
 # This file is copyright Arch Systems, Inc.
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
-import binascii
+import base64
 import datetime
 import logging
 import msgpack
@@ -12,8 +12,8 @@ from future.utils import viewitems
 from iotile.core.hw.virtual.virtualdevice import RPCInvalidIDError, RPCNotFoundError, TileNotFoundError
 from iotile.core.hw.virtual.virtualinterface import VirtualIOTileInterface
 from iotile.core.exceptions import HardwareError
-from websocket_server import WebsocketServer
-from protocol import commands, operations
+from .websocket_server import WebsocketServer
+from .protocol import commands, operations
 
 
 class WebSocketVirtualInterface(VirtualIOTileInterface):
@@ -42,6 +42,7 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
 
         # Initialize states
         # - Interfaces
+        self.rpc_enabled = False
         self.streaming_enabled = False
         self.tracing_enabled = False
         self.script_enabled = False
@@ -395,8 +396,12 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
 
         if error is None:
             if interface == 'rpc':
-                self.device.open_rpc_interface()
-                self._audit('RPCInterfaceOpened')
+                if self.rpc_enabled:
+                    error = 'RPC interface already opened'
+                else:
+                    self.rpc_enabled = True
+                    self.device.open_rpc_interface()
+                    self._audit('RPCInterfaceOpened')
 
             elif interface == 'streaming':
                 if self.streaming_enabled:
@@ -490,8 +495,11 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
 
         if error is None:
             if interface == 'rpc':
-                self.device.close_rpc_interface()
-                self._audit('RPCInterfaceClosed')
+                if self.rpc_enabled:
+                    self.device.close_rpc_interface()
+                    self._audit('RPCInterfaceClosed')
+                else:
+                    error = 'RPC interface already closed'
 
             elif interface == 'streaming':
                 if self.streaming_enabled:
@@ -585,6 +593,8 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
             error = 'Not connected to the device'
         elif connection_id != self.device.iotile_id:
             error = 'Wrong connection id: given={}, known={}'.format(connection_id, self.device.iotile_id)
+        elif not self.rpc_enabled:
+            error = 'Try to send RPC when RPC interface is closed'
 
         return_value = None
         status = None
@@ -605,13 +615,6 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
                 status = 0xFF  # Indicates RPC had an error
                 return_value = ''
 
-            self._audit("RPCReceived",
-                        rpc_id=rpc_id,
-                        address=address,
-                        payload=binascii.hexlify(payload),
-                        status=status,
-                        response=binascii.hexlify(return_value))
-
         result = {
             'success': error is None
         }
@@ -630,7 +633,7 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
             connection_string (str): The connection string of the device
             address (int): the address of the tile that you want to talk to
             rpc_id (int): ID of the RPC to send
-            payload (string): the payload to send (up to 20 bytes)
+            payload (str): the payload to send (up to 20 bytes), encoded using base64
         """
 
         operation = operations.SEND_RPC
@@ -643,21 +646,30 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         if connection_id is not None:
             feature = rpc_id >> 8  # Calculate the feature value from RPC id
             command = rpc_id & 0xFF  # Calculate the command value from RPC id
+            decoded_payload = base64.b64decode(payload)
+
             result = self._simulate_send_rpc(
                 connection_id,
                 address,
                 feature,
                 command,
-                str(payload)
+                decoded_payload
             )
 
             if result['success']:
-                return_value = result['payload']
+                return_value = base64.b64encode(result['payload'])
                 status = result['status']
             else:
                 error = result['reason']
         else:
             error = 'Attempt to send an RPC when there was no connection'
+
+        self._audit("RPCReceived",
+                    rpc_id=rpc_id,
+                    address=address,
+                    payload=payload,
+                    status=status,
+                    response=return_value)
 
         if error is not None:
             self.send_error(operation, error, connection_string=connection_string)
@@ -698,7 +710,7 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
 
         Args:
             connection_string (str): The connection string of the device
-            chunk (bytes): A chunk of the script to send (up to 20 bytes)
+            chunk (str): A chunk of the script to send (up to 20 bytes), encoded using base64
             chunk_status (tuple): Contains information as the current chunk index and the total of chunk which
                                 compose the script.
         """
@@ -715,7 +727,8 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         if index == 0:
             self.script = bytes()
 
-        self.script += chunk
+        decoded_chunk = base64.b64decode(chunk)
+        self.script += decoded_chunk
 
         # If there is more than one chunk and we aren't on the last one, wait until we receive them
         # all before sending them on to the device as a unit
@@ -772,7 +785,11 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
             return
 
         try:
-            self.send_notification(operations.NOTIFY_REPORT, connection_string=connection_string, payload=chunk)
+            self.send_notification(
+                operations.NOTIFY_REPORT,
+                connection_string=connection_string,
+                payload=base64.b64encode(chunk)
+            )
             self._defer(self._stream_data, [device_uuid])
         except HardwareError as err:
             return_value = err.params['return_value']
@@ -808,7 +825,11 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
             return
 
         try:
-            self.send_notification(operations.NOTIFY_TRACE, connection_string=connection_string, payload=chunk)
+            self.send_notification(
+                operations.NOTIFY_TRACE,
+                connection_string=connection_string,
+                payload=base64.b64encode(chunk)
+            )
             self._defer(self._send_trace, [device_uuid])
         except HardwareError as err:
             return_value = err.params['return_value']
@@ -829,6 +850,18 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         This resets any open interfaces on the virtual device and clears any
         in progress traces and streams.
         """
+
+        if self.rpc_enabled:
+            self.device.close_rpc_interface()
+            self.rpc_enabled = False
+
+        if self.debug_enabled:
+            self.device.close_debug_interface()
+            self.debug_enabled = False
+
+        if self.script_enabled:
+            self.device.close_script_interface()
+            self.script_enabled = False
 
         if self.streaming_enabled:
             self.device.close_streaming_interface()
@@ -873,6 +906,7 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         if self.device.connected:
             connection_string = self._uuid_to_connection_string(self.device.iotile_id)
             self._disconnect_from_device(connection_string)
+            self.device.stop()
 
         if self.client is not None:
             # Send closing packet
@@ -880,7 +914,6 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
 
         self.server.shutdown()
         self.server_thread.join()
-
 
 # A TESTER
 # TODO: ecrire tests

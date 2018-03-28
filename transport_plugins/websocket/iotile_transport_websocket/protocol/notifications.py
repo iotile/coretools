@@ -1,8 +1,8 @@
 """List of notifications handled by the WebSocket plugin."""
 
-from iotile.core.utilities.schema_verify import DictionaryVerifier, Verifier, IntVerifier,\
+from iotile.core.utilities.schema_verify import BytesVerifier, DictionaryVerifier, Verifier, IntVerifier,\
     LiteralVerifier, StringVerifier
-import operations
+from . import operations
 
 Basic = DictionaryVerifier()
 Basic.add_required('type', LiteralVerifier('notification'))
@@ -16,13 +16,13 @@ DeviceFound.add_required('device', Verifier())
 Report = Basic.clone()
 Report.add_required('operation', LiteralVerifier(operations.NOTIFY_REPORT))
 Report.add_required('connection_string', StringVerifier())
-Report.add_required('payload', Verifier())
+Report.add_required('payload', BytesVerifier(encoding="base64"))
 
 # Trace
 Trace = Basic.clone()
 Trace.add_required('operation', LiteralVerifier(operations.NOTIFY_TRACE))
 Trace.add_required('connection_string', StringVerifier())
-Trace.add_required('payload', Verifier())
+Trace.add_required('payload', BytesVerifier(encoding="base64"))
 
 # Script progress
 Progress = Basic.clone()

@@ -1,6 +1,7 @@
 # This file is copyright Arch Systems, Inc.
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
+import base64
 import datetime
 import logging
 import msgpack
@@ -384,7 +385,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             connection_string (str): The connection string of the device
             address (int): the address of the tile that you want to talk to
             rpc_id (int): ID of the RPC to send
-            payload (string): the payload to send (up to 20 bytes)
+            payload (str): the payload to send (up to 20 bytes), encoded using base64
         """
 
         operation = operations.SEND_RPC
@@ -397,17 +398,19 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         if connection_id is not None:
             feature = rpc_id >> 8  # Calculate the feature value from RPC id
             command = rpc_id & 0xFF  # Calculate the command value from RPC id
+            decoded_payload = base64.b64decode(payload)
+
             result = yield self.manager.send_rpc(
                 connection_id,
                 address,
                 feature,
                 command,
-                str(payload),
+                decoded_payload,
                 timeout
             )
 
             if result['success']:
-                return_value = result['payload']
+                return_value = base64.b64encode(result['payload'])
                 status = result['status']
             else:
                 error = result['reason']
@@ -426,7 +429,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
         Args:
             connection_string (str): The connection string of the device
-            chunk (bytes): A chunk of the script to send (up to 20 bytes)
+            chunk (str): A chunk of the script to send (up to 20 bytes), encoded using base64
             chunk_status (tuple): Contains information as the current chunk index and the total of chunk which
                                 compose the script.
         """
@@ -443,7 +446,8 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         if index == 0:
             connection_data['script'] = bytes()
 
-        connection_data['script'] += chunk
+        decoded_chunk = base64.b64decode(chunk)
+        connection_data['script'] += decoded_chunk
 
         # If there is more than one chunk and we aren't on the last one, wait until we receive them
         # all before sending them on to the device as a unit
@@ -519,7 +523,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         self.send_notification(
             operations.NOTIFY_REPORT,
             connection_string=connection_string,
-            payload=bytes(report.encode())
+            payload=base64.b64encode(report.encode())
         )
 
     def _notify_trace(self, device_uuid, event_name, trace):
@@ -537,7 +541,11 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             self.logger.debug("Dropping trace for device without an active connection: uuid={}".format(device_uuid))
             return
 
-        self.send_notification(operations.NOTIFY_TRACE, connection_string=connection_string, payload=trace)
+        self.send_notification(
+            operations.NOTIFY_TRACE,
+            connection_string=connection_string,
+            payload=base64.b64encode(trace)
+        )
 
     @tornado.gen.coroutine
     def _close_connection(self, connection_string):

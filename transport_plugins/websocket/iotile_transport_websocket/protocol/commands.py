@@ -1,8 +1,8 @@
 """List of commands handled by the WebSocket plugin."""
 
-from iotile.core.utilities.schema_verify import DictionaryVerifier, Verifier, \
+from iotile.core.utilities.schema_verify import BytesVerifier, DictionaryVerifier, Verifier, \
     EnumVerifier, FloatVerifier, IntVerifier, LiteralVerifier, StringVerifier
-import operations
+from . import operations
 
 Basic = DictionaryVerifier()
 Basic.add_required('type', LiteralVerifier('command'))
@@ -37,11 +37,11 @@ SendRPC.add_required('operation', LiteralVerifier(operations.SEND_RPC))
 SendRPC.add_required('address', IntVerifier())
 SendRPC.add_required('rpc_id', IntVerifier())
 SendRPC.add_required('timeout', FloatVerifier())
-SendRPC.add_required('payload', Verifier())
+SendRPC.add_required('payload', BytesVerifier(encoding="base64"))
 
 # Send script
 SendScript = Basic.clone()
 SendScript.add_required('operation', LiteralVerifier(operations.SEND_SCRIPT))
 SendScript.add_required('fragment_count', IntVerifier())
 SendScript.add_required('fragment_index', IntVerifier())
-SendScript.add_required('script', Verifier())
+SendScript.add_required('script', BytesVerifier(encoding="base64"))
