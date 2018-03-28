@@ -3,8 +3,10 @@ import threading
 import tornado.ioloop
 from tornado import netutil
 import socket
+from iotilegateway.gateway import IOTileGateway
 from iotile.core.hw.hwmanager import HardwareManager
 from iotile_transport_websocket.virtual_websocket import WebSocketVirtualInterface
+from iotile_transport_websocket.device_adapter import WebSocketDeviceAdapter
 
 
 def get_unused_port():
@@ -87,12 +89,37 @@ def hw(virtual_interface):
 
 
 @pytest.fixture(scope="function")
-def connected_hw(hw, request):
-    uuid = request.param
+def gateway(request):
+    port = get_unused_port()
+    adapters_config = request.param
+    config = {
+        "agents": [
+            {"name": "websockets2", "args": {"port": port}}
+        ],
+        "adapters": [adapters_config]
+    }
 
-    hw.connect(uuid)
+    gateway = IOTileGateway(config)
+    gateway.start()
 
-    yield hw
+    signaled = gateway.loaded.wait(2.0)
+    if not signaled:
+        raise ValueError("Could not start gateway")
 
-    hw.disconnect()
+    yield port, gateway.device_manager
 
+    gateway.stop()
+
+
+@pytest.fixture(scope="function")
+def device_adapter(gateway, request):
+    port, manager = gateway
+    kwargs = request.param if hasattr(request, 'param') else {}
+
+    adapter = WebSocketDeviceAdapter(port="localhost:{}".format(port), **kwargs)
+
+    tornado.ioloop.PeriodicCallback(adapter.periodic_callback, 1000, manager._loop).start()
+
+    yield adapter
+
+    adapter.stop_sync()

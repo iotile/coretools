@@ -8,8 +8,8 @@ from monotonic import monotonic
 from iotile.core.hw.virtual import RPCInvalidArgumentsError, RPCInvalidReturnValueError
 from iotile.core.utilities.validating_wsclient import ValidatingWSClient
 from iotile.core.exceptions import ArgumentError
-import command_formats
-import states
+from . import command_formats
+from . import states
 
 
 class ServiceStatusClient(ValidatingWSClient):

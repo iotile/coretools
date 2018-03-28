@@ -1,22 +1,33 @@
+import json
+import os
 from iotile.mock.devices import ReportTestDevice, TracingTestDevice
 
 
-def build_report_device(iotile_id):
-    config = {
-        "iotile_id": iotile_id,
-        "num_readings": 6,
-        "format": "signed_list",
-        "report_length": 2,
-        "stream_id": "0x2000"
-    }
+# ====== Report test device ======
 
-    return ReportTestDevice(config)
+def build_report_device():
+    with open(os.path.join(os.path.dirname(__file__), 'report_device_config.json'), "rb") as conf_file:
+        config = json.load(conf_file)
+
+    return ReportTestDevice(config['device'])
 
 
-def build_tracing_device(iotile_id, ascii_data):
-    config = {
-        "iotile_id": iotile_id,
-        "ascii_data": ascii_data
-    }
+def get_report_device_string():
+    config_path = os.path.join(os.path.dirname(__file__), 'report_device_config.json')
 
-    return TracingTestDevice(config)
+    return 'report_test@{}'.format(config_path)
+
+
+# ====== Tracing test device ======
+
+def build_tracing_device():
+    with open(os.path.join(os.path.dirname(__file__), 'tracing_device_config.json'), "rb") as conf_file:
+        config = json.load(conf_file)
+
+    return TracingTestDevice(config['device'])
+
+
+def get_tracing_device_string():
+    config_path = os.path.join(os.path.dirname(__file__), 'tracing_device_config.json')
+
+    return 'tracing_test@{}'.format(config_path)

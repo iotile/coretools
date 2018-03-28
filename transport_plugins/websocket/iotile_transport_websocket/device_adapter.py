@@ -63,7 +63,7 @@ class WebSocketDeviceAdapter(DeviceAdapter):
         # Probe variables
         self.probe_callback = None
         self.last_probe = 0
-        self.autoprobe_interval = int(autoprobe_interval) if autoprobe_interval is not None else None
+        self.autoprobe_interval = float(autoprobe_interval) if autoprobe_interval is not None else None
 
     def can_connect(self):
         """Check if this adapter can take another connection
@@ -684,7 +684,7 @@ class WebSocketDeviceAdapter(DeviceAdapter):
     def stop_sync(self):
         """Synchronously stop this adapter."""
 
-        for connection_id in self.connections.get_connections():
+        for connection_id in list(self.connections.get_connections()):
             try:
                 self.disconnect_sync(connection_id)
             except HardwareError:
