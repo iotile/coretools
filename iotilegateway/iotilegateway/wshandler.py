@@ -1,5 +1,6 @@
 import logging
 import datetime
+import tornado.ioloop
 import tornado.websocket
 import tornado.gen
 import msgpack
@@ -28,6 +29,10 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         if isinstance(obj, datetime.datetime):
             obj = {'__datetime__': True, 'as_str': obj.strftime("%Y%m%dT%H:%M:%S.%fZ").encode()}
         return obj
+
+    def pack(self, message):
+        """Pack a message into a binary packed message with datetime handling."""
+        return msgpack.packb(message, use_bin_type=True, default=self.encode_datetime)
 
     def unpack(self, message):
         return msgpack.unpackb(message, object_hook=self.decode_datetime)
@@ -79,13 +84,24 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
                 self.send_error('Attempt to open IOTile interface when there was no connection')
         elif cmdcode == 'send_rpc':
             if self.connection is not None:
-                resp = yield self.manager.send_rpc(self.connection, cmd['rpc_address'], cmd['rpc_feature'], cmd['rpc_command'], bytearray(cmd['rpc_payload']), cmd['rpc_timeout'])
+                resp = yield self.manager.send_rpc(
+                    self.connection,
+                    cmd['rpc_address'],
+                    cmd['rpc_feature'],
+                    cmd['rpc_command'],
+                    bytearray(cmd['rpc_payload']),
+                    cmd['rpc_timeout']
+                )
                 self.send_response(resp)
             else:
                 self.send_error('Attempt to send an RPC when there was no connection')
         elif cmdcode == 'send_script':
             if self.connection is not None:
-                resp = yield self.manager.send_script(self.connection, cmd['data'], lambda x, y:self._notify_progress_async(tornado.ioloop.IOLoop.current(), x, y))
+                resp = yield self.manager.send_script(
+                    self.connection,
+                    cmd['data'],
+                    lambda x, y: self._notify_progress_async(tornado.ioloop.IOLoop.current(), x, y)
+                )
                 self.send_response(resp)
             else:
                 self.send_error('Attempt to send an RPC when there was no connection')
@@ -96,31 +112,31 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         loop.add_callback(self._notify_progress_sync, current, total)
 
     def _notify_progress_sync(self, current, total):
-        self.send_response({'type':'progress', 'current': current, 'total':total})
+        self.send_response({'type': 'progress', 'current': current, 'total': total})
 
     def _notify_report_sync(self, device_uuid, event_name, report):
-        self.send_response({'type':'report', 'value': report.serialize()})
+        self.send_response({'type': 'report', 'value': report.serialize()})
 
     def send_response(self, obj):
-        msg = msgpack.packb(obj, default=self.encode_datetime)
+        msg = self.pack(obj)
 
         try:
             self.write_message(msg, binary=True)
-        except tornado.websocket.WebSocketClosedError as err:
+        except tornado.websocket.WebSocketClosedError:
             pass
 
     def send_error(self, reason):
-        msg = msgpack.packb({'success': False, 'reason': reason})
+        msg = self.pack({'success': False, 'reason': reason})
 
         try:
             self.write_message(msg, binary=True)
-        except tornado.websocket.WebSocketClosedError as err:
+        except tornado.websocket.WebSocketClosedError:
             pass
 
     @tornado.gen.coroutine
     def on_close(self):
         if self.connection is not None:
-            resp = yield self.manager.disconnect(self.connection)
+            yield self.manager.disconnect(self.connection)
             self.connection = None
 
         if self.report_monitor is not None:
