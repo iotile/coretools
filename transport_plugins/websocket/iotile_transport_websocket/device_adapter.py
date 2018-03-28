@@ -1,15 +1,16 @@
 # This file is copyright Arch Systems, Inc.
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
+import base64
 import logging
 import monotonic
-from builtins import bytes, range
+from builtins import range
 from iotile.core.hw.transport.adapter import DeviceAdapter
 from iotile.core.utilities.validating_wsclient import ValidatingWSClient
 from iotile.core.hw.reports.parser import IOTileReportParser
 from iotile.core.exceptions import ArgumentError, HardwareError
-from connection_manager import ConnectionManager
-from protocol import notifications, operations, responses
+from .connection_manager import ConnectionManager
+from .protocol import notifications, operations, responses
 
 
 class WebSocketDeviceAdapter(DeviceAdapter):
@@ -238,7 +239,7 @@ class WebSocketDeviceAdapter(DeviceAdapter):
                                     connection_string=connection_string,
                                     address=address,
                                     rpc_id=rpc_id,
-                                    payload=payload,
+                                    payload=base64.b64encode(payload),
                                     timeout=timeout)
         except Exception as err:
             failure_reason = "Error while sending 'send_rpc' command to ws server: {}".format(err)
@@ -257,7 +258,7 @@ class WebSocketDeviceAdapter(DeviceAdapter):
             response['success'],
             response.get('failure_reason', None),
             response['status'],
-            response['return_value']
+            base64.b64decode(response['return_value'])
         )
 
     def send_script_async(self, connection_id, data, progress_callback, callback):
@@ -304,7 +305,7 @@ class WebSocketDeviceAdapter(DeviceAdapter):
             try:
                 self.send_command_async(operations.SEND_SCRIPT,
                                         connection_string=connection_string,
-                                        script=chunk,
+                                        script=base64.b64encode(chunk),
                                         fragment_count=nb_chunks,
                                         fragment_index=i)
             except Exception as err:
@@ -568,7 +569,8 @@ class WebSocketDeviceAdapter(DeviceAdapter):
             )
             return
 
-        context['parser'].add_data(bytes(report_chunk['payload']))
+        decoded_payload = base64.b64decode(report_chunk['payload'])
+        context['parser'].add_data(decoded_payload)
 
     def _on_report(self, report, context):
         """Callback function called when a report has been fully received and parsed.
@@ -613,7 +615,8 @@ class WebSocketDeviceAdapter(DeviceAdapter):
             )
             return
 
-        self._trigger_callback('on_trace', connection_id, bytes(trace_chunk['payload']))
+        decoded_payload = base64.b64decode(trace_chunk['payload'])
+        self._trigger_callback('on_trace', connection_id, decoded_payload)
 
     def _on_progress_notification(self, notification):
         """Callback function called when a progress notification is received.

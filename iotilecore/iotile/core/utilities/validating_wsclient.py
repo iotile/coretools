@@ -215,7 +215,7 @@ class ValidatingWSClient(WebSocketClient):
     def _unpack(self, msg):
         """Unpack a binary msgpacked message."""
 
-        return msgpack.unpackb(msg, object_hook=self.decode_datetime)
+        return msgpack.unpackb(msg, raw=False, object_hook=self.decode_datetime)
 
     @classmethod
     def decode_datetime(cls, obj):

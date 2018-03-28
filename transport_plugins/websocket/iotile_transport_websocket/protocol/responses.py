@@ -1,8 +1,8 @@
 """List of responses handled by the WebSocket plugin."""
 
-from iotile.core.utilities.schema_verify import BooleanVerifier, DictionaryVerifier, Verifier, IntVerifier, \
-    LiteralVerifier, OptionsVerifier, StringVerifier
-import operations
+from iotile.core.utilities.schema_verify import BooleanVerifier, BytesVerifier, DictionaryVerifier, Verifier, \
+    IntVerifier, LiteralVerifier, OptionsVerifier, StringVerifier
+from . import operations
 
 # Generic responses
 Basic = DictionaryVerifier()
@@ -69,7 +69,7 @@ CloseInterface = OptionsVerifier(SuccessfulCloseInterface, FailedCloseInterface)
 # Send RPC
 SuccessfulSendRPC = SuccessfulCommand.clone()
 SuccessfulSendRPC.add_required('operation', LiteralVerifier(operations.SEND_RPC))
-SuccessfulSendRPC.add_required('return_value', Verifier())
+SuccessfulSendRPC.add_required('return_value', BytesVerifier(encoding="base64"))
 SuccessfulSendRPC.add_required('status', IntVerifier())
 
 FailedSendRPC = FailedCommand.clone()

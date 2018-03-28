@@ -3,6 +3,7 @@ import queue
 import logging
 from monotonic import monotonic
 from past.builtins import basestring
+from builtins import int
 from future.utils import iteritems
 from iotile.core.exceptions import ArgumentError
 
@@ -175,7 +176,7 @@ class ConnectionManager(threading.Thread):
         key = conn_or_int_id
         if isinstance(key, basestring):
             table = self._int_connections
-        elif isinstance(key, (int, long)):
+        elif isinstance(key, int):
             table = self._connections
         else:
             raise ArgumentError(
@@ -208,7 +209,7 @@ class ConnectionManager(threading.Thread):
         key = conn_or_int_id
         if isinstance(key, basestring):
             table = self._int_connections
-        elif isinstance(key, (int, long)):
+        elif isinstance(key, int):
             table = self._connections
         else:
             raise ArgumentError(
@@ -238,7 +239,7 @@ class ConnectionManager(threading.Thread):
         key = conn_or_int_id
         if isinstance(key, basestring):
             table = self._int_connections
-        elif isinstance(key, (int, long)):
+        elif isinstance(key, int):
             table = self._connections
         else:
             return None
@@ -263,7 +264,7 @@ class ConnectionManager(threading.Thread):
         key = conn_or_int_id
         if isinstance(key, basestring):
             table = self._int_connections
-        elif isinstance(key, (int, long)):
+        elif isinstance(key, int):
             table = self._connections
         else:
             raise ArgumentError(
