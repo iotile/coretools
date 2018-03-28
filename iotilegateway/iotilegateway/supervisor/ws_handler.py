@@ -34,6 +34,10 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
             obj = {'__datetime__': True, 'as_str': obj.strftime("%Y%m%dT%H:%M:%S.%f").encode()}
         return obj
 
+    def pack(self, message):
+        """Pack a message into a binary packed message with datetime handling."""
+        return msgpack.packb(message, use_bin_type=True, default=self.encode_datetime)
+
     def unpack(self, message):
         """Unpack a binary message packed message with datetime handling."""
         return msgpack.unpackb(message, object_hook=self.decode_datetime)
@@ -184,7 +188,7 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
         if obj is not None:
             resp_object['payload'] = obj
 
-        msg = msgpack.packb(resp_object, default=self.encode_datetime)
+        msg = self.pack(resp_object)
         self.logger.debug("Sending response: %s", obj)
         try:
             self.write_message(msg, binary=True)
@@ -194,7 +198,7 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
     def send_error(self, reason):
         """Send an error to someone."""
 
-        msg = msgpack.packb({'type': 'response', 'success': False, 'reason': reason})
+        msg = self.pack({'type': 'response', 'success': False, 'reason': reason})
 
         try:
             self.logger.debug("Sending error: %s", reason)
@@ -213,7 +217,7 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
         if change_info is not None:
             notif_object['payload'] = change_info
 
-        msg = msgpack.packb(notif_object)
+        msg = self.pack(notif_object)
 
         try:
             self.write_message(msg, binary=True)
