@@ -81,7 +81,7 @@ def virtual_interface(request):
 def hw(virtual_interface):
     port, _ = virtual_interface
 
-    hw = HardwareManager(port="ws2:localhost:{}".format(port))
+    hw = HardwareManager(port="ws2:127.0.0.1:{}".format(port))
 
     yield hw
 
@@ -116,7 +116,7 @@ def device_adapter(gateway, request):
     port, manager = gateway
     kwargs = request.param if hasattr(request, 'param') else {}
 
-    adapter = WebSocketDeviceAdapter(port="localhost:{}".format(port), **kwargs)
+    adapter = WebSocketDeviceAdapter(port="127.0.0.1:{}".format(port), **kwargs)
 
     tornado.ioloop.PeriodicCallback(adapter.periodic_callback, 1000, manager._loop).start()
 
@@ -137,7 +137,7 @@ def multiple_gateways(gateway, request):
             {"name": "websockets2", "args": {"port": port2}}
         ],
         "adapters": [
-            {"name": "ws2", "port": "localhost:{}".format(port1)}
+            {"name": "ws2", "port": "127.0.0.1:{}".format(port1)}
         ]
     }
 
@@ -160,8 +160,8 @@ def multiple_gateways(gateway, request):
 def multiple_device_adapter(multiple_gateways):
     _, _, port2, manager2 = multiple_gateways
 
-    adapter1 = WebSocketDeviceAdapter(port="localhost:{}".format(port2))
-    adapter2 = WebSocketDeviceAdapter(port="localhost:{}".format(port2))
+    adapter1 = WebSocketDeviceAdapter(port="127.0.0.1:{}".format(port2))
+    adapter2 = WebSocketDeviceAdapter(port="127.0.0.1:{}".format(port2))
 
     tornado.ioloop.PeriodicCallback(adapter1.periodic_callback, 1000, manager2._loop).start()
     tornado.ioloop.PeriodicCallback(adapter2.periodic_callback, 1000, manager2._loop).start()
