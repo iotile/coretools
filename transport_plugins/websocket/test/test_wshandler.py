@@ -5,7 +5,6 @@ Also test that our WebSocketDeviceAdapter works well alone.
 
 import json
 import pytest
-import queue
 import struct
 import threading
 from devices_factory import get_report_device_string, get_tracing_device_string
@@ -14,6 +13,7 @@ from devices_factory import get_report_device_string, get_tracing_device_string
 report_device_string = get_report_device_string()
 tracing_device_string = get_tracing_device_string()
 
+# Get traces sent from the config file
 with open(tracing_device_string.split('@')[-1], "rb") as conf_file:
     config = json.load(conf_file)
     traces_sent = config['device']['ascii_data']
@@ -152,36 +152,31 @@ def test_send_rpc(device_adapter):
     assert len(result['payload']) > 0
 
 
-# @pytest.mark.parametrize('gateway', [{"name": "virtual", "port": report_device_string}], indirect=True)
-# def test_send_script(device_adapter, gateway):
-#     device_adapter.connect(0x10)
-#
-#     _, interface = gateway
-#
-#     script = bytes(b'ab')*100
-#     progs = queue.Queue()
-#
-#     device_adapter.stream._send_highspeed(script, lambda x, y: progs.put((x, y)))
-#
-#     last_done = -1
-#     last_total = None
-#     prog_count = 0
-#     while not progs.empty():
-#         done, total = progs.get(block=False)
-#
-#         assert done <= total
-#         assert done >= last_done
-#
-#         if last_total is not None:
-#             assert total == last_total
-#
-#         last_done = done
-#         last_total = total
-#         prog_count += 1
-#
-#     assert prog_count > 0
-#
-#     assert interface.device.script == script
+@pytest.mark.parametrize('gateway', [{"name": "virtual", "port": report_device_string}], indirect=True)
+def test_send_script(device_adapter):
+    progress = {'done': 0, 'total': None}
+    script_complete = threading.Event()
 
-# {"name": "virtual", "port": "report_test@report_device_config.json;tracing_test@tracing_device_config.json"}
-# TODO: write tests for real gateway agent: add multiple connections tests + autoprobe_interval
+    def on_progress_callback(done_count, total_count):
+        if progress['total'] is not None:
+            assert progress['total'] == total_count
+
+        assert done_count >= progress['done']
+        assert done_count <= total_count
+
+        progress['total'] = total_count
+        progress['done'] = done_count
+
+        if done_count == total_count:
+            script_complete.set()
+
+    script = bytes(b'ab')*100
+
+    device_adapter.connect_sync(0, str(0x10))
+    result = device_adapter.send_script_sync(0, script, on_progress_callback)
+
+    assert result['success'] is True
+
+    flag = script_complete.wait(5.0)
+    assert flag is True
+    assert progress['done'] > 0

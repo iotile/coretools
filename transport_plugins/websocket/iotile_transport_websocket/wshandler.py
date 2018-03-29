@@ -25,16 +25,18 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
         self.connections = {}
 
-    def initialize(self, manager):
+    def initialize(self, manager, loop):
         """Initialize socket handler. Called every time a client call the websocket server
         address (cf gateway_agent.py). Used to get the DeviceManager of the gateway.
         /!\ : called before __init__
 
         Args:
             manager (DeviceManager): The device manager of the gateway.
+            loop (tornado.ioloop): The event loop of the thread
         """
 
         self.manager = manager
+        self.loop = loop
 
     @classmethod
     def decode_datetime(cls, obj):
@@ -410,8 +412,6 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             )
 
             if result['success']:
-                print('------------PAYLOAD -------------')
-                print(result['payload'], type(result['payload']))
                 return_value = base64.b64encode(result['payload'])
                 status = result['status']
             else:
@@ -462,7 +462,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             result = yield self.manager.send_script(
                 connection_data['connection_id'],
                 connection_data['script'],
-                lambda x, y: self._notify_progress_async(tornado.ioloop.IOLoop.current(), connection_string, x, y)
+                lambda x, y: self._notify_progress_async(connection_string, x, y)
             )
             connection_data['script'] = bytes()
 
@@ -478,17 +478,16 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         else:
             self.send_response(operation, connection_string=connection_string)
 
-    def _notify_progress_async(self, loop, connection_string, done_count, total_count):
+    def _notify_progress_async(self, connection_string, done_count, total_count):
         """Add a synchronous notify progress function to the event loop.
 
         Args:
-            loop (tornado.loop): The event loop
             connection_string (str): The connection string of the device where the operation is in progress
             done_count (int): Number of chunks already processed
             total_count (int): Number of total chunks to proceed
         """
 
-        loop.add_callback(self._notify_progress_sync, connection_string, done_count, total_count)
+        self.loop.add_callback(self._notify_progress_sync, connection_string, done_count, total_count)
 
     def _notify_progress_sync(self, connection_string, done_count, total_count):
         """Send a notification containing the current progress of the given operation. The progress is computed

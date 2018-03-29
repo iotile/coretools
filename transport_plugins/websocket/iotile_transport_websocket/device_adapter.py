@@ -320,20 +320,8 @@ class WebSocketDeviceAdapter(DeviceAdapter):
             response (dict): The response
         """
 
-        connection_string = response['connection_string']
-
-        try:
-            context = self.connections.get_context(connection_string)
-        except ArgumentError:
-            self.logger.warn('Received script response for unknown connection: {}'.format(connection_string))
-            return
-
-        # Remove the progress callback as it is not needed anymore
-        if 'progress_callback' in context:
-            del context['progress_callback']
-
         self.connections.finish_operation(
-            connection_string,
+            response['connection_string'],
             response.get('success', False),
             response.get('failure_reason', None)
         )
@@ -635,8 +623,16 @@ class WebSocketDeviceAdapter(DeviceAdapter):
             return
 
         progress_callback = context.get('progress_callback', None)
+
         if progress_callback is not None:
-            progress_callback(notification['done_count'], notification['total_count'])
+            done_count = notification['done_count']
+            total_count = notification['total_count']
+
+            progress_callback(done_count, total_count)
+
+            if done_count >= notification['total_count']:
+                # Remove the progress callback as it is not needed anymore
+                del context['progress_callback']
 
     def send_command_async(self, operation, **kwargs):
         """Send a command and do not wait for the response (which should be handled by a callback function).
