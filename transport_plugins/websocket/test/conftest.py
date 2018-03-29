@@ -123,3 +123,50 @@ def device_adapter(gateway, request):
     yield adapter
 
     adapter.stop_sync()
+
+
+@pytest.fixture(scope="function")
+def multiple_gateways(gateway, request):
+    autoprobe_interval = request.param.get('autoprobe_interval') if hasattr(request, 'param') else None
+
+    port1, manager_gateway1 = gateway
+    port2 = get_unused_port()
+
+    config = {
+        "agents": [
+            {"name": "websockets2", "args": {"port": port2}}
+        ],
+        "adapters": [
+            {"name": "ws2", "port": "localhost:{}".format(port1)}
+        ]
+    }
+
+    if autoprobe_interval is not None:
+        config['adapters'][0]['autoprobe_interval'] = autoprobe_interval
+
+    gateway2 = IOTileGateway(config)
+    gateway2.start()
+
+    signaled = gateway2.loaded.wait(2.0)
+    if not signaled:
+        raise ValueError("Could not start gateway")
+
+    yield port1, manager_gateway1, port2, gateway2.device_manager
+
+    gateway2.stop()
+
+
+@pytest.fixture(scope="function")
+def multiple_device_adapter(multiple_gateways):
+    _, _, port2, manager2 = multiple_gateways
+
+    adapter1 = WebSocketDeviceAdapter(port="localhost:{}".format(port2))
+    adapter2 = WebSocketDeviceAdapter(port="localhost:{}".format(port2))
+
+    tornado.ioloop.PeriodicCallback(adapter1.periodic_callback, 1000, manager2._loop).start()
+    tornado.ioloop.PeriodicCallback(adapter2.periodic_callback, 1000, manager2._loop).start()
+
+    yield adapter1, adapter2
+
+    adapter1.stop_sync()
+    adapter2.stop_sync()

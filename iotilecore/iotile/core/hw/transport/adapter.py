@@ -161,9 +161,9 @@ class DeviceAdapter(object):
         results = {}
 
         def connect_done(callback_connid, callback_adapterid, callback_success, failure_reason):
-            calldone.set()
             results['success'] = callback_success
             results['failure_reason'] = failure_reason
+            calldone.set()  # Be sure to set after all operations are done to prevent race condition
 
         self.connect_async(connection_id, connection_string, connect_done)
         calldone.wait()

@@ -33,7 +33,7 @@ class WebSocketGatewayAgent(object):
         port = self._args.get('port', 5120)
 
         self.app = tornado.web.Application([
-            (r'/iotile/v2', WebSocketHandler, {'manager': self._manager})
+            (r'/iotile/v2', WebSocketHandler, {'manager': self._manager, 'loop': self._loop})
         ])
 
         self._logger.info("Starting WebSocket Agent v2 on port %d" % port)

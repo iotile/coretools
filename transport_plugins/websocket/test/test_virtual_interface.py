@@ -11,6 +11,7 @@ from devices_factory import build_report_device, build_tracing_device, get_traci
 
 tracing_device_string = get_tracing_device_string()
 
+# Get traces sent from the config file
 with open(tracing_device_string.split('@')[-1], "rb") as conf_file:
     config = json.load(conf_file)
     traces_sent = config['device']['ascii_data']
