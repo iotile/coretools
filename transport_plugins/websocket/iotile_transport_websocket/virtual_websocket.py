@@ -55,7 +55,7 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         self.client = None
 
         # WebSocket server
-        self.server = WebsocketServer(port, host='localhost', loglevel=logging.DEBUG)
+        self.server = WebsocketServer(port, host='127.0.0.1', loglevel=logging.DEBUG)
         self.server.set_fn_new_client(self.on_new_client)
         self.server.set_fn_client_left(self.on_client_disconnect)
         self.server.set_fn_message_received(self.on_message)
