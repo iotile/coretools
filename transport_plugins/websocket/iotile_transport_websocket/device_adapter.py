@@ -75,7 +75,7 @@ class WebSocketDeviceAdapter(DeviceAdapter):
         """
 
         connections = self.connections.get_connections()
-        return len(connections) < self.get_config('maximum_connections')
+        return len(connections) < int(self.get_config('maximum_connections'))
 
     def connect_async(self, connection_id, connection_string, callback):
         """Asynchronously connect to a device by its connection_string
