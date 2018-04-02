@@ -34,7 +34,7 @@ setup(
                                           'copy_count_a = iotile.sg.processors:copy_count_a',
                                           'call_rpc = iotile.sg.processors:call_rpc',
                                           'trigger_streamer = iotile.sg.processors:trigger_streamer',
-                                          'subtract_a_from_b = iotile.sg.processors:subtract_a_from_b'],
+                                          'subtract_afromb = iotile.sg.processors:subtract_afromb'],
                   'iotile.update_record': ['add_node = iotile.sg.update:AddNodeRecord',
                                            'add_streamer = iotile.sg.update:AddStreamerRecord',
                                            'set_config = iotile.sg.update:SetConfigRecord',

@@ -64,7 +64,7 @@ class SubtractStatement(SensorGraphStatement):
 
         trigger_stream, trigger_cond = parent.trigger_chain()
 
-        sensor_graph.add_node(u"({} always && {} {}) => {} using {}".format(self.subtract_stream, trigger_stream, trigger_cond, self.stream, 'subtract_a_from_b'))
+        sensor_graph.add_node(u"({} always && {} {}) => {} using {}".format(self.subtract_stream, trigger_stream, trigger_cond, self.stream, 'subtract_afromb'))
 
         value = self.default
         if value is None:
