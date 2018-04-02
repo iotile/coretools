@@ -9,7 +9,7 @@ setup(
     version=version.version,
     license="LGPLv3",
     install_requires=[
-        "iotile-core>=3.20.2",
+        "iotile-core>=3.22.0",
         "msgpack>=0.5.5"
     ],
 

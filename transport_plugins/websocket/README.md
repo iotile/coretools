@@ -5,6 +5,9 @@ and to control nodes as if you were the gateway.
 It contains a WebSocketDeviceAdapter, a WebSocketVirtualInterface and some tools needed
 to make the whole thing work.
 
+If you want to use the websocket gateway agent, you'll need to have the `iotile-gateway`
+package **>=1.6.0**.
+
 ---
 
 This includes `Pithikos/python-websocket-server` which is licensed under MIT and used in
