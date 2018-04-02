@@ -35,6 +35,8 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         else:
             port = 5120
 
+        self.chunk_size = 4*1024  # Config chunk size to be 4kb for traces and reports streaming
+
         # Set logger
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)  # TODO: remove this line
@@ -689,15 +691,14 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
 
         connection_string = self._uuid_to_connection_string(connection_id)
 
-        chunk_size = 20
         script_length = len(script)
-        total_count = script_length // chunk_size
-        if script_length % chunk_size != 0:
+        total_count = script_length // self.chunk_size
+        if script_length % self.chunk_size != 0:
             total_count += 1
 
         for index in range(total_count):
-            first_index = index * chunk_size
-            last_index = min(first_index + chunk_size, script_length)
+            first_index = index * self.chunk_size
+            last_index = min(first_index + self.chunk_size, script_length)
 
             self.device.push_script_chunk(script[first_index:last_index])
 
@@ -764,23 +765,20 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
                                done_count=done_count,
                                total_count=total_count)
 
-    def _stream_data(self, device_uuid, chunk=None):
-        """Stream reports to the WebSocket client in 20 byte chunks
+    def _stream_data(self, device_uuid):
+        """Stream reports to the WebSocket client in chunks
 
         Args:
             device_uuid (int): The uuid of the device which sent the report
-            chunk (bytes): A chunk that should be sent instead of requesting a
-                new chunk from the pending reports.
         """
 
         connection_string = self._uuid_to_connection_string(device_uuid)
 
         self.streaming_data = True
 
-        if chunk is None:
-            chunk = self._next_streaming_chunk(20)
+        chunk = self._next_streaming_chunk(self.chunk_size)
 
-        if chunk is None or len(chunk) == 0:
+        if len(chunk) == 0:
             self.streaming_data = False
             return
 
@@ -792,35 +790,23 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
             )
             self._defer(self._stream_data, [device_uuid])
         except HardwareError as err:
-            return_value = err.params['return_value']
+            self.logger.exception(err)
+            self._audit('ErrorStreamingReport')
 
-            # If we're told we ran out of memory, wait and try again
-            if return_value.get('code', 0) == 0x182:
-                time.sleep(.02)
-                self._defer(self._stream_data, [device_uuid, chunk])
-            elif return_value.get('code', 0) == 0x181:  # Invalid state, the other side likely disconnected midstream
-                self._audit('ErrorStreamingReport')
-            else:
-                self.logger.exception(err)
-                self._audit('ErrorStreamingReport')
-
-    def _send_trace(self, device_uuid, chunk=None):
-        """Stream tracing data to the WebSocket client in 20 byte chunks
+    def _send_trace(self, device_uuid):
+        """Stream tracing data to the WebSocket client in chunks
 
         Args:
             device_uuid (int): The uuid of the device which sent the trace
-            chunk (bytes): A chunk that should be sent instead of requesting a
-                new chunk from the pending reports.
         """
 
         connection_string = self._uuid_to_connection_string(device_uuid)
 
         self.tracing_data = True
 
-        if chunk is None:
-            chunk = self._next_tracing_chunk(20)
+        chunk = self._next_tracing_chunk(self.chunk_size)
 
-        if chunk is None or len(chunk) == 0:
+        if len(chunk) == 0:
             self.tracing_data = False
             return
 
@@ -832,17 +818,8 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
             )
             self._defer(self._send_trace, [device_uuid])
         except HardwareError as err:
-            return_value = err.params['return_value']
-
-            # If we're told we ran out of memory, wait and try again
-            if return_value.get('code', 0) == 0x182:
-                time.sleep(0.02)
-                self._defer(self._send_trace, [device_uuid, chunk])
-            elif return_value.get('code', 0) == 0x181:  # Invalid state, the other side likely disconnected midstream
-                self._audit('ErrorStreamingReport')
-            else:
-                self.logger.exception(err)
-                self._audit('ErrorStreamingReport')
+            self.logger.exception(err)
+            self._audit('ErrorStreamingReport')
 
     def clean_device(self):
         """Clean up after a client disconnects
@@ -914,9 +891,3 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
 
         self.server.shutdown()
         self.server_thread.join()
-
-# A TESTER
-# TODO: ecrire tests
-# TODO: tester script -> utilser hw.send_highspeed en envoyant
-# n'importe quoi (et comparer a la fin avec device.script)
-# TODO: tester payload purement binaire (sur py3 avec non unicode variable, ...)

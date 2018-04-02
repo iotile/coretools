@@ -4,6 +4,7 @@
 import base64
 import logging
 import monotonic
+import threading
 from builtins import range
 from iotile.core.hw.transport.adapter import DeviceAdapter
 from iotile.core.utilities.validating_wsclient import ValidatingWSClient
@@ -61,7 +62,8 @@ class WebSocketDeviceAdapter(DeviceAdapter):
         self.connections.start()
 
         # Probe variables
-        self.probe_callback = None
+        self.probe_callbacks = []
+        self.probe_callbacks_lock = threading.Lock()
         self.last_probe = 0
         self.autoprobe_interval = float(autoprobe_interval) if autoprobe_interval is not None else None
 
@@ -168,16 +170,12 @@ class WebSocketDeviceAdapter(DeviceAdapter):
                     failure_reason: None if success is True, otherwise a reason for why we could not probe
         """
 
-        if self.probe_callback is not None:
-            raise HardwareError("Already waiting for a scan result...")
-
-        self.probe_callback = callback
+        self._add_probe_callback(callback)
         self.last_probe = monotonic.monotonic()
 
         try:
             self.send_command_async(operations.SCAN)
         except Exception as err:
-            self.probe_callback = None
             raise HardwareError("Error while sending 'probe' command to ws server: {}".format(err))
 
     def _on_device_found(self, response):
@@ -196,9 +194,7 @@ class WebSocketDeviceAdapter(DeviceAdapter):
             response (dict): The response data
         """
 
-        if self.probe_callback is not None:
-            self.probe_callback(self.id, response['success'], response.get('failure_reason', None))
-            self.probe_callback = None
+        self._consume_probe_callbacks(response['success'], response.get('failure_reason', None))
 
         # As probe is not handled by the connection manager (because there is no connection_id/connection_string),
         # we have to throw errors manually
@@ -655,9 +651,7 @@ class WebSocketDeviceAdapter(DeviceAdapter):
 
         self.logger.info('Disconnected from the WebSocket server')
 
-        if self.probe_callback is not None:
-            self.probe_callback(self.id, True, None)
-            self.probe_callback = None
+        self._consume_probe_callbacks(True, None)
 
         for connection_id in self.connections.get_connections():
             self.connections.unexpected_disconnect(connection_id)
@@ -694,13 +688,23 @@ class WebSocketDeviceAdapter(DeviceAdapter):
 
         now = monotonic.monotonic()
 
-        if self.probe_callback is not None:
+        if len(self.probe_callbacks) > 0:
             # Currently probing: check if not timed out
             if (now - self.last_probe) > self.get_config('default_timeout'):
-                self.probe_callback(self.id, False, 'Timeout while waiting for scan response')
+                self._consume_probe_callbacks(False, 'Timeout while waiting for scan response')
 
         elif self.autoprobe_interval is not None:
             # Probe every `autoprobe_interval` seconds to keep up to date scan results
             if self.client.connected and (now - self.last_probe) > self.autoprobe_interval:
                 self.logger.info('Refreshing probe results...')
                 self.probe_async(lambda adapter_id, success, failure_reason: None)
+
+    def _add_probe_callback(self, callback):
+        with self.probe_callbacks_lock:
+            self.probe_callbacks += [callback]
+
+    def _consume_probe_callbacks(self, success, reason):
+        with self.probe_callbacks_lock:
+            for probe_callback in self.probe_callbacks:
+                probe_callback(self.id, success, reason)
+            del self.probe_callbacks[:]
