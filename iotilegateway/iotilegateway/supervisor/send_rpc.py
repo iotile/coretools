@@ -1,7 +1,5 @@
 """A simple command line program for sending an RPC to a service by name."""
 
-import sys
-import os
 import argparse
 import logging
 import binascii

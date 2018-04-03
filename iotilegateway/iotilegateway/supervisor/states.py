@@ -3,7 +3,7 @@
 from iotile.core.exceptions import ArgumentError
 from monotonic import monotonic
 from collections import deque
-from command_formats import MessagePayload
+from .command_formats import MessagePayload
 
 # Service states
 NOT_STARTED = 0

@@ -51,12 +51,12 @@ class IOTileGateway(threading.Thread):
                 should be passed to create it.
             adapters (list):
                 a list of dictionaries with the device adapters to add into the gateway
-                and any argument sthat should be use to create each one.
+                and any arguments that should be use to create each one.
     """
 
     def __init__(self, config):
-        self.loop = tornado.ioloop.IOLoop.instance()
-        self.device_manager = device.DeviceManager(self.loop)
+        self.loop = None
+        self.device_manager = None
         self.agents = []
         self.supervisor = None
         self.loaded = threading.Event()
@@ -75,6 +75,9 @@ class IOTileGateway(threading.Thread):
 
     def run(self):
         """Start the gateway and run it to completion in another thread."""
+
+        self.loop = tornado.ioloop.IOLoop(make_current=True)  # To create a loop for each thread
+        self.device_manager = device.DeviceManager(self.loop)
 
         # If we have an initialization error, stop trying to initialize more things and
         # just shut down cleanly

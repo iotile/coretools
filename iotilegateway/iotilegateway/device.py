@@ -4,6 +4,7 @@ import datetime
 import tornado.ioloop
 import tornado.gen
 import uuid
+from future.utils import viewvalues, viewitems
 from iotile.core.exceptions import ArgumentError
 
 
@@ -65,7 +66,7 @@ class DeviceManager(object):
     def stop(self):
         """Stop all adapters managed by the DeviceManager
         """
-        for _, adapter in self.adapters.iteritems():
+        for _, adapter in viewitems(self.adapters):
             adapter.stop_sync()
 
     @property
@@ -78,12 +79,12 @@ class DeviceManager(object):
 
         devs = {}
 
-        for device_id, adapters in self._scanned_devices.iteritems():
+        for device_id, adapters in viewitems(self._scanned_devices):
             dev = None
             max_signal = None
             best_adapter = None
 
-            for adapter_id, devinfo in adapters.iteritems():
+            for adapter_id, devinfo in viewitems(adapters):
                 connstring = "{0}/{1}".format(adapter_id, devinfo['connection_string'])
                 if dev is None:
                     dev = copy.deepcopy(devinfo)
@@ -137,7 +138,7 @@ class DeviceManager(object):
 
         adapter_id = None
         connection_string = None
-        #Find the best adapter to use based on the first adapter with an open connection spot
+        # Find the best adapter to use based on the first adapter with an open connection spot
         for adapter, signal, connstring in devs[uuid]['adapters']:
             if self.adapters[adapter].can_connect():
                 adapter_id = adapter
@@ -145,7 +146,10 @@ class DeviceManager(object):
                 break
 
         if adapter_id is None:
-            raise tornado.gen.Return({'success': False, 'reason': "No room on any adapter that sees this device for more connections"})
+            raise tornado.gen.Return({
+                'success': False,
+                'reason': "No room on any adapter that sees this device for more connections"
+            })
 
         result = yield self.connect_direct(connection_string)
         if result['success']:
@@ -154,6 +158,19 @@ class DeviceManager(object):
             self._update_connection_data(conn_id, 'uuid', uuid)
 
         raise tornado.gen.Return(result)
+
+    @tornado.gen.coroutine
+    def probe_async(self):
+        """Coroutine to probe all adapters which can, to update the scanned devices.
+        Returns:
+            dict: A dictionary mapping UUIDs to device information dictionaries (self.scanned_devices)
+        """
+
+        for adapter_id, manager in viewitems(self.adapters):
+            if manager.get_config('probe_supported', False):
+                yield tornado.gen.Task(manager.probe_async)
+
+        raise tornado.gen.Return(self.scanned_devices)
 
     def register_monitor(self, device_uuid, filter_names, callback):
         """Register to receive callbacks when events happen on a specific device
@@ -168,7 +185,7 @@ class DeviceManager(object):
 
         Args:
             device_uuid (int): The device that we want to monitor
-            filter_name (iterable): A list of strings with the event names that the caller would wish
+            filter_names (iterable): A list of strings with the event names that the caller would wish
                 to receive
             callback (callable): The function that should be called when an event occurs
                 callback must have the signature callback(event_name, event_arg)
@@ -237,7 +254,7 @@ class DeviceManager(object):
         if device_uuid not in self.monitors:
             return
 
-        for listeners, monitor in self.monitors[device_uuid].itervalues():
+        for listeners, monitor in viewvalues(self.monitors[device_uuid]):
             if event in listeners:
                 monitor(device_uuid, event, *args)
 
@@ -275,8 +292,7 @@ class DeviceManager(object):
         result = yield tornado.gen.Task(self.adapters[adapter_id].connect_async, conn_id, connstring)
         conn_id, adapter_id, success, failure_reason = result.args
 
-        resp = {}
-        resp['success'] = success
+        resp = {'success': success}
 
         if success:
             self._update_connection_state(conn_id, self.ConnectedState)
@@ -313,8 +329,7 @@ class DeviceManager(object):
 
         _, _, success, failure_reason = result.args
 
-        resp = {}
-        resp['success'] = success
+        resp = {'success': success}
 
         if not success:
             if 'failure_reason' is not None:
@@ -347,8 +362,7 @@ class DeviceManager(object):
 
         _, _, success, failure_reason = result.args
 
-        resp = {}
-        resp['success'] = success
+        resp = {'success': success}
 
         if not success:
             if 'failure_reason' is not None:
@@ -375,15 +389,17 @@ class DeviceManager(object):
             raise tornado.gen.Return({'success': False, 'reason': 'Could not find connection id %d' % connection_id})
 
         if self.connections[connection_id]['state'] != self.ConnectedState:
-            raise tornado.gen.Return({'success': False, 'reason': 'Connection id %d is not in the right state' % connection_id})
+            raise tornado.gen.Return({
+                'success': False,
+                'reason': 'Connection id %d is not in the right state' % connection_id
+            })
 
         adapter_id = self.connections[connection_id]['context']['adapter']
 
         result = yield tornado.gen.Task(self.adapters[adapter_id].disconnect_async, connection_id)
         _, _, success, failure_reason = result.args
 
-        resp = {}
-        resp['success'] = success
+        resp = {'success': success}
 
         if success:
             del self.connections[connection_id]
@@ -412,19 +428,27 @@ class DeviceManager(object):
             raise tornado.gen.Return({'success': False, 'reason': 'Could not find connection id %d' % connection_id})
 
         if self.connections[connection_id]['state'] != self.ConnectedState:
-            raise tornado.gen.Return({'success': False, 'reason': 'Connection id %d is not in the right state' % connection_id})
+            raise tornado.gen.Return({
+                'success': False,
+                'reason': 'Connection id %d is not in the right state' % connection_id})
 
         rpc_id = (feature << 8) | command
         adapter_id = self.connections[connection_id]['context']['adapter']
-        result = yield tornado.gen.Task(self.adapters[adapter_id].send_rpc_async, connection_id, address, rpc_id, payload, timeout)
+        result = yield tornado.gen.Task(
+            self.adapters[adapter_id].send_rpc_async,
+            connection_id,
+            address,
+            rpc_id,
+            payload,
+            timeout
+        )
         _, _, success, failure_reason, status, payload = result.args
 
-        resp = {}
-        resp['success'] = success
+        resp = {'success': success}
 
         if success:
             resp['status'] = status
-            resp['payload'] = str(payload)
+            resp['payload'] = payload
         else:
             resp['reason'] = failure_reason
 
@@ -439,14 +463,21 @@ class DeviceManager(object):
             raise tornado.gen.Return({'success': False, 'reason': 'Could not find connection id %d' % connection_id})
 
         if self.connections[connection_id]['state'] != self.ConnectedState:
-            raise tornado.gen.Return({'success': False, 'reason': 'Connection id %d is not in the right state' % connection_id})
+            raise tornado.gen.Return({
+                'success': False,
+                'reason': 'Connection id %d is not in the right state' % connection_id
+            })
 
         adapter_id = self.connections[connection_id]['context']['adapter']
-        result = yield tornado.gen.Task(self.adapters[adapter_id].send_script_async, connection_id, data, progress_callback)
+        result = yield tornado.gen.Task(
+            self.adapters[adapter_id].send_script_async,
+            connection_id,
+            data,
+            progress_callback
+        )
         _, _, success, failure_reason = result.args
 
-        resp = {}
-        resp['success'] = success
+        resp = {'success': success}
 
         if not success:
             resp['reason'] = failure_reason
@@ -525,9 +556,9 @@ class DeviceManager(object):
         This callback must only be called on the main tornado ioloop.
 
         Args:
-            adapter (int): the id of the adapter that found this device
-            info (dict): a dictionary of information about the device including its uuid
-            expires (int): the number of seconds the device should stay in scanned_devices before expiring.
+            ad (int): the id of the adapter that found this device
+            inf (dict): a dictionary of information about the device including its uuid
+            exp (int): the number of seconds the device should stay in scanned_devices before expiring.
                 If expires==0 then the record will never expire on its own,
         """
 
@@ -589,7 +620,10 @@ class DeviceManager(object):
                 dev_uuid = self._get_connection_data(connection_id, 'uuid')
                 self.call_monitor(dev_uuid, 'trace', report)
             except KeyError:
-                self._logger.warn('Dropping tracing data for a connection that has no associated UUID %d', connection_id)
+                self._logger.warn(
+                    'Dropping tracing data for a connection that has no associated UUID %d',
+                    connection_id
+                )
 
         self._loop.add_callback(sync_trace_received_callback, self, connection_id, trace)
 
@@ -618,11 +652,11 @@ class DeviceManager(object):
         """
 
         expired = 0
-        for uuid, adapters in self._scanned_devices.iteritems():
+        for uuid, adapters in viewitems(self._scanned_devices):
             to_remove = []
             now = datetime.datetime.now()
 
-            for adapter, dev in adapters.iteritems():
+            for adapter, dev in viewitems(adapters):
                 if 'expires' not in dev:
                     continue
 

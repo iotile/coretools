@@ -78,8 +78,6 @@ class IOTileSupervisor(threading.Thread):
                 (r'/services', ServiceWebSocketHandler, {'manager': self.service_manager, 'logger': self._logger}),
             ])
 
-
-
             if port == 'unused':
                 sock, port = bind_unused_port()
                 server = HTTPServer(app, io_loop=self.loop)

@@ -2,6 +2,15 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.22.0
+
+- Add disconnection callback in ValidatingWSClient
+- Set how ValidatingWSClient pack its message with msgpack
+- Fix race condition in DeviceAdapter, which made awsiot and websockets tests failed sometimes
+- Make send_highspeed working with Python3
+- Add audit events for script interfaces
+- Fix error in VirtualDevice which made interfaces never close
+
 ## 3.21.1
 
 - Move SetDeviceTagRecord into iotile-core.

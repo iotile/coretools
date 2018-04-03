@@ -2,13 +2,14 @@
 
 from threading import Lock, Event
 from copy import copy
+from future.utils import viewitems, viewkeys
 import logging
 from monotonic import monotonic
 from iotile.core.hw.virtual import RPCInvalidArgumentsError, RPCInvalidReturnValueError
 from iotile.core.utilities.validating_wsclient import ValidatingWSClient
 from iotile.core.exceptions import ArgumentError
-import command_formats
-import states
+from . import command_formats
+from . import states
 
 
 class ServiceStatusClient(ValidatingWSClient):
@@ -47,7 +48,7 @@ class ServiceStatusClient(ValidatingWSClient):
         self._rpc_dispatcher = dispatcher
         self._queued_rpcs = {}
 
-        self._logger = logging.getLogger(__name__)
+        self._logger = logging.getLogger(logger_name)
         self.services = {}
         self._name_map = {}
         self._on_change_callback = None
@@ -64,7 +65,7 @@ class ServiceStatusClient(ValidatingWSClient):
 
         with self._state_lock:
             self.services = self.sync_services()
-            for i, name in enumerate(self.services.iterkeys()):
+            for i, name in enumerate(viewkeys(self.services)):
                 self._name_map[i] = name
 
         if agent is not None:
@@ -116,7 +117,7 @@ class ServiceStatusClient(ValidatingWSClient):
         """
 
         with self._state_lock:
-            return sorted([(x, y) for x, y in self._name_map.iteritems()], key=lambda x: x[0])
+            return sorted([(index, name) for index, name in viewitems(self._name_map)], key=lambda element: element[0])
 
     def sync_services(self):
         """Poll the current state of all services.
@@ -241,7 +242,10 @@ class ServiceStatusClient(ValidatingWSClient):
         """
 
         now = monotonic()
-        self.post_command('set_headline', {'name': name, 'level': level, 'message': message, 'created_time': now, 'now_time': now})
+        self.post_command(
+            'set_headline',
+            {'name': name, 'level': level, 'message': message, 'created_time': now, 'now_time': now}
+        )
 
     def post_state(self, name, state):
         """Asynchronously try to update the state for a service.
@@ -309,7 +313,7 @@ class ServiceStatusClient(ValidatingWSClient):
         Args:
             name (str): The short name of the service to send the RPC to
             rpc_id (int): The id of the RPC we want to call
-            payloay (bytes): Any bianry arguments that we want to send
+            payload (bytes): Any binary arguments that we want to send
             timeout (float): The number of seconds to wait for the RPC to finish
                 before timing out and returning
 
@@ -323,7 +327,10 @@ class ServiceStatusClient(ValidatingWSClient):
         # We need to acquire the RPC lock so that we cannot get the response callback
         # before we have queued the in progress
         with self._rpc_lock:
-            resp = self.send_command('send_rpc', {'name': name, 'rpc_id': rpc_id, 'payload': payload, 'timeout': timeout})
+            resp = self.send_command(
+                'send_rpc',
+                {'name': name, 'rpc_id': rpc_id, 'payload': payload, 'timeout': timeout}
+            )
             result = resp['payload']['result']
 
             if result == 'service_not_found':
@@ -387,7 +394,6 @@ class ServiceStatusClient(ValidatingWSClient):
         info = update['payload']
         new_number = info['new_status']
         name = update['name']
-        is_changed = False
 
         with self._state_lock:
             if name not in self.services:
@@ -487,7 +493,8 @@ class ServiceStatusClient(ValidatingWSClient):
         args = payload['payload']
 
         if self._rpc_dispatcher is None or not self._rpc_dispatcher.has_rpc(rpc_id):
-            self.post_command('rpc_response', {'response_uuid': tag, 'result': 'rpc_not_found', 'response': b''})  # Fixme: include proper things here
+            # Fixme: include proper things here
+            self.post_command('rpc_response', {'response_uuid': tag, 'result': 'rpc_not_found', 'response': b''})
             return
 
         try:
@@ -498,6 +505,6 @@ class ServiceStatusClient(ValidatingWSClient):
             self.post_command('rpc_response', {'response_uuid': tag, 'result': 'invalid_arguments', 'response': b''})
         except RPCInvalidReturnValueError:
             self.post_command('rpc_response', {'response_uuid': tag, 'result': 'invalid_response', 'response': b''})
-        except Exception, exc:
+        except Exception:
             self.logger.exception("Exception handling RPC 0x%X", rpc_id)
             self.post_command('rpc_response', {'response_uuid': tag, 'result': 'execution_exception', 'response': b''})

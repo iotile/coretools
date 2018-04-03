@@ -1,6 +1,7 @@
 """An adapter class that takes a DeviceAdapter and produces a CMDStream compatible interface
 """
 
+from builtins import str
 from future.utils import viewitems
 from copy import deepcopy
 import queue
@@ -201,7 +202,9 @@ class AdapterCMDStream(CMDStream):
         return status, payload
 
     def _send_highspeed(self, data, progress_callback):
-        self.adapter.send_script_sync(0, str(data), progress_callback)
+        if isinstance(data, str):
+            data = data.encode('utf-8')
+        self.adapter.send_script_sync(0, data, progress_callback)
 
     def _enable_streaming(self):
         self._reports = queue.Queue()

@@ -110,12 +110,12 @@ class VirtualIOTileInterface(object):
         if self.device is not None:
             self.device.stop()
 
-    def _audit(self, event, **args):
+    def _audit(self, event, **kwargs):
         """Log an audit event with the given message and parameters.
 
         Args:
             event (string): The event type that we are logging
-            **args (dict): All required and any desired optional parameters associated
+            **kwargs: All required and any desired optional parameters associated
                 with the audit event
         """
 
@@ -124,8 +124,8 @@ class VirtualIOTileInterface(object):
 
         audit_evt = getattr(audit, event)
 
-        if len(args) > 0:
-            self.audit_logger.info(audit_evt.message, args, extra={'event_name': audit_evt.name})
+        if len(kwargs) > 0:
+            self.audit_logger.info(audit_evt.message, kwargs, extra={'event_name': audit_evt.name})
         else:
             self.audit_logger.info(audit_evt.message, extra={'event_name': audit_evt.name})
 

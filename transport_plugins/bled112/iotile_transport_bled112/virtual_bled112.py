@@ -80,7 +80,6 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
 
         self.connected = False
         self._connection_handle = 0
-        self._device = None
 
         # Initialize state
         self.payload_notif = False
@@ -99,7 +98,7 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
 
         try:
             self.initialize_system_sync()
-        except:
+        except Exception:
             self.stop_sync()
             raise
 
@@ -168,7 +167,7 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         # bit 0: whether we have pending data
         # bit 1: whether we are in a low voltage state
         # bit 2: whether another user is connected
-        # bit 3: whether we supoprt robust reports
+        # bit 3: whether we support robust reports
         # bit 4: whether we allow fast writes
 
         flags = (0 << 1) | (0 << 2) | (1 << 3) | (1 << 4) | (int(self.device.pending_data))
@@ -365,7 +364,7 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
 
         try:
             self._command_task.sync_command(['_send_notification', handle, payload])
-        except HardwareError, exc:
+        except HardwareError as exc:
             code = exc.params['return_value'].get('code', 0)
 
             # If we're told we ran out of memory, wait and try again
@@ -416,7 +415,7 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         try:
             self._send_notification(self.StreamingHandle, chunk)
             self._defer(self._stream_data)
-        except HardwareError, exc:
+        except HardwareError as exc:
             retval = exc.params['return_value']
 
             # If we're told we ran out of memory, wait and try again
@@ -451,7 +450,7 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         try:
             self._send_notification(self.TracingHandle, chunk)
             self._defer(self._send_trace)
-        except HardwareError, exc:
+        except HardwareError as exc:
             retval = exc.params['return_value']
 
             # If we're told we ran out of memory, wait and try again

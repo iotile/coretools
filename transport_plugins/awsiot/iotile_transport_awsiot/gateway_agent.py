@@ -183,7 +183,7 @@ class AWSIOTGatewayAgent(object):
             parts = topic.split('/')
             slug = parts[-3]
             uuid = self._extract_device_uuid(slug)
-        except Exception, exc:
+        except Exception as exc:
             self._logger.warn("Error parsing slug in action handler (slug=%s, topic=%s)", slug, topic)
             return
 
@@ -283,7 +283,7 @@ class AWSIOTGatewayAgent(object):
 
         try:
             resp = yield self._manager.send_rpc(conn_id, address, rpc >> 8, rpc & 0xFF, str(payload), timeout)
-        except Exception, exc:
+        except Exception as exc:
             self._logger.error("Error in manager send rpc: %s" % str(exc))
             resp = {'success': False, 'reason': "Internal error: %s" % str(exc)}
 
@@ -340,12 +340,11 @@ class AWSIOTGatewayAgent(object):
             resp = yield self._manager.send_script(conn_id, conn_data['script'], lambda x, y: self._notify_progress_async(uuid, client, x, y))
             yield None # Make sure we give time for any progress notifications that may have been queued to flush out
             conn_data['script'] = bytes()
-        except Exception, exc:
+        except Exception as exc:
             self._logger.exception("Error in manager send_script")
             resp = {'success': False, 'reason': "Internal error: %s" % str(exc)}
 
-        payload = {'client': client, 'type': 'response', 'operation': 'send_script'}
-        payload['success'] = resp['success']
+        payload = {'client': client, 'type': 'response', 'operation': 'send_script', 'success': resp['success']}
         if resp['success'] is False:
             payload['failure_reason'] = resp['reason']
 

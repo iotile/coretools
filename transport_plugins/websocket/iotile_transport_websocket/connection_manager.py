@@ -3,6 +3,7 @@ import queue
 import logging
 from monotonic import monotonic
 from past.builtins import basestring
+from builtins import int
 from future.utils import iteritems
 from iotile.core.exceptions import ArgumentError
 
@@ -161,7 +162,7 @@ class ConnectionManager(threading.Thread):
 
         Args:
             conn_or_int_id (int, string): The external integer connection id or
-                and internal string connection id
+                an internal string connection id
 
         Returns:
             dict: The context data associated with that connection or None if it cannot
@@ -175,7 +176,7 @@ class ConnectionManager(threading.Thread):
         key = conn_or_int_id
         if isinstance(key, basestring):
             table = self._int_connections
-        elif isinstance(key, (int, long)):
+        elif isinstance(key, int):
             table = self._connections
         else:
             raise ArgumentError(
@@ -195,7 +196,7 @@ class ConnectionManager(threading.Thread):
 
         Args:
             conn_or_int_id (int, string): The external integer connection id or
-                and internal string connection id
+                an internal string connection id
 
         Returns:
             int: The connection id associated with that connection
@@ -208,7 +209,7 @@ class ConnectionManager(threading.Thread):
         key = conn_or_int_id
         if isinstance(key, basestring):
             table = self._int_connections
-        elif isinstance(key, (int, long)):
+        elif isinstance(key, int):
             table = self._connections
         else:
             raise ArgumentError(
@@ -238,7 +239,7 @@ class ConnectionManager(threading.Thread):
         key = conn_or_int_id
         if isinstance(key, basestring):
             table = self._int_connections
-        elif isinstance(key, (int, long)):
+        elif isinstance(key, int):
             table = self._connections
         else:
             return None
@@ -263,7 +264,7 @@ class ConnectionManager(threading.Thread):
         key = conn_or_int_id
         if isinstance(key, basestring):
             table = self._int_connections
-        elif isinstance(key, (int, long)):
+        elif isinstance(key, int):
             table = self._connections
         else:
             raise ArgumentError(
@@ -332,7 +333,7 @@ class ConnectionManager(threading.Thread):
         data = {
             'id': conn_or_internal_id,
             'success': successful,
-            'reason': failure_reason
+            'failure_reason': failure_reason
         }
 
         action = ConnectionAction('finish_connection', data, sync=False)
@@ -352,7 +353,6 @@ class ConnectionManager(threading.Thread):
 
         # Make sure we are not reusing an id that is currently connected to something
         if self._get_connection_state(conn_id) != self.Disconnected:
-            print(self._connections[conn_id])
             callback(conn_id, self.id, False, 'Connection ID is already in use for another connection')
             return
 
@@ -384,7 +384,7 @@ class ConnectionManager(threading.Thread):
         conn_key = action.data['id']
 
         if self._get_connection_state(conn_key) != self.Connecting:
-            print(
+            self._logger.error(
                 "Invalid finish_connection action on a connection whose state is not Connecting, conn_key={}"
                 .format(str(conn_key))
             )
@@ -399,17 +399,17 @@ class ConnectionManager(threading.Thread):
         callback = last_action.data['callback']
 
         if success is False:
-            reason = action.data['reason']
-            if reason is None:
-                reason = "No reason was given"
+            failure_reason = action.data['failure_reason']
+            if failure_reason is None:
+                failure_reason = "No reason was given"
 
             del self._connections[conn_id]
             del self._int_connections[int_id]
-            callback(conn_id, self.id, False, reason)
+            callback(conn_id, self.id, False, failure_reason)
         else:
             data['state'] = self.Idle
             data['microstate'] = None
-            data['action'] = None
+            del data['action']
             callback(conn_id, self.id, True, None)
 
     def unexpected_disconnect(self, conn_or_internal_id):
@@ -463,17 +463,16 @@ class ConnectionManager(threading.Thread):
             return
 
         data = self._get_connection(conn_key)
-        last_action = data['action']
 
         # If there are any operations in progress, cancel them cleanly
         if data['state'] == self.Connecting:
-            callback = last_action.data['callback']
+            callback = data['action'].data['callback']
             callback(False, 'Unexpected disconnection')
         elif data['state'] == self.Disconnecting:
-            callback = last_action.data['callback']
+            callback = data['action'].data['callback']
             callback(True, None)
         elif data['state'] == self.InProgress:
-            callback = last_action.data['callback']
+            callback = data['action'].data['callback']
             if data['microstate'] == 'rpc':
                 callback(False, 'Unexpected disconnection', None, None)
             elif data['microstate'] == 'open_interface':
@@ -521,7 +520,7 @@ class ConnectionManager(threading.Thread):
         data = {
             'id': conn_or_internal_id,
             'success': successful,
-            'reason': failure_reason
+            'failure_reason': failure_reason
         }
 
         action = ConnectionAction('finish_disconnection', data, sync=False)
@@ -558,14 +557,14 @@ class ConnectionManager(threading.Thread):
         callback = last_action.data['callback']
 
         if success is False:
-            reason = action.data['reason']
-            if reason is None:
-                reason = "No reason was given"
+            failure_reason = action.data['failure_reason']
+            if failure_reason is None:
+                failure_reason = "No reason was given"
 
             data['state'] = self.Idle
             data['microstate'] = None
-            data['action'] = None
-            callback(conn_id, self.id, False, reason)
+            del data['action']
+            callback(conn_id, self.id, False, failure_reason)
         else:
             del self._connections[conn_id]
             del self._int_connections[int_id]
@@ -661,6 +660,6 @@ class ConnectionManager(threading.Thread):
 
         data['state'] = self.Idle
         data['microstate'] = None
-        data['action'] = None
+        del data['action']
 
         callback(conn_id, self.id, success, *args)

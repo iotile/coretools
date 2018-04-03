@@ -58,11 +58,16 @@ class ValidatingWSClient(WebSocketClient):
 
         self.disconnection_code = None
         self.disconnection_reason = None
+        self.disconnection_callback = None
 
         self.logger = logging.getLogger(logger_name)
         self.logger.addHandler(logging.NullHandler())
 
         self.validators = [(ResponseSchema, self._on_response_received)]
+
+    @property
+    def connected(self):
+        return self._connected.is_set()
 
     def add_message_type(self, validator, callback):
         """Add a message type that should trigger a callback.
@@ -105,7 +110,7 @@ class ValidatingWSClient(WebSocketClient):
                 connection to be established. Defaults to 5 seconds
         """
 
-        if not self._connected.is_set():
+        if not self.connected:
             return
 
         try:
@@ -116,6 +121,7 @@ class ValidatingWSClient(WebSocketClient):
         flag = self._disconnection_finished.wait(timeout=timeout)
         if not flag:
             raise TimeoutExpiredError("Disconnection attempt from host timed out")
+        self._disconnection_finished.clear()
 
     def send_message(self, obj):
         """Send a packed message.
@@ -124,7 +130,7 @@ class ValidatingWSClient(WebSocketClient):
             obj (dict): The message to be sent
         """
 
-        packed = msgpack.packb(obj)
+        packed = msgpack.packb(obj, use_bin_type=True)
         self.send(packed, binary=True)
 
     def send_command(self, command, args, timeout=10.0):
@@ -203,10 +209,13 @@ class ValidatingWSClient(WebSocketClient):
         self._disconnection_finished.set()
         self._connected.clear()
 
+        if self.disconnection_callback is not None:
+            self.disconnection_callback()
+
     def _unpack(self, msg):
         """Unpack a binary msgpacked message."""
 
-        return msgpack.unpackb(msg, object_hook=self.decode_datetime)
+        return msgpack.unpackb(msg, raw=False, object_hook=self.decode_datetime)
 
     @classmethod
     def decode_datetime(cls, obj):
@@ -250,8 +259,10 @@ class ValidatingWSClient(WebSocketClient):
                 return
             except IOTileException as exc:
                 self.logger.error("Exception handling websocket message, exception = %s", str(exc))
+                return
             except Exception as exc:
                 self.logger.error("Non-IOTile exception handling websocket message, exception = %s", str(exc))
+                return
 
         self.logger.warn("No handler found for received message, message=%s", str(unpacked))
 

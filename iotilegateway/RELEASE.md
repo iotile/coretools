@@ -2,6 +2,15 @@
 
 All major changes in each released version of IOTileGateway are listed here.
 
+## 1.6.0
+
+- Add probe_async function in DeviceManager to probe all adapters, in order to
+refresh the devices list.
+- Make IOTileGateway running one tornado loop per thread (to allow multiple gateway
+instances)
+- Remove casting RPC returned payload to str
+- Improve compatibility with Python3
+
 ## 1.5.3
 
 - Rerelease of 1.5.2 with < 5.0.0 version spec instead of <= 5.0.0 in setup.py
