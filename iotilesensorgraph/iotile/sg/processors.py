@@ -133,7 +133,7 @@ def trigger_streamer(*inputs, **kwargs):
     return [IOTileReading(0, 0, 0)]
 
 
-def subtract_a_from_b(*inputs, **kwargs):
+def subtract_afromb(*inputs, **kwargs):
     """Subtract stream a from stream b.
 
     Returns:

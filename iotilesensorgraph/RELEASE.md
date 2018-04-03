@@ -2,6 +2,10 @@
 
 All major changes in each released version of iotile-sensorgraph are listed here.
 
+## 0.6.4
+
+- subtract_a_from_b Node now fixed to subtract_afromb
+
 ## 0.6.3
 
 - Move SetDeviceTagRecord into iotile-core since it is used in iotile-build now.
