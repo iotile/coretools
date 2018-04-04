@@ -55,7 +55,7 @@ def join_path(path):
     return os.path.join(*path)
 
 def build_defines(defines):
-    return ['-D%s=%s' % (x,str(y)) for x,y in defines.iteritems()]
+    return ['-D"%s=%s"' % (x,str(y)) for x,y in defines.iteritems()]
 
 def get_family(modulefile):
     return build.ArchitectureGroup(modulefile)
