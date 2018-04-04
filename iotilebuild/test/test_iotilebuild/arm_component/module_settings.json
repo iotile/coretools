@@ -32,8 +32,11 @@
 			"asflags": ["-Wall"],
 			"ldflags": ["-mthumb", "-Xlinker", "--gc-sections", "--specs=nano.specs", "-lc", "-lnosys", "-nostartfiles"],
 			"cpu": "cortex-m0plus",
-
-			"chip": "lpc824"
+			"chip": "lpc824",
+			"defines":
+			{
+				"kTestDefine": "(64*1024)"
+			}
 		}
 	}
 }
