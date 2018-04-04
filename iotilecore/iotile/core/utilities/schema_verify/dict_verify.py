@@ -1,3 +1,4 @@
+import re
 from .verifier import Verifier
 from iotile.core.exceptions import ValidationError
 
@@ -7,14 +8,17 @@ class DictionaryVerifier(Verifier):
 
     Args:
         desc (string): A description of what this dictionary should contain
+        fixed_length (int): An optional restriction on exactly how many keys
+            can be included in the dict.
     """
 
-    def __init__(self, desc=None):
+    def __init__(self, desc=None, fixed_length=None):
         super(DictionaryVerifier, self).__init__(desc)
 
         self._required_keys = {}
         self._optional_keys = {}
         self._additional_key_rules = []
+        self._fixed_length = fixed_length
 
     def add_required(self, key, verifier):
         """Add a required key by name
@@ -36,6 +40,28 @@ class DictionaryVerifier(Verifier):
 
         self._optional_keys[key] = verifier
 
+    def key_rule(self, regex, verifier):
+        """Add a rule with a pattern that should apply to all keys.
+
+        Any key not explicitly listed in an add_required or add_optional rule
+        must match ONE OF the rules given in a call to key_rule().
+        So these rules are all OR'ed together.
+
+        In this case you should pass a raw string specifying a regex that is
+        used to determine if the rule is used to check a given key.
+
+
+        Args:
+            regex (str): The regular expression used to match the rule or None
+                if this should apply to all
+            verifier (Verifier): The verification rule
+        """
+
+        if regex is not None:
+            regex = re.compile(regex)
+
+        self._additional_key_rules.append((regex, verifier))
+
     def verify(self, obj):
         """Verify that the object conforms to this verifier's schema
 
@@ -52,6 +78,9 @@ class DictionaryVerifier(Verifier):
 
         if not isinstance(obj, dict):
             raise ValidationError("Invalid dictionary", reason="object is not a dictionary")
+
+        if self._fixed_length is not None and len(obj) != self._fixed_length:
+            raise ValidationError("Dictionary did not have the correct length", expected_length=self._fixed_length, actual_length=self._fixed_length)
 
         unmatched_keys = set(obj.keys())
         required_keys = set(self._required_keys.keys())
@@ -82,9 +111,9 @@ class DictionaryVerifier(Verifier):
 
             to_remove = set()
             for key in unmatched_keys:
-                for rule in self._additional_key_rules:
-                    if rule[0].matches(key):
-                        out_obj[key] = rule[1].verify(obj[key])
+                for key_match, rule in self._additional_key_rules:
+                    if key_match is None or key_match.matches(key):
+                        out_obj[key] = rule.verify(obj[key])
                         to_remove.add(key)
                         break
 
