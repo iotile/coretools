@@ -1,0 +1,16 @@
+name: "test_check_cloud_outputs"
+description: "recipe to test check cloud outputs"
+idempotent: True
+resources:
+  - name: hardware
+    type: hardware_manager
+    autocreate: True
+    arg1: a
+
+actions:
+  - description:      "Check Cloud Outputs"
+    name:             "SyncCloudStep"
+
+    use:              ["hardware as hw"]
+    open_before:      ["hardware"]
+    close_after:      ["hardware"]

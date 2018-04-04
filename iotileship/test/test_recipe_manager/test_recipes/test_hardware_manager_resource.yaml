@@ -1,0 +1,13 @@
+name: "test_hardware_manager_resource"
+description: "recipe to test the hardware manager resource"
+idempotent: True
+resources:
+  - name: hardware
+    type: hardware_manager
+    autocreate: True
+    port: "virtual:simple"
+    connect: 0x1
+
+actions:
+  - name: "WaitStep"
+    seconds: 0

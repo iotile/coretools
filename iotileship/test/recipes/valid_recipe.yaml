@@ -1,16 +1,6 @@
 name: "test_check_cloud_outputs"
 description: "recipe to test check cloud outputs"
 idempotent: True
-resources:
-  - name: hw
-    type: hardware_manager
-    port: ${port}
-    connect: ${uuid}
-    autocreate: true
-
-defaults:
-  - port: bled112
-
 actions:
   - description:      "Check Cloud Outputs"
     name:             "SyncCloudStep"
@@ -19,12 +9,7 @@ actions:
     sensorgraph:      "sg"
     expected_app_tag: 0
     expected_os_tag:  0
-    unclaim:          ${port}
-
-    # Resource Usage
-    uses: [hw]
-    open_before: [hw]
-    close_after: [hw]
+    unclaim:          True
 
   - description:      "Check Cloud Outputs Minimal"
     name:             "SyncCloudStep"

@@ -64,7 +64,7 @@ def test_config(exitcode):
     """Make sure we can get the info of a recipe."""
 
     recipe      = os.path.join(os.path.dirname(__file__), 'test_recipes', 'test_snippet.yaml')
-    config_file = os.path.join(os.path.dirname(__file__), 'test_recipes', 'config.yaml')
+    config_file = os.path.join(os.path.dirname(__file__), 'data', 'config.yaml')
 
     start_time  = time.time()
     retval      = main([recipe, "--config", config_file])

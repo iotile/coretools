@@ -1,6 +1,6 @@
 """Command line script to load and run a sensor graph."""
 from __future__ import (unicode_literals, absolute_import, print_function)
-from builtins import str
+from builtins import str, range
 import os
 import shutil
 import sys
@@ -66,7 +66,7 @@ def main(argv=None):
         start, _, end = uuid_range.partition('-')
         start = int(start, 16)
         end = int(end, 16)
-        devices.extend(xrange(start, end+1))
+        devices.extend(range(start, end+1))
 
     #Creating temporary directory for intermediate files
     temp_dir = os.path.join(os.path.dirname(args.recipe), 'temp')
@@ -85,7 +85,7 @@ def main(argv=None):
     try:
         for dev in devices:
             variables['UUID'] = dev
-            for i in xrange(0, args.max_attempts):
+            for i in range(0, args.max_attempts):
                 try:
                     recipe.run(variables)
                     success.append(dev)

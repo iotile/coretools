@@ -37,9 +37,12 @@ class PipeSnippetStep(object):
 
     def run(self):
         process = Popen(shlex.split(self._context), stdout=PIPE, stdin=PIPE, stderr=STDOUT)
-        out, err = process.communicate(input='\n'.join(self._commands))
+        out, err = process.communicate(input='\n'.join(self._commands).encode('utf-8'))
         if err is not None:
             raise ArgumentError("Output Errored", errors=err, commands=self._commands)
+
+        out = out.decode('utf-8')
+
         #Split outputs and remove context strings
         outputs = [section.split(') ')[-1].strip() for section in out.split('\n(')]
         return_strings = []

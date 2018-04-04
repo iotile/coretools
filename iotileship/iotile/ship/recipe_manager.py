@@ -1,7 +1,5 @@
 from __future__ import (unicode_literals, print_function, absolute_import)
-from builtins import str
-
-import glob
+import os
 import pkg_resources
 from iotile.ship.recipe import RecipeObject
 from iotile.ship.exceptions import RecipeNotFoundError
@@ -24,11 +22,16 @@ class RecipeManager(object):
     def __init__(self):
 
         self._recipe_actions = {}
+        self._recipe_resources = {}
         self._recipes = {}
 
         for entry in pkg_resources.iter_entry_points('iotile.recipe_action'):
             action = entry.load()
             self._recipe_actions[entry.name] = action
+
+        for entry in pkg_resources.iter_entry_points('iotile.recipe_resource'):
+            resource = entry.load()
+            self._recipe_resources[entry.name] = resource
 
     def is_valid_action(self, name):
         """Check if a name describes a valid action.
@@ -61,12 +64,12 @@ class RecipeManager(object):
             recipe_folder (str): The path to the folder of recipes to add.
         """
 
-        for yaml_file in glob.glob("%s/*.yaml" % recipe_folder):
+        for yaml_file in [os.path.join(recipe_folder, x) for x in os.listdir(path=recipe_folder) if x.endswith('.yaml')]:
             try:
-                recipe = RecipeObject.FromFile(yaml_file, self._recipe_actions)
+                recipe = RecipeObject.FromFile(yaml_file, self._recipe_actions, self._recipe_resources)
                 self._recipes[recipe.name] = recipe
-            except:
-                pass
+            except Exception as exc:
+                raise #print(str(exc))
 
     def get_recipe(self, recipe_name):
         """Get a recipe by name.
@@ -76,10 +79,10 @@ class RecipeManager(object):
                 yaml file name or the name of the recipe.
         """
         if recipe_name.endswith('.yaml'):
-            recipe = self._recipes.get(RecipeObject.FromFile(recipe_name, self._recipe_actions).name)
+            recipe = self._recipes.get(RecipeObject.FromFile(recipe_name, self._recipe_actions, self._recipe_resources).name)
         else:
             recipe = self._recipes.get(recipe_name)
         if recipe is None:
-            raise RecipeNotFoundError("Could not find recipe", recipe_name=recipe_name)
+            raise RecipeNotFoundError("Could not find recipe", recipe_name=recipe_name, known_recipes=[x for x in self._recipes.keys()])
 
         return recipe
