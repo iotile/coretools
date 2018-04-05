@@ -25,4 +25,6 @@ class ReferenceDevice(VirtualIOTileDevice):
 
         super(ReferenceDevice, self).__init__(iotile_id, 'refcn1')
 
-        self.add_tile(8, ReferenceController(8, {'name':'refcn1'}, device=self))
+        self.controller = ReferenceController(8, {'name':'refcn1'}, device=self)
+        self.add_tile(8, self.controller)
+        self.reset_count = 0

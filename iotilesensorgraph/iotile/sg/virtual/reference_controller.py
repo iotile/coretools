@@ -143,6 +143,13 @@ class ReferenceController(VirtualTile):
         combined_tag = (version_number << 20) | tag
         return combined_tag
 
+    @tile_rpc(1, "", "")
+    def reset(self):
+        """Reset the device."""
+
+        self._device.reset_count += 1
+        return []
+
     @tile_rpc(0x1008, "", "L8xLL")
     def controller_info(self):
         """Get the controller UUID, app tag and os tag."""

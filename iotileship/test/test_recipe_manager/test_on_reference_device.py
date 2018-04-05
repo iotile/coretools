@@ -47,4 +47,5 @@ def test_ota_script(recipe_fixture):
 
     recipe, hw, device = recipe_fixture
 
-    assert device.script is None
+    assert device.controller.script_error is None
+    assert len(device.controller.parsed_script.records) == 2

@@ -134,7 +134,7 @@ class DeviceUpdater(IOTileApp):
             print("The device is currently running a script, you must wait for it to finish.")
             return
 
-        self.run_script(script.encode())
+        self.run_script(script)
 
     def run_script(self, script, force=False, no_reboot=False):
         """Run a script on the connected IOTile device.
@@ -160,6 +160,8 @@ class DeviceUpdater(IOTileApp):
                 after running the script.
         """
 
+        raw_data = script.encode()
+
         status, _err = self._query_status()
         if status == self.ReceivedScript and force:
             self._reset_script()
@@ -172,7 +174,7 @@ class DeviceUpdater(IOTileApp):
 
         progress.start()
         try:
-            self.push_script(script, progress)
+            self.push_script(raw_data, progress)
         finally:
             progress.end()
 
