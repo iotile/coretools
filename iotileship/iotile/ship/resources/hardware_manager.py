@@ -32,7 +32,7 @@ class HardwareManagerResource(SharedResource):
 
         self._port = args.get('port')
         self._connect_id = args.get('connect')
-        self._hwmanager = None
+        self.hwman = None
 
         if not isinstance(self._connect_id, int):
             self._connect_id = int(self._connect_id, 0)
@@ -40,18 +40,18 @@ class HardwareManagerResource(SharedResource):
     def open(self):
         """Open and potentially connect to a device."""
 
-        self._hwmanager = HardwareManager(port=self._port)
+        self.hwman = HardwareManager(port=self._port)
         self.opened = True
 
         if self._connect_id is not None:
-            self._hwmanager.connect(self._connect_id)
+            self.hwman.connect(self._connect_id)
 
 
     def close(self):
         """Close and potentially disconnect from a device."""
 
-        if self._hwmanager.stream.connected:
-            self._hwmanager.disconnect()
+        if self.hwman.stream.connected:
+            self.hwman.disconnect()
 
-        self._hwmanager.close()
+        self.hwman.close()
         self.opened = False

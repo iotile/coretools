@@ -4,8 +4,7 @@ from collections import namedtuple
 from string import Template
 import re
 import sys
-import traceback
-from future.utils import viewitems, viewvalues
+from future.utils import viewitems, viewvalues, raise_
 from past.builtins import basestring
 from iotile.core.exceptions import ArgumentError, ValidationError
 from .exceptions import RecipeFileInvalid, UnknownRecipeActionType, RecipeVariableNotPassed, UnknownRecipeResourceType, RecipeResourceManagementError
@@ -109,29 +108,32 @@ class RecipeObject(object):
         description = recipe_info.get('description')
 
         # Parse out global default and shared resource information
-        resources = cls._parse_resource_declarations(recipe_info.get('resources', []), resources_dict)
-        defaults = cls._parse_variable_defaults(recipe_info.get("defaults", []))
+        try:
+            resources = cls._parse_resource_declarations(recipe_info.get('resources', []), resources_dict)
+            defaults = cls._parse_variable_defaults(recipe_info.get("defaults", []))
 
-        steps = []
-        for i, action in enumerate(recipe_info.get('actions', [])):
-            action_name = action.pop('name')
-            if action_name is None:
-                raise RecipeFileInvalid("Action is missing required name parameter", \
-                    parameters=action, path=path)
+            steps = []
+            for i, action in enumerate(recipe_info.get('actions', [])):
+                action_name = action.pop('name')
+                if action_name is None:
+                    raise RecipeFileInvalid("Action is missing required name parameter", \
+                        parameters=action, path=path)
 
-            action_class = actions_dict.get(action_name)
-            if action_class is None:
-                raise UnknownRecipeActionType("Unknown step specified in recipe", \
-                    action=action_name, step=i + 1, path=path)
+                action_class = actions_dict.get(action_name)
+                if action_class is None:
+                    raise UnknownRecipeActionType("Unknown step specified in recipe", \
+                        action=action_name, step=i + 1, path=path)
 
-            # Parse out any resource usage in this step and make sure we only
-            # use named resources
-            step_resources = cls._parse_resource_usage(action, declarations=resources)
+                # Parse out any resource usage in this step and make sure we only
+                # use named resources
+                step_resources = cls._parse_resource_usage(action, declarations=resources)
 
-            step = RecipeStep(action_class, action, step_resources)
-            steps.append(step)
+                step = RecipeStep(action_class, action, step_resources)
+                steps.append(step)
 
-        return RecipeObject(name, description, steps, resources, defaults)
+            return RecipeObject(name, description, steps, resources, defaults)
+        except RecipeFileInvalid as exc:
+            raise_(RecipeFileInvalid, RecipeFileInvalid(exc.msg, recipe=name, **exc.params), sys.exc_info()[2])
 
     @classmethod
     def _parse_resource_declarations(cls, declarations, resource_map):
@@ -249,24 +251,32 @@ class RecipeObject(object):
             initializedsteps.append(step(new_params))
         return initializedsteps
 
-    def _prepare_resources(self, variables):
+    def _prepare_resources(self, variables, overrides=None):
         """Create and optionally open all shared resources."""
 
+        if overrides is None:
+            overrides = {}
+
         res_map = {}
+        own_map = {}
 
         for decl in viewvalues(self.resources):
-            args = _complete_parameters(decl.args, variables)
-            resource = decl.type(args)
+            resource = overrides.get(decl.name)
+
+            if resource is None:
+                args = _complete_parameters(decl.args, variables)
+                resource = decl.type(args)
+                own_map[decl.name] = resource
 
             if decl.autocreate:
                 resource.open()
 
             res_map[decl.name] = resource
 
-        return res_map
+        return res_map, own_map
 
     def _cleanup_resources(self, initialized_resources):
-        """Cleanup all resources that are open."""
+        """Cleanup all resources that we own that are open."""
 
         cleanup_errors = []
 
@@ -283,14 +293,31 @@ class RecipeObject(object):
         if len(cleanup_errors) > 0:
             raise RecipeResourceManagementError(operation="resource cleanup", errors=cleanup_errors)
 
-    def run(self, variables=None):
-        """Initialize and run this recipe."""
+    def run(self, variables=None, overrides=None):
+        """Initialize and run this recipe.
+
+        By default all necessary shared resources are created and destroyed in
+        this function unless you pass them preinitizlied in overrides, in
+        which case they are used as is.  The overrides parameter is designed
+        to allow testability of iotile-ship recipes by inspecting the shared
+        resources after the recipe has finished to ensure that it was properly
+        set up.
+
+        Args:
+            variables (dict): An optional dictionary of variable assignments.
+                There must be a single assignment for all free variables that
+                do not have a default value, otherwise the recipe will not
+                run.
+            overrides (dict): An optional dictionary of shared resource
+                objects that should be used instead of creating that resource
+                and destroying it inside this function.
+        """
 
         initialized_steps = self.prepare(variables)
+        owned_resources = {}
 
         try:
-            initialized_resources = {}
-            initialized_resources = self._prepare_resources(variables)
+            initialized_resources, owned_resources = self._prepare_resources(variables, overrides)
 
             for i, (step, decl) in enumerate(zip(initialized_steps, self.steps)):
                 print("===> Step %d: %s\t Description: %s" % (i+1, self.steps[i][0].__name__, \
@@ -302,7 +329,7 @@ class RecipeObject(object):
                 if out is not None:
                     print(out[1])
         finally:
-            self._cleanup_resources(initialized_resources)
+            self._cleanup_resources(owned_resources)
 
     def __str__(self):
         output_string = "========================================\n"

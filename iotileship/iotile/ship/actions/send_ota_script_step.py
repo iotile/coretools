@@ -14,7 +14,9 @@ class SendOTAScriptStep(object):
             that we can use to send our ota script down to a device.
 
     Args:
-        file (str): The path to the target ota file that should be sent
+        file (str): The path to the target ota file that should be sent.  If
+            a relative path is given, it is taken as relative to the current
+            working directory.
         no_reboot (bool): Optional argument to not reboot the device
             after the OTA script has been run.  Normal behavior is to
             reboot after OTA.
@@ -23,10 +25,9 @@ class SendOTAScriptStep(object):
     REQUIRED_RESOURCES = [('connection', 'hardware_manager')]
 
     def __init__(self, args):
-        if 'uuid' not in args or 'file' not in args:
-            raise ArgumentError("SendOTAScriptStep required parameters missing", required=["uuid", "file"], args=args)
+        if 'file' not in args:
+            raise ArgumentError("SendOTAScriptStep required parameters missing", required=["file"], args=args)
 
-        self._uuid = args['uuid']
         self._file = args['file']
         self._no_reboot = args.get('no_reboot', False)
 
@@ -44,5 +45,5 @@ class SendOTAScriptStep(object):
 
         hwman = resources['connection']
 
-        updater = hwman.app(name='device_updater')
-        updater.run_script(self._script)
+        updater = hwman.hwman.app(name='device_updater')
+        updater.run_script(self._script, no_reboot=self._no_reboot)
