@@ -2,6 +2,10 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
+## HEAD
+
+- Add bled112-v1-6-0-virtual.hex into blob.
+
 ## 1.5.2
 
 - Clean code and improve compatibility with Python3
