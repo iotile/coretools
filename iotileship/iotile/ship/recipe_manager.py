@@ -64,7 +64,7 @@ class RecipeManager(object):
             recipe_folder (str): The path to the folder of recipes to add.
         """
 
-        for yaml_file in [os.path.join(recipe_folder, x) for x in os.listdir(path=recipe_folder) if x.endswith('.yaml')]:
+        for yaml_file in [os.path.join(recipe_folder, x) for x in os.listdir(recipe_folder) if x.endswith('.yaml')]:
             try:
                 recipe = RecipeObject.FromFile(yaml_file, self._recipe_actions, self._recipe_resources)
                 self._recipes[recipe.name] = recipe

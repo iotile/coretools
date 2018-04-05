@@ -202,7 +202,7 @@ class AdapterCMDStream(CMDStream):
         return status, payload
 
     def _send_highspeed(self, data, progress_callback):
-        if isinstance(data, str):
+        if isinstance(data, str) and not isinstance(data, bytes):
             raise ArgumentError("You must send bytes or bytearray to _send_highspeed", type=type(data))
 
         self.adapter.send_script_sync(0, data, progress_callback)
