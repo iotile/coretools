@@ -2,7 +2,7 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
-## HEAD
+## 3.22.1
 
 - Update device_updater app to reboot the device by default
 - Update AdapterStream to better detect unicode strings incorrectly passed to

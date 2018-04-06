@@ -2,7 +2,7 @@
 
 All major changes in each released version of IOTileShip are listed here.
 
-## HEAD
+## 0.1.0
 
 - Refactor to allow for shared resources to be used across action steps
 - Improve python 3 compatibility
