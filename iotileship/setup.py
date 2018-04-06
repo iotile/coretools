@@ -40,6 +40,9 @@ setup(
         ],
         'iotile.recipe_resource': [
             'hardware_manager   = iotile.ship.resources:HardwareManagerResource'
+        ],
+        'iotile.autobuild': [
+            'autobuild_shiparchive = iotile.ship.autobuild:autobuild_shiparchive'
         ]
     },
     description="IOTile Ship Support",

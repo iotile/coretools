@@ -282,3 +282,32 @@ def autobuild_bootstrap_file(file_name, image_list):
 
     env.Command(build_output_name, processed_input_images, action=Action(arm.merge_hex_executables, "Merging %d hex files into $TARGET" % len(processed_input_images)))
     env.Command(full_output_name, build_output_name, Copy("$TARGET", "$SOURCE"))
+
+
+def autobuild_template(input_file, output_file, variables=None):
+    """Format a jinja2 template.
+
+    The only variables available to your template are those defined in the
+    variables key passed in to this function.
+
+    Your template must not depend on any other files except for, potentially
+    other build products which are found by looking through the template for
+    things that are fed to the find_product filter.
+
+    If you do pass files through the find_product filter those will
+    automatically be added as input dependencies.
+
+    Args:
+        input_file (str): The path to the input template file
+        output_file (str): The desired output file name in build/output
+        variables (dict): An optional set of replacement variables to use
+    """
+
+    resolver = ProductResolver.Create()
+    family = utilities.get_family('module_settings.json')
+    target = family.platform_independent_target()
+
+    env = Environment(tools=[])
+    env['RESOLVER'] = resolver
+    env["TARGET"] = target
+

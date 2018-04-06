@@ -3,7 +3,9 @@ import time
 from collections import namedtuple
 from string import Template
 import re
+import os
 import sys
+import zipfile
 from future.utils import viewitems, viewvalues, raise_
 from past.builtins import basestring
 from iotile.core.exceptions import ArgumentError, ValidationError
@@ -12,7 +14,7 @@ from .recipe_format import RecipeSchema
 
 ResourceDeclaration = namedtuple("ResourceDeclaration", ["name", "type", "args", "autocreate", "description", "type_name"])
 ResourceUsage = namedtuple("ResourceUsage", ["used", "opened", "closed"])
-RecipeStep = namedtuple("RecipeStep", ["factory", "args", "resources"])
+RecipeStep = namedtuple("RecipeStep", ["factory", "args", "resources", "fixed_files"])
 
 TEMPLATE_REGEX = r"((?<!\$)|(\$\$)+)\$({(?P<long_id>[a-zA-Z_]\w*)}|(?P<short_id>[a-zA-Z_]\w*))"
 
@@ -38,9 +40,11 @@ class RecipeObject(object):
             reused by multiple steps.
         defaults (dict of key to default value): A dictionary of default variable
             values that should be used if not set during a run.
+        path (str): The path to the original yaml file that this recipe was loaded
+            from.
     """
 
-    def __init__(self, name, description=None, steps=None, resources=None, defaults=None):
+    def __init__(self, name, description=None, steps=None, resources=None, defaults=None, path=None):
         if steps is None:
             steps = []
 
@@ -56,11 +60,15 @@ class RecipeObject(object):
         self.description = description
         self.resources = resources
         self.defaults = defaults
+        self.path = path
 
         self.free_variables = set()
+        self.external_files = False
 
-        for _factory, args, _resources in steps:
+        for _factory, args, _resources, files in steps:
             self.free_variables |= _extract_variables(args)
+            if len(files) > 0:
+                self.external_files = True
 
         default_names = set(self.defaults)
         if not default_names <= self.free_variables:
@@ -68,6 +76,38 @@ class RecipeObject(object):
 
         self.required_variables = self.free_variables - default_names
         self.optional_variables = self.free_variables - self.required_variables
+
+    def archive(self, output_path):
+        """Archive this recipe and all associated files into a .ship archive.
+
+        Args:
+            output_path (str): The path where the .ship file should be saved.
+        """
+
+        if self.path is None:
+            raise ArgumentError("Cannot archive a recipe yet without a reference to its original yaml file in self.path")
+
+        basename = os.path.basename(self.path)
+
+        outfile = zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED)
+
+        outfile.write(self.path, arcname=basename)
+
+        written_files = set()
+
+        for _factory, args, _resources, files in self.steps:
+            for arg_name in files:
+                file_path = args[arg_name]
+
+                if file_path in written_files:
+                    continue
+
+                if os.path.basename(file_path) != file_path:
+                    raise ArgumentError("Cannot archive a recipe yet that references file not in the same directory as the recipe")
+
+                full_path = os.path.join(os.path.dirname(self.path), file_path)
+                outfile.write(full_path, arcname=file_path)
+                written_files.add(file_path)
 
     @classmethod
     def FromFile(cls, path, actions_dict, resources_dict, file_format="yaml"):
@@ -127,13 +167,37 @@ class RecipeObject(object):
                 # Parse out any resource usage in this step and make sure we only
                 # use named resources
                 step_resources = cls._parse_resource_usage(action, declarations=resources)
+                fixed_files, _variable_files = cls._parse_file_usage(action_class, action)
 
-                step = RecipeStep(action_class, action, step_resources)
+                step = RecipeStep(action_class, action, step_resources, fixed_files)
                 steps.append(step)
 
-            return RecipeObject(name, description, steps, resources, defaults)
+            return RecipeObject(name, description, steps, resources, defaults, path)
         except RecipeFileInvalid as exc:
             raise_(RecipeFileInvalid, RecipeFileInvalid(exc.msg, recipe=name, **exc.params), sys.exc_info()[2])
+
+    @classmethod
+    def _parse_file_usage(cls, action_class, args):
+        """Find all external files referenced by an action."""
+
+        fixed_files = {}
+        variable_files = []
+
+        if not hasattr(action_class, 'FILES'):
+            return fixed_files, variable_files
+
+        for file_arg in action_class.FILES:
+            arg_value = args.get(file_arg)
+            if arg_value is None:
+                raise RecipeFileInvalid("Action lists a file argument but none was given", declared_argument=file_arg, passed_arguments=args)
+
+            variables = _extract_variables(arg_value)
+            if len(variables) == 0:
+                fixed_files[file_arg] = arg_value
+            else:
+                variable_files.append(arg_value)
+
+        return fixed_files, variable_files
 
     @classmethod
     def _parse_resource_declarations(cls, declarations, resource_map):

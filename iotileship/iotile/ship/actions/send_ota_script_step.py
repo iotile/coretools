@@ -23,6 +23,7 @@ class SendOTAScriptStep(object):
     """
 
     REQUIRED_RESOURCES = [('connection', 'hardware_manager')]
+    FILES = ['file']
 
     def __init__(self, args):
         if 'file' not in args:
