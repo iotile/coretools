@@ -9,6 +9,11 @@ All major changes in each released version of IOTileShip are listed here.
 - Add support for sending a TRUB script as a step.
 - Add support for autodetecting which variables need to be passed and which
   are optional.
+- Improve printing of recipes to include information on required and free
+  variables.
+- Allow creation and use of .ship archives which are recipe files along with
+  all external files they depend on in a single zip that can be distributed and
+  used.
 
 ## 0.0.1
 

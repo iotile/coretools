@@ -104,7 +104,7 @@ def create_shipfile(target, source, env):
     recipe_name = os.path.basename(str(source[0]))[:-5]
 
     resman = RecipeManager()
-    resman.add_recipe_folder(source_dir)
+    resman.add_recipe_folder(source_dir, whitelist=[os.path.basename(str(source[0]))])
     recipe = resman.get_recipe(recipe_name)
 
     recipe.archive(str(target[0]))

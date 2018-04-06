@@ -22,7 +22,7 @@ VariableDefault = DictionaryVerifier(desc="A default value for a variable", fixe
 VariableDefault.key_rule(None, StringVerifier())
 
 RecipeSchema = DictionaryVerifier(desc="A recipe containing a list of actions")
-RecipeSchema.add_required("name", StringVerifier("A unique name for this recipe"))
+RecipeSchema.add_optional("name", StringVerifier("A descriptive name for this recipe"))
 RecipeSchema.add_required("description", StringVerifier("A description of what the recipe does"))
 RecipeSchema.add_optional("idempotent", BooleanVerifier(desc="Whether the recipe can be run multiple times without breaking"))
 RecipeSchema.add_required("actions", ListVerifier(ActionItem.clone(), min_length=1, desc="A list of steps to perform to realize this recipe"))
