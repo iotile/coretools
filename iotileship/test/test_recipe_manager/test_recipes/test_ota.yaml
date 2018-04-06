@@ -10,5 +10,5 @@ resources:
 
 actions:
   - name: "SendOTAScriptStep"
-    file: "test/test_recipe_manager/data/ota_script.trub"
+    file: "../data/ota_script.trub"
     use: [hardware as connection]

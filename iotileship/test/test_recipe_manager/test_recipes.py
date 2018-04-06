@@ -16,9 +16,9 @@ def resman():
 
 
 def test_basic_yaml(resman):
-    recipe = resman.get_recipe('test_basic_yaml')
+    recipe = resman.get_recipe('test_basic_recipe')
 
-    assert recipe.name == 'test_basic_yaml'
+    assert recipe.name == 'test_basic_recipe'
     assert recipe.steps[0][0].__name__ == 'WaitStep'
 
     assert recipe.steps[0][1]['seconds'] == 0.2

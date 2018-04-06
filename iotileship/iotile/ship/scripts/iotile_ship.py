@@ -23,7 +23,7 @@ def build_args():
     parser.add_argument('-d', '--define', action="append", default=[], help="Set a free variable in the recipe")
     parser.add_argument('-l', '--loop', default=None, help="Loop over a free variable")
     parser.add_argument('-i', '--info', action='store_true', help="Lists out all the steps of that recipe, doesn't run the recipe steps")
-    parser.add_argument('--preserve', action='store_true', help="Preserve temporary folder contents after recipe is completed")
+    parser.add_argument('-a', '--archive', help="Archive the passed yaml recipe and do not run it")
     parser.add_argument('-c', '--config', default=None, help="A YAML config file with variable definitions")
 
     return parser
@@ -76,9 +76,16 @@ def main(argv=None):
     parser = build_args()
     args = parser.parse_args(args=argv)
 
+    recipe_name, _ext = os.path.splitext(os.path.basename(args.recipe))
+
     rm = RecipeManager()
-    rm.add_recipe_folder(os.path.dirname(args.recipe))
-    recipe = rm.get_recipe(args.recipe)
+    rm.add_recipe_folder(os.path.dirname(args.recipe), whitelist=[os.path.basename(args.recipe)])
+    recipe = rm.get_recipe(recipe_name)
+
+    if args.archive is not None:
+        print("Archiving recipe into %s" % args.archive)
+        recipe.archive(args.archive)
+        return 0
 
     if args.info:
         print(recipe)

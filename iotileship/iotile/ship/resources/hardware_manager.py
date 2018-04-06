@@ -3,6 +3,7 @@ from __future__ import absolute_import, unicode_literals
 from builtins import int
 from iotile.core.utilities.schema_verify import DictionaryVerifier, OptionsVerifier, StringVerifier, IntVerifier
 from iotile.core.hw import HardwareManager
+from iotile.core.exceptions import HardwareError
 from .shared_resource import SharedResource
 
 
@@ -44,8 +45,11 @@ class HardwareManagerResource(SharedResource):
         self.opened = True
 
         if self._connect_id is not None:
-            self.hwman.connect(self._connect_id)
-
+            try:
+                self.hwman.connect(self._connect_id)
+            except HardwareError:
+                self.hwman.close()
+                raise
 
     def close(self):
         """Close and potentially disconnect from a device."""

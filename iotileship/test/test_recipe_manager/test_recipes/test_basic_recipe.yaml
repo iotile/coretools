@@ -1,4 +1,4 @@
-name: "test_basic_yaml"
+name: "test_basic_recipe"
 description: "recipe to test prompt messages"
 idempotent: True
 actions:

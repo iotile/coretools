@@ -49,3 +49,13 @@ def test_ota_script(recipe_fixture):
 
     assert device.controller.script_error is None
     assert len(device.controller.parsed_script.records) == 2
+
+
+@pytest.mark.parametrize("recipe_fixture", [('archived_ota')], indirect=True)
+def test_archived_script(recipe_fixture):
+    """Make sure we can still send an archived ota script."""
+
+    recipe, hw, device = recipe_fixture
+
+    assert device.controller.script_error is None
+    assert len(device.controller.parsed_script.records) == 2

@@ -6,6 +6,7 @@ import re
 import os
 import sys
 import zipfile
+import tempfile
 from future.utils import viewitems, viewvalues, raise_
 from past.builtins import basestring
 from iotile.core.exceptions import ArgumentError, ValidationError
@@ -62,6 +63,11 @@ class RecipeObject(object):
         self.defaults = defaults
         self.path = path
 
+        if path is not None:
+            self.run_directory = os.path.dirname(path)
+        else:
+            self.run_directory = os.getcwd()
+
         self.free_variables = set()
         self.external_files = False
 
@@ -69,6 +75,9 @@ class RecipeObject(object):
             self.free_variables |= _extract_variables(args)
             if len(files) > 0:
                 self.external_files = True
+
+        for decl in viewvalues(resources):
+            self.free_variables |= _extract_variables(decl.args)
 
         default_names = set(self.defaults)
         if not default_names <= self.free_variables:
@@ -87,11 +96,9 @@ class RecipeObject(object):
         if self.path is None:
             raise ArgumentError("Cannot archive a recipe yet without a reference to its original yaml file in self.path")
 
-        basename = os.path.basename(self.path)
-
         outfile = zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED)
 
-        outfile.write(self.path, arcname=basename)
+        outfile.write(self.path, arcname="recipe_script.yaml")
 
         written_files = set()
 
@@ -110,7 +117,46 @@ class RecipeObject(object):
                 written_files.add(file_path)
 
     @classmethod
-    def FromFile(cls, path, actions_dict, resources_dict, file_format="yaml"):
+    def FromArchive(cls, path, actions_dict, resources_dict, temp_dir=None):
+        """Create a RecipeObject from a .ship archive.
+
+        This archive should have been generated from a previous call to
+        iotile-ship -a <path to yaml file>
+
+        or via iotile-build using autobuild_shiparchive().
+
+        Args:
+            path (str): The path to the recipe file that we wish to load
+            actions_dict (dict): A dictionary of named RecipeActionObject
+                types that is used to look up all of the steps listed in
+                the recipe file.
+            resources_dict (dict): A dictionary of named RecipeResource types
+                that is used to look up all of the shared resources listed in
+                the recipe file.
+            file_format (str): The file format of the recipe file.  Currently
+                we only support yaml.
+            temp_dir (str): An optional temporary directory where this archive
+                should be unpacked. Otherwise a system wide temporary directory
+                is used.
+        """
+
+        if not path.endswith(".ship"):
+            raise ArgumentError("Attempted to unpack a recipe archive from a file that did not end in .ship", path=path)
+
+        name = os.path.basename(path)[:-5]
+
+        if temp_dir is None:
+            temp_dir = tempfile.mkdtemp()
+
+        extract_path = os.path.join(temp_dir, name)
+        archive = zipfile.ZipFile(path, "r")
+        archive.extractall(extract_path)
+
+        recipe_yaml = os.path.join(extract_path, 'recipe_script.yaml')
+        return cls.FromFile(recipe_yaml, actions_dict, resources_dict, name=name)
+
+    @classmethod
+    def FromFile(cls, path, actions_dict, resources_dict, file_format="yaml", name=None):
         """Create a RecipeObject from a file.
 
         The file should be a specially constructed yaml file that describes
@@ -126,6 +172,8 @@ class RecipeObject(object):
                 the recipe file.
             file_format (str): The file format of the recipe file.  Currently
                 we only support yaml.
+            name (str): The name of this recipe if we created it originally from an
+                archive.
         """
 
         format_map = {
@@ -138,13 +186,15 @@ class RecipeObject(object):
                 known_formats=[x for x in format_map if format_map[x] is not None])
         recipe_info = format_handler(path)
 
+        if name is None:
+            name, _ext = os.path.splitext(os.path.basename(path))
+
         # Validate that the recipe file is correctly formatted
         try:
             recipe_info = RecipeSchema.verify(recipe_info)
         except ValidationError as exc:
             raise RecipeFileInvalid("Recipe file does not match expected schema", file=path, error_message=exc.msg, **exc.params)
 
-        name = recipe_info.get('name')
         description = recipe_info.get('description')
 
         # Parse out global default and shared resource information
@@ -377,23 +427,30 @@ class RecipeObject(object):
                 and destroying it inside this function.
         """
 
-        initialized_steps = self.prepare(variables)
-        owned_resources = {}
-
+        old_dir = os.getcwd()
         try:
-            initialized_resources, owned_resources = self._prepare_resources(variables, overrides)
+            os.chdir(self.run_directory)
 
-            for i, (step, decl) in enumerate(zip(initialized_steps, self.steps)):
-                print("===> Step %d: %s\t Description: %s" % (i+1, self.steps[i][0].__name__, \
-                    self.steps[i][1].get('description', '')))
+            initialized_steps = self.prepare(variables)
+            owned_resources = {}
 
-                runtime, out = _run_step(step, decl, initialized_resources)
+            try:
+                print("Running in %s" % self.run_directory)
+                initialized_resources, owned_resources = self._prepare_resources(variables, overrides)
 
-                print("======> Time Elapsed: %.2f seconds" % runtime)
-                if out is not None:
-                    print(out[1])
+                for i, (step, decl) in enumerate(zip(initialized_steps, self.steps)):
+                    print("===> Step %d: %s\t Description: %s" % (i+1, self.steps[i][0].__name__, \
+                        self.steps[i][1].get('description', '')))
+
+                    runtime, out = _run_step(step, decl, initialized_resources)
+
+                    print("======> Time Elapsed: %.2f seconds" % runtime)
+                    if out is not None:
+                        print(out[1])
+            finally:
+                self._cleanup_resources(owned_resources)
         finally:
-            self._cleanup_resources(owned_resources)
+            os.chdir(old_dir)
 
     def __str__(self):
         output_string = "========================================\n"
@@ -401,9 +458,18 @@ class RecipeObject(object):
         output_string += "Desciption: \t%s\n" % (self.description)
         output_string += "========================================\n"
 
-        for i, step in enumerate(self.steps):
-            output_string += "Step %d: %s\t Description: %s\n " % \
-            (i+1, step[0].__name__, step[1].get('description', ''))
+        output_string += "\nRequired Variables:\n"
+        for var in self.required_variables:
+            output_string += "- %s\n" % var
+
+        output_string += "\nOptional Variables: \n"
+        for var in self.optional_variables:
+            output_string += "- %s\n" % var
+
+        output_string += "\nSteps:\n"
+        for step in self.steps:
+            output_string += "- %s\t Description: %s\n" % \
+            (step[0].__name__, step[1].get('description', ''))
         return output_string
 
 

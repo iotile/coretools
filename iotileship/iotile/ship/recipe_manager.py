@@ -57,19 +57,34 @@ class RecipeManager(object):
 
         return self._recipes.get(recipe_name, None) is not None
 
-    def add_recipe_folder(self, recipe_folder):
-        """Add all recipes inside a folder to this RecipeManager.
+    def add_recipe_folder(self, recipe_folder, whitelist=None):
+        """Add all recipes inside a folder to this RecipeManager with an optional whitelist.
 
         Args:
             recipe_folder (str): The path to the folder of recipes to add.
+            whitelist (list): Only include files whose os.basename() matches something
+                on the whitelist
         """
 
-        for yaml_file in [os.path.join(recipe_folder, x) for x in os.listdir(recipe_folder) if x.endswith('.yaml')]:
-            try:
-                recipe = RecipeObject.FromFile(yaml_file, self._recipe_actions, self._recipe_resources)
-                self._recipes[recipe.name] = recipe
-            except Exception as exc:
-                raise #print(str(exc))
+        if whitelist is not None:
+            whitelist = set(whitelist)
+
+        if recipe_folder == '':
+            recipe_folder = '.'
+
+        for yaml_file in [x for x in os.listdir(recipe_folder) if x.endswith('.yaml')]:
+            if whitelist is not None and yaml_file not in whitelist:
+                continue
+
+            recipe = RecipeObject.FromFile(os.path.join(recipe_folder, yaml_file), self._recipe_actions, self._recipe_resources)
+            self._recipes[recipe.name] = recipe
+
+        for ship_file in [x for x in os.listdir(recipe_folder) if x.endswith('.ship')]:
+            if whitelist is not None and ship_file not in whitelist:
+                continue
+
+            recipe = RecipeObject.FromArchive(os.path.join(recipe_folder, ship_file), self._recipe_actions, self._recipe_resources)
+            self._recipes[recipe.name] = recipe
 
     def get_recipe(self, recipe_name):
         """Get a recipe by name.
