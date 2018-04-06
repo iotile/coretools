@@ -2,6 +2,11 @@
 
 All major changes in each released version of iotile-sensorgraph are listed here.
 
+## HEAD
+
+- Add reference tile and device for testing the effects of update scripts.  The
+  device is reference_1_0 and the controller tile is refcon_1.
+
 ## 0.6.4
 
 - subtract_a_from_b Node now fixed to subtract_afromb

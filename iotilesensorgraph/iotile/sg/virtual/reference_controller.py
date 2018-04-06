@@ -5,7 +5,8 @@ import logging
 from iotile.core.hw.virtual import VirtualTile, tile_rpc
 from iotile.core.hw.update import UpdateScript
 from iotile.core.exceptions import ArgumentError
-
+from iotile.sg.update import *
+from iotile.core.hw.update.records import *
 
 class BRIDGE_STATUS(object):
     IDLE = 0
@@ -83,6 +84,12 @@ class ReferenceController(VirtualTile):
 
         self.bridge_status = BRIDGE_STATUS.RECEIVED
         return [0]
+
+    def _run_script(self):
+        """Actually run an UpdateScript."""
+
+        for record in self.parsed_script.records:
+            pass
 
     @tile_rpc(0x2103, "", "L")
     def trigger_script(self):

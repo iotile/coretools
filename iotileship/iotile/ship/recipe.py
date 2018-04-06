@@ -336,6 +336,7 @@ class RecipeObject(object):
         output_string += "Recipe: \t%s\n" % (self.name)
         output_string += "Desciption: \t%s\n" % (self.description)
         output_string += "========================================\n"
+
         for i, step in enumerate(self.steps):
             output_string += "Step %d: %s\t Description: %s\n " % \
             (i+1, step[0].__name__, step[1].get('description', ''))

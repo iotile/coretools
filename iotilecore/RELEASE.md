@@ -2,6 +2,12 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## HEAD
+
+- Update device_updater app to reboot the device by default
+- Update AdapterStream to better detect unicode strings incorrectly passed to
+  send_highspeed on python 3. 
+
 ## 3.22.0
 
 - Add disconnection callback in ValidatingWSClient

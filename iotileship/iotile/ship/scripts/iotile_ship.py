@@ -1,8 +1,7 @@
 """Command line script to load and run a sensor graph."""
 from __future__ import (unicode_literals, absolute_import, print_function)
-from builtins import str, range
+from builtins import input
 import os
-import shutil
 import sys
 import time
 import argparse
@@ -11,7 +10,7 @@ from iotile.core.exceptions import IOTileException
 from iotile.ship.recipe_manager import RecipeManager
 
 DESCRIPTION = \
-u"""Load and run an iotile recipe
+u"""Load and run an iotile recipe.
 
 
 """
@@ -20,17 +19,45 @@ u"""Load and run an iotile recipe
 def build_args():
     """Create command line argument parser."""
     parser = argparse.ArgumentParser(description=DESCRIPTION, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument(u'recipe', type=str, help=u"The recipe file to load and run.")
-    parser.add_argument('--uuid', action='append', default=[], help="Run script on device given by this uuid")
-    parser.add_argument('--device', action='append', default=[], help="Run script on device given by this connection string")
-    parser.add_argument('--pause', action='store_true', help="Pause and wait for user input after finishing each device")
-    parser.add_argument('--max-attempts', type=int, default=1, help="Number of times to attempt the operation (up to a max of 5 times)")
-    parser.add_argument('--uuid-range', action='append', default=[], help="Process every device in a range (range should be specified as start-end and is inclusive, e.g ab-cd)")
+    parser.add_argument('recipe', type=str, help="The recipe file to load and run.")
+    parser.add_argument('-d', '--define', action="append", default=[], help="Set a free variable in the recipe")
+    parser.add_argument('-l', '--loop', default=None, help="Loop over a free variable")
     parser.add_argument('-i', '--info', action='store_true', help="Lists out all the steps of that recipe, doesn't run the recipe steps")
     parser.add_argument('--preserve', action='store_true', help="Preserve temporary folder contents after recipe is completed")
-    parser.add_argument('-c', '--config', help="An JSON config file with arguments for the script")
+    parser.add_argument('-c', '--config', default=None, help="A YAML config file with variable definitions")
 
     return parser
+
+
+def load_variables(defines, config_file):
+    """Load all variables from cmdline args and/or a config file.
+
+    Args:
+        defines (list of str): A list of name=value pairs that
+            define free variables.
+        config_file (str): An optional path to a yaml config
+            file that defines a single dict with name=value
+            variable definitions.
+    """
+
+    if config_file is not None:
+        with open(config_file, "rb") as conf_file:
+            variables = yaml.load(conf_file)
+    else:
+        variables = {}
+
+    for define in defines:
+        name, equ, value = define.partition('=')
+        if equ != '=':
+            print("Invalid variable definition")
+            print("- expected name=value")
+            print("- found: '%s'" % define)
+            sys.exit(1)
+
+        variables[name] = value
+
+    return variables
+
 
 def main(argv=None):
     """Main entry point for iotile-ship recipe runner.
@@ -53,58 +80,46 @@ def main(argv=None):
     rm.add_recipe_folder(os.path.dirname(args.recipe))
     recipe = rm.get_recipe(args.recipe)
 
-    #If --info, just print and then end
     if args.info:
         print(recipe)
         return 0
 
-    #Acquiring list of devices
-    devices = []
-    success = []
-    devices.extend([int(x, 16) for x in args.uuid])
-    for uuid_range in args.uuid_range:
-        start, _, end = uuid_range.partition('-')
-        start = int(start, 16)
-        end = int(end, 16)
-        devices.extend(range(start, end+1))
+    variables = load_variables(args.define, args.config)
 
-    #Creating temporary directory for intermediate files
-    temp_dir = os.path.join(os.path.dirname(args.recipe), 'temp')
-    if not os.path.exists(temp_dir):
-        os.mkdir(temp_dir)
+    success = 0
 
-    #Creating variables from config file
-    variables = dict()
-    if args.config is not None:
-        with open(args.config, "rb") as conf_file:
-            variables = yaml.load(conf_file)
-    variables['temp_dir'] = temp_dir
-
-    #Attempt to run the recipe on each device
     start_time = time.time()
-    try:
-        for dev in devices:
-            variables['UUID'] = dev
-            for i in range(0, args.max_attempts):
-                try:
-                    recipe.run(variables)
-                    success.append(dev)
-                except IOTileException as exc:
-                    print("--> Error on try %d: %s" % (i+1, str(exc)))
-                    continue
 
-            if args.pause:
-                raw_input("--> Waiting for <return> before processing next device")
-    except KeyboardInterrupt:
-        print("Break received, cleanly exiting...")
+    if args.loop is None:
+        try:
+            recipe.run(variables)
+            success += 1
+        except IOTileException as exc:
+            print("Error running recipe: %s" % str(exc))
+            return 1
+    else:
+        while True:
+            value = input("Enter value for loop variable %s (return to stop): " % args.loop)
 
-    #Delete tempfile by default, will keep folder if --preserve
-    if not args.preserve:
-        shutil.rmtree(temp_dir)
+            if value == '':
+                break
 
-    print("\n**FINISHED**\n")
-    print("Successfully processed %d devices in %f seconds" % (len(success), time.time()- start_time))
+            local_vars = dict(**variables)
+            local_vars[args.loop] = value
 
-    if len(success) != len(devices):
-        return 1
+            try:
+                recipe.run(local_vars)
+                success += 1
+            except IOTileException as exc:
+                print("--> ERROR processing loop variable %s: %s" % (value, str(exc)))
+
+    end_time = time.time()
+    total_time = end_time - start_time
+
+    if success == 0:
+        per_time = 0.0
+    else:
+        per_time = total_time / success
+
+    print("Performed %d runs in %.1f seconds (%.1f seconds / run)" % (success, total_time, per_time))
     return 0
