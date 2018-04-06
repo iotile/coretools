@@ -310,7 +310,7 @@ class RecipeObject(object):
         initializedsteps = []
         if variables is None:
             variables = dict()
-        for step, params, _resources in self.steps:
+        for step, params, _resources, _files in self.steps:
             new_params = _complete_parameters(params, variables)
             initializedsteps.append(step(new_params))
         return initializedsteps
