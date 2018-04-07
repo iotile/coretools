@@ -8,7 +8,7 @@ import queue
 from .cmdstream import CMDStream
 import datetime
 import time
-from iotile.core.exceptions import HardwareError
+from iotile.core.exceptions import HardwareError, ArgumentError
 from iotile.core.utilities.typedargs import iprint
 
 
@@ -202,8 +202,12 @@ class AdapterCMDStream(CMDStream):
         return status, payload
 
     def _send_highspeed(self, data, progress_callback):
-        if isinstance(data, str):
-            data = data.encode('utf-8')
+        if isinstance(data, str) and not isinstance(data, bytes):
+            raise ArgumentError("You must send bytes or bytearray to _send_highspeed", type=type(data))
+
+        if not isinstance(data, bytes):
+            data = bytes(data)
+
         self.adapter.send_script_sync(0, data, progress_callback)
 
     def _enable_streaming(self):

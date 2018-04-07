@@ -32,6 +32,8 @@ class ProductResolver(object):
 
         self._tile = IOTile(folder)
         self._family = ArchitectureGroup(module_settings)
+        self._tracking = False
+        self._resolved_products = []
 
         self._create_filter()
         self._create_product_map()
@@ -151,4 +153,28 @@ class ProductResolver(object):
         if len(prods) > 1:
             raise BuildError("Multiple providers of the same product in find_unique", name=short_name, type=product_type, products=prods)
 
+        if self._tracking:
+            self._resolved_products.append(prods[0])
+
         return prods[0]
+
+    def start_tracking(self):
+        """Start tracking all unique products that have been resolved.
+
+        This is useful for determining the dependencies of a template file
+        during a dry run templating for example.
+        """
+
+        self._tracking = True
+        self._resolved_products = []
+
+    def end_tracking(self):
+        """Finish tracking and get a list of all resolved products.
+
+        Returns:
+            list of ProductInfo: Every product that was resolved since start
+                tracking was last called.
+        """
+
+        self._tracking = False
+        return self._resolved_products

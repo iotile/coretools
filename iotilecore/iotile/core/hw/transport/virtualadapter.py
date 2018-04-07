@@ -372,7 +372,7 @@ class VirtualDeviceAdapter(DeviceAdapter):
 
         Args:
             conn_id (int): A unique identifer that will refer to this connection
-            data (string): the script to send to the device
+            data (bytes or bytearray): the script to send to the device
             progress_callback (callable): A function to be called with status on our progress, called as:
                 progress_callback(done_count, total_count)
             callback (callable): A callback for when we have finished sending the script.  The callback will be called as"

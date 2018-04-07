@@ -56,7 +56,7 @@ class TileBusProxyObject(object):
             res_type = (0, False)
 
         try:
-            res = self._parse_rpc_result(status, payload, *res_type)
+            res = self._parse_rpc_result(status, payload, *res_type, command=(feature << 8) | cmd)
             if unpack_flag:
                 return unpack("<%s" % kw["result_format"], res['buffer'])
 
@@ -188,7 +188,7 @@ class TileBusProxyObject(object):
         return status
 
 
-    def _parse_rpc_result(self, status, payload, num_ints, buff):
+    def _parse_rpc_result(self, status, payload, num_ints, buff, command):
         """
         Parse the response of an RPC call into a dictionary with integer and buffer results
         """
@@ -200,7 +200,7 @@ class TileBusProxyObject(object):
         #Check for protocol defined errors
         if not status & (1<<6):
             if status == 2:
-                raise UnsupportedCommandError(address=self.addr)
+                raise UnsupportedCommandError(address=self.addr, command=command)
 
             raise RPCError("Unknown status code received from RPC call", address=self.addr, status_code=status)
 

@@ -1,0 +1,15 @@
+name: "test_hardware_manager_resource"
+description: "recipe to test the hardware manager resource"
+idempotent: True
+resources:
+  - name: hardware
+    type: hardware_manager
+    autocreate: True
+    port: "virtual:reference_1_0"
+    connect: 0x1
+
+actions:
+  - name: "SendOTAScriptStep"
+    file: "../data/ota_script.trub"
+
+    use: [hardware as connection]

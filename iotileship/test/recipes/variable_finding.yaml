@@ -1,0 +1,19 @@
+name: "test_check_cloud_outputs"
+description: "recipe to test check cloud outputs"
+idempotent: True
+defaults:
+  - test_1: abc
+
+actions:
+  - description:      "Check Cloud Outputs"
+    name:             "SyncCloudStep"
+
+    arg1: ${test_1}
+    arg2:
+      - $test_2
+      - $$notmatched
+      - $$$test_4
+    arg3:
+      key: ${test_5}asdf
+      key2: 
+        key3: ${Test_6} $test_3

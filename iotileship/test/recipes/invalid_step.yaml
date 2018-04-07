@@ -1,0 +1,15 @@
+name: "test_check_cloud_outputs"
+description: "recipe to test check cloud outputs"
+idempotent: True
+actions:
+  - description:      "Check Cloud Outputs"
+    name:             "SyncCloudStep"
+    uuid:             "0x0"
+    device_template:  "template"
+    sensorgraph:      "sg"
+    expected_app_tag: 0
+    expected_os_tag:  0
+    unclaim:          True
+
+  - description:      "Check Cloud Outputs Minimal"
+    uuid:             "0x0"

@@ -1,6 +1,12 @@
 # Release Notes
 
 All major changes in each released version of IOTileBuild are listed here.
+
+## 2.6.3
+
+- Improve template generation to allow for finding products and using their
+  paths in a template.
+
 ## 2.6.2
 - Fix bug when building on Mac OSX where parentheses required quotes in a
   commandline. 

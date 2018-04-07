@@ -64,7 +64,7 @@ class DeviceUpdater(IOTileApp):
             print("Please type y for yes or n for no.")
 
     @docannotate
-    def load_script(self, script_path, confirm=True):
+    def load_script(self, script_path, confirm=True, no_reboot=False):
         """Load a script from a file and run it.
 
         This function will load a binary update script from the file given in
@@ -81,6 +81,10 @@ class DeviceUpdater(IOTileApp):
                 before running the script on the device.  This defaults to true,
                 which means if you want to use this function in a batch setting.
                 You need to pass confirm=False.
+            no_reboot (bool): Do not reboot the device after running the script.
+                You typically want to reboot so this defaults to False.  If you know
+                what you are doing, you can set this to True to not do a sanity reboot
+                after running the script.
         """
 
         with open(script_path, "rb") as infile:
@@ -130,9 +134,9 @@ class DeviceUpdater(IOTileApp):
             print("The device is currently running a script, you must wait for it to finish.")
             return
 
-        self.run_script(script.encode())
+        self.run_script(script)
 
-    def run_script(self, script, force=False):
+    def run_script(self, script, force=False, no_reboot=False):
         """Run a script on the connected IOTile device.
 
         The script must an UpdateScript object.  If you are looking for an
@@ -150,7 +154,13 @@ class DeviceUpdater(IOTileApp):
                 device.
             force (bool): If there is already a script loaded but not yet executed,
                 clear that script before proceeding.
+            no_reboot (bool): Do not reboot the device after running the script.
+                You typically want to reboot so this defaults to False.  If you know
+                what you are doing, you can set this to True to not do a sanity reboot
+                after running the script.
         """
+
+        raw_data = script.encode()
 
         status, _err = self._query_status()
         if status == self.ReceivedScript and force:
@@ -164,12 +174,16 @@ class DeviceUpdater(IOTileApp):
 
         progress.start()
         try:
-            self.push_script(script, progress)
+            self.push_script(raw_data, progress)
         finally:
             progress.end()
 
         self._end_script()
         self._wait_script()
+
+        if not no_reboot:
+            iprint("Rebooting device")
+            self._reboot()
 
     def _begin_script(self):
         """Indicate that we are going to start loading a script."""
@@ -201,6 +215,11 @@ class DeviceUpdater(IOTileApp):
         err, = self._con.rpc(0x21, 0x05, result_format="L", timeout=15.0)
         if err != 0:
             raise HardwareError("Error resetting script", error_code=err)
+
+    def _reboot(self):
+        """Reboot the device."""
+
+        self._con.reset()
 
     def _wait_script(self):
         """Trigger a script and then synchronously wait for it to finish processing."""

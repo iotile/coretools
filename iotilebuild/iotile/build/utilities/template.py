@@ -13,13 +13,14 @@
 import os.path
 import os
 import shutil
+from future.utils import viewitems
 from past.builtins import basestring
 from pkg_resources import resource_filename, Requirement
 from jinja2 import Environment, PackageLoader, FileSystemLoader
 from typedargs.exceptions import ArgumentError
 
 
-def render_template_inplace(template_path, info, dry_run=False):
+def render_template_inplace(template_path, info, dry_run=False, extra_filters=None, resolver=None):
     """Render a template file in place.
 
     This function expects template path to be a path to a file
@@ -33,10 +34,22 @@ def render_template_inplace(template_path, info, dry_run=False):
             perform substitutions.
         dry_run (bool): Whether to actually render the output file or just return
             the file path that would be generated.
+        extra_filters (dict of str -> callable): An optional group of filters that
+            will be made available to the template.  The dict key will be the
+            name at which callable is made available.
+        resolver (ProductResolver): The specific ProductResolver class to use in the
+            find_product filter.
 
     Returns:
         str: The path to the output file generated.
     """
+
+    filters = {}
+    if resolver is not None:
+        filters['find_product'] = _create_resolver_filter(resolver)
+
+    if extra_filters is not None:
+        filters.update(extra_filters)
 
     basedir = os.path.dirname(template_path)
     template_name = os.path.basename(template_path)
@@ -52,6 +65,10 @@ def render_template_inplace(template_path, info, dry_run=False):
     env = Environment(loader=FileSystemLoader(basedir),
                       trim_blocks=True, lstrip_blocks=True)
 
+    # Load any filters the user wants us to use
+    for name, func in viewitems(filters):
+        env.filters[name] = func
+
     template = env.get_template(template_name)
     result = template.render(info)
 
@@ -63,10 +80,7 @@ def render_template_inplace(template_path, info, dry_run=False):
 
 
 def render_template(template_name, info, out_path=None):
-    """Render a template based on this TileBus Block.
-
-    The template has access to all of the attributes of this block as a
-    dictionary (the result of calling self.to_dict()).
+    """Render a template using the variables in info.
 
     You can optionally render to a file by passing out_path.
 
@@ -98,16 +112,16 @@ def render_template(template_name, info, out_path=None):
 def render_recursive_template(template_folder, info, out_folder, preserve=None, dry_run=False):
     """Copy a directory tree rendering all templates found within.
 
-    This function inspects all of the files in template_folder recursively.
-    If any file ends .tpl, it is rendered using render_template and the
-    .tpl suffix is removed.  All other files are copied without modification.
+    This function inspects all of the files in template_folder recursively. If
+    any file ends .tpl, it is rendered using render_template and the .tpl
+    suffix is removed.  All other files are copied without modification.
 
     out_folder is not cleaned before rendering so you must delete its contents
     yourself if you want that behavior.
 
-    If you just want to see all of the file paths that would be generated, call
-    with dry_run=True.  This will not render anything but just inspect what would
-    be generated.
+    If you just want to see all of the file paths that would be generated,
+    call with dry_run=True.  This will not render anything but just inspect
+    what would be generated.
 
     Args:
         template_folder (str): A relative path from config/templates with the
@@ -186,3 +200,15 @@ def render_recursive_template(template_folder, info, out_folder, preserve=None, 
                 render_template(in_template_path, info, out_path=out_path)
 
     return file_map, create_dirs
+
+
+def _create_resolver_filter(resolver):
+    def _resolver(product_id):
+        product_class, name = product_id.split(',')
+
+        product_class = product_class.strip()
+        name = name.strip()
+
+        return resolver.find_unique(product_class, name).short_name
+
+    return _resolver

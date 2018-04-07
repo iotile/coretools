@@ -3,7 +3,7 @@
 # info@welldone.org
 # http://welldone.org
 #
-# Modifications to this file from the original created at WellDone International 
+# Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
 # Caveats and possible issues
@@ -35,7 +35,14 @@ setup(
             'WaitStep           = iotile.ship.actions.wait_step:WaitStep',
             'PipeSnippetStep    = iotile.ship.actions.pipe_snippet_step:PipeSnippetStep',
             'SyncCloudStep      = iotile.ship.actions.sync_cloud_step:SyncCloudStep',
-            'VerifyDeviceStep   = iotile.ship.actions.verify_device_step:VerifyDeviceStep'
+            'VerifyDeviceStep   = iotile.ship.actions.verify_device_step:VerifyDeviceStep',
+            'SendOTAScriptStep  = iotile.ship.actions.send_ota_script_step:SendOTAScriptStep'
+        ],
+        'iotile.recipe_resource': [
+            'hardware_manager   = iotile.ship.resources:HardwareManagerResource'
+        ],
+        'iotile.autobuild': [
+            'autobuild_shiparchive = iotile.ship.autobuild:autobuild_shiparchive'
         ]
     },
     description="IOTile Ship Support",

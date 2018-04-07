@@ -1,3 +1,4 @@
+from past.builtins import basestring
 from .verifier import Verifier
 from iotile.core.exceptions import ValidationError
 
@@ -31,6 +32,9 @@ class ListVerifier(Verifier):
                 ValidationError is thrown with at least the reason key set indicating
                 the reason for the lack of validation.
         """
+
+        if isinstance(obj, basestring):
+            raise ValidationError("Object was not a list", reason="a string was passed instead of a list", object=obj)
 
         out_obj = []
         if self._min_length is not None and len(obj) < self._min_length:
