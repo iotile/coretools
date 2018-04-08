@@ -122,6 +122,10 @@ def autobuild_release(family=None):
     target = env.Command(['#build/output/module_settings.json'], ['#module_settings.json'], action=env.Action(create_release_settings_action, "Creating release manifest"))
     env.AlwaysBuild(target)
 
+    # Copy over release notes if they exist
+    if os.path.exists('RELEASE.md'):
+        env.Command(['build/output/RELEASE.md'], ['RELEASE.md'], Copy("$TARGET", "$SOURCE"))
+
     #Now copy across the build products that are not copied automatically
     copy_include_dirs(family.tile)
     copy_tilebus_definitions(family.tile)
