@@ -1,8 +1,10 @@
+import os
+from future.utils import viewitems
 from iotile.core.utilities.typedargs import context, annotated, param, return_type, iprint
 from iotile.core.dev.iotileobj import IOTile
 from iotile.core.exceptions import ArgumentError, ExternalError, BuildError
-from resolverchain import DependencyResolverChain
-import os
+from .resolverchain import DependencyResolverChain
+
 
 @context("DependencyManager")
 class DependencyManager (object):
@@ -87,7 +89,7 @@ class DependencyManager (object):
         for dep in tile.dependencies:
             try:
                 deptile = IOTile(os.path.join(path, 'build', 'deps', dep['unique_id']))
-            except ExternalError, IOError:
+            except ExternalError as IOError:
                 dep_stati[dep['name']] = 'not installed'
                 continue
 
@@ -160,7 +162,7 @@ class DependencyManager (object):
                     seen_versions[tile.unique_id] = (tile.parsed_version, 'direct')
 
                 #Check for version conflicts between two included dependencies
-                for inc_dep, inc_ver in tile.dependency_versions.iteritems():
+                for inc_dep, inc_ver in viewitems(tile.dependency_versions):
                     if inc_dep in seen_versions and seen_versions[inc_dep][0].coexistence_class != inc_ver.coexistence_class:
                         raise BuildError("Version conflict between component used to build two of our dependencies",
                                      component_id=inc_dep,
@@ -169,5 +171,5 @@ class DependencyManager (object):
                                      version_two=seen_versions[inc_dep][0])
                     elif inc_dep not in seen_versions:
                         seen_versions[inc_dep] = (inc_ver, tile.unique_id)
-            except (ArgumentError,ExternalError):
+            except (ArgumentError, ExternalError):
                 raise ArgumentError("Not all dependencies are satisfied for tile", uninstalled_dep=dep['unique_id'])

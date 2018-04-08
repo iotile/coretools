@@ -1,6 +1,7 @@
 # This file is copyright Arch Systems, Inc.
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
+from future.utils import viewitems
 import os
 from iotile.core.exceptions import BuildError, ArgumentError
 from iotile.core.dev.iotileobj import IOTile
@@ -24,7 +25,7 @@ def load_dependencies(orig_tile, build_env):
     #Properly separate out the version information from the name of the dependency
     #The raw keys come back as name,version
     arch_deps = {}
-    for key, value in raw_arch_deps.iteritems():
+    for key, value in viewitems(raw_arch_deps):
         name, _, _ = key.partition(',')
         arch_deps[name] = value
 

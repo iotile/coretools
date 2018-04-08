@@ -1,7 +1,7 @@
 from docutils.parsers.rst import Directive
 import docutils
 import os.path
-from iotile.core.dev.registry import ComponentRegistry 
+from iotile.core.dev.registry import ComponentRegistry
 import json
 import sphinx
 from docutils.statemachine import ViewList
@@ -12,7 +12,7 @@ from iotile.core.exceptions import ArgumentError
 class DependenciesDirective (Directive):
     """Directive for adding a list of all dependencies used by this component
 
-    This directive parses the module_settings.json file for the component and 
+    This directive parses the module_settings.json file for the component and
     adds links to any installed dependencies that it finds there.
     """
 
@@ -24,7 +24,7 @@ class DependenciesDirective (Directive):
         found = []
         not_found = []
 
-        for name in deps.iterkeys():
+        for name in deps:
             try:
                 tile = reg.find_component(name)
                 found.append(tile)
@@ -45,7 +45,7 @@ class DependenciesDirective (Directive):
         sphinx.util.nodes.nested_parse_with_titles(self.state, view, node)
         return node.children
 
-    def _get_dependencies(self, component):     
+    def _get_dependencies(self, component):
         module_settings = os.path.join(component, 'module_settings.json')
 
         with open(module_settings, "r") as f:

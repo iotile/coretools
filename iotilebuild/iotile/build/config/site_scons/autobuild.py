@@ -9,6 +9,7 @@
 # Automatic building of firmware and unit tests using the
 # scons based iotile build system
 
+from __future__ import print_function
 import utilities
 import unit_test
 import unit_test_qemu
@@ -73,7 +74,7 @@ def autobuild_arm_library(libname):
             autobuild_documentation(family.tile)
 
     except unit_test.IOTileException as e:
-        print e.format()
+        print(e.format())
         Exit(1)
 
 def autobuild_onlycopy():
@@ -87,7 +88,7 @@ def autobuild_onlycopy():
         Alias('release', os.path.join('build', 'output'))
         Default(['release'])
     except unit_test.IOTileException as e:
-        print e.format()
+        print(e.format())
         Exit(1)
 
 def autobuild_docproject():
@@ -100,7 +101,7 @@ def autobuild_docproject():
         autobuild_release(family)
         autobuild_documentation(family.tile)
     except unit_test.IOTileException as e:
-        print e.format()
+        print(e.format())
         Exit(1)
 
 def autobuild_release(family=None):
@@ -157,7 +158,7 @@ def autobuild_arm_program(elfname, test_dir=os.path.join('firmware', 'test'), pa
             autobuild_documentation(family.tile)
 
     except IOTileException as e:
-        print e.format()
+        print(e.format())
         sys.exit(1)
 
 def autobuild_doxygen(tile):

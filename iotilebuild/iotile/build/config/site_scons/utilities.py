@@ -8,6 +8,8 @@
 
 #utilities.py
 
+from future.utils import viewitems
+from past.builtins import basestring
 import os
 import os.path
 from iotile.build.build import build
@@ -55,7 +57,7 @@ def join_path(path):
     return os.path.join(*path)
 
 def build_defines(defines):
-    return ['-D"%s=%s"' % (x,str(y)) for x,y in defines.iteritems()]
+    return ['-D"%s=%s"' % (x,str(y)) for x,y in viewitems(defines)]
 
 def get_family(modulefile):
     return build.ArchitectureGroup(modulefile)

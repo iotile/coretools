@@ -4,7 +4,7 @@ from __future__ import unicode_literals, print_function, absolute_import
 from collections import namedtuple
 import os
 import itertools
-from future.utils import viewitems
+from future.utils import viewitems, viewvalues
 from iotile.core.dev.iotileobj import IOTile
 from iotile.core.exceptions import ArgumentError, BuildError
 from .build import ArchitectureGroup
@@ -121,6 +121,15 @@ class ProductResolver(object):
                 products are found, an empty list is returned.  If you want to raise
                 a BuildError in that case use find_unique.
         """
+
+        all_prods = []
+
+        # If product_type is not return products of all types
+        if product_type is None:
+            for prod_dict in viewvalues(self._product_map):
+                all_prods.extend([prod for prod in prod_dict.get(short_name, []) if include_hidden or not prod.hidden])
+
+            return all_prods
 
         all_prods = self._product_map.get(product_type, {})
         return [prod for prod in all_prods.get(short_name, []) if include_hidden or not prod.hidden]

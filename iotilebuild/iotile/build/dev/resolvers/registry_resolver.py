@@ -1,5 +1,5 @@
 import os
-from depresolver import DependencyResolver
+from .depresolver import DependencyResolver
 from iotile.core.exceptions import ArgumentError, ExternalError, IOTileException
 from iotile.core.utilities.typedargs import iprint
 from iotile.core.dev.iotileobj import IOTile

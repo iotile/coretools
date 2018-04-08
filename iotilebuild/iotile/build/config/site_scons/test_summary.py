@@ -6,6 +6,8 @@
 # Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
+from __future__ import print_function
+from future.utils import viewitems
 import os.path
 
 def build_summary_cmd(target, source, env):
@@ -23,7 +25,7 @@ def build_summary_cmd(target, source, env):
 
         name, targ, ext = parse_name(path)
         if ext != '.status':
-            print "Ignoring non-status file %s, this file should not be in this list" % path
+            print("Ignoring non-status file %s, this file should not be in this list" % path)
 
         if targ not in targets:
             targets[targ] = []
@@ -33,13 +35,13 @@ def build_summary_cmd(target, source, env):
     with open(str(target[0]), 'w') as f:
         f.write('Test Summary\n')
 
-        for targ, tests in targets.iteritems():
+        for targ, tests in viewitems(targets):
             num_tests = len(tests)
-            results = map(lambda x: test_passed(x[1]), tests)
+            results = [test_passed(x[1]) for x in tests]
             tagged_tests = zip(tests, results)
 
-            failed = filter(lambda x: x[1] == False, tagged_tests)
-            passed = filter(lambda x: x[1] == True, tagged_tests)
+            failed = [x for x in tagged_tests if x[1] == False]
+            passed = [x for x in tagged_tests if x[1] == True]
 
             num_passed = len(passed)
 
@@ -54,7 +56,7 @@ def build_summary_cmd(target, source, env):
 
     with open(str(target[0]), "r") as f:
         for line in f.readlines():
-            print line.rstrip()
+            print(line.rstrip())
 
     #Raise a build error if some tests failed
     if some_failed:

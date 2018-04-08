@@ -4,6 +4,7 @@
 from SCons.Script import *
 from SCons.Environment import Environment
 import sys
+import itertools
 import platform
 import os.path
 import utilities
@@ -50,7 +51,7 @@ def build_program(tile, elfname, chip, patch=True):
     ##Specify the linker script
     ###We can find a linker script in one of two places, either in a dependency or in an explicit 'linker' property
     ###First check for a linker script in our dependencies
-    ldscripts = reduce(lambda x,y:x+y, [x.linker_scripts() for x in prog_env['DEPENDENCIES']], [])
+    ldscripts = list(itertools.chain(*[x.linker_scripts() for x in prog_env['DEPENDENCIES']]))
 
     # Make sure we don't have multiple linker scripts coming in from dependencies
     if len(ldscripts) > 1:
@@ -228,9 +229,9 @@ def setup_dependencies(tile, env):
     env.Depends(env['OUTPUT_PATH'], dep_nodes)
 
     ## Add in all include directories, library directories and libraries from dependencies
-    dep_incs = reduce(lambda x,y:x+y, [x.include_directories() for x in env['DEPENDENCIES']], [])
-    lib_dirs = reduce(lambda x,y:x+y, [x.library_directories() for x in env['DEPENDENCIES']], [])
-    tilebus_defs = reduce(lambda x,y:x+y, [x.tilebus_definitions() for x in env['DEPENDENCIES']], [])
+    dep_incs = list(itertools.chain(*[x.include_directories() for x in env['DEPENDENCIES']]))
+    lib_dirs = list(itertools.chain(*[x.library_directories() for x in env['DEPENDENCIES']]))
+    tilebus_defs = list(itertools.chain(*[x.tilebus_definitions() for x in env['DEPENDENCIES']]))
 
     env['CPPPATH'] += map(lambda x: '#' + x, dep_incs)
     env['LIBPATH'] += lib_dirs
@@ -364,8 +365,8 @@ def merge_hex_executables(target, source, env):
         hex_data.start_addr = None
         hex_final.merge(hex_data, overlap='error')
 
-    with open(output_name, 'wb') as f:
-        hex_final.write_hex_file(f)
+    with open(output_name, 'w') as outfile:
+        hex_final.write_hex_file(outfile)
 
 
 CONVERTED_HEX_FILES = set()

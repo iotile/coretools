@@ -8,6 +8,7 @@
 
 #unit_test.py
 
+from __future__ import print_function
 import os.path
 import os
 from SCons.Environment import Environment
@@ -47,15 +48,15 @@ class UnitTest (object):
         self.extra_depends.append(filename)
 
     def show(self):
-        print "#Unit Test#"
-        print self.name
+        print("#Unit Test#")
+        print(self.name)
 
         if self.targets is None:
-            print "Targets: All module targets"
+            print("Targets: All module targets")
         else:
-            print "Targets:", ", ".join(self.targets)
-        print "Status:", self.status
-        print self.desc
+            print("Targets:", ", ".join(self.targets))
+        print("Status:", self.status)
+        print(self.desc)
 
     def build_dirs(self, chip):
         """

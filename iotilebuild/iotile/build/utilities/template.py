@@ -11,9 +11,9 @@
 #etc. using the Cheetah templating library.
 
 import os.path
+from future.utils import viewitems
 import os
 import shutil
-from future.utils import viewitems
 from past.builtins import basestring
 from pkg_resources import resource_filename, Requirement
 from jinja2 import Environment, PackageLoader, FileSystemLoader
@@ -74,7 +74,7 @@ def render_template_inplace(template_path, info, dry_run=False, extra_filters=No
 
     if not dry_run:
         with open(out_path, 'wb') as outfile:
-            outfile.write(result)
+            outfile.write(result.encode('utf-8'))
 
     return out_path
 
@@ -104,7 +104,7 @@ def render_template(template_name, info, out_path=None):
 
     if out_path is not None:
         with open(out_path, 'wb') as outfile:
-            outfile.write(result)
+            outfile.write(result.encode('utf-8'))
 
     return result
 
@@ -189,7 +189,7 @@ def render_recursive_template(template_folder, info, out_folder, preserve=None, 
             if not os.path.isdir(out_path):
                 os.makedirs(out_path)
 
-        for out_rel, (in_path, in_abspath) in file_map.iteritems():
+        for out_rel, (in_path, in_abspath) in viewitems(file_map):
             out_path = os.path.join(out_folder, out_rel)
             if in_path in preserve or not in_path.endswith(".tpl"):
                 shutil.copyfile(in_abspath, out_path)

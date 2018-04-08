@@ -3,10 +3,12 @@
 
 from SCons.Script import *
 from SCons.Environment import Environment
+from future.utils import viewitems
 import sys
 import os.path
 import utilities
 import struct
+from iotile.build.build import ProductResolver
 from iotile.core.exceptions import BuildError
 from iotile.core.dev.iotileobj import IOTile
 import os
@@ -31,7 +33,7 @@ def create_release_settings_action(target, source, env):
 
         settings['dependency_versions'][dep['unique_id']] = str(tile.parsed_version)
 
-    with open(str(target[0]), "wb") as fileobj:
+    with open(str(target[0]), "w") as fileobj:
         json.dump(settings, fileobj, indent=4)
 
 def copy_tilebus_definitions(tile):
@@ -95,19 +97,32 @@ def copy_include_dirs(tile):
         seen_dirs.add(inc)
 
 def copy_extra_files(tile):
-    """Copy all files listed in a copy_files section of the tile settings
+    """Copy all files listed in a copy_files and copy_products section.
+
+    Files listed in copy_files will be copied from the specified location
+    in the current component to the specified path under the output
+    folder.
+
+    Files listed in copy_products will be looked up with a ProductResolver
+    and copied copied to the specified path in the output folder.  There
+    is not currently a way to specify what type of product is being resolved.
+    The `short_name` given must be unique across all products from this
+    component and its direct dependencies.
     """
 
     env = Environment(tools=[])
-
-    if 'copy_files' not in tile.settings:
-        return
-
     outputbase = os.path.join('build', 'output')
 
-    for src, dest in tile.settings['copy_files'].iteritems():
+    for src, dest in viewitems(tile.settings.get('copy_files', {})):
         outputfile = os.path.join(outputbase, dest)
         env.Command([outputfile], [src], Copy("$TARGET", "$SOURCE"))
+
+    resolver = ProductResolver.Create()
+    for src, dest in viewitems(tile.settings.get('copy_products', {})):
+        prod = resolver.find_unique(None, src)
+        outputfile = os.path.join(outputbase, dest)
+
+        env.Command([outputfile], [prod.full_path], Copy("$TARGET", "$SOURCE"))
 
 
 def copy_dependency_docs(tile):

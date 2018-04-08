@@ -2,6 +2,7 @@
 """
 
 import pkg_resources
+from builtins import range
 from iotile.core.dev.iotileobj import IOTile
 from iotile.core.utilities.typedargs import param
 from iotile.core.exceptions import ArgumentError, DataError, BuildError, IOTileException
@@ -71,32 +72,32 @@ def release(component=".", cloud=False):
     for i, prov in enumerate(configured_provs):
         try:
             prov.stage()
-        except IOTileException, exc:
+        except IOTileException as exc:
             try:
                 #There was an error, roll back
-                for j in xrange(0, i):
+                for j in range(0, i):
                     configured_provs[j].unstage()
-            except Exception, unstage_exc:
+            except Exception as unstage_exc:
                 raise DirtyReleaseFailureError("Error staging release (COULD NOT ROLL BACK)", failed_step=i, original_exception=exc, operation='staging', failed_unstage=j, unstage_exception=unstage_exc)
 
             raise CleanReleaseFailureError("Error staging release (cleanly rolled back)", failed_step=i, original_exception=exc, operation='staging')
-        except Exception, exc:
+        except Exception as exc:
             raise DirtyReleaseFailureError("Error staging release due to unknown exception type (DID NOT ATTEMPT ROLL BACK)", failed_step=i, original_exception=exc, operation='staging')
 
     #Stage was sucessful, attempt to release
     for i, prov in enumerate(configured_provs):
         try:
             prov.release()
-        except IOTileException, exc:
+        except IOTileException as exc:
             try:
                 #There was an error, roll back
-                for j in xrange(0, i):
+                for j in range(0, i):
                     configured_provs[j].unrelease()
-            except Exception, unstage_exc:
+            except Exception as unstage_exc:
                 raise DirtyReleaseFailureError("Error performing release (COULD NOT ROLL BACK)", failed_step=i, original_exception=exc, operation='release', failed_unrelease=j, unrelease_exception=unstage_exc)
 
             raise CleanReleaseFailureError("Error performing release (cleanly rolled back)", failed_step=i, original_exception=exc, operation='release')
-        except Exception, exc:
+        except Exception as exc:
             raise DirtyReleaseFailureError("Error performing release due to unknown exception type (DID NOT ATTEMPT ROLL BACK)", failed_step=i, original_exception=exc, operation='release')
 
 
