@@ -2,7 +2,6 @@ from iotile.core.exceptions import *
 from iotile.core.dev.iotileobj import IOTile
 import os
 import json
-import resolvers
 import pkg_resources
 import logging
 import shutil
@@ -177,7 +176,7 @@ class DependencyResolverChain(object):
     def _save_depsettings(self, destdir, settings):
         settings_file = os.path.join(destdir, 'dep_settings.json')
 
-        with open(settings_file, 'wb') as f:
+        with open(settings_file, 'w') as f:
             json.dump(settings, f, indent=4)
 
     def _load_depsettings(self, deptile):

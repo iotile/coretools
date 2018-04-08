@@ -120,10 +120,10 @@ def run_qemu_command(target, source, env):
 
     try:
         logcontents = subprocess.check_output(test_args, stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError, exc:
+    except subprocess.CalledProcessError as exc:
         passed = False
         logcontents = exc.output
-    except Exception, exc:
+    except Exception as exc:
         passed = False
         logcontents = "Error running command: %s" % str(exc)
 

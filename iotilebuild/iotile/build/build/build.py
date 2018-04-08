@@ -10,6 +10,7 @@
 #Return the build settings json file.
 
 from __future__ import print_function, absolute_import
+from builtins import range
 import sys
 from copy import deepcopy
 import itertools
@@ -218,7 +219,7 @@ class TargetSettings(object):
         archs = self.archs(as_list=True)
         prefixes = []
 
-        for i in xrange(1, len(archs)+1):
+        for i in range(1, len(archs)+1):
             prefixes.append(archs[:i])
 
         return prefixes

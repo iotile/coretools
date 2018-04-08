@@ -31,7 +31,7 @@ def test_failed_stage1():
     with pytest.raises(CleanReleaseFailureError):
         try:
             release(comp)
-        except CleanReleaseFailureError, exc:
+        except CleanReleaseFailureError as exc:
             assert exc.params['failed_step'] == 0
             assert exc.params['operation'] == 'staging'
             raise
@@ -45,7 +45,7 @@ def test_failed_stage2():
     with pytest.raises(DirtyReleaseFailureError):
         try:
             release(comp)
-        except DirtyReleaseFailureError, exc:
+        except DirtyReleaseFailureError as exc:
             assert exc.params['failed_step'] == 1
             assert exc.params['failed_unstage'] == 0
             assert exc.params['operation'] == 'staging'
@@ -63,7 +63,7 @@ def test_failed_release1():
     with pytest.raises(CleanReleaseFailureError):
         try:
             release(comp)
-        except CleanReleaseFailureError, exc:
+        except CleanReleaseFailureError as exc:
             assert exc.params['failed_step'] == 0
             assert exc.params['operation'] == 'release'
             raise
@@ -77,7 +77,7 @@ def test_failed_release2():
     with pytest.raises(DirtyReleaseFailureError):
         try:
             release(comp)
-        except DirtyReleaseFailureError, exc:
+        except DirtyReleaseFailureError as exc:
             assert exc.params['failed_step'] == 1
             assert exc.params['failed_unrelease'] == 0
             assert exc.params['operation'] == 'release'
@@ -96,7 +96,7 @@ def test_unbuilt_devmode_comp():
     """
 
     comp = build_path('unbuilt_dev_mode_comp')
-    
+
     with pytest.raises(ArgumentError):
         release(comp)
 
@@ -105,7 +105,7 @@ def test_nosteps_comp():
     """
 
     comp = build_path('nosteps_comp')
-    
+
     with pytest.raises(ArgumentError):
         release(comp)
 

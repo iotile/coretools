@@ -6,6 +6,7 @@
 # Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
+from __future__ import print_function
 import os.path
 import pytest
 from iotile.build.tilebus.descriptor import TBDescriptor, optconfig
@@ -113,9 +114,9 @@ def test_config_defaults():
     assert testvar4['type'] == 'char'
     assert testvar4['total_size'] == 15
 
-    print len(testvar4['default_value'])
-    print len("test string")
-    print testvar4['default_value']
+    print(len(testvar4['default_value']))
+    print(len("test string"))
+    print(testvar4['default_value'])
     assert len(testvar4['default_value']) == len("test string") #Does not include the quotes
 
 
@@ -172,7 +173,7 @@ def test_block_generation():
     assert block.name == 'test12'
 
     str_rep = str(block)
-    print str_rep
+    print(str_rep)
 
 
 def test_optconfig_array():

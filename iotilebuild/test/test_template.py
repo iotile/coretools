@@ -25,7 +25,7 @@ def test_recursive_render(tmpdir):
     out_dir = str(tmpdir)
     files, dirs = render_recursive_template('qemu_semihost_unit', {}, out_dir)
 
-    for file in files.iterkeys():
+    for file in files:
         assert os.path.isfile(os.path.join(out_dir, file))
 
     for folder in dirs:
@@ -39,7 +39,7 @@ def test_render_preserve(tmpdir):
     files, dirs = render_recursive_template('qemu_semihost_unit', {}, out_dir,
                                             preserve=['main.c.tpl'])
 
-    for file in files.iterkeys():
+    for file in files:
         assert os.path.isfile(os.path.join(out_dir, file))
 
     for folder in dirs:

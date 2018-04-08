@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.6.4
+
+- Fix most python 3 compatibility issues.
+- Add support for copying release notes into output
+
 ## 2.6.3
 
 - Improve template generation to allow for finding products and using their

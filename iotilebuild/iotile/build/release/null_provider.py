@@ -1,7 +1,7 @@
-import provider
+from .provider import ReleaseProvider
 from iotile.core.exceptions import BuildError
 
-class NullReleaseProvider(provider.ReleaseProvider):
+class NullReleaseProvider(ReleaseProvider):
     """A Noop release provider for testing purposes
     """
 

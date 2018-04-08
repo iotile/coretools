@@ -10,12 +10,13 @@
 #Define a Domain Specific Language for specifying MIB endpoints
 
 import os.path
+from future.utils import viewitems
+from past.builtins import basestring, long
 import struct
-import shutil
 from pkg_resources import resource_filename, Requirement
 from pyparsing import Regex, Literal, Optional, Group, oneOf, QuotedString, delimitedList, ParseException
 from iotile.core.exceptions import *
-import block
+from .block import TBBlock
 from .handler import TBHandler
 
 
@@ -219,7 +220,7 @@ class TBDescriptor:
 
         try:
             matched = statement.parseString(line)
-        except ParseException, exc:
+        except ParseException as exc:
             raise DataError("Error parsing line in TileBus file", line_number=line_no, column=exc.col, contents=line)
 
         if 'symbol' in matched:
@@ -287,13 +288,13 @@ class TBDescriptor:
         Create a TileBus Block based on the information in this descriptor
         """
 
-        mib = block.TBBlock()
+        mib = TBBlock()
 
-        for id, config in self.configs.iteritems():
+        for id, config in viewitems(self.configs):
             mib.add_config(id, config)
 
         if not config_only:
-            for key, val in self.commands.iteritems():
+            for key, val in viewitems(self.commands):
                 mib.add_command(key, val)
 
             if not self.valid:
