@@ -85,6 +85,13 @@ class ProductResolver(object):
         base_path = tile.output_folder
 
         for prod_path, prod_type in viewitems(products):
+            # We need to handle include_directories and tilebus_definitions
+            # specially since those are stored reversed in module_settings.json
+            # for historical reasons.  Curently we don't support resolving
+            # tilebus_definitions or include_directories in ProductResolver
+            if prod_path == 'tilebus_definitions' or prod_path == 'include_directories':
+                continue
+
             if prod_type in self.IGNORED_PRODUCTS:
                 continue
 
