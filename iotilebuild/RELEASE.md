@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.6.5
+
+- Fix regression building firmware with tilebus_definition or
+  include_directories (Issue #433)
+
 ## 2.6.4
 
 - Fix most python 3 compatibility issues.
