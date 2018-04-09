@@ -19,7 +19,15 @@
 			{
 				"progtest_arm.elf": "firmware_image",
 				"python/arm_proxy.py": "proxy_module",
-				"python/lib_armtypes": "type_package"
+				"python/lib_armtypes": "type_package",
+				"include_directories": [
+					".",
+					"cdb"
+				],
+
+				"tilebus_definitions": [
+					["cdb", "progtest.cdb"]
+				]
 			}
 		}
 	},
