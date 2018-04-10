@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.22.2
+
+- Fix FlashBoardStep to have FILES variable so iotile-ship knows what files are needed
+  to archive to .ship.
+
 ## 3.22.1
 
 - Update device_updater app to reboot the device by default
@@ -53,7 +58,7 @@ dependencies. (Issue #387)
 - Minor python 3 compatibility adjustments on iotile-core
 - Add support for UpdateScript and UpdateRecord objects to allow for creating
   device updating scripts directly via CoreTools
-- Add iotile-updateinfo script that will print out everything that a `.trub
+- Add iotile-updateinfo script that will print out everything that a `.trub`
   update file does.
 - Update TileBusProxyObject to add support for hardware_version RPC calls.
 - Add support for having components create custom build steps as part of their

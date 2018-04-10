@@ -12,14 +12,17 @@ class FlashBoardStep (object):
         file (str): Firmware file name to flash
         port (str): Port used. Currently only allows jlink port connections.
     """
+    FILES = ['file']
+
     def __init__(self, args):
-        if(args.get('file') is None):
-            raise ArgumentError("FlashBoardStep Parameter Missing", parameter_name='file')
-        if(args.get('port') is None):
-            raise ArgumentError("FlashBoardStep Parameter Missing", parameter_name='port')
+        if 'file' not in args:
+            raise ArgumentError("FlashBoardStep required parameters missing", required=["file"], args=args)
+
+        if 'port' not in args:
+            raise ArgumentError("FlashBoardStep Parameter Missing", parameter_name='port', args=args)
 
         if not args['port'].startswith('jlink'):
-            raise ArgumentError("FlashBoardStep is currently only possible through jlink", invalid_port = args['port'])
+            raise ArgumentError("FlashBoardStep is currently only possible through jlink", invalid_port=args['port'])
 
         self._file = args['file']
         self._port = args['port']
