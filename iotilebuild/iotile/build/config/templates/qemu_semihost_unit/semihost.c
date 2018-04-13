@@ -3,7 +3,7 @@
 /*!\brief Trigger a semihosting service call on qemu
  */
 
-void __attribute__((noinline)) svc(unsigned int arg0, void *arg1)
+void __attribute__((noinline)) svc(volatile unsigned int arg0, volatile void *arg1)
 {
 	(void)arg0;
 	(void)arg1;

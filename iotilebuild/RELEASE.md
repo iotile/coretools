@@ -2,6 +2,12 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.6.7
+
+- Add qemu testing to continuous integration on linux
+- Fix semihost.c template to properly mark svc params as volatile in order to
+  prevent recent gcc versions from optimizing them out.
+
 ## 2.6.6
 
 - Fix unit test generation to properly copy over referenced C modules and all

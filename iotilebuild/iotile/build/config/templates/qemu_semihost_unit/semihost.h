@@ -7,7 +7,7 @@
 #define kSYS_EXIT		0x18
 
 //Internal API, calling it externally should not be needed (the below functions wrap it)
-void __attribute__((noinline)) svc(unsigned int arg0, void *arg1);
+void __attribute__((noinline)) svc(volatile unsigned int arg0, volatile void *arg1);
 
 //Semihosting service calls
 void qemu_semihost_putc(int c);
