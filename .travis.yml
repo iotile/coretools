@@ -12,7 +12,7 @@ python:
 before_install:
 - pwd
 - cd ~
-- "[ -f arm_gcc/bin/arm-none-eabi-gcc && -f arm_qemu/bin/arm_qemu/bin/qemu-system-gnuarmeclipse ] || ${TRAVIS_BUILD_DIR}/scripts/install_arm_gcc.sh"
+- "[[ -f arm_gcc/bin/arm-none-eabi-gcc && -f arm_qemu/bin/arm_qemu/bin/qemu-system-gnuarmeclipse ]] || ${TRAVIS_BUILD_DIR}/scripts/install_arm_gcc.sh"
 - export PATH=$PATH:~/arm_gcc/bin:~/arm_qemu/bin
 - cd ${TRAVIS_BUILD_DIR}
 - arm-none-eabi-gcc --version
