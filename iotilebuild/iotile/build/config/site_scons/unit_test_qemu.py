@@ -2,9 +2,11 @@ import shutil
 import subprocess
 import unit_test
 import os
+from future.utils import viewitems
 import arm
 from SCons.Environment import Environment
 from SCons.Script import Copy, Builder
+from iotile.core.exceptions import BuildError
 from iotile.build.utilities import render_recursive_template, render_template_inplace
 from cfileparser import ParsedCFile
 
@@ -18,6 +20,17 @@ class QEMUSemihostedUnitTest(unit_test.UnitTest):
     """
 
     UNIT_TEMPLATE = "qemu_semihost_unit"
+
+    def _parse_module(self, mod):
+        _inc_dirs, sources, _headers = unit_test.find_sources('firmware/src')
+
+        if mod.endswith('.c'):
+            mod = mod[:-2]
+
+        if mod not in sources:
+            raise BuildError("Could not find module specified: %s" % mod)
+
+        self.files.append(sources[mod])
 
     def _find_test_functions(self, infile, arch):
         """Parse the unit test file and search for functions that start with `test_`."""
@@ -49,6 +62,8 @@ class QEMUSemihostedUnitTest(unit_test.UnitTest):
         builder = Builder(action=recursive_template_action,
                           emitter=recursive_template_emitter)
 
+        _inc_dirs, _sources, headers = unit_test.find_sources('firmware/src')
+
         # Render the template
         env = Environment(tools=[], BUILDERS={'render': builder})
         env['RECURSIVE_TEMPLATE'] = self.UNIT_TEMPLATE
@@ -56,6 +71,11 @@ class QEMUSemihostedUnitTest(unit_test.UnitTest):
 
         test_files = []
         for infile in self.files:
+            test_file = env.Command([os.path.join(target_dir, os.path.basename(infile))], [infile], action=Copy("$TARGET", "$SOURCE"))
+            test_files.append(test_file)
+
+        # Copy all headers into the unit test
+        for _basename, infile in viewitems(headers):
             test_file = env.Command([os.path.join(target_dir, os.path.basename(infile))], [infile], action=Copy("$TARGET", "$SOURCE"))
             test_files.append(test_file)
 

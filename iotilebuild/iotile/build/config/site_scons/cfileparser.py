@@ -42,6 +42,7 @@ class ParsedCFile(object):
         #only preprocess the file (-E) and get rid of gcc extensions that aren't
         #supported in ISO C.
         args = utilities.build_includes(self.arch.includes())
+
         #args.append('-mcpu=%s' % self.arch.property('chip'))
         args.append('-E')
         args.append('-D__attribute__(x)=')

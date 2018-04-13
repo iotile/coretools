@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.6.6
+
+- Fix unit test generation to properly copy over referenced C modules and all
+  potentially useful header files.
+
 ## 2.6.5
 
 - Fix regression building firmware with tilebus_definition or
