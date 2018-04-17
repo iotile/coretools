@@ -107,7 +107,7 @@ class OnBlock(SensorGraphStatement):
 
         parent = scope_stack[-1]
         alloc = parent.allocator
-
+        
         stream_a, trigger_a = self._convert_trigger(self.trigger_a, parent)
 
         if self.trigger_b is None:
@@ -121,7 +121,16 @@ class OnBlock(SensorGraphStatement):
             else:
                 combiner = '||'
 
-            sensor_graph.add_node(u"({} {} {} {} {}) => {} using copy_latest_a".format(stream_a, trigger_a, combiner, stream_b, trigger_b, trigger_stream))
+            if 'input' in str(stream_a) and 'input' not in str(stream_b):
+                unbuffered_stream = alloc.allocate_stream(DataStream.UnbufferedType, attach=True)
+                sensor_graph.add_node(u"({} always) => {} using copy_latest_a".format(stream_a, unbuffered_stream))
+                sensor_graph.add_node(u"({} {} {} {} {}) => {} using copy_latest_a".format(unbuffered_stream, trigger_a, combiner, stream_b, trigger_b, trigger_stream))
+            elif 'input' in str(stream_b) and  'input' not in str(stream_a):
+                unbuffered_stream = alloc.allocate_stream(DataStream.UnbufferedType, attach=True)
+                sensor_graph.add_node(u"({} always) => {} using copy_latest_a".format(stream_b, unbuffered_stream))
+                sensor_graph.add_node(u"({} {} {} {} {}) => {} using copy_latest_a".format(stream_a, trigger_a, combiner, unbuffered_stream, trigger_b, trigger_stream))
+            else:
+                sensor_graph.add_node(u"({} {} {} {} {}) => {} using copy_latest_a".format(stream_a, trigger_a, combiner, stream_b, trigger_b, trigger_stream))
             new_scope = TriggerScope(sensor_graph, scope_stack, (trigger_stream, TrueTrigger()))
 
         scope_stack.append(new_scope)
