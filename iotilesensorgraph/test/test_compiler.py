@@ -499,3 +499,56 @@ def test_copy_count_statement(parser):
     print(output)
     assert output.count() == 1
     print(output)
+
+
+def test_root_buffering(parser):
+    """Make sure that nodes with two inputs where only one of the inputs is a root node gets an unbuffered
+    node in between. Furthermore, check that after topographic sorting, the root nodes are all at the top."""
+
+    parser.parse_file(get_path(u'basic_root_buffering.sgf'))
+
+    model = DeviceModel()
+    parser.compile(model=model)
+
+    sg = parser.sensor_graph
+    log = sg.sensor_log
+    for x in sg.dump_nodes():
+        print(x)
+
+    assert len(sg.nodes) == 21
+
+    #This check is to ensure that all root (input) nodes at the beginning after sorting.
+    root_node_section_passed = False
+    for node in sg.nodes:
+        if not root_node_section_passed:
+            if 'input' not in str(node):
+                root_node_section_passed = True
+        else:
+            assert 'input' not in str(node)
+
+    # Now make sure it produces the right output
+    output11 = log.create_walker(DataStreamSelector.FromString('output 11'))
+    output12 = log.create_walker(DataStreamSelector.FromString('output 12'))
+    output13 = log.create_walker(DataStreamSelector.FromString('output 13'))
+    output14 = log.create_walker(DataStreamSelector.FromString('output 14'))
+    output15 = log.create_walker(DataStreamSelector.FromString('output 15'))
+
+    sg.load_constants()
+
+    sim = SensorGraphSimulator(sg)
+    sim.stop_condition('run_time 20 minutes')
+    sim.stimulus("1 minute: input 1 = 1")
+    sim.stimulus("1 minute: input 2 = 1")
+    sim.stimulus("11 minute: input 1 = 2")
+
+    sim.run()
+
+    sg.load_constants()
+
+    print([str(x) for x in log._last_values.keys()])
+
+    assert output11.count() == 2
+    assert output12.count() == 2
+    assert output13.count() == 2
+    assert output14.count() == 2
+    assert output15.count() == 1

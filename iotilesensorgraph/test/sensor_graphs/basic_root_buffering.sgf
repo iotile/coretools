@@ -1,0 +1,24 @@
+every 10 minute
+{
+    call 0x1000 on slot 1 => output 11;
+}
+
+every 10 minutes
+{
+    copy input 0 => output 12;
+}
+
+on input 1 and value(output 11) == 0
+{
+    call 0x8036 on slot 2 => output 13;
+}
+
+on input 1 and input 2
+{
+    call 0x8036 on slot 2 => output 14;
+}
+
+on value(output 11) == 0 and value(input 1) == 1
+{
+    copy input 1 => output 15;
+}
