@@ -355,15 +355,10 @@ class SensorGraph(object):
         node_order = toposort_flatten(node_deps)
         self.nodes = [self.nodes[x] for x in node_order]
 
-        #Check inputs all in the beginning
-        root_node_section_passed = False
-        for node in self.nodes:
-            if not root_node_section_passed:
-                if 'input' not in str(node):
-                    root_node_section_passed = True
-            else:
-                if 'input' in str(node):
-                    raise NodeConnectionError("Inputs not sorted in the beginning")
+        #Check root nodes all topographically sorted to the beginning
+        for root in self.roots:
+            if root not in self.nodes[0:len(self.roots)]:
+                raise NodeConnectionError("Inputs not sorted in the beginning", node=str(root), node_position=self.nodes.index(root))
 
     @classmethod
     def find_processing_function(cls, name):

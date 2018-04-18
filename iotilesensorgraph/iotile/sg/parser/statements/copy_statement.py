@@ -96,7 +96,7 @@ class CopyStatement(SensorGraphStatement):
 
         if self.explicit_input:
             #If root node is an input, create an intermediate node with an unbuffered node
-            if 'input' in str(self.explicit_input):
+            if self.explicit_input.input:
                 unbuffered_stream = alloc.allocate_stream(DataStream.UnbufferedType, attach=True)
                 sensor_graph.add_node(u"({} always) => {} using {}".format(self.explicit_input, unbuffered_stream, 'copy_latest_a'))
                 sensor_graph.add_node(u"({} always && {} {}) => {} using {}".format(unbuffered_stream, trigger_stream, trigger_cond, self.output, op))

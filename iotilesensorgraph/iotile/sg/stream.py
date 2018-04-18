@@ -63,6 +63,10 @@ class DataStream(object):
         self.system = system
 
     @property
+    def input(self):
+        return self.stream_type == DataStream.InputType
+
+    @property
     def buffered(self):
         return self.stream_type == self.BufferedType or self.stream_type == self.OutputType
 

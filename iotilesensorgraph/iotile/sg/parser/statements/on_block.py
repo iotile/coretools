@@ -121,11 +121,11 @@ class OnBlock(SensorGraphStatement):
             else:
                 combiner = '||'
 
-            if 'input' in str(stream_a) and 'input' not in str(stream_b):
+            if stream_a.input and not stream_b.input:
                 unbuffered_stream = alloc.allocate_stream(DataStream.UnbufferedType, attach=True)
                 sensor_graph.add_node(u"({} always) => {} using copy_latest_a".format(stream_a, unbuffered_stream))
                 sensor_graph.add_node(u"({} {} {} {} {}) => {} using copy_latest_a".format(unbuffered_stream, trigger_a, combiner, stream_b, trigger_b, trigger_stream))
-            elif 'input' in str(stream_b) and  'input' not in str(stream_a):
+            elif stream_b.input and not stream_a.input:
                 unbuffered_stream = alloc.allocate_stream(DataStream.UnbufferedType, attach=True)
                 sensor_graph.add_node(u"({} always) => {} using copy_latest_a".format(stream_b, unbuffered_stream))
                 sensor_graph.add_node(u"({} {} {} {} {}) => {} using copy_latest_a".format(stream_a, trigger_a, combiner, unbuffered_stream, trigger_b, trigger_stream))
