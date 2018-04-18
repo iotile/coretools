@@ -107,7 +107,7 @@ class OnBlock(SensorGraphStatement):
 
         parent = scope_stack[-1]
         alloc = parent.allocator
-        
+
         stream_a, trigger_a = self._convert_trigger(self.trigger_a, parent)
 
         if self.trigger_b is None:
