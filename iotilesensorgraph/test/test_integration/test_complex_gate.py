@@ -12,12 +12,12 @@ def test_complex_gate_basic(complex_gate, complex_gate_opt):
 
     # Check for regresions in the number of nodes we're able to
     # eliminate
-    assert len(sg.nodes) == 40
+    assert len(sg.nodes) == 41
 
     for node in sg_opt.nodes:
         print(node)
 
-    assert len(sg_opt.nodes) <= 31
+    assert len(sg_opt.nodes) <= 32
 
 
 def test_complex_gate_optimization(complex_gate, complex_gate_opt):

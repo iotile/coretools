@@ -2,6 +2,11 @@
 
 All major changes in each released version of iotile-sensorgraph are listed here.
 
+## 0.7.1
+
+ - on_block and copy_statement edited to prevent nodes from being dependent 
+   on root node and a non-root node.
+
 ## 0.7.0
 
 - Add reference tile and device for testing the effects of update scripts.  The

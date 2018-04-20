@@ -95,7 +95,13 @@ class CopyStatement(SensorGraphStatement):
             op = 'copy_count_a'
 
         if self.explicit_input:
-            sensor_graph.add_node(u"({} always && {} {}) => {} using {}".format(self.explicit_input, trigger_stream, trigger_cond, self.output, op))
+            #If root node is an input, create an intermediate node with an unbuffered node
+            if self.explicit_input.input:
+                unbuffered_stream = alloc.allocate_stream(DataStream.UnbufferedType, attach=True)
+                sensor_graph.add_node(u"({} always) => {} using {}".format(self.explicit_input, unbuffered_stream, 'copy_latest_a'))
+                sensor_graph.add_node(u"({} always && {} {}) => {} using {}".format(unbuffered_stream, trigger_stream, trigger_cond, self.output, op))
+            else:
+                sensor_graph.add_node(u"({} always && {} {}) => {} using {}".format(self.explicit_input, trigger_stream, trigger_cond, self.output, op))
         elif self.constant_input is not None:
             const_stream = alloc.allocate_stream(DataStream.ConstantType, attach=True)
 

@@ -321,7 +321,7 @@ class SensorGraph(object):
             inputs = []
             for walker, _ in curr.inputs:
                 for other in seen:
-                    if walker.matches(other.stream):
+                    if walker.matches(other.stream) and other not in inputs:
                         inputs.append(other)
 
             outputs = [x for x in curr.outputs]
@@ -354,6 +354,11 @@ class SensorGraph(object):
         # sort the nodes and reorder them.
         node_order = toposort_flatten(node_deps)
         self.nodes = [self.nodes[x] for x in node_order]
+
+        #Check root nodes all topographically sorted to the beginning
+        for root in self.roots:
+            if root not in self.nodes[0:len(self.roots)]:
+                raise NodeConnectionError("Inputs not sorted in the beginning", node=str(root), node_position=self.nodes.index(root))
 
     @classmethod
     def find_processing_function(cls, name):
