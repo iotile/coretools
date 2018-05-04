@@ -1,7 +1,8 @@
 import os
 from future.utils import viewitems
-from iotile.core.utilities.typedargs import context, annotated, param, return_type, iprint
+from typedargs import context, annotated, param, return_type, iprint, docannotate
 from iotile.core.dev.iotileobj import IOTile
+from iotile.core.dev.registry import ComponentRegistry
 from iotile.core.exceptions import ArgumentError, ExternalError, BuildError
 from .resolverchain import DependencyResolverChain
 
@@ -31,6 +32,45 @@ class DependencyManager (object):
         }
 
         return info
+
+    @docannotate
+    def list_local(self, path='.'):
+        """List the absolute path of all local dependencies of this tile.
+
+        A local dependency is defined as one that is located in the local
+        ComponentRegistry().  The primary utility of this function is to
+        figure out which dependencies could productively be built locally
+        before building this component, vs which of its dependencies are
+        pulled down from released code that is immutable.
+
+        Args:
+            path (str): The path to the iotile component that we wish to
+                check local dependencies on.  If not specified, this
+                defaults to the current working directory.
+
+        Returns:
+            list(str): A list of paths to each locally installed dependency.
+        """
+
+        tile = IOTile(path)
+
+        if tile.release:
+            raise ArgumentError("Cannot check dependencies on a release mode tile that cannot have dependencies")
+
+        dep_paths = []
+        reg = ComponentRegistry()
+
+        for dep in tile.dependencies:
+            try:
+                local_tile = reg.find_component(dep['name'])
+                if local_tile.release:
+                    continue
+
+                dep_paths.append(os.path.abspath(local_tile.folder))
+            except ArgumentError:
+                continue
+
+        return dep_paths
 
     @return_type('map(string, string)')
     @param("path", "path", "exists", desc="Path to IOTile to check")

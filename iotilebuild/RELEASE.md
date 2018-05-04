@@ -2,6 +2,12 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.6.8
+
+- Add list_local to DependencyManager so that we can implement a recursive build
+  system that knows to build local dependencies first  before building a
+  component that depends on them.
+
 ## 2.6.7
 
 - Add qemu testing to continuous integration on linux
