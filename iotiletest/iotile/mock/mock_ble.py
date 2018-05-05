@@ -7,6 +7,7 @@ from future.utils import viewitems, itervalues
 import struct
 import uuid
 import logging
+from iotile.core.hw.reports import IOTileReading
 from iotile.core.exceptions import *
 from iotile.mock.mock_iotile import RPCInvalidIDError, RPCNotFoundError, TileNotFoundError
 
@@ -62,6 +63,7 @@ class MockBLEDevice(object):
 
         self.handles = {}
         self.values = {}
+        self.broadcast_reading = IOTileReading(0, 0xFFFF, 0)
 
         self.rssi = -50
         self.voltage = 3.8
@@ -95,7 +97,7 @@ class MockBLEDevice(object):
     def scan_response(self):
         header = struct.pack("<BBH", 19, 0xFF, self.ArchManuID)
         voltage = struct.pack("<H", int(self.voltage*256))
-        reading = struct.pack("<HLLL", 0xFFFF, 0, 0, 0)
+        reading = struct.pack("<HLLL", self.broadcast_reading.stream, self.broadcast_reading.value, self.broadcast_reading.raw_time, 0)
         name = struct.pack("<BB6s", 7, 0x09, "IOTile")
         reserved = struct.pack("<BBB", 0, 0, 0)
 

@@ -2,9 +2,11 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
-## HEAD
+## 1.6.0
 
 - Add bled112-v1-6-0-virtual.hex into blob.
+- Add support for pushing broadcast readings received as part of scan response
+  data.
 
 ## 1.5.2
 

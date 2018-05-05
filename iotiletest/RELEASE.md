@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 0.9.5
+
+- Upgrade MockBLEDevice in order to support broadcasting a reading in a 
+  scan response packet.
+
 ## 0.9.4
 
 - Allow to set tracing_test_device iotile_id through the configuration file
