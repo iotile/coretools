@@ -6,7 +6,6 @@
 # Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 from builtins import range
-from future.utils import itervalues
 from functools import reduce
 import time
 import inspect
@@ -17,20 +16,22 @@ import sys
 import logging
 from queue import Empty
 import pkg_resources
+from future.utils import itervalues
 
 from iotile.core.dev.semver import SemanticVersion
 from iotile.core.hw.transport import *
 from iotile.core.hw.exceptions import *
 from iotile.core.exceptions import *
-from iotile.core.utilities.typedargs.annotate import param, return_type, finalizer, docannotate
-from typedargs import *
+from typedargs.annotate import annotated, param, return_type, finalizer, docannotate, context
 from iotile.core.dev.registry import ComponentRegistry
 from iotile.core.hw.transport.adapterstream import AdapterCMDStream
 from iotile.core.dev.config import ConfigManager
 from iotile.core.hw.debug import DebugManager
+from iotile.core.utilities.linebuffer_ui import LinebufferUI
 
 from .proxy import TileBusProxyObject
 from .app import IOTileApp
+
 
 @context("HardwareManager")
 class HardwareManager(object):
@@ -77,6 +78,7 @@ class HardwareManager(object):
 
         self._stream_queue = None
         self._trace_queue = None
+        self._broadcast_queue = None
         self._trace_data = bytearray()
 
         self._proxies = {'TileBusProxyObject': TileBusProxyObject}
@@ -370,6 +372,31 @@ class HardwareManager(object):
         return self.stream.heartbeat()
 
     @annotated
+    def enable_broadcasting(self):
+        """Enable the collection of broadcast IOTile reports.
+
+        Broadcast reports contain tagged readings from an IOTile device
+        but are sent without a connection to that device.  The specific
+        method that is used to broadcast the report varies by connection
+        technology but it could be, e.g., a bluetooth low energy advertising
+        packet.
+
+        By default all broadcast reports are dropped unless you call
+        enable_broadcasting to allocate a queue to receive them.
+
+        There does not need to be an active connection for you to call
+        enable_broadcasting.
+
+        Once you call enable_broadcasting, it remains in effect for the
+        duration of this HardwareManager object.
+        """
+
+        if self._broadcast_queue is not None:
+            return
+
+        self._broadcast_queue = self.stream.enable_broadcasting()
+
+    @annotated
     def enable_streaming(self):
         """Enable streaming of report data from the connected device.
 
@@ -406,6 +433,119 @@ class HardwareManager(object):
             return 0
 
         return self._stream_queue.qsize()
+
+    @docannotate
+    def watch_broadcasts(self, whitelist=None, blacklist=None):
+        """Spawn an interactive terminal UI to watch broadcast data from devices.
+
+        Devices are allowed to post a broadcast report containing stream data.
+        This function will create a list in your console window with the latest
+        broadcast value from each device in range.
+
+        Args:
+            whitelist (list(integer)): Only include devices with these listed ids.
+            blacklist (list(integer)): Include every device **except** those with these
+                specific ids.  If combined with whitelist, whitelist wins and this
+                parameter has no effect.
+        """
+
+        if whitelist is not None:
+            whitelist = set(whitelist)
+
+        if blacklist is not None:
+            blacklist = set(blacklist)
+
+        def _title(_items):
+            return "Watching Broadcast Reports (Ctrl-C to Stop)"
+
+        def _poll():
+            try:
+                return next(self.iter_broadcast_reports(blocking=False))
+            except StopIteration:
+                return None
+
+        def _text(item, screen):
+            fmt_uuid = "%08X" % item.origin
+            fmt_uuid = fmt_uuid[:4] + '-' + fmt_uuid[4:]
+
+            reading = item.visible_readings[0]
+            return "{0: <15} stream: {1: 04X}    value: {2: <8}".format(fmt_uuid, reading.stream, reading.value)
+
+        def _sort_order(item):
+            return item.origin
+
+        def _hash(item):
+            uuid = item.origin
+            if whitelist is not None and uuid not in whitelist:
+                return None
+
+            if blacklist is not None and whitelist is None and uuid in blacklist:
+                return None
+
+            return uuid
+
+        line_ui = LinebufferUI(_poll, _hash, _text, sortkey_func=_sort_order, title=_title)
+        line_ui.run()
+
+    @docannotate
+    def watch_scan(self, whitelist=None, blacklist=None, sort="id"):
+        """Spawn an interactive terminal UI to watch scan results.
+
+        This is just a fancy way of calling scan() repeatedly and
+        deduplicating results per device so that each one has a static place
+        on the screen.
+
+        You can decide how you want to order the results with the sort parameter.
+
+        If you pick "id", the default, then results will have a largely static
+        order based on the UUID of each device so that there will not be too
+        much screen churn.
+
+        Args:
+            whitelist (list(integer)): Only include devices with these listed ids.
+            blacklist (list(integer)): Include every device **except** those with these
+                specific ids.  If combined with whitelist, whitelist wins and this
+                parameter has no effect.
+            sort (str): The specific way to sort the list on the screen.  Options are
+                id, signal.  Defaults to id.
+        """
+
+        if whitelist is not None:
+            whitelist = set(whitelist)
+
+        if blacklist is not None:
+            blacklist = set(blacklist)
+
+        def _title(items):
+            return "Realtime Scan: %d Devices in Range" % len(items)
+
+        def _poll():
+            return self.scan()
+
+        def _text(item, screen):
+            fmt_uuid = "%08X" % item['uuid']
+            fmt_uuid = fmt_uuid[:4] + '-' + fmt_uuid[4:]
+
+            return "{0: <15} signal: {1: <7d} connected: {2: <8}".format(fmt_uuid, item['signal_strength'], str(item.get('user_connected', 'unk')))
+
+        def _sort_order(item):
+            if sort == "signal":
+                return -item['signal_strength']
+
+            return item['uuid']
+
+        def _hash(item):
+            uuid = item['uuid']
+            if whitelist is not None and uuid not in whitelist:
+                return None
+
+            if blacklist is not None and whitelist is None and uuid in blacklist:
+                return None
+
+            return uuid
+
+        line_ui = LinebufferUI(_poll, _hash, _text, sortkey_func=_sort_order, title=_title)
+        line_ui.run()
 
     @return_type("string")
     @param("encoding", "string", desc="The encoding to use to dump the trace, either 'hex' or 'raw'")
@@ -498,6 +638,26 @@ class HardwareManager(object):
             while True:
                 blob = self._trace_queue.get(block=False)
                 self._trace_data += bytearray(blob)
+        except Empty:
+            pass
+
+    def iter_broadcast_reports(self, blocking=False):
+        """Iterate over broadcast reports that have been received.
+
+        This function is designed to allow the creation of dispatch or
+        processing systems that process broadcast reports as they come in.
+
+        Args:
+            blocking (bool): Whether to stop when there are no more readings or
+                block and wait for more.
+        """
+
+        if self._broadcast_queue is None:
+            return
+
+        try:
+            while True:
+                yield self._broadcast_queue.get(block=blocking)
         except Empty:
             pass
 

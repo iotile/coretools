@@ -29,7 +29,8 @@ setup(
         "msgpack>=0.5.5",
         "python-dateutil>=2.6.0",
         "future >= 0.16.0",
-        "typedargs>=0.11.0"
+        "typedargs>=0.11.0",
+        "asciimatics>=1.9.0"
     ],
     entry_points={
         'console_scripts': [
@@ -45,8 +46,9 @@ setup(
             'virtual = iotile.core.hw.transport.virtualadapter:VirtualDeviceAdapter'
             ],
         'iotile.report_format': [
-            'individual = iotile.core.hw.reports.individual_format:IndividualReadingReport',
-            'signed_list = iotile.core.hw.reports.signed_list_format:SignedListReport'
+            'individual = iotile.core.hw.reports:IndividualReadingReport',
+            'signed_list = iotile.core.hw.reports:SignedListReport',
+            'broadcast = iotile.core.hw.reports:BroadcastReport'
         ],
         'iotile.auth_provider': [
             'BasicAuthProvider = iotile.core.hw.auth.basic_auth_provider:BasicAuthProvider',

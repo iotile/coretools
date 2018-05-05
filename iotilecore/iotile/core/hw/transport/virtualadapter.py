@@ -9,6 +9,7 @@ import time
 from .adapter import DeviceAdapter
 from iotile.core.exceptions import ArgumentError
 from iotile.core.hw.virtual.virtualdevice import RPCInvalidIDError, TileNotFoundError, RPCNotFoundError, VirtualIOTileDevice
+from iotile.core.hw.reports import BroadcastReport
 
 
 class VirtualAdapterAsyncChannel(object):
@@ -28,7 +29,7 @@ class VirtualAdapterAsyncChannel(object):
 
         conn_id = self._find_connection(self.iotile_id)
 
-        if conn_id is not None:
+        if conn_id is not None or isinstance(report, BroadcastReport):
             self.adapter._trigger_callback('on_report', conn_id, report)
 
     def trace(self, data):

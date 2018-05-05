@@ -10,6 +10,7 @@ import datetime
 import time
 from iotile.core.exceptions import HardwareError, ArgumentError
 from iotile.core.utilities.typedargs import iprint
+from iotile.core.hw.reports import BroadcastReport
 
 
 class AdapterCMDStream(CMDStream):
@@ -32,6 +33,7 @@ class AdapterCMDStream(CMDStream):
         self.adapter = adapter
         self._scanned_devices = {}
         self._reports = None
+        self._broadcast_reports = None
         self._traces = None
         self.connection_interrupted = False
 
@@ -218,6 +220,13 @@ class AdapterCMDStream(CMDStream):
 
         return self._reports
 
+    def _enable_broadcasting(self):
+        if self._broadcast_reports is not None:
+            return
+
+        self._broadcast_reports = queue.Queue()
+        return self._broadcast_reports
+
     def _enable_debug(self):
         res = self.adapter.open_interface_sync(0, 'debug')
         if not res['success']:
@@ -242,6 +251,13 @@ class AdapterCMDStream(CMDStream):
         return self._traces
 
     def _on_report(self, conn_id, report):
+        if isinstance(report, BroadcastReport):
+            if self._broadcast_reports is None:
+                return
+
+            self._broadcast_reports.put(report)
+            return
+
         if self._reports is None:
             return
 
