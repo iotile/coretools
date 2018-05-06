@@ -14,3 +14,4 @@ every 10 seconds
 # Configure outputs
 manual signed streamer on all outputs;
 manual signed streamer on all system outputs to slot 1 with streamer 0;
+broadcast streamer on unbuffered 5;

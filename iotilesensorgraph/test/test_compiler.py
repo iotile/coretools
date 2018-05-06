@@ -96,11 +96,12 @@ def test_streamers(parser):
     parser.compile(model=model)
 
     streamers = parser.sensor_graph.streamers
-    assert len(streamers) == 2
+    assert len(streamers) == 3
     assert streamers[0].dest == SlotIdentifier.FromString('controller')
     assert streamers[1].dest == SlotIdentifier.FromString('slot 1')
     assert streamers[1].with_other == 0
-
+    assert streamers[2].dest == SlotIdentifier.FromString('controller')
+    assert streamers[2].report_type == 'broadcast'
 
 
 def test_every_block_splitting(parser):

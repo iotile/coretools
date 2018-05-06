@@ -1,0 +1,14 @@
+Sensor Graph
+Format: 1.0
+Type: ASCII
+
+set_online {False}
+clear
+reset
+add_streamer {all outputs,controller,False,signedlist_userkey,telegram,255}
+add_streamer {unbuffered 1,controller,True,individual,telegram,255}
+add_streamer {unbuffered 2,controller,False,individual,broadcast,255}
+add_streamer {unbuffered 3,controller,False,individual,broadcast,0}
+add_streamer {unbuffered 4,controller,True,individual,broadcast,255}
+persist
+set_online {True}

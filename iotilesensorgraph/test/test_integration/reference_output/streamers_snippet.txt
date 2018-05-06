@@ -1,0 +1,15 @@
+disable
+clear
+reset
+add_streamer 'all outputs' 'controller' False signedlist_userkey telegram
+add_streamer 'unbuffered 1' 'controller' True individual telegram
+add_streamer 'unbuffered 2' 'controller' False individual broadcast
+add_streamer 'unbuffered 3' 'controller' False individual broadcast --withother 0
+add_streamer 'unbuffered 4' 'controller' True individual broadcast
+persist
+back
+config_database
+clear_variables
+set_variable 'controller' 8192 uint32_t 1
+back
+reset

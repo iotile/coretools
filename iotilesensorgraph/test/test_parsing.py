@@ -102,6 +102,12 @@ def test_language_constructs():
     assert parsed[0]['explicit_tile'] == SlotIdentifier.FromString('slot 1')
     assert parsed[0]['security'] == u'signed'
 
+    parsed = language.streamer_stmt.parseString(u'manual broadcast streamer on output 1 to slot 1;')
+    assert parsed[0]['selector'] == DataStreamSelector.FromString('output 1')
+    assert parsed[0]['explicit_tile'] == SlotIdentifier.FromString('slot 1')
+    assert parsed[0]['broadcast'] == u'broadcast'
+
+
     # Test parsing copy statements
     parsed = language.simple_statement.parseString(u'copy unbuffered 1 => unbuffered 2;')
     assert parsed[0]['explicit_input'][0] == DataStream.FromString('unbuffered 1')

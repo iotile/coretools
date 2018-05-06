@@ -7,13 +7,13 @@ from iotile.sg.streamer_descriptor import parse_binary_descriptor, create_binary
 
 @python_2_unicode_compatible
 class AddStreamerRecord(SendErrorCheckingRPCRecord):
-    """Add a sensorgraph node to a device.
+    """Add a sensorgraph streamer to a device.
 
     Args:
-        descriptor (str): A string node descriptor for the node that
-            we wish to add to our embedded sensorgraph.
+        descriptor (DataStreamer): The streamer object that we should
+            add to the target device.
         address (int): The address of the tile running a sensorgraph
-            engine that we wish to add our node to.
+            engine that we wish to add our streamer to.
     """
 
     RPC_ID = 0x2007

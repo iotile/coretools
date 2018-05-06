@@ -11,7 +11,7 @@ from iotile.sg.streamer import DataStreamer
 class StreamerStatement(SensorGraphStatement):
     """A streamer definition that adds an output to the sensor graph.
 
-    [manual] [encrypted|signed] [realtime] streamer on <selector> [to <slot>];
+    [manual] [encrypted|signed] [realtime|broadcast] streamer on <selector> [to <slot>];
 
     Args:
         parsed(ParseResults): The parsed tokens that make up this
@@ -23,6 +23,7 @@ class StreamerStatement(SensorGraphStatement):
 
     def __init__(self, parsed, location=None):
         realtime = 'realtime' in parsed
+        broadcast = 'broadcast' in parsed
         encrypted = 'security' in parsed and parsed['security'] == 'encrypted'
         signed = 'security' in parsed and parsed['security'] == 'signed'
         self.auto = 'manual' not in parsed
@@ -42,12 +43,16 @@ class StreamerStatement(SensorGraphStatement):
         if realtime and (encrypted or signed):
             raise SensorGraphSemanticError("Realtime streamers cannot be either signed or encrypted")
 
+        if broadcast and (encrypted or signed):
+            raise SensorGraphSemanticError("Broadcast streamers cannot be either signed or encrypted")
+
         super(StreamerStatement, self).__init__([], location)
 
+        self.report_type = 'broadcast' if broadcast else 'telegram'
         self.dest = dest
         self.selector = selector
 
-        if realtime:
+        if realtime or broadcast:
             self.report_format = u'individual'
         elif signed:
             self.report_format = u'signedlist_userkey'
@@ -68,7 +73,7 @@ class StreamerStatement(SensorGraphStatement):
                 how this statement allocates clocks or other stream resources.
         """
 
-        streamer = DataStreamer(self.selector, self.dest, self.report_format, self.auto, with_other=self.with_other)
+        streamer = DataStreamer(self.selector, self.dest, self.report_format, self.auto, report_type=self.report_type, with_other=self.with_other)
         sensor_graph.add_streamer(streamer)
 
     def __str__(self):
