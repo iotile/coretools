@@ -1,0 +1,8 @@
+# All of the streamer types so we can check to make sure they
+# all create the expected output in each output format
+
+manual signed streamer on all outputs;
+realtime streamer on unbuffered 1;
+manual broadcast streamer on unbuffered 2;
+broadcast streamer on unbuffered 3 with streamer 0;
+broadcast streamer on unbuffered 4;

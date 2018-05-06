@@ -23,7 +23,7 @@ class TestDeviceManager(tornado.testing.AsyncTestCase):
         self.dev.reports = [IndividualReadingReport.FromReadings(100, [IOTileReading(0, 1, 2)])]
         self.adapter = MockDeviceAdapter()
         self.adapter.add_device('test', self.dev)
-        
+
         self.manager = DeviceManager(self.io_loop)
         self.manager.add_adapter(self.adapter)
         self.manager.register_monitor(1, ['report'], self.on_report)
@@ -47,7 +47,7 @@ class TestDeviceManager(tornado.testing.AsyncTestCase):
 
         res = yield self.manager.connect_direct('0/test')
         assert res['success'] is True
-    
+
     @tornado.testing.gen_test
     def test_send_rpc(self):
         res = yield self.manager.connect_direct('0/test')
@@ -55,7 +55,7 @@ class TestDeviceManager(tornado.testing.AsyncTestCase):
 
         conn_id = res['connection_id']
 
-        res = yield self.manager.send_rpc(conn_id, 8, 0, 4, '', 1.0) 
+        res = yield self.manager.send_rpc(conn_id, 8, 0, 4, '', 1.0)
         assert len(res['payload']) == 6
         assert res['payload'] == 'TestCN'
 
@@ -86,7 +86,7 @@ class TestDeviceManager(tornado.testing.AsyncTestCase):
         """
 
         self.adapter.advertise()
-        
+
         yield tornado.gen.sleep(0.1)
 
         print self.manager.scanned_devices

@@ -52,7 +52,12 @@ class DataStreamer(object):
 
     def __str__(self):
         manual = "manual " if not self.automatic else ""
-        realtime = "realtime " if self.format == 'individual' else ""
+        if self.report_type == 'broadcast':
+            type_string = 'broadcast '
+        elif self.format == 'individual':
+            type_string = 'realtime '
+        else:
+            type_string = ""
 
         security = ""
         if self.format == 'signedlist_userkey':
@@ -62,10 +67,12 @@ class DataStreamer(object):
         if not self.dest.controller:
             to_slot = " to " + str(self.dest)
 
+        #FIXME: Make sure we generate the right code for streamer type
+
         with_statement = ""
         if self.with_other is not None:
             with_statement = " with streamer %d" % self.with_other
 
-        template = "{manual}{security}{realtime}streamer on {selector}{to_slot}{with_other}"
-        return template.format(manual=manual, security=security, realtime=realtime, selector=self.selector,
+        template = "{manual}{security}{report_type}streamer on {selector}{to_slot}{with_other}"
+        return template.format(manual=manual, security=security, report_type=type_string, selector=self.selector,
                                with_other=with_statement, to_slot=to_slot)

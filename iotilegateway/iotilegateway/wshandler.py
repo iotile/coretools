@@ -13,9 +13,11 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
     def initialize(self, manager):
         self.manager = manager
         self.report_monitor = None
+        self.broadcast_monitor = None
 
     def open(self, *args):
         self.stream.set_nodelay(True)
+        self.broadcast_monitor = self.manager.register_monitor(None, ['broadcast'], self._notify_report_sync)
         self._logger.info('Client connected')
 
     @classmethod
@@ -142,5 +144,9 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         if self.report_monitor is not None:
             self.manager.remove_monitor(self.report_monitor)
             self.report_monitor = None
+
+        if self.broadcast_monitor is not None:
+            self.manager.remove_monitor(self.broadcast_monitor)
+            self.broadcast_monitor = None
 
         self._logger.info('Client disconnected')

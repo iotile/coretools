@@ -2,6 +2,13 @@
 
 All major changes in each released version of IOTileGateway are listed here.
 
+## 1.7.0
+
+- Add support for routing broadcast readings to monitors that are registered
+  for them.
+- Add test coverage to IOTileGateway to make sure that the websockets agent
+  works as expected.
+
 ## 1.6.0
 
 - Add probe_async function in DeviceManager to probe all adapters, in order to

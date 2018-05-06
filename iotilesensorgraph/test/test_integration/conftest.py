@@ -60,3 +60,16 @@ def usertick_gate_opt():
     raw_sg = compile_sg('user_tick.sgf')
     optimizer.optimize(raw_sg, model=model)
     return raw_sg
+
+
+@pytest.fixture(scope='module')
+def streamer_types():
+    """Sensorgraph with lots of varieties of streamers."""
+
+    model = DeviceModel()
+    optimizer = SensorGraphOptimizer()
+
+    raw_sg = compile_sg('streamers.sgf')
+    optimizer.optimize(raw_sg, model=model)
+
+    return raw_sg

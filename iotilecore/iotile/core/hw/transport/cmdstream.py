@@ -27,6 +27,7 @@ def do_final_close():
 
 atexit.register(do_final_close)
 
+
 class CMDStream(object):
     """
     Any physical method that supports talking to an IOTile based device
@@ -161,6 +162,14 @@ class CMDStream(object):
             raise StreamOperationNotSupportedError(command="enable_streaming")
 
         return self._enable_streaming()
+
+    def enable_broadcasting(self):
+        """Prepare to receive broadcast reports and not discard them."""
+
+        if not hasattr(self, '_enable_broadcasting'):
+            raise StreamOperationNotSupportedError(command="enable_broadcasting")
+
+        return self._enable_broadcasting()
 
     def enable_tracing(self):
         if not self.connected:

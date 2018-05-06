@@ -14,7 +14,7 @@ import serial.tools.list_ports
 from iotile.core.dev.config import ConfigManager
 from iotile.core.utilities.packed import unpack
 from iotile.core.exceptions import HardwareError
-from iotile.core.hw.reports.parser import IOTileReportParser
+from iotile.core.hw.reports import IOTileReportParser, IOTileReading, BroadcastReport
 from async_packet import AsyncPacketBuffer
 from iotile.core.hw.transport.adapter import DeviceAdapter
 from bled112_cmd import BLED112CommandProcessor
@@ -573,6 +573,7 @@ class BLED112Adapter(DeviceAdapter):
                     self.partial_scan_responses[parsed['address']] = info
         elif parsed['type'] == 4 and parsed['address'] in self.partial_scan_responses:
             #Check if this is a scan response packet from an iotile based device
+            self._logger.info("Processing scan response")
             scan_data = parsed['scan_data']
             if len(scan_data) != 31:
                 return #FIXME: Log an error here
@@ -584,8 +585,11 @@ class BLED112Adapter(DeviceAdapter):
             info['current_time'] = curr_time
             info['last_seen'] = datetime.datetime.now()
 
+            # If there is a valid reading on the advertising data, broadcast it
             if stream != 0xFFFF:
-                info['visible_readings'] = [(stream, reading_time, reading),]
+                reading = IOTileReading(reading_time, stream, reading, reading_time=datetime.datetime.utcnow())
+                report = BroadcastReport.FromReadings(info['uuid'], [reading], curr_time)
+                self._trigger_callback('on_report', None, report)
 
             del self.partial_scan_responses[parsed['address']]
             self._trigger_callback('on_scan', self.id, info, self.ExpirationTime)

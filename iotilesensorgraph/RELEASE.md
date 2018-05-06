@@ -2,6 +2,12 @@
 
 All major changes in each released version of iotile-sensorgraph are listed here.
 
+## 0.7.2
+
+- Add support for broadcast streamers that indicate to the receiving tile that
+  it should broadcast the streamed data rather than packaging it up as a
+  historical report or sending it only when a user is online and connected.
+
 ## 0.7.1
 
  - on_block and copy_statement edited to prevent nodes from being dependent 

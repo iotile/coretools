@@ -4,7 +4,7 @@
 from builtins import str
 from future.utils import viewitems
 from iotile.core.hw.virtual.virtualdevice import VirtualIOTileDevice
-from iotile.core.hw.reports import IndividualReadingReport, IOTileReading
+from iotile.core.hw.reports import IndividualReadingReport, IOTileReading, BroadcastReport
 
 
 class RealtimeTestDevice(VirtualIOTileDevice):
@@ -17,6 +17,9 @@ class RealtimeTestDevice(VirtualIOTileDevice):
     If no other arguments are passed, this device defaults to producing the value 100
     on stream 0x1001 every second.  If a streams dictionary is passed, that overrides
     this default setting.
+
+    You can also configure this device to broadcast readings without a connection on
+    a periodic interval as well.
 
     If no 'trace' argument is passed the device defaults to tracing the phrase
     'Hello trace world.  ' every second.  If a 'trace' array is passed, that overrides
@@ -37,6 +40,14 @@ class RealtimeTestDevice(VirtualIOTileDevice):
                     streams dict which should be a string encoding of a hex number including
                     the prefix 0x so that it can be parsed with int(key, 0).
 
+                broadcast (dict):
+                    A map of strings with hex numbers to tuples of (interval, value)
+                     where interval is a float that expresses how often the stream should stream
+                    in seconds and value is an integer that is sent as the value every interval
+                    as a broadcast reading (BroadcastReport).  The stream id is the key of the
+                    streams dict which should be a string encoding of a hex number including
+                    the prefix 0x so that it can be parsed with int(key, 0).
+
                 trace (list):
                     A list of tuples which are (float, string) lists
                     that will trace the fixed string every fixed interval given
@@ -51,7 +62,8 @@ class RealtimeTestDevice(VirtualIOTileDevice):
 
         super(RealtimeTestDevice, self).__init__(iotile_id, 'Simple')
 
-        streams = {'0x1001': (1.0, 100)}
+        streams = args.get('streams', {'0x1001': (1.0, 100)})
+        broadcast = args.get('broadcast', {'0x1001': (1.0, 100)})
 
         if 'streams' in args:
             streams = args['streams']
@@ -61,6 +73,13 @@ class RealtimeTestDevice(VirtualIOTileDevice):
             interval, reading = value
 
             self.create_worker(self._create_stream, interval, stream, reading)
+
+        for key, value in viewitems(broadcast):
+            stream = int(key, 0)
+            interval, reading = value
+
+            self.create_worker(self._create_broadcast, interval, stream, reading)
+
 
         traces = [[1.0, 'Hello trace world.  ']]
 
@@ -96,4 +115,17 @@ class RealtimeTestDevice(VirtualIOTileDevice):
         reading = IOTileReading(0, stream, value)
 
         report = IndividualReadingReport.FromReadings(self.iotile_id, [reading])
+        self.stream(report)
+
+    def _create_broadcast(self, stream, value):
+        """Send a broadcast streaming value.
+
+        Args:
+            stream (int): The stream id to send
+            value (int): The stream value to send
+        """
+
+        reading = IOTileReading(0, stream, value)
+
+        report = BroadcastReport.FromReadings(self.iotile_id, [reading])
         self.stream(report)

@@ -129,8 +129,8 @@ class IOTileGateway(threading.Thread):
         if should_close:
             self.loop.add_callback(self._stop_loop)
         else:
-            # Notify that we have now loaded all plugins and are starting operation
-            self.loaded.set()
+            # Notify that we have now loaded all plugins and are starting operation (once the loop starts)
+            self.loop.add_callback(lambda: self.loaded.set())
             # Try to regularly update a supervisor about our status
             callback = tornado.ioloop.PeriodicCallback(self._try_report_status, 60000)
             callback.start()

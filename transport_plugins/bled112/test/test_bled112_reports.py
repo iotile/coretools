@@ -7,8 +7,7 @@ from iotile.mock.mock_ble import MockBLEDevice
 from iotile.mock.mock_iotile import MockIOTileDevice
 import util.dummy_serial
 from iotile_transport_bled112.bled112 import BLED112Adapter
-from iotile.core.hw.reports.individual_format import IndividualReadingReport
-from iotile.core.hw.reports.report import IOTileReading
+from iotile.core.hw.reports import IOTileReading, IndividualReadingReport
 import time
 import logging
 import sys
@@ -34,7 +33,7 @@ class TestBLED112Reports(unittest.TestCase):
         util.dummy_serial.RESPONSE_GENERATOR = self.adapter.generate_response
 
         self.scanned_devices = []
-        self.bled = BLED112Adapter('test', self._on_scan_callback, self._on_disconnect_callback, stop_check_interval=0.01)
+        self.bled = BLED112Adapter('test', self._on_scan_callback, self._on_disconnect_callback, passive=False, stop_check_interval=0.01)
         self.bled.add_callback('on_report', self._on_report_callback)
         self.reports = []
 
@@ -62,3 +61,32 @@ class TestBLED112Reports(unittest.TestCase):
     def _on_report_callback(self, conn_id, report):
         self.reports.append(report)
         self._reports_received.set()
+
+    def test_broadcast(self):
+        """Make sure we can get broadcast packets."""
+
+        self.dev1_ble.broadcast_reading = IOTileReading(1, 0x1000, 100)
+
+        self.bled.stop_scan()
+        assert self.adapter.scanning is False
+        self._reports_received.clear()
+        self.bled.start_scan(True)
+
+        self._reports_received.wait(1.0)
+        assert len(self.reports) == 1
+
+        reading = self.reports[0].visible_readings[0]
+        assert reading.stream == 0x1000
+        assert reading.raw_time == 1
+        assert reading.value == 100
+
+        self._reports_received.clear()
+
+        self.adapter.advertise()
+        self._reports_received.wait(1.0)
+        assert len(self.reports) == 1
+
+        reading = self.reports[0].visible_readings[0]
+        assert reading.stream == 0x1000
+        assert reading.raw_time == 1
+        assert reading.value == 100

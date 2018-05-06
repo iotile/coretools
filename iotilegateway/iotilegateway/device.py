@@ -5,6 +5,7 @@ import tornado.ioloop
 import tornado.gen
 import uuid
 from future.utils import viewvalues, viewitems
+from iotile.core.hw.reports import BroadcastReport
 from iotile.core.exceptions import ArgumentError
 
 
@@ -182,6 +183,13 @@ class DeviceManager(object):
         - 'trace': tracing data has been received from a device
         - 'device_seen': a scan event has seen the device
         - 'disconnection': someone has disconnected from the device
+        - 'broadcast': A broadcast report has been received from the device.
+
+        There are some specific requirements when using the broadcast monitor
+        since that is not associated with a specific device UUID.  You must
+        specify a device_uuid of None to indicate that you do not want to
+        filter by device and you must specify only the 'broadcast' filter, no
+        others since the others are not compatible with a None device_uuid.
 
         Args:
             device_uuid (int): The device that we want to monitor
@@ -198,10 +206,23 @@ class DeviceManager(object):
 
         monitor_uuid = uuid.uuid4()
 
+        filters = set(filter_names)
+        if 'broadcast' in filters:
+            if device_uuid is not None:
+                raise ArgumentError("You must pass a device_uuid of None when registering a broadcast filter", device_uuid=device_uuid)
+
+            if len(filters) > 1:
+                raise ArgumentError("You are not currently allowed to combine a broadcast filter with any other events", filter_names=filter_names)
+
+        if device_uuid is None:
+            device_uuid = '*'
+
         if device_uuid not in self.monitors:
             self.monitors[device_uuid] = {}
 
-        self.monitors[device_uuid][monitor_uuid.hex] = (set(filter_names), callback)
+        self.monitors[device_uuid][monitor_uuid.hex] = (filters, callback)
+
+        self._logger.debug("Registered monitor, device=%s, filters=%s, uuid=%s", device_uuid, filter_names, monitor_uuid)
 
         return "{}/{}".format(device_uuid, monitor_uuid.hex)
 
@@ -218,6 +239,9 @@ class DeviceManager(object):
         dev_uuid = int(dev_uuid)
         if dev_uuid not in self.monitors or monitor_name not in self.monitors[dev_uuid]:
             raise ArgumentError("Could not find monitor by name", monitor_id=monitor_id)
+
+        if dev_uuid == '*':
+            raise ArgumentError("You are not currently allowed to adjust a global monitor", monitor_id=monitor_id)
 
         filters, callback = self.monitors[dev_uuid][monitor_name]
 
@@ -251,6 +275,10 @@ class DeviceManager(object):
             event (string): The name of the event
             *args: Arguments to be passed to the event monitor function
         """
+
+        if device_uuid is None:
+            device_uuid = '*'
+
         if device_uuid not in self.monitors:
             return
 
@@ -628,14 +656,26 @@ class DeviceManager(object):
         self._loop.add_callback(sync_trace_received_callback, self, connection_id, trace)
 
     def report_received_callback(self, connection_id, report):
-        """Callback when a report has been received for a connection
+        """Callback when a report has been received.
+
+        There are two cases when this can be called:
+        1. When connection_id is not None so the report is a normal report streamed over a
+           connection to a device and it is forwarded to people who have a 'report' monitor.
+        2. When connection_id is None and the report is a BroadcastReport that is sent to
+           all registered 'broadcast' monitors.
 
         Args:
-            connection_id (int): The id of the connection for which the report was received
+            connection_id (int): The id of the connection for which the report was received.
+                This can only be None if isinstance(report, BroadcastReport)
             report (IOTileReport): A report streamed from a device
         """
 
         def sync_reported_received_callback(self, connection_id, report):
+            """Properly forward on a received report."""
+            if connection_id is None and isinstance(report, BroadcastReport):
+                self.call_monitor(None, 'broadcast', report)
+                return
+
             if connection_id not in self.connections:
                 self._logger.warn('Dropping report for an unknown connection %d', connection_id)
 

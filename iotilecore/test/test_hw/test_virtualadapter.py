@@ -55,7 +55,8 @@ def realtime_hw():
     hw = HardwareManager('virtual:realtime_test@%s' % conf_file)
     yield hw
 
-    hw.disconnect()
+    if hw.stream.connected:
+        hw.disconnect()
 
 @pytest.fixture
 def realtime_scan_hw():
@@ -161,6 +162,21 @@ def test_realtime_streaming(realtime_hw):
 
     assert stream1[0].visible_readings[0].value == 200
     assert stream2[0].visible_readings[0].value == 100
+
+
+def test_realtime_broadcast(realtime_hw):
+    """Make sure we can receive broadcast reports."""
+
+    realtime_hw.enable_broadcasting()
+
+    report = next(realtime_hw.iter_broadcast_reports(blocking=True))
+
+    assert report.origin == 1
+    assert len(report.visible_readings) == 1
+
+    reading = report.visible_readings[0]
+    assert reading.stream == 0x1001
+    assert reading.value == 100
 
 
 def test_realtime_tracing(tracer_hw):

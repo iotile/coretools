@@ -19,26 +19,35 @@ def compare_string_data(data, reference_file):
     in_path = os.path.join(os.path.dirname(__file__), 'reference_output', reference_file)
 
     with open(in_path, "rb") as in_file:
-        ref_data = in_file.read()
+        ref_data = in_file.read().decode('utf-8')
 
-    assert data == ref_data.decode('utf-8')
+    # Don't compare EOL separators so we can store reference files on
+    # one platform and use them on another.
+    data_lines = data.splitlines()
+    ref_lines = ref_data.splitlines()
+
+    assert data_lines == ref_lines
 
 
-def test_script_output_format(usertick_gate_opt):
+def test_script_output_format(usertick_gate_opt, streamer_types):
     """Make sure the output script format works."""
 
-    sg = usertick_gate_opt
-
-    output = format_script(sg)
+    output = format_script(usertick_gate_opt)
+    streamer_out = format_script(streamer_types)
 
     compare_binary_data(output, 'usertick_optimized_script.trub')
+    compare_binary_data(streamer_out, 'streamers_script.trub')
 
 
-def test_snippet_output_format(usertick_gate_opt):
+def test_snippet_output_format(usertick_gate_opt, streamer_types):
     """Make sure the snippet output format works."""
 
     snippet = format_snippet(usertick_gate_opt)
+    streamer_snippet = format_snippet(streamer_types)
+
     compare_string_data(snippet, 'usertick_optimized_snippet.txt')
+    compare_string_data(streamer_snippet, 'streamers_snippet.txt')
+
 
 def test_config_output_format(usertick_gate_opt):
     """Make sure the config output format works."""
@@ -47,8 +56,10 @@ def test_config_output_format(usertick_gate_opt):
     compare_string_data(config, 'usertick_optimized_config.txt')
 
 
-def test_ascii_output_format(usertick_gate_opt):
+def test_ascii_output_format(usertick_gate_opt, streamer_types):
     """Make sure the ascii output format works."""
 
     ascii_txt = format_ascii(usertick_gate_opt)
+    streamer_ascii = format_ascii(streamer_types)
     compare_string_data(ascii_txt, 'usertick_optimized_ascii.txt')
+    compare_string_data(streamer_ascii, 'streamers_ascii.txt')
