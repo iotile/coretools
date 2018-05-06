@@ -1,14 +1,16 @@
+
+import threading
+from queue import Queue, Empty
+import datetime
+import time
+import msgpack
+
 from ws4py.client.threadedclient import WebSocketClient
 from iotile.core.hw.exceptions import *
 from iotile.core.exceptions import *
 from iotile.core.hw.commands import RPCCommand
-from iotile.core.hw.reports.parser import IOTileReportParser
-import threading
-from queue import Queue, Empty
+from iotile.core.hw.reports import IOTileReportParser, BroadcastReport
 from .cmdstream import CMDStream
-import msgpack
-import datetime
-import time
 
 
 class WSIOTileClient(WebSocketClient):
@@ -76,6 +78,12 @@ class WebSocketStream(CMDStream):
     def __init__(self, port, connection_string, record=None):
         port = "ws://{0}".format(port)
         self._report_queue = Queue()
+        self._broadcast_queue = None
+
+        # Make sure we make at least one call here in main thread to workaround python bug
+        # https://bugs.python.org/issue7980
+        _throwaway = datetime.datetime.strptime('20110101','%Y%m%d')
+
         self.client = WSIOTileClient(port, report_callback=self._report_callback)
         self.client.start()
         self._connection_id = None
@@ -124,6 +132,10 @@ class WebSocketStream(CMDStream):
         self.send('open_interface', {'interface': 'streaming'})
         return self._report_queue
 
+    def _enable_broadcasting(self):
+        self._broadcast_queue = Queue()
+        return self._broadcast_queue
+
     def _send_rpc(self, address, feature, cmd, payload, **kwargs):
         args = {}
         args['rpc_address'] = address
@@ -147,7 +159,13 @@ class WebSocketStream(CMDStream):
         self.send('disconnect')
 
     def _report_callback(self, report):
-        self._report_queue.put(report)
+        if isinstance(report, BroadcastReport):
+            if self._broadcast_queue is None:
+                return
+
+            self._broadcast_queue.put(report)
+        else:
+            self._report_queue.put(report)
 
     def send(self, command, args={}, progress=None):
         cmd = {}

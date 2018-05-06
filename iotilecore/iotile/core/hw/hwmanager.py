@@ -661,6 +661,31 @@ class HardwareManager(object):
         except Empty:
             pass
 
+    def wait_broadcast_reports(self, num_reports, timeout=2.0):
+        """Wait until a specific number of broadcast reports have been received.
+
+        Args:
+            num_reports (int): The number of reports to wait for
+            timeout (float): The maximum number of seconds to wait without
+                receiving another report.
+        """
+
+        if self._broadcast_queue is None:
+            raise ExternalError("You have to enable broadcasting before you can wait for broadcast reports")
+
+        reports = []
+
+        for i in range(0, num_reports):
+            try:
+                report = self._broadcast_queue.get(timeout=timeout)
+                reports.append(report)
+            except Empty:
+                raise TimeoutExpiredError("Timeout waiting for a report", expected_number=num_reports, received_number=i, received_reports=reports)
+
+        return reports
+
+
+
     def iter_reports(self, blocking=False):
         """Iterate over reports that have been received.
 

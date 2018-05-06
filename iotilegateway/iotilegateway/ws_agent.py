@@ -1,6 +1,22 @@
 import tornado.web
+from tornado.httpserver import HTTPServer
+from tornado import netutil
+import socket
 import logging
 from wshandler import WebSocketHandler
+
+
+def bind_unused_port():
+    """Bind a server socket to an available port on localhost.
+
+    Adapted from tornado source code.
+    Returns:
+        (socket, port)
+    """
+    sock = netutil.bind_sockets(None, '127.0.0.1', family=socket.AF_INET,
+                                reuse_port=False)[0]
+    port = sock.getsockname()[1]
+    return sock, port
 
 
 class WebSocketGatewayAgent(object):
@@ -18,6 +34,7 @@ class WebSocketGatewayAgent(object):
     def __init__(self, args, manager, loop):
         self._args = args
         self.app = None
+        self.port = None
         self._manager = manager
         self._loop = loop
         self._logger = logging.getLogger(__name__)
@@ -30,14 +47,22 @@ class WebSocketGatewayAgent(object):
         Called before the event loop is running
         """
 
-        port = self._args.get('port', 5120)
-
         self.app = tornado.web.Application([
             (r'/iotile/v1', WebSocketHandler, {'manager': self._manager}),
         ])
 
-        self._logger.info("Starting Websocket Agent on port %d" % port)
-        self.app.listen(port)
+        port = self._args.get('port', 5120)
+
+        if port == 'unused':
+            sock, port = bind_unused_port()
+            server = HTTPServer(self.app, io_loop=self._loop)
+            server.add_sockets([sock])
+            server.start()
+        else:
+            self.app.listen(port)
+
+        self.port = port
+        self._logger.info("Started Websocket Agent on port %d" % port)
 
     def stop(self):
         """Stop this gateway agent

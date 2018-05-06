@@ -62,6 +62,33 @@ class VirtualDeviceAdapter(DeviceAdapter):
     The adapter is created and serves access to the virtual_devices that are
     found by name in the entry_point group iotile.virtual_device.
 
+    There are two ways to passing configuration dictionaries down into a
+    VirtualDevice attached to this VirtualDeviceAdapter.  Both are performed
+    by encoding the port string with {{device_name}}@{{config_info}}.  You
+    can either pass a path to a json file in {{config_info}} which is loaded
+    as a dictionary or you can prepend a '#' to the front of config_info and
+    pass a base64 encoded json string that is decoded into a dict.  Both are
+    identically passed to the underlying __init__ function of the VirtualDevice
+
+    If you choose to use a json file, the format must be::
+
+        {
+            "device":
+            {
+                ARGS GO HERE
+            }
+        }
+
+    The required device key is to allow for this file to host information about
+    multiple other kinds of iotile entities without collisions.
+
+    If you are programmatically specifying the dictionary then it should just
+    be a normal json with no parent "device" key such as:
+
+        {
+            ARGS GO HERE
+        }
+
     Args:
         port (string): A port description that should be in the form of
             device_name1@<optional_config_json1;device_name2@optional_config_json2
@@ -81,7 +108,7 @@ class VirtualDeviceAdapter(DeviceAdapter):
         self.connections = {}
 
         for dev in devs:
-            name, sep, config = dev.partition('@')
+            name, _sep, config = dev.partition('@')
 
             if len(config) == 0:
                 config = None
@@ -144,6 +171,13 @@ class VirtualDeviceAdapter(DeviceAdapter):
 
         if config is None:
             config_dict = {}
+        elif isinstance(config, dict):
+            config_dict = config
+        elif config[0] == '#':
+            # Allow passing base64 encoded json directly in the port string to ease testing.
+            import base64
+            config_str = base64.b64decode(config[1:])
+            config_dict = json.loads(config_str)
         else:
             try:
                 with open(config, "rb") as conf:
