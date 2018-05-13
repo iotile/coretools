@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.22.3
+
+- Add function to ComponentRegistry to list all config variables
+
 ## 3.22.2
 
 - Fix FlashBoardStep to have FILES variable so iotile-ship knows what files are needed

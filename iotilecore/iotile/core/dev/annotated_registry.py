@@ -72,6 +72,14 @@ class AnnotatedRegistry:
 
         return self.reg.list_components()
 
+    @return_type("list(string)")
+    def list_config(self):
+        """
+        List all of the registered component names
+        """
+
+        return self.reg.list_config()
+
     @param("key", "string")
     @param("value", "string")
     def set(self, key, value):
