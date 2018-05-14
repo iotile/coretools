@@ -28,7 +28,6 @@ setup(
         "ws4py>=0.3.5",
         "msgpack>=0.5.5",
         "python-dateutil>=2.6.0",
-        "future >= 0.16.0",
         "typedargs>=0.11.0",
         "asciimatics>=1.9.0"
     ],
