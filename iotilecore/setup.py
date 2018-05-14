@@ -29,10 +29,12 @@ setup(
         "msgpack>=0.5.5",
         "python-dateutil>=2.6.0",
         "future>=0.16.0",
-        'futures; python_version == "2.7"',
         "typedargs>=0.11.0",
         "asciimatics>=1.9.0"
     ],
+    extras_require={
+        ':python_version == "2.7"': ['futures']
+    }
     entry_points={
         'console_scripts': [
             'iotile = iotile.core.scripts.iotile_script:main',
