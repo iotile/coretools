@@ -31,7 +31,7 @@ setup(
         "typedargs>=0.11.0",
         "asciimatics>=1.9.0"
     ],
-    extras_require={':python_version == "2.7"': ['futures']},
+    extras_require={':python_version == "2.7"': ['future>=0.16.0']},
     entry_points={
         'console_scripts': [
             'iotile = iotile.core.scripts.iotile_script:main',
