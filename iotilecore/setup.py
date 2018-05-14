@@ -34,7 +34,7 @@ setup(
     ],
     extras_require={
         ':python_version == "2.7"': ['futures']
-    }
+    },
     entry_points={
         'console_scripts': [
             'iotile = iotile.core.scripts.iotile_script:main',
