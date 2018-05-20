@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileGateway are listed here.
 
+## 1.7.1
+
+- Fix handling of broadcast monitors in DeviceManager to properly handle the
+  wildcard operator.
+
 ## 1.7.0
 
 - Add support for routing broadcast readings to monitors that are registered

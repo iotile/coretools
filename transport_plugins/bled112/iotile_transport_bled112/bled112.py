@@ -573,7 +573,6 @@ class BLED112Adapter(DeviceAdapter):
                     self.partial_scan_responses[parsed['address']] = info
         elif parsed['type'] == 4 and parsed['address'] in self.partial_scan_responses:
             #Check if this is a scan response packet from an iotile based device
-            self._logger.info("Processing scan response")
             scan_data = parsed['scan_data']
             if len(scan_data) != 31:
                 return #FIXME: Log an error here

@@ -39,8 +39,7 @@ from collections import namedtuple
 import time
 from future.utils import viewvalues
 from past.builtins import basestring
-from asciimatics.screen import Screen
-
+from iotile.core.exceptions import ExternalError
 
 LineEntry = namedtuple("LineEntry", ['text', 'id', 'sort_key', 'object'])
 
@@ -62,6 +61,12 @@ class LinebufferUI(object):
         self.items = {}
 
     def run(self, refresh_interval=0.5):
+
+        try:
+            from asciimatics.screen import Screen
+        except ImportError:
+            raise ExternalError("You must have asciimatics installed to use LinebufferUI", suggestion="pip install iotilecore[ui]")
+
         Screen.wrapper(self._run_loop, arguments=[refresh_interval])
 
     def _update_items(self, screen):

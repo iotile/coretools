@@ -459,10 +459,8 @@ class HardwareManager(object):
             return "Watching Broadcast Reports (Ctrl-C to Stop)"
 
         def _poll():
-            try:
-                return next(self.iter_broadcast_reports(blocking=False))
-            except StopIteration:
-                return None
+            results = [x for x in self.iter_broadcast_reports(blocking=False)]
+            return results
 
         def _text(item, screen):
             fmt_uuid = "%08X" % item.origin

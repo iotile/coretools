@@ -2,6 +2,13 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.22.4
+
+- Make asciimatics an optional feature since it includes a large dependency
+  on Pillow which requires compilation on linux.  Now, if you want the fancy
+  command line ui, you need to install it using: 
+  `pip install iotilecore[ui]`
+
 ## 3.22.3
 
 - Add function to ComponentRegistry to list all config variables
