@@ -2,6 +2,10 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
+## 1.6.1
+
+- Remove extraneous, verbose debug log statement.
+
 ## 1.6.0
 
 - Add bled112-v1-6-0-virtual.hex into blob.

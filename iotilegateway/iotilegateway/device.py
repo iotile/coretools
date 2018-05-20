@@ -236,12 +236,14 @@ class DeviceManager(object):
         """
 
         dev_uuid, _, monitor_name = monitor_id.partition('/')
+
+        if dev_uuid == '*':
+            raise ArgumentError("You are not currently allowed to adjust a global monitor", monitor_id=monitor_id)
+
         dev_uuid = int(dev_uuid)
         if dev_uuid not in self.monitors or monitor_name not in self.monitors[dev_uuid]:
             raise ArgumentError("Could not find monitor by name", monitor_id=monitor_id)
 
-        if dev_uuid == '*':
-            raise ArgumentError("You are not currently allowed to adjust a global monitor", monitor_id=monitor_id)
 
         filters, callback = self.monitors[dev_uuid][monitor_name]
 
@@ -260,7 +262,9 @@ class DeviceManager(object):
         """
 
         dev_uuid, _, monitor_name = monitor_id.partition('/')
-        dev_uuid = int(dev_uuid)
+
+        if dev_uuid != '*':
+            dev_uuid = int(dev_uuid)
 
         if dev_uuid not in self.monitors or monitor_name not in self.monitors[dev_uuid]:
             raise ArgumentError("Could not find monitor by name", monitor_id=monitor_id)
