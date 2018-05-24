@@ -4,6 +4,7 @@ import shlex
 from subprocess import PIPE, STDOUT, Popen
 from iotile.ship.exceptions import RecipeActionMissingParameter
 from iotile.core.exceptions import ArgumentError
+import re
 
 class PipeSnippetStep(object):
     """A Recipe Step used to pipe snippets into a context.
@@ -43,8 +44,19 @@ class PipeSnippetStep(object):
 
         out = out.decode('utf-8')
 
+        # The output from each command would be a context string followed by output data.
+        #   A context string is a string in parenteses e.g. (GPIOPipelineProxy).  AKA a prompt
+        #   The result is after the context string.
+        #   There can be carriage returns '\n' between the prompts
         #Split outputs and remove context strings
-        outputs = [section.split(') ')[-1].strip() for section in out.split('\n(')]
+        out = re.sub(r'\n',' ',out)
+        outraw = re.split(r'(\(\w+\))',out)
+        outraw.pop(0)
+        outputs = []
+        for item in outraw:
+            if not re.match(r'\(\w+\)', item):
+                outputs.append(item.strip())
+
         return_strings = []
 
         for i in range(len(self._commands)):
