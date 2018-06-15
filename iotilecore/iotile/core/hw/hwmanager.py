@@ -348,8 +348,8 @@ class HardwareManager(object):
 
         self.stream.disconnect()
 
-    @annotated
-    def debug(self):
+    @param("connection_string", "string", desc="opaque connection string indicating which device")
+    def debug(self, connection_string=None):
         """Prepare the device for debugging if supported.
 
         Some transport mechanisms support a low level debug channel
@@ -360,7 +360,7 @@ class HardwareManager(object):
         an exception.
         """
 
-        self.stream.enable_debug()
+        self.stream.enable_debug(connection_string)
         return DebugManager(self.stream)
 
     @return_type("bool")

@@ -376,7 +376,7 @@ class WebSocketDeviceAdapter(DeviceAdapter):
 
         self._open_interface(connection_id, 'script', callback)
 
-    def _open_debug_interface(self, connection_id, callback):
+    def _open_debug_interface(self, connection_id, callback, connection_string=None):
         """Enable debug interface for this IOTile device
 
         Args:

@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## HEAD
+ 
+- Add connecting_string as optional arg to debug functions.
+
 ## 3.22.4
 
 - Make asciimatics an optional feature since it includes a large dependency
