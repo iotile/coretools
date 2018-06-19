@@ -78,16 +78,19 @@ class JLinkAdapter(DeviceAdapter):
 
         if device_name in DEVICE_ALIASES:
             device_name = DEVICE_ALIASES[device_name]
+            self._device_info = KNOWN_DEVICES.get(device_name)
+        else:
+            raise ArgumentError("Unknown device name or alias, please select from known_devices", device_name=value, known_devices=[x for x in viewkeys(DEVICE_ALIASES)])
 
         if mux in KNOWN_MULTIPLEX_FUNCS:
             self._mux_func = KNOWN_MULTIPLEX_FUNCS[mux]
-
-        self._device_info = KNOWN_DEVICES.get(device_name)
 
     def _parse_conn_string(self, conn_string):
         """Parse a connection string passed from 'debug' or 'connect_direct'"""
         if conn_string is None or len(conn_string) == 0:
             return
+
+        device_name = None
 
         if '@' in conn_string:
             raise ArgumentError("Configuration files are not yet supported as part of a connection string argument", conn_string=conn_string)
@@ -103,15 +106,13 @@ class JLinkAdapter(DeviceAdapter):
             if name == 'device':
                 if value in DEVICE_ALIASES:
                     device_name = DEVICE_ALIASES[value]
+                    self._device_info = KNOWN_DEVICES.get(device_name)
                 else:
                     raise ArgumentError("Unknown device name or alias, please select from known_devices", device_name=value, known_devices=[x for x in viewkeys(DEVICE_ALIASES)])
             elif name == 'channel':
                 self._channel = int(value)
-                print(self._channel)
                 if self._mux_func is None:
                     print("Warning: multiplexing architecture not selected, channel will not be set")
-
-        self._device_info = KNOWN_DEVICES.get(device_name)
 
     def _try_connect(self):
         """Try and connect to an attached device, setting self._connected if successful."""
