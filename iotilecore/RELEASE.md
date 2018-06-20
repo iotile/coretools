@@ -4,6 +4,7 @@ All major changes in each released version of IOTileCore are listed here.
 
 ## 3.22.5
 - Add connecting_string as optional arg to debug functions.
+- FlashBoardStep now uses has optional debug_string for connection
 
 ## 3.22.4
 
