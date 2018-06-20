@@ -40,7 +40,8 @@ class JLinkAdapter(DeviceAdapter):
         self._mux_func = None
         self._channel = None
         self._control_thread = None
-        self.jlink = pylink.JLink()
+        self.jlink = None
+        
         self._parse_port(port)
 
         if on_scan is not None:
@@ -130,6 +131,7 @@ class JLinkAdapter(DeviceAdapter):
             raise ArgumentError("Missing device name or alias, specify using device=name in port string or -c device=name in connect_direct or debug command", known_devices=[x for x in viewkeys(DEVICE_ALIASES)])
 
         try:
+            self.jlink = pylink.JLink()
             self.jlink.open(serial_no=self._jlink_serial)
             self.jlink.set_tif(pylink.enums.JLinkInterfaces.SWD)
             self.jlink.connect(self._device_info.jlink_name)
