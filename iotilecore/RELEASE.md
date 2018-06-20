@@ -2,8 +2,7 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
-## HEAD
- 
+## 3.22.5
 - Add connecting_string as optional arg to debug functions.
 
 ## 3.22.4
