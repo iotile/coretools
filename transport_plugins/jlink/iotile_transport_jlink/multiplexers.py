@@ -9,7 +9,7 @@ def _select_ftdi_channel(channel):
         raise ArgumentError("FTDI-selected multiplexer only has channels 0-7 valid, make sure you specify channel with -c channel=number", channel=channel)
     from pylibftdi import BitBangDevice
     bb = BitBangDevice(auto_detach=False)
-    bb.direction = 0x0F
+    bb.direction = 0b111
     bb.port = channel
 
 KNOWN_MULTIPLEX_FUNCS= {
