@@ -92,6 +92,12 @@ class QEMUSemihostedUnitTest(unit_test.UnitTest):
 
         build_dirs = self.build_dirs(target)
 
+        # Retarget for unit tests, since qemu only supports the cortex-m0
+        target = target.retarget()
+        target.settings['cpu'] = 'cortex-m0plus'
+        target.settings['cflags'] = ["-mthumb", "-Wall", "-pedantic", "-Wextra", "-Wshadow", "-Os", "-g", "-fno-builtin", "-ffunction-sections", "-fdata-sections"]
+        target.settings['asflags'] = ["-Wall"]
+        target.settings['ldflags'] = ["-mthumb", "-Xlinker", "--gc-sections", "--specs=nano.specs", "-lc", "-lnosys", "-nostartfiles"]       
         prog_env = arm.setup_environment(target)
 
         # Convert main.c.tpl into main.c

@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.6.9
+
+- Add architecture overrides for qemu unit tests so that they target the
+  cortex-m0plus
+
 ## 2.6.8
 
 - Add list_local to DependencyManager so that we can implement a recursive build
