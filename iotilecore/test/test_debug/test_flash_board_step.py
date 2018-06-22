@@ -10,7 +10,8 @@ def test_flash_board_step():
 
     correct_args = {
         'file': 'test_file',
-        'port': 'jlink:device=nrf52;serial=50000797'
+        'port': 'jlink',
+        'debug_string': 'device=nrf52'
     }
     step = FlashBoardStep(correct_args)
     assert step.FILES == [u'file']

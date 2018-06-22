@@ -180,11 +180,11 @@ class CMDStream(object):
 
         return self._enable_tracing()
 
-    def enable_debug(self):
+    def enable_debug(self, connection_string=None):
         if not hasattr(self, '_enable_debug'):
             raise StreamOperationNotSupportedError(command="enable_debug")
 
-        return self._enable_debug()
+        return self._enable_debug(connection_string)
 
     def debug_command(self, cmd_name, args=None, progress_callback=None):
         return self._debug_command(cmd_name, args, progress_callback)

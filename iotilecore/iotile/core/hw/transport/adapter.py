@@ -206,7 +206,7 @@ class DeviceAdapter(object):
 
         return result
 
-    def open_interface_async(self, conn_id, interface, callback):
+    def open_interface_async(self, conn_id, interface, callback, connection_string=None):
         """Asynchronously open an interface to this IOTile device
 
         The interface parameter must be one of (rpc, script, streaming,
@@ -218,6 +218,8 @@ class DeviceAdapter(object):
             conn_id (int): A unique identifier that will refer to this connection
             callback (callable):  A callback that will be called as
                 callback(conn_id, adapter_id, success, failure_reason)
+            connection_string (string): An optional DeviceAdapter specific string that can be used to connect to
+                a device using this DeviceAdapter.
         """
 
         if interface not in set(["rpc", "script", "streaming", "tracing", "debug"]):
@@ -233,11 +235,11 @@ class DeviceAdapter(object):
         elif interface == 'tracing':
             self._open_tracing_interface(conn_id, callback)
         elif interface == 'debug':
-            self._open_debug_interface(conn_id, callback)
+            self._open_debug_interface(conn_id, callback, connection_string)
         else:
             callback(conn_id, self.id, False, "interface not supported yet")
 
-    def open_interface_sync(self, conn_id, interface):
+    def open_interface_sync(self, conn_id, interface, connection_string=None):
         """Asynchronously open an interface to this IOTile device
 
         interface must be one of (rpc, script, streaming, tracing, debug)
@@ -245,7 +247,8 @@ class DeviceAdapter(object):
         Args:
             interface (string): The interface to open
             conn_id (int): A unique identifier that will refer to this connection
-
+            connection_string (string): An optional DeviceAdapter specific string that can 
+                be used to connect to a device using this DeviceAdapter.
         Returns:
             dict: A dictionary with four elements
                 'success': a bool with the result of the connection attempt
@@ -260,7 +263,7 @@ class DeviceAdapter(object):
             result['failure_reason'] = reason
             done.set()
 
-        self.open_interface_async(conn_id, interface, open_interface_done)
+        self.open_interface_async(conn_id, interface, open_interface_done, connection_string)
         done.wait()
 
         return result

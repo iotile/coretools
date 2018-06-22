@@ -3,7 +3,12 @@
 All major changes in each released version of the jlink transport plugin are
 listed here.
 
-## HEAD
+## 0.3.0
+- jlink now only connects to device when connect_direct or debug is called
+- debug has connection string as new optional parameter
+- channel=index is used as a way to select multiplexing channel
+- ftdi is one multiplexing architecture
+- Usage: ```iotile hw --port jlink:mux=ftdi```, ```connect_direct device=nrf52;channel=0```,```debug -c device=nrf52;channel=0```
 
 ## 0.2.0
 

@@ -227,8 +227,8 @@ class AdapterCMDStream(CMDStream):
         self._broadcast_reports = queue.Queue()
         return self._broadcast_reports
 
-    def _enable_debug(self):
-        res = self.adapter.open_interface_sync(0, 'debug')
+    def _enable_debug(self, connection_string=None):
+        res = self.adapter.open_interface_sync(0, 'debug', connection_string)
         if not res['success']:
             raise HardwareError("Could not open debug interface to device", reason=res['failure_reason'])
 
