@@ -1,19 +1,18 @@
+from __future__ import unicode_literals, absolute_import, print_function
 from collections import namedtuple
 import time
 import struct
 import threading
 import logging
-import datetime
-import uuid
-from Queue import Empty
-import copy
-import serial
+from past.builtins import basestring
+from queue import Empty
+from future.utils import viewitems, viewvalues
 from iotile.core.utilities.packed import unpack
 from iotile.core.exceptions import HardwareError
-from tilebus import *
-from bgapi_structures import process_gatt_service, process_attribute, process_read_handle, process_notification
-from bgapi_structures import parse_characteristic_declaration
-from async_packet import InternalTimeoutError
+from .tilebus import *
+from .bgapi_structures import process_gatt_service, process_attribute, process_read_handle, process_notification
+from .bgapi_structures import parse_characteristic_declaration
+from .async_packet import InternalTimeoutError
 
 BGAPIPacket = namedtuple("BGAPIPacket", ["is_event", "command_class", "command", "payload"])
 
@@ -23,19 +22,19 @@ class BLED112CommandProcessor(threading.Thread):
 
         self._stream = stream
         self._commands = commands
-        self._stop = threading.Event()
-        self._logger = logging.getLogger('server.ble.raw')
+        self._stop_event = threading.Event()
+        self._logger = logging.getLogger(__name__)
         self._logger.addHandler(logging.NullHandler())
         self.event_handler = None
         self._current_context = None
         self._current_callback = None
-        self._stop_check_interval = stop_check_interval
+        self._stop_event_check_interval = stop_check_interval
 
     def run(self):
-        while not self._stop.is_set():
+        while not self._stop_event.is_set():
             try:
                 self._process_events()
-                cmdargs, callback, _, context = self._commands.get(timeout=self._stop_check_interval)
+                cmdargs, callback, _, context = self._commands.get(timeout=self._stop_event_check_interval)
                 cmd = cmdargs[0]
 
                 if len(cmdargs) > 0:
@@ -46,7 +45,6 @@ class BLED112CommandProcessor(threading.Thread):
                 self._current_context = context
                 self._current_callback = callback
 
-                self._logger.info('Started command: ' + cmd)
                 if hasattr(self, cmd):
                     res = getattr(self, cmd)(*args)
                 else:
@@ -58,8 +56,6 @@ class BLED112CommandProcessor(threading.Thread):
                     result, retval = res
                 else:
                     result, retval, inprogress = res
-
-                self._logger.info('Finished command: ' + cmd)
 
                 self._current_context = None
                 self._current_callback = None
@@ -74,6 +70,9 @@ class BLED112CommandProcessor(threading.Thread):
                     callback(result_obj)
             except Empty:
                 pass
+            except:
+                self._logger.exception("Error executing command: %s", cmd)
+                raise
 
     def _set_scan_parameters(self, interval=2100, window=2100, active=False):
         """
@@ -150,7 +149,10 @@ class BLED112CommandProcessor(threading.Thread):
         try:
             response = self._send_command(6, 4, [])
             if response.payload[0] != 0:
-                self._logger.error('Error stopping scan for devices, error=%d', response.payload[0])
+                # Error code 129 means we just were not currently scanning
+                if response.payload[0] != 129:
+                    self._logger.error('Error stopping scan for devices, error=%d', response.payload[0])
+
                 return False, {'reason': "Could not stop scan for ble devices"}
         except InternalTimeoutError:
             return False, {'reason': "Timeout waiting for response"}
@@ -192,8 +194,8 @@ class BLED112CommandProcessor(threading.Thread):
             return False, None
 
         events = self._wait_process_events(0.5, event_filter_func, end_filter_func)
-        gatt_events = filter(event_filter_func, events)
-        end_events = filter(end_filter_func, events)
+        gatt_events = [x for x in events if event_filter_func(x)]
+        end_events = [x for x in events if end_filter_func(x)]
 
         if len(end_events) == 0:
             return False, None
@@ -220,7 +222,7 @@ class BLED112CommandProcessor(threading.Thread):
             timeout (float): the maximum number of seconds to spend in any single task
         """
 
-        for service in services.itervalues():
+        for service in viewvalues(services):
             success, result = self._enumerate_handles(conn, service['start_handle'],
                                                       service['end_handle'])
 
@@ -232,7 +234,7 @@ class BLED112CommandProcessor(threading.Thread):
             service['characteristics'] = {}
 
             last_char = None
-            for handle, attribute in attributes.iteritems():
+            for handle, attribute in viewitems(attributes):
                 if attribute['uuid'].hex[-4:] == '0328':
                     success, result = self._read_handle(conn, handle, timeout)
                     if not success:
@@ -323,7 +325,7 @@ class BLED112CommandProcessor(threading.Thread):
             return False, None
 
         events = self._wait_process_events(timeout, event_filter_func, end_filter_func)
-        handle_events = filter(event_filter_func, events)
+        handle_events = [x for x in events if event_filter_func(x)]
 
         attrs = {}
         for event in handle_events:
@@ -435,7 +437,7 @@ class BLED112CommandProcessor(threading.Thread):
             else:
                 return False, reason
 
-        progress_callback(curr_loc/20, len(data)/20)
+        progress_callback(curr_loc // 20, len(data) // 20)
 
         if curr_loc + chunk_size != len(data):
             self.async_command(['_send_script', conn, services, data, curr_loc+chunk_size, progress_callback], self._current_callback, self._current_context)
@@ -452,19 +454,19 @@ class BLED112CommandProcessor(threading.Thread):
         length = len(payload)
 
         if len(payload) < 20:
-            payload += '\x00'*(20 - len(payload))
+            payload += b'\x00'*(20 - len(payload))
 
         if len(payload) > 20:
             return False, {'reason': 'Payload is too long, must be at most 20 bytes'}
 
-        header = chr(length) + chr(0) + chr(rpc_id & 0xFF) + chr((rpc_id >> 8) & 0xFF) + chr(address)
+        header = bytearray([length, 0, rpc_id & 0xFF, (rpc_id >> 8) & 0xFF, address])
 
         if length > 0:
-            result, value = self._write_handle(conn, payload_char['handle'], False, str(payload))
+            result, value = self._write_handle(conn, payload_char['handle'], False, bytes(payload))
             if result is False:
                 return result, value
 
-        result, value = self._write_handle(conn, header_char['handle'], False, str(header))
+        result, value = self._write_handle(conn, header_char['handle'], False, bytes(header))
         if result is False:
             return result, value
 
@@ -516,7 +518,7 @@ class BLED112CommandProcessor(threading.Thread):
             data (bytearray): the data to set
         """
 
-        payload = struct.pack("<BB%ss" % (len(data)), packet_type, len(data), str(data))
+        payload = struct.pack("<BB%ss" % (len(data)), packet_type, len(data), bytes(data))
         response = self._send_command(6, 9, payload)
 
         result, = unpack("<H", response.payload)
@@ -554,7 +556,7 @@ class BLED112CommandProcessor(threading.Thread):
         """
 
         value_len = len(value)
-        value = str(value)
+        value = bytes(value)
 
         payload = struct.pack("<BHB%ds" % value_len, 0xFF, handle, value_len, value)
 
@@ -612,13 +614,13 @@ class BLED112CommandProcessor(threading.Thread):
             #Allow passing either a binary address or a hex string
             if isinstance(address, basestring) and len(address) > 6:
                 address = address.replace(':', '')
-                address = str(bytearray.fromhex(address)[::-1])
+                address = bytes(bytearray.fromhex(address)[::-1])
         except ValueError:
             return False, None
 
         #Allow simple determination of whether a device has a public or private address
         #This is not foolproof
-        private_bits = ord(address[-1]) >> 6
+        private_bits = bytearray(address)[-1] >> 6
         if private_bits == 0b11:
             address_type = 1
         else:
@@ -645,7 +647,7 @@ class BLED112CommandProcessor(threading.Thread):
             return False, None
 
         handle, _, addr, _, interval, timeout, latency, _ = unpack("<BB6sBHHHB", events[0].payload)
-        formatted_addr = ":".join(["%02X" % ord(x) for x in addr])
+        formatted_addr = ":".join(["%02X" % x for x in bytearray(addr)])
         self._logger.info('Connected to device %s with interval=%d, timeout=%d, latency=%d',
                           formatted_addr, interval, timeout, latency)
 
@@ -695,8 +697,7 @@ class BLED112CommandProcessor(threading.Thread):
         header[3] = command
 
         packet = header + bytearray(payload)
-        self._logger.info('Sending: ' + ':'.join([format(x, "02X") for x in packet]))
-        self._stream.write(packet)
+        self._stream.write(bytes(packet))
 
         #Every command has a response so wait for the response here
         response = self._receive_packet(timeout)
@@ -720,7 +721,7 @@ class BLED112CommandProcessor(threading.Thread):
             return response
 
     def stop(self):
-        self._stop.set()
+        self._stop_event.set()
         self.join()
 
     def sync_command(self, cmd):
@@ -755,14 +756,13 @@ class BLED112CommandProcessor(threading.Thread):
                                     command=event_data[3], payload=event_data[4:])
 
                 if not event.is_event:
-                    self._logger.error('Received response when we should have only received events:' + str(event))
+                    self._logger.error('Received response when we should have only received events, %s',event)
                 elif return_filter is not None and return_filter(event):
                     to_return.append(event)
                 elif self.event_handler is not None:
-                    self._logger.info("Passing event back to calling event handler: %s", str(event))
                     self.event_handler(event)
                 else:
-                    self._logger.info("Dropping event that had no evnt handler: %s", str(event))
+                    self._logger.info("Dropping event that had no evnt handler: %s", event)
 
                 if max_events > 0 and len(to_return) == max_events:
                     return to_return

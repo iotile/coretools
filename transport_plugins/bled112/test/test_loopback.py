@@ -3,6 +3,7 @@
 We will serve a virtual device over one bled112 and connect to it with the other bled112
 """
 
+from __future__ import unicode_literals, absolute_import, print_function
 import pytest
 import unittest
 import subprocess
@@ -19,7 +20,7 @@ class TestBLED112Loopback(unittest.TestCase):
         self.vdev = subprocess.Popen(['virtual_device', 'bled112', 'report_test'])
 
         bleds = BLED112Adapter.find_bled112_devices()
-        print bleds
+        print(bleds)
         self.hw = HardwareManager(port='bled112:{}'.format(bleds[1]))
 
     def tearDown(self):
@@ -28,7 +29,7 @@ class TestBLED112Loopback(unittest.TestCase):
 
     def test_loopback(self):
         time.sleep(2)
-        print self.hw.scan()
+        print(self.hw.scan())
         self.hw.connect(1)
         con = self.hw.controller()
         assert con.ModuleName() == 'Simple'

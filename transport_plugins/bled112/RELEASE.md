@@ -2,6 +2,12 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
+## 1.7.0
+
+- Add support for python 3.
+- Refactor logging statements to make it easier to log from the bled112 module
+  and remove extra chatty log messages.
+
 ## 1.6.1
 
 - Remove extraneous, verbose debug log statement.

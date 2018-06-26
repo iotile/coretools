@@ -1,7 +1,7 @@
-import struct
+from collections import namedtuple
+from future.utils import viewitems, viewvalues
 import uuid
 from iotile.core.utilities.packed import unpack
-from collections import namedtuple
 
 CharacteristicProperties = namedtuple("CharacteristicProperties", ["broadcast", "read", "write_no_response", "write", "notify", "indicate", "write_authenticated", "extended"])
 
@@ -17,11 +17,11 @@ def process_uuid(guiddata):
     #Byte order is LSB first for the entire guid
     if len(guiddata) != 16:
         base_guid = uuid.UUID(hex="{FB349B5F8000-0080-0010-0000-00000000}").bytes_le
-        base_guid = base_guid[:-len(guiddata)] + str(guiddata)
+        base_guid = base_guid[:-len(guiddata)] + bytes(guiddata)
 
         return uuid.UUID(bytes_le=base_guid)
 
-    return uuid.UUID(bytes_le=str(guiddata))
+    return uuid.UUID(bytes_le=bytes(guiddata))
 
 def process_gatt_service(services, event):
     """Process a BGAPI event containing a GATT service description and add it to a dictionary
@@ -29,7 +29,7 @@ def process_gatt_service(services, event):
     Args:
         services (dict): A dictionary of discovered services that is updated with this event
         event (BGAPIPacket): An event containing a GATT service
-    
+
     """
 
     length = len(event.payload) - 5
@@ -51,7 +51,7 @@ def process_attribute(attributes, event):
     length = len(event.payload) - 3
     handle, chrhandle, uuid = unpack("<BH%ds" % length, event.payload)
     uuid = process_uuid(uuid)
-    
+
     attributes[chrhandle] = {'uuid': uuid}
 
 def parse_characteristic_declaration(value):
@@ -68,7 +68,7 @@ def parse_characteristic_declaration(value):
 
 
     #Process the properties
-    properties = CharacteristicProperties(bool(propval & 0x1), bool(propval & 0x2), bool(propval & 0x4), bool(propval & 0x8), 
+    properties = CharacteristicProperties(bool(propval & 0x1), bool(propval & 0x2), bool(propval & 0x4), bool(propval & 0x8),
                                           bool(propval & 0x10), bool(propval & 0x20), bool(propval & 0x40), bool(propval & 0x80))
 
     uuid = process_uuid(uuid)
@@ -83,8 +83,8 @@ def handle_to_uuid(handle, services):
     """Find the corresponding UUID for an attribute handle
     """
 
-    for service in services.itervalues():
-        for char_uuid, char_def in service['characteristics'].iteritems():
+    for service in viewvalues(services):
+        for char_uuid, char_def in viewitems(service['characteristics']):
             if char_def['handle'] == handle:
                 return char_uuid
 

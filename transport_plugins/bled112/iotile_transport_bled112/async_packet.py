@@ -1,5 +1,6 @@
 from threading import Thread, Event
-from Queue import Queue, Empty
+from queue import Queue, Empty
+import logging
 
 class InternalTimeoutError(Exception):
     pass
@@ -7,7 +8,7 @@ class InternalTimeoutError(Exception):
 class AsyncPacketBuffer:
     def __init__(self, filelike, header_length, length_function):
         """
-        Given an underlying file like object, synchronously read from it 
+        Given an underlying file like object, synchronously read from it
         in a separate thread and communicate the data back to the buffer
         one packet at a time.
         """
@@ -30,7 +31,7 @@ class AsyncPacketBuffer:
         """
         return True if there is a packet waiting in the queue.
         """
-        
+
         return not self.queue.empty()
 
     def read_packet(self, timeout=3.0):
@@ -45,30 +46,35 @@ class AsyncPacketBuffer:
 
 
 def ReaderThread(filelike, read_queue, header_length, length_function, stop):
+    logger = logging.getLogger(__name__)
+
     while not stop.is_set():
-        header = bytearray()
-        while len(header) < header_length:
-            chunk = bytearray(filelike.read(header_length - len(header)))
-            header += chunk
+        try:
+            header = bytearray()
+            while len(header) < header_length:
+                chunk = bytearray(filelike.read(header_length - len(header)))
+                header += chunk
+
+                if stop.is_set():
+                    break
 
             if stop.is_set():
                 break
 
-        if stop.is_set():
-            break
-            
-        remaining_length = length_function(header)
+            remaining_length = length_function(header)
 
-        remaining = bytearray()
-        while len(remaining) < remaining_length:
-            chunk = bytearray(filelike.read(remaining_length - len(remaining)))
-            remaining += chunk
+            remaining = bytearray()
+            while len(remaining) < remaining_length:
+                chunk = bytearray(filelike.read(remaining_length - len(remaining)))
+                remaining += chunk
+                if stop.is_set():
+                    break
+
             if stop.is_set():
                 break
 
-        if stop.is_set():
-            break
-
-        #We have a complete packet now, process it
-        packet = header + remaining
-        read_queue.put(packet)
+            #We have a complete packet now, process it
+            packet = header + remaining
+            read_queue.put(packet)
+        except:
+            logger.exception("Error in reader thread")

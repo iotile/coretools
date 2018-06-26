@@ -1,3 +1,4 @@
+from __future__ import unicode_literals, absolute_import, print_function
 import unittest
 import threading
 import serial
@@ -50,14 +51,14 @@ class TestBLED112RPCs(unittest.TestCase):
         result = self.bled.open_interface_sync(1, 'script')
         assert result['success'] is True
 
-        script = '\xab'*1027
+        script = b'\xab'*1027
         result = self.bled.send_script_sync(1, script, self._script_progress)
 
         assert len(self.dev1.script) == len(script)
         assert self.dev1.script == script
         assert result['success'] is True
         assert self._current == self._total
-        assert self._total == (1027/20)
+        assert self._total == (1027 // 20)
 
     def _script_progress(self, current, total):
         self._current = current

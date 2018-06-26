@@ -1,25 +1,26 @@
 # This file is copyright Arch Systems, Inc.
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
-from Queue import Queue
+from __future__ import unicode_literals, absolute_import, print_function
+from queue import Queue
 import time
-import struct
 import threading
 import logging
 import datetime
 import uuid
 import copy
 import serial
+from future.utils import viewitems
 import serial.tools.list_ports
 from iotile.core.dev.config import ConfigManager
 from iotile.core.utilities.packed import unpack
 from iotile.core.exceptions import HardwareError
 from iotile.core.hw.reports import IOTileReportParser, IOTileReading, BroadcastReport
-from async_packet import AsyncPacketBuffer
+from .async_packet import AsyncPacketBuffer
 from iotile.core.hw.transport.adapter import DeviceAdapter
-from bled112_cmd import BLED112CommandProcessor
-from tilebus import *
-import bgapi_structures
+from .bled112_cmd import BLED112CommandProcessor
+from .tilebus import *
+import iotile_transport_bled112.bgapi_structures as bgapi_structures
 
 
 def packet_length(header):
@@ -92,10 +93,8 @@ class BLED112Adapter(DeviceAdapter):
         self.connecting_count = 0
         self.maximum_connections = 0
 
-        self._logger = logging.getLogger('ble.manager')
+        self._logger = logging.getLogger(__name__)
         self._logger.addHandler(logging.NullHandler())
-
-        self._command_task._logger.setLevel(logging.WARNING)
 
         try:
             self.initialize_system_sync()
@@ -140,7 +139,7 @@ class BLED112Adapter(DeviceAdapter):
         #Make a copy since this will change size as we disconnect
         con_copy = copy.copy(self._connections)
 
-        for _, context in con_copy.iteritems():
+        for _, context in viewitems(con_copy):
             self.disconnect_sync(context['connection_id'])
 
         self._command_task.stop()
@@ -210,7 +209,7 @@ class BLED112Adapter(DeviceAdapter):
 
         found_handle = None
         #Find the handle by connection id
-        for handle, conn in self._connections.iteritems():
+        for handle, conn in viewitems(self._connections):
             if conn['connection_id'] == conn_id:
                 found_handle = handle
 
@@ -243,7 +242,7 @@ class BLED112Adapter(DeviceAdapter):
 
         found_handle = None
         #Find the handle by connection id
-        for handle, conn in self._connections.iteritems():
+        for handle, conn in viewitems(self._connections):
             if conn['connection_id'] == conn_id:
                 found_handle = handle
 
@@ -262,7 +261,7 @@ class BLED112Adapter(DeviceAdapter):
 
         Args:
             conn_id (int): A unique identifer that will refer to this connection
-            data (string): the script to send to the device
+            data (bytes): the script to send to the device
             progress_callback (callable): A function to be called with status on our progress, called as:
                 progress_callback(done_count, total_count)
             callback (callable): A callback for when we have finished sending the script.  The callback will be called as"
@@ -275,7 +274,7 @@ class BLED112Adapter(DeviceAdapter):
 
         found_handle = None
         #Find the handle by connection id
-        for handle, conn in self._connections.iteritems():
+        for handle, conn in viewitems(self._connections):
             if conn['connection_id'] == conn_id:
                 found_handle = handle
 
@@ -286,7 +285,7 @@ class BLED112Adapter(DeviceAdapter):
         services = self._connections[found_handle]['services']
 
         self._command_task.async_command(['_send_script', found_handle, services, data, 0, progress_callback], self._send_script_finished, {'connection_id': conn_id,
-                                        'callback': callback})
+                                         'callback': callback})
 
     def _send_script_finished(self, result):
         success, retval, context = self._parse_return(result)
@@ -518,7 +517,7 @@ class BLED112Adapter(DeviceAdapter):
         parsed['rssi'] = rssi
         parsed['type'] = packet_type
         parsed['address_raw'] = sender
-        parsed['address'] = ':'.join([format(ord(x), "02X") for x in sender[::-1]])
+        parsed['address'] = ':'.join([format(x, "02X") for x in bytearray(sender[::-1])])
         parsed['address_type'] = addr_type
 
         #Scan data is prepended with a length
@@ -543,7 +542,7 @@ class BLED112Adapter(DeviceAdapter):
 
             uuid_buf = scan_data[2:18]
             assert len(uuid_buf) == 16
-            service = uuid.UUID(bytes_le=str(uuid_buf))
+            service = uuid.UUID(bytes_le=bytes(uuid_buf))
 
             if service == TileBusService:
                 #Now parse out the manufacturer specific data
@@ -647,7 +646,7 @@ class BLED112Adapter(DeviceAdapter):
 
         self._command_task.sync_command(['_set_mode', 0, 0]) #Disable advertising
 
-        self._logger.critical("BLED112 adapter supports %d connections", self.maximum_connections)
+        self._logger.info("BLED112 adapter supports %d connections", self.maximum_connections)
 
     def _on_disconnect(self, result):
         """Callback called when disconnection command finishes
@@ -680,7 +679,7 @@ class BLED112Adapter(DeviceAdapter):
         return success, return_value, context
 
     def _find_handle(self, conn_id):
-        for handle, data in self._connections.iteritems():
+        for handle, data in viewitems(self._connections):
             if data['connection_id'] == conn_id:
                 return handle
 

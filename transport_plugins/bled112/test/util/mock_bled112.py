@@ -1,6 +1,9 @@
 import struct
 import copy
+import binascii
 import logging
+from future.utils import viewitems
+from builtins import range
 
 def make_id(cmdclass, cmd, event, response=False):
     return (int(event) << 17 | int(response) << 16) | (cmdclass << 8) | cmd
@@ -18,7 +21,7 @@ def bgapi_event(cmdclass, cmd):
     return (cmdclass, cmd, True, True)
 
 def bgapi_resp(cmdclass, cmd):
-    return (cmdclass, cmd, False, True)    
+    return (cmdclass, cmd, False, True)
 
 class BGAPIPacket(object):
     formats = {
@@ -112,17 +115,17 @@ class BGAPIPacket(object):
         fmt_codes, fmt_names = cls.formats[cmd_id]
 
         payload = bytearray()
-        for i in xrange(0, len(fmt_codes)):
+        for i in range(0, len(fmt_codes)):
             code = fmt_codes[i]
             val = info[fmt_names[i]]
             if code == 'X':
                 code = '6s'
                 val = val.replace(':', '')
-                val = val.decode('hex')[::-1]
+                val = binascii.unhexlify(val)
             elif code == 'A':
                 arrlen = len(val)
                 code = '%ds' % (arrlen+1)
-                val = str(bytearray([arrlen]) + val)
+                val = bytes(bytearray([arrlen]) + val)
 
             data = struct.pack('<%s' % code, val)
             payload += data
@@ -146,7 +149,7 @@ class BGAPIPacket(object):
         if fmt_code.find('X') >= 0:
             addr_index = fmt_code.find('X')
             fmt_code = fmt_code.replace('X', '6s')
-        
+
         #Check for array
         if fmt_code.find('A') >= 0:
             arr_index = fmt_code.find('A')
@@ -159,13 +162,13 @@ class BGAPIPacket(object):
         if addr_index >= 0:
             addr_name = fmt_names[addr_index]
             raw_addr = output[addr_name]
-            output[addr_name] = ":".join(["{:02X}".format(ord(x)) for x in raw_addr[::-1]])
+            output[addr_name] = ":".join(["{:02X}".format(x) for x in bytearray(raw_addr[::-1])])
 
         if arr_index >= 0:
             arr_name = fmt_names[arr_index]
             raw_array = output[arr_name]
             output[arr_name] = raw_array[1:]
-        
+
         return output
 
 
@@ -178,7 +181,7 @@ class MockBLED112(object):
         self.active_scan = False
         self.scanning = False
         self.connecting = False
-        self._logger = logging.getLogger('mock.bled112')
+        self._logger = logging.getLogger(__name__)
 
     def add_device(self, device):
         self.devices[device.mac] = device
@@ -197,22 +200,22 @@ class MockBLED112(object):
         self.handlers[make_command(4, 5)] = self._write_handle
         self.handlers[make_command(4, 6)] = self._write_command
         self.handlers[make_command(6, 1)] = self._set_mode
-    
+
     def generate_response(self, packetdata):
         try:
             packet = BGAPIPacket(packetdata, False)
         except KeyError:
-            return ""
+            return b""
 
         if packet.cmd_id not in self.handlers:
             raise ValueError("Unknown command code passed: 0x%X" % packet.cmd_id)
 
         handler = self.handlers[packet.cmd_id]
         responses = handler(packet.payload)
-        
+
         out_packets = [BGAPIPacket.GeneratePacket(resp) for resp in responses]
 
-        return "".join([str(x) for x in out_packets])
+        return b"".join([bytes(x) for x in out_packets])
 
     def _read_handle(self, payload):
         handle = payload['handle']
@@ -266,7 +269,7 @@ class MockBLED112(object):
         event['type'] = bgapi_event(4, 1)
         event['handle'] = handle
         event['end_char'] = char_handle
-        
+
         if success:
             event['result'] = 0
         else:
@@ -373,7 +376,7 @@ class MockBLED112(object):
         packets = []
         packets.append({'type': (0, 6, False, True), 'max_connections': self.max_connections})
 
-        for i in xrange(0, self.max_connections):
+        for i in range(0, self.max_connections):
             packets.append({'handle': i, 'flags': 0, 'address': '00:00:00:00:00:00', 'address_type': 0, "interval": 0,
                             "timeout": 0, "latency": 0, "bonding": 0, 'type': bgapi_event(3, 0)})
 
@@ -415,9 +418,9 @@ class MockBLED112(object):
         #Otherwise try to connect
         resp = {'type': bgapi_resp(6, 3), 'result': 0, 'handle': len(self.connections)}
         self.connecting = True
-        
+
         packets.append(resp)
-        
+
         if addr in self.devices:
             event = {'type': bgapi_event(3, 0), 'handle': len(self.connections), 'flags': 0xFF, 'address': addr, 'address_type': payload['address_type'],
                      'interval': payload['interval_min'], 'timeout': payload['timeout'], 'latency': payload['latency'], 'bonding': 0xFF}
@@ -457,7 +460,7 @@ class MockBLED112(object):
 
         packets = []
 
-        for mac, dev in self.devices.iteritems():
+        for mac, dev in viewitems(self.devices):
             packet = {}
             packet['type'] = bgapi_event(6, 0)
             packet['rssi'] = dev.rssi
@@ -474,5 +477,5 @@ class MockBLED112(object):
                 response['data'] = dev.scan_response()
                 response['adv_type'] = dev.ScanResponsePacket
                 packets.append(response)
-        
+
         return packets

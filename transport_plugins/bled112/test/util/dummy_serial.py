@@ -30,7 +30,7 @@ __license__ = 'Apache License, Version 2.0'
 
 import sys
 import time
-import struct
+import logging
 import threading
 
 DEFAULT_TIMEOUT = 5
@@ -57,7 +57,7 @@ from the dummy serial port.
 Intended to be monkey-patched in the calling test module.
 """
 
-NO_DATA_PRESENT = ''
+NO_DATA_PRESENT = b''
 
 class Serial():
     """Dummy (mock) serial port for testing purposes.
@@ -88,6 +88,7 @@ class Serial():
             self.baudrate = DEFAULT_BAUDRATE
 
         self._data_lock = threading.Lock()
+        self._logger = logging.getLogger(__name__)
         if VERBOSE:
             _print_out('\nDummy_serial: Initializing')
             _print_out('dummy_serial initialization args: ' + repr(args) )
@@ -95,15 +96,14 @@ class Serial():
 
     def __repr__(self):
         """String representation of the dummy_serial object"""
-        return "{0}.{1}<id=0x{2:x}, open={3}>(port={4!r}, timeout={5!r}, waiting_data={6!r})".format(
+        return "{0}.{1}<id=0x{2:x}, open={3}>(port={4!r}, timeout={5!r}".format(
             self.__module__,
             self.__class__.__name__,
             id(self),
             self._isOpen,
             self.port,
-            self.timeout,
-            self._waiting_data,
-        ) 
+            self.timeout
+        )
 
     def open(self):
         """Open a (previously initialized) port on dummy_serial."""
@@ -112,7 +112,7 @@ class Serial():
 
         if self._isOpen:
             raise IOError('Dummy_serial: The port is already open')
-            
+
         self._isOpen = True
         self.port = self.initial_port_name
 
@@ -123,7 +123,7 @@ class Serial():
 
         if not self._isOpen:
             raise IOError('Dummy_serial: The port is already closed')
-            
+
         self._isOpen = False
         self.port = None
 
@@ -131,7 +131,7 @@ class Serial():
         """Inject data asynchronously into the serial port to simulate an event
 
         Args:
-            data (string): the data to be injected into the serial port read buffer
+            data (bytes): the data to be injected into the serial port read buffer
         """
 
         with self._data_lock:
@@ -141,19 +141,20 @@ class Serial():
         """Write to a port on dummy_serial.
 
         Args:
-            inputdata (string/bytes): data for sending to the port on dummy_serial. Will affect the response 
+            inputdata (string/bytes): data for sending to the port on dummy_serial. Will affect the response
             for subsequent read operations.
 
         Note that for Python2, the inputdata should be a **string**. For Python3 it should be of type **bytes**.
-        
+
         """
         if VERBOSE:
             _print_out('\nDummy_serial: Writing to port. Given:' + repr(inputdata) + '\n')
-            
+
         if sys.version_info[0] > 2:
             if not type(inputdata) == bytes:
                 raise TypeError('The input must be type bytes. Given:' + repr(inputdata))
-            inputstring = str(inputdata, encoding='latin1')
+
+            inputstring = inputdata
         else:
             inputstring = inputdata
 
@@ -161,7 +162,11 @@ class Serial():
             raise IOError('Dummy_serial: Trying to write, but the port is not open. Given:' + repr(inputdata))
 
         # Look up which data that should be waiting for subsequent read commands
-        response = RESPONSE_GENERATOR(inputstring)
+        try:
+            response = RESPONSE_GENERATOR(inputstring)
+        except:
+            self._logger.exception("Error generating response")
+            raise
 
         with self._data_lock:
             self._waiting_data += response
@@ -174,7 +179,7 @@ class Serial():
         and what is defined in the :data:`RESPONSES` dictionary.
 
         Args:
-            numberOfBytes (int): For compability with the real function. 
+            numberOfBytes (int): For compability with the real function.
 
         Returns a **string** for Python2 and **bytes** for Python3.
 
@@ -184,17 +189,17 @@ class Serial():
         """
         if VERBOSE:
             _print_out('\nDummy_serial: Reading from port (max length {!r} bytes)'.format(numberOfBytes))
-        
+
         if numberOfBytes < 0:
             raise IOError('Dummy_serial: The numberOfBytes to read must not be negative. Given: {!r}'.format(numberOfBytes))
-        
+
         if not self._isOpen:
             raise IOError('Dummy_serial: Trying to read, but the port is not open.')
 
         # Do the actual reading from the waiting data, and simulate the influence of numberOfBytes
         with self._data_lock:
             if numberOfBytes == len(self._waiting_data):
-                returnstring = self._waiting_data 
+                returnstring = self._waiting_data
                 self._waiting_data = NO_DATA_PRESENT
             elif numberOfBytes < len(self._waiting_data):
                 if VERBOSE:
@@ -209,16 +214,16 @@ class Serial():
                         'Will sleep until timeout. Available  data: {!r} (length = {}), numberOfBytes: {}'.format( \
                         self._waiting_data, len(self._waiting_data), numberOfBytes))
                 time.sleep(self.timeout)
-                returnstring = self._waiting_data 
+                returnstring = self._waiting_data
                 self._waiting_data = NO_DATA_PRESENT
 
         # TODO Adapt the behavior to better mimic the Windows behavior
-        
+
         if VERBOSE:
             _print_out('Dummy_serial read return data: {!r} (has length {})\n'.format(returnstring, len(returnstring)))
 
         if sys.version_info[0] > 2: # Convert types to make it python3 compatible
-            return bytes(returnstring, encoding='latin1')
+            return bytes(returnstring)
         else:
             return returnstring
 
