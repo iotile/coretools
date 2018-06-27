@@ -2,7 +2,7 @@
 
 from iotile_cloud.utils.gid import IOTileDeviceSlug, IOTileFleetSlug
 from iotile.core.exceptions import ArgumentError
-
+from past.builtins import basestring
 
 def device_slug_to_id(slug):
     """Convert a d-- device slug to an integer.
@@ -17,7 +17,7 @@ def device_slug_to_id(slug):
         ArgumentError: if there is a malformed slug
     """
 
-    if not isinstance(slug, (str, unicode)):
+    if not isinstance(slug, basestring):
         raise ArgumentError("Invalid device slug that is not a string", slug=slug)
 
     try:

@@ -1,4 +1,5 @@
 import pytest
+from past.builtins import long
 from iotile.core.exceptions import ArgumentError
 from iotile.cloud.utilities import *
 
@@ -33,7 +34,7 @@ def test_device_id_to_slug():
     assert device_id_to_slug('d--0010') == 'd--0000-0000-0000-0010'
     assert device_id_to_slug('0010') == 'd--0000-0000-0000-0010'
     assert device_id_to_slug(0xabcd5678ef90) == 'd--0000-abcd-5678-ef90'
-    assert device_id_to_slug(0x1234L) == 'd--0000-0000-0000-1234'
+    assert device_id_to_slug(long(0x1234)) == 'd--0000-0000-0000-1234'
 
     with pytest.raises(ArgumentError):
         device_id_to_slug('string')
@@ -53,7 +54,7 @@ def test_fleet_id_to_slug():
     assert fleet_id_to_slug('g--0010') == 'g--0000-0000-0010'
     assert fleet_id_to_slug('0010') == 'g--0000-0000-0010'
     assert fleet_id_to_slug(0xabcd5678ef90) == 'g--abcd-5678-ef90'
-    assert fleet_id_to_slug(0x1234L) == 'g--0000-0000-1234'
+    assert fleet_id_to_slug(long(0x1234)) == 'g--0000-0000-1234'
 
     with pytest.raises(ArgumentError):
         fleet_id_to_slug('string')
