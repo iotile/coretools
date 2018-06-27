@@ -42,7 +42,7 @@ def main():
     config = {}
     iface = None
     if args.config is not None:
-        with open(args.config, "rb") as conf_file:
+        with open(args.config, "r") as conf_file:
             config = json.load(conf_file)
 
     try:
