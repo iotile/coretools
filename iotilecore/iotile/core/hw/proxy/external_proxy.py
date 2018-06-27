@@ -4,16 +4,16 @@
 # external_proxy.py
 # Routines for importing proxy modules from registered components on your computer
 
-from future.utils import itervalues
-import pkg_resources
-from iotile.core.dev.registry import ComponentRegistry
-from proxy import TileBusProxyObject
-from plugin import TileBusProxyPlugin
-from iotile.core.exceptions import *
 import os
 import imp
 import inspect
 import sys
+from future.utils import itervalues
+import pkg_resources
+from iotile.core.dev.registry import ComponentRegistry
+from .proxy import TileBusProxyObject
+from .plugin import TileBusProxyPlugin
+from iotile.core.exceptions import *
 
 
 def find_proxy(component, proxy_name=None, obj_type=TileBusProxyObject):
