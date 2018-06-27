@@ -55,7 +55,7 @@ class CommandFile(object):
             outpath (str): The output path to save.
         """
 
-        with open(outpath, "wb") as outfile:
+        with open(outpath, "w") as outfile:
             outfile.write(self.dump())
 
     def dump(self):
@@ -121,7 +121,7 @@ class CommandFile(object):
             CommandFile: The decoded CommandFile object.
         """
 
-        with open(inpath, "rb") as infile:
+        with open(inpath, "r") as infile:
             indata = infile.read()
 
         return cls.FromString(indata)

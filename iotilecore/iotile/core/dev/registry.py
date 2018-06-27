@@ -204,17 +204,17 @@ def _check_registry_type(folder=None):
     if folder is None:
         folder = settings_directory()
 
-    #If we are relative to a virtual environment, place the registry into that virtual env
-    #Support both virtualenv and pythnon 3 venv
-    if hasattr(sys, 'real_prefix'):
-        folder = sys.prefix
-    elif hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix:
-        folder = sys.prefix
+        #If we are relative to a virtual environment, place the registry into that virtual env
+        #Support both virtualenv and pythnon 3 venv
+        if hasattr(sys, 'real_prefix'):
+            folder = sys.prefix
+        elif hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix:
+            folder = sys.prefix
 
     default_file = os.path.join(folder, 'registry_type.txt')
 
     try:
-        with open(default_file, "rb") as infile:
+        with open(default_file, "r") as infile:
             data = infile.read()
             data = data.strip()
 

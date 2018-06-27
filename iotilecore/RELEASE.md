@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## HEAD
+
+- Fix python 3 compatibility issues
+
 ## 3.22.6
 
 - Fix python 3 compatibility issues
