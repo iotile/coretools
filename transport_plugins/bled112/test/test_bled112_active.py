@@ -1,3 +1,4 @@
+from __future__ import unicode_literals, absolute_import, print_function
 import unittest
 import serial
 from util.mock_bled112 import MockBLED112

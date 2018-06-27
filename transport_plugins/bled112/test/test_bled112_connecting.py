@@ -1,3 +1,4 @@
+from __future__ import unicode_literals, absolute_import, print_function
 import unittest
 import threading
 import serial
@@ -47,7 +48,7 @@ class TestBLED112Connections(unittest.TestCase):
         self._connected.wait()
         end = time.time()
 
-        print self.bled._connections[0]['services']
+        print(self.bled._connections[0]['services'])
 
         assert self._conn_id == 1
         assert self._result is True

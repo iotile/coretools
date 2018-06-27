@@ -70,7 +70,7 @@ class MockBLEDevice(object):
         self.low_voltage_threshold = 3.2
         self.user_connected = False
 
-        self.rpc_payload = ""
+        self.rpc_payload = b""
 
         self.logger = logging.getLogger('mock.ble.device')
         self._setup_iotile_service()
@@ -98,7 +98,7 @@ class MockBLEDevice(object):
         header = struct.pack("<BBH", 19, 0xFF, self.ArchManuID)
         voltage = struct.pack("<H", int(self.voltage*256))
         reading = struct.pack("<HLLL", self.broadcast_reading.stream, self.broadcast_reading.value, self.broadcast_reading.raw_time, 0)
-        name = struct.pack("<BB6s", 7, 0x09, "IOTile")
+        name = struct.pack("<BB6s", 7, 0x09, b"IOTile")
         reserved = struct.pack("<BBB", 0, 0, 0)
 
         response = header + voltage + reading + name + reserved
@@ -265,6 +265,7 @@ class MockBLEDevice(object):
         raise WriteToUnhandledCharacteristic("write on unknown characteristic", char_id=char_id, value=value)
 
     def _call_rpc(self, header):
+        print(header)
         length, _, cmd, feature, address = struct.unpack("<BBBBB", bytes(header))
         rpc_id = (feature << 8) |  cmd
 

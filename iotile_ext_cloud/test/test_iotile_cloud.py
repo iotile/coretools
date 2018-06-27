@@ -2,6 +2,7 @@
 
 import pytest
 import datetime
+from builtins import range
 from dateutil.tz import tzutc
 
 from iotile.core.exceptions import ArgumentError
@@ -146,7 +147,7 @@ def test_set_device_template_check(basic_cloud):
 def make_sequential(iotile_id, stream, num_readings, give_ids=False, fmt="signed_list"):
     readings = []
 
-    for i in xrange(0, num_readings):
+    for i in range(0, num_readings):
         if give_ids:
             reading = IOTileReading(i, stream, i, reading_id=i+1)
         else:

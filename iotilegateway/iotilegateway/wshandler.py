@@ -1,5 +1,6 @@
 import logging
 import datetime
+from future.utils import viewvalues
 import tornado.ioloop
 import tornado.websocket
 import tornado.gen
@@ -37,7 +38,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         return msgpack.packb(message, use_bin_type=True, default=self.encode_datetime)
 
     def unpack(self, message):
-        return msgpack.unpackb(message, object_hook=self.decode_datetime)
+        return msgpack.unpackb(message, raw=False, object_hook=self.decode_datetime)
 
     @tornado.gen.coroutine
     def on_message(self, message):
@@ -50,7 +51,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
         if cmdcode == 'scan':
             devs = self.manager.scanned_devices
-            self.send_response({'success': True, 'devices': devs.values()})
+            self.send_response({'success': True, 'devices': [x for x in viewvalues(devs)]})
         elif cmdcode == 'connect':
             resp = yield self.manager.connect(cmd['uuid'])
 

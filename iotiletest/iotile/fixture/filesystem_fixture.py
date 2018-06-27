@@ -1,9 +1,14 @@
 """A Mock class for overriding open calls."""
 
 import pytest
-import __builtin__
+
+try:
+    import __builtin__ as builtins
+except ImportError:
+    import builtins
+
 from contextlib import contextmanager
-from StringIO import StringIO
+from io import StringIO
 
 
 class MockFileOpen(object):
@@ -11,7 +16,7 @@ class MockFileOpen(object):
         """Constructor."""
 
         self.files = {}
-        self._real_open = __builtin__.open
+        self._real_open = builtins.open
 
     @contextmanager
     def mock_open(self, filename, params):

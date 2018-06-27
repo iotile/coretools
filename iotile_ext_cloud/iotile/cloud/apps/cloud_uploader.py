@@ -3,6 +3,7 @@
 import logging
 import time
 import struct
+from builtins import range
 from iotile.core.exceptions import HardwareError
 from iotile.core.hw import IOTileApp
 from iotile.core.hw.reports import SignedListReport
@@ -73,7 +74,7 @@ class CloudUploader(IOTileApp):
         start = time.time()
 
         while (time.time() - start) < timeout:
-            for i in xrange(0, 16):
+            for i in range(0, 16):
                 self.logger.info("Waiting for streamer %d", i)
                 while True:
                     status = self._streamer_finished(i)

@@ -764,7 +764,8 @@ class HardwareManager(object):
             else:
                 mod = imp.load_module(basename, fileobj, pathname, description)
         except ImportError as exc:
-            raise ArgumentError("could not import module in order to load external proxy modules", module_path=path, parent_directory=folder, module_name=basename, error=str(exc))
+            cls.logger.exception("Error importing module: %s looking for class %s", path, base_class)
+            raise ArgumentError("Could not import module in order to load external proxy modules", module_path=path, parent_directory=folder, module_name=basename, error=str(exc))
 
         # Find all classes in this module that inherit from the given base class
         return [x for x in itervalues(mod.__dict__) if inspect.isclass(x) and issubclass(x, base_class) and x != base_class]

@@ -47,7 +47,7 @@ class IOTileSupervisor(threading.Thread):
     """
 
     def __init__(self, config):
-        self.loop = tornado.ioloop.IOLoop.instance()
+        self.loop = None
         self.service_manager = None
         self.loaded = threading.Event()
 
@@ -65,6 +65,8 @@ class IOTileSupervisor(threading.Thread):
 
     def run(self):
         """Start the supervisor and run it to completion in another thread."""
+
+        self.loop = tornado.ioloop.IOLoop(make_current=True)  # To create a loop for each thread
 
         # If we have an initialization error, stop trying to initialize more things and
         # just shut down cleanly

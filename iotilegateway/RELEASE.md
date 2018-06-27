@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileGateway are listed here.
 
+## 1.8.0
+
+- Add support for python 3.
+
 ## 1.7.1
 
 - Fix handling of broadcast monitors in DeviceManager to properly handle the

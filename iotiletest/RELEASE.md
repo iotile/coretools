@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 0.9.6
+
+- Fix additional python 3 incompatibilities inside mock ble device.
+
 ## 0.9.5
 
 - Upgrade MockBLEDevice in order to support broadcasting a reading in a 

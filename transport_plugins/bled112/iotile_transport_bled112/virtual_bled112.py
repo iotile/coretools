@@ -8,7 +8,8 @@ TileBus commands.
 # This file is copyright Arch Systems, Inc.
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
-from Queue import Queue
+from __future__ import unicode_literals, absolute_import, print_function
+from queue import Queue
 import traceback
 import struct
 import logging
@@ -17,11 +18,11 @@ import binascii
 import serial
 import serial.tools.list_ports
 from iotile.core.exceptions import ExternalError, HardwareError
-from async_packet import AsyncPacketBuffer
+from .async_packet import AsyncPacketBuffer
 from iotile.core.hw.virtual.virtualinterface import VirtualIOTileInterface
 from iotile.core.hw.virtual.virtualdevice import RPCInvalidIDError, RPCNotFoundError, TileNotFoundError
-from bled112_cmd import BLED112CommandProcessor
-from tilebus import TileBusService, ArchManuID
+from .bled112_cmd import BLED112CommandProcessor
+from .tilebus import TileBusService, ArchManuID
 
 
 def packet_length(header):

@@ -55,9 +55,9 @@ class TestDeviceManager(tornado.testing.AsyncTestCase):
 
         conn_id = res['connection_id']
 
-        res = yield self.manager.send_rpc(conn_id, 8, 0, 4, '', 1.0)
+        res = yield self.manager.send_rpc(conn_id, 8, 0, 4, b'', 1.0)
         assert len(res['payload']) == 6
-        assert res['payload'] == 'TestCN'
+        assert res['payload'] == b'TestCN'
 
     def test_monitors(self):
         mon_id = self.manager.register_monitor(10, ['report'], lambda x,y: x)
@@ -89,10 +89,10 @@ class TestDeviceManager(tornado.testing.AsyncTestCase):
 
         yield tornado.gen.sleep(0.1)
 
-        print self.manager.scanned_devices
+        print(self.manager.scanned_devices)
 
         res = yield self.manager.connect(1)
-        print res
+        print(res)
 
         assert res['success'] is True
 
@@ -108,4 +108,4 @@ class TestDeviceManager(tornado.testing.AsyncTestCase):
         yield tornado.gen.sleep(0.1)
 
         assert len(self.reports) == 1
-        print self.reports[0]
+        print(self.reports[0])

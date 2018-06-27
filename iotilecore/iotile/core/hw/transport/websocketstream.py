@@ -36,7 +36,7 @@ class WSIOTileClient(WebSocketClient):
         self.connection_established.clear()
 
     def unpack(self, msg):
-        return msgpack.unpackb(msg, object_hook=self.decode_datetime)
+        return msgpack.unpackb(msg, raw=False, object_hook=self.decode_datetime)
 
     @classmethod
     def decode_datetime(cls, obj):
@@ -172,7 +172,7 @@ class WebSocketStream(CMDStream):
         cmd['command'] = command
         cmd.update(args)
 
-        self.client.send(msgpack.packb(cmd), binary=True)
+        self.client.send(msgpack.packb(cmd, use_bin_type=True), binary=True)
 
         done = False
 

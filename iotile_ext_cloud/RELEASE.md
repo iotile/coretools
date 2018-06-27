@@ -2,6 +2,10 @@
 
 All major changes in each released version of the iotile-ext-cloud plugin are listed here.
 
+## 0.5.0
+
+- Make python 3 compatible and release on python 2 and python 3.
+
 ## 0.4.7
 
 - Refactor cloud.utilities to use iotile_cloud.utils.gid.IOTileCloudSlug classes

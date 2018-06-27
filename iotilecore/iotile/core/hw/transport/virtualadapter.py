@@ -180,7 +180,7 @@ class VirtualDeviceAdapter(DeviceAdapter):
             config_dict = json.loads(config_str)
         else:
             try:
-                with open(config, "rb") as conf:
+                with open(config, "r") as conf:
                     data = json.load(conf)
             except IOError as exc:
                 raise ArgumentError("Could not open config file", error=str(exc), path=config)
