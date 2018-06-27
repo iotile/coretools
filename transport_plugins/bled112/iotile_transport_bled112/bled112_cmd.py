@@ -506,7 +506,7 @@ class BLED112CommandProcessor(threading.Thread):
 
             _, resp_payload = process_notification(events[0])
         else:
-            resp_payload = '\x00'*20
+            resp_payload = b'\x00'*20
 
         return True, {'status': status, 'length': length, 'payload': resp_payload, 'disconnected': False}
 
