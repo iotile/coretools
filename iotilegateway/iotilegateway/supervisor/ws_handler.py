@@ -40,7 +40,7 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
 
     def unpack(self, message):
         """Unpack a binary message packed message with datetime handling."""
-        return msgpack.unpackb(message, object_hook=self.decode_datetime)
+        return msgpack.unpackb(message, raw=False, object_hook=self.decode_datetime)
 
     def on_message(self, message):
         """Handle a message received on the websocket."""

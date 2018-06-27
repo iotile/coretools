@@ -246,7 +246,7 @@ class ServiceManager(object):
             list(string): A list of string short names for the known services
         """
 
-        return self.services.keys()
+        return [x for x in self.services]
 
     def set_agent(self, short_name, client_id):
         """Register a client id that handlers commands for a service.

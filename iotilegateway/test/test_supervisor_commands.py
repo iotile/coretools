@@ -171,7 +171,7 @@ def test_send_rpc_unknown(supervisor):
 
     _visor, client1, _client2 = supervisor
 
-    resp = client1.send_rpc('service_1', 0x8000, "")
+    resp = client1.send_rpc('service_1', 0x8000, b"")
     assert resp['result'] == 'service_not_found'
 
 
@@ -193,7 +193,7 @@ def test_send_rpc_not_found(supervisor):
     _visor, client1, client2 = supervisor
 
     client1.register_agent('service_1')
-    resp = client2.send_rpc('service_1', 0x8000, "")
+    resp = client2.send_rpc('service_1', 0x8000, b"")
     assert resp['result'] == 'rpc_not_found'
 
 

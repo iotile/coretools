@@ -3,7 +3,7 @@ from tornado.httpserver import HTTPServer
 from tornado import netutil
 import socket
 import logging
-from wshandler import WebSocketHandler
+from .wshandler import WebSocketHandler
 
 
 def bind_unused_port():

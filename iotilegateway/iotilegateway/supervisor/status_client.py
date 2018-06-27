@@ -4,6 +4,7 @@ from threading import Lock, Event
 from copy import copy
 from future.utils import viewitems, viewkeys
 import logging
+from builtins import int
 from monotonic import monotonic
 from iotile.core.hw.virtual import RPCInvalidArgumentsError, RPCInvalidReturnValueError
 from iotile.core.utilities.validating_wsclient import ValidatingWSClient
@@ -94,7 +95,7 @@ class ServiceStatusClient(ValidatingWSClient):
         """
 
         with self._state_lock:
-            if isinstance(name_or_id, (int, long)):
+            if isinstance(name_or_id, int):
                 if name_or_id not in self._name_map:
                     raise ArgumentError("Unknown ID used to look up service", id=name_or_id)
 

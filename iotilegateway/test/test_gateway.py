@@ -27,7 +27,7 @@ def running_gateway():
         }
     }
 
-    enc = base64.b64encode(json.dumps(realtime_config))
+    enc = base64.b64encode(json.dumps(realtime_config).encode('utf-8')).decode('utf-8')
 
     config = {
         'agents': [
