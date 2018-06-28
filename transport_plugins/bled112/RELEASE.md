@@ -2,6 +2,11 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
+## 1.7.1
+
+- Resolve issue with advertising data and rpc responses for virtual devices on
+  python 3.
+
 ## 1.7.0
 
 - Add support for python 3.
