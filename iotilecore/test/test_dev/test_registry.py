@@ -1,7 +1,8 @@
 import pytest
 import os
-from iotile.core.dev.registry import ComponentRegistry
+from iotile.core.dev.registry import ComponentRegistry, _check_registry_type
 from iotile.core.exceptions import ArgumentError
+from iotile.core.utilities.kvstore_json import JSONKVStore
 
 
 def tile_path(name):
@@ -49,3 +50,20 @@ def test_registry(registry):
 
     with pytest.raises(ArgumentError):
         registry.get_config('devmode_component')
+
+
+def test_backing_store_type(tmpdir):
+    """Make sure we can properly interpret the backing store.
+
+    This broke on python 3 since it was reading a bytes object rather
+    than a unicode string.
+    """
+
+    regdir = tmpdir.mkdir('registry')
+    regfile = regdir.join("registry_type.txt")
+
+    regfile.write('json')
+
+    _check_registry_type(str(regdir))
+
+    assert ComponentRegistry.BackingType is JSONKVStore

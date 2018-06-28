@@ -51,7 +51,7 @@ class JSONKVStore(object):
         if not os.path.exists(self.file):
             return {}
 
-        with open(self.file, "rb") as infile:
+        with open(self.file, "r") as infile:
             data = json.load(infile)
 
         return data

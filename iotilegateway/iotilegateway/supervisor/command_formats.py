@@ -1,5 +1,6 @@
 """Schemas for all of the messages types that we support into the status server."""
 
+from __future__ import unicode_literals
 from iotile.core.utilities.schema_verify import DictionaryVerifier, BytesVerifier, IntVerifier, StringVerifier, LiteralVerifier, OptionsVerifier, BooleanVerifier, FloatVerifier
 
 # The basic form of a command packet that all commands derive from

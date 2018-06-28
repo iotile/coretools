@@ -1,5 +1,6 @@
 """A websocket client that validates messages received and dispatches them."""
 
+from __future__ import unicode_literals
 from ws4py.client.threadedclient import WebSocketClient
 from future.utils import viewitems
 import threading

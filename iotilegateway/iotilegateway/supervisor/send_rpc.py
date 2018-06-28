@@ -1,5 +1,6 @@
 """A simple command line program for sending an RPC to a service by name."""
 
+from __future__ import unicode_literals
 import argparse
 import logging
 import binascii

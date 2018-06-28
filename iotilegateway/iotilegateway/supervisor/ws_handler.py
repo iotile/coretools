@@ -1,5 +1,6 @@
 """A websocket handler for managing running services."""
 
+from __future__ import unicode_literals
 import datetime
 import tornado.websocket
 import tornado.gen
@@ -53,6 +54,7 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
             if 'operation' in cmd:
                 self.logger.exception("Invalid operation received: %s", cmd['operation'])
 
+            self.logger.debug("Unknown message: %s", cmd)
             self.send_error('message did not correspond with a known schema')
 
     def _on_command(self, cmd):

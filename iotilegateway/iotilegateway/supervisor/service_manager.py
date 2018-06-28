@@ -1,5 +1,6 @@
 """Class for managing logs and state from various services."""
 
+from __future__ import unicode_literals
 from monotonic import monotonic
 from collections import namedtuple
 import uuid

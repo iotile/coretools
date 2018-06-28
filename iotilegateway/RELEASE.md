@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileGateway are listed here.
 
+## 1.8.1
+
+- Fix interoperability between python 2 and 3 for iotile-supervisor.
+
 ## 1.8.0
 
 - Add support for python 3.

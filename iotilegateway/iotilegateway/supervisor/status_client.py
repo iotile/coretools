@@ -1,5 +1,6 @@
 """A websocket client that replicates the state of the supervisor."""
 
+from __future__ import unicode_literals
 from threading import Lock, Event
 from copy import copy
 from future.utils import viewitems, viewkeys
