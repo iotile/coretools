@@ -120,9 +120,7 @@ class JLinkAdapter(DeviceAdapter):
         """Try and connect to an attached device, setting self._connected if successful."""
         self._parse_conn_string(conn_string)
 
-        if self._control_thread is not None and self._control_thread.is_alive():
-            self._control_thread.stop()
-            self._control_thread.join()
+        self.stop_sync()
 
         if self._mux_func is not None:
             self._mux_func(self._channel)
