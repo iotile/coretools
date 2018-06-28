@@ -4,7 +4,9 @@ All major changes in each released version of IOTileCore are listed here.
 
 ## HEAD
 
-- Fix python 3 compatibility issues
+- Fix python 3 compatibility issues in ComponentRegistry and ValidatingWSClient.
+  Now ValidatingWSClient will default to using unicode strings to encode command
+  parameters.
 
 ## 3.22.6
 
