@@ -182,7 +182,7 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         header = struct.pack("<BBH", 19, 0xFF, ArchManuID)
         voltage = struct.pack("<H", int(3.8*256))  # FIXME: Hardcoded 3.8V voltage
         reading = struct.pack("<HLLL", 0xFFFF, 0, 0, 0)
-        name = struct.pack("<BB6s", 7, 0x09, "IOTile")
+        name = struct.pack("<BB6s", 7, 0x09, b"IOTile")
         reserved = struct.pack("<BBB", 0, 0, 0)
 
         response = header + voltage + reading + name + reserved
@@ -313,14 +313,14 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
             header (bytearray): The RPC header we should call
         """
 
-        length, _, cmd, feature, address = struct.unpack("<BBBBB", str(header))
+        length, _, cmd, feature, address = struct.unpack("<BBBBB", bytes(header))
         rpc_id = (feature << 8) | cmd
 
         payload = self.rpc_payload[:length]
 
         status = (1 << 6)
         try:
-            response = self.device.call_rpc(address, rpc_id, str(payload))
+            response = self.device.call_rpc(address, rpc_id, bytes(payload))
             if len(response) > 0:
                 status |= (1 << 7)
         except (RPCInvalidIDError, RPCNotFoundError):

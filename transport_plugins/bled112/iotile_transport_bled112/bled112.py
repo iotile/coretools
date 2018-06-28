@@ -79,14 +79,9 @@ class BLED112Adapter(DeviceAdapter):
             config = ConfigManager()
             self._active_scan = config.get('bled112:active-scan')
 
-        self._serial_port = serial.Serial(port, 256000, timeout=0.01, rtscts=True)
-        self._stream = AsyncPacketBuffer(self._serial_port, header_length=4, length_function=packet_length)
-        self._commands = Queue()
-        self._command_task = BLED112CommandProcessor(self._stream, self._commands, stop_check_interval=stop_check_interval)
-        self._command_task.event_handler = self._handle_event
-        self._command_task.start()
-
         #Prepare internal state of scannable and in progress devices
+        # Do this before spinning off the BLED112CommandProcessor
+        # in case a scanned device is seen immediately.
         self.partial_scan_responses = {}
         self._connections = {}
         self.count_lock = threading.Lock()
@@ -95,6 +90,14 @@ class BLED112Adapter(DeviceAdapter):
 
         self._logger = logging.getLogger(__name__)
         self._logger.addHandler(logging.NullHandler())
+
+        self._serial_port = serial.Serial(port, 256000, timeout=0.01, rtscts=True)
+        self._stream = AsyncPacketBuffer(self._serial_port, header_length=4, length_function=packet_length)
+        self._commands = Queue()
+        self._command_task = BLED112CommandProcessor(self._stream, self._commands, stop_check_interval=stop_check_interval)
+        self._command_task.event_handler = self._handle_event
+        self._command_task.start()
+
 
         try:
             self.initialize_system_sync()
