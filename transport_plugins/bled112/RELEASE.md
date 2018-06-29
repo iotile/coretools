@@ -2,6 +2,11 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
+## 1.7.2
+
+- Resolve additional issue with rpc response not being bytes when an exception
+  occurs.
+
 ## 1.7.1
 
 - Resolve issue with advertising data and rpc responses for virtual devices on

@@ -325,14 +325,14 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
                 status |= (1 << 7)
         except (RPCInvalidIDError, RPCNotFoundError):
             status = 2  # FIXME: Insert the correct ID here
-            response = ""
+            response = b""
         except TileNotFoundError:
             status = 0xFF
-            response = ""
+            response = b""
         except Exception:
             #Don't allow exceptions in second thread or we will deadlock on closure
             status = 3
-            response = ""
+            response = b""
 
             print("*** EXCEPTION OCCURRED IN RPC ***")
             traceback.print_exc()
