@@ -84,11 +84,19 @@ class JLinkAdapter(DeviceAdapter):
                     raise ArgumentError("Unknown multiplexer, please select from known_multiplex_funcs", mux=mux, known_multiplex_funcs=[x for x in viewkeys(KNOWN_MULTIPLEX_FUNCS)])
 
     def _parse_conn_string(self, conn_string):
-        """Parse a connection string passed from 'debug -c' or 'connect_direct'"""
-        self._device_info = self._default_device_info
+        """Parse a connection string passed from 'debug -c' or 'connect_direct'
+            Returns True if any settings changed in the debug port, which 
+            would require a jlink disconnection """
+        disconnection_required = False
 
+        """If device not in conn_string, set to default info"""
+        if conn_string is None or 'device' not in conn_string:
+            if self._default_device_info is not None and self._device_info != self._default_device_info:
+                disconnection_required = True
+                self._device_info = self._default_device_info
+        
         if conn_string is None or len(conn_string) == 0:
-            return
+            return disconnection_required
 
         if '@' in conn_string:
             raise ArgumentError("Configuration files are not yet supported as part of a connection string argument", conn_string=conn_string)
@@ -106,47 +114,51 @@ class JLinkAdapter(DeviceAdapter):
                 if value in DEVICE_ALIASES:
                     device_name = DEVICE_ALIASES[value]
                 if device_name in KNOWN_DEVICES:
-                    self._device_info = KNOWN_DEVICES.get(device_name)
+                    device_info = KNOWN_DEVICES.get(device_name)
+                    if self._device_info != device_info:
+                        self._device_info = device_info
+                        disconnection_required = True
                 else:
                     raise ArgumentError("Unknown device name or alias, please select from known_devices", device_name=value, known_devices=[x for x in viewkeys(DEVICE_ALIASES)])
             elif name == 'channel':
                 if self._mux_func is not None:
-                    self._channel = int(value)                
+                    if self._channel != int(value):
+                        self._channel = int(value)
+                        disconnection_required = True               
                 else:
                     print("Warning: multiplexing architecture not selected, channel will not be set")
+        return disconnection_required
 
+    def _try_connect(self, connection_string):
+        """If the connecton string settings are different, try and connect to an attached device"""
+        if self._parse_conn_string(connection_string):
+            self.stop_sync()
 
-    def _try_connect(self, conn_string):
-        """Try and connect to an attached device, setting self._connected if successful."""
-        self._parse_conn_string(conn_string)
+            if self._mux_func is not None:
+                self._mux_func(self._channel)
 
-        self.stop_sync()
+            if self._device_info is None:
+                raise ArgumentError("Missing device name or alias, specify using device=name in port string or -c device=name in connect_direct or debug command", known_devices=[x for x in viewkeys(DEVICE_ALIASES)])
 
-        if self._mux_func is not None:
-            self._mux_func(self._channel)
+            try:
+                self.jlink = pylink.JLink()
+                self.jlink.open(serial_no=self._jlink_serial)
+                self.jlink.set_tif(pylink.enums.JLinkInterfaces.SWD)
+                self.jlink.connect(self._device_info.jlink_name)
+                self.jlink.set_little_endian()
+            except pylink.errors.JLinkException as exc:
+                if exc.code == exc.VCC_FAILURE:
+                    raise HardwareError("No target power detected", code=exc.code, suggestion="Check jlink connection and power wiring")
 
-        if self._device_info is None:
-            raise ArgumentError("Missing device name or alias, specify using device=name in port string or -c device=name in connect_direct or debug command", known_devices=[x for x in viewkeys(DEVICE_ALIASES)])
+                raise
+            except:
+                raise
 
-        try:
-            self.jlink = pylink.JLink()
-            self.jlink.open(serial_no=self._jlink_serial)
-            self.jlink.set_tif(pylink.enums.JLinkInterfaces.SWD)
-            self.jlink.connect(self._device_info.jlink_name)
-            self.jlink.set_little_endian()
-        except pylink.errors.JLinkException as exc:
-            if exc.code == exc.VCC_FAILURE:
-                raise HardwareError("No target power detected", code=exc.code, suggestion="Check jlink connection and power wiring")
+            self._control_thread = JLinkControlThread(self.jlink)
+            self._control_thread.start()
 
-            raise
-        except:
-            raise
-
-        self._control_thread = JLinkControlThread(self.jlink)
-        self._control_thread.start()
-
-        self.set_config('probe_required', True)
-        self.set_config('probe_supported', True)
+            self.set_config('probe_required', True)
+            self.set_config('probe_supported', True)
 
     def stop_sync(self):
         """Synchronously stop this adapter and release all resources."""
@@ -248,7 +260,7 @@ class JLinkAdapter(DeviceAdapter):
                 connection has succeeded or failed
         """
         self._try_connect(connection_string)
-
+        
         def _on_finished(_name, control_info, exception):
             if exception is not None:
                 callback(connection_id, self.id, False, str(exception))
