@@ -10,14 +10,8 @@ def test_flash_board_step():
 
     correct_args = {
         'file': 'test_file',
-        'port': 'jlink',
         'debug_string': 'device=nrf52'
     }
     step = FlashBoardStep(correct_args)
     assert step.FILES == [u'file']
-    non_jlink_args = {
-        'file': 'test_file',
-        'port': 'bled112'
-    }
-    with pytest.raises(ArgumentError):
-          step = FlashBoardStep(non_jlink_args)
+    assert step.REQUIRED_RESOURCES == [(u'connection', u'hardware_manager')]
