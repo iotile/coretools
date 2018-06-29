@@ -40,6 +40,7 @@ class JLinkAdapter(DeviceAdapter):
         self._mux_func = None
         self._channel = None
         self._control_thread = None
+        self._connection_id = None
         self.jlink = None
         
         self._parse_port(port)
@@ -132,6 +133,8 @@ class JLinkAdapter(DeviceAdapter):
     def _try_connect(self, connection_string):
         """If the connecton string settings are different, try and connect to an attached device"""
         if self._parse_conn_string(connection_string):
+            self._trigger_callback('on_disconnect', self.id, self._connection_id)
+
             self.stop_sync()
 
             if self._mux_func is not None:
@@ -270,6 +273,7 @@ class JLinkAdapter(DeviceAdapter):
                 self._control_info = control_info
 
             callback(connection_id, self.id, True, None)
+            self._connection_id = connection_id
 
         self._control_thread.command(JLinkControlThread.VERIFY_CONTROL, _on_finished, self._device_info, self._control_info)
 
