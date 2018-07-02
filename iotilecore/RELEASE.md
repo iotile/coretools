@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.22.8
+
+- FlashBoardStep uses shared resources
+
 ## 3.22.7
 
 - Fix python 3 compatibility issues in ComponentRegistry and ValidatingWSClient.

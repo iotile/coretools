@@ -3,6 +3,9 @@
 All major changes in each released version of the jlink transport plugin are
 listed here.
 
+## 0.3.1
+- jlink checks if a disconnection is necessary prior to when attempting to connect or enter debug.
+
 ## 0.3.0
 - jlink now only connects to device when connect_direct or debug is called
 - debug has connection string as new optional parameter

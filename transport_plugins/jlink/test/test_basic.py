@@ -36,38 +36,64 @@ def test_jlink_parse_conn_string():
     jlink_test = JLinkAdapter("")
     assert jlink_test._device_info is None
     assert jlink_test._channel is None
-    jlink_test._parse_conn_string("device=lpc824;channel=1")
+    assert jlink_test._parse_conn_string("device=lpc824;channel=1")
     assert jlink_test._device_info is LPC824
     assert jlink_test._channel is None
 
     #jlink device set, no mux set
     jlink_test_dev = JLinkAdapter("device=nrf52")
-    jlink_test_dev._parse_conn_string("")
+    assert jlink_test_dev._parse_conn_string("")
     assert jlink_test_dev._mux_func is None
     assert jlink_test_dev._device_info is NRF52
     assert jlink_test_dev._channel is None
-    jlink_test_dev._parse_conn_string("device=lpc824;channel=1")
+    assert jlink_test_dev._parse_conn_string("device=lpc824;channel=1")
     assert jlink_test_dev._mux_func is None
     assert jlink_test_dev._device_info is LPC824
     assert jlink_test_dev._channel is None
 
     #jlink mux set, no device set
     jlink_test_mux = JLinkAdapter("mux=ftdi")
-    jlink_test_mux._parse_conn_string("")
+    assert not jlink_test_mux._parse_conn_string("")
     assert jlink_test_mux._mux_func is KNOWN_MULTIPLEX_FUNCS['ftdi']
     assert jlink_test_mux._device_info is None
     assert jlink_test_mux._channel is None
-    jlink_test_mux._parse_conn_string("device=lpc824;channel=1")
+    assert jlink_test_mux._parse_conn_string("device=lpc824;channel=1")
     assert jlink_test_mux._mux_func is KNOWN_MULTIPLEX_FUNCS['ftdi']
     assert jlink_test_mux._device_info is LPC824
     assert jlink_test_mux._channel == 1
 
     #jlink mux set, no device set
     jlink_test_dev_mux = JLinkAdapter("device=nrf52;mux=ftdi")
-    jlink_test_dev_mux._parse_conn_string("")
+    assert jlink_test_dev_mux._parse_conn_string(None)
     assert jlink_test_dev_mux._mux_func is KNOWN_MULTIPLEX_FUNCS['ftdi']
     assert jlink_test_dev_mux._device_info is NRF52
     assert jlink_test_dev_mux._channel is None
-    jlink_test_dev_mux._parse_conn_string("device=lpc824;channel=1")
+    assert jlink_test_dev_mux._parse_conn_string("device=lpc824;channel=1")
     assert jlink_test_dev_mux._device_info is LPC824
     assert jlink_test_dev_mux._channel == 1
+
+def test_jlink_parse_conn_string_repeat():
+    """Tests to see if _parse_conn_string properly determines whether to disconnect 
+    or connect jlink"""
+
+    """Default is given"""
+    jlink_test_mux = JLinkAdapter("mux=ftdi;device=nrf52")
+    assert jlink_test_mux._parse_conn_string("device=lpc824;channel=1")
+    assert jlink_test_mux._mux_func is KNOWN_MULTIPLEX_FUNCS['ftdi']
+    assert jlink_test_mux._device_info is LPC824
+    assert jlink_test_mux._channel == 1
+    assert not jlink_test_mux._parse_conn_string("device=lpc824;channel=1")
+    assert jlink_test_mux._mux_func is KNOWN_MULTIPLEX_FUNCS['ftdi']
+    assert jlink_test_mux._device_info is LPC824
+    assert jlink_test_mux._channel == 1
+
+    """Default not given"""
+    jlink_test_mux = JLinkAdapter("mux=ftdi")
+    assert jlink_test_mux._parse_conn_string("device=lpc824;channel=1")
+    assert jlink_test_mux._mux_func is KNOWN_MULTIPLEX_FUNCS['ftdi']
+    assert jlink_test_mux._device_info is LPC824
+    assert jlink_test_mux._channel == 1
+    assert not jlink_test_mux._parse_conn_string("")
+    assert jlink_test_mux._mux_func is KNOWN_MULTIPLEX_FUNCS['ftdi']
+    assert jlink_test_mux._device_info is LPC824
+    assert jlink_test_mux._channel == 1

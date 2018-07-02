@@ -2,6 +2,12 @@
 
 All major changes in each released version of IOTileShip are listed here.
 
+## 0.1.1
+
+- HardwareManagerResource checks if connect_id is None before parsing it. 
+  Also added connect_direct as an option
+
+
 ## 0.1.0
 
 - Refactor to allow for shared resources to be used across action steps
