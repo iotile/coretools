@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.22.9
+
+- Fix the registry function `list_config` so that the string 'config:' does not
+  prefix each variable name in the list. 
+
 ## 3.22.8
 
 - FlashBoardStep uses shared resources

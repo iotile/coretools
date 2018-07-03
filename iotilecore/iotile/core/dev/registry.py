@@ -141,9 +141,10 @@ class ComponentRegistry(object):
     def list_config(self):
         """List all of the configuration variables
         """
-
         items = self.kvstore.get_all()
-        return ["{0}={1}".format(x[0],x[1]) for x in items if x[0].startswith('config:')]
+        cfgitems = ["{0}={1}".format(x[0][len('config:'):],x[1]) 
+                for x in items if x[0].startswith('config:')]
+        return cfgitems
 
     def set_config(self, key, value):
         """Set a persistent config key to a value, stored in the registry
