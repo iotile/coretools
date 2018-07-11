@@ -15,12 +15,14 @@ import struct
 import logging
 import time
 import binascii
+from threading import Lock
 import serial
 import serial.tools.list_ports
 from iotile.core.exceptions import ExternalError, HardwareError
-from .async_packet import AsyncPacketBuffer
 from iotile.core.hw.virtual.virtualinterface import VirtualIOTileInterface
 from iotile.core.hw.virtual.virtualdevice import RPCInvalidIDError, RPCNotFoundError, TileNotFoundError
+from iotile.core.hw.reports import BroadcastReport
+from .async_packet import AsyncPacketBuffer
 from .bled112_cmd import BLED112CommandProcessor
 from .tilebus import TileBusService, ArchManuID
 
@@ -74,10 +76,8 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         self._command_task.event_handler = self._handle_event
         self._command_task.start()
 
-        self._logger = logging.getLogger('virtual.bled112')
+        self._logger = logging.getLogger(__name__)
         self._logger.addHandler(logging.NullHandler())
-
-        self._command_task._logger.setLevel(logging.WARNING)
 
         self.connected = False
         self._connection_handle = 0
@@ -93,6 +93,11 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         # in process() we know not to restart the streaming/tracing process
         self._stream_sm_running = False
         self._trace_sm_running = False
+
+        # Keep track of whether we're being asked to broadcast any readings
+        # as part of our advertising data
+        self._broadcast_reading = None
+        self._broadcast_lock = Lock()
 
         self.rpc_payload = bytearray(20)
         self.rpc_header = bytearray(20)
@@ -163,6 +168,31 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         if (not self._trace_sm_running) and (not self.traces.empty()):
             self._send_trace()
 
+    def _queue_reports(self, *reports):
+        """Queue reports for transmission over the streaming interface.
+
+        The primary reason for this function is to allow for a single implementation
+        of encoding and chunking reports for streaming.
+
+        We override the function to inspect whether the user is putting a broadcast
+        report and if so, we handle it specially
+
+        Args:
+            *reports (list): A list of IOTileReport objects that should be sent over
+                the streaming interface.
+        """
+
+
+        for report in reports:
+            if isinstance(report, BroadcastReport):
+                with self._broadcast_lock:
+                    self._broadcast_reading = report.visible_readings[0]
+
+                self._defer(self._command_task.sync_command, [['_set_advertising_data', 1, self._scan_response()]])
+                continue
+
+            self.reports.put(report)
+
     def _advertisement(self):
         # Flags are
         # bit 0: whether we have pending data
@@ -181,7 +211,13 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
     def _scan_response(self):
         header = struct.pack("<BBH", 19, 0xFF, ArchManuID)
         voltage = struct.pack("<H", int(3.8*256))  # FIXME: Hardcoded 3.8V voltage
+
         reading = struct.pack("<HLLL", 0xFFFF, 0, 0, 0)
+
+        with self._broadcast_lock:
+            if self._broadcast_reading is not None:
+                reading = struct.pack("<HLLL", self._broadcast_reading.stream, self._broadcast_reading.value, self._broadcast_reading.raw_time, 0)
+
         name = struct.pack("<BB6s", 7, 0x09, b"IOTile")
         reserved = struct.pack("<BBB", 0, 0, 0)
 

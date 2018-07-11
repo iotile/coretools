@@ -2,6 +2,13 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
+## 1.7.3
+
+- Add support for broadcast readings in virtual bled112 interface.  Now if you
+  stream BroadcastReport objects from a virtual device over bled112, it will 
+  properly update the advertising scan response data to contain the reading
+  value.
+
 ## 1.7.2
 
 - Resolve additional issue with rpc response not being bytes when an exception
