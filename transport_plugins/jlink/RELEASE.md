@@ -3,6 +3,9 @@
 All major changes in each released version of the jlink transport plugin are
 listed here.
 
+## HEAD
+- Fix setup.py info documentation string
+
 ## 0.3.1
 - jlink checks if a disconnection is necessary prior to when attempting to connect or enter debug.
 
