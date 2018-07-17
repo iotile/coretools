@@ -5,15 +5,12 @@ from iotile.core.exceptions import HardwareError
 import time
 
 def pytest_addoption(parser):
-    print "DEBUG: pytest_addoption"
     parser.addoption('--port', default="bled112", help="Port to use to connect to iotile device")
     parser.addoption('--uuid', action="append", default=[], help="Device UUIDs to run tests on")
     parser.addoption('--tile', action="append", default=[], help="Device tile addresses to run tests on")
     parser.addoption('--device', action='append', default=[], help="Run script on device given by this connection string")
 
 def pytest_generate_tests(metafunc):
-    print "DEBUG: pytest_generate_tests"
-
     if 'port' in metafunc.fixturenames:
         port = metafunc.config.option.port
 
@@ -37,7 +34,6 @@ def device(port, device_id, direct):
 
     This fixture shares the same device among all tests in the same module
     """
-    print "DEBUG: device"
     with HardwareManager(port=port) as hw:
         # Sometimes in congested wireless environments we can miss the
         # device advertisement, so attempt the connection several times
@@ -58,7 +54,6 @@ def device(port, device_id, direct):
 
 @pytest.fixture(scope='function')
 def per_test_device(port, device_id, direct):
-    print "DEBUG: per_test_device"
     """Return a HardwareManager instance connected to an IOTile Device
 
     This fixture creates and tears down the connection for each test
