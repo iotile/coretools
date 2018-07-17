@@ -3,8 +3,10 @@
 All major changes in each released version of the jlink transport plugin are
 listed here.
 
-## HEAD
+## 0.3.2
 - Fix setup.py info documentation string
+- Add _open_streaming_interface function to the JLinkAdapter interface
+-    Pytest Usage: ```py.test --port=jlink:mux=ftdi --device="device=nrf52;channel=3" --uuid=0 python/test```
 
 ## 0.3.1
 - jlink checks if a disconnection is necessary prior to when attempting to connect or enter debug.
