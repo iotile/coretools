@@ -9,7 +9,7 @@ def pytest_addoption(parser):
     parser.addoption('--port', default="bled112", help="Port to use to connect to iotile device")
     parser.addoption('--uuid', action="append", default=[], help="Device UUIDs to run tests on")
     parser.addoption('--tile', action="append", default=[], help="Device tile addresses to run tests on")
-    parser.addoption('--direct', action='append', default=[], help="Run script on device given by this connection string")
+    parser.addoption('--device', action='append', default=[], help="Run script on device given by this connection string")
 
 def pytest_generate_tests(metafunc):
     print "DEBUG: pytest_generate_tests"
@@ -28,7 +28,7 @@ def pytest_generate_tests(metafunc):
         metafunc.parametrize("tile", ids, scope='session')
 
     if 'direct' in metafunc.fixturenames:
-        connections = [x for x in metafunc.config.option.direct]
+        connections = [x for x in metafunc.config.option.device]
         metafunc.parametrize("direct", connections, scope='session')
 
 @pytest.fixture(scope='module')
