@@ -299,6 +299,17 @@ class JLinkAdapter(DeviceAdapter):
 
         callback(conn_id, self.id, True, None)
 
+    def _open_streaming_interface(self, conn_id, callback):
+        """Enable script streaming interface for this IOTile device
+
+        Args:
+            conn_id (int): the unique identifier for the connection
+            callback (callback): Callback to be called when this command finishes
+                callback(conn_id, adapter_id, success, failure_reason)
+        """
+
+        callback(conn_id, self.id, True, None)
+
     def _open_debug_interface(self, conn_id, callback, connection_string=None):
         """Enable debug interface for this IOTile device
 
