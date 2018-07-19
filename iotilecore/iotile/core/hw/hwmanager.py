@@ -58,8 +58,8 @@ class HardwareManager(object):
         nrf52
         lpc824
 
-        if using the mux then append :channel=[7..0] to the device
-        (e.g.  --device="nrf52:channel=0")
+        if using the mux then append ;channel=[7..0] to the device
+        (e.g.  --device="nrf52;channel=0")
 
     """
 
