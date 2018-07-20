@@ -15,10 +15,10 @@ setup(
     ],
 
     entry_points={'iotile.device_adapter': ['jlink = iotile_transport_jlink.jlink:JLinkAdapter']},
-    description="IOTile BLED112 Transport Plugin",
+    description="IOTile JLINK Transport Plugin",
     author="Arch",
     author_email="info@arch-iot.com",
-    url="http://github.com/iotile/lib_iotilecore",
+    url="http://github.com/iotile/coretools",
     keywords=["iotile", "arch", "embedded", "hardware", "firmware"],
     classifiers=[
         "Programming Language :: Python",

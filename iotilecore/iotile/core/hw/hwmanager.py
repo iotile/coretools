@@ -46,6 +46,21 @@ class HardwareManager(object):
     method to be used to connect to the IOTile device. The method should specify the
     name of the connection method optionally followed by a colon and any extra information
     possibly needed to connect using that method.
+
+    Currently implemented ports are: (eventually auto-detect this)
+        none
+        bled112
+        jlink
+        jlink:mux=ftdi
+        virtual:...(e.g. simple)
+
+    Currently implemented devices are: (eventually auto-detect this too)
+        nrf52
+        lpc824
+
+        if using the mux then append ;channel=[7..0] to the device
+        (e.g.  --device="nrf52;channel=0")
+
     """
 
     # Allow overriding proxies for development by adding them to this shared proxy map

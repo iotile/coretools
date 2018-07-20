@@ -8,11 +8,12 @@ def pytest_addoption(parser):
     parser.addoption('--port', default="bled112", help="Port to use to connect to iotile device")
     parser.addoption('--uuid', action="append", default=[], help="Device UUIDs to run tests on")
     parser.addoption('--tile', action="append", default=[], help="Device tile addresses to run tests on")
+    parser.addoption('--direct', action='append', default=[], help="Run script on device given by this connection string")
 
 def pytest_generate_tests(metafunc):
+
     if 'port' in metafunc.fixturenames:
         port = metafunc.config.option.port
-
         metafunc.parametrize("port", [port], scope='session')
 
     if 'device_id' in metafunc.fixturenames:
@@ -23,8 +24,12 @@ def pytest_generate_tests(metafunc):
         ids = [int(x, 0) for x in metafunc.config.option.tile]
         metafunc.parametrize("tile", ids, scope='session')
 
+    if 'direct' in metafunc.fixturenames:
+        connections = [x for x in metafunc.config.option.direct]
+        metafunc.parametrize("direct", connections, scope='session')
+
 @pytest.fixture(scope='module')
-def device(port, device_id):
+def device(port, device_id, direct):
     """Return a HardwareManager instance connected to an IOTile Device
 
     This fixture shares the same device among all tests in the same module
@@ -36,7 +41,10 @@ def device(port, device_id):
         max_attempts = 3
         for _i in range(0, max_attempts):
             try:
-                hw.connect(device_id)
+                if direct:
+                    hw.connect_direct(direct)
+                else:
+                    hw.connect(device_id)
                 break
             except HardwareError:
                 time.sleep(1)
@@ -45,7 +53,7 @@ def device(port, device_id):
         hw.disconnect()
 
 @pytest.fixture(scope='function')
-def per_test_device(port, device_id):
+def per_test_device(port, device_id, direct):
     """Return a HardwareManager instance connected to an IOTile Device
 
     This fixture creates and tears down the connection for each test
@@ -54,7 +62,10 @@ def per_test_device(port, device_id):
         max_attempts = 3
         for _i in range(0, max_attempts):
             try:
-                hw.connect(device_id)
+                if direct:
+                    hw.connect_direct(direct)
+                else:
+                    hw.connect(device_id)
                 break
             except HardwareError:
                 time.sleep(1)
@@ -62,3 +73,4 @@ def per_test_device(port, device_id):
         hw.enable_streaming()
         yield hw
         hw.disconnect()
+
