@@ -10,21 +10,9 @@ from iotile.core.dev.config import ConfigManager
 from iotile.core.hw.reports import IOTileReportParser, IOTileReading, BroadcastReport
 from iotile.core.hw.transport.adapter import DeviceAdapter
 from iotile.core.utilities.packed import unpack
-from iotile.core.exceptions import ArgumentError
+from iotile.core.exceptions import ArgumentError, ExternalError
 from .connection_manager import ConnectionManager
 from .tilebus import *
-
-# TODO: release bable interface 1.2.0 (modify READMES...)
-
-# TODO: -> write virtual_adapter
-# TODO: clean code + comment
-# TODO: write tests
-# TODO: test unexpected disconnection
-
-# TODO: ask to Tim how to make send script more async...
-# TODO: talk with Tim about unexpected disconnections
-# [700313.698910] Bluetooth: hci0: link tx timeout
-# [700313.698921] Bluetooth: hci0: killing stalled connection c4:f0:a5:e6:8a:91
 
 
 class NativeBLEDeviceAdapter(DeviceAdapter):
@@ -40,22 +28,27 @@ class NativeBLEDeviceAdapter(DeviceAdapter):
         self.set_config('maximum_connections', 3)
 
         self.bable = bable_interface.BaBLEInterface()
-        self.bable.start(on_error=self._on_ble_error, exit_on_sigint=False)
+
+        if port is None or port == '<auto>':
+            self.bable.start(on_error=self._on_ble_error)
+            controllers = self.find_ble_controllers()
+            self.bable.stop()
+
+            if len(controllers) > 0:
+                self.controller_id = controllers[0].id
+            else:
+                raise ExternalError("Could not find any BLE controller connected to this computer")
+        else:
+            self.controller_id = int(port)
+
+        # Start baBLE with the selected controller id to prevent conflicts if multiple controllers
+        self.bable.start(on_error=self._on_ble_error, exit_on_sigint=False, controller_id=self.controller_id)
 
         if on_scan is not None:
             self.add_callback('on_scan', on_scan)
 
         if on_disconnect is not None:
             self.add_callback('on_disconnect', on_disconnect)
-
-        if port is None or port == '<auto>':
-            controllers = self.find_ble_controllers()
-            if len(controllers) > 0:
-                self.controller_id = controllers[0].id
-            else:
-                raise ValueError("Could not find any BLE controller connected to this computer")
-        else:
-            self.controller_id = int(port)
 
         self.scanning = False
         self.stopped = False
@@ -90,8 +83,7 @@ class NativeBLEDeviceAdapter(DeviceAdapter):
         return [ctrl for ctrl in controllers if ctrl.powered and ctrl.low_energy]
 
     def can_connect(self):
-        connections = self.connections.get_connections()
-        return len(connections) < int(self.get_config('maximum_connections'))
+        return len(self.connections.get_connections()) < int(self.get_config('maximum_connections'))
 
     def _on_ble_error(self, status, message):
         self._logger.error("BLE error (status=%s, message=%s)", status, message)
@@ -102,7 +94,7 @@ class NativeBLEDeviceAdapter(DeviceAdapter):
 
     def stop_scan(self):
         try:
-            self.bable.stop_scan(controller_id=self.controller_id, sync=True)
+            self.bable.stop_scan(sync=True)
         except bable_interface.BaBLEException:
             # If we errored our it is because we were not currently scanning, so make sure
             # we update our self.scanning flag (which would not be updated by stop_scan since
@@ -180,7 +172,7 @@ class NativeBLEDeviceAdapter(DeviceAdapter):
             self._trigger_callback('on_scan', self.id, info, self.get_config('expiration_time'))
 
     def _initialize_system_sync(self):
-        connected_devices = self.bable.list_connected_devices(controller_id=self.controller_id)
+        connected_devices = self.bable.list_connected_devices()
         for device in connected_devices:
             context = {
                 'connection_id': len(self.connections.get_connections()),
@@ -188,12 +180,11 @@ class NativeBLEDeviceAdapter(DeviceAdapter):
                 'connection_string': device.address
             }
             self.connections.add_connection(context['connection_id'], device.address, context)
-            self.disconnect_sync(0)
+            self.disconnect_sync(context['connection_id'])
 
         # If the dongle was previously left in a dirty state while still scanning, it will
         # not allow new scans to be started. So, forcibly stop any in progress scans.
         # This throws a hardware error if scanning is not in progress which should be ignored.
-
         self.stop_scan()
 
         try:
@@ -227,10 +218,12 @@ class NativeBLEDeviceAdapter(DeviceAdapter):
 
         address, address_type = connection_string.split(',')
 
+        self.bable.cancel_connection(sync=False)
+
         self.bable.connect(
             address=address,
             address_type=address_type,
-            controller_id=self.controller_id,
+            connection_interval=[7.5, 7.5],
             on_connected=[self._on_connection_finished, context],
             on_disconnected=[self._on_unexpected_disconnection, context]
         )
@@ -254,7 +247,6 @@ class NativeBLEDeviceAdapter(DeviceAdapter):
 
         self.bable.probe_services(
             connection_handle=context['connection_handle'],
-            controller_id=self.controller_id,
             on_services_probed=[self._on_services_probed, context]
         )
 
@@ -280,7 +272,6 @@ class NativeBLEDeviceAdapter(DeviceAdapter):
 
         self.bable.probe_characteristics(
             connection_handle=context['connection_handle'],
-            controller_id=self.controller_id,
             start_handle=tilebus_service['service'].handle,
             end_handle=tilebus_service['service'].group_end_handle,
             on_characteristics_probed=[self._on_characteristics_probed, context, tilebus_service]
@@ -344,8 +335,7 @@ class NativeBLEDeviceAdapter(DeviceAdapter):
 
         self.bable.disconnect(
             connection_handle=context['connection_handle'],
-            on_disconnected=[self._on_disconnection_finished, context],
-            controller_id=self.controller_id
+            on_disconnected=[self._on_disconnection_finished, context]
         )
 
     def _on_unexpected_disconnection(self, success, result, failure_reason, context):
@@ -381,7 +371,7 @@ class NativeBLEDeviceAdapter(DeviceAdapter):
             self._logger.info("Unable to obtain connection data on unknown connection %d", connection_id)
             context = {}
 
-        self.bable.cancel_connection(controller_id=self.controller_id, sync=False)
+        self.bable.cancel_connection(sync=False)
 
         if context.get('retry_connect') and context.get('retries') > 0:
             context['retries'] -= 1
@@ -422,8 +412,6 @@ class NativeBLEDeviceAdapter(DeviceAdapter):
             characteristic=header_characteristic,
             on_notification_set=[self._on_interface_opened, context, payload_characteristic],
             on_notification_received=self._on_notification_received,
-            controller_id=self.controller_id,
-            timeout=1.0,
             sync=False
         )
 
@@ -475,7 +463,6 @@ class NativeBLEDeviceAdapter(DeviceAdapter):
             characteristic=characteristic,
             on_notification_set=[self._on_interface_opened, context],
             on_notification_received=self._on_notification_received,
-            controller_id=self.controller_id,
             timeout=1.0,
             sync=False
         )
@@ -508,7 +495,6 @@ class NativeBLEDeviceAdapter(DeviceAdapter):
             characteristic=characteristic,
             on_notification_set=[self._on_interface_opened, context],
             on_notification_received=self._on_notification_received,
-            controller_id=self.controller_id,
             timeout=1.0,
             sync=False
         )
@@ -525,8 +511,6 @@ class NativeBLEDeviceAdapter(DeviceAdapter):
                 characteristic=next_characteristic,
                 on_notification_set=[self._on_interface_opened, context],
                 on_notification_received=self._on_notification_received,
-                controller_id=self.controller_id,
-                timeout=1.0,
                 sync=False
             )
         else:
@@ -554,7 +538,6 @@ class NativeBLEDeviceAdapter(DeviceAdapter):
             connection_handle=context['connection_handle'],
             characteristic=header_characteristic,
             on_notification_set=[self._on_interface_closed, context, payload_characteristic],
-            controller_id=self.controller_id,
             timeout=1.0
         )
 
@@ -569,7 +552,6 @@ class NativeBLEDeviceAdapter(DeviceAdapter):
                 connection_handle=context['connection_handle'],
                 characteristic=next_characteristic,
                 on_notification_set=[self._on_interface_closed, context],
-                controller_id=self.controller_id,
                 timeout=1.0,
                 sync=False
             )
@@ -650,15 +632,13 @@ class NativeBLEDeviceAdapter(DeviceAdapter):
             self.bable.write_without_response(
                 connection_handle=context['connection_handle'],
                 attribute_handle=send_payload_characteristic.value_handle,
-                value=bytes(payload),
-                controller_id=self.controller_id
+                value=bytes(payload)
             )
 
         self.bable.write_without_response(
             connection_handle=context['connection_handle'],
             attribute_handle=send_header_characteristic.value_handle,
-            value=bytes(header),
-            controller_id=self.controller_id
+            value=bytes(header)
         )
 
     def send_script_async(self, connection_id, data, progress_callback, callback):
@@ -680,29 +660,34 @@ class NativeBLEDeviceAdapter(DeviceAdapter):
             if len(data) % mtu != 0:
                 nb_chunks += 1
 
-        for i in range(0, nb_chunks):
-            start = i * mtu
-            chunk = data[start: start + mtu]
-            sent = False
+        def send_script():
+            for i in range(0, nb_chunks):
+                start = i * mtu
+                chunk = data[start: start + mtu]
+                sent = False
 
-            while not sent:
-                try:
-                    self.bable.write_without_response(
-                        connection_handle=context['connection_handle'],
-                        attribute_handle=high_speed_char.value_handle,
-                        value=bytes(chunk),
-                        controller_id=self.controller_id
-                    )
-                    sent = True
-                except bable_interface.BaBLEException as err:
-                    if err.packet.status == 'Rejected':  # If we are streaming too fast, back off and try again
-                        time.sleep(0.1)
-                    else:
-                        raise err
+                while not sent:
+                    try:
+                        self.bable.write_without_response(
+                            connection_handle=context['connection_handle'],
+                            attribute_handle=high_speed_char.value_handle,
+                            value=bytes(chunk)
+                        )
+                        sent = True
+                    except bable_interface.BaBLEException as err:
+                        if err.packet.status == 'Rejected':  # If we are streaming too fast, back off and try again
+                            time.sleep(0.05)
+                        else:
+                            self.connections.finish_operation(connection_id, False, err.message)
+                            return
 
-            progress_callback(i, nb_chunks)
+                progress_callback(i, nb_chunks)
 
-        self.connections.finish_operation(connection_id, True, None)
+            self.connections.finish_operation(connection_id, True, None)
+
+        send_script_thread = threading.Thread(target=send_script, name='SendScriptThread')
+        send_script_thread.daemon = True
+        send_script_thread.start()
 
     def _register_notification_callback(self, connection_handle, attribute_handle, callback, once=False):
         notification_id = (connection_handle, attribute_handle)

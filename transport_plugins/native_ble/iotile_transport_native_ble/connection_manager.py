@@ -509,7 +509,7 @@ class ConnectionManager(threading.Thread):
         elif data['state'] == self.InProgress:
             callback = data['action'].data['callback']
             if data['microstate'] == 'rpc':
-                callback(False, 'Unexpected disconnection', None, None)
+                callback(False, 'Unexpected disconnection', 0xFF, None)
             elif data['microstate'] == 'open_interface':
                 callback(False, 'Unexpected disconnection')
             elif data['microstate'] == 'close_interface':
