@@ -26,45 +26,50 @@ class NativeBLEVirtualInterface(VirtualIOTileInterface):
     def __init__(self, args):
         super(NativeBLEVirtualInterface, self).__init__()
 
+        # Create logger
+        self._logger = logging.getLogger(__name__)
+        self._logger.addHandler(logging.NullHandler())
+
+        # Create the baBLE interface to interact with BLE controllers
         self.bable = bable_interface.BaBLEInterface()
 
+        # Get the list of BLE controllers
+        self.bable.start(on_error=self._on_ble_error)
+        controllers = self._find_ble_controllers()
+        self.bable.stop()
+
+        if len(controllers) == 0:
+            raise ExternalError("Could not find any BLE controller connected to this computer")
+
+        # Parse args
         port = None
         if 'port' in args:
             port = args['port']
 
         if port is None or port == '<auto>':
-            self.bable.start(on_error=self._on_ble_error)
-            controllers = self.find_ble_controllers()
-            self.bable.stop()
-
-            if len(controllers) > 0:
-                self.controller_id = controllers[0].id
-            else:
-                raise ExternalError("Could not find any BLE controller connected to this computer")
+            self.controller_id = controllers[0].id
         else:
             self.controller_id = int(port)
+            if not any(controller.id == self.controller_id for controller in controllers):
+                raise ExternalError("Could not find a BLE controller with the given ID, controller_id=%s"
+                                    .format(self.controller_id))
 
         if 'voltage' in args:
             self.voltage = float(args['voltage'])
         else:
             self.voltage = 3.8
 
-        self._logger = logging.getLogger(__name__)
-        console = logging.StreamHandler()
-        console.setFormatter(logging.Formatter('%(asctime)s.%(msecs)03d %(levelname).3s [%(name)s] %(message)s', '%y-%m-%d %H:%M:%S'))
-        self._logger.addHandler(console)
-        self._logger.setLevel(logging.DEBUG)
-        # self._logger.addHandler(logging.NullHandler())
-
+        # Restart baBLE with the selected controller id to prevent conflicts if multiple controllers
         self.bable.start(on_error=self._on_ble_error, exit_on_sigint=False, controller_id=self.controller_id)
+        # Register the callback function into baBLE
         self.bable.on_write_request(self._on_write_request)
         self.bable.on_connected(self._on_connected)
         self.bable.on_disconnected(self._on_disconnected)
 
+        # Initialize state
         self.connected = False
         self._connection_handle = 0
 
-        # Initialize state
         self.payload_notif = False
         self.header_notif = False
         self.streaming = False
@@ -80,60 +85,33 @@ class NativeBLEVirtualInterface(VirtualIOTileInterface):
         self.rpc_header = bytearray(20)
 
         try:
-            self.initialize_system_sync()
+            self._initialize_system_sync()
         except Exception:
             self.stop_sync()
             raise
 
-    def find_ble_controllers(self):
+    def _find_ble_controllers(self):
+        """Get a list of the available and powered BLE controllers"""
         controllers = self.bable.list_controllers()
         return [ctrl for ctrl in controllers if ctrl.powered and ctrl.low_energy]
 
     def _on_ble_error(self, status, message):
+        """Callback function called when a BLE error, not related to a request, is received. Just log it for now."""
         self._logger.error("BLE error (status=%s, message=%s)", status, message)
 
-    def initialize_system_sync(self):
+    def _initialize_system_sync(self):
+        """Initialize the device adapter by removing all active connections and resetting scan and advertising to have
+        a clean starting state."""
         connected_devices = self.bable.list_connected_devices()
         for device in connected_devices:
             self.disconnect_sync(device.connection_handle)
 
-        # If the dongle was previously left in a dirty state while still scanning, it will
-        # not allow new scans to be started. So, forcibly stop any in progress scans.
-        # This throws a hardware error if scanning is not in progress which should be ignored.
         self.stop_scan()
 
         self.set_advertising(False)
 
+        # Register the GATT table to send the right services and characteristics when probed (like an IOTile device)
         self.register_gatt_table()
-
-    def register_gatt_table(self):
-        services = [
-            bable_interface.Service(uuid='1800', handle=0x0001, group_end_handle=0x0005),
-            bable_interface.Service(uuid=TileBusService, handle=0x000B, group_end_handle=0xFFFF)
-        ]
-
-        characteristics = [
-            bable_interface.Characteristic(uuid='2a00', handle=0x0002, value_handle=0x0003, const_value=b'V_IOTile ', read=True),
-            bable_interface.Characteristic(uuid='2a01', handle=0x0004, value_handle=0x0005, const_value=b'\x80\x00', read=True),
-            bable_interface.Characteristic(uuid=TileBusReceiveHeaderCharacteristic, handle=0x000C, value_handle=0x000D, config_handle=0x000E, notify=True),
-            bable_interface.Characteristic(uuid=TileBusReceivePayloadCharacteristic, handle=0x000F, value_handle=0x0010, config_handle=0x0011, notify=True),
-            bable_interface.Characteristic(uuid=TileBusSendHeaderCharacteristic, handle=0x0012, value_handle=0x0013, write=True),
-            bable_interface.Characteristic(uuid=TileBusSendPayloadCharacteristic, handle=0x0014, value_handle=0x0015, write=True),
-            bable_interface.Characteristic(uuid=TileBusStreamingCharacteristic, handle=0x0016, value_handle=0x0017, config_handle=0x0018, notify=True),
-            bable_interface.Characteristic(uuid=TileBusHighSpeedCharacteristic, handle=0x0019, value_handle=0x001A, write=True),
-            bable_interface.Characteristic(uuid=TileBusTracingCharacteristic, handle=0x001B, value_handle=0x001C, config_handle=0x001D, notify=True)
-        ]
-
-        self.bable.set_gatt_table(services, characteristics)
-
-    def stop_scan(self):
-        try:
-            self.bable.stop_scan(sync=True)
-        except bable_interface.BaBLEException:
-            # If we errored our it is because we were not currently scanning, so make sure
-            # we update our self.scanning flag (which would not be updated by stop_scan since
-            # it raised an exception.)
-            pass
 
     def start(self, device):
         """Start serving access to this VirtualIOTileDevice
@@ -152,12 +130,39 @@ class NativeBLEVirtualInterface(VirtualIOTileInterface):
         super(NativeBLEVirtualInterface, self).stop()
 
         self.stop_sync()
+    
+    def register_gatt_table(self):
+        """Register the GATT table into baBLE."""
+        services = [BLEService, TileBusService]
+
+        characteristics = [
+            NameChar,
+            AppearanceChar,
+            ReceiveHeaderChar,
+            ReceivePayloadChar,
+            SendHeaderChar,
+            SendPayloadChar,
+            StreamingChar,
+            HighSpeedChar,
+            TracingChar
+        ]
+
+        self.bable.set_gatt_table(services, characteristics)
+
+    def stop_scan(self):
+        """Stop to scan."""
+        try:
+            self.bable.stop_scan(sync=True)
+        except bable_interface.BaBLEException:
+            # If we errored our it is because we were not currently scanning
+            pass
 
     def set_advertising(self, enabled):
+        """Toggle advertising."""
         if enabled:
             self.bable.set_advertising(
                 enabled=True,
-                uuids=[TileBusService],
+                uuids=[TileBusService.uuid],
                 name="V_IOTile ",
                 company_id=ArchManuID,
                 advertising_data=self._advertisement(),
@@ -171,18 +176,8 @@ class NativeBLEVirtualInterface(VirtualIOTileInterface):
                 # If advertising is already disabled
                 pass
 
-    def process(self):
-        """Periodic nonblocking processes"""
-
-        super(NativeBLEVirtualInterface, self).process()
-
-        if (not self._stream_sm_running) and (not self.reports.empty()):
-            self._stream_data()
-
-        if (not self._trace_sm_running) and (not self.traces.empty()):
-            self._send_trace()
-
     def _advertisement(self):
+        """Create advertisement data."""
         # Flags are
         # bit 0: whether we have pending data
         # bit 1: whether we are in a low voltage state
@@ -194,6 +189,7 @@ class NativeBLEVirtualInterface(VirtualIOTileInterface):
         return struct.pack("<LH", self.device.iotile_id, flags)
 
     def _scan_response(self):
+        """Create scan response data."""
         voltage = struct.pack("<H", int(self.voltage*256))
         reading = struct.pack("<HLLL", 0xFFFF, 0, 0, 0)
 
@@ -202,13 +198,18 @@ class NativeBLEVirtualInterface(VirtualIOTileInterface):
         return response
 
     def stop_sync(self):
-        """Safely stop this BLED112 instance without leaving it in a weird state"""
+        """Safely stop this BLED112 instance without leaving it in a weird state."""
 
+        # Disconnect connected device
         if self.connected:
             self.disconnect_sync(self._connection_handle)
 
+        # Disable advertising
         self.set_advertising(False)
+        # Stop the baBLE interface
         self.bable.stop()
+
+        self.actions.queue.clear()  # Clear the actions queue to prevent it to send commands to baBLE after stopped
 
     def disconnect_sync(self, connection_handle):
         """Synchronously disconnect from whoever has connected to us
@@ -220,6 +221,12 @@ class NativeBLEVirtualInterface(VirtualIOTileInterface):
         self.bable.disconnect(connection_handle=connection_handle, sync=True)
 
     def _on_connected(self, device):
+        """Callback function called when a connected event has been received.
+        It is executed in the baBLE working thread: should not be blocking.
+
+        Args:
+            device (dict): Information about the newly connected device
+        """
         self._logger.debug("Device connected event: {}".format(device))
 
         self.connected = True
@@ -228,10 +235,13 @@ class NativeBLEVirtualInterface(VirtualIOTileInterface):
         self._audit('ClientConnected')
 
     def _on_disconnected(self, device):
-        """Clean up after a client disconnects
-
+        """Callback function called when a disconnected event has been received.
         This resets any open interfaces on the virtual device and clears any
         in progress traces and streams.
+        It is executed in the baBLE working thread: should not be blocking.
+
+        Args:
+            device (dict): Information about the newly connected device
         """
 
         self._logger.debug("Device disconnected event: {}".format(device))
@@ -257,20 +267,35 @@ class NativeBLEVirtualInterface(VirtualIOTileInterface):
         self._audit('ClientDisconnected')
 
     def _on_write_request(self, request):
-        if request['controller_id'] != self.controller_id or request['connection_handle'] != self._connection_handle:
+        """Callback function called when a write request has been received.
+        It is executed in the baBLE working thread: should not be blocking.
+
+        Args:
+            request (dict): Information about the request
+              - connection_handle (int): The connection handle that sent the request
+              - attribute_handle (int): The attribute handle to write
+              - value (bytes): The value to write
+        """
+        if request['connection_handle'] != self._connection_handle:
             return False
 
         attribute_handle = request['attribute_handle']
 
         # If write to configure notification
-        if attribute_handle in [0x000E, 0x0011, 0x0018, 0x001D]:
+        config_handles = [
+            ReceiveHeaderChar.config_handle,
+            ReceivePayloadChar.config_handle,
+            StreamingChar.config_handle,
+            TracingChar.config_handle
+        ]
+        if attribute_handle in config_handles:
             notification_enabled, _ = struct.unpack('<BB', request['value'])
 
             # ReceiveHeader or ReceivePayload
-            if attribute_handle == 0x000E or attribute_handle == 0x0011 and notification_enabled:
-                if attribute_handle == 0x000E:
+            if attribute_handle in [ReceiveHeaderChar.config_handle, ReceivePayloadChar.config_handle] and notification_enabled:
+                if attribute_handle == ReceiveHeaderChar.config_handle:
                     self.header_notif = True
-                elif attribute_handle == 0x0011:
+                elif attribute_handle == ReceivePayloadChar.config_handle:
                     self.payload_notif = True
 
                 if self.header_notif and self.payload_notif:
@@ -278,7 +303,7 @@ class NativeBLEVirtualInterface(VirtualIOTileInterface):
                     self._audit("RPCInterfaceOpened")
 
             # Streaming
-            elif attribute_handle == 0x0018:
+            elif attribute_handle == StreamingChar.config_handle:
                 if notification_enabled and not self.streaming:
                     self.streaming = True
 
@@ -294,7 +319,7 @@ class NativeBLEVirtualInterface(VirtualIOTileInterface):
                     self._audit('StreamingInterfaceClosed')
 
             # Tracing
-            elif attribute_handle == 0x001D:
+            elif attribute_handle == TracingChar.config_handle:
                 if notification_enabled and not self.tracing:
                     self.tracing = True
 
@@ -311,14 +336,14 @@ class NativeBLEVirtualInterface(VirtualIOTileInterface):
 
             return True
         # If write an RPC
-        elif attribute_handle in [0x0013, 0x0015]:
+        elif attribute_handle in [SendHeaderChar.value_handle, SendPayloadChar.value_handle]:
             # Payload
-            if attribute_handle == 0x0015:
+            if attribute_handle == SendPayloadChar.value_handle:
                 self.rpc_payload = bytearray(request['value'])
                 if len(self.rpc_payload) < 20:
                     self.rpc_payload += bytearray(20 - len(self.rpc_payload))
             # Header
-            elif attribute_handle == 0x0013:
+            elif attribute_handle == SendHeaderChar.value_handle:
                 self._defer(self._call_rpc, [bytearray(request['value'])])
 
             return True
@@ -327,6 +352,7 @@ class NativeBLEVirtualInterface(VirtualIOTileInterface):
 
     def _call_rpc(self, header):
         """Call an RPC given a header and possibly a previously sent payload
+        It is executed in the baBLE working thread: should not be blocking.
 
         Args:
             header (bytearray): The RPC header we should call
@@ -365,12 +391,31 @@ class NativeBLEVirtualInterface(VirtualIOTileInterface):
         resp_header = struct.pack("<BBBB", status, 0, 0, len(response))
 
         if len(response) > 0:
-            self._send_rpc_response((0x000D, resp_header), (0x0010, response))
+            self._send_rpc_response(
+                (ReceiveHeaderChar.value_handle, resp_header),
+                (ReceivePayloadChar.value_handle, response)
+            )
         else:
-            self._send_rpc_response((0x000D, resp_header))
+            self._send_rpc_response((ReceiveHeaderChar.value_handle, resp_header))
+
+    def _send_notification(self, handle, payload):
+        """Send a notification over BLE
+        It is executed in the baBLE working thread: should not be blocking.
+
+        Args:
+            handle (int): The handle to notify on
+            payload (bytearray): The value to notify
+        """
+
+        self.bable.notify(
+            connection_handle=self._connection_handle,
+            attribute_handle=handle,
+            value=payload
+        )
 
     def _send_rpc_response(self, *packets):
         """Send an RPC response.
+        It is executed in the baBLE working thread: should not be blocking.
 
         The RPC response is notified in one or two packets depending on whether or not
         response data is included. If there is a temporary error sending one of the packets
@@ -398,21 +443,6 @@ class NativeBLEVirtualInterface(VirtualIOTileInterface):
         if len(packets) > 1:
             self._defer(self._send_rpc_response, list(packets[1:]))
 
-    def _send_notification(self, handle, payload):
-        """Send a notification over BLE
-
-        Args:
-            handle (int): The handle to notify on
-            payload (bytearray): The value to notify
-        """
-
-        # TODO: modify notify to take a Characteristic instead of attribute_handle + register characteristics in variablesZ
-        self.bable.notify(
-            connection_handle=self._connection_handle,
-            attribute_handle=handle,
-            value=payload
-        )
-
     def _stream_data(self, chunk=None):
         """Stream reports to the ble client in 20 byte chunks
 
@@ -432,7 +462,7 @@ class NativeBLEVirtualInterface(VirtualIOTileInterface):
             return
 
         try:
-            self._send_notification(0x0017, chunk)
+            self._send_notification(StreamingChar.value_handle, chunk)
             self._defer(self._stream_data)
         except bable_interface.BaBLEException as err:
             if err.packet.status == 'Rejected':  # If we are streaming too fast, back off and try again
@@ -460,7 +490,7 @@ class NativeBLEVirtualInterface(VirtualIOTileInterface):
             return
 
         try:
-            self._send_notification(0x001C, chunk)
+            self._send_notification(TracingChar.value_handle, chunk)
             self._defer(self._send_trace)
         except bable_interface.BaBLEException as err:
             if err.packet.status == 'Rejected':  # If we are streaming too fast, back off and try again
@@ -469,3 +499,14 @@ class NativeBLEVirtualInterface(VirtualIOTileInterface):
             else:
                 self._audit('ErrorStreamingTrace')  # If there was an error, stop streaming but don't choke
                 self._logger.exception("Error while tracing data")
+
+    def process(self):
+        """Periodic nonblocking processes"""
+
+        super(NativeBLEVirtualInterface, self).process()
+
+        if (not self._stream_sm_running) and (not self.reports.empty()):
+            self._stream_data()
+
+        if (not self._trace_sm_running) and (not self.traces.empty()):
+            self._send_trace()

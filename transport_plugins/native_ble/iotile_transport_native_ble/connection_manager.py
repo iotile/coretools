@@ -157,11 +157,11 @@ class ConnectionManager(threading.Thread):
 
         return self._connections.keys()
 
-    def get_context(self, conn_or_int_id):
-        """Get the context for a connection by either conn_id or internal_id
+    def get_context(self, conn_or_internal_id):
+        """Get the context for a connection by either connection_id or internal_id
 
         Args:
-            conn_or_int_id (int, string): The external integer connection id or
+            conn_or_internal_id (int, string): The external integer connection id or
                 an internal string connection id
 
         Returns:
@@ -173,7 +173,7 @@ class ConnectionManager(threading.Thread):
                 or is invalid.
         """
 
-        key = conn_or_int_id
+        key = conn_or_internal_id
         if isinstance(key, basestring):
             table = self._int_connections
         elif isinstance(key, int):
@@ -191,11 +191,11 @@ class ConnectionManager(threading.Thread):
 
         return data['context']
 
-    def get_connection_id(self, conn_or_int_id):
+    def get_connection_id(self, conn_or_internal_id):
         """Get the connection id.
 
         Args:
-            conn_or_int_id (int, string): The external integer connection id or
+            conn_or_internal_id (int, string): The external integer connection id or
                 an internal string connection id
 
         Returns:
@@ -206,7 +206,7 @@ class ConnectionManager(threading.Thread):
                 or is invalid.
         """
 
-        key = conn_or_int_id
+        key = conn_or_internal_id
         if isinstance(key, basestring):
             table = self._int_connections
         elif isinstance(key, int):
@@ -224,11 +224,11 @@ class ConnectionManager(threading.Thread):
 
         return data['connection_id']
 
-    def _get_connection(self, conn_or_int_id):
-        """Get the data for a connection by either conn_id or internal_id
+    def _get_connection(self, conn_or_internal_id):
+        """Get the data for a connection by either connection_id or internal_id
 
         Args:
-            conn_or_int_id (int, string): The external integer connection id or
+            conn_or_internal_id (int, string): The external integer connection id or
                 and internal string connection id
 
         Returns:
@@ -236,7 +236,7 @@ class ConnectionManager(threading.Thread):
                 be found.
         """
 
-        key = conn_or_int_id
+        key = conn_or_internal_id
         if isinstance(key, basestring):
             table = self._int_connections
         elif isinstance(key, int):
@@ -251,17 +251,17 @@ class ConnectionManager(threading.Thread):
 
         return data
 
-    def _get_connection_state(self, conn_or_int_id):
-        """Get a connection's state by either conn_id or internal_id
+    def _get_connection_state(self, conn_or_internal_id):
+        """Get a connection's state by either connection_id or internal_id
 
         This routine must only be called from the internal worker thread.
 
         Args:
-            conn_or_int_id (int, string): The external integer connection id or
+            conn_or_internal_id (int, string): The external integer connection id or
                 and internal string connection id
         """
 
-        key = conn_or_int_id
+        key = conn_or_internal_id
         if isinstance(key, basestring):
             table = self._int_connections
         elif isinstance(key, int):
@@ -278,8 +278,8 @@ class ConnectionManager(threading.Thread):
         data = table[key]
         return data['state']
 
-    def get_state(self, conn_or_int_id):
-        state = self._get_connection_state(conn_or_int_id)
+    def get_state(self, conn_or_internal_id):
+        state = self._get_connection_state(conn_or_internal_id)
 
         if state == self.Disconnected:
             return "Disconnected"
@@ -300,23 +300,29 @@ class ConnectionManager(threading.Thread):
         Adds the corresponding finish action that fails the request due to a timeout.
         """
 
-        for conn_id, data in iteritems(self._connections):
+        for connection_id, data in iteritems(self._connections):
             if 'action' in data and data['action'].expired:
                 if data['state'] == self.Connecting:
-                    self.finish_connection(conn_id, False, 'Connection attempt timed out')
+                    self.finish_connection(connection_id, False, 'Connection attempt timed out')
                 elif data['state'] == self.Disconnecting:
-                    self.finish_disconnection(conn_id, False, 'Disconnection attempt timed out')
+                    self.finish_disconnection(connection_id, False, 'Disconnection attempt timed out')
                 elif data['state'] == self.InProgress:
                     if data['microstate'] == 'rpc':
-                        self.finish_operation(conn_id, False, 'RPC timed out without response', None, None)
+                        self.finish_operation(connection_id, False, 'RPC timed out without response', None, None)
                     elif data['microstate'] == 'open_interface':
-                        self.finish_operation(conn_id, False, 'Open interface request timed out')
+                        self.finish_operation(connection_id, False, 'Open interface request timed out')
 
     def add_connection(self, connection_id, internal_id, context):
+        """Add an already created connection. Used to register devices connected before starting the device adapter.
+        
+        Args:
+            connection_id (int): The external connection id
+            internal_id (string): An internal identifier for the connection
+            context (dict): Additional information to associate with this context
+        """
         # Make sure we are not reusing an id that is currently connected to something
         if self._get_connection_state(connection_id) != self.Disconnected:
             return
-
         if self._get_connection_state(internal_id) != self.Disconnected:
             return
 
@@ -331,11 +337,11 @@ class ConnectionManager(threading.Thread):
         self._connections[connection_id] = conn_data
         self._int_connections[internal_id] = conn_data
 
-    def begin_connection(self, conn_id, internal_id, callback, context, timeout):
+    def begin_connection(self, connection_id, internal_id, callback, context, timeout):
         """Asynchronously begin a connection attempt
 
         Args:
-            conn_id (int): The external connection id
+            connection_id (int): The external connection id
             internal_id (string): An internal identifier for the connection
             callback (callable): The function to be called when the connection
                 attempt finishes
@@ -346,7 +352,7 @@ class ConnectionManager(threading.Thread):
 
         data = {
             'callback': callback,
-            'connection_id': conn_id,
+            'connection_id': connection_id,
             'internal_id': internal_id,
             'context': context
         }
@@ -382,30 +388,30 @@ class ConnectionManager(threading.Thread):
                 connecting to
         """
 
-        conn_id = action.data['connection_id']
-        int_id = action.data['internal_id']
+        connection_id = action.data['connection_id']
+        internal_id = action.data['internal_id']
         callback = action.data['callback']
 
         # Make sure we are not reusing an id that is currently connected to something
-        if self._get_connection_state(conn_id) != self.Disconnected:
-            callback(conn_id, self.id, False, 'Connection ID is already in use for another connection')
+        if self._get_connection_state(connection_id) != self.Disconnected:
+            callback(connection_id, self.id, False, 'Connection ID is already in use for another connection')
             return
 
-        if self._get_connection_state(int_id) != self.Disconnected:
-            callback(conn_id, self.id, False, 'Internal ID is already in use for another connection')
+        if self._get_connection_state(internal_id) != self.Disconnected:
+            callback(connection_id, self.id, False, 'Internal ID is already in use for another connection')
             return
 
         conn_data = {
             'state': self.Connecting,
             'microstate': None,
-            'connection_id': conn_id,
-            'internal_id': int_id,
+            'connection_id': connection_id,
+            'internal_id': internal_id,
             'action': action,
             'context': action.data['context']
         }
 
-        self._connections[conn_id] = conn_data
-        self._int_connections[int_id] = conn_data
+        self._connections[connection_id] = conn_data
+        self._int_connections[internal_id] = conn_data
 
     def _finish_connection_action(self, action):
         """Finish a connection attempt
@@ -427,8 +433,8 @@ class ConnectionManager(threading.Thread):
 
         # Cannot be None since we checked above to make sure it exists
         data = self._get_connection(conn_key)
-        conn_id = data['connection_id']
-        int_id = data['internal_id']
+        connection_id = data['connection_id']
+        internal_id = data['internal_id']
 
         last_action = data['action']
         callback = last_action.data['callback']
@@ -438,14 +444,14 @@ class ConnectionManager(threading.Thread):
             if failure_reason is None:
                 failure_reason = "No reason was given"
 
-            del self._connections[conn_id]
-            del self._int_connections[int_id]
-            callback(conn_id, self.id, False, failure_reason)
+            del self._connections[connection_id]
+            del self._int_connections[internal_id]
+            callback(connection_id, self.id, False, failure_reason)
         else:
             data['state'] = self.Idle
             data['microstate'] = None
             del data['action']
-            callback(conn_id, self.id, True, None)
+            callback(connection_id, self.id, True, None)
 
     def unexpected_disconnect(self, conn_or_internal_id):
         """Notify that there was an unexpected disconnection of the device.
@@ -515,10 +521,10 @@ class ConnectionManager(threading.Thread):
             elif data['microstate'] == 'close_interface':
                 callback(False, 'Unexpected disconnection')
 
-        conn_id = data['connection_id']
-        int_id = data['internal_id']
-        del self._connections[conn_id]
-        del self._int_connections[int_id]
+        connection_id = data['connection_id']
+        internal_id = data['internal_id']
+        del self._connections[connection_id]
+        del self._int_connections[internal_id]
 
     def _begin_disconnection_action(self, action):
         """Begin a disconnection attempt
@@ -585,8 +591,8 @@ class ConnectionManager(threading.Thread):
 
         # Cannot be None since we checked above to make sure it exists
         data = self._get_connection(conn_key)
-        conn_id = data['connection_id']
-        int_id = data['internal_id']
+        connection_id = data['connection_id']
+        internal_id = data['internal_id']
 
         last_action = data['action']
         callback = last_action.data['callback']
@@ -599,11 +605,11 @@ class ConnectionManager(threading.Thread):
             data['state'] = self.Idle
             data['microstate'] = None
             del data['action']
-            callback(conn_id, self.id, False, failure_reason)
+            callback(connection_id, self.id, False, failure_reason)
         else:
-            del self._connections[conn_id]
-            del self._int_connections[int_id]
-            callback(conn_id, self.id, True, None)
+            del self._connections[connection_id]
+            del self._int_connections[internal_id]
+            callback(connection_id, self.id, True, None)
 
     def begin_operation(self, conn_or_internal_id, op_name, callback, timeout):
         """Begin an operation on a connection
@@ -690,11 +696,11 @@ class ConnectionManager(threading.Thread):
         last_action = data['action']
 
         callback = last_action.data['callback']
-        conn_id = data['connection_id']
+        connection_id = data['connection_id']
         args = action.data['callback_args']
 
         data['state'] = self.Idle
         data['microstate'] = None
         del data['action']
 
-        callback(conn_id, self.id, success, *args)
+        callback(connection_id, self.id, success, *args)

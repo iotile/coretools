@@ -1,0 +1,9 @@
+{
+  "device": {
+    "iotile_id": "0x10",
+    "num_readings": 4,
+    "format": "signed_list",
+    "report_length": 2,
+    "stream_id": "0x2000"
+  }
+}
