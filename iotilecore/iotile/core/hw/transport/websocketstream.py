@@ -1,9 +1,11 @@
+from __future__ import unicode_literals
 
 import threading
 from queue import Queue, Empty
 import datetime
 import time
 import msgpack
+import base64
 
 from ws4py.client.threadedclient import WebSocketClient
 from iotile.core.hw.exceptions import *
@@ -15,10 +17,11 @@ from .cmdstream import CMDStream
 
 class WSIOTileClient(WebSocketClient):
     def __init__(self, port, report_callback):
-        super(WSIOTileClient, self).__init__(port, protocols=['iotile-ws'])
+        super(WSIOTileClient, self).__init__(port, protocols=['iotile-ws', 'iotile-ws-text'])
 
         self.connection_established = threading.Event()
         self.messages = Queue()
+        self.binary = True
         self.report_callback = report_callback
 
     def start(self):
@@ -30,12 +33,24 @@ class WSIOTileClient(WebSocketClient):
         self.connection_established.wait()
 
     def opened(self):
+        protocols = self.protocols
+
+        # Workaround bug in ws4py protocol handling
+        if isinstance(protocols, (str, bytes)) and b'i,o,t,i,l,e' in protocols:
+            protocols = [protocols.replace(b',', b'')]
+
+        if 'iotile-ws-text' in protocols and 'iotile-ws' not in protocols:
+            self.binary = False
+
         self.connection_established.set()
 
     def closed(self, code, reason):
         self.connection_established.clear()
 
     def unpack(self, msg):
+        if self.binary is False:
+            msg = base64.standard_b64decode(msg)
+
         return msgpack.unpackb(msg, raw=False, object_hook=self.decode_datetime)
 
     @classmethod
@@ -82,10 +97,12 @@ class WebSocketStream(CMDStream):
 
         # Make sure we make at least one call here in main thread to workaround python bug
         # https://bugs.python.org/issue7980
-        _throwaway = datetime.datetime.strptime('20110101','%Y%m%d')
+        _throwaway = datetime.datetime.strptime('20110101', '%Y%m%d')
 
         self.client = WSIOTileClient(port, report_callback=self._report_callback)
         self.client.start()
+        self.binary = self.client.binary
+
         self._connection_id = None
 
         CMDStream.__init__(self, port, connection_string, record=record)
@@ -167,12 +184,20 @@ class WebSocketStream(CMDStream):
         else:
             self._report_queue.put(report)
 
-    def send(self, command, args={}, progress=None):
+    def send(self, command, args=None, progress=None):
         cmd = {}
         cmd['command'] = command
+
+        if args is None:
+            args = {}
+
         cmd.update(args)
 
-        self.client.send(msgpack.packb(cmd, use_bin_type=True), binary=True)
+        msg = msgpack.packb(cmd, use_bin_type=True)
+        if self.binary is False:
+            msg = base64.standard_b64encode(msg)
+
+        self.client.send(msg, binary=self.binary)
 
         done = False
 

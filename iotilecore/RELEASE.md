@@ -2,6 +2,12 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.22.10
+
+- Add support for text mode websocket connections.  This is useful for
+  connecting to mobile devices whose websockets servers don't implement binary
+  mode.  It is autonegotiated between the client and server and prefers binary.
+
 ## 3.22.9
 
 - Fix the registry function `list_config` so that the string 'config:' does not
