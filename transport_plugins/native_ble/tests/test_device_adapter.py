@@ -342,7 +342,7 @@ def test_rpc(connected_device_adapter):
         assert connection_id == 0
         assert success is True
         assert status == 0xFF
-        assert payload == b'\x00' * 20
+        assert payload == b''
         callback_called.set()
 
     # Register our new on_write_request callback function in mock_bable

@@ -781,6 +781,8 @@ class NativeBLEDeviceAdapter(DeviceAdapter):
             callback(connection_id, self.id, False, "Could not find connection information")
             return
 
+        connection_handle = context['connection_handle']
+
         self.connections.begin_operation(connection_id, 'rpc', callback, timeout)
 
         try:
@@ -808,23 +810,13 @@ class NativeBLEDeviceAdapter(DeviceAdapter):
             result['status'] = value[0]
             result['length'] = value[3]
 
-            if result['length'] > 0:
-                # Register the payload notification callback
-                self._register_notification_callback(
-                    context['connection_handle'],
-                    receive_payload_characteristic.value_handle,
-                    on_payload_received,
-                    once=True
-                )
-            else:
-                result['payload'] = b'\x00'*20
-                self.connections.finish_operation(
-                    connection_id,
-                    True,
-                    None,
-                    result['status'],
-                    result['payload']
-                )
+            if result['length'] == 0:
+                # Simulate a empty payload received to end the RPC response
+                self._on_notification_received(True, {
+                    'connection_handle': connection_handle,
+                    'attribute_handle': receive_payload_characteristic.value_handle,
+                    'value': b'\x00'*20
+                }, None)
 
         def on_payload_received(value):
             """Callback function called when a notification has been received with the RPC payload response."""
@@ -839,22 +831,30 @@ class NativeBLEDeviceAdapter(DeviceAdapter):
 
         # Register the header notification callback
         self._register_notification_callback(
-            context['connection_handle'],
+            connection_handle,
             receive_header_characteristic.value_handle,
             on_header_received,
+            once=True
+        )
+
+        # Register the payload notification callback
+        self._register_notification_callback(
+            connection_handle,
+            receive_payload_characteristic.value_handle,
+            on_payload_received,
             once=True
         )
 
         if length > 0:
             # If payload is not empty, send it first
             self.bable.write_without_response(
-                connection_handle=context['connection_handle'],
+                connection_handle=connection_handle,
                 attribute_handle=send_payload_characteristic.value_handle,
                 value=bytes(payload)
             )
 
         self.bable.write_without_response(
-            connection_handle=context['connection_handle'],
+            connection_handle=connection_handle,
             attribute_handle=send_header_characteristic.value_handle,
             value=bytes(header)
         )
@@ -927,7 +927,6 @@ class NativeBLEDeviceAdapter(DeviceAdapter):
     def _register_notification_callback(self, connection_handle, attribute_handle, callback, once=False):
         """Register a callback as a notification callback. It will be called if a notification with the matching
         connection_handle and attribute_handle is received.
-
 
         Args:
             connection_handle (int): The connection handle to watch
