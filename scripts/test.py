@@ -64,6 +64,8 @@ class TestProcessor(cmdln.Cmdln):
 
             if status is None:
                 print("SKIPPED ON PYTHON 3")
+            elif status == 5:
+                print("NO TESTS RAN (%.1f seconds)" % duration)
             elif status != 0:
                 failed = True
                 failed_outputs.append(output)
@@ -81,6 +83,7 @@ class TestProcessor(cmdln.Cmdln):
             print("----------------------- ERROR LOG ENDS --------------------")
 
         return int(failed)
+
 
 if __name__ == '__main__':
     proc = TestProcessor()

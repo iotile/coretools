@@ -9,6 +9,7 @@ comp_names = {
     'iotile_transport_bled112': ['iotile-transport-bled112', 'transport_plugins/bled112', True],
     'iotile_transport_awsiot': ['iotile-transport-awsiot', 'transport_plugins/awsiot', False],
     'iotile_transport_websocket': ['iotile-transport-websocket', 'transport_plugins/websocket', True],
+    'iotile_transport_native_ble': ['iotile-transport-native-ble', 'transport_plugins/native_ble', True],
     'iotile_transport_jlink': ['iotile-transport-jlink', 'transport_plugins/jlink', False],
     'iotile_ext_cloud': ['iotile-ext-cloud', 'iotile_ext_cloud', True]
 }

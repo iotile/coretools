@@ -1,11 +1,19 @@
 # Pytest configuration file: will be run before tests to define fixtures
-
+import os
 import pytest
+import sys
 import threading
 import time
-from iotile_transport_native_ble.device_adapter import NativeBLEDeviceAdapter
-from iotile_transport_native_ble.virtual_ble import NativeBLEVirtualInterface
-from iotile_transport_native_ble.tilebus import *
+
+skip_imports = False
+if sys.platform not in ['linux', 'linux2']:
+    collect_ignore = [f for f in os.listdir(os.path.dirname(__file__)) if f.startswith('test_')]
+    skip_imports = True
+
+if not skip_imports:
+    from iotile_transport_native_ble.device_adapter import NativeBLEDeviceAdapter
+    from iotile_transport_native_ble.virtual_ble import NativeBLEVirtualInterface
+    from iotile_transport_native_ble.tilebus import *
 
 
 @pytest.fixture(scope='function')
