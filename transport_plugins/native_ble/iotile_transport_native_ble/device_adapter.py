@@ -576,12 +576,12 @@ class NativeBLEDeviceAdapter(DeviceAdapter):
             )
             return
 
-        parser = IOTileReportParser(report_callback=self._on_report, error_callback=self._on_report_error)
-        parser.context = connection_id
+        context['parser'] = IOTileReportParser(report_callback=self._on_report, error_callback=self._on_report_error)
+        context['parser'].context = connection_id
 
         def on_report_chunk_received(report_chunk):
             """Callback function called when a report chunk has been received."""
-            parser.add_data(report_chunk)
+            context['parser'].add_data(report_chunk)
 
         # Register our callback function in the notifications callbacks
         self._register_notification_callback(
