@@ -2,6 +2,12 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.22.11
+
+- Fix Ctrl-C behavior of watch_broadcasts to not hang on exit sometimes and 
+  properly double buffer the display to remove the flickering.  Also update the
+  UI at 50 ms rather than 500 ms to increase responsiveness.
+
 ## 3.22.10
 
 - Add support for text mode websocket connections.  This is useful for
