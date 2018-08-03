@@ -60,7 +60,7 @@ class LinebufferUI(object):
 
         self.items = {}
 
-    def run(self, refresh_interval=0.5):
+    def run(self, refresh_interval=0.05):
 
         try:
             from asciimatics.screen import Screen
@@ -87,20 +87,23 @@ class LinebufferUI(object):
     def _run_loop(self, screen, refresh_interval):
         self.items = {}
 
-        while True:
-            screen.clear()
+        screen.clear()
 
-            self._update_items(screen)
-            items = sorted(viewvalues(self.items), key=lambda x: x.sort_key)
+        try:
+            while True:
+                self._update_items(screen)
+                items = sorted(viewvalues(self.items), key=lambda x: x.sort_key)
 
-            if self.title_func is not None:
-                screen.print_at(self.title_func(self.items), 0, 0)
+                if self.title_func is not None:
+                    screen.print_at(self.title_func(self.items), 0, 0)
 
-            for line_no, item in enumerate(items):
-                screen.print_at(item.text, 0, line_no + 2)
+                for line_no, item in enumerate(items):
+                    screen.print_at(item.text, 0, line_no + 2)
 
-            screen.refresh()
-            time.sleep(refresh_interval)
+                screen.refresh()
+                time.sleep(refresh_interval)
+        except KeyboardInterrupt:
+            pass
 
     def _parse_and_format(self, item, screen):
         id_val = self.id_func(item)
