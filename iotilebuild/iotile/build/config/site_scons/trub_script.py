@@ -48,9 +48,11 @@ def build_update_script(file_name, slot_assignments=None, os_info=None, sensor_g
 
     env['OS_INFO'] = os_info
     env['APP_INFO'] = app_info
+    env['UPDATE_SENSORGRAPH'] = False
 
     if sensor_graph is not None:
         files.append(sensor_graph)
+        env['UPDATE_SENSORGRAPH'] = True
 
     env.Command([os.path.join('build', 'output', file_name)], files, action=Action(_build_reflash_script_action, "Building TRUB script at $TARGET"))
 
@@ -66,14 +68,6 @@ def _build_reflash_script_action(target, source, env):
     out_path = str(target[0])
     source = [str(x) for x in source]
     records = []
-    
-    #Update sensorgraph
-    app_info = env['APP_INFO']
-    if app_info is not None:
-        sensor_graph_file = source.pop(-1)
-        sensor_graph = compile_sgf(sensor_graph_file)
-        output = format_script(sensor_graph)
-        records += UpdateScript.FromBinary(output).records
 
     #Update application firmwares
     if env['SLOTS'] is not None:
@@ -91,14 +85,25 @@ def _build_reflash_script_action(target, source, env):
 
             records.append(record)
 
+    #Update sensorgraph
+    app_info = env['UPDATE_SENSORGRAPH']
+    if app_info is not None:
+        sensor_graph_file = source.pop(-1)
+        sensor_graph = compile_sgf(sensor_graph_file)
+        output = format_script(sensor_graph)
+        records += UpdateScript.FromBinary(output).records
+
     #Update App and OS Tag
     os_info = env['OS_INFO']
+    os_tag      = None
+    os_version  = None
+    app_tag     = None
+    app_version = None
     if os_info is not None:
         os_tag, os_version = os_info
-        records.append(SetDeviceTagRecord(os_tag=os_tag, os_version=os_version))
     if app_info is not None:
         app_tag, app_version = app_info
-        records.append(SetDeviceTagRecord(app_tag=app_tag, app_version=app_version))
+    records.append(SetDeviceTagRecord(os_tag=os_tag, os_version=os_version, app_tag=app_tag, app_version=app_version))
     
     script = UpdateScript(records)
 
