@@ -10,6 +10,7 @@ import datetime
 import uuid
 import copy
 import serial
+import binascii
 from future.utils import viewitems
 import serial.tools.list_ports
 from iotile.core.dev.config import ConfigManager
@@ -504,15 +505,133 @@ class BLED112Adapter(DeviceAdapter):
         else:
             self._logger.warn('Unhandled BLE event: ' + str(event))
 
+
     def _parse_scan_response(self, response):
         """Parse the IOTile specific data structures in the BLE advertisement packets and add the device to our list of scanned devices
         """
+        # Parse advertisement and determine if it matches V1 or V2.
 
         payload = response.payload
         length = len(payload) - 10
 
         if length < 0:
-            return  # FIXME: Log an error here
+            self._logger.error("BLE Advertising packet payload is empty.")
+            return
+
+        rssi, packet_type, sender, addr_type, bond, data = unpack("<bB6sBB%ds" % length, payload)
+
+        #Scan data is prepended with a length
+        if len(data) > 0:
+            scan_data = bytearray(data[1:])
+        else:
+            scan_data = bytearray([])
+
+        #If this is an advertisement response, see if its an IOTile device
+        if packet_type == 0 or packet_type == 6:
+
+            # See if the data length is 27 (0x1B), service = 0x16, ArchUUID = 0x03C0
+            if (scan_data[3] == 27 and 
+                    scan_data[4] == 0x16 and 
+                    scan_data[5] == 0xc0 and 
+                    scan_data[6] == 0x03):
+                self._logger.error("Parse v2: {0}".format(binascii.hexlify(scan_data)))
+                self._parse_v2_scan_response(response)
+
+            elif (scan_data[3] == 17 and
+                scan_data[4] == 6):
+
+                self._logger.error("Parse v1: {0}".format(binascii.hexlify(scan_data)))
+                self._parse_v1_scan_response(response)
+
+            else: 
+                self._logger.error("Invalid scan data: {0}".format(binascii.hexlify(scan_data)))
+                return
+
+    def _parse_v2_scan_response(self, response):
+        """ Parse the IOTile Specific advertisement packet
+        """
+        payload = response.payload
+        length = len(payload) - 10
+
+        self._logger.debug("   call: _parse_v2_scan_response({0})".format(binascii.hexlify(payload)))
+
+        rssi, packet_type, sender, addr_type, bond, data = unpack("<bB6sBB%ds" % length, payload)
+
+        parsed = {}
+        parsed['rssi'] = rssi
+        parsed['type'] = packet_type
+        parsed['address_raw'] = sender
+        parsed['address'] = ':'.join([format(x, "02X") for x in bytearray(sender[::-1])])
+        parsed['address_type'] = addr_type
+
+        #Scan data is prepended with a length
+        if len(data)  > 0:
+            parsed['scan_data'] = bytearray(data[1:])
+        else:
+            parsed['scan_data'] = bytearray([])
+
+        #If this is an advertisement response, see if its an IOTile device
+        if parsed['type'] == 0 or parsed['type'] == 6:
+            scan_data = parsed['scan_data']
+
+            if len(scan_data) != 31:
+                self._logger.error("Advertising V2 packet is not the proper size. {0}".format(len(scan_data)))
+                return
+
+            #Skip BLE flags
+            scan_data = scan_data[3:]
+
+            if (scan_data[0] == 27 and 
+                    scan_data[1] == 0x16 and 
+                    scan_data[2] == 0xC0 and 
+                    scan_data[3] == 0x03):
+
+                scan_data = scan_data[4:]
+
+                device_uuid, reboot_low, reboot_high, flags, timestamp, battery, OTHER, bcast_stream, bcast_value, mac = unpack("<LHBBLBBHLL", scan_data)
+                reboots = reboot_high << 16 | reboot_low
+
+                pending = False
+                low_voltage = False
+                user_connected = False
+                if flags & (1 << 0):
+                    pending = True
+                if flags & (1 << 1):
+                    low_voltage = True
+                if flags & (1 << 2):
+                    user_connected = True
+
+                info = {'user_connected': user_connected, 'connection_string': parsed['address'],
+                        'uuid': device_uuid, 'pending_data': pending, 'low_voltage': low_voltage,
+                        'signal_strength': parsed['rssi'],
+                        'reboots':reboots, 'timestamp':timestamp, 'battery':battery,
+                        'bcast_stream':bcast_stream, 'bcast_value':bcast_value, 'mac':mac}
+
+                if not self._active_scan:
+                    self._trigger_callback('on_scan', self.id, info, self.ExpirationTime)
+                else:
+                    self.partial_scan_responses[parsed['address']] = info
+
+        elif parsed['type'] == 4 and parsed['address'] in self.partial_scan_responses:
+            #Check if this is a scan response packet from an iotile based device
+            scan_data = parsed['scan_data']
+            if len(scan_data) != 31:
+                self._logger.error("Scan data should have 31 bytes")
+                return
+
+            self._logger.error("Not Implemented")
+
+        return
+
+    def _parse_v1_scan_response(self, response):
+        payload = response.payload
+        length = len(payload) - 10
+
+        self._logger.debug("   call: _parse_v1_scan_response({0})".format(binascii.hexlify(payload)))
+
+        if length < 0:
+            self._logger.error("BLE Advertising packet payload is empty.")
+            return
 
         rssi, packet_type, sender, addr_type, bond, data = unpack("<bB6sBB%ds" % length, payload)
 
@@ -534,14 +653,16 @@ class BLED112Adapter(DeviceAdapter):
             scan_data = parsed['scan_data']
 
             if len(scan_data) < 29:
-                return #FIXME: Log an error here
+                self._logger.error("Advertising packet is too small.")
+                return
 
             #Skip BLE flags
             scan_data = scan_data[3:]
 
             #Make sure the scan data comes back with an incomplete UUID list
             if scan_data[0] != 17 or scan_data[1] != 6:
-                return #FIXME: Log an error here
+                self._logger.error("Scan data does not have an incomplete UUID list")
+                return
 
             uuid_buf = scan_data[2:18]
             assert len(uuid_buf) == 16
@@ -573,11 +694,13 @@ class BLED112Adapter(DeviceAdapter):
                     self._trigger_callback('on_scan', self.id, info, self.ExpirationTime)
                 else:
                     self.partial_scan_responses[parsed['address']] = info
+
         elif parsed['type'] == 4 and parsed['address'] in self.partial_scan_responses:
             #Check if this is a scan response packet from an iotile based device
             scan_data = parsed['scan_data']
             if len(scan_data) != 31:
-                return #FIXME: Log an error here
+                self._logger.error("Scan data should have 31 bytes")
+                return
 
             length, datatype, manu_id, voltage, stream, reading, reading_time, curr_time = unpack("<BBHHHLLL11x", scan_data)
 
