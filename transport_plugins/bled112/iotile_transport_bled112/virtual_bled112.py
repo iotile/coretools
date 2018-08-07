@@ -14,6 +14,7 @@ import traceback
 import struct
 import logging
 import time
+import calendar
 import binascii
 from threading import Lock
 import serial
@@ -193,7 +194,7 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
 
             self.reports.put(report)
 
-    def _advertisement(self):
+    def _advertisement(self, pkt_type=2):
         # Flags are
         # bit 0: whether we have pending data
         # bit 1: whether we are in a low voltage state
@@ -201,14 +202,35 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         # bit 3: whether we support robust reports
         # bit 4: whether we allow fast writes
 
-        ### TODO: MODIFY THIS for V2 of the advertizing packet
+        ### 
 
-        flags = (0 << 1) | (0 << 2) | (1 << 3) | (1 << 4) | (int(self.device.pending_data))
         ble_flags = struct.pack("<BBB", 2, 1, 0x4 | 0x2)  # General discoverability and no BR/EDR support
-        uuid_list = struct.pack("<BB16s", 17, 6, TileBusService.bytes_le)
-        manu = struct.pack("<BBHLH", 9, 0xFF, ArchManuID, self.device.iotile_id, flags)
+        flags = (0 << 1) | (0 << 2) | (1 << 3) | (1 << 4) | (int(self.device.pending_data))
 
-        return ble_flags + uuid_list + manu
+        if pkt_type == 1:
+            uuid_list = struct.pack("<BB16s", 17, 6, TileBusService.bytes_le)
+            manu = struct.pack("<BBHLH", 9, 0xFF, ArchManuID, self.device.iotile_id, flags)
+            return ble_flags + uuid_list + manu
+
+        elif pkt_type == 2:
+            reboots = 432
+            reboots_hi = (reboots & 0xFF0000) >> 16
+            reboots_lo = (reboots & 0x00FFFF)
+            timestamp = calendar.timegm(time.gmtime())
+            battery =  int(3.8/(25.0/256.0))
+            OTHER = 0
+            bcast_stream = 1111
+            bcast_value = 22222222
+            mac = 33333333
+
+            data1 = struct.pack("<BBHL", 27, 0x16, 0x03C0, self.device.iotile_id)
+            data2 = struct.pack("<HBBLBB", reboots_lo, reboots_hi, flags, timestamp, battery, OTHER)
+            data3 = struct.pack("<HLL", bcast_stream, bcast_value, mac)
+            return ble_flags + data1 + data2 + data3
+
+        else:
+            self._logger.error("Invalid Advertising Packet Version")
+            return None
 
     def _scan_response(self):
         header = struct.pack("<BBH", 19, 0xFF, ArchManuID)
