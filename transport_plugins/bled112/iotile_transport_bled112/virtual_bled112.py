@@ -201,6 +201,8 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         # bit 3: whether we support robust reports
         # bit 4: whether we allow fast writes
 
+        ### TODO: MODIFY THIS for V2 of the advertizing packet
+
         flags = (0 << 1) | (0 << 2) | (1 << 3) | (1 << 4) | (int(self.device.pending_data))
         ble_flags = struct.pack("<BBB", 2, 1, 0x4 | 0x2)  # General discoverability and no BR/EDR support
         uuid_list = struct.pack("<BB16s", 17, 6, TileBusService.bytes_le)

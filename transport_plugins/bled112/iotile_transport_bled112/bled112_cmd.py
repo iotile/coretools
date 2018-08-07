@@ -31,6 +31,7 @@ class BLED112CommandProcessor(threading.Thread):
         self._stop_event_check_interval = stop_check_interval
 
     def run(self):
+        self._logger.debug(">> enter - run()")
         while not self._stop_event.is_set():
             try:
                 self._process_events()
@@ -46,7 +47,9 @@ class BLED112CommandProcessor(threading.Thread):
                 self._current_callback = callback
 
                 if hasattr(self, cmd):
+                    self._logger.debug("CALL:   run({0},{1})".format(cmd,args))
                     res = getattr(self, cmd)(*args)
+                    self._logger.debug("RETURN: run({0}) => [{1}]".format(cmd,res))
                 else:
                     pass #FIXME: Log an error for an invalid command
 
@@ -73,6 +76,8 @@ class BLED112CommandProcessor(threading.Thread):
             except:
                 self._logger.exception("Error executing command: %s", cmd)
                 raise
+
+        self._logger.debug("<< exit  - run()")
 
     def _set_scan_parameters(self, interval=2100, window=2100, active=False):
         """
@@ -686,6 +691,8 @@ class BLED112CommandProcessor(threading.Thread):
         """
         Send a BGAPI packet to the dongle and return the response
         """
+        import binascii
+        self._logger.debug("   call: _send_command({0},{1},[{2}])".format(cmd_class,command, binascii.hexlify(bytearray(payload))))
 
         if len(payload) > 60:
             return ValueError("Attempting to send a BGAPI packet with length > 60 is not allowed", actual_length=len(payload), command=command, command_class=cmd_class)
@@ -701,12 +708,14 @@ class BLED112CommandProcessor(threading.Thread):
 
         #Every command has a response so wait for the response here
         response = self._receive_packet(timeout)
+        self._logger.debug("   retn: _send_command({0},{1}) => [{2}]".format(cmd_class, command, response))
         return response
 
     def _receive_packet(self, timeout=3.0):
         """
         Receive a response packet to a command
         """
+        self._logger.debug("   call: _receive_packet()")
 
         while True:
             response_data = self._stream.read_packet(timeout=timeout)
@@ -714,10 +723,12 @@ class BLED112CommandProcessor(threading.Thread):
 
             if response.is_event:
                 if self.event_handler is not None:
+                    self._logger.debug("   call: _receive_packet::event_handler({0})".format(response))
                     self.event_handler(response)
 
                 continue
 
+            self._logger.debug("   retn: _receive_packet => [{0}]".format(response))
             return response
 
     def stop(self):
@@ -749,6 +760,16 @@ class BLED112CommandProcessor(threading.Thread):
     def _process_events(self, return_filter=None, max_events=0):
         to_return = []
 
+        # Debug Print
+        import inspect
+        if return_filter is not None:
+            dbgfilter = str(inspect.getsourcelines(return_filter)[0])
+            dbgfilter = "lambda " + dbgfilter.strip("['\\n']").split("lambda")[1]
+        else:
+            dbgfilter = None
+        self._logger.debug("   call: _process_events([{0}],{1})".format(dbgfilter,max_events))
+        # End Debug Print
+
         try:
             while True:
                 event_data = self._stream.queue.get_nowait()
@@ -760,6 +781,7 @@ class BLED112CommandProcessor(threading.Thread):
                 elif return_filter is not None and return_filter(event):
                     to_return.append(event)
                 elif self.event_handler is not None:
+                    self._logger.debug("   call: _process_events::event_handler({0})".format(event))
                     self.event_handler(event)
                 else:
                     self._logger.info("Dropping event that had no evnt handler: %s", event)
@@ -769,6 +791,7 @@ class BLED112CommandProcessor(threading.Thread):
         except Empty:
             pass
 
+        self._logger.debug("   retn: _process_events() => [{0}]".format(to_return))
         return to_return
 
     def _wait_process_events(self, total_time, return_filter, end_filter):
@@ -784,6 +807,47 @@ class BLED112CommandProcessor(threading.Thread):
         Returns:
             list: A list of events that matched return_filter or end_filter
         """
+        # Debug Print
+        import inspect, ast
+        def __get_lambda_src(code):
+            try:
+                src, _ = inspect.getsourcelines(code)
+            except IOError:
+                return None
+            if len(src) > 1:
+                return None
+            return src[0].strip()
+        def __get_lambda_astnode(code):
+            src = __get_lambda_src(code)
+            if src:
+                srcast = ast.parse(src)
+                return next(( node for node in ast.walk(srcast) if isinstance(node, ast.Lambda)),None)
+        def __get_lambda(code):
+            src = __get_lambda_src(code)
+            astnode = __get_lambda_astnode(code)
+            lambda_txt = src[astnode.col_offset:]
+            minlen = len('lambda:_')
+            while len(lambda_txt) > minlen:
+                try:
+                    ast.parse(lambda_txt)
+                    return lambda_txt
+                except SyntaxError:
+                    lambda_txt = lambda_txt[:-1]
+            return None
+        dbgrtnfilter = None
+        if return_filter is not None:
+            dbgrtnfilter = str(return_filter.__name__).strip()
+        dbgendfilter = None
+        if end_filter is not None:
+            L = lambda:0
+            if isinstance(end_filter, type(L)):
+                dbgendfilter = __get_lambda(end_filter)
+            else:
+                dbgendfilter = str(end_filter.__name__).strip()
+
+        self._logger.debug("   call: _wait_process_events({0},[{1}],[{2}])".format(total_time,dbgrtnfilter,dbgendfilter))
+        # End Debug Print
+
         acc = []
 
         delta = 0.01
@@ -797,9 +861,11 @@ class BLED112CommandProcessor(threading.Thread):
 
             for event in events:
                 if end_filter(event):
+                    self._logger.debug("   retn: _wait_process_events::end_filter() => [{0}]".format(acc))
                     return acc
 
             if len(events) == 0:
                 time.sleep(delta)
 
+        self._logger.debug("   retn: _wait_process_events() => [{0}]".format(acc))
         return acc
