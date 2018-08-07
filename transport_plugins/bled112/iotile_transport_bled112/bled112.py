@@ -529,24 +529,22 @@ class BLED112Adapter(DeviceAdapter):
         #If this is an advertisement response, see if its an IOTile device
         if packet_type == 0 or packet_type == 6:
 
-            #Skip BLE flags
-            scan_data = scan_data[3:]
-
             # See if the data length is 27 (0x1B), service = 0x16, ArchUUID = 0x03C0
-            if (scan_data[0] == 27 and 
-                scan_data[1] == 0x16 and 
-                scan_data[2] == 0x03 and
-                scan_data[3] == 0xC0):
-
+            if (scan_data[3] == 27 and 
+                    scan_data[4] == 0x16 and 
+                    scan_data[5] == 0xc0 and 
+                    scan_data[6] == 0x03):
+                self._logger.error("Parse v2: {0}".format(binascii.hexlify(scan_data)))
                 self._parse_v2_scan_response(response)
 
-            elif (scan_data[0] == 17 and
-                scan_data[1] == 6):
+            elif (scan_data[3] == 17 and
+                scan_data[4] == 6):
 
+                self._logger.error("Parse v1: {0}".format(binascii.hexlify(scan_data)))
                 self._parse_v1_scan_response(response)
 
             else: 
-                self._logger.error("Invalid scan data")
+                self._logger.error("Invalid scan data: {0}".format(binascii.hexlify(scan_data)))
                 return
 
     def _parse_v2_scan_response(self, response):
@@ -577,25 +575,21 @@ class BLED112Adapter(DeviceAdapter):
             scan_data = parsed['scan_data']
 
             if len(scan_data) != 31:
-                self._logger.error("Advertising V2 packet is not the proper size.")
+                self._logger.error("Advertising V2 packet is not the proper size. {0}".format(len(scan_data)))
                 return
 
             #Skip BLE flags
             scan_data = scan_data[3:]
 
-            #Make sure the scan data matches v2
-            if (scan_data[0] != 27 or 
-                scan_data[1] != 0x16 or 
-                scan_data[2] != 0x03 or
-                scan_data[3] != 0xC0):
-                self._logger.error("Scan data does not match v2 format")
-                return
+            if (scan_data[0] == 27 and 
+                    scan_data[1] == 0x16 and 
+                    scan_data[2] == 0xC0 and 
+                    scan_data[3] == 0x03):
 
                 scan_data = scan_data[4:]
 
-                device_uuid, reboot_low, reboot_high, flags, 
-                timestamp, battery, OTHER, bcast_stream, 
-                bcast_value, mac = unpack("<LHBBLBBHLL", scan_data)
+                device_uuid, reboot_low, reboot_high, flags, timestamp, battery, OTHER, bcast_stream, bcast_value, mac = unpack("<LHBBLBBHLL", scan_data)
+                reboots = reboot_high << 16 | reboot_low
 
                 pending = False
                 low_voltage = False
@@ -628,7 +622,6 @@ class BLED112Adapter(DeviceAdapter):
             self._logger.error("Not Implemented")
 
         return
-
 
     def _parse_v1_scan_response(self, response):
         payload = response.payload
@@ -724,14 +717,6 @@ class BLED112Adapter(DeviceAdapter):
 
             del self.partial_scan_responses[parsed['address']]
             self._trigger_callback('on_scan', self.id, info, self.ExpirationTime)
-
-
-
-
-
-
-
-
 
     def probe_services(self, handle, conn_id, callback):
         """Given a connected device, probe for its GATT services and characteristics
