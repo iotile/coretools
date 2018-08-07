@@ -16,6 +16,51 @@ from .async_packet import InternalTimeoutError
 
 BGAPIPacket = namedtuple("BGAPIPacket", ["is_event", "command_class", "command", "payload"])
 
+
+
+#DEBUG Print helpers
+import inspect, ast
+def __get_lambda_src(code):
+    try:
+        src, _ = inspect.getsourcelines(code)
+    except IOError:
+        return None
+    if len(src) > 1:
+        return None
+    return src[0].strip()
+def __get_lambda_astnode(code):
+    src = __get_lambda_src(code)
+    if src:
+        srcast = ast.parse(src)
+        return next(( node for node in ast.walk(srcast) if isinstance(node, ast.Lambda)),None)
+def __get_lambda(code):
+    src = __get_lambda_src(code)
+    astnode = __get_lambda_astnode(code)
+    if astnode is None:
+        return None
+    lambda_txt = src[astnode.col_offset:]
+    minlen = len('lambda:_')
+    while len(lambda_txt) > minlen:
+        try:
+            ast.parse(lambda_txt)
+            return lambda_txt
+        except SyntaxError:
+            lambda_txt = lambda_txt[:-1]
+    return None 
+
+def DBG__get_caller_code(variable):
+    code = None
+    if variable is not None:
+        if hasattr(variable, "__name__"):
+            L = lambda:0
+            if (variable.__name__ == L.__name__):
+                code = __get_lambda(variable)
+            else:
+                code = str(variable.__name__).strip()
+    return code
+
+
+
 class BLED112CommandProcessor(threading.Thread):
     def __init__(self, stream, commands, stop_check_interval=0.01):
         super(BLED112CommandProcessor, self).__init__()
@@ -759,17 +804,7 @@ class BLED112CommandProcessor(threading.Thread):
 
     def _process_events(self, return_filter=None, max_events=0):
         to_return = []
-
-        # Debug Print
-        import inspect
-        if return_filter is not None:
-            dbgfilter = str(inspect.getsourcelines(return_filter)[0])
-            dbgfilter = "lambda " + dbgfilter.strip("['\\n']").split("lambda")[1]
-        else:
-            dbgfilter = None
-        self._logger.debug("   call: _process_events([{0}],{1})".format(dbgfilter,max_events))
-        # End Debug Print
-
+        self._logger.debug("   call: _process_events([{0}],{1})".format(DBG__get_caller_code(return_filter),max_events))
         try:
             while True:
                 event_data = self._stream.queue.get_nowait()
@@ -807,49 +842,13 @@ class BLED112CommandProcessor(threading.Thread):
         Returns:
             list: A list of events that matched return_filter or end_filter
         """
-        # Debug Print
-        import inspect, ast
-        def __get_lambda_src(code):
-            try:
-                src, _ = inspect.getsourcelines(code)
-            except IOError:
-                return None
-            if len(src) > 1:
-                return None
-            return src[0].strip()
-        def __get_lambda_astnode(code):
-            src = __get_lambda_src(code)
-            if src:
-                srcast = ast.parse(src)
-                return next(( node for node in ast.walk(srcast) if isinstance(node, ast.Lambda)),None)
-        def __get_lambda(code):
-            src = __get_lambda_src(code)
-            astnode = __get_lambda_astnode(code)
-            lambda_txt = src[astnode.col_offset:]
-            minlen = len('lambda:_')
-            while len(lambda_txt) > minlen:
-                try:
-                    ast.parse(lambda_txt)
-                    return lambda_txt
-                except SyntaxError:
-                    lambda_txt = lambda_txt[:-1]
-            return None
-        dbgrtnfilter = None
-        if return_filter is not None:
-            dbgrtnfilter = str(return_filter.__name__).strip()
-        dbgendfilter = None
-        if end_filter is not None:
-            L = lambda:0
-            if isinstance(end_filter, type(L)):
-                dbgendfilter = __get_lambda(end_filter)
-            else:
-                dbgendfilter = str(end_filter.__name__).strip()
 
-        self._logger.debug("   call: _wait_process_events({0},[{1}],[{2}])".format(total_time,dbgrtnfilter,dbgendfilter))
+        # Debug Print
+        self._logger.debug("   call: _wait_process_events({0},[{1}],[{2}])".format(
+            total_time,DBG__get_caller_code(return_filter),DBG__get_caller_code(end_filter)))
         # End Debug Print
 
         acc = []
-
         delta = 0.01
 
         start_time = time.time()
