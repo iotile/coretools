@@ -507,6 +507,7 @@ class BLED112Adapter(DeviceAdapter):
     def _parse_scan_response(self, response):
         """Parse the IOTile specific data structures in the BLE advertisement packets and add the device to our list of scanned devices
         """
+        ### TODO: Modify this to add the V2 advertizement packets
 
         payload = response.payload
         length = len(payload) - 10
