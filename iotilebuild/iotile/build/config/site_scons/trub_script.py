@@ -10,9 +10,11 @@ from iotile.core.hw.update import UpdateScript
 from iotile.core.hw.update.records import ReflashTileRecord, ReflashControllerRecord, SetDeviceTagRecord
 from iotile.build.build import ProductResolver
 from iotile.core.utilities.intelhex import IntelHex
+from iotile.sg.compiler import compile_sgf
+from iotile.sg.output_formats.script import format_script
+from iotile.core.hw.update.script import UpdateScript
 
-
-def build_update_script(file_name, slot_assignments, os_info=None):
+def build_update_script(file_name, slot_assignments=None, os_info=None, sensor_graph=None, app_info=None):
     """Build a trub script that loads given firmware into the given slots.
 
     slot_assignments should be a list of tuples in the following form:
@@ -27,26 +29,39 @@ def build_update_script(file_name, slot_assignments, os_info=None):
             This file name should end in .trub
         slot_assignments (list of (str, str)): A list of tuples containing
             the slot name and the firmware image that we should use to build
-            our update script.
+            our update script. Optional
         os_info (tuple(int, str)): A tuple of OS version tag and X.Y version
-            number that will be set as part of the OTA script if included.
+            number that will be set as part of the OTA script if included. Optional.
+        sensor_graph (str): Name of sgf file. Optional.
+        app_info (tuple(int, str)): A tuple of App version tag and X.Y version
+            number that will be set as part of the OTA script if included. Optional.
     """
 
     resolver = ProductResolver.Create()
     env = Environment(tools=[])
+    files = []
 
-    slots = [_parse_slot(x[0]) for x in slot_assignments]
-    files = [ensure_image_is_hex(resolver.find_unique("firmware_image", x[1]).full_path) for x in slot_assignments]
+    if slot_assignments is not None:
+        slots = [_parse_slot(x[0]) for x in slot_assignments]
+        files = [ensure_image_is_hex(resolver.find_unique("firmware_image", x[1]).full_path) for x in slot_assignments]
+        env['SLOTS'] = slots
 
-    env['SLOTS'] = slots
     env['OS_INFO'] = os_info
+    env['APP_INFO'] = app_info
+    env['UPDATE_SENSORGRAPH'] = False
+
+    if sensor_graph is not None:
+        files.append(sensor_graph)
+        env['UPDATE_SENSORGRAPH'] = True
+
     env.Command([os.path.join('build', 'output', file_name)], files, action=Action(_build_reflash_script_action, "Building TRUB script at $TARGET"))
 
 
 def _build_reflash_script_action(target, source, env):
-    """Create a TRUB script containing tile and controller reflashes.
+    """Create a TRUB script containing tile and controller reflashes and/or sensorgraph
 
-    All of the files in source must be in intel hex format. This is guaranteed
+    If the app_info is provided, then the final source file will be a sensorgraph.
+    All subsequent files in source must be in intel hex format. This is guaranteed
     by the ensure_image_is_hex call in build_update_script.
     """
 
@@ -54,24 +69,42 @@ def _build_reflash_script_action(target, source, env):
     source = [str(x) for x in source]
     records = []
 
-    for (controller, slot_id), image_path in zip(env['SLOTS'], source):
-        hex_data = IntelHex(image_path)
-        hex_data.padding = 0xFF
+    #Update application firmwares
+    if env['SLOTS'] is not None:
+        for (controller, slot_id), image_path in zip(env['SLOTS'], source):
+            hex_data = IntelHex(image_path)
+            hex_data.padding = 0xFF
 
-        offset = hex_data.minaddr()
-        bin_data = bytearray(hex_data.tobinarray(offset, hex_data.maxaddr()))
+            offset = hex_data.minaddr()
+            bin_data = bytearray(hex_data.tobinarray(offset, hex_data.maxaddr()))
 
-        if controller:
-            record = ReflashControllerRecord(bin_data, offset)
-        else:
-            record = ReflashTileRecord(slot_id, bin_data, offset)
+            if controller:
+                record = ReflashControllerRecord(bin_data, offset)
+            else:
+                record = ReflashTileRecord(slot_id, bin_data, offset)
 
-        records.append(record)
+            records.append(record)
 
+    #Update sensorgraph
+    app_info = env['UPDATE_SENSORGRAPH']
+    if app_info is not None:
+        sensor_graph_file = source.pop(-1)
+        sensor_graph = compile_sgf(sensor_graph_file)
+        output = format_script(sensor_graph)
+        records += UpdateScript.FromBinary(output).records
+
+    #Update App and OS Tag
     os_info = env['OS_INFO']
+    os_tag      = None
+    os_version  = None
+    app_tag     = None
+    app_version = None
     if os_info is not None:
         os_tag, os_version = os_info
-        records.append(SetDeviceTagRecord(os_tag=os_tag, os_version=os_version))
+    if app_info is not None:
+        app_tag, app_version = app_info
+    records.append(SetDeviceTagRecord(os_tag=os_tag, os_version=os_version, app_tag=app_tag, app_version=app_version))
+    
     script = UpdateScript(records)
 
     with open(out_path, "wb") as outfile:

@@ -2,6 +2,12 @@
 
 All major changes in each released version of IOTileShip are listed here.
 
+## 0.1.2
+
+- SyncCloudStep has overwrite parameter default to False. Set to True if 
+  cloud settings should be changed.
+- VerifyDeviceStep uses shared resources
+
 ## 0.1.1
 
 - HardwareManagerResource checks if connect_id is None before parsing it. 

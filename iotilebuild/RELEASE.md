@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.6.10
+
+- autobuild_trub_script(file_name, slot_assignments=None, os_info=None, sensor_graph=None, app_info=None)
+
 ## 2.6.9
 
 - Add architecture overrides for qemu unit tests so that they target the

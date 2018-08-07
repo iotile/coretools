@@ -224,7 +224,7 @@ def autobuild_documentation(tile):
     env.Clean(outfile, outdir)
 
 
-def autobuild_trub_script(file_name, slot_assignments, os_info=None):
+def autobuild_trub_script(file_name, slot_assignments=None, os_info=None, sensor_graph=None, app_info=None):
     """Build a trub script that loads given firmware into the given slots.
 
     slot_assignments should be a list of tuples in the following form:
@@ -239,12 +239,15 @@ def autobuild_trub_script(file_name, slot_assignments, os_info=None):
             This file name should end in .trub
         slot_assignments (list of (str, str)): A list of tuples containing
             the slot name and the firmware image that we should use to build
-            our update script.
+            our update script. Optional
         os_info (tuple(int, str)): A tuple of OS version tag and X.Y version
-            number that will be set as part of the OTA script if included.
+            number that will be set as part of the OTA script if included. Optional.
+        sensor_graph (str): Name of sgf file. Optional.
+        app_info (tuple(int, str)): A tuple of App version tag and X.Y version
+            number that will be set as part of the OTA script if included. Optional.
     """
 
-    build_update_script(file_name, slot_assignments, os_info)
+    build_update_script(file_name, slot_assignments, os_info, sensor_graph, app_info)
 
 
 def autobuild_bootstrap_file(file_name, image_list):

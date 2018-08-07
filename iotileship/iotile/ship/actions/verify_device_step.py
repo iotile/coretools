@@ -8,11 +8,6 @@ class VerifyDeviceStep(object):
     """A Recipe Step used to verify that a device is setup as expected
 
     Args:
-        port (str) : Port used to connect with device
-        connect_direct () : Optional arg. Connection string to connect to target
-            controller. Defaults to connect_direct 1
-        connect (int) : Optional arg. Old UUID to connect to POD to. Defaults
-            to using connect_direct 1
         os_tag (int): Optional. Expected os tag to check against in cloud
         os_version (str): Optional. Expected os version to check against in cloud.
             format is "X.Y"
@@ -25,13 +20,9 @@ class VerifyDeviceStep(object):
         tile_versions (dict of int: str): Optional. Dictionary of addresses to expection version 
             strings with format "(X, Y, Z)". Example:  8: "(2, 11, 0)"
     """
-    def __init__(self, args):
-        if args.get('port') is None:
-            raise ArgumentError("SetUUIDStep Parameter Missing", parameter_name='port')
-        self._port              = args['port']
-        self._connect           = args.get('connect')
-        self._connect_direct    = args.get('connect_direct', 1)
+    REQUIRED_RESOURCES = [('connection', 'hardware_manager')]
 
+    def __init__(self, args):
         self._os_tag            = args.get('os_tag')
         self._os_version        = args.get('os_version')
         self._app_tag           = args.get('app_tag')
@@ -84,7 +75,6 @@ class VerifyDeviceStep(object):
     def _verify_realtime_streams(self, hw):
         """Check that the realtime streams are being produced
         """
-        hw.enable_streaming()
         print("--> Testing realtime data (takes 2 seconds)")
         time.sleep(2.1)
         reports = [x for x in hw.iter_reports()]
@@ -100,21 +90,18 @@ class VerifyDeviceStep(object):
                 raise ArgumentError("Realtime Stream not pushing any reports", stream=hex(stream), \
                     reports_seen=reports_seen[stream])
 
-    def run(self):
-        with HardwareManager(port=self._port) as hw:
-            if self._connect is not None:
-                hw.connect(self._connect)
-            else:
-                hw.connect_direct(self._connect_direct)
+    def run(self, resources):
+        hw = resources['connection'].hwman
+        if self._tile_versions is not None:
+            print('--> Verifying tile versions')
+            self._verify_tile_versions(hw)
 
-            if self._tile_versions is not None:
-                print('--> Verifying tile versions')
-                self._verify_tile_versions(hw)
+        if self._os_tag is not None or self._app_tag is not None:
+            print('--> Verifying os/app tags and versions')
+            self._verify_os_app_settings(hw)
 
-            if self._os_tag is not None or self._app_tag is not None:
-                print('--> Verifying os/app tags and versions')
-                self._verify_os_app_settings(hw)
+        hw.enable_streaming()
 
-            if self._realtime_streams is not None:
-                print('--> Verifying realtime streams')
-                self._verify_realtime_streams(hw)
+        if self._realtime_streams is not None:
+            print('--> Verifying realtime streams')
+            self._verify_realtime_streams(hw)
