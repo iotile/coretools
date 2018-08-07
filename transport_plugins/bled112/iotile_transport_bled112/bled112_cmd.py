@@ -4,6 +4,7 @@ import time
 import struct
 import threading
 import logging
+import binascii
 from past.builtins import basestring
 from queue import Empty
 from future.utils import viewitems, viewvalues
@@ -46,7 +47,7 @@ def __get_lambda(code):
             return lambda_txt
         except SyntaxError:
             lambda_txt = lambda_txt[:-1]
-    return None 
+    return None
 
 def DBG__get_caller_code(variable):
     code = None
@@ -736,7 +737,6 @@ class BLED112CommandProcessor(threading.Thread):
         """
         Send a BGAPI packet to the dongle and return the response
         """
-        import binascii
         self._logger.debug("   call: _send_command({0},{1},[{2}])".format(cmd_class,command, binascii.hexlify(bytearray(payload))))
 
         if len(payload) > 60:
@@ -750,9 +750,11 @@ class BLED112CommandProcessor(threading.Thread):
 
         packet = header + bytearray(payload)
         self._stream.write(bytes(packet))
+        self._logger.debug("         _send_command(pkt=[{0}])".format(binascii.hexlify(bytearray(packet))))
 
         #Every command has a response so wait for the response here
         response = self._receive_packet(timeout)
+        self._logger.debug("         _send_command() => [{0}]".format(binascii.hexlify(response.payload)))
         self._logger.debug("   retn: _send_command({0},{1}) => [{2}]".format(cmd_class, command, response))
         return response
 
@@ -773,6 +775,7 @@ class BLED112CommandProcessor(threading.Thread):
 
                 continue
 
+            self._logger.debug("         _receive_packet => [{0}]".format(binascii.hexlify(response.payload)))
             self._logger.debug("   retn: _receive_packet => [{0}]".format(response))
             return response
 
@@ -816,6 +819,7 @@ class BLED112CommandProcessor(threading.Thread):
                 elif return_filter is not None and return_filter(event):
                     to_return.append(event)
                 elif self.event_handler is not None:
+                    self._logger.debug("         _process_events::event_handler([{0}])".format(binascii.hexlify(event.payload)))
                     self._logger.debug("   call: _process_events::event_handler({0})".format(event))
                     self.event_handler(event)
                 else:
