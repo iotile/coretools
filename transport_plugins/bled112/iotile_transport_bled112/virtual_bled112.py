@@ -56,10 +56,14 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
     HighspeedHandle = 21
     TracingHandle = 23
 
-    AdvertisingPacketVer = 2
+    AdvertisingPacketVer = 1
+    json_args = None
 
     def __init__(self, args):
         super(BLED112VirtualInterface, self).__init__()
+
+        if args:
+            json_args = args
 
         port = None
         if 'port' in args:
@@ -192,13 +196,16 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
 
             self.reports.put(report)
 
-    def _advertisement(self, pkt_type=AdvertisingPacketVer):
+    def _advertisement(self, pkt_type=1):
         # Flags are
         # bit 0: whether we have pending data
         # bit 1: whether we are in a low voltage state
         # bit 2: whether another user is connected
         # bit 3: whether we support robust reports
         # bit 4: whether we allow fast writes
+        if self.AdvertisingPacketVer:
+            pkt_type = self.AdvertisingPacketVer
+
         ble_flags = struct.pack("<BBB", 2, 1, 0x4 | 0x2)  # General discoverability and no BR/EDR support
         flags = (0 << 1) | (0 << 2) | (1 << 3) | (1 << 4) | (int(self.device.pending_data))
 
@@ -209,9 +216,11 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
 
         elif pkt_type == 2:
 
+            self._logger.debug("PacketType:2 - {0}".format(self.json_args))
+
             reboots = 123456
             timestamp = calendar.timegm(time.gmtime())
-            voltage =  
+            voltage = 0x88 
             OTHER = 0  #TODO
             subsecond_cnt = 0xF
             reserved = 0
@@ -222,9 +231,11 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
 
             reboots_hi = (reboots & 0xFF0000) >> 16
             reboots_lo = (reboots & 0x00FFFF)
+
             data1 = struct.pack("<BBHL", 27, 0x16, 0x03C0, self.device.iotile_id)
             data2 = struct.pack("<HBBLBB", reboots_lo, reboots_hi, flags, timestamp, voltage, OTHER)
             data3 = struct.pack("<HLL", bcast_stream, bcast_value, mac)
+
             return ble_flags + data1 + data2 + data3
 
         else:
@@ -232,7 +243,7 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
             return None
 
     def _scan_response(self):
-        if AdvertisingPacketVer > 1:
+        if self.AdvertisingPacketVer > 1:
             return None
 
         header = struct.pack("<BBH", 19, 0xFF, ArchManuID)
@@ -529,6 +540,7 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
                 self._audit('ErrorStreamingTrace')  # If there was an error, stop streaming but don't choke
 
 
+    #FIXME
     def _set_bcast_value(self, value):
         self.bcast_value = value
 
