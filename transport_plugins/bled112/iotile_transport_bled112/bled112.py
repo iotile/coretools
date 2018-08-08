@@ -605,7 +605,8 @@ class BLED112Adapter(DeviceAdapter):
                         'uuid': device_uuid, 'pending_data': pending, 'low_voltage': low_voltage,
                         'signal_strength': parsed['rssi'],
                         'reboots':reboots, 'timestamp':timestamp, 'battery':battery,
-                        'bcast_stream':bcast_stream, 'bcast_value':bcast_value, 'mac':mac}
+                        'bcast_stream':bcast_stream, 'bcast_value':bcast_value, 'mac':mac,
+                        'advertising_version':2}
 
                 if not self._active_scan:
                     self._trigger_callback('on_scan', self.id, info, self.ExpirationTime)
@@ -688,7 +689,8 @@ class BLED112Adapter(DeviceAdapter):
 
                 info = {'user_connected': user_connected, 'connection_string': parsed['address'],
                         'uuid': device_uuid, 'pending_data': pending, 'low_voltage': low_voltage,
-                        'signal_strength': parsed['rssi']}
+                        'signal_strength': parsed['rssi'],
+                        'advertising_version':1}
 
                 if not self._active_scan:
                     self._trigger_callback('on_scan', self.id, info, self.ExpirationTime)
