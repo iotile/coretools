@@ -56,6 +56,13 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
     HighspeedHandle = 21
     TracingHandle = 23
 
+    reboot_count = 1
+    bcast_stream = 1
+    bcast_value  = 0
+    battery_level = 100
+    mac_value = 0
+
+
     def __init__(self, args):
         super(BLED112VirtualInterface, self).__init__()
 
@@ -69,6 +76,21 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
                 port = devices[0]
             else:
                 raise ExternalError("Could not find any BLED112 adapters connected to this computer")
+
+#        if hasattr(self.device, 'reboot_count'):
+#            self.reboot_count = self.device.reboot_count
+#        if hasattr(self.device, 'bcast_stream'):
+#            self.bcast_stream = self.device.bcast_stream
+#        if 'bcast_value' in args:
+#            self.bcast_value = args.get('bcast_value')
+#        if 'battery_level' in args:
+#            self.battery_level = args.get('battery_level')
+#        if 'mac_value' in args:
+#            if args.get('mac_value') == "valid":
+#                pass
+#                # GENERATE MAC
+#            else:
+#                self.mac_value = args.get('mac_value')
 
         self._serial_port = serial.Serial(port, 256000, timeout=0.01, rtscts=True)
         self._stream = AsyncPacketBuffer(self._serial_port, header_length=4, length_function=packet_length)
@@ -108,6 +130,8 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         except Exception:
             self.stop_sync()
             raise
+
+        print("BLED112VirtualInterface: {0}".format(args))
 
     @classmethod
     def find_bled112_devices(cls):
@@ -201,8 +225,7 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         # bit 2: whether another user is connected
         # bit 3: whether we support robust reports
         # bit 4: whether we allow fast writes
-
-        ### 
+        print("_advertisement: {0}".format(self.device))
 
         ble_flags = struct.pack("<BBB", 2, 1, 0x4 | 0x2)  # General discoverability and no BR/EDR support
         flags = (0 << 1) | (0 << 2) | (1 << 3) | (1 << 4) | (int(self.device.pending_data))
@@ -213,15 +236,15 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
             return ble_flags + uuid_list + manu
 
         elif pkt_type == 2:
-            reboots = 432
+            reboots = self.reboot_count
             reboots_hi = (reboots & 0xFF0000) >> 16
             reboots_lo = (reboots & 0x00FFFF)
             timestamp = calendar.timegm(time.gmtime())
-            battery =  int(3.8/(25.0/256.0))
-            OTHER = 0
-            bcast_stream = 1111
-            bcast_value = 22222222
-            mac = 33333333
+            battery =  self.battery_level
+            OTHER = 0  #TODO
+            bcast_stream = self.bcast_stream
+            bcast_value = self.bcast_value
+            mac = self.mac_value
 
             data1 = struct.pack("<BBHL", 27, 0x16, 0x03C0, self.device.iotile_id)
             data2 = struct.pack("<HBBLBB", reboots_lo, reboots_hi, flags, timestamp, battery, OTHER)
@@ -525,3 +548,11 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
                 traceback.print_exc()
                 print("*** END EXCEPTION ***")
                 self._audit('ErrorStreamingTrace')  # If there was an error, stop streaming but don't choke
+
+    def _set_reboots(self, reboots):
+        self.reboot_count = reboots
+        return
+
+    def _reboot(self):
+        self.reboot_count += 1
+        return
