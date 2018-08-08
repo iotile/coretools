@@ -127,7 +127,6 @@ def instantiate_device(virtual_dev, config):
     Returns:
         VirtualIOTileDevice: The instantiated subclass of VirtualIOTileDevice
     """
-
     conf = {}
     if 'device' in config:
         conf = config['device']
@@ -150,7 +149,7 @@ def instantiate_interface(virtual_iface, config):
     Args:
         virtual_iface (string): The name of the pkg_resources entry point corresponding to
             the interface.  It should be in group iotile.virtual_interface
-        config (dict): A dictionary with a 'device' key with the config info for configuring
+        config (dict): A dictionary with a 'interface' key with the config info for configuring
             this virtual interface.  This is optional.
 
     Returns:
