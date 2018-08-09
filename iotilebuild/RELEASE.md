@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.6.11
+
+- Fix autobuild_trub_script, check env['UPDATE_SENSORGRAPH'] if sensorgraph needs to be updated.
+
 ## 2.6.10
 
 - autobuild_trub_script(file_name, slot_assignments=None, os_info=None, sensor_graph=None, app_info=None)
