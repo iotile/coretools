@@ -86,9 +86,8 @@ def _build_reflash_script_action(target, source, env):
             records.append(record)
 
     #Update sensorgraph
-    app_info = env['UPDATE_SENSORGRAPH']
-    if app_info is not None:
-        sensor_graph_file = source.pop(-1)
+    if env['UPDATE_SENSORGRAPH']:
+        sensor_graph_file = source[-1]
         sensor_graph = compile_sgf(sensor_graph_file)
         output = format_script(sensor_graph)
         records += UpdateScript.FromBinary(output).records
