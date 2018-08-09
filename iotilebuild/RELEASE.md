@@ -4,7 +4,8 @@ All major changes in each released version of IOTileBuild are listed here.
 
 ## 2.6.11
 
-- Fix autobuild_trub_script, check env['UPDATE_SENSORGRAPH'] if sensorgraph needs to be updated.
+- Fix autobuild_trub_script, check env['UPDATE_SENSORGRAPH'] if sensorgraph needs to be updated. 
+- For now, app and os tags are seperate records. Combine with an iotile-core fix.
 
 ## 2.6.10
 
