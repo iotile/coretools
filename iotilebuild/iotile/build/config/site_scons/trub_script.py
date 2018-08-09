@@ -94,6 +94,7 @@ def _build_reflash_script_action(target, source, env):
 
     #Update App and OS Tag
     os_info = env['OS_INFO']
+    app_info = env['APP_INFO']
     os_tag      = None
     os_version  = None
     app_tag     = None
