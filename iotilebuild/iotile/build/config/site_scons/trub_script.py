@@ -95,16 +95,13 @@ def _build_reflash_script_action(target, source, env):
     #Update App and OS Tag
     os_info = env['OS_INFO']
     app_info = env['APP_INFO']
-    os_tag      = None
-    os_version  = None
-    app_tag     = None
-    app_version = None
     if os_info is not None:
         os_tag, os_version = os_info
+        records.append(SetDeviceTagRecord(os_tag=os_tag, os_version=os_version))
     if app_info is not None:
         app_tag, app_version = app_info
-    records.append(SetDeviceTagRecord(os_tag=os_tag, os_version=os_version, app_tag=app_tag, app_version=app_version))
-    
+        records.append(SetDeviceTagRecord(app_tag=app_tag, app_version=app_version))
+
     script = UpdateScript(records)
 
     with open(out_path, "wb") as outfile:
