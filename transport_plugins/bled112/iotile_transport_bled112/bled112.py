@@ -534,13 +534,13 @@ class BLED112Adapter(DeviceAdapter):
                     scan_data[4] == 0x16 and 
                     scan_data[5] == 0xc0 and 
                     scan_data[6] == 0x03):
-                self._logger.error("Parse v2: {0}".format(binascii.hexlify(scan_data)))
+                self._logger.debug("Parse v2: {0}".format(binascii.hexlify(scan_data)))
                 self._parse_v2_scan_response(response)
 
             elif (scan_data[3] == 17 and
                 scan_data[4] == 6):
 
-                self._logger.error("Parse v1: {0}".format(binascii.hexlify(scan_data)))
+                self._logger.debug("Parse v1: {0}".format(binascii.hexlify(scan_data)))
                 self._parse_v1_scan_response(response)
 
             else: 
