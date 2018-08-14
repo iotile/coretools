@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## 3.22.12
+
+- SetDeviceTagRecord allows setting of both os and app tag.
+
 ## 3.22.11
 
 - Fix Ctrl-C behavior of watch_broadcasts to not hang on exit sometimes and 
