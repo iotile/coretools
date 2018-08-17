@@ -201,3 +201,32 @@ class CloudUploader(IOTileApp):
         for report in signed_reports:
             self.logger.info("Uploading report with ids in (%d, %d)", report.lowest_id, report.highest_id)
             self._cloud.upload_report(report)
+
+    @docannotate
+    def get_report_size(self):
+        """ Sets and verifies the report size for a pod
+        Returns:
+           int: The maximum size of a report
+        """
+        maxpacket, _comp1, comp2, = self._con.rpc(0x0A, 0x06, result_format="LBB")
+        return maxpacket
+
+    @docannotate
+    def set_report_size(self, size=0xFFFFFFFF):
+        """ Sets and verifies the report size for a pod
+        Args:
+            size (int): The maximum size of a report
+        """
+
+        error, = self._con.rpc(0x0A, 0x05, size, 0, arg_format="LB", result_format="L")
+
+        if error:
+            raise HardwareError("Error setting report size.", error_code=error, size=size)
+
+        maxpacket, _comp1, comp2, = self._con.rpc(0x0A, 0x06, result_format="LBB")
+
+        if maxpacket != size:
+            raise HardwareError("Max Packet Size was not set as expected")
+
+
+

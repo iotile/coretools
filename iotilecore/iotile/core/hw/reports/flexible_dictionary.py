@@ -99,6 +99,10 @@ class FlexibleDictionaryReport(IOTileReport):
 
         return readings, events
 
+    def asdict(self):
+        """ Return this report as a dictionary """
+        return msgpack.unpackb(self.raw_report)
+
     def serialize(self):
         """Serialize this report including the received time."""
 
