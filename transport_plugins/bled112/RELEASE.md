@@ -2,6 +2,10 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
+## 1.8.0
+
+- Add support for advertising packets version 2. 
+
 ## 1.7.3
 
 - Add support for broadcast readings in virtual bled112 interface.  Now if you
