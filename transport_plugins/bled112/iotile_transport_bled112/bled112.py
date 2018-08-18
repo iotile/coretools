@@ -612,7 +612,7 @@ class BLED112Adapter(DeviceAdapter):
                 info = {'user_connected': user_connected, 'connection_string': parsed['address'],
                         'uuid': device_uuid, 'pending_data': pending, 'low_voltage': low_voltage,
                         'signal_strength': parsed['rssi'],
-                        'reboots':reboots, 'timestamp':timestamp, 'battery':battery,
+                        'reboots':reboots, 'timestamp':timestamp, 'battery':battery / 32.0,
                         'bcast_stream':bcast_stream, 'bcast_value':bcast_value, 'mac':mac,
                         'advertising_version':2}
 
