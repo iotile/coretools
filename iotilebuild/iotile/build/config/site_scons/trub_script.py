@@ -40,7 +40,7 @@ def build_update_script(file_name, slot_assignments=None, os_info=None, sensor_g
     resolver = ProductResolver.Create()
     env = Environment(tools=[])
     files = []
-   
+
     if slot_assignments is not None:
         slots = [_parse_slot(x[0]) for x in slot_assignments]
         files = [ensure_image_is_hex(resolver.find_unique("firmware_image", x[1]).full_path) for x in slot_assignments]
