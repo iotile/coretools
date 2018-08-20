@@ -82,10 +82,6 @@ class SetDeviceTagRecord(SendErrorCheckingRPCRecord):
                 update_os = bool(update_os)
                 update_app = bool(update_app)
 
-                # TODO: Support setting os and app version at the same time
-                if update_os and update_app:
-                    return MatchQuality.NoMatch
-
             except ValueError:
                 return MatchQuality.NoMatch
 
@@ -125,17 +121,26 @@ class SetDeviceTagRecord(SendErrorCheckingRPCRecord):
             elif update_os and not update_app:
                 tag, version = _parse_info(os_info)
                 return SetDeviceTagRecord(os_tag=tag, os_version=version)
+            elif update_os and update_app:
+                os_tag, os_version = _parse_info(os_info)
+                app_tag, app_version = _parse_info(app_info)
+                return SetDeviceTagRecord(app_tag=app_tag, app_version=app_version, os_tag=os_tag, os_version=os_version)
             else:
-                raise ArgumentError("Setting app and os version at the same time not yet supported")
+                raise ArgumentError("Neither update_os nor update_app is set True")
 
         except ValueError:
             raise ArgumentError("Could not parse set device version payload", payload=payload)
 
     def __str__(self):
-        if self.update_app:
+        if self.update_app and not self.update_os:
             return "Set device app to (tag:%d version:%s)" % (self.app_tag, self.app_version)
-
-        return "Set device os to (tag:%d, version:%s)" % (self.os_tag, self.os_version)
+        elif self.update_os and not self.update_app:
+            return "Set device os to (tag:%d, version:%s)" % (self.os_tag, self.os_version)
+        elif self.update_os and self.update_app:
+            return "Set device os to (tag:%d, version:%s) and app to (tag:%d, version:%s)" \
+                % (self.os_tag, self.os_version, self.app_tag, self.app_version)
+        else:
+            raise ArgumentError("Neither update_os nor update_app is set True")
 
 
 def _parse_info(combined_info):
