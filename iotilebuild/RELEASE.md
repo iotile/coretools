@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.6.12
+
+- Fix build_update_script, env['SLOTS'] to None by default.
+
 ## 2.6.11
 
 - Fix autobuild_trub_script, check env['UPDATE_SENSORGRAPH'] if sensorgraph needs to be updated. 

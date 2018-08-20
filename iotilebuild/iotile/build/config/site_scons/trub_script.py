@@ -45,6 +45,8 @@ def build_update_script(file_name, slot_assignments=None, os_info=None, sensor_g
         slots = [_parse_slot(x[0]) for x in slot_assignments]
         files = [ensure_image_is_hex(resolver.find_unique("firmware_image", x[1]).full_path) for x in slot_assignments]
         env['SLOTS'] = slots
+    else:
+        env['SLOTS'] = None
 
     env['OS_INFO'] = os_info
     env['APP_INFO'] = app_info
