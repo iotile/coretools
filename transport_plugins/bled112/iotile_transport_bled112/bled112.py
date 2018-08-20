@@ -508,15 +508,12 @@ class BLED112Adapter(DeviceAdapter):
 
     def _parse_scan_response(self, response):
         """Parse the IOTile specific data structures in the BLE advertisement packets and add the device to our list of scanned devices
+           Parse advertisement and determine if it matches V1 or V2.
         """
-        self._logger.debug("   call: _parse_scan_response({0})".format(response))
-        # Parse advertisement and determine if it matches V1 or V2.
-
         payload = response.payload
         length = len(payload) - 10
 
         if length < 0:
-            self._logger.error("BLE Advertising packet payload is empty.")
             return
 
         rssi, packet_type, sender, addr_type, bond, data = unpack("<bB6sBB%ds" % length, payload)
@@ -533,7 +530,6 @@ class BLED112Adapter(DeviceAdapter):
             if (scan_data[3] == 17 and
                 scan_data[4] == 6):
 
-                self._logger.debug("Parse v1: {0}".format(binascii.hexlify(scan_data)))
                 self._parse_v1_scan_response(response)
 
             # See if the data length is 27 (0x1B), service = 0x16, ArchUUID = 0x03C0
@@ -542,14 +538,12 @@ class BLED112Adapter(DeviceAdapter):
                 scan_data[5] == 0xc0 and 
                 scan_data[6] == 0x03):
 
-                self._logger.debug("Parse v2: {0}".format(binascii.hexlify(scan_data)))
                 self._parse_v2_scan_response(response)
 
             else: 
                 self._logger.error("Invalid scan data: {0}".format(binascii.hexlify(scan_data)))
         
         else:
-            self._logger.debug("Parse <other pkt type> v1: {0}".format(binascii.hexlify(scan_data)))
             self._parse_v1_scan_response(response)
 
         return
@@ -560,8 +554,6 @@ class BLED112Adapter(DeviceAdapter):
         """
         payload = response.payload
         length = len(payload) - 10
-
-        self._logger.debug("   call: _parse_v2_scan_response({0})".format(binascii.hexlify(payload)))
 
         rssi, packet_type, sender, addr_type, bond, data = unpack("<bB6sBB%ds" % length, payload)
 
@@ -636,10 +628,7 @@ class BLED112Adapter(DeviceAdapter):
         payload = response.payload
         length = len(payload) - 10
 
-        self._logger.debug("   call: _parse_v1_scan_response({0})".format(binascii.hexlify(payload)))
-
         if length < 0:
-            self._logger.error("BLE Advertising packet payload is empty.")
             return
 
         rssi, packet_type, sender, addr_type, bond, data = unpack("<bB6sBB%ds" % length, payload)

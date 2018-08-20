@@ -2,7 +2,7 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
-## 1.8.0
+## HEAD
 
 - Add support for advertising packets version 2. 
 

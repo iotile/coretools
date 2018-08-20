@@ -56,14 +56,15 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
     HighspeedHandle = 21
     TracingHandle = 23
 
-    AdvertisingPacketVer = 1
-    json_args = None
+    advertising_version = 1
 
     def __init__(self, args):
         super(BLED112VirtualInterface, self).__init__()
 
-        if args:
-            json_args = args
+
+        advertising_version = args.get('advertising_version', 1)
+        if advertising_version not in (1, 2):
+            raise ArgumentError("Invalid advertising version specified in args", supported=(1, 2), found=advertising_version)
 
         port = None
         if 'port' in args:
@@ -196,31 +197,26 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
 
             self.reports.put(report)
 
-    def _advertisement(self, pkt_type=1):
+    def _advertisement(self):
         # Flags are
         # bit 0: whether we have pending data
         # bit 1: whether we are in a low voltage state
         # bit 2: whether another user is connected
         # bit 3: whether we support robust reports
         # bit 4: whether we allow fast writes
-        if self.AdvertisingPacketVer:
-            pkt_type = self.AdvertisingPacketVer
-
         ble_flags = struct.pack("<BBB", 2, 1, 0x4 | 0x2)  # General discoverability and no BR/EDR support
         flags = (0 << 1) | (0 << 2) | (1 << 3) | (1 << 4) | (int(self.device.pending_data))
 
-        if pkt_type == 1:
+        if self.advertising_version == 1:
             uuid_list = struct.pack("<BB16s", 17, 6, TileBusService.bytes_le)
             manu = struct.pack("<BBHLH", 9, 0xFF, ArchManuID, self.device.iotile_id, flags)
             return ble_flags + uuid_list + manu
 
-        elif pkt_type == 2:
-
-            self._logger.debug("PacketType:2 - {0}".format(self.json_args))
+        else: #self.advertising_version == 2:
 
             reboots = 123456
             timestamp = calendar.timegm(time.gmtime())
-            voltage = 0x88 
+            voltage = 0x88
             OTHER = 0  #TODO
             subsecond_cnt = 0xF
             reserved = 0
@@ -238,13 +234,9 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
 
             return ble_flags + data1 + data2 + data3
 
-        else:
-            self._logger.error("Invalid Advertising Packet Version")
-            return None
-
     def _scan_response(self):
-        if self.AdvertisingPacketVer > 1:
-            return None
+        if self.advertising_version != 1:
+            raise ArgumentError("Invalid advertising version for scan response.", supported=1, found=self.advertising_version)
 
         header = struct.pack("<BBH", 19, 0xFF, ArchManuID)
         voltage = struct.pack("<H", int(3.8*256))  # FIXME: Hardcoded 3.8V voltage
@@ -540,7 +532,7 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
                 self._audit('ErrorStreamingTrace')  # If there was an error, stop streaming but don't choke
 
 
-    #FIXME
+    #FIXME Need method to set these values
     def _set_bcast_value(self, value):
         self.bcast_value = value
 
