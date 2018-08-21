@@ -19,7 +19,7 @@ import binascii
 from threading import Lock
 import serial
 import serial.tools.list_ports
-from iotile.core.exceptions import ExternalError, HardwareError
+from iotile.core.exceptions import ExternalError, HardwareError, ArgumentError
 from iotile.core.hw.virtual.virtualinterface import VirtualIOTileInterface
 from iotile.core.hw.virtual.virtualdevice import RPCInvalidIDError, RPCNotFoundError, TileNotFoundError
 from iotile.core.hw.reports import BroadcastReport
@@ -56,15 +56,16 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
     HighspeedHandle = 21
     TracingHandle = 23
 
-    advertising_version = 1
+    virtual_info = {}
 
     def __init__(self, args):
         super(BLED112VirtualInterface, self).__init__()
 
+        self._logger = logging.getLogger(__name__)
+        self._logger.addHandler(logging.NullHandler())
+        self.init_logger()
 
-        advertising_version = args.get('advertising_version', 1)
-        if advertising_version not in (1, 2):
-            raise ArgumentError("Invalid advertising version specified in args", supported=(1, 2), found=advertising_version)
+        self.init_virtual_device_info(args)
 
         port = None
         if 'port' in args:
@@ -84,8 +85,6 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         self._command_task.event_handler = self._handle_event
         self._command_task.start()
 
-        self._logger = logging.getLogger(__name__)
-        self._logger.addHandler(logging.NullHandler())
 
         self.connected = False
         self._connection_handle = 0
@@ -115,6 +114,46 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         except Exception:
             self.stop_sync()
             raise
+
+    def init_virtual_device_info(self, args):
+        self.virtual_info['advertising_version'] = int(args.get('advertising_version', 1),0)
+        if self.virtual_info['advertising_version'] not in (1, 2):
+            raise ArgumentError("Invalid advertising version specified in args", 
+            supported=(1, 2), found=self.virtual_info['advertising_version'])
+
+        self.virtual_info['reboot_count'] = int(args.get('reboot_count', 1), 0)
+        if self.virtual_info['reboot_count'] <= 0:
+            raise ArgumentError("Reboot count must be greater than 0.", 
+            supported="> 0", found=self.virtual_info['reboot_count'])
+
+        self.virtual_info['broadcast_stream'] = int(args.get('broadcast_stream', 0xDEAD), 0)
+        if self.virtual_info['broadcast_stream'] > 0xFFFF or self.virtual_info['broadcast_stream'] < 0:
+            raise ArgumentError("Broadcast stream must be 16bit integer.",
+            supported="0 - 0xFFFF", found=self.virtual_info['broadcast_stream'])
+
+        self.virtual_info['broadcast_value'] = int(args.get('broadcast_value', 0xDEADBEEF), 0)
+        if self.virtual_info['broadcast_value'] < 0 or self.virtual_info['broadcast_value'] > 0xFFFFFFFF:
+            raise ArgumentError("Broadcast value is limited to 32bits.", 
+            supported="0 - 0xFFFFFFFF", found=self.virtual_info['broadcast_value'])
+
+        self.virtual_info['mac_value'] = int(args.get('mac_value', 0), 0)
+        if self.virtual_info['mac_value'] < 0 or self.virtual_info['mac_value'] > 0xFFFFFFFF:
+            raise ArgumentError("MAC value is limited to 32bits.", 
+            supported="0 - 0xFFFFFFFF", found=self.virtual_info['mac_value'])
+
+        self.virtual_info['battery_voltage'] = float(args.get('battery_voltage',"3.14159"))
+        if self.virtual_info['battery_voltage'] < 0 or self.virtual_info['battery_voltage'] > 7.9:
+            raise ArgumentError("Battery voltage is invalid",
+            supported="0 - 7.9", found=self.virtual_info['battery_voltage'])
+
+        
+    def init_logger(self):
+        formatter = logging.Formatter('%(asctime)s.%(msecs)03d %(levelname).3s %(name)s %(message)s', '%y-%m-%d %H:%M:%S')
+        handler = logging.StreamHandler()
+        handler.setFormatter(formatter)
+        level = 5
+        self._logger.setLevel(level)
+        self._logger.addHandler(handler)
 
     @classmethod
     def find_bled112_devices(cls):
@@ -150,7 +189,10 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         super(BLED112VirtualInterface, self).start(device)
 
         self._command_task.sync_command(['_set_advertising_data', 0, self._advertisement()])
-        self._command_task.sync_command(['_set_advertising_data', 1, self._scan_response()])
+
+        if self.virtual_info['advertising_version'] == 1:
+            self._command_task.sync_command(['_set_advertising_data', 1, self._scan_response()])
+
         self._command_task.sync_command(['_set_mode', 0, 0])  # Disable advertising
         self._command_task.sync_command(['_set_mode', 4, 2])  # Enable undirected connectable
 
@@ -192,38 +234,51 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
                 with self._broadcast_lock:
                     self._broadcast_reading = report.visible_readings[0]
 
-                self._defer(self._command_task.sync_command, [['_set_advertising_data', 1, self._scan_response()]])
+                if self.device:
+                    if self.virtual_info['advertising_version'] == 1:
+                        self._defer(self._command_task.sync_command, [['_set_advertising_data', 1, self._scan_response()]])
+                    else:
+                        self._defer(self._command_task.sync_command, [['_set_advertising_data', 0, self._advertisement()]])
+
                 continue
 
             self.reports.put(report)
 
     def _advertisement(self):
-        # Flags are
-        # bit 0: whether we have pending data
-        # bit 1: whether we are in a low voltage state
-        # bit 2: whether another user is connected
-        # bit 3: whether we support robust reports
-        # bit 4: whether we allow fast writes
-        ble_flags = struct.pack("<BBB", 2, 1, 0x4 | 0x2)  # General discoverability and no BR/EDR support
-        flags = (0 << 1) | (0 << 2) | (1 << 3) | (1 << 4) | (int(self.device.pending_data))
+        # Flags for version 1 are:
+        #   bit 0: whether we have pending data
+        #   bit 1: whether we are in a low voltage state
+        #   bit 2: whether another user is connected
+        #   bit 3: whether we support robust reports
+        #   bit 4: whether we allow fast writes
+        # Flags for version 2 are:
+        #   bit 0: User is connected
+        #   bit 1: POD has data to stream
+        #   bit 2: Broadcast data is encrypted and authenticated using AES-128 CCM
+        #   bit 3: Broadcast key is device key (otherwise user key)
+        #   bit 4-7: Reserved
 
-        if self.advertising_version == 1:
+        ble_flags = struct.pack("<BBB", 2, 1, 0x4 | 0x2)  # General discoverability and no BR/EDR support
+
+        if self.virtual_info['advertising_version'] == 1:
+            flags = (0 << 1) | (0 << 2) | (1 << 3) | (1 << 4) | (int(self.device.pending_data))
             uuid_list = struct.pack("<BB16s", 17, 6, TileBusService.bytes_le)
             manu = struct.pack("<BBHLH", 9, 0xFF, ArchManuID, self.device.iotile_id, flags)
             return ble_flags + uuid_list + manu
 
-        else: #self.advertising_version == 2:
-
-            reboots = 123456
+        else: #self.virtual_info['advertising_version'] == 2:
+            flags = (0 << 0) | (int(self.device.pending_data) << 1) | (int(self.device.connected) << 2) | (0 << 3)
+            reboots = self.virtual_info['reboot_count']
             timestamp = calendar.timegm(time.gmtime())
-            voltage = 0x88
-            OTHER = 0  #TODO
-            subsecond_cnt = 0xF
-            reserved = 0
+            voltage = int(self.virtual_info['battery_voltage'] * 32)
 
-            bcast_stream = 1111
-            bcast_value = 22222222
-            mac = 33333333
+            OTHER = 0  #TODO
+            subsecond_cnt = 0xF #TODO
+
+            reserved = 0
+            bcast_stream = self.virtual_info['broadcast_stream']
+            bcast_value = self.virtual_info['broadcast_value']
+            mac = self.virtual_info['mac_value']
 
             reboots_hi = (reboots & 0xFF0000) >> 16
             reboots_lo = (reboots & 0x00FFFF)
@@ -235,11 +290,11 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
             return ble_flags + data1 + data2 + data3
 
     def _scan_response(self):
-        if self.advertising_version != 1:
-            raise ArgumentError("Invalid advertising version for scan response.", supported=1, found=self.advertising_version)
+        if self.virtual_info['advertising_version'] != 1:
+            raise ArgumentError("Invalid advertising version for scan response.", supported=1, found=self.virtual_info['advertising_version'])
 
         header = struct.pack("<BBH", 19, 0xFF, ArchManuID)
-        voltage = struct.pack("<H", int(3.8*256))  # FIXME: Hardcoded 3.8V voltage
+        voltage = struct.pack("<H", int(3.8*256))  # FIXME: Hardcoded 3.8V voltage perhaps supply in json file
 
         reading = struct.pack("<HLLL", 0xFFFF, 0, 0, 0)
 

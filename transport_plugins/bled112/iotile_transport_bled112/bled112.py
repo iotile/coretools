@@ -533,16 +533,16 @@ class BLED112Adapter(DeviceAdapter):
                 self._parse_v1_scan_response(response)
 
             # See if the data length is 27 (0x1B), service = 0x16, ArchUUID = 0x03C0
-            elif (scan_data[3] == 27 and 
-                scan_data[4] == 0x16 and 
-                scan_data[5] == 0xc0 and 
+            elif (scan_data[3] == 27 and
+                scan_data[4] == 0x16 and
+                scan_data[5] == 0xc0 and
                 scan_data[6] == 0x03):
 
                 self._parse_v2_scan_response(response)
 
-            else: 
+            else:
                 self._logger.error("Invalid scan data: {0}".format(binascii.hexlify(scan_data)))
-        
+
         else:
             self._parse_v1_scan_response(response)
 
@@ -581,31 +581,51 @@ class BLED112Adapter(DeviceAdapter):
             #Skip BLE flags
             scan_data = scan_data[3:]
 
-            if (scan_data[0] == 27 and 
-                    scan_data[1] == 0x16 and 
-                    scan_data[2] == 0xC0 and 
+            if (scan_data[0] == 27 and
+                    scan_data[1] == 0x16 and
+                    scan_data[2] == 0xC0 and
                     scan_data[3] == 0x03):
 
                 scan_data = scan_data[4:]
 
-                device_uuid, reboot_low, reboot_high, flags, timestamp, battery, OTHER, bcast_stream, bcast_value, mac = unpack("<LHBBLBBHLL", scan_data)
+                #FIXME: OTHER
+                device_uuid, reboot_low, reboot_high, flags, timestamp, \
+                battery, OTHER, bcast_stream, bcast_value, mac = unpack("<LHBBLBBHLL", scan_data)
                 reboots = reboot_high << 16 | reboot_low
 
+                # Flags for version 2 are:
+                #   bit 0: User is connected
+                #   bit 1: POD has data to stream
+                #   bit 2: Broadcast data is encrypted and authenticated using AES-128 CCM
+                #   bit 3: Broadcast key is device key (otherwise user key)
+                #   bit 4-7: Reserved
                 pending = False
-                low_voltage = False
                 user_connected = False
-                if flags & (1 << 0):
-                    pending = True
-                if flags & (1 << 1):
-                    low_voltage = True
-                if flags & (1 << 2):
-                    user_connected = True
+                is_encrypted = False
+                use_device_key = False
 
-                info = {'user_connected': user_connected, 'connection_string': parsed['address'],
-                        'uuid': device_uuid, 'pending_data': pending, 'low_voltage': low_voltage,
+                if flags & (1 << 0):
+                    user_connected = True
+                if flags & (1 << 1):
+                    pending = True
+                if flags & (1 << 2):
+                    is_encrypted = True
+                if flags & (1 << 3):
+                    use_device_key = True
+
+                info = {'user_connected': user_connected,
+                        'connection_string': parsed['address'],
+                        'uuid': device_uuid,
+                        'pending_data': pending,
+                        'broadcast_encrypted': is_encrypted,
+                        'use_device_key': use_device_key,
                         'signal_strength': parsed['rssi'],
-                        'reboots':reboots, 'timestamp':timestamp, 'battery':battery / 32.0,
-                        'bcast_stream':bcast_stream, 'bcast_value':bcast_value, 'mac':mac,
+                        'reboots':reboots,
+                        'timestamp':timestamp,
+                        'battery':battery / 32.0,
+                        'bcast_stream':bcast_stream,
+                        'bcast_value':bcast_value,
+                        'mac':mac,
                         'advertising_version':2}
 
                 if not self._active_scan:
@@ -674,6 +694,12 @@ class BLED112Adapter(DeviceAdapter):
                 #FIXME: Move flag parsing code flag definitions somewhere else
                 length, datatype, manu_id, device_uuid, flags = unpack("<BBHLH", manu_data)
 
+                # Flags for version 1 are:
+                #   bit 0: whether we have pending data
+                #   bit 1: whether we are in a low voltage state
+                #   bit 2: whether another user is connected
+                #   bit 3: whether we support robust reports
+                #   bit 4: whether we allow fast writes
                 pending = False
                 low_voltage = False
                 user_connected = False
@@ -684,8 +710,11 @@ class BLED112Adapter(DeviceAdapter):
                 if flags & (1 << 2):
                     user_connected = True
 
-                info = {'user_connected': user_connected, 'connection_string': parsed['address'],
-                        'uuid': device_uuid, 'pending_data': pending, 'low_voltage': low_voltage,
+                info = {'user_connected': user_connected, 
+                        'connection_string': parsed['address'],
+                        'uuid': device_uuid, 
+                        'pending_data': pending, 
+                        'low_voltage': low_voltage,
                         'signal_strength': parsed['rssi'],
                         'advertising_version':1}
 
