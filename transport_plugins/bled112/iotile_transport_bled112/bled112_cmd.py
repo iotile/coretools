@@ -4,6 +4,7 @@ import time
 import struct
 import threading
 import logging
+import binascii
 from past.builtins import basestring
 from queue import Empty
 from future.utils import viewitems, viewvalues
@@ -15,6 +16,7 @@ from .bgapi_structures import parse_characteristic_declaration
 from .async_packet import InternalTimeoutError
 
 BGAPIPacket = namedtuple("BGAPIPacket", ["is_event", "command_class", "command", "payload"])
+
 
 class BLED112CommandProcessor(threading.Thread):
     def __init__(self, stream, commands, stop_check_interval=0.01):
@@ -748,7 +750,6 @@ class BLED112CommandProcessor(threading.Thread):
 
     def _process_events(self, return_filter=None, max_events=0):
         to_return = []
-
         try:
             while True:
                 event_data = self._stream.queue.get_nowait()
@@ -784,8 +785,8 @@ class BLED112CommandProcessor(threading.Thread):
         Returns:
             list: A list of events that matched return_filter or end_filter
         """
-        acc = []
 
+        acc = []
         delta = 0.01
 
         start_time = time.time()
