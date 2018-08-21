@@ -10,7 +10,7 @@ from .shared_resource import SharedResource
 RESOURCE_ARG_SCHEMA = DictionaryVerifier(desc="hardware_manager arguments")
 RESOURCE_ARG_SCHEMA.add_optional("port", StringVerifier("the port string to use to connect to devices"))
 RESOURCE_ARG_SCHEMA.add_optional("connect", OptionsVerifier(StringVerifier(), IntVerifier(), desc="the uuid of the device to connect to"))
-
+RESOURCE_ARG_SCHEMA.add_optional("connect_direct", OptionsVerifier(StringVerifier(), IntVerifier(), desc="the connection string of the device to connect to"))
 
 class HardwareManagerResource(SharedResource):
     """A shared HardwareManager instance.
