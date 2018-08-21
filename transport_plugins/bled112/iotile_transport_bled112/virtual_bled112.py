@@ -63,7 +63,6 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
 
         self._logger = logging.getLogger(__name__)
         self._logger.addHandler(logging.NullHandler())
-        self.init_logger()
 
         self.init_virtual_device_info(args)
 
@@ -84,7 +83,6 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         self._command_task = BLED112CommandProcessor(self._stream, self._commands, stop_check_interval=0.01)
         self._command_task.event_handler = self._handle_event
         self._command_task.start()
-
 
         self.connected = False
         self._connection_handle = 0
@@ -126,16 +124,6 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
             raise ArgumentError("Reboot count must be greater than 0.",
             supported="> 0", found=self.virtual_info['reboot_count'])
 
-        self.virtual_info['broadcast_stream'] = int(args.get('broadcast_stream', 0xDEAD), 0)
-        if self.virtual_info['broadcast_stream'] > 0xFFFF or self.virtual_info['broadcast_stream'] < 0:
-            raise ArgumentError("Broadcast stream must be 16bit integer.",
-            supported="0 - 0xFFFF", found=self.virtual_info['broadcast_stream'])
-
-        self.virtual_info['broadcast_value'] = int(args.get('broadcast_value', 0xDEADBEEF), 0)
-        if self.virtual_info['broadcast_value'] < 0 or self.virtual_info['broadcast_value'] > 0xFFFFFFFF:
-            raise ArgumentError("Broadcast value is limited to 32bits.",
-            supported="0 - 0xFFFFFFFF", found=self.virtual_info['broadcast_value'])
-
         self.virtual_info['mac_value'] = int(args.get('mac_value', 0), 0)
         if self.virtual_info['mac_value'] < 0 or self.virtual_info['mac_value'] > 0xFFFFFFFF:
             raise ArgumentError("MAC value is limited to 32bits.",
@@ -145,15 +133,6 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         if self.virtual_info['battery_voltage'] < 0 or self.virtual_info['battery_voltage'] > 7.9:
             raise ArgumentError("Battery voltage is invalid",
             supported="0 - 7.9", found=self.virtual_info['battery_voltage'])
-
-
-    def init_logger(self):
-        formatter = logging.Formatter('%(asctime)s.%(msecs)03d %(levelname).3s %(name)s %(message)s', '%y-%m-%d %H:%M:%S')
-        handler = logging.StreamHandler()
-        handler.setFormatter(formatter)
-        level = 5
-        self._logger.setLevel(level)
-        self._logger.addHandler(handler)
 
     @classmethod
     def find_bled112_devices(cls):
@@ -276,15 +255,13 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
 
             reserved = 0
             with self._broadcast_lock:
+                timestamp = calendar.timegm(time.gmtime())
                 if self._broadcast_reading is not None:
                     bcast_stream = self._broadcast_reading.stream
                     bcast_value = self._broadcast_reading.value
-                    timestamp = calendar.timegm(time.gmtime())
                 else:
-                    #XXX: OK?
-                    timestamp = calendar.timegm(time.gmtime())
-                    bcast_stream = self.virtual_info['broadcast_stream']
-                    bcast_value = self.virtual_info['broadcast_value']
+                    bcast_stream = 0xFFFF
+                    bcast_value = 0xFFFFFFFF
 
             mac = self.virtual_info['mac_value']  #TODO: Calculate MAC
 
@@ -594,16 +571,3 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
                 print("*** END EXCEPTION ***")
                 self._audit('ErrorStreamingTrace')  # If there was an error, stop streaming but don't choke
 
-
-    #FIXME Need method to set these values
-    def _set_bcast_value(self, value):
-        self.bcast_value = value
-
-    def _set_bcast_stream(self, stream):
-        self.bcast_stream = stream
-
-    def _set_reboots(self, reboots):
-        self.reboot_count = reboots
-
-    def _reboot(self):
-        self.reboot_count += 1
