@@ -94,8 +94,8 @@ class RecipeManager(object):
                 second value of tuple is RecipeAction Object
 
         """
-        for recipe_action in recipe_actions:
-            self._recipe_actions[recipe_action[0]] = recipe_action[1]
+        for action_name, action in recipe_actions:
+            self._recipe_actions[action_name] = action
 
     def get_recipe(self, recipe_name):
         """Get a recipe by name.

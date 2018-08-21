@@ -46,7 +46,8 @@ def autobuild_shiparchive(src_file):
 
         fileobj, pathname, description = imp.find_module(basename, [folder])
         mod = imp.load_module(basename, fileobj, pathname, description)
-        custom_steps += filter(lambda c: c[1].__module__==basename, inspect.getmembers(mod, inspect.isclass))
+        full_file_name, class_name = build_step.split(":")
+        custom_steps.append((class_name, getattr(mod, class_name)))
     env['CUSTOM_STEPS'] = custom_steps
 
     env["RESOLVER"] = resolver
