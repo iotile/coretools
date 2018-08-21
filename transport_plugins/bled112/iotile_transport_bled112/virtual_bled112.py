@@ -118,12 +118,12 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
     def init_virtual_device_info(self, args):
         self.virtual_info['advertising_version'] = int(args.get('advertising_version', 1),0)
         if self.virtual_info['advertising_version'] not in (1, 2):
-            raise ArgumentError("Invalid advertising version specified in args", 
+            raise ArgumentError("Invalid advertising version specified in args",
             supported=(1, 2), found=self.virtual_info['advertising_version'])
 
         self.virtual_info['reboot_count'] = int(args.get('reboot_count', 1), 0)
         if self.virtual_info['reboot_count'] <= 0:
-            raise ArgumentError("Reboot count must be greater than 0.", 
+            raise ArgumentError("Reboot count must be greater than 0.",
             supported="> 0", found=self.virtual_info['reboot_count'])
 
         self.virtual_info['broadcast_stream'] = int(args.get('broadcast_stream', 0xDEAD), 0)
@@ -133,12 +133,12 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
 
         self.virtual_info['broadcast_value'] = int(args.get('broadcast_value', 0xDEADBEEF), 0)
         if self.virtual_info['broadcast_value'] < 0 or self.virtual_info['broadcast_value'] > 0xFFFFFFFF:
-            raise ArgumentError("Broadcast value is limited to 32bits.", 
+            raise ArgumentError("Broadcast value is limited to 32bits.",
             supported="0 - 0xFFFFFFFF", found=self.virtual_info['broadcast_value'])
 
         self.virtual_info['mac_value'] = int(args.get('mac_value', 0), 0)
         if self.virtual_info['mac_value'] < 0 or self.virtual_info['mac_value'] > 0xFFFFFFFF:
-            raise ArgumentError("MAC value is limited to 32bits.", 
+            raise ArgumentError("MAC value is limited to 32bits.",
             supported="0 - 0xFFFFFFFF", found=self.virtual_info['mac_value'])
 
         self.virtual_info['battery_voltage'] = float(args.get('battery_voltage',"3.14159"))
@@ -146,7 +146,7 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
             raise ArgumentError("Battery voltage is invalid",
             supported="0 - 7.9", found=self.virtual_info['battery_voltage'])
 
-        
+
     def init_logger(self):
         formatter = logging.Formatter('%(asctime)s.%(msecs)03d %(levelname).3s %(name)s %(message)s', '%y-%m-%d %H:%M:%S')
         handler = logging.StreamHandler()
@@ -269,16 +269,24 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
         else: #self.virtual_info['advertising_version'] == 2:
             flags = (0 << 0) | (int(self.device.pending_data) << 1) | (int(self.device.connected) << 2) | (0 << 3)
             reboots = self.virtual_info['reboot_count']
-            timestamp = calendar.timegm(time.gmtime())
             voltage = int(self.virtual_info['battery_voltage'] * 32)
 
             OTHER = 0  #TODO
             subsecond_cnt = 0xF #TODO
 
             reserved = 0
-            bcast_stream = self.virtual_info['broadcast_stream']
-            bcast_value = self.virtual_info['broadcast_value']
-            mac = self.virtual_info['mac_value']
+            with self._broadcast_lock:
+                if self._broadcast_reading is not None:
+                    bcast_stream = self._broadcast_reading.stream
+                    bcast_value = self._broadcast_reading.value
+                    timestamp = calendar.timegm(time.gmtime())
+                else:
+                    #XXX: OK?
+                    timestamp = calendar.timegm(time.gmtime())
+                    bcast_stream = self.virtual_info['broadcast_stream']
+                    bcast_value = self.virtual_info['broadcast_value']
+
+            mac = self.virtual_info['mac_value']  #TODO: Calculate MAC
 
             reboots_hi = (reboots & 0xFF0000) >> 16
             reboots_lo = (reboots & 0x00FFFF)
