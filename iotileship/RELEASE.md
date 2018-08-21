@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileShip are listed here.
 
+## 0.1.3
+
+- Add connect_direct as HardwareManagerResource RESOURCE_ARG_SCHEMA optional argument.
+- autobuild_shiparchive adds build_steps as needed.
+
 ## 0.1.2
 
 - SyncCloudStep has overwrite parameter default to False. Set to True if 

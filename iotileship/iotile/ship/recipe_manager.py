@@ -86,6 +86,17 @@ class RecipeManager(object):
             recipe = RecipeObject.FromArchive(os.path.join(recipe_folder, ship_file), self._recipe_actions, self._recipe_resources)
             self._recipes[recipe.name] = recipe
 
+    def add_recipe_actions(self, recipe_actions):
+        """Add additional valid recipe actions to RecipeManager
+
+        args:
+            recipe_actions (list): List of tuples. First value of tuple is the classname, 
+                second value of tuple is RecipeAction Object
+
+        """
+        for action_name, action in recipe_actions:
+            self._recipe_actions[action_name] = action
+
     def get_recipe(self, recipe_name):
         """Get a recipe by name.
 

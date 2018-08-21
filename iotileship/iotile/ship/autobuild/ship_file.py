@@ -3,14 +3,14 @@
 This file is only meant to be used in conjunction with iotile-build and
 should not be imported independently.  It is only for use inside SConstruct
 files."""
-
 import os
+import imp
+import inspect
 from SCons.Script import Environment, Copy, Action
 from iotile.build.build import ProductResolver, ArchitectureGroup
 from iotile.build.utilities import render_template_inplace
 from iotile.core.exceptions import BuildError
 from ..recipe_manager import RecipeManager
-
 
 def autobuild_shiparchive(src_file):
     """Create a ship file archive containing a yaml_file and its dependencies.
@@ -35,6 +35,20 @@ def autobuild_shiparchive(src_file):
     family = ArchitectureGroup('module_settings.json')
     target = family.platform_independent_target()
     resolver = ProductResolver.Create()
+
+    #Parse through build_step products to see what needs to imported
+    build_steps = family.tile.build_steps()
+    custom_steps = []
+    for build_step in build_steps:
+        full_file_name = build_step.split(":")[0]
+        basename = os.path.splitext(os.path.basename(full_file_name))[0]
+        folder = os.path.dirname(full_file_name)
+
+        fileobj, pathname, description = imp.find_module(basename, [folder])
+        mod = imp.load_module(basename, fileobj, pathname, description)
+        full_file_name, class_name = build_step.split(":")
+        custom_steps.append((class_name, getattr(mod, class_name)))
+    env['CUSTOM_STEPS'] = custom_steps
 
     env["RESOLVER"] = resolver
 
@@ -104,6 +118,8 @@ def create_shipfile(target, source, env):
     recipe_name = os.path.basename(str(source[0]))[:-5]
 
     resman = RecipeManager()
+
+    resman.add_recipe_actions(env['CUSTOM_STEPS'])
     resman.add_recipe_folder(source_dir, whitelist=[os.path.basename(str(source[0]))])
     recipe = resman.get_recipe(recipe_name)
 
