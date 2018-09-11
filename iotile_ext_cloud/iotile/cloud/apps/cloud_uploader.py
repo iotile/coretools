@@ -91,7 +91,7 @@ class CloudUploader(IOTileApp):
         raise HardwareError("Device took too long to stream data", timeout_seconds=timeout)
 
     def _ack_streamer(self, index, value):
-        if (index <= 0xFF):
+        if index <= 0xFF:
             error, = self._con.rpc(0x20, 0x0f, index, 0, value, arg_format="HHL", result_format="L")
 
             if error == 0x8003801e:
@@ -150,7 +150,7 @@ class CloudUploader(IOTileApp):
                 index = ack['index']
                 last_id = ack['last_id']
 
-                if (index <= 0xFF):
+                if index <= 0xFF:
                     self.logger.info("Acknowledging highest ID %d for streamer %d", last_id, index)
                     self._ack_streamer(index, last_id)
                 else:
