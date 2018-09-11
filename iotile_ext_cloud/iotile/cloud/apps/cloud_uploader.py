@@ -4,7 +4,7 @@ import logging
 import time
 import struct
 from builtins import range
-from iotile.core.exceptions import HardwareError
+from iotile.core.exceptions import HardwareError, ArgumentError
 from iotile.core.hw import IOTileApp
 from iotile.core.hw.reports import SignedListReport
 from iotile.core.utilities.console import ProgressBar
@@ -91,13 +91,16 @@ class CloudUploader(IOTileApp):
         raise HardwareError("Device took too long to stream data", timeout_seconds=timeout)
 
     def _ack_streamer(self, index, value):
-        error, = self._con.rpc(0x20, 0x0f, index, 0, value, arg_format="HHL", result_format="L")
+        if index <= 0xFF:
+            error, = self._con.rpc(0x20, 0x0f, index, 0, value, arg_format="HHL", result_format="L")
 
-        if error == 0x8003801e:
-            # This means the streamer value is older than what is already there, this is not an error
-            pass
-        elif error:
-            raise HardwareError("Error acknowledging streamer", error_code=error, index=index, value=value)
+            if error == 0x8003801e:
+                # This means the streamer value is older than what is already there, this is not an error
+                pass
+            elif error:
+                raise HardwareError("Error acknowledging streamer", error_code=error, index=index, value=value)
+        else:
+            raise ArgumentError("Streamer index is out of bounds", index=index)
 
     def _wait_finished_streaming(self):
         time.sleep(1.0)
@@ -147,8 +150,11 @@ class CloudUploader(IOTileApp):
                 index = ack['index']
                 last_id = ack['last_id']
 
-                self.logger.info("Acknowledging highest ID %d for streamer %d", last_id, index)
-                self._ack_streamer(index, last_id)
+                if index <= 0xFF:
+                    self.logger.info("Acknowledging highest ID %d for streamer %d", last_id, index)
+                    self._ack_streamer(index, last_id)
+                else:
+                    raise ArgumentError("Streamer Index is Out of Range.", index=index)
         else:
             self.logger.info("Not acknowledging readings from cloud per user request")
 
