@@ -158,6 +158,8 @@ class CloudUploader(IOTileApp):
         else:
             self.logger.info("Not acknowledging readings from cloud per user request")
 
+        # Configure Downloader to not break up the report
+        self._con.config_streaming(max_packet=0xFFFFFFF0)
         self._hw.enable_streaming()
 
         if trigger is not None:

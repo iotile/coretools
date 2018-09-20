@@ -2,6 +2,10 @@
 
 All major changes in each released version of the iotile-ext-cloud plugin are listed here.
 
+## 0.5.2
+
+- Set max report size to max in cloud uploader so that chopping of reports is disabled. 
+
 ## 0.5.1
 
 - Bug fix to prevent coretools from acknowledging stream ids that are larger than 255. 
