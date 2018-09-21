@@ -44,7 +44,7 @@ from iotile.core.exceptions import ExternalError
 LineEntry = namedtuple("LineEntry", ['text', 'id', 'sort_key', 'object'])
 
 
-class LinebufferUI(object):
+class LinebufferUI:
     """A simple console UI that displays a list of items and updates them in place."""
 
     def __init__(self, poll_func, id_func, draw_func, sortkey_func=None, title=None):
@@ -61,7 +61,7 @@ class LinebufferUI(object):
         self.items = {}
 
     def run(self, refresh_interval=0.05):
-
+        """Set up the loop, check that the tool is installed"""
         try:
             from asciimatics.screen import Screen
         except ImportError:

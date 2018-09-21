@@ -5,6 +5,8 @@
 #
 # Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
+'''This file contains necessary functionality to manage the Hardware'''
+
 from builtins import range
 from functools import reduce
 import time
@@ -17,12 +19,15 @@ import logging
 from queue import Empty
 import pkg_resources
 from future.utils import itervalues
+from typedargs.annotate import annotated, param, return_type, finalizer, docannotate, context
 
 from iotile.core.dev.semver import SemanticVersion
-from iotile.core.hw.transport import *
-from iotile.core.hw.exceptions import *
-from iotile.core.exceptions import *
-from typedargs.annotate import annotated, param, return_type, finalizer, docannotate, context
+#from iotile.core.hw.transport import *
+from iotile.core.hw.transport import CMDStream
+#from iotile.core.hw.exceptions import *
+from iotile.core.hw.exceptions import UnknownModuleTypeError
+#from iotile.core.exceptions import *
+from iotile.core.exceptions import ArgumentError, HardwareError, ValidationError, TimeoutExpiredError, ExternalError
 from iotile.core.dev.registry import ComponentRegistry
 from iotile.core.hw.transport.adapterstream import AdapterCMDStream
 from iotile.core.dev.config import ConfigManager
@@ -34,7 +39,7 @@ from .app import IOTileApp
 
 
 @context("HardwareManager")
-class HardwareManager(object):
+class HardwareManager:
     """
     A module for managing and interacting with IOTile Hardware
 
@@ -220,7 +225,7 @@ class HardwareManager(object):
                     self._known_apps[tag].append((ver_range, quality, app))
 
                 if name in self._named_apps:
-                    self.logger.warn("Added an app module with an existing name, overriding previous app, name=%s", name)
+                    self.logger.warning("Added an app module with an existing name, overriding previous app, name=%s", name)
 
                 self._named_apps[name] = app
             except Exception:  #pylint: disable=broad-except;We don't want this to die if someone loads a misbehaving plugin
@@ -434,8 +439,7 @@ class HardwareManager(object):
 
     @annotated
     def enable_tracing(self):
-        """Enable tracing of realtime debug information over this interface
-        """
+        """Enable tracing of realtime debug information over this interface"""
 
         if self._trace_queue is not None:
             return
@@ -444,6 +448,7 @@ class HardwareManager(object):
 
     @return_type("integer")
     def count_reports(self):
+        """Return the current size of the reports queue"""
         if self._stream_queue is None:
             return 0
 
@@ -759,6 +764,7 @@ class HardwareManager(object):
 
     @finalizer
     def close(self):
+        """Close the current AdapterStream"""
         self.stream.close()
 
     @classmethod
@@ -767,7 +773,7 @@ class HardwareManager(object):
 
         folder, basename = os.path.split(path)
         basename, ext = os.path.splitext(basename)
-        if ext != '.py' and ext != '.pyc' and ext != "":
+        if ext not in (".py", ".pyc", ""):
             raise ArgumentError("Attempted to load module is not a python package or module (.py or .pyc)", path=path)
 
         try:
