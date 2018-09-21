@@ -44,7 +44,7 @@ class TestProcessor(cmdln.Cmdln):
 
         output_status, output = run_test(component, args)
         if output_status:
-            sys.stdout.write(output)
+            sys.stdout.write(output.decode('utf-8'))
             sys.stdout.flush()
 
         return output_status
