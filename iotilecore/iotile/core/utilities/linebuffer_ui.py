@@ -78,7 +78,7 @@ class LinebufferUI:
             new_items = [new_items]
 
         for item in new_items:
-            id_val, entry = self._parse_and_format(item, screen)
+            id_val, entry = self._parse_and_format(item)
             if id_val is None:
                 continue
 
@@ -95,22 +95,24 @@ class LinebufferUI:
                 items = sorted(viewvalues(self.items), key=lambda x: x.sort_key)
 
                 if self.title_func is not None:
-                    screen.print_at(self.title_func(self.items), 0, 0)
+                    lines = self.title_func(self.items)
+                    for i, line in enumerate(lines):
+                        screen.print_at(line, 0, i)
 
                 for line_no, item in enumerate(items):
-                    screen.print_at(item.text, 0, line_no + 2)
+                    screen.print_at(item.text, 0, line_no + len(lines)+1)
 
                 screen.refresh()
                 time.sleep(refresh_interval)
         except KeyboardInterrupt:
             pass
 
-    def _parse_and_format(self, item, screen):
+    def _parse_and_format(self, item):
         id_val = self.id_func(item)
         if id_val is None:
             return None, None
 
-        text = self.draw_func(item, screen.width)
+        text = self.draw_func(item)
 
         sort_key = id_val
         if self.sortkey_func is not None:

@@ -476,13 +476,13 @@ class HardwareManager:
             blacklist = set(blacklist)
 
         def _title(_items):
-            return "Watching Broadcast Reports (Ctrl-C to Stop)"
+            return ["Watching Broadcast Reports (Ctrl-C to Stop)"]
 
         def _poll():
             results = [x for x in self.iter_broadcast_reports(blocking=False)]
             return results
 
-        def _text(item, screen):
+        def _text(item):
             fmt_uuid = "%08X" % item.origin
             fmt_uuid = fmt_uuid[:4] + '-' + fmt_uuid[4:]
 
@@ -535,12 +535,12 @@ class HardwareManager:
             blacklist = set(blacklist)
 
         def _title(items):
-            return "Realtime Scan: %d Devices in Range" % len(items)
+            return ["Realtime Scan: %d Devices in Range" % len(items)]
 
         def _poll():
             return self.scan()
 
-        def _text(item, screen):
+        def _text(item):
             fmt_uuid = "%08X" % item['uuid']
             fmt_uuid = fmt_uuid[:4] + '-' + fmt_uuid[4:]
 
@@ -564,6 +564,64 @@ class HardwareManager:
 
         line_ui = LinebufferUI(_poll, _hash, _text, sortkey_func=_sort_order, title=_title)
         line_ui.run()
+
+    @docannotate
+    def watch_reports(self, whitelist=None, blacklist=None):
+        """Spawn an interactive terminal UI to watch reports once connected to a device.
+
+        Args:
+            whitelist (list(integer)): Only include streams with these listed ids.
+            blacklist (list(integer)): Include every stream **except** those with these
+                specific ids.  If combined with whitelist, whitelist wins and this
+                parameter has no effect.
+        """
+
+        if whitelist is not None:
+            whitelist = set(whitelist)
+
+        if blacklist is not None:
+            blacklist = set(blacklist)
+
+        def _title(items):
+            base = "Watching Report for Device ID "
+            if items:
+                base = base + str(items[list(items.keys())[0]].object.origin)
+            meta = "{:15s} {:4s}  {:8s}".format("Last Timestamp", "Stream ID", "Stream Value")
+            return [base, meta]
+
+        def _poll():
+            results = [x for x in self.iter_reports(blocking=False)]
+            return results
+
+        def _text(item):
+            reading = item.visible_readings[0]
+            return "{0:<15} {1:04X}         value: {2:<8}".format(reading.raw_time, reading.stream, reading.value)
+
+        def _sort_order(item):
+            return item.origin
+
+        def _hash(item):
+            stream = item.visible_readings[0].stream
+
+            if whitelist is not None and stream not in whitelist:
+                return None
+
+            if blacklist is not None and whitelist is None and stream in blacklist:
+                return None
+            
+            return stream
+
+        if not self.stream.connected:
+            print("Not connected to a device. Please connect first")
+            return
+
+        if not self._stream_queue:
+            print("Enable streaming to watch reports")
+            return
+
+        line_ui = LinebufferUI(_poll, _hash, _text, sortkey_func=_sort_order, title=_title)
+        line_ui.run()
+
 
     @return_type("string")
     @param("encoding", "string", desc="The encoding to use to dump the trace, either 'hex' or 'raw'")

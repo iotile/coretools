@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## HEAD
+
+- Add "watch_reports" command, which enables a user to live view reports from the connected device
+
 ## 3.22.12
 
 - SetDeviceTagRecord allows setting of both os and app tag.
