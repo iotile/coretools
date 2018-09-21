@@ -14,8 +14,9 @@ def test_device_slug_to_id():
         # Only 48bits allowed
         device_slug_to_id('d--1234-0000-0000-0001')
 
-    with pytest.raises(ArgumentError):
-        device_slug_to_id('0000-0000-0000-0000')
+    # Null device is now acceptable
+    #with pytest.raises(ArgumentError):
+    #    device_slug_to_id('0000-0000-0000-0000')
 
     with pytest.raises(ArgumentError):
         device_slug_to_id('t--0000-0000-0000-0000')
