@@ -159,7 +159,7 @@ class CloudUploader(IOTileApp):
             self.logger.info("Not acknowledging readings from cloud per user request")
 
         # Configure Downloader to not break up the report
-        self._con.config_streaming(max_packet=0xFFFFFFF0)
+        self.set_report_size()  #Set to max report size
         self._hw.enable_streaming()
 
         if trigger is not None:
