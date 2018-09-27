@@ -1,8 +1,12 @@
 from threading import Thread, Event
 from queue import Queue, Empty
 import logging
+from serial import SerialException
 
 class InternalTimeoutError(Exception):
+    pass
+
+class DeviceNotConfiguredError(Exception):
     pass
 
 class AsyncPacketBuffer:
@@ -21,7 +25,10 @@ class AsyncPacketBuffer:
         self._thread.start()
 
     def write(self, value):
-        self.file.write(value)
+        try:
+            self.file.write(value)
+        except SerialException:
+            raise DeviceNotConfiguredError("Device not configured properly")
 
     def stop(self):
         self._stop.set()

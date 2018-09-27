@@ -13,7 +13,7 @@ from iotile.core.exceptions import HardwareError
 from .tilebus import *
 from .bgapi_structures import process_gatt_service, process_attribute, process_read_handle, process_notification
 from .bgapi_structures import parse_characteristic_declaration
-from .async_packet import InternalTimeoutError
+from .async_packet import InternalTimeoutError, DeviceNotConfiguredError
 
 BGAPIPacket = namedtuple("BGAPIPacket", ["is_event", "command_class", "command", "payload"])
 
@@ -158,6 +158,8 @@ class BLED112CommandProcessor(threading.Thread):
                 return False, {'reason': "Could not stop scan for ble devices"}
         except InternalTimeoutError:
             return False, {'reason': "Timeout waiting for response"}
+        except DeviceNotConfiguredError:
+            return True, {'reason': "Device not connected (did you disconnect the dongle?"}
 
         return True, None
 
