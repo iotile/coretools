@@ -15,6 +15,7 @@
 
 [![Build Status](https://travis-ci.org/iotile/coretools.svg?branch=master)](https://travis-ci.org/iotile/coretools)
 [![Build status](https://ci.appveyor.com/api/projects/status/yu3q8m8dm6aqoc6e/branch/master?svg=true)](https://ci.appveyor.com/project/timburke/coretools/branch/master)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fiotile%2Fcoretools.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fiotile%2Fcoretools?ref=badge_shield)
 
 This repository contains the basic infrastructure needed build and interact with 
 IOTile based devices.  It is divided into a set of python packages that work 
@@ -140,3 +141,6 @@ This software is released under the terms of the LGPL v3 license.  It includes
 pieces that are distributed under the terms of their own licenses.  A list of 
 included 3rd party software is described in the README files for each component
 of IOTile CoreTools.
+
+
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fiotile%2Fcoretools.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fiotile%2Fcoretools?ref=badge_large)
