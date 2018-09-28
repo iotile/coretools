@@ -35,7 +35,7 @@ def main():
         outfile = open(args.output, "wb")
 
     if args.format == u'ast':
-        outfile.write(parser.dump_tree())
+        outfile.write(parser.dump_tree().encode())
         outfile.close()
         sys.exit(0)
 
@@ -47,7 +47,8 @@ def main():
 
     if args.format == u'nodes':
         for node in parser.sensor_graph.dump_nodes():
-            outfile.write(node + u'\n')
+            outfile.write((node + u'\n').encode())
+
     else:
         if args.format not in known_formats:
             print("Unknown output format: {}".format(args.format))
@@ -55,6 +56,10 @@ def main():
             sys.exit(1)
 
         output = known_formats[args.format](parser.sensor_graph)
-        outfile.write(output)
+
+        if args.format in (u'snippet', u'ascii', u'config'):
+            outfile.write(output.encode())
+        else:
+            outfile.write(output)
 
     outfile.close()
