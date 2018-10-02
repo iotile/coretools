@@ -9,25 +9,22 @@ import logging
 import datetime
 import uuid
 import copy
-import serial
-import binascii
 from future.utils import viewitems
+import serial
 import serial.tools.list_ports
+from iotile_transport_bled112 import bgapi_structures
 from iotile.core.dev.config import ConfigManager
 from iotile.core.utilities.packed import unpack
 from iotile.core.exceptions import HardwareError
 from iotile.core.hw.reports import IOTileReportParser, IOTileReading, BroadcastReport
-from .async_packet import AsyncPacketBuffer
 from iotile.core.hw.transport.adapter import DeviceAdapter
 from .bled112_cmd import BLED112CommandProcessor
-from .tilebus import *
-import iotile_transport_bled112.bgapi_structures as bgapi_structures
+from .tilebus import TileBusService, TileBusStreamingCharacteristic, TileBusTracingCharacteristic, TileBusHighSpeedCharacteristic
+from .async_packet import AsyncPacketBuffer
 
 
 def packet_length(header):
-    """
-    Find the BGAPI packet length given its header
-    """
+    """Find the BGAPI packet length given its header"""
 
     highbits = header[0] & 0b11
     lowbits = header[1]
@@ -54,8 +51,8 @@ class BLED112Adapter(DeviceAdapter):
         # Get optional configuration flags
         stop_check_interval = kwargs.get('stop_check_interval', 0.1)
 
-        #Make sure that if someone tries to connect to a device immediately after creating the adapter
-        #we tell them we need time to accumulate device advertising packets first
+        # Make sure that if someone tries to connect to a device immediately after creating the adapter
+        # we tell them we need time to accumulate device advertising packets first
         self.set_config('minimum_scan_time', 2.0)
 
         if on_scan is not None:
@@ -80,7 +77,7 @@ class BLED112Adapter(DeviceAdapter):
             config = ConfigManager()
             self._active_scan = config.get('bled112:active-scan')
 
-        #Prepare internal state of scannable and in progress devices
+        # Prepare internal state of scannable and in progress devices
         # Do this before spinning off the BLED112CommandProcessor
         # in case a scanned device is seen immediately.
         self.partial_scan_responses = {}
@@ -109,17 +106,17 @@ class BLED112Adapter(DeviceAdapter):
 
     @classmethod
     def find_bled112_devices(cls):
+        """Look for BLED112 dongles on this computer and start an instance on each one"""
         found_devs = []
 
-        #Look for BLED112 dongles on this computer and start an instance on each one
         ports = serial.tools.list_ports.comports()
-        for p in ports:
-            if not hasattr(p, 'pid') or not hasattr(p, 'vid'):
+        for port in ports:
+            if not hasattr(port, 'pid') or not hasattr(port, 'vid'):
                 continue
 
-            #Check if the device matches the BLED112's PID/VID combination
-            if p.pid == 1 and p.vid == 9304:
-                found_devs.append(p.device)
+            # Check if the device matches the BLED112's PID/VID combination
+            if port.pid == 1 and port.vid == 9304:
+                found_devs.append(port.device)
 
         return found_devs
 
@@ -133,14 +130,12 @@ class BLED112Adapter(DeviceAdapter):
         return len(self._connections) < self.maximum_connections
 
     def stop_sync(self):
-        """Safely stop this BLED112 instance without leaving it in a weird state
-
-        """
+        """Safely stop this BLED112 instance without leaving it in a weird state"""
 
         if self.scanning:
             self.stop_scan()
 
-        #Make a copy since this will change size as we disconnect
+        # Make a copy since this will change size as we disconnect
         con_copy = copy.copy(self._connections)
 
         for _, context in viewitems(con_copy):
@@ -153,10 +148,12 @@ class BLED112Adapter(DeviceAdapter):
         self.stopped = True
 
     def stop_scan(self):
+        """Stop the scanning task"""
         self._command_task.sync_command(['_stop_scan'])
         self.scanning = False
 
     def start_scan(self, active):
+        """Start the scanning task"""
         self._command_task.sync_command(['_start_scan', active])
         self.scanning = True
 
@@ -184,7 +181,6 @@ class BLED112Adapter(DeviceAdapter):
                 before we give up and report that we could not connect.  A retry count of 0 will mean that
                 we fail as soon as we receive the first early disconnect.
         """
-
         context = {}
         context['connection_id'] = connection_id
         context['callback'] = callback
@@ -212,7 +208,7 @@ class BLED112Adapter(DeviceAdapter):
         """
 
         found_handle = None
-        #Find the handle by connection id
+        # Find the handle by connection id
         for handle, conn in viewitems(self._connections):
             if conn['connection_id'] == conn_id:
                 found_handle = handle
@@ -245,7 +241,7 @@ class BLED112Adapter(DeviceAdapter):
         """
 
         found_handle = None
-        #Find the handle by connection id
+        # Find the handle by connection id
         for handle, conn in viewitems(self._connections):
             if conn['connection_id'] == conn_id:
                 found_handle = handle
@@ -277,7 +273,7 @@ class BLED112Adapter(DeviceAdapter):
         """
 
         found_handle = None
-        #Find the handle by connection id
+        # Find the handle by connection id
         for handle, conn in viewitems(self._connections):
             if conn['connection_id'] == conn_id:
                 found_handle = handle
@@ -288,8 +284,9 @@ class BLED112Adapter(DeviceAdapter):
 
         services = self._connections[found_handle]['services']
 
-        self._command_task.async_command(['_send_script', found_handle, services, data, 0, progress_callback], self._send_script_finished, {'connection_id': conn_id,
-                                         'callback': callback})
+        self._command_task.async_command(['_send_script', found_handle, services, data, 0, progress_callback],
+                                         self._send_script_finished, {'connection_id': conn_id,
+                                                                      'callback': callback})
 
     def _send_script_finished(self, result):
         success, retval, context = self._parse_return(result)
@@ -392,7 +389,8 @@ class BLED112Adapter(DeviceAdapter):
             callback(conn_id, self.id, False, 'Connection closed unexpectedly before we could open the streaming interface')
             return
 
-        self._command_task.async_command(['_enable_streaming', handle, services], self._on_interface_finished, {'connection_id': conn_id, 'callback': callback})
+        self._command_task.async_command(['_enable_streaming', handle, services], self._on_interface_finished,
+                                         {'connection_id': conn_id, 'callback': callback})
 
     def _open_tracing_interface(self, conn_id, callback):
         """Enable the debug tracing interface for this IOTile device
@@ -410,7 +408,8 @@ class BLED112Adapter(DeviceAdapter):
             callback(conn_id, self.id, False, 'Connection closed unexpectedly before we could open the streaming interface')
             return
 
-        self._command_task.async_command(['_enable_tracing', handle, services], self._on_interface_finished, {'connection_id': conn_id, 'callback': callback})
+        self._command_task.async_command(['_enable_tracing', handle, services],
+                                         self._on_interface_finished, {'connection_id': conn_id, 'callback': callback})
 
     def _close_rpc_interface(self, conn_id, callback):
         """Disable RPC interface for this IOTile device
@@ -428,7 +427,8 @@ class BLED112Adapter(DeviceAdapter):
             callback(conn_id, self.id, False, 'Connection closed unexpectedly before we could close the rpc interface')
             return
 
-        self._command_task.async_command(['_disable_rpcs', handle, services], self._on_interface_finished, {'connection_id': conn_id, 'callback': callback})
+        self._command_task.async_command(['_disable_rpcs', handle, services], self._on_interface_finished,
+                                         {'connection_id': conn_id, 'callback': callback})
 
     def _on_interface_finished(self, result):
         success, retval, context = self._parse_return(result)
@@ -443,21 +443,21 @@ class BLED112Adapter(DeviceAdapter):
 
     def _handle_event(self, event):
         if event.command_class == 6 and event.command == 0:
-            #Handle scan response events
+            # Handle scan response events
             self._parse_scan_response(event)
         elif event.command_class == 3 and event.command == 4:
-            #Handle disconnect event
+            # Handle disconnect event
             conn, reason = unpack("<BH", event.payload)
 
             conndata = self._get_connection(conn)
 
             if not conndata:
-                self._logger.warn("Disconnection event for conn not in table %d", conn)
+                self._logger.warning("Disconnection event for conn not in table %d", conn)
                 return
 
             state = conndata['state']
-            self._logger.warn('Disconnection event, handle=%d, reason=0x%X, state=%s', conn, reason,
-                              state)
+            self._logger.warning('Disconnection event, handle=%d, reason=0x%X, state=%s', conn, reason,
+                                 state)
 
             if state == 'preparing':
                 conndata['failure_reason'] = 'Early disconnect, reason=%s' % reason
@@ -473,19 +473,19 @@ class BLED112Adapter(DeviceAdapter):
 
             self._remove_connection(conn)
 
-            #If we were not told how to handle this disconnection, report that it happened
+            # If we were not told how to handle this disconnection, report that it happened
             if 'disconnect_handler' not in conndata:
                 self._trigger_callback('on_disconnect', self.id, conndata['connection_id'])
 
         elif event.command_class == 4 and event.command == 5:
-            #Handle notifications
+            # Handle notifications
             conn, = unpack("<B", event.payload[:1])
             at_handle, value = bgapi_structures.process_notification(event)
 
             conndata = self._get_connection(conn)
 
             if conndata is None:
-                self._logger.warn("Recieved notification for an unknown connection, handle=%d" % at_handle)
+                self._logger.warning("Recieved notification for an unknown connection, handle=%d" % at_handle)
                 return
 
             parser = conndata['parser']
@@ -493,7 +493,7 @@ class BLED112Adapter(DeviceAdapter):
             try:
                 char_uuid = bgapi_structures.handle_to_uuid(at_handle, conndata['services'])
             except ValueError:
-                self._logger.warn("Notification from characteristic not in gatt table, ignoring it, handle=%d" % at_handle)
+                self._logger.warning("Notification from characteristic not in gatt table, ignoring it, handle=%d" % at_handle)
                 return
 
             if char_uuid == TileBusStreamingCharacteristic:
@@ -501,10 +501,9 @@ class BLED112Adapter(DeviceAdapter):
             elif char_uuid == TileBusTracingCharacteristic:
                 self._trigger_callback('on_trace', conndata['connection_id'], bytearray(value))
             else:
-                self._logger.warn("Notification from unknown characteristic (not streaming or tracing), ignoring it, handle=%d" % at_handle)
+                self._logger.warning("Notification from unknown characteristic (not streaming or tracing), ignoring it, handle=%d" % at_handle)
         else:
-            self._logger.warn('Unhandled BLE event: ' + str(event))
-
+            self._logger.warning('Unhandled BLE event: ' + str(event))
 
     def _parse_scan_response(self, response):
         """
@@ -519,14 +518,14 @@ class BLED112Adapter(DeviceAdapter):
 
         rssi, packet_type, sender, addr_type, bond, data = unpack("<bB6sBB%ds" % length, payload)
 
-        #Scan data is prepended with a length
+        # Scan data is prepended with a length
         if len(data) > 0:
             scan_data = bytearray(data[1:])
         else:
             scan_data = bytearray([])
 
-        #If this is an advertisement response, see if its an IOTile device
-        if packet_type == 0 or packet_type == 6:
+        # If this is an advertisement response, see if its an IOTile device
+        if packet_type in (0, 6):
 
             if (len(scan_data) > 4 and
                     scan_data[3] == 17 and
@@ -536,10 +535,10 @@ class BLED112Adapter(DeviceAdapter):
 
             # See if the data length is 27 (0x1B), service = 0x16, ArchUUID = 0x03C0
             elif (len(scan_data) > 6 and
-                    scan_data[3] == 27 and
-                    scan_data[4] == 0x16 and
-                    scan_data[5] == 0xc0 and
-                    scan_data[6] == 0x03):
+                  scan_data[3] == 27 and
+                  scan_data[4] == 0x16 and
+                  scan_data[5] == 0xc0 and
+                  scan_data[6] == 0x03):
 
                 self._parse_v2_scan_response(response)
 
@@ -551,10 +550,8 @@ class BLED112Adapter(DeviceAdapter):
 
         return
 
-
     def _parse_v2_scan_response(self, response):
-        """ Parse the IOTile Specific advertisement packet
-        """
+        """ Parse the IOTile Specific advertisement packet"""
         payload = response.payload
         length = len(payload) - 10
 
@@ -567,21 +564,20 @@ class BLED112Adapter(DeviceAdapter):
         parsed['address'] = ':'.join([format(x, "02X") for x in bytearray(sender[::-1])])
         parsed['address_type'] = addr_type
 
-        #Scan data is prepended with a length
-        if len(data)  > 0:
+        # Scan data is prepended with a length
+        if len(data) > 0:
             parsed['scan_data'] = bytearray(data[1:])
         else:
             parsed['scan_data'] = bytearray([])
 
-        #If this is an advertisement response, see if its an IOTile device
+        # If this is an advertisement response, see if its an IOTile device
         if parsed['type'] == 0 or parsed['type'] == 6:
             scan_data = parsed['scan_data']
 
             if len(scan_data) != 31:
                 self._logger.error("Advertising V2 packet is not the proper size. {0}".format(len(scan_data)))
                 return
-
-            #Skip BLE flags
+            # Skip BLE flags
             scan_data = scan_data[3:]
 
             if (scan_data[0] == 27 and
@@ -590,8 +586,7 @@ class BLED112Adapter(DeviceAdapter):
                     scan_data[3] == 0x03):
 
                 scan_data = scan_data[4:]
-
-                #FIXME: OTHER
+                # FIXME: OTHER
                 device_uuid, reboot_low, reboot_high, flags, timestamp, \
                 battery, OTHER, bcast_stream, bcast_value, mac = unpack("<LHBBLBBHLL", scan_data)
                 reboots = reboot_high << 16 | reboot_low
@@ -637,14 +632,13 @@ class BLED112Adapter(DeviceAdapter):
                     self.partial_scan_responses[parsed['address']] = info
 
         elif parsed['type'] == 4 and parsed['address'] in self.partial_scan_responses:
-            #Check if this is a scan response packet from an iotile based device
+            # Check if this is a scan response packet from an iotile based device
             scan_data = parsed['scan_data']
             if len(scan_data) != 31:
                 self._logger.error("Scan data should have 31 bytes")
                 return
 
             self._logger.error("Not Implemented")
-
         return
 
     def _parse_v1_scan_response(self, response):
@@ -653,7 +647,6 @@ class BLED112Adapter(DeviceAdapter):
 
         if length < 0:
             return
-
         rssi, packet_type, sender, addr_type, bond, data = unpack("<bB6sBB%ds" % length, payload)
 
         parsed = {}
@@ -663,13 +656,13 @@ class BLED112Adapter(DeviceAdapter):
         parsed['address'] = ':'.join([format(x, "02X") for x in bytearray(sender[::-1])])
         parsed['address_type'] = addr_type
 
-        #Scan data is prepended with a length
-        if len(data)  > 0:
+        # Scan data is prepended with a length
+        if len(data) > 0:
             parsed['scan_data'] = bytearray(data[1:])
         else:
             parsed['scan_data'] = bytearray([])
 
-        #If this is an advertisement response, see if its an IOTile device
+        # If this is an advertisement response, see if its an IOTile device
         if parsed['type'] == 0 or parsed['type'] == 6:
             scan_data = parsed['scan_data']
 
@@ -677,10 +670,10 @@ class BLED112Adapter(DeviceAdapter):
                 self._logger.error("Advertising packet is too small.")
                 return
 
-            #Skip BLE flags
+            # Skip BLE flags
             scan_data = scan_data[3:]
 
-            #Make sure the scan data comes back with an incomplete UUID list
+            # Make sure the scan data comes back with an incomplete UUID list
             if scan_data[0] != 17 or scan_data[1] != 6:
                 self._logger.error("Scan data does not have an incomplete UUID list")
                 return
@@ -690,11 +683,11 @@ class BLED112Adapter(DeviceAdapter):
             service = uuid.UUID(bytes_le=bytes(uuid_buf))
 
             if service == TileBusService:
-                #Now parse out the manufacturer specific data
+                # Now parse out the manufacturer specific data
                 manu_data = scan_data[18:]
                 assert len(manu_data) == 10
 
-                #FIXME: Move flag parsing code flag definitions somewhere else
+                # FIXME: Move flag parsing code flag definitions somewhere else
                 length, datatype, manu_id, device_uuid, flags = unpack("<BBHLH", manu_data)
 
                 # Flags for version 1 are:
@@ -713,13 +706,13 @@ class BLED112Adapter(DeviceAdapter):
                 if flags & (1 << 2):
                     user_connected = True
 
-                info = {'user_connected': user_connected, 
+                info = {'user_connected': user_connected,
                         'connection_string': parsed['address'],
-                        'uuid': device_uuid, 
-                        'pending_data': pending, 
+                        'uuid': device_uuid,
+                        'pending_data': pending,
                         'low_voltage': low_voltage,
                         'signal_strength': parsed['rssi'],
-                        'advertising_version':1}
+                        'advertising_version': 1}
 
                 if not self._active_scan:
                     self._trigger_callback('on_scan', self.id, info, self.ExpirationTime)
@@ -727,7 +720,7 @@ class BLED112Adapter(DeviceAdapter):
                     self.partial_scan_responses[parsed['address']] = info
 
         elif parsed['type'] == 4 and parsed['address'] in self.partial_scan_responses:
-            #Check if this is a scan response packet from an iotile based device
+            # Check if this is a scan response packet from an iotile based device
             scan_data = parsed['scan_data']
             if len(scan_data) != 31:
                 self._logger.error("Scan data should have 31 bytes")
@@ -775,8 +768,9 @@ class BLED112Adapter(DeviceAdapter):
             services (dict): A dictionary of GATT services produced by probe_services()
         """
         self._command_task.async_command(['_probe_characteristics', handle, services],
-            self._probe_characteristics_finished, {'connection_id': conn_id, 'handle': handle,
-                                                   'services': services})
+                                         self._probe_characteristics_finished, {'connection_id': conn_id,
+                                                                                'handle': handle,
+                                                                                'services': services})
 
     def initialize_system_sync(self):
         """Remove all active connections and query the maximum number of supported connections
@@ -819,7 +813,7 @@ class BLED112Adapter(DeviceAdapter):
         handle = context['handle']
 
         callback(connection_id, self.id, success, "No reason given")
-        self._remove_connection(handle) #NB Cleanup connection after callback in case it needs the connection info
+        self._remove_connection(handle)  # NB Cleanup connection after callback in case it needs the connection info
 
     @classmethod
     def _parse_return(cls, result):
@@ -930,8 +924,6 @@ class BLED112Adapter(DeviceAdapter):
                               conn_id)
             return
 
-
-
         if result['result'] is False:
             conndata['failed'] = True
             conndata['failure_reason'] = 'Could not probe GATT services'
@@ -965,7 +957,7 @@ class BLED112Adapter(DeviceAdapter):
             self.disconnect_async(conn_id, self._on_connection_failed)
             return
 
-        #Validate that this is a proper IOTile device
+        # Validate that this is a proper IOTile device
         services = result['return_value']['services']
         if TileBusService not in services:
             conndata['failed'] = True
@@ -980,7 +972,7 @@ class BLED112Adapter(DeviceAdapter):
         conndata['state'] = 'connected'
         conndata['services'] = services
 
-        #Create a report parser for this connection for when reports are streamed to us
+        # Create a report parser for this connection for when reports are streamed to us
         conndata['parser'] = IOTileReportParser(report_callback=self._on_report, error_callback=self._on_report_error)
         conndata['parser'].context = conn_id
 
@@ -993,7 +985,7 @@ class BLED112Adapter(DeviceAdapter):
         callback(conndata['connection_id'], self.id, True, None)
 
     def _on_report(self, report, connection_id):
-        #self._logger.info('Received report: %s', str(report))
+        # self._logger.info('Received report: %s', str(report))
         self._trigger_callback('on_report', connection_id, report)
 
         return False

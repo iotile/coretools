@@ -2,9 +2,10 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
-## HEAD
+## 1.7.4
 
 - Add support for advertising packets version 2. 
+- Improve behavior of scan to handle empty payloads
 
 ## 1.7.3
 
