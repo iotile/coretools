@@ -507,8 +507,9 @@ class BLED112Adapter(DeviceAdapter):
 
 
     def _parse_scan_response(self, response):
-        """Parse the IOTile specific data structures in the BLE advertisement packets and add the device to our list of scanned devices
-           Parse advertisement and determine if it matches V1 or V2.
+        """
+        Parse the BLE advertisement packet. If it's an IOTile device, parse and add to the scanned devices.
+        Then, parse advertisement and determine if it matches V1 or V2.
         """
         payload = response.payload
         length = len(payload) - 10
@@ -527,21 +528,23 @@ class BLED112Adapter(DeviceAdapter):
         #If this is an advertisement response, see if its an IOTile device
         if packet_type == 0 or packet_type == 6:
 
-            if (scan_data[3] == 17 and
-                scan_data[4] == 6):
+            if (len(scan_data) > 4 and
+                    scan_data[3] == 17 and
+                    scan_data[4] == 6):
 
                 self._parse_v1_scan_response(response)
 
             # See if the data length is 27 (0x1B), service = 0x16, ArchUUID = 0x03C0
-            elif (scan_data[3] == 27 and
-                scan_data[4] == 0x16 and
-                scan_data[5] == 0xc0 and
-                scan_data[6] == 0x03):
+            elif (len(scan_data) > 6 and
+                    scan_data[3] == 27 and
+                    scan_data[4] == 0x16 and
+                    scan_data[5] == 0xc0 and
+                    scan_data[6] == 0x03):
 
                 self._parse_v2_scan_response(response)
 
             else:
-                self._logger.error("Invalid scan data: {0}".format(binascii.hexlify(scan_data)))
+                return
 
         else:
             self._parse_v1_scan_response(response)
