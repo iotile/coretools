@@ -13,9 +13,12 @@ import os.path
 import os
 import shutil
 import subprocess
+import sys
 from distutils.spawn import find_executable
 from iotile.core.dev.registry import ComponentRegistry
 from iotile.core.utilities.intelhex import IntelHex
+from iotile.core.exceptions import *
+
 
 
 def copy_folder(local_name, tmpdir):
@@ -70,6 +73,101 @@ def test_build_nodepends(tmpdir):
         assert err == 0
     finally:
         os.chdir(olddir)
+
+
+def test_build_wheel_exception(tmpdir):
+    """Make sure we raise a compatibility issue with a wheel"""
+
+    base_wheel_name = "iotile_support_lib_controller_3-3.7.2-{0}-none-any.whl"
+
+    if sys.version_info[0] == 3:
+        wheel_to_copy = 'build/deps/iotile_standard_library_lib_controller/python/' + base_wheel_name.format('py2')
+    else:
+        wheel_to_copy = 'build/deps/iotile_standard_library_lib_controller/python/' + base_wheel_name.format('py3')
+
+    olddir = os.getcwd()
+    builddir = copy_folder('component_dep_wheels', tmpdir)
+
+    try:
+        os.chdir(builddir)
+        w = open(wheel_to_copy, 'w')
+        w.write("this was a triumph")
+        w.close()
+        with pytest.raises(Exception):
+            subprocess.check_call(["iotile", "build"])
+    finally:
+        os.chdir(olddir)
+        shutil.rmtree(builddir)
+
+
+def test_build_wheel_compatible(tmpdir):
+    """Make sure we don't raise a compatibility issue with a wheel that is compatible"""
+
+    base_wheel_name = "iotile_support_lib_controller_3-3.7.2-{0}-none-any.whl"
+
+    if sys.version_info[0] == 3:
+        wheel_to_copy = 'build/deps/iotile_standard_library_lib_controller/python/' + base_wheel_name.format('py3')
+    else:
+        wheel_to_copy = 'build/deps/iotile_standard_library_lib_controller/python/' + base_wheel_name.format('py2')
+
+    olddir = os.getcwd()
+    builddir = copy_folder('component_dep_wheels', tmpdir)
+
+    try:
+        os.chdir(builddir)
+        w = open(wheel_to_copy, 'w')
+        w.write("this was a triumph")
+        w.close()
+        err = subprocess.check_call(["iotile", "build"])
+        assert err == 0
+    finally:
+        os.chdir(olddir)
+        shutil.rmtree(builddir)
+
+
+def test_build_wheel_universal_exception(tmpdir):
+    """Make sure we flag that a dependency needs to be universal if it's not"""
+
+    base_wheel_name = "iotile_support_lib_controller_3-3.7.2-py3-none-any.whl"
+
+    wheel_to_copy = 'build/deps/iotile_standard_library_lib_controller/python/' + base_wheel_name
+
+    olddir = os.getcwd()
+    builddir = copy_folder('component_dep_wheels_universal', tmpdir)
+
+    try:
+        os.chdir(builddir)
+        w = open(wheel_to_copy, 'w')
+        w.write("this was a triumph")
+        w.close()
+        with pytest.raises(Exception):
+            subprocess.check_call(["iotile", "build"])
+    finally:
+        os.chdir(olddir)
+        shutil.rmtree(builddir)
+
+
+def test_build_wheel_universal_valid(tmpdir):
+    """Make sure we flag that a dependency needs to be universal if it's not"""
+
+    base_wheel_name = "iotile_support_lib_controller_3-3.7.2-py2.py3-none-any.whl"
+
+    wheel_to_copy = 'build/deps/iotile_standard_library_lib_controller/python/' + base_wheel_name
+
+    olddir = os.getcwd()
+    builddir = copy_folder('component_dep_wheels_universal', tmpdir)
+
+    try:
+        os.chdir(builddir)
+        w = open(wheel_to_copy, 'w')
+        w.write("this was a triumph")
+        w.close()
+        err = subprocess.check_call(["iotile", "build"])
+        assert err == 0
+
+    finally:
+        os.chdir(olddir)
+        shutil.rmtree(builddir)
 
 
 def test_build_with_python_depends(tmpdir):

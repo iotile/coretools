@@ -333,7 +333,7 @@ def find_units(parent):
     files = [f for f in os.listdir(parent) if os.path.isfile(os.path.join(parent, f))]
 
     # only look for files that start with test_
-    files = filter(lambda x: x.startswith("test_"), files)
+    files = list(filter(lambda x: x.startswith("test_"), files))
 
     files = [os.path.join(parent, f) for f in files]
 

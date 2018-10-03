@@ -11,6 +11,7 @@
 
 from __future__ import print_function, absolute_import
 from builtins import range
+from past.builtins import basestring
 import sys
 from copy import deepcopy
 import itertools
@@ -23,6 +24,7 @@ from iotile.core.exceptions import BuildError, InternalError, ArgumentError, Dat
 from iotile.core.dev.iotileobj import IOTile
 
 SCONS_VERSION = "3.0.1"
+
 
 
 @takes_cmdline

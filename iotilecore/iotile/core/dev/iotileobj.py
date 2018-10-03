@@ -5,6 +5,7 @@ import itertools
 from collections import namedtuple
 import json
 import os.path
+import sys
 from future.utils import viewitems, itervalues
 from past.builtins import basestring
 from iotile.core.exceptions import DataError, ExternalError
@@ -239,7 +240,17 @@ class IOTile(object):
 
         # Setup our support package information
         self.support_distribution = "iotile_support_{0}_{1}".format(self.short_name, self.parsed_version.major)
-        self.support_wheel = "{0}-{1}-py2-none-any.whl".format(self.support_distribution, self.parsed_version.pep440_string())
+
+        if 'python_universal' in self.settings:
+            py_version = "py2.py3"
+        elif sys.version_info[0] >= 3:
+            py_version = "py3"
+        else:
+            py_version = "py2"
+
+        self.support_wheel = "{0}-{1}-{2}-none-any.whl".format(self.support_distribution,
+                                                               self.parsed_version.pep440_string(),
+                                                               py_version)
         self.has_wheel = False
 
         if len(self.proxy_modules()) > 0 or len(self.proxy_plugins()) > 0 or len(self.type_packages()) > 0 or \

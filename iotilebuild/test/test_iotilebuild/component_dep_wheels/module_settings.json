@@ -1,0 +1,49 @@
+{
+	"module_name": "tile_gpio",
+	
+	"module_targets": 
+	{
+		"tile_gpio": ["lpc824"]
+	},
+
+	"modules":
+	{
+		"tile_gpio":
+		{
+			"domain": "iotile_standard_library",
+
+			"depends":
+			{
+                "iotile_standard_library/lib_controller,^3.7.2": ["include_directories", "tilebus_definitions"]
+			},
+
+			"defines":
+			{
+				"kVoltageControlPin": 9,
+				"kVoltageSourcePin1": 8,
+				"kVoltageSourcePin2": 23,
+				"kVoltageSensePin2": 14,
+				"kVoltageSenseChannel2": 2, 
+				"kSensePin": 6,
+				"kSenseChannel": 1
+			},
+              "products":
+            {
+            "python/nrf52832_controller.py": "proxy_module"
+            }
+		}
+	},
+
+
+
+	"architectures":
+	{
+		"lpc824":
+		{
+			"defines":
+			{
+				"kModuleHardwareType":	"kLPC824HardwareType"
+			}
+		}
+	}
+}
