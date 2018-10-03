@@ -1,1 +1,1 @@
-from setup import setup_sphinx
+from .setup import setup_sphinx

@@ -2,9 +2,10 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
-## HEAD
+## 3.22.13
 
 - Add "watch_reports" command, which enables a user to live view reports from the connected device
+- Support for loading universal wheels
 
 ## 3.22.12
 

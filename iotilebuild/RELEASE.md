@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.6.13
+
+- Enable using iotile build to generate py3 packages and universal wheels
+
 ## 2.6.12
 
 - Fix build_update_script, env['SLOTS'] to None by default.

@@ -1,6 +1,7 @@
 import os.path
 import os
 import sys
+import glob
 import itertools
 from SCons.Script import *
 from docbuild import *
@@ -88,9 +89,26 @@ def build_python_distribution(tile):
     #Also copy over all dependency wheels as well
     wheels = find_dependency_wheels(tile)
 
+    if "python_universal" in tile.settings:
+        required_version = "py2.py3"
+    else:
+        required_version = "py3" if sys.version_info[0] == 3 else "py2"
+
     for wheel in wheels:
+
         wheel_name = os.path.basename(wheel)
-        env.Command([os.path.join(outdir, wheel_name)], [wheel], Copy("$TARGET", "$SOURCE"))
+        wheel_basename = '-'.join(wheel.split('-')[:-3])
+        wheel_pattern = wheel_basename + "-*" + required_version + '*'
+
+        wheel_source = glob.glob(wheel_pattern)
+        wheel_real = glob.glob(wheel_basename + '*')
+
+        if wheel_source:
+            env.Command([os.path.join(outdir, wheel_name)], [wheel_source[0]], Copy("$TARGET", "$SOURCE"))
+        else:
+            print("This package is set up to require", required_version)
+            print("Dependency version appears to be", wheel_real[0].split('/')[-1])
+            raise BuildError("dependent wheel not built with compatible python version")
 
 
 def generate_setup_py(target, source, env):
@@ -144,6 +162,9 @@ def generate_setup_py(target, source, env):
     os.chdir(outdir)
     try:
         setuptools.sandbox.run_setup('setup.py', ['-q', 'clean', 'sdist'])
-        setuptools.sandbox.run_setup('setup.py', ['-q', 'clean', 'bdist_wheel'])
+        if "python_universal" in tile.settings:
+            setuptools.sandbox.run_setup('setup.py', ['-q', 'clean', 'bdist_wheel', '--universal'])
+        else:
+            setuptools.sandbox.run_setup('setup.py', ['-q', 'clean', 'bdist_wheel'])
     finally:
         os.chdir(curr)

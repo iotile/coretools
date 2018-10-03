@@ -38,10 +38,10 @@ def build_summary_cmd(target, source, env):
         for targ, tests in viewitems(targets):
             num_tests = len(tests)
             results = [test_passed(x[1]) for x in tests]
-            tagged_tests = zip(tests, results)
+            tagged_tests = list(zip(tests, results))
 
-            failed = [x for x in tagged_tests if x[1] == False]
-            passed = [x for x in tagged_tests if x[1] == True]
+            failed = [x for x in tagged_tests if x[1] is False]
+            passed = [x for x in tagged_tests if x[1] is True]
 
             num_passed = len(passed)
 

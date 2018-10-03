@@ -53,4 +53,4 @@ class ParsedCFile(object):
         visitor = FunctionDefinitionRecorder()
         visitor.visit(self.ast)
 
-        return filter(criterion, visitor.defined_functions)
+        return list(filter(criterion, visitor.defined_functions))
