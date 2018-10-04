@@ -153,8 +153,6 @@ class CloudUploader(IOTileApp):
                 if index <= 0xFF:
                     self.logger.info("Acknowledging highest ID %d for streamer %d", last_id, index)
                     self._ack_streamer(index, last_id)
-                else:
-                    raise ArgumentError("Streamer Index is Out of Range.", index=index)
         else:
             self.logger.info("Not acknowledging readings from cloud per user request")
 

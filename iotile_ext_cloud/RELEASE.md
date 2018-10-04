@@ -2,6 +2,10 @@
 
 All major changes in each released version of the iotile-ext-cloud plugin are listed here.
 
+## 0.5.3
+
+- Remove raised exception preventing uploading of data in the event the streamer index is too big.
+
 ## 0.5.2
 
 - Set max report size to max in cloud uploader so that chopping of reports is disabled. 
