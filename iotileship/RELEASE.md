@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileShip are listed here.
 
+## 0.1.4
+
+- Add SyncRTCStep to set the RTC to current UTC time.
+
 ## 0.1.3
 
 - Add connect_direct as HardwareManagerResource RESOURCE_ARG_SCHEMA optional argument.

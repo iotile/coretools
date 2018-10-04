@@ -35,6 +35,7 @@ setup(
             'WaitStep           = iotile.ship.actions.wait_step:WaitStep',
             'PipeSnippetStep    = iotile.ship.actions.pipe_snippet_step:PipeSnippetStep',
             'SyncCloudStep      = iotile.ship.actions.sync_cloud_step:SyncCloudStep',
+            'SyncRTCStep        = iotile.ship.actions.sync_rtc_step:SyncRTCStep',
             'VerifyDeviceStep   = iotile.ship.actions.verify_device_step:VerifyDeviceStep',
             'SendOTAScriptStep  = iotile.ship.actions.send_ota_script_step:SendOTAScriptStep'
         ],
