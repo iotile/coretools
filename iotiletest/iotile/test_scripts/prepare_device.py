@@ -4,6 +4,8 @@ import sys
 import json
 import os.path
 import imp
+from builtins import range
+from builtins import input
 from iotile.core.exceptions import IOTileException
 from iotile.core.hw.hwmanager import HardwareManager
 
@@ -55,23 +57,23 @@ def main():
         start = int(start, 16)
         end = int(end, 16)
 
-        devices.extend([('uuid', x) for x in xrange(start, end+1)])
+        devices.extend([('uuid', x) for x in range(start, end+1)])
 
     try:
         with HardwareManager(port=args.port) as hw:
             for conntype, dev in devices:
-                for i in xrange(0, args.max_attempts):
+                for i in range(0, args.max_attempts):
                     try:
                         print("Configuring device %s identified by %s" % (str(dev), conntype))
                         configure_device(hw, conntype, dev, script, config)
                         break
-                    except IOTileException, exc:
+                    except IOTileException as exc:
                         print("--> Error on try %d: %s" % (i+1, str(exc)))
                         continue
 
                 success.append((conntype, dev))
                 if args.pause:
-                    raw_input("--> Waiting for <return> before processing next device")
+                    input("--> Waiting for <return> before processing next device")
     except KeyboardInterrupt:
         print("Break received, cleanly exiting...")
 
