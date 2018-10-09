@@ -7,7 +7,7 @@ from iotile.cloud.cloud import IOTileCloud
 from iotile.core.utilities.typedargs import param
 from iotile.core.exceptions import ArgumentError
 from iotile_cloud.api.connection import Api
-
+from builtins import input
 
 @param("username", "string", desc="IOTile cloud username")
 @param("password", "string", desc="IOTile cloud password")
@@ -42,7 +42,7 @@ def link_cloud(self, username=None, password=None, device_id=None):
     domain = self.get('cloud:server')
 
     if username is None:
-        username = raw_input("Please enter your iotile.cloud username: ")
+        username = input("Please enter your iotile.cloud username: ")
 
     if password is None:
         password = getpass.getpass('Please enter the iotile.cloud password for %s: ' % username)
