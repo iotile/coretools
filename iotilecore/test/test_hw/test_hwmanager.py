@@ -39,5 +39,6 @@ class TestHardwareManager(unittest.TestCase):
             uuid_to_slug('a')
 
         assert uuid_to_slug(1) == 'd--0000-0000-0000-0001'
-        assert uuid_to_slug(640000) == 'd--0000-0000-0009-c400'
+        assert uuid_to_slug(0x9c400) == 'd--0000-0000-0009-c400'
+        assert uuid_to_slug(0xffffffff) == 'd--0000-0000-ffff-ffff'
 
