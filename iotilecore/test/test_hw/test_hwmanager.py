@@ -38,6 +38,12 @@ class TestHardwareManager(unittest.TestCase):
         with pytest.raises(ArgumentError):
             uuid_to_slug('a')
 
+        with pytest.raises(ArgumentError):
+            uuid_to_slug(-1)
+
+        with pytest.raises(ArgumentError):
+            uuid_to_slug(0xffffffff)
+
         assert uuid_to_slug(1) == 'd--0000-0000-0000-0001'
         assert uuid_to_slug(0x9c400) == 'd--0000-0000-0009-c400'
         assert uuid_to_slug(0x0fffffff) == 'd--0000-0000-0fff-ffff'

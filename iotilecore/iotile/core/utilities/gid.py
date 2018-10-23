@@ -14,4 +14,8 @@ def uuid_to_slug(id):
     if not isinstance(id, int):
         raise ArgumentError("Invalid id that is not an integer", id=id)
 
+    if id < 0 or id > 0x7fffffff:
+        # For now, limiting support to a signed integer (which on some platforms, can be 32bits)
+        raise ArgumentError("Integer should be a positive number and smaller than 0x7fffffff", id=id)
+
     return '--'.join(['d', int64gid(id)])
