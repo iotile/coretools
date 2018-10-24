@@ -33,6 +33,7 @@ from iotile.core.hw.transport.adapterstream import AdapterCMDStream
 from iotile.core.dev.config import ConfigManager
 from iotile.core.hw.debug import DebugManager
 from iotile.core.utilities.linebuffer_ui import LinebufferUI
+from iotile.core.utilities.gid import uuid_to_slug
 
 from .proxy import TileBusProxyObject
 from .app import IOTileApp
@@ -608,7 +609,7 @@ class HardwareManager:
 
             if blacklist is not None and whitelist is None and stream in blacklist:
                 return None
-            
+
             return stream
 
         if not self.stream.connected:
@@ -867,13 +868,18 @@ class HardwareManager:
 
         devices = self.stream.scan(wait=wait)
 
+        for device in devices:
+            # Add a Device Slug for user convenience
+            if 'uuid' in device:
+                device['slug'] = uuid_to_slug(device['uuid'])
+
         if sort is not None:
             devices.sort(key=lambda x: x[sort], reverse=reverse)
 
         if limit is not None:
             devices = devices[:limit]
 
-        #FIXME: Use dictionary format in bled112stream to document information returned about devices
+        # FIXME: Use dictionary format in bled112stream to document information returned about devices
         return devices
 
     def get_proxy(self, short_name):
