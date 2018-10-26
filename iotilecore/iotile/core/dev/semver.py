@@ -226,6 +226,10 @@ class SemanticVersion(object):
         template = prerelease_templates[self.release_type]
         return template % (self.major, self.minor, self.patch, self.prerelease_number)
 
+
+    def __ne__(self, other):
+        return self._ordering_tuple() != other._ordering_tuple()
+
     def __eq__(self, other):
         return self._ordering_tuple() == other._ordering_tuple()
 
@@ -375,10 +379,8 @@ class SemanticVersionRange(object):
             disjuncts = [[conj]]
 
         #Check for ^X.Y.Z
-        elif range_string[0] in('^', '>='):
+        elif range_string[0] == '^':
             ver = range_string[1:]
-            if range_string[0] == '>=':
-                ver = range_string[2:]
 
             try:
                 ver = SemanticVersion.FromString(ver)

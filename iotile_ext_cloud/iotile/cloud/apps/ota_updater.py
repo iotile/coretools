@@ -1,13 +1,14 @@
 import logging
-import urllib.request
 from datetime import datetime
 import operator
 
 from iotile.core.hw import IOTileApp
+from iotile.core.hw.update import UpdateScript
 from iotile.core.dev.semver import SemanticVersion
 from iotile.cloud import IOTileCloud, device_id_to_slug
 from typedargs.annotate import docannotate, context
-
+from typedargs import iprint
+import requests
 
 op_map = {">=": operator.lt,
            "gteq": operator.lt,
@@ -26,11 +27,11 @@ def _download_ota_script(script_url):
     """Download the script from the cloud service and store to temporary file location"""
 
     try:
-        urllib.request.urlretrieve(script_url, "temp.trub")
-        return "temp.trub"
+        blob = requests.get(script_url, stream=True)
+        return blob
     except Exception as e:
-        print("Failed to download OTA script")
-        print(e)
+        iprint("Failed to download OTA script")
+        iprint(e)
         return False
 
 
@@ -83,37 +84,70 @@ class OtaUpdater(IOTileApp):
         Checks the cloud for an available OTA update and applies it to the device.
         Informs the cloud of the attempt afterwards
         Gives some diagnostic info to the user as process goes
-
-        :return: None
         """
 
         script = self.check_cloud_for_script()
         if not script:
-            print("no OTA pending")
+            iprint("no OTA pending")
             return
 
-        print("Applying deployment ", script[0])
+        iprint("Applying deployment " + script[0])
 
-        print("Downloading script")
-        print(script[1])
-        filename = _download_ota_script(script[1])
+        iprint("Downloading script")
+        iprint(script[1])
+        blob = _download_ota_script(script[1])
 
-        if not filename:
-            print("Download of script failed for some reason")
+        if not blob:
+            iprint("Download of script failed for some reason")
             return
 
-        print("Applying script")
-        status = self._apply_ota_update(filename=filename)
-
-        if status is False:
-            print("OTA update application failed")
-
-        print("Informing cloud of OTA status")
+        iprint("Applying script")
         try:
-            self._inform_cloud(script[0], self.dev_slug, status)
-        except Exception as e:
-            print("Failed to inform the cloud of an update attempt -- please report the error:")
-            print(e)
+            self._apply_ota_update(blob=blob)
+            self._inform_cloud(script[0], self.dev_slug, True)
+        except Exception:
+            self._inform_cloud(script[0], self.dev_slug, False)
+            raise
+
+
+    def _check_criteria(self, criterion):
+
+        for criteria in criterion:
+            text, opr, value = criteria.split(":")
+            if text == 'os_tag':
+                if self.os_info[0] != int(value):
+                    iprint("os_tag doesn't match: " + str(self.os_info[0]) + " != " + value)
+                    return False
+
+            elif text == 'app_tag':
+                if self.app_info[0] != int(value):
+                    iprint("app_tag doesn't match: " + str(self.app_info[0]) + " != " + value)
+                    return False
+
+            elif text == 'os_version':
+                ver = SemanticVersion.FromString(value)
+                if op_map[opr](self.os_info[1], ver):
+                    iprint("os_version not compatible: " + str(self.os_info[1]) + "not" + opr + value)
+                    return False
+
+            elif text == 'app_version':
+                ver = SemanticVersion.FromString(value)
+                if op_map[opr](self.app_info[1], ver):
+                    iprint("app_version not compatible: " + str(self.app_info[1]) + "not" + opr +value)
+                    return False
+
+            elif text == 'controller_hw_tag':
+                # TODO : figure out what the check here should be
+                if opr not in ('eq', '=='):
+                    iprint("op needed: eq, op seen: " + opr)
+                    return False
+                if self._con.hardware_version() != value:
+                    return False
+            else:
+                iprint("Unrecognized selection criteria tag : " + text)
+                return None
+
+        return True
 
     def check_cloud_for_script(self):
         """Checks OTA device API for latest deployment that matches the device target settings"""
@@ -122,66 +156,34 @@ class OtaUpdater(IOTileApp):
         if not requests['deployments']:
             return
 
-        latest_request = requests['deployments'][-1]
-        print(latest_request)
+        request_to_apply = None
+        oldest_date = datetime.strptime('9999-12-31', "%Y-%m-%d")
 
-        if latest_request['completed_on'] is not None:
-            print("latest request completed")
+        for deployment in requests['deployments']:
+            if (deployment['completed_on'] is None
+                    and deployment['released_on'] is not None
+                    and datetime.strptime(deployment['released_on'], '%Y-%m-%d') < oldest_date
+                    and self._check_criteria(deployment['selection_criteria'])):
+
+                request_to_apply = deployment
+                oldest_date = datetime.strptime(deployment['released_on'], '%Y-%m-%d')
+
+        if not request_to_apply:
             return False
 
-        for criteria in latest_request['selection_criteria']:
-            text, operator, value = criteria.split(":")
-
-            if text == 'os_tag':
-                if self.os_info[0] != int(value):
-                    print("os_tag doesn't match: ", str(self.os_info[0]), " != ", value)
-                    return False
-
-            elif text == 'app_tag':
-                if self.app_info[0] != int(value):
-                    print("app_tag doesn't match: ", str(self.app_info[0]), " != ", value)
-                    return False
-
-            elif text == 'os_version':
-                ver = SemanticVersion.FromString(value)
-                if op_map[operator](self.os_info[1], ver):
-                    return False
-
-            elif text == 'app_version':
-                ver = SemanticVersion.FromString(value)
-                if op_map[operator](self.app_info[1], ver):
-                    return False
-
-            elif text == 'controller_hw_tag':
-                #TODO : figure out what the check here should be
-                if operator not in ('eq', '=='):
-                    print("op needed: eq, op seen: ", operator)
-                    return False
-                if self._con.hardware_version() != value:
-                    return False
-            else:
-                print("Unrecognized selection criteria tag : ", text)
-                return False
-
-        script = latest_request['script']
-        deployment_id = latest_request['id']
+        script = request_to_apply['script']
+        deployment_id = request_to_apply['id']
         script_details = self._cloud.api.ota.script(script).file.get()
         script_url = script_details['url']
         return deployment_id, script_url
 
-    def _apply_ota_update(self, filename="temp.trub"):
+    def _apply_ota_update(self, blob):
         """"Attempt to apply script to device using the device_updater app"""
 
         updater = self._hw.app(name='device_updater')
-        try:
-            updater.load_script(filename, confirm=False)
-            return True
-        except Exception as e:
-            print("Update failed to apply to device")
-            print(e)
-            return False
+        update_script = UpdateScript.FromBinary(blob)
+        updater.run_script(update_script)
 
-    @docannotate
     def _inform_cloud(self, deployment_id, device_slug, attempt_result_bool):
         """ Inform cloud of results """
 
