@@ -2,6 +2,7 @@
 
 from iotile.core.hw.virtual import VirtualIOTileDevice
 from .reference_controller import ReferenceController
+from past.builtins import basestring
 
 
 class ReferenceDevice(VirtualIOTileDevice):
@@ -20,7 +21,7 @@ class ReferenceDevice(VirtualIOTileDevice):
     def __init__(self, args):
         iotile_id = args.get('iotile_id', 1)
 
-        if isinstance(iotile_id, str):
+        if isinstance(iotile_id, basestring):
             iotile_id = int(iotile_id, 16)
 
         super(ReferenceDevice, self).__init__(iotile_id, 'refcn1')
