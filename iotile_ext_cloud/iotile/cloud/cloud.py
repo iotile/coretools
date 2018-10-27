@@ -19,6 +19,8 @@ from iotile.core.exceptions import ArgumentError, ExternalError, DataError
 from iotile.core.utilities.typedargs import context, param, return_type, annotated, type_system
 from .utilities import device_id_to_slug, fleet_id_to_slug
 
+import json
+
 Acknowledgement = namedtuple("Acknowledgement", ["index", "ack", "selector"])
 
 @context("IOTileCloud")
@@ -319,23 +321,23 @@ class IOTileCloud(object):
 
         if isinstance(report, SignedListReport):
             file_ext = ".bin"
+            payload = {'file': ("report" + file_ext, BytesIO(report.encode()))}
         elif isinstance(report, FlexibleDictionaryReport):
-            file_ext = ".mp"
+            file_ext = ".json"
+            payload = {'file': ("report" + file_ext, BytesIO(json.dumps(report.asdict())))}
         else:
             raise ArgumentError("Unknown report format passed to upload_report", classname=report.__class__.__name__, report=report)
 
         timestamp = '{}'.format(report.received_time.isoformat())
-        payload = {'file': ("report" + file_ext, BytesIO(report.encode()))}
-
-        resource = self.api.streamer.report
 
         headers = {}
         authorization_str = '{0} {1}'.format(self.token_type, self.token)
         headers['Authorization'] = authorization_str
 
+        resource = self.api.streamer.report
         resp = requests.post(resource.url(), files=payload, headers=headers, params={'timestamp': timestamp})
-
         count = resource._process_response(resp)['count']
+
         return count
 
     def highest_acknowledged(self, device_id, streamer):

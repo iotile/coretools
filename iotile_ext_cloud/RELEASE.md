@@ -2,6 +2,10 @@
 
 All major changes in each released version of the iotile-ext-cloud plugin are listed here.
 
+## 0.5.4
+
+- Switch upload_report to use JSON instead of msgpack for uploading waveforms.
+
 ## 0.5.3
 
 - Remove raised exception preventing uploading of data in the event the streamer index is too big.
