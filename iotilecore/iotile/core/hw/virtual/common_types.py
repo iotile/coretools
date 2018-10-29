@@ -68,6 +68,10 @@ def rpc(address, rpc_id, arg_format, resp_format=None):
                 raise RPCInvalidArgumentsError(str(exc), arg_format=arg_format, payload=binascii.hexlify(payload))
 
             resp = func(self, *args)
+
+            if resp is None:
+                resp = []
+
             if resp_format is not None:
                 try:
                     return struct.pack("<{}".format(resp_format), *resp)
