@@ -155,7 +155,7 @@ class DebugManager(object):
 
     @docannotate
     def track_changes(self, enabled=True):
-        """Start of stop tracking all internal state changes made to an emulated device.
+        """Start or stop tracking all internal state changes made to an emulated device.
 
         This debug routine is only supported for emulated devices and will
         causes the device to create an internal log of all state changes.
