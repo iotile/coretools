@@ -60,3 +60,37 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
                 raise DataError("Invalid dumped state, tile does not address", address=address)
 
             tile.restore_state(tile_state)
+
+    def load_metascenario(self, scenario_list):
+        """Load one or more scenarios from a list.
+
+        Each entry in scenario_list should be a dict containing at least a
+        name key and an optional tile key and args key.  If tile is present
+        and its value is not None, the scenario specified will be loaded into
+        the given tile only.  Otherwise it will be loaded into the entire
+        device.
+
+        If the args key is specified is will be passed as keyword arguments
+        to load_scenario.
+
+        Args:
+            scenario_list (list): A list of dicts for each scenario that should
+                be loaded.
+        """
+
+        for scenario in scenario_list:
+            name = scenario.get('name')
+            if name is None:
+                raise DataError("Scenario in scenario list is missing a name parameter", scenario=scenario)
+
+            tile_address = scenario.get('tile')
+            args = scenario.get('args', {})
+
+            dest = self
+            if tile_address is not None:
+                dest = self._tiles.get(tile_address)
+
+                if dest is None:
+                    raise DataError("Attempted to load a scenario into a tile address that does not exist", address=tile_address, valid_addresses=list(self._tiles))
+
+            dest.load_scenario(name, **args)

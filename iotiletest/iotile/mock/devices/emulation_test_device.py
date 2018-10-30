@@ -30,6 +30,8 @@ class TestEmulatedDevice(EmulatedDevice):
         self.manual_counter = 0
         self._tracked_properties.add('tracked_counter')
 
+        self.register_scenario('loaded_counters', self.loaded_counter_scenario)
+
     @rpc(8, 0x0004, "", "H6sBBBB")
     def controller_name(self):
         """Return the name of the controller as a 6 byte string
@@ -87,6 +89,17 @@ class TestEmulatedDevice(EmulatedDevice):
 
         self.tracked_counter = state.get('tracked_counter', 0)
         self.manual_counter = state.get('manual_counter', 0)
+
+    def loaded_counter_scenario(self, tracked_counter, manual_counter):
+        """Load in the values of both counters.
+
+        Args:
+            tracked_counter (int): The value of tracked_counter
+            manual_counter (int): The value of manual_counter
+        """
+
+        self.tracked_counter = tracked_counter
+        self.manual_counter = manual_counter
 
 
 

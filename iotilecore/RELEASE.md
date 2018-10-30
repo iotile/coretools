@@ -2,6 +2,13 @@
 
 All major changes in each released version of IOTileCore are listed here.
 
+## HEAD
+
+- Add support for EmulatedDevice and EmulatedTile classes.  These classes allow
+  for the creation of virtual devices that emulate physical devices with support
+  for state snapshotting to save/load device state and test scenarios to allow
+  easy creation of complex device states for integration testing.
+
 ## 3.22.13
 
 - Add "watch_reports" command, which enables a user to live view reports from the connected device

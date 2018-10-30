@@ -8,14 +8,17 @@ from iotile.core.exceptions import ArgumentError
 class EmulationMixin(object):
     """Mixin class to add property change tracking and state loading to a class.
 
-    This mixin installs a __setattr__ overload that will track whenever
-    a write happens to a property contained in _tracked_properties,
-    recording the property name and its value.
+    This mixin installs a __setattr__ overload that will track whenever a
+    write happens to a property contained in _tracked_properties, recording
+    the property name and its value.
 
-    It also adds the ability to save and load the state of the emulated
-    object so that you can come back to exactly where you were in the
-    future and it adds the concept of scenarios, which are preloaded
-    states that can be slightly customized.
+    It also adds the ability to save and load the state of the emulated object
+    so that you can come back to exactly where you were in the future and it
+    adds the concept of scenarios, which are preloaded states that can be
+    slightly customized with keyword arguments.
+
+    This base class provides standard emulation behavior to both
+    EmulatedDevice and EmulatedTile.
 
     Args:
         address (int): The tile address if we have one, otherwise None
@@ -83,7 +86,7 @@ class EmulationMixin(object):
         state = self.dump_state()
 
         with open(out_path, "w") as outfile:
-            json.dump(outfile, state, indent=4)
+            json.dump(state, outfile, indent=4)
 
     def load_state(self, in_path):
         """Load the current state of this emulated object from a file.
@@ -95,7 +98,7 @@ class EmulationMixin(object):
                 to load.
         """
 
-        with open(in_path, "w") as infile:
+        with open(in_path, "r") as infile:
             state = json.load(infile)
 
         self.restore_state(state)
@@ -122,3 +125,28 @@ class EmulationMixin(object):
             raise ArgumentError("Unknown scenario %s" % scenario_name, known_scenarios=list(self._known_scenarios))
 
         scenario(**kwargs)
+
+    def register_scenario(self, scenario_name, handler):
+        """Register a scenario handler for this object.
+
+        Scenario handlers are callable functions with no positional arguments
+        that can be called by name with the load_scenario function and should
+        prepare the emulated object into a known state.  The purpose of a
+        scenario is to make it easy to get a device into a specific state for
+        testing purposes that may otherwise be difficult or time consuming to
+        prepare on the physical, non-emulated device.
+
+        Args:
+            scenario_name (str): The name of this scenario that can be passed to
+                load_scenario later in order to invoke the scenario.
+            handler (callable): A callable function that takes no positional
+                arguments and can prepare this object into the given scenario
+                state.  It may take required or optional keyword arguments that
+                may be passed to `load_scenario` if needed.
+        """
+
+        if scenario_name in self._known_scenarios:
+            raise ArgumentError("Attempted to add the same scenario name twice", scenario_name=scenario_name,
+                                previous_handler=self._known_scenarios[scenario_name])
+
+        self._known_scenarios[scenario_name] = handler
