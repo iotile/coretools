@@ -2,6 +2,13 @@
 
 All major changes in each released version of iotile-sensorgraph are listed here.
 
+## HEAD
+
+- Move ReferenceDevice and ReferenceController to EmulatedDevice and
+  EmulatedTile subclasses and begin refactor to split out individual controller
+  subsystems to allow for the rest of the reference IOTile controller
+  functionality to be added.
+
 ## 0.7.2
 
 - Add support for broadcast streamers that indicate to the receiving tile that

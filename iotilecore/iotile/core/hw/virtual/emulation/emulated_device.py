@@ -55,9 +55,10 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
         tile_states = state.get('tile_states', {})
 
         for address, tile_state in viewitems(tile_states):
+            address = int(address)
             tile = self._tiles.get(address)
             if tile is None:
-                raise DataError("Invalid dumped state, tile does not address", address=address)
+                raise DataError("Invalid dumped state, tile does not exist at address %d" % address, address=address)
 
             tile.restore_state(tile_state)
 
