@@ -10,6 +10,7 @@ import os.path
 import os
 import subprocess
 import tempfile
+import json
 from typedargs.annotate import context, docannotate
 from iotile.core.exceptions import ArgumentError, ExternalError
 from iotile.core.utilities.console import ProgressBar
@@ -50,11 +51,144 @@ class DebugManager(object):
             outfile.write(ram_contents)
 
     @docannotate
+    def save_snapshot(self, out_path):
+        """Save the current state of an emulated device.
+
+        This debug routine is only supported for emulated devices that
+        have a concept of taking a snapshot of their internal state.
+
+        For those devices this will produce a snapshot file that can
+        be used in a later call to load_snapshot() in order to reload
+        the exact same state.
+
+        Args:
+            out_path (path): The output path at which to save
+                the binary core dump.  This core dump consists
+                of the current contents of RAM for the device.
+        """
+
+        internal_state = self.dump_snapshot()
+
+        with open(out_path, "w") as outfile:
+            json.dump(internal_state, outfile, indent=4)
+
+    @docannotate
+    def load_snapshot(self, in_path):
+        """Load the current state of an emulated device.
+
+        This debug routine is only supported for emulated devices that
+        have a concept of restoring a snapshot of their internal state.
+
+        For those devices this method takes a path to a previously produced
+        snapshot file from a call to save_snapshot() and will load that
+        snapshot into the currently emulated device.
+
+        Args:
+            in_path (path): The output path at which to save
+                the binary core dump.  This core dump consists
+                of the current contents of RAM for the device.
+        """
+
+        with open(in_path, "r") as infile:
+            internal_state = json.load(infile)
+
+        self.restore_snapshot(internal_state)
+
+    def dump_snapshot(self):
+        """Get the current state of the emulated device.
+
+        This debug routine is only supported for emulated devices that
+        have a concept of taking a snapshot of their internal state.
+
+        For those devices this will return a snapshot dictionary with
+        the entire internal state of the device.
+
+        Returns:
+            dict: The internal snapshot of the device's current state.
+        """
+
+        return self._stream.debug_command('dump_state')
+
+    def restore_snapshot(self, snapshot):
+        """Restore a previous state snapshot from an emulated device.
+
+        Args:
+            snapshot (dict): A snapshot of the internal state of this
+                device previously obtained by calling dump_snapshot()
+        """
+
+        self._stream.debug_command('restore_state', {'snapshot': snapshot})
+
+    @docannotate
+    def open_scenario(self, scenario_path):
+        """Load a test scenario from a file into an emulated device.
+
+        This debug routine is only supported for emulated devices and will
+        cause the connected device to load one of its preconfigured test
+        scenarios.  If the scenario has arguments, the args dict
+        may be passed to configure it.
+
+        Args:
+            scenario_path (str): The path to a file containing the test
+                scenario details.
+        """
+
+        with open(scenario_path, "r") as infile:
+            scenario = json.load(infile)
+
+        self.load_scenario(scenario)
+
+    def load_scenario(self, scenario_data):
+        """Load the given test secnario onto an emulated device.
+
+        This debug routine is only supported for emulated devices and will
+        cause the connected device to load one of its preconfigured test
+        scenarios.  If the scenario has arguments, the args dict
+        may be passed to configure it.
+
+        Args:
+            scenario_data (list or dict): Either a dict describing the scenario
+                to be loaded or a list of such dicts that will all be loaded.
+        """
+
+        self._stream.debug_command('load_scenario', {'scenario': scenario_data})
+
+    @docannotate
+    def track_changes(self, enabled=True):
+        """Start of stop tracking all internal state changes made to an emulated device.
+
+        This debug routine is only supported for emulated devices and will
+        causes the device to create an internal log of all state changes.
+
+        This log can be dumped to a file by calling save_change(output_path).
+
+        Args:
+            enabled (bool): Whether we should enable (default) or disable tracking
+                changes.
+        """
+
+        self._stream.debug_command('track_changes', {'enabled': enabled})
+
+    @docannotate
+    def save_changes(self, out_path):
+        """Save all tracked changes made to an emulated device.
+
+        This debug routine is only supported for emulated devices and will
+        causes the device to save all internal state changes since track_changes
+        was called.
+
+        Args:
+            out_path (str): The output path where the change log should be saved.
+        """
+
+        self._stream.debug_command('dump_changes', {'path': out_path})
+
+    @docannotate
     def flash(self, in_path, file_format=None):
         """Flash a new firmware image to the attached chip.
 
         This flashing takes place over a debug interface and does not require
-        a working bootloader.  In particular, this routien is suitable for
+        a working bootloader.  In particular, this routine is suitable for
         initial board bring-up of a blank MCU.
 
         If an explicit format is not passed the following rules are used to
@@ -109,7 +243,7 @@ class DebugManager(object):
 
     @classmethod
     def _process_hex(cls, in_path):
-        """This function returns a list of base addresses and a list of the binary data 
+        """This function returns a list of base addresses and a list of the binary data
         for each segment.
         """
         ihex           = IntelHex(in_path)

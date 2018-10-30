@@ -1,15 +1,15 @@
-from future.utils import itervalues, viewitems
-import pkg_resources
 import json
 import os
 import traceback
 import imp
 import inspect
 import time
-from .adapter import DeviceAdapter
+from future.utils import itervalues, viewitems
+import pkg_resources
 from iotile.core.exceptions import ArgumentError
 from iotile.core.hw.virtual.virtualdevice import RPCInvalidIDError, TileNotFoundError, RPCNotFoundError, VirtualIOTileDevice
 from iotile.core.hw.reports import BroadcastReport
+from .adapter import DeviceAdapter
 
 
 class VirtualAdapterAsyncChannel(object):
@@ -114,6 +114,10 @@ class VirtualDeviceAdapter(DeviceAdapter):
                 config = None
 
             loaded_dev = self._load_device(name, config)
+
+            if not self._validate_device(loaded_dev):
+                raise ArgumentError("Device type cannot be loaded on this adapter", name=name)
+
             loaded_dev.start(VirtualAdapterAsyncChannel(self, loaded_dev.iotile_id))
             loaded_devs[loaded_dev.iotile_id] = loaded_dev
 
@@ -124,7 +128,21 @@ class VirtualDeviceAdapter(DeviceAdapter):
         self.set_config('probe_required', True)
         self.set_config('probe_supported', True)
 
-    def _find_device_script(self, script_path):
+    #pylint:disable=unused-argument;The name needs to remain without an _ for subclasses to override
+    @classmethod
+    def _validate_device(cls, device):
+        """Hook for subclases to ensure that only specific kinds of devices are loaded.
+
+        The default implementation just returns True, allowing all virtual devices.
+
+        Returns:
+            bool: Whether the virtual device is allowed to load.
+        """
+
+        return True
+
+    @classmethod
+    def _find_device_script(cls, script_path):
         """Import a virtual device from a file rather than an installed module
 
         script_path must point to a python file ending in .py that contains exactly one
@@ -463,6 +481,6 @@ class VirtualDeviceAdapter(DeviceAdapter):
         """
 
         for dev in itervalues(self.devices):
-                self._send_scan_event(dev)
+            self._send_scan_event(dev)
 
         callback(self.id, True, None)

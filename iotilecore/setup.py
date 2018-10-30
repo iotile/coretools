@@ -45,7 +45,8 @@ setup(
             'recorded = iotile.core.hw.transport.recordedstream:RecordedStream'
         ],
         'iotile.device_adapter': [
-            'virtual = iotile.core.hw.transport.virtualadapter:VirtualDeviceAdapter'
+            'virtual = iotile.core.hw.transport.virtualadapter:VirtualDeviceAdapter',
+            'emulated = iotile.core.hw.transport.emulatedadapter:EmulatedDeviceAdapter'
             ],
         'iotile.report_format': [
             'individual = iotile.core.hw.reports:IndividualReadingReport',
