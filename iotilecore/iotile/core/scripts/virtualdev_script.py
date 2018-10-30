@@ -1,17 +1,23 @@
-from future.utils import itervalues
+"""Entrypoint for virtual-device script that can serve a Virtual iotile device."""
+
+from __future__ import unicode_literals, print_function, absolute_import
 import argparse
-import pkg_resources
 import sys
 import logging
 import json
 import imp
 import os.path
 import inspect
-from iotile.core.hw.virtual.virtualdevice import VirtualIOTileDevice
+import pkg_resources
+from future.utils import itervalues
+from iotile.core.hw.virtual import VirtualIOTileDevice, EmulatedDevice, VirtualIOTileInterface
 
-def main():
-    """Serve access to a virtual IOTile device using a virtual iotile interface
-    """
+
+def main(argv=None):
+    """Serve access to a virtual IOTile device using a virtual iotile interface."""
+
+    if argv is None:
+        argv = sys.argv[1:]
 
     list_parser = argparse.ArgumentParser(add_help=False)
     list_parser.add_argument('-l', '--list', action='store_true', help="List all known installed interfaces and devices and then exit")
@@ -22,8 +28,12 @@ def main():
     parser.add_argument('device', help="The name of the virtual device to create")
     parser.add_argument('-c', '--config', help="An optional JSON config file with arguments for the interface and device")
     parser.add_argument('-l', '--list', action='store_true', help="List all known installed interfaces and devices and then exit")
+    parser.add_argument('-n', '--scenario', help="Load a test scenario from the given file")
+    parser.add_argument('-s', '--state', help="Load a given state into the device before starting to serve it.  Only works with emulated devices.")
+    parser.add_argument('-d', '--dump', help="Dump the device's state when we exit the program.  Only works with emulated devices.")
+    parser.add_argument('-t', '--track', help="Track all changes to the device's state.  Only works with emulated devices.")
 
-    args, rest = list_parser.parse_known_args()
+    args, _rest = list_parser.parse_known_args(argv)
 
     if args.list:
         #List out known virtual interfaces
@@ -37,7 +47,7 @@ def main():
 
         return 0
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     config = {}
     iface = None
@@ -45,9 +55,36 @@ def main():
         with open(args.config, "r") as conf_file:
             config = json.load(conf_file)
 
+    started = False
+    device = None
+    stop_immediately = args.interface == 'null'
     try:
         iface = instantiate_interface(args.interface, config)
         device = instantiate_device(args.device, config)
+
+        if (args.state or args.track or args.dump or args.scenario) and not isinstance(device, EmulatedDevice):
+            print("ERROR: you can only use --state, --track or --dump if you are serving an emulated device.")
+            return 1
+
+        if args.state is not None:
+            print("Loading device state from file %s" % args.state)
+            device.load_state(args.state)
+
+        if args.scenario is not None:
+            print("Loading scenario from file %s" % args.scenario)
+
+            with open(args.scenario, "r") as infile:
+                scenario = json.load(infile)
+
+            # load_metascenario expects a list of scenarios even when there is only one
+            if isinstance(scenario, dict):
+                scenario = [scenario]
+
+            device.load_metascenario(scenario)
+
+        if args.track is not None:
+            print("Tracking all state changes to device")
+            device.state_history.enable()
 
         handler = logging.StreamHandler()
         handler.setFormatter(logging.Formatter('%(asctime)s [AUDIT %(event_name)s] %(message)s'))
@@ -56,18 +93,33 @@ def main():
         iface.audit_logger.setLevel(logging.INFO)
 
         iface.start(device)
+        started = True
 
         print("Starting to serve virtual IOTile device")
 
-        #We need to periodically process events that are queued up in the interface
+        # We need to periodically process events that are queued up in the interface
         while True:
             iface.process()
+
+            if stop_immediately:
+                break
 
     except KeyboardInterrupt:
         print("Break received, cleanly exiting...")
     finally:
-        if iface is not None:
+        if iface is not None and started:
             iface.stop()
+
+        if args.dump is not None and device is not None:
+            print("Dumping final device state to %s" % args.dump)
+            device.save_state(args.dump)
+
+        if args.track is not None and device is not None:
+            print("Saving state history to file %s" % args.track)
+            device.state_history.dump(args.track)
+
+    return 0
+
 
 def import_device_script(script_path):
     """Import a virtual device from a file rather than an installed module
@@ -114,6 +166,7 @@ def import_device_script(script_path):
 
     return devs[0]
 
+
 def instantiate_device(virtual_dev, config):
     """Find a virtual device by name and instantiate it
 
@@ -143,6 +196,7 @@ def instantiate_device(virtual_dev, config):
     print("Could not find an installed virtual device with the given name: {}".format(virtual_dev))
     sys.exit(1)
 
+
 def instantiate_interface(virtual_iface, config):
     """Find a virtual interface by name and instantiate it
 
@@ -156,13 +210,17 @@ def instantiate_interface(virtual_iface, config):
         VirtualInterface: The instantiated subclass of VirtualInterface
     """
 
+    # Allow the null virtual interface for testing
+    if virtual_iface == 'null':
+        return VirtualIOTileInterface()
+
     conf = {}
     if 'interface' in config:
         conf = config['interface']
 
     for entry in pkg_resources.iter_entry_points('iotile.virtual_interface', name=virtual_iface):
-        dev = entry.load()
-        return dev(conf)
+        interface = entry.load()
+        return interface(conf)
 
     print("Could not find an installed virtual interface with the given name: {}".format(virtual_iface))
     sys.exit(1)
