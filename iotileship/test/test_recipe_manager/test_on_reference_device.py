@@ -47,8 +47,8 @@ def test_ota_script(recipe_fixture):
 
     recipe, hw, device = recipe_fixture
 
-    assert device.controller.script_error is None
-    assert len(device.controller.parsed_script.records) == 2
+    assert device.controller.remote_bridge.script_error is None
+    assert len(device.controller.remote_bridge.parsed_script.records) == 2
 
 
 @pytest.mark.parametrize("recipe_fixture", [('archived_ota')], indirect=True)
@@ -57,5 +57,5 @@ def test_archived_script(recipe_fixture):
 
     recipe, hw, device = recipe_fixture
 
-    assert device.controller.script_error is None
-    assert len(device.controller.parsed_script.records) == 2
+    assert device.controller.remote_bridge.script_error is None
+    assert len(device.controller.remote_bridge.parsed_script.records) == 2
