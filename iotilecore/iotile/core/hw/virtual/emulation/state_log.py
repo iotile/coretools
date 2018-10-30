@@ -88,7 +88,7 @@ class EmulationStateLog(object):
         """
 
         # See https://stackoverflow.com/a/3348664/9739119 for why this is necessary
-        if sys.version < (3, 0, 0):
+        if sys.version_info[0] < 3:
             mode = "wb"
         else:
             mode = "w"
