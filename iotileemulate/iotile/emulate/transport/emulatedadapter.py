@@ -6,8 +6,8 @@ into the emulated devices.
 """
 
 import logging
+from iotile.core.hw.transport.virtualadapter import VirtualDeviceAdapter
 from ..virtual import EmulatedDevice
-from .virtualadapter import VirtualDeviceAdapter
 
 
 class EmulatedDeviceAdapter(VirtualDeviceAdapter):

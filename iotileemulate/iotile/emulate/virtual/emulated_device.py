@@ -3,8 +3,8 @@
 from __future__ import unicode_literals, absolute_import, print_function
 from future.utils import viewitems
 from iotile.core.exceptions import DataError
-from ..virtualdevice import VirtualIOTileDevice
-from ..common_types import pack_rpc_payload, unpack_rpc_payload
+from iotile.core.hw.virtual import VirtualIOTileDevice
+from iotile.core.hw.virtual.common_types import pack_rpc_payload, unpack_rpc_payload
 from .emulation_mixin import EmulationMixin
 from .state_log import EmulationStateLog
 

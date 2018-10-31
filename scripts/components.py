@@ -5,6 +5,7 @@ comp_names = {
     'iotiletest': ['iotile-test', 'iotiletest', True],
     'iotilegateway': ['iotile-gateway', 'iotilegateway', True],
     'iotilesensorgraph': ['iotile-sensorgraph', 'iotilesensorgraph', True],
+    'iotileemulate': ['iotile-emulate', 'iotileemulate', True],
     'iotileship' : ['iotile-ship', 'iotileship', True],
     'iotile_transport_bled112': ['iotile-transport-bled112', 'transport_plugins/bled112', True],
     'iotile_transport_awsiot': ['iotile-transport-awsiot', 'transport_plugins/awsiot', False],

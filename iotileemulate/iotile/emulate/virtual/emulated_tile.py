@@ -8,8 +8,8 @@ import logging
 import threading
 from future.utils import viewitems
 from iotile.core.exceptions import ArgumentError
-from ..virtualtile import VirtualTile
-from ..common_types import tile_rpc
+from iotile.core.hw.virtual import VirtualTile
+from iotile.core.hw.virtual import tile_rpc
 from .emulated_device import EmulatedDevice
 from .emulation_mixin import EmulationMixin
 

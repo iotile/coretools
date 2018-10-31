@@ -1,7 +1,7 @@
 """Tests of various utilities used in IOTileDevice emulation."""
 
 import pytest
-from iotile.core.hw.virtual.emulation.emulated_tile import parse_size_name
+from iotile.emulate.virtual.emulated_tile import parse_size_name
 
 
 @pytest.mark.parametrize("type_name, return_tuple", [

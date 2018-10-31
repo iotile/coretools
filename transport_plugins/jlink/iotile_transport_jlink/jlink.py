@@ -42,7 +42,7 @@ class JLinkAdapter(DeviceAdapter):
         self._control_thread = None
         self._connection_id = None
         self.jlink = None
-        
+
         self._parse_port(port)
 
         if on_scan is not None:
@@ -86,7 +86,7 @@ class JLinkAdapter(DeviceAdapter):
 
     def _parse_conn_string(self, conn_string):
         """Parse a connection string passed from 'debug -c' or 'connect_direct'
-            Returns True if any settings changed in the debug port, which 
+            Returns True if any settings changed in the debug port, which
             would require a jlink disconnection """
         disconnection_required = False
 
@@ -95,13 +95,13 @@ class JLinkAdapter(DeviceAdapter):
             if self._default_device_info is not None and self._device_info != self._default_device_info:
                 disconnection_required = True
                 self._device_info = self._default_device_info
-        
+
         if conn_string is None or len(conn_string) == 0:
             return disconnection_required
 
         if '@' in conn_string:
             raise ArgumentError("Configuration files are not yet supported as part of a connection string argument", conn_string=conn_string)
-        
+
         pairs = conn_string.split(';')
         for pair in pairs:
             name, _, value = pair.partition('=')
@@ -125,7 +125,7 @@ class JLinkAdapter(DeviceAdapter):
                 if self._mux_func is not None:
                     if self._channel != int(value):
                         self._channel = int(value)
-                        disconnection_required = True               
+                        disconnection_required = True
                 else:
                     print("Warning: multiplexing architecture not selected, channel will not be set")
         return disconnection_required
@@ -263,7 +263,7 @@ class JLinkAdapter(DeviceAdapter):
                 connection has succeeded or failed
         """
         self._try_connect(connection_string)
-        
+
         def _on_finished(_name, control_info, exception):
             if exception is not None:
                 callback(connection_id, self.id, False, str(exception))

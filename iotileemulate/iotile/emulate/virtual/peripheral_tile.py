@@ -1,7 +1,7 @@
 """Base class for all emulated non-controller tiles."""
 
 import threading
-from ..common_types import tile_rpc
+from iotile.core.hw.virtual import tile_rpc
 from .emulated_tile import EmulatedTile
 
 
