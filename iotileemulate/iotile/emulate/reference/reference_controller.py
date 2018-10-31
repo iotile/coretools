@@ -2,7 +2,8 @@
 
 from __future__ import print_function, absolute_import, unicode_literals
 import logging
-from iotile.core.hw.virtual import EmulatedTile, tile_rpc
+from iotile.core.hw.virtual import tile_rpc
+from ..virtual import EmulatedTile
 from iotile.core.exceptions import ArgumentError
 from .feature_mixins import RemoteBridgeMixin, TileManagerMixin
 

@@ -4,7 +4,7 @@ import base64
 from future.utils import viewitems
 from past.builtins import basestring
 from iotile.core.exceptions import ArgumentError, DataError, InternalError
-from iotile.core.hw.virtual import EmulatedDevice, EmulatedPeripheralTile
+from ..virtual import EmulatedDevice, EmulatedPeripheralTile
 from .reference_controller import ReferenceController
 
 

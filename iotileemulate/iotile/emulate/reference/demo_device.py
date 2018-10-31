@@ -1,6 +1,6 @@
 """A simple emulated reference device that includes a blank non-controller tile."""
 
-from iotile.core.hw.virtual import EmulatedPeripheralTile
+from ..virtual import EmulatedPeripheralTile
 from .reference_device import ReferenceDevice
 
 

@@ -2,7 +2,8 @@
 
 import base64
 from future.utils import viewitems
-from iotile.core.hw.virtual import tile_rpc, SerializableState
+from iotile.core.hw.virtual import tile_rpc
+from ...virtual import SerializableState
 
 class RunLevel(object):
     StartNow = 0

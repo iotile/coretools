@@ -1,8 +1,9 @@
 """Mixin for device updating via signed scripts."""
 
 import base64
-from iotile.core.hw.virtual import tile_rpc, SerializableState
+from iotile.core.hw.virtual import tile_rpc
 from iotile.core.hw.update import UpdateScript
+from ...virtual import SerializableState
 
 
 class BRIDGE_STATUS(object):
