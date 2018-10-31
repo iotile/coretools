@@ -33,5 +33,6 @@ interact with that physical device.
 
 from .emulated_device import EmulatedDevice
 from .emulated_tile import EmulatedTile
+from .simple_state import SerializableState
 
-__all__ = ['EmulatedDevice', 'EmulatedTile']
+__all__ = ['EmulatedDevice', 'EmulatedTile', 'SerializableState']

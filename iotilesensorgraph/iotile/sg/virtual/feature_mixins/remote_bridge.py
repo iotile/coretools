@@ -1,7 +1,7 @@
 """Mixin for device updating via signed scripts."""
 
 import base64
-from iotile.core.hw.virtual import tile_rpc
+from iotile.core.hw.virtual import tile_rpc, SerializableState
 from iotile.core.hw.update import UpdateScript
 
 
@@ -15,7 +15,7 @@ class BRIDGE_STATUS(object):
     EXECUTING = 5
 
 
-class RemoteBridgeState(object):
+class RemoteBridgeState(SerializableState):
     """Serializeable state object for all remote bridge state.
 
     Note that the script_error property is just a convenience property
@@ -25,25 +25,20 @@ class RemoteBridgeState(object):
     """
 
     def __init__(self):
+        super(RemoteBridgeState, self).__init__()
+
         self.status = BRIDGE_STATUS.IDLE
         self.error = 0
         self.parsed_script = None
         self.script_error = None
 
-    def dump(self):
-        """Serialize this state to a dictionary."""
+        self.mark_complex('parsed_script', self._dump_script, self._restore_script)
 
-        return {
-            'status': self.status,
-            'error': self.error,
-            'parsed_script': self._dump_script()
-        }
-
-    def _dump_script(self):
-        if self.parsed_script is None:
+    def _dump_script(self, value):
+        if value is None:
             return None
 
-        encoded = self.parsed_script.encode()
+        encoded = value.encode()
         return base64.b64encode(encoded)
 
     @classmethod
@@ -53,13 +48,6 @@ class RemoteBridgeState(object):
 
         encoded = base64.b64decode(b64encoded)
         return UpdateScript.FromBinary(encoded)
-
-    def restore(self, state):
-        """Restore this state from a dictionary."""
-
-        self.status = state.get('status', BRIDGE_STATUS.IDLE)
-        self.error = state.get('error', 0)
-        self.parsed_script = self._restore_script(state.get('parsed_script'))
 
 
 class RemoteBridgeMixin(object):
