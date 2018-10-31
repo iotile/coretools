@@ -3,6 +3,8 @@
 <!-- MarkdownTOC autolink="true" bracket="round" -->
 
 - [Build Status](#build-status)
+	- [Core Packages](#core-packages)
+	- [Built-in Device Transport Protocols](#built-in-device-transport-protocols)
 - [Installation \(from PyPI\)](#installation-from-pypi)
 - [Working with Encrypted Device Data](#working-with-encrypted-device-data)
 - [Installing Support for IOTile Based Devices](#installing-support-for-iotile-based-devices)
@@ -25,16 +27,36 @@ Read the latest [Documentation](http://coretools.readthedocs.io/en/latest/)!
 
 ### Build Status
 
+#### Core Packages
+
+> These are the building blocks that make up CoreTools.  Depending on your particular
+> use case, you may need just one of them or you may use them all.  
+
 | Tool         | PyPI Version                                                                                                 |
 |--------------|--------------------------------------------------------------------------------------------------------------|
-|IOTile-Core   |[![PyPI version](https://badge.fury.io/py/iotile-core.svg)](https://badge.fury.io/py/iotile-core)             |
-|IOTile-Build  |[![PyPI version](https://badge.fury.io/py/iotile-build.svg)](https://badge.fury.io/py/iotile-build)           |
-|IOTile-Gateway|[![PyPI version](https://badge.fury.io/py/iotile-gateway.svg)](https://badge.fury.io/py/iotile-gateway)       |
-|IOTile-SensorGraph|[![PyPI version](https://badge.fury.io/py/iotile-sensorgraph.svg)](https://badge.fury.io/py/iotile-sensorgraph)|
-|IOTile-Ship|[![PyPI version](https://badge.fury.io/py/iotile-ship.svg)](https://badge.fury.io/py/iotile-ship)                |
-|IOTile-Test   |[![PyPI version](https://badge.fury.io/py/iotile-test.svg)](https://badge.fury.io/py/iotile-test)             |
-|IOTile-Cloud  |[![PyPI version](https://badge.fury.io/py/iotile-ext-cloud.svg)](https://badge.fury.io/py/iotile-ext-cloud)   |
-|BLED112-Plugin|[![PyPI version](https://badge.fury.io/py/iotile-transport-bled112.svg)](https://badge.fury.io/py/iotile-transport-bled112)|
+|iotile-core   |[![PyPI version](https://badge.fury.io/py/iotile-core.svg)](https://badge.fury.io/py/iotile-core)             |
+|iotile-build  |[![PyPI version](https://badge.fury.io/py/iotile-build.svg)](https://badge.fury.io/py/iotile-build)           |
+|iotile-gateway|[![PyPI version](https://badge.fury.io/py/iotile-gateway.svg)](https://badge.fury.io/py/iotile-gateway)       |
+|iotile-sensorgraph|[![PyPI version](https://badge.fury.io/py/iotile-sensorgraph.svg)](https://badge.fury.io/py/iotile-sensorgraph)|
+|iotile-emulate|[![PyPI version](https://badge.fury.io/py/iotile-sensorgraph.svg)](https://badge.fury.io/py/iotile-emulate)|
+|iotile-ship|[![PyPI version](https://badge.fury.io/py/iotile-ship.svg)](https://badge.fury.io/py/iotile-ship)                |
+|iotile-test|[![PyPI version](https://badge.fury.io/py/iotile-test.svg)](https://badge.fury.io/py/iotile-test)             |
+|iotile-ext-cloud  |[![PyPI version](https://badge.fury.io/py/iotile-ext-cloud.svg)](https://badge.fury.io/py/iotile-ext-cloud)   |
+
+#### Built-in Device Transport Protocols
+
+> CoreTools is inherently agnostic in how it connects to an IOTile Device.  Many
+> physical IOTile devices use Bluetooth Low Energy to communicate with the external
+> world but this is not an intrinsic assumption of how CoreTools works.
+>
+> The currently included protocols are shown below.
+
+| Tranport Plugin         | PyPI Version                                                                                                 |
+|-------------------------|--------------------------------------------------------------------------------------------------------------|
+|iotile-transport-nativeble|[![PyPI version](https://badge.fury.io/py/iotile-transport-bled112.svg)](https://badge.fury.io/py/iotile-transport-nativeble)|
+|iotile-transport-websocket|[![PyPI version](https://badge.fury.io/py/iotile-transport-bled112.svg)](https://badge.fury.io/py/iotile-transport-websocket)|
+|iotile-transport-bled112|[![PyPI version](https://badge.fury.io/py/iotile-transport-bled112.svg)](https://badge.fury.io/py/iotile-transport-bled112)|
+|iotile-transport-jlink|[![PyPI version](https://badge.fury.io/py/iotile-transport-bled112.svg)](https://badge.fury.io/py/iotile-transport-jlink)|
 
 ### Installation (from PyPI)
 
