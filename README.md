@@ -121,10 +121,15 @@ the known components are:
 iotilecore
 iotilebuild
 iotilegateway
-iotile_transport_bled112
-iotile_transport_awsiot
 iotiletest
 iotilesensorgraph
+iotileemulate
+
+iotile_transport_bled112
+iotile_transport_awsiot
+iotile_transport_nativeble
+iotile_transport_jlink
+iotile_transport_websocket
 ```
 
 The version must match the version that is encoded in version.py in the corresponding python
