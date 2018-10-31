@@ -56,7 +56,9 @@ class ReferenceController(RemoteBridgeMixin, EmulatedTile):
             dict: The current state of the object that could be passed to load_state.
         """
 
-        return {
+        superstate = super(ReferenceController, self).dump_state()
+
+        superstate.update({
             'state_name': self.STATE_NAME,
             'state_version': self.STATE_VERSION,
             'app_info': self.app_info,
@@ -64,7 +66,9 @@ class ReferenceController(RemoteBridgeMixin, EmulatedTile):
 
             # Dump all of the subsystems
             'remote_bridge': self.remote_bridge.dump()
-        }
+        })
+
+        return superstate
 
     def restore_state(self, state):
         """Restore the current state of this emulated object.
@@ -72,6 +76,8 @@ class ReferenceController(RemoteBridgeMixin, EmulatedTile):
         Args:
             state (dict): A previously dumped state produced by dump_state.
         """
+
+        super(ReferenceController, self).restore_state(state)
 
         state_name = state.get('state_name')
         state_version = state.get('state_version')

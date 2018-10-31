@@ -31,6 +31,38 @@ class TileNotFoundError(IOTileException):
     pass
 
 
+def _create_argcode(code, arg_bytes):
+    if not code.endswith('V'):
+        return "<" + code
+
+    code = code[:-1]
+    fixed_size = struct.calcsize(code)
+    var_size = len(arg_bytes) - fixed_size
+
+    if var_size < 0:
+        raise RPCInvalidArgumentsError("Argument was too small for variable size argument value", arg_format=code,
+                                       minimum_size=fixed_size, actual_size=len(arg_bytes),
+                                       payload=binascii.hexlify(arg_bytes))
+
+    return "<" + code + "%ds" % var_size
+
+
+def _create_respcode(code, resp):
+    if not code.endswith('V'):
+        return "<" + code
+
+    code = code[:-1]
+
+    final_length = len(resp[-1])
+    fixed_size = struct.calcsize(code)
+
+    if fixed_size + final_length > 20:
+        raise RPCInvalidReturnValueError("Variable length return value is too large for rpc response payload (20 bytes)",
+                                         fixed_code=code, fixed_length=fixed_size, variable_length=final_length,
+                                         variable_payload=binascii.hexlify(resp[-1]))
+    return "<" + code + "%ds" % final_length
+
+
 def rpc(address, rpc_id, arg_format, resp_format=None):
     """Decorator to denote that a function implements an RPC with the given ID and address.
 
@@ -52,9 +84,11 @@ def rpc(address, rpc_id, arg_format, resp_format=None):
         address (int): The address of the mock tile this RPC is for
         rpc_id (int): The number of the RPC
         arg_format (string): a struct format code (without the <) for the
-            parameter format for this RPC
+            parameter format for this RPC.  This format code may include the final
+            character V, which means that it expects a variable length bytearray.
         resp_format (string): an optional format code (without the <) for
-            the response format for this RPC
+            the response format for this RPC. This format code may include the final
+            character V, which means that it expects a variable length bytearray.
     """
 
     if rpc_id < 0 or rpc_id > 0xFFFF:
@@ -63,7 +97,8 @@ def rpc(address, rpc_id, arg_format, resp_format=None):
     def _rpc_wrapper(func):
         def _rpc_executor(self, payload):
             try:
-                args = struct.unpack("<{}".format(arg_format), payload)
+                format_code = _create_argcode(arg_format, payload)
+                args = struct.unpack(format_code, payload)
             except struct.error as exc:
                 raise RPCInvalidArgumentsError(str(exc), arg_format=arg_format, payload=binascii.hexlify(payload))
 
@@ -74,7 +109,8 @@ def rpc(address, rpc_id, arg_format, resp_format=None):
 
             if resp_format is not None:
                 try:
-                    return struct.pack("<{}".format(resp_format), *resp)
+                    format_code = _create_respcode(resp_format, resp)
+                    return struct.pack(format_code, *resp)
                 except struct.error as exc:
                     raise RPCInvalidReturnValueError(str(exc), resp_format=resp_format, resp=repr(resp))
 

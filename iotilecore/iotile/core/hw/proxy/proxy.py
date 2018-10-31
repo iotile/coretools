@@ -17,6 +17,7 @@ from iotile.core.utilities.packed import unpack
 import struct
 from iotile.core.exceptions import *
 
+@context("GenericTile")
 class TileBusProxyObject(object):
     def __init__(self, stream, address):
         self.stream = stream
