@@ -4,9 +4,9 @@ from .virtualtile import VirtualTile
 from .virtualdevice import VirtualIOTileDevice
 from .common_types import (tile_rpc, RPCDispatcher, RPCNotFoundError, RPCInvalidArgumentsError,
                            RPCInvalidReturnValueError, TileNotFoundError)
-from .emulation import EmulatedTile, EmulatedDevice, SerializableState
+from .emulation import EmulatedTile, EmulatedDevice, SerializableState, EmulatedPeripheralTile
 from .virtualinterface import VirtualIOTileInterface
 
-__all__ = ['EmulatedDevice', 'EmulatedTile', 'VirtualTile', 'VirtualIOTileDevice', 'tile_rpc',
+__all__ = ['EmulatedDevice', 'EmulatedTile', 'EmulatedPeripheralTile', 'VirtualTile', 'VirtualIOTileDevice', 'tile_rpc',
            'RPCDispatcher', 'TileNotFoundError', 'RPCNotFoundError', 'RPCInvalidArgumentsError',
            'RPCInvalidReturnValueError', 'VirtualIOTileInterface', 'SerializableState']

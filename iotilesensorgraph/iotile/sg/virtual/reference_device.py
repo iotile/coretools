@@ -1,9 +1,10 @@
 """A reference device with properties for inspecting what has been set by update scripts."""
 
 import base64
+from future.utils import viewitems
 from past.builtins import basestring
-from iotile.core.exceptions import ArgumentError
-from iotile.core.hw.virtual import EmulatedDevice
+from iotile.core.exceptions import ArgumentError, DataError, InternalError
+from iotile.core.hw.virtual import EmulatedDevice, EmulatedPeripheralTile
 from .reference_controller import ReferenceController
 
 
@@ -35,6 +36,46 @@ class ReferenceDevice(EmulatedDevice):
         self.controller = ReferenceController(8, {'name': controller_name}, device=self)
         self.add_tile(8, self.controller)
         self.reset_count = 0
+
+    def start(self, channel=None):
+        """Start this emulated device.
+
+        This triggers the controller to call start on all peripheral tiles in the device to make sure
+        they start after the controller does and then it waits on each one to make sure they have
+        finished initializing before returning.
+
+        Args:
+            channel (IOTilePushChannel): the channel with a stream and trace
+                routine for streaming and tracing data through a VirtualInterface
+        """
+
+        super(ReferenceDevice, self).start(channel)
+
+        self.controller.start(channel)
+
+        for address, tile in viewitems(self._tiles):
+            if address == 8:
+                continue
+
+            if not isinstance(tile, EmulatedPeripheralTile):
+                raise DataError("An emulated ReferenceDevice can only have a single controller and all other tiles must inherit from EmulatedPeripheralTile",
+                                address=address)
+
+            tile.start(channel)
+
+        # This should have triggered all of the tiles to register themselves with the controller,
+        # causing it to queue up config variable and start_application rpcs back to them.
+        self.send_deferred_rpcs()
+
+        for address, tile in viewitems(self._tiles):
+            if address == 8:
+                continue
+
+            # Check and make sure that if the tile should start that it has started
+            if tile.run_level != 2:
+                flag = tile.app_started.wait(timeout=2.0)
+                if not flag:
+                    raise InternalError("Timeout waiting for peripheral tile to set its app_started event", address=address)
 
     def dump_state(self):
         """Dump the current state of this emulated object as a dictionary.

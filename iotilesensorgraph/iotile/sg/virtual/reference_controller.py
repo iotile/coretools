@@ -4,10 +4,10 @@ from __future__ import print_function, absolute_import, unicode_literals
 import logging
 from iotile.core.hw.virtual import EmulatedTile, tile_rpc
 from iotile.core.exceptions import ArgumentError
-from .feature_mixins import RemoteBridgeMixin
+from .feature_mixins import RemoteBridgeMixin, TileManagerMixin
 
 
-class ReferenceController(RemoteBridgeMixin, EmulatedTile):
+class ReferenceController(RemoteBridgeMixin, TileManagerMixin, EmulatedTile):
     """A reference iotile controller implementation.
 
     This tile implements the major behavior of an IOTile controller including
@@ -39,6 +39,7 @@ class ReferenceController(RemoteBridgeMixin, EmulatedTile):
 
         # Initialize all of the controller subsystems
         RemoteBridgeMixin.__init__(self)
+        TileManagerMixin.__init__(self)
 
         self.sensor_graph = {
             "nodes": [],

@@ -4,6 +4,8 @@ from __future__ import unicode_literals, absolute_import, print_function
 
 import struct
 import base64
+import logging
+import threading
 from future.utils import viewitems
 from iotile.core.exceptions import ArgumentError
 from ..virtualtile import VirtualTile
@@ -62,9 +64,6 @@ class EmulatedTile(EmulationMixin, VirtualTile):
     implemented in this class including a base set of RPCs for setting
     config variables and getting the tile's name (inherited from VirtualTile).
 
-    FIXME: capture the value of the config variable on reset (for controllers) or
-           on receipt of the start_application rpc for peripheral tiles.
-
     Args:
         address (int): The address of this tile in the VirtualIOTIleDevice
             that contains it
@@ -83,6 +82,8 @@ class EmulatedTile(EmulationMixin, VirtualTile):
         EmulationMixin.__init__(self, address, device.state_history)
 
         self._config_variables = {}
+        self._device = device
+        self._logger = logging.getLogger(__name__)
 
     def declare_config_variable(self, name, config_id, type_name, default_value=None):
         """Declare a config variable that this emulated tile accepts.
@@ -111,7 +112,7 @@ class EmulatedTile(EmulationMixin, VirtualTile):
         """
 
         return {
-            "config_variables": {x: base64.b64encode(y) for x, y in viewitems(self._config_variables)}
+            "config_variables": {x: base64.b64encode(y) for x, y in viewitems(self._config_variables)},
         }
 
     def restore_state(self, state):
@@ -130,7 +131,7 @@ class EmulatedTile(EmulationMixin, VirtualTile):
             if name in self._config_variables:
                 self._config_variables[name].current_value = value
 
-    def handle_reset(self):
+    def _handle_reset(self):
         """Hook to perform any required reset actions."""
 
         pass
@@ -139,7 +140,7 @@ class EmulatedTile(EmulationMixin, VirtualTile):
     def reset(self):
         """Reset this tile."""
 
-        self.handle_reset()
+        self._handle_reset()
 
     @tile_rpc(10, "H", "H9H")
     def list_config_variables(self, offset):
@@ -168,10 +169,12 @@ class EmulatedTile(EmulationMixin, VirtualTile):
         return [0, 0, 0, config_id, packed_size]
 
     @tile_rpc(12, "HHV", "H")
-    def set_config_value(self, config_id, offset, value):
+    def set_config_variable(self, config_id, offset, value):
         """Set a chunk of the current config value's value."""
 
-        # FIXME: disallow config value setting once app_started has been set.
+        if self.app_started.is_set():
+            return [9]
+
         config = self._config_variables.get(config_id)
         if config is None:
             return [6]
@@ -180,21 +183,28 @@ class EmulatedTile(EmulationMixin, VirtualTile):
         return [error]
 
     @tile_rpc(13, "HH", "V")
-    def get_config_value(self, config_id, offset):
+    def get_config_variable(self, config_id, offset):
         """Get a chunk of a config variable's value."""
 
         config = self._config_variables.get(config_id)
         if config is None:
             return [b""]
 
-        return [config.current_value[offset:offset + 20]]
+        return [bytes(config.current_value[offset:offset + 20])]
 
 
 TYPE_CODES = {'uint8_t': 'B', 'char': 'B', 'int8_t': 'b', 'uint16_t': 'H', 'int16_t': 'h', 'uint32_t': 'L', 'int32_t': 'l'}
 
 
 def parse_size_name(type_name):
-    """Return the size and whether it is variable for a given common name."""
+    """Calculate size and encoding from a type name.
+
+    This method takes a C-style type string like uint8_t[10] and returns
+    - the total size in bytes
+    - the unit size of each member (if it's an array)
+    - the scruct.{pack,unpack} format code for decoding the base type
+    - whether it is an array.
+    """
 
     if ' ' in type_name:
         raise ArgumentError("There should not be a space in config variable type specifier", specifier=type_name)

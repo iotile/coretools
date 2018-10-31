@@ -63,6 +63,40 @@ def _create_respcode(code, resp):
     return "<" + code + "%ds" % final_length
 
 
+def pack_rpc_payload(arg_format, args):
+    """Pack an RPC payload according to arg_format.
+
+    Args:
+        arg_format (str): a struct format code (without the <) for the
+            parameter format for this RPC.  This format code may include the final
+            character V, which means that it expects a variable length bytearray.
+        args (list): A list of arguments to pack according to arg_format.
+
+    Returns:
+        bytes: The packed argument buffer.
+    """
+
+    code = _create_argcode(arg_format, args)
+    return struct.pack(code, *args)
+
+
+def unpack_rpc_payload(resp_format, payload):
+    """Unpack an RPC payload according to resp_format.
+
+    Args:
+        resp_format (str): a struct format code (without the <) for the
+            parameter format for this RPC.  This format code may include the final
+            character V, which means that it expects a variable length bytearray.
+        payload (bytes): The binary payload that should be unpacked.
+
+    Returns:
+        list: A list of the unpacked payload items.
+    """
+
+    code = _create_argcode(resp_format, payload)
+    return struct.unpack(code, payload)
+
+
 def rpc(address, rpc_id, arg_format, resp_format=None):
     """Decorator to denote that a function implements an RPC with the given ID and address.
 
@@ -97,8 +131,7 @@ def rpc(address, rpc_id, arg_format, resp_format=None):
     def _rpc_wrapper(func):
         def _rpc_executor(self, payload):
             try:
-                format_code = _create_argcode(arg_format, payload)
-                args = struct.unpack(format_code, payload)
+                args = unpack_rpc_payload(arg_format, payload)
             except struct.error as exc:
                 raise RPCInvalidArgumentsError(str(exc), arg_format=arg_format, payload=binascii.hexlify(payload))
 
@@ -109,8 +142,7 @@ def rpc(address, rpc_id, arg_format, resp_format=None):
 
             if resp_format is not None:
                 try:
-                    format_code = _create_respcode(resp_format, resp)
-                    return struct.pack(format_code, *resp)
+                    return pack_rpc_payload(resp_format, resp)
                 except struct.error as exc:
                     raise RPCInvalidReturnValueError(str(exc), resp_format=resp_format, resp=repr(resp))
 
