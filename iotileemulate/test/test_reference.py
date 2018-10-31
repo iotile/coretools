@@ -2,8 +2,8 @@
 
 from iotile.core.hw import HardwareManager
 from iotile.emulate.virtual import EmulatedPeripheralTile
+from iotile.emulate.reference import ReferenceDevice
 
-from iotile.sg.virtual import ReferenceDevice
 
 def test_basic_usage():
     """Make sure we can import and use the objects."""
