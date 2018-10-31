@@ -3,7 +3,8 @@
 from __future__ import unicode_literals, absolute_import, print_function
 from future.utils import viewitems
 from iotile.core.exceptions import DataError
-from ..virtualdevice import VirtualIOTileDevice
+from iotile.core.hw.virtual import VirtualIOTileDevice
+from iotile.core.hw.virtual.common_types import pack_rpc_payload, unpack_rpc_payload
 from .emulation_mixin import EmulationMixin
 from .state_log import EmulationStateLog
 
@@ -29,6 +30,8 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
         VirtualIOTileDevice.__init__(self, iotile_id, name)
         EmulationMixin.__init__(self, None, self.state_history)
 
+        self._deferred_rpcs = []
+
     def dump_state(self):
         """Dump the current state of this emulated object as a dictionary.
 
@@ -44,6 +47,71 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
             state['tile_states'][address] = tile.dump_state()
 
         return state
+
+    def rpc(self, address, rpc_id, *args, **kwargs):
+        """Immediately dispatch an RPC inside this EmulatedDevice.
+
+        This function is meant to be used for testing purposes as well as by
+        tiles inside a complex EmulatedDevice subclass that need to communicate
+        with each other.  It may only be called from the main virtual device
+        thread where start() was called from.
+
+        **Background workers may not call this method since it is unsynchronized.**
+
+        Args:
+            address (int): The address of the tile that has the RPC.
+            rpc_id (int): The 16-bit id of the rpc we want to call
+            *args: Any required arguments for the RPC as python objects.
+            **kwargs: Only two keyword arguments are supported:
+                - arg_format: A format specifier for the argument list
+                - result_format: A format specifier for the result
+
+        Returns:
+            list: A list of the decoded response members from the RPC.
+        """
+
+        arg_format = kwargs.get('arg_format', None)
+        resp_format = kwargs.get('resp_format', None)
+
+        arg_payload = b''
+
+        if arg_format is not None:
+            arg_payload = pack_rpc_payload(arg_format, args)
+
+        resp_payload = self.call_rpc(address, rpc_id, arg_payload)
+        if resp_format is None:
+            return []
+
+        resp = unpack_rpc_payload(resp_format, resp_payload)
+        return resp
+
+    def deferred_rpc(self, address, rpc_id, *args, **kwargs):
+        """Queue an RPC to send later.
+
+        These RPCs will be sent deterministically whenever send_deferred_rpcs()
+        is called.
+
+        **Background workers may not call this method since it is unsynchronized.**
+
+        Args:
+            address (int): The address of the tile that has the RPC.
+            rpc_id (int): The 16-bit id of the rpc we want to call
+            *args: Any required arguments for the RPC as python objects.
+            **kwargs: Only two keyword arguments are supported:
+                - arg_format: A format specifier for the argument list
+                - result_format: A format specifier for the result
+        """
+
+        rpc_args = (address, rpc_id, args, kwargs)
+        self._deferred_rpcs.append(rpc_args)
+
+    def send_deferred_rpcs(self):
+        """Send all deferred rpcs currently in the queue."""
+
+        for address, rpc_id, args, kwargs in self._deferred_rpcs:
+            self.rpc(address, rpc_id, *args, **kwargs)
+
+        self._deferred_rpcs = []
 
     def restore_state(self, state):
         """Restore the current state of this emulated device.

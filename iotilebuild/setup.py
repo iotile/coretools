@@ -37,7 +37,7 @@ setup(
         "wheel>=0.29",
         "setuptools>=32",
         "pycparser>=2.17",
-        "pyparsing>=2.0.3"
+        "pyparsing~=2.2.0"
     ],
     include_package_data=True,
     entry_points={'iotile.plugin': ['.build = iotile.build.plugin:setup_plugin'],

@@ -3,6 +3,8 @@
 <!-- MarkdownTOC autolink="true" bracket="round" -->
 
 - [Build Status](#build-status)
+	- [Core Packages](#core-packages)
+	- [Built-in Device Transport Protocols](#built-in-device-transport-protocols)
 - [Installation \(from PyPI\)](#installation-from-pypi)
 - [Working with Encrypted Device Data](#working-with-encrypted-device-data)
 - [Installing Support for IOTile Based Devices](#installing-support-for-iotile-based-devices)
@@ -25,16 +27,36 @@ Read the latest [Documentation](http://coretools.readthedocs.io/en/latest/)!
 
 ### Build Status
 
-| Tool         | PyPI Version                                                                                                 |
-|--------------|--------------------------------------------------------------------------------------------------------------|
-|IOTile-Core   |[![PyPI version](https://badge.fury.io/py/iotile-core.svg)](https://badge.fury.io/py/iotile-core)             |
-|IOTile-Build  |[![PyPI version](https://badge.fury.io/py/iotile-build.svg)](https://badge.fury.io/py/iotile-build)           |
-|IOTile-Gateway|[![PyPI version](https://badge.fury.io/py/iotile-gateway.svg)](https://badge.fury.io/py/iotile-gateway)       |
-|IOTile-SensorGraph|[![PyPI version](https://badge.fury.io/py/iotile-sensorgraph.svg)](https://badge.fury.io/py/iotile-sensorgraph)|
-|IOTile-Ship|[![PyPI version](https://badge.fury.io/py/iotile-ship.svg)](https://badge.fury.io/py/iotile-ship)                |
-|IOTile-Test   |[![PyPI version](https://badge.fury.io/py/iotile-test.svg)](https://badge.fury.io/py/iotile-test)             |
-|IOTile-Cloud  |[![PyPI version](https://badge.fury.io/py/iotile-ext-cloud.svg)](https://badge.fury.io/py/iotile-ext-cloud)   |
-|BLED112-Plugin|[![PyPI version](https://badge.fury.io/py/iotile-transport-bled112.svg)](https://badge.fury.io/py/iotile-transport-bled112)|
+#### Core Packages
+
+> These are the building blocks that make up CoreTools.  Depending on your particular
+> use case, you may need just one of them or you may use them all.  
+
+| Tool         | Description |PyPI Version                                                                                                 |
+|--------------|-------------|-------------------------------------------------------------------------------------------------------------|
+|iotile-core   |The central package of CoreTools, includes the core plugin architecture and device communication system|[![PyPI version](https://badge.fury.io/py/iotile-core.svg)](https://badge.fury.io/py/iotile-core)             |
+|iotile-build  |A build system for creating IOTile device firmware that is controllable from CoreTools|[![PyPI version](https://badge.fury.io/py/iotile-build.svg)](https://badge.fury.io/py/iotile-build)           |
+|iotile-gateway|A multi-user, multi-device transparent proxy for IOTile devices|[![PyPI version](https://badge.fury.io/py/iotile-gateway.svg)](https://badge.fury.io/py/iotile-gateway)       |
+|iotile-sensorgraph|A simulator for the embedded sensorgraph engine included in some IOTile device firmware|[![PyPI version](https://badge.fury.io/py/iotile-sensorgraph.svg)](https://badge.fury.io/py/iotile-sensorgraph)|
+|iotile-emulate|A complete set of emulation tools for emulating physical iotile devices|[![PyPI version](https://badge.fury.io/py/iotile-emulate.svg)](https://badge.fury.io/py/iotile-emulate)|
+|iotile-ship|A manufacturing tool that lets you define repeatable recipes to bring up IOTile based hardware at a factory|[![PyPI version](https://badge.fury.io/py/iotile-ship.svg)](https://badge.fury.io/py/iotile-ship)                |
+|iotile-test|Internal test harnesses and mocks to test the rest of CoreTools and applications built using CoreTools|[![PyPI version](https://badge.fury.io/py/iotile-test.svg)](https://badge.fury.io/py/iotile-test)             |
+|iotile-ext-cloud|A CoreTools-like wrapper for interacting with IOTile.cloud, a cloud based device management system that works well with IOTile based devices|[![PyPI version](https://badge.fury.io/py/iotile-ext-cloud.svg)](https://badge.fury.io/py/iotile-ext-cloud)   |
+
+#### Built-in Device Transport Protocols
+
+> CoreTools is inherently agnostic in how it connects to an IOTile Device.  Many
+> physical IOTile devices use Bluetooth Low Energy to communicate with the external
+> world but this is not an intrinsic assumption of how CoreTools works.
+>
+> The currently included protocols are shown below.
+
+| Tranport Plugin         | Description | PyPI Version                                                                                                 |
+|-------------------------|-------------|--------------------------------------------------------------------------------------------------------------|
+|iotile-transport-nativeble|Connects to IOTile devices over BLE using the cross-platform baBLE project to use your computers native bluetooth stack|[![PyPI version](https://badge.fury.io/py/iotile-transport-nativeble.svg)](https://badge.fury.io/py/iotile-transport-nativeble)|
+|iotile-transport-websocket|Connects to IOTile devices over websockets|[![PyPI version](https://badge.fury.io/py/iotile-transport-websocket.svg)](https://badge.fury.io/py/iotile-transport-)|
+|iotile-transport-bled112|Connects to IOTile devices over BLE using the BLED112 USB dongle by Silicon Labs|[![PyPI version](https://badge.fury.io/py/iotile-transport-bled112.svg)](https://badge.fury.io/py/iotile-transport-bled112)|
+|iotile-transport-jlink|Connects to an IOTile device using a physical SWD debug connection through a Segger JLink emulator|[![PyPI version](https://badge.fury.io/py/iotile-transport-jlink.svg)](https://badge.fury.io/py/iotile-transport-jlink)|
 
 ### Installation (from PyPI)
 

@@ -35,13 +35,14 @@ class VirtualTile(BaseRunnable, RPCDispatcher):
 
     @classmethod
     def _check_convert_name(cls, name):
-        decoded = name.encode('utf-8')
-        if len(decoded) < 6:
-            decoded += bytes(' ')*(6 - len(decoded))
-        elif len(decoded) > 6:
+        if not isinstance(name, bytes):
+            name = name.encode('utf-8')
+        if len(name) < 6:
+            name += bytes(' ')*(6 - len(name))
+        elif len(name) > 6:
             raise ArgumentError("Virtual tile name is too long, it must be 6 or fewer characters")
 
-        return decoded
+        return name
 
     def start(self, channel=None):
         """Start any background workers on this tile."""

@@ -23,7 +23,7 @@ setup(
     license="LGPLv3",
     description="IOTile SensorGraph Management and Simulation Package",
     install_requires=[
-        "pyparsing>=2.2.0",
+        "pyparsing~=2.2.0",
         "future>=0.16.0",
         "monotonic>=1.3.0",
         "toposort>=1.5",
@@ -43,7 +43,6 @@ setup(
                                            'clear_data = iotile.sg.update:ClearDataRecord',
                                            'set_online = iotile.sg.update:SetGraphOnlineRecord',
                                            'set_constant = iotile.sg.update:SetConstantRecord'],
-                  'iotile.virtual_device': ['reference_1_0 = iotile.sg.virtual.reference_device:ReferenceDevice'],
                   'iotile.virtual_tile': ['refcon_1 = iotile.sg.virtual.reference_controller:ReferenceController'],
                   'console_scripts': ['iotile-sgrun = iotile.sg.scripts.iotile_sgrun:main',
                                       'iotile-sgcompile = iotile.sg.scripts.iotile_sgcompile:main']},

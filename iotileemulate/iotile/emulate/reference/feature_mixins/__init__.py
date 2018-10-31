@@ -6,5 +6,6 @@ see how each bit of functionality relates.
 """
 
 from .remote_bridge import RemoteBridgeMixin
+from .tile_manager import TileManagerMixin
 
-__all__ = ['RemoteBridgeMixin']
+__all__ = ['RemoteBridgeMixin', 'TileManagerMixin']

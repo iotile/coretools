@@ -1,5 +1,5 @@
 from past.builtins import basestring
-from iotile.core.hw.virtual import EmulatedDevice
+from iotile.emulate import EmulatedDevice
 from iotile.core.hw.virtual.virtualdevice import rpc
 from iotile.core.hw.proxy.proxy import TileBusProxyObject
 from typedargs.annotate import context, docannotate

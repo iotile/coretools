@@ -10,7 +10,7 @@ import os.path
 import inspect
 import pkg_resources
 from future.utils import itervalues
-from iotile.core.hw.virtual import VirtualIOTileDevice, EmulatedDevice, VirtualIOTileInterface
+from iotile.core.hw.virtual import VirtualIOTileDevice, VirtualIOTileInterface
 
 
 def main(argv=None):
@@ -61,10 +61,6 @@ def main(argv=None):
     try:
         iface = instantiate_interface(args.interface, config)
         device = instantiate_device(args.device, config)
-
-        if (args.state or args.track or args.dump or args.scenario) and not isinstance(device, EmulatedDevice):
-            print("ERROR: you can only use --state, --track or --dump if you are serving an emulated device.")
-            return 1
 
         if args.state is not None:
             print("Loading device state from file %s" % args.state)

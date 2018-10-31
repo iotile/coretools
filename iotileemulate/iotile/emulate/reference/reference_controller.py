@@ -2,12 +2,13 @@
 
 from __future__ import print_function, absolute_import, unicode_literals
 import logging
-from iotile.core.hw.virtual import EmulatedTile, tile_rpc
+from iotile.core.hw.virtual import tile_rpc
+from ..virtual import EmulatedTile
 from iotile.core.exceptions import ArgumentError
-from .feature_mixins import RemoteBridgeMixin
+from .feature_mixins import RemoteBridgeMixin, TileManagerMixin
 
 
-class ReferenceController(RemoteBridgeMixin, EmulatedTile):
+class ReferenceController(RemoteBridgeMixin, TileManagerMixin, EmulatedTile):
     """A reference iotile controller implementation.
 
     This tile implements the major behavior of an IOTile controller including
@@ -39,6 +40,7 @@ class ReferenceController(RemoteBridgeMixin, EmulatedTile):
 
         # Initialize all of the controller subsystems
         RemoteBridgeMixin.__init__(self)
+        TileManagerMixin.__init__(self)
 
         self.sensor_graph = {
             "nodes": [],
@@ -56,7 +58,9 @@ class ReferenceController(RemoteBridgeMixin, EmulatedTile):
             dict: The current state of the object that could be passed to load_state.
         """
 
-        return {
+        superstate = super(ReferenceController, self).dump_state()
+
+        superstate.update({
             'state_name': self.STATE_NAME,
             'state_version': self.STATE_VERSION,
             'app_info': self.app_info,
@@ -64,7 +68,9 @@ class ReferenceController(RemoteBridgeMixin, EmulatedTile):
 
             # Dump all of the subsystems
             'remote_bridge': self.remote_bridge.dump()
-        }
+        })
+
+        return superstate
 
     def restore_state(self, state):
         """Restore the current state of this emulated object.
@@ -72,6 +78,8 @@ class ReferenceController(RemoteBridgeMixin, EmulatedTile):
         Args:
             state (dict): A previously dumped state produced by dump_state.
         """
+
+        super(ReferenceController, self).restore_state(state)
 
         state_name = state.get('state_name')
         state_version = state.get('state_version')
