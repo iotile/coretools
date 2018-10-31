@@ -4,10 +4,8 @@ All major changes in each released version of iotile-sensorgraph are listed here
 
 ## HEAD
 
-- Move ReferenceDevice and ReferenceController to EmulatedDevice and
-  EmulatedTile subclasses and begin refactor to split out individual controller
-  subsystems to allow for the rest of the reference IOTile controller
-  functionality to be added.
+- Move reference controller and reference device classes out of iotile-sensorgraph
+  and into new iotile-emulate package.
 
 ## 0.7.2
 
