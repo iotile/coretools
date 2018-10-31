@@ -1,7 +1,7 @@
 """Test coverage of the ReferenceDevice and ReferenceController emulated objects."""
 
 from iotile.core.hw import HardwareManager
-from iotile.core.hw.virtual import EmulatedPeripheralTile
+from iotile.emulate.virtual import EmulatedPeripheralTile
 
 from iotile.sg.virtual import ReferenceDevice
 
