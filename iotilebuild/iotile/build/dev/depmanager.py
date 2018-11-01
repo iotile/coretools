@@ -140,6 +140,36 @@ class DependencyManager (object):
         return dep_stati
 
     @param("path", "path", "exists", desc="Path to IOTile to check")
+    def update_local(self, path='.'):
+        """Attempt to resolve all LOCAL dependencies in this IOTile by installing them into build/deps
+        """
+
+        tile = IOTile(path)
+        if tile.release:
+            raise ArgumentError("Cannot update dependencies on a release mode tile that cannot have dependencies")
+
+        depdir = os.path.join(tile.folder, 'build', 'deps')
+
+        #FIXME: Read resolver_settings.json file
+        resolver_chain = DependencyResolverChain()
+        reg = ComponentRegistry()
+
+        for dep in tile.dependencies:
+
+            # Check each dependency to see if it's local
+            try:
+                local_tile = reg.find_component(dep['name'])
+                if local_tile.release:
+                    continue
+                if local_tile is not None:
+                    result = resolver_chain.update_dependency(tile, dep)
+
+            except ArgumentError:
+                continue
+
+            iprint("Resolving %s: %s" % (dep['name'], result))
+
+    @param("path", "path", "exists", desc="Path to IOTile to check")
     def update(self, path='.'):
         """Attempt to resolve all dependencies in this IOTile by installing them into build/deps
         """
