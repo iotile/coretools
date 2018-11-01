@@ -1,8 +1,10 @@
 """Base class for all emulated non-controller tiles."""
 
 import threading
-from iotile.core.hw.virtual import tile_rpc
+from iotile.core.exceptions import TimeoutExpiredError
 from .emulated_tile import EmulatedTile
+from ..constants import rpcs
+from ..utilities import global_rpc
 
 
 class EmulatedPeripheralTile(EmulatedTile):
@@ -33,9 +35,22 @@ class EmulatedPeripheralTile(EmulatedTile):
     def __init__(self, address, name, device):
         EmulatedTile.__init__(self, address, name, device)
 
-        self.app_started = threading.Event()
+        self._app_started = threading.Event()
         self.debug_mode = False
         self.run_level = None
+
+    @property
+    def app_started(self):
+        """Whether the tile's application has started running."""
+
+        return self._app_started.is_set()
+
+    def wait_started(self, timeout=None):
+        """Wait for the application to start running."""
+
+        flag = self._app_started.wait(timeout=timeout)
+        if not flag:
+            raise TimeoutExpiredError("Timeout waiting for peripheral tile to set its app_started event", address=self.address, name=self.name, timeout=timeout)
 
     def start(self, channel=None):
         """Start this emulated tile.
@@ -51,10 +66,10 @@ class EmulatedPeripheralTile(EmulatedTile):
         super(EmulatedPeripheralTile, self).start(channel)
 
         # Register ourselves with the controller
-        address, run_level, debug = self._device.rpc(8, 0x2a00, self.hardware_type, self.api_version[0], self.api_version[1], self.name,
+        address, run_level, debug = self._device.rpc(8, rpcs.REGISTER_TILE, self.hardware_type, self.api_version[0], self.api_version[1], self.name,
                                                      self.firmware_version[0], self.firmware_version[1], self.firmware_version[2],
                                                      self.executive_version[0], self.executive_version[1], self.executive_version[2],
-                                                     self.address - 10, 0, arg_format="3B6s6BBL", resp_format="HHH")
+                                                     self.address - 10, 0)
 
         self.debug_mode = bool(debug)
         self.run_level = run_level
@@ -71,7 +86,7 @@ class EmulatedPeripheralTile(EmulatedTile):
         """
 
         state = super(EmulatedPeripheralTile, self).dump_state()
-        state['app_started'] = self.app_started.is_set()
+        state['app_started'] = self.app_started
         state['debug_mode'] = self.debug_mode
         state['run_level'] = self.run_level
 
@@ -88,7 +103,7 @@ class EmulatedPeripheralTile(EmulatedTile):
         self.run_level = state.get('run_level', None)
 
         if state.get("app_started", False):
-            self.app_started.set()
+            self._app_started.set()
 
     def _handle_app_started(self):
         """Hook to perform any required actions when start_application is received.
@@ -100,9 +115,9 @@ class EmulatedPeripheralTile(EmulatedTile):
 
         pass
 
-    @tile_rpc(6, "")
+    @global_rpc(rpcs.START_APPLICATION)
     def start_application(self):
         """Latch any configuration variables and start the application."""
 
         self._handle_app_started()
-        self.app_started.set()
+        self._app_started.set()

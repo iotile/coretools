@@ -73,9 +73,7 @@ class ReferenceDevice(EmulatedDevice):
 
             # Check and make sure that if the tile should start that it has started
             if tile.run_level != 2:
-                flag = tile.app_started.wait(timeout=2.0)
-                if not flag:
-                    raise InternalError("Timeout waiting for peripheral tile to set its app_started event", address=address)
+                tile.wait_started(timeout=2.0)
 
     def dump_state(self):
         """Dump the current state of this emulated object as a dictionary.

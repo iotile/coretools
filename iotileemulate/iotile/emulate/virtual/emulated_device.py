@@ -7,6 +7,7 @@ from iotile.core.hw.virtual import VirtualIOTileDevice
 from iotile.core.hw.virtual.common_types import pack_rpc_payload, unpack_rpc_payload
 from .emulation_mixin import EmulationMixin
 from .state_log import EmulationStateLog
+from ..constants.rpcs import RPCDeclaration
 
 
 #pylint:disable=abstract-method;This is an abstract base class
@@ -70,8 +71,13 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
             list: A list of the decoded response members from the RPC.
         """
 
-        arg_format = kwargs.get('arg_format', None)
-        resp_format = kwargs.get('resp_format', None)
+        if isinstance(rpc_id, RPCDeclaration):
+            arg_format = rpc_id.arg_format
+            resp_format = rpc_id.resp_format
+            rpc_id = rpc_id.rpc_id
+        else:
+            arg_format = kwargs.get('arg_format', None)
+            resp_format = kwargs.get('resp_format', None)
 
         arg_payload = b''
 

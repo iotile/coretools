@@ -3,8 +3,11 @@
 from __future__ import print_function, absolute_import, unicode_literals
 import logging
 from iotile.core.hw.virtual import tile_rpc
-from ..virtual import EmulatedTile
 from iotile.core.exceptions import ArgumentError
+
+from ..virtual import EmulatedTile
+from ..utilities import global_rpc
+from ..constants import rpcs
 from .feature_mixins import RemoteBridgeMixin, TileManagerMixin
 
 
@@ -94,7 +97,7 @@ class ReferenceController(RemoteBridgeMixin, TileManagerMixin, EmulatedTile):
         # Restore all of the subsystems
         self.remote_bridge.restore(state.get('remote_bridge', {}))
 
-    @tile_rpc(1, "", "")
+    @global_rpc(rpcs.RESET)
     def reset(self):
         """Reset the device."""
 
