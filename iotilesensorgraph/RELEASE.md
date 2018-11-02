@@ -7,6 +7,9 @@ All major changes in each released version of iotile-sensorgraph are listed here
 - Move reference controller and reference device classes out of iotile-sensorgraph
   and into new iotile-emulate package.
 
+- Add support to SlotIdentifier for checking if the slot identifier matches a 
+  given tile.
+
 ## 0.7.2
 
 - Add support for broadcast streamers that indicate to the receiving tile that
