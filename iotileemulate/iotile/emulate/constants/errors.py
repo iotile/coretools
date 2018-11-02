@@ -1,76 +1,94 @@
 """Well-known global error codes that can be returned by emulated RPCs."""
 
-NO_ERROR = 0
-"""No error occurred."""
+from enum import IntEnum
 
-STATIC_MEMORY_ALLOCATION_ERROR = 1
-"""There was an error allocating static memory."""
+class Error(IntEnum):
+    """All globally defined common errors that an RPC may report."""
 
-ERROR_IN_ROM_DRIVER = 2
-"""There was an error inside a third party ROM driver."""
+    NO_ERROR = 0
+    """No error occurred."""
 
-INPUT_BUFFER_TOO_LONG = 3
-"""The input buffer was too long."""
+    STATIC_MEMORY_ALLOCATION_ERROR = 1
+    """There was an error allocating static memory."""
 
-SETUP_FUNCTION_PERFORMED_TWICE = 4
-"""A setup function was performed twice."""
+    ERROR_IN_ROM_DRIVER = 2
+    """There was an error inside a third party ROM driver."""
 
-REQUIRED_SETUP_NOT_PERFORMED = 5
-"""A required setup function was not performed."""
+    INPUT_BUFFER_TOO_LONG = 3
+    """The input buffer was too long."""
 
-INVALID_ARRAY_KEY = 6
-"""An invalid array key was passed."""
+    SETUP_FUNCTION_PERFORMED_TWICE = 4
+    """A setup function was performed twice."""
 
-INVALID_CHECKSUM = 7
-"""An object had an invalid checksum."""
+    REQUIRED_SETUP_NOT_PERFORMED = 5
+    """A required setup function was not performed."""
 
-INVALID_OFFSET = 8
-"""An invalid offset was given."""
+    INVALID_ARRAY_KEY = 6
+    """An invalid array key was passed."""
 
-STATE_CHANGE_AT_INVALID_TIME = 9
-"""The state of an object changed at an unexpected time."""
+    INVALID_CHECKSUM = 7
+    """An object had an invalid checksum."""
 
-TIMEOUT_ERROR = 10
-"""An operation has timed out."""
+    INVALID_OFFSET = 8
+    """An invalid offset was given."""
 
-UNIMPLEMENTED_ERROR = 11
-"""The requested operation is not (yet) implemented."""
+    STATE_CHANGE_AT_INVALID_TIME = 9
+    """The state of an object changed at an unexpected time."""
 
-UNKNOWN_ERROR = 12
-"""An unknown error occurred."""
+    TIMEOUT_ERROR = 10
+    """An operation has timed out."""
 
-HARDWARE_PERIPHERAL_ERROR = 13
-"""An internal hardware peripheral inside the microcontroller or SOC had a failure."""
+    UNIMPLEMENTED_ERROR = 11
+    """The requested operation is not (yet) implemented."""
 
-EXTERNAL_HARDWARE_ERROR = 14
-"""An external hardware device had an unrecoverable failure."""
+    UNKNOWN_ERROR = 12
+    """An unknown error occurred."""
 
-INVALID_UNALIGNED_ADDRESS = 15
-"""A request was made for for an unaligned memory address."""
+    HARDWARE_PERIPHERAL_ERROR = 13
+    """An internal hardware peripheral inside the microcontroller or SOC had a failure."""
 
-DESTINATION_BUFFER_TOO_SMALL = 16
-"""The destination buffer is too small."""
+    EXTERNAL_HARDWARE_ERROR = 14
+    """An external hardware device had an unrecoverable failure."""
 
-INPUT_BUFFER_WRONG_SIZE = 17
-"""The input buffer passed was the wrong size."""
+    INVALID_UNALIGNED_ADDRESS = 15
+    """A request was made for for an unaligned memory address."""
 
-LOW_VOLTAGE_WARNING = 18
-"""An observed voltage triggered a low-voltage warning."""
+    DESTINATION_BUFFER_TOO_SMALL = 16
+    """The destination buffer is too small."""
 
-HIGH_VOLTAGE_WARNING = 19
-"""An observed voltage triggered a high-voltage warning."""
+    INPUT_BUFFER_WRONG_SIZE = 17
+    """The input buffer passed was the wrong size."""
 
-INVALID_VOLTAGE_ERROR = 20
-"""An observed voltage was invalid."""
+    LOW_VOLTAGE_WARNING = 18
+    """An observed voltage triggered a low-voltage warning."""
 
-INPUT_BUFFER_TOO_SMALL = 21
-"""The input buffer passed was too small."""
+    HIGH_VOLTAGE_WARNING = 19
+    """An observed voltage triggered a high-voltage warning."""
 
-INVALID_MAGIC_NUMBER = 22
-"""An magic number did not match its expected value."""
+    INVALID_VOLTAGE_ERROR = 20
+    """An observed voltage was invalid."""
 
-INVALID_HASH_VALUE = 23
-"""A calculated hash value did not match its expected value."""
+    INPUT_BUFFER_TOO_SMALL = 21
+    """The input buffer passed was too small."""
 
-UNALIGNED_VARIABLE_ERROR = 24
-"""A variable was not properly aligned."""
+    INVALID_MAGIC_NUMBER = 22
+    """An magic number did not match its expected value."""
+
+    INVALID_HASH_VALUE = 23
+    """A calculated hash value did not match its expected value."""
+
+    UNALIGNED_VARIABLE_ERROR = 24
+    """A variable was not properly aligned."""
+
+
+class ConfigDatabaseError(IntEnum):
+    """These are subsystem specific error codes potentially returned by the ConfigDatabase."""
+
+    OBSOLETE_ENTRY = 0x8000
+    """The config variable entry requested has been invalidated."""
+
+    VARIABLE_DOES_NOT_MATCH = 0x8001
+    """The requested config variable does not match."""
+
+    INVALID_ENTRY = 0x8002
+    """The requested config variable entry has an invalid magic number."""

@@ -103,19 +103,29 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
             address (int): The address of the tile that has the RPC.
             rpc_id (int): The 16-bit id of the rpc we want to call
             *args: Any required arguments for the RPC as python objects.
-            **kwargs: Only two keyword arguments are supported:
+            **kwargs: Only three keyword arguments are supported:
                 - arg_format: A format specifier for the argument list
                 - result_format: A format specifier for the result
+                - callback: optional callable that is called with the response from the RPC.
+                  This can be used to queue state changes that should happen when the RPC
+                  finishes.
         """
 
-        rpc_args = (address, rpc_id, args, kwargs)
+        callback = kwargs.get('callback')
+        if 'callback' in kwargs:
+            del kwargs['callback']
+
+        rpc_args = (address, rpc_id, args, kwargs, callback)
         self._deferred_rpcs.append(rpc_args)
 
     def send_deferred_rpcs(self):
         """Send all deferred rpcs currently in the queue."""
 
-        for address, rpc_id, args, kwargs in self._deferred_rpcs:
-            self.rpc(address, rpc_id, *args, **kwargs)
+        for address, rpc_id, args, kwargs, callback in self._deferred_rpcs:
+            resp = self.rpc(address, rpc_id, *args, **kwargs)
+
+            if callback is not None:
+                callback(resp)
 
         self._deferred_rpcs = []
 

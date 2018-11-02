@@ -4,7 +4,7 @@ import pytest
 from iotile.core.hw import HardwareManager
 from iotile.emulate.virtual import EmulatedPeripheralTile
 from iotile.emulate.reference import ReferenceDevice
-from iotile.emulate.constants import rpcs, errors
+from iotile.emulate.constants import rpcs, Error
 
 
 @pytest.fixture(scope="function")
@@ -68,7 +68,7 @@ def test_config_variable_rpcs(reference):
     assert len(resp1) == 5
     assert len(resp2) == 5
     assert len(resp3) == 5
-    assert resp3[0] == errors.INVALID_ARRAY_KEY
+    assert resp3[0] == Error.INVALID_ARRAY_KEY
 
     err, _, _, config_id, packed_size = resp1
     assert err == 0
@@ -89,14 +89,14 @@ def test_config_variable_rpcs(reference):
     assert err == 0
 
     err, = device.rpc(10, rpcs.SET_CONFIG_VARIABLE, 0x8001, 19, bytes(bytearray([7, 8])))
-    assert err == errors.INPUT_BUFFER_TOO_LONG
+    assert err == Error.INPUT_BUFFER_TOO_LONG
 
     err, = device.rpc(10, rpcs.SET_CONFIG_VARIABLE, 0x8002, 0, bytes(bytearray([7, 8])))
-    assert err == errors.INVALID_ARRAY_KEY
+    assert err == Error.INVALID_ARRAY_KEY
 
     peripheral._app_started.set()
     err, = device.rpc(10, rpcs.SET_CONFIG_VARIABLE, 0x8000, 0, bytes(bytearray([5, 6])))
-    assert err == errors.STATE_CHANGE_AT_INVALID_TIME
+    assert err == Error.STATE_CHANGE_AT_INVALID_TIME
 
     # Test Getting
     data, = device.rpc(10, rpcs.GET_CONFIG_VARIABLE, 0x8000, 0)
@@ -107,3 +107,12 @@ def test_config_variable_rpcs(reference):
 
     data, = device.rpc(10, rpcs.GET_CONFIG_VARIABLE, 0x8002, 0)
     assert data == bytearray([])
+
+
+def test_snapshot_save_load(reference):
+    """Make sure snapshot saving and loading works without error on a peripheral tile."""
+
+    device, _peripheral = reference
+
+    state = device.dump_state()
+    device.restore_state(state)

@@ -6,12 +6,11 @@ from iotile.core.hw.virtual import tile_rpc
 from iotile.core.exceptions import ArgumentError
 
 from ..virtual import EmulatedTile
-from ..utilities import global_rpc
 from ..constants import rpcs
-from .feature_mixins import RemoteBridgeMixin, TileManagerMixin
+from .controller_features import RemoteBridgeMixin, TileManagerMixin, ConfigDatabaseMixin
 
 
-class ReferenceController(RemoteBridgeMixin, TileManagerMixin, EmulatedTile):
+class ReferenceController(RemoteBridgeMixin, TileManagerMixin, ConfigDatabaseMixin, EmulatedTile):
     """A reference iotile controller implementation.
 
     This tile implements the major behavior of an IOTile controller including
@@ -44,6 +43,7 @@ class ReferenceController(RemoteBridgeMixin, TileManagerMixin, EmulatedTile):
         # Initialize all of the controller subsystems
         RemoteBridgeMixin.__init__(self)
         TileManagerMixin.__init__(self)
+        ConfigDatabaseMixin.__init__(self, 4096, 4096)  #FIXME: Load the controller model info to get its memory map
 
         self.sensor_graph = {
             "nodes": [],
@@ -70,7 +70,9 @@ class ReferenceController(RemoteBridgeMixin, TileManagerMixin, EmulatedTile):
             'os_info': self.os_info,
 
             # Dump all of the subsystems
-            'remote_bridge': self.remote_bridge.dump()
+            'remote_bridge': self.remote_bridge.dump(),
+            'tile_manager': self.tile_manager.dump(),
+            'config_database': self.config_database.dump()
         })
 
         return superstate
@@ -96,8 +98,10 @@ class ReferenceController(RemoteBridgeMixin, TileManagerMixin, EmulatedTile):
 
         # Restore all of the subsystems
         self.remote_bridge.restore(state.get('remote_bridge', {}))
+        self.tile_manager.restore(state.get('tile_manager', {}))
+        self.config_database.restore(state.get('config_database', {}))
 
-    @global_rpc(rpcs.RESET)
+    @tile_rpc(*rpcs.RESET)
     def reset(self):
         """Reset the device."""
 

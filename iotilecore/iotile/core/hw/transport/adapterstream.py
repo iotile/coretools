@@ -201,6 +201,8 @@ class AdapterCMDStream(CMDStream):
         if not success:
             raise HardwareError("Could not send RPC", reason=result['failure_reason'])
 
+        self.adapter.periodic_callback()
+
         return status, payload
 
     def _send_highspeed(self, data, progress_callback):

@@ -9,9 +9,10 @@ and resp_format keyword arguments can be omitted as they will be inferred from
 the RPCDeclaration itself.
 """
 
-from collections import namedtuple
-
-RPCDeclaration = namedtuple("RPCDeclaration", ["rpc_id", "arg_format", "resp_format"])
+#pylint:disable=wildcard-import,unused-wildcard-import;This is designed to a single place for all RPCS.
+from .rpc_declaration import RPCDeclaration
+from .rpc_tilemanager import *
+from .rpc_config_database import *
 
 # Tile Lifecycle Related RPCS
 
@@ -23,44 +24,6 @@ in the middle of executing it.   Callers should expect to receive a
 ModuleNotFound error or other atypical response code from this RPC.  There is
 not a straightforward, portable way to determine the response code caused by
 the tile resetting from a response code caused by an issue running this RPC.
-"""
-
-REGISTER_TILE = RPCDeclaration(0x2a00, "3B6s6BBL", "HHH")
-"""Register a peripheral tile with the local controller.
-
-This RPC is called by all peripheral tiles when they first boot up in order to
-check in with the IOTile controller on their local bus.  The tiles send
-information about themselves that the controller caches in its tile_manager
-subsystem.
-
-Args:
-  - uint8_t: a numerical hardware type identifer for the processor the tile is
-    running on.
-  - two bytes: (major, minor) API level of the tile executive running on this
-    tile.  The api version is encoded with the major version as a byte
-    followed by the minor version.
-  - 6-character string: The tile firmware identifier that is used to match
-    it with the correct proxy module by HardwareManager.
-  - 3 bytes: (major, minor, patch) version identifier of the application
-    firmware running on this tile.
-  - 3 bytes: (major, minor, patch) version identifier of the tile executive
-    running on this tile.
-  - uint8_t: The slot number that refers to the physical location of this
-    tile on the board.  It is used to assign the tile a fixed address on
-    the TileBus.
-  - uint32_t: A unique identifier for this tile, if the tile supports
-    unique identifiers.
-
-Returns:
-  - uint16_t: The address that the tile was assigned based on the slot informatioN
-    that it passed to the controller.
-  - uint16_t: The run-level for the tile.  The tile executive uses this information
-    to determine whether it should pass control to application firmware or prevent
-    any user application code from running because the device is in safe mode.
-  - uint16_t: Whether the tile should run in debug mode.  This hint tells the
-    tile firmware that it should ensure that it runs in a debug-compatible
-    mode, which may among other things entail using lighter sleep states that
-    don't break attached debuggers.
 """
 
 START_APPLICATION = RPCDeclaration(6, "", "")
