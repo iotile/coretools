@@ -11,7 +11,8 @@ setup(
     description="IOTile Device Emulation",
     install_requires=[
         "iotile-core>=3.16.7",
-        "iotile-sensorgraph>=0.7.2"
+        "iotile-sensorgraph>=0.7.2",
+        'enum34;python_version<"3.4"'
     ],
     entry_points={'iotile.virtual_device': ['reference_1_0 = iotile.emulate.reference:ReferenceDevice',
                                             'emulation_demo = iotile.emulate.demo:DemoEmulatedDevice'],

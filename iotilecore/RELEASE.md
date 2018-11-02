@@ -4,6 +4,9 @@ All major changes in each released version of IOTileCore are listed here.
 
 ## HEAD
 
+- Add additional call to periodic_callback in AdapterStream to support the
+  EmulatedDeviceAdapter better.
+
 ## 3.22.13
 
 - Add "watch_reports" command, which enables a user to live view reports from the connected device

@@ -5,20 +5,17 @@ from __future__ import unicode_literals, absolute_import, print_function
 import struct
 import base64
 import logging
-import threading
 from future.utils import viewitems
 from iotile.core.exceptions import ArgumentError
 from iotile.core.hw.virtual import VirtualTile
 from iotile.core.hw.virtual import tile_rpc
 from .emulated_device import EmulatedDevice
 from .emulation_mixin import EmulationMixin
+from ..constants import rpcs, Error
 
 
 class ConfigDescriptor(object):
-    """Helper class for declaring a configuration variable.
-
-    FIXME: Support binary serialization of default values.
-    """
+    """Helper class for declaring a configuration variable."""
 
     def __init__(self, config_id, type_name, default=None, name=None):
         self.config_id = config_id
@@ -33,6 +30,14 @@ class ConfigDescriptor(object):
 
         self.name = name
 
+    def clear(self):
+        """Clear this config variable to its reset value."""
+
+        if self.default_value is None:
+            self.current_value = bytearray()
+        else:
+            self.current_value = bytearray(self.default_value)
+
     def update_value(self, offset, value):
         """Update the binary value currently stored for this config value.
 
@@ -41,7 +46,7 @@ class ConfigDescriptor(object):
         """
 
         if offset + len(value) > self.total_size:
-            return 3
+            return Error.INPUT_BUFFER_TOO_LONG
 
         if len(self.current_value) < offset:
             self.current_value += bytearray(offset - len(self.current_value))
@@ -73,6 +78,20 @@ class EmulatedTile(EmulationMixin, VirtualTile):
         device (TileBasedVirtualDevice): Device on which this tile is running.
             This parameter is not optional on EmulatedTiles.
     """
+    hardware_type = 0
+    """The hardware type is a single uint8_t that can be used to record the chip architecture used."""
+
+    firmware_version = (1, 0, 0)
+    """The version of the application firmware running on the tile."""
+
+    executive_version = (1, 0, 0)
+    """The version of the executive kernel running on the tile."""
+
+    api_version = (3, 0)
+    """The API version agreed between the application and executive kernel."""
+
+    app_started = None
+    """Default implementation of tiles does not have a separate phase before application code runs."""
 
     def __init__(self, address, name, device):
         if not isinstance(device, EmulatedDevice):
@@ -112,7 +131,7 @@ class EmulatedTile(EmulationMixin, VirtualTile):
         """
 
         return {
-            "config_variables": {x: base64.b64encode(y) for x, y in viewitems(self._config_variables)},
+            "config_variables": {x: base64.b64encode(y.current_value) for x, y in viewitems(self._config_variables)},
         }
 
     def restore_state(self, state):
@@ -132,17 +151,22 @@ class EmulatedTile(EmulationMixin, VirtualTile):
                 self._config_variables[name].current_value = value
 
     def _handle_reset(self):
-        """Hook to perform any required reset actions."""
+        """Hook to perform any required reset actions.
+
+        Subclasses that override this method should always call
+        super()._handle_reset() to make sure their base classes properly
+        initialize their reset state.
+        """
 
         pass
 
-    @tile_rpc(1, "")
+    @tile_rpc(*rpcs.RESET)
     def reset(self):
         """Reset this tile."""
 
         self._handle_reset()
 
-    @tile_rpc(10, "H", "H9H")
+    @tile_rpc(*rpcs.LIST_CONFIG_VARIABLES)
     def list_config_variables(self, offset):
         """List defined config variables up to 9 at a time."""
 
@@ -155,34 +179,34 @@ class EmulatedTile(EmulationMixin, VirtualTile):
 
         return [count] + names
 
-    @tile_rpc(11, "H", "HHLHH")
+    @tile_rpc(*rpcs.DESCRIBE_CONFIG_VARIABLE)
     def describe_config_variable(self, config_id):
         """Describe the config variable by its id."""
 
         config = self._config_variables.get(config_id)
         if config is None:
-            return [6, 0, 0, 0, 0]
+            return [Error.INVALID_ARRAY_KEY, 0, 0, 0, 0]
 
         packed_size = config.total_size
         packed_size |= int(config.variable) << 15
 
         return [0, 0, 0, config_id, packed_size]
 
-    @tile_rpc(12, "HHV", "H")
+    @tile_rpc(*rpcs.SET_CONFIG_VARIABLE)
     def set_config_variable(self, config_id, offset, value):
         """Set a chunk of the current config value's value."""
 
-        if self.app_started.is_set():
-            return [9]
+        if self.app_started is True:
+            return [Error.STATE_CHANGE_AT_INVALID_TIME]
 
         config = self._config_variables.get(config_id)
         if config is None:
-            return [6]
+            return [Error.INVALID_ARRAY_KEY]
 
         error = config.update_value(offset, value)
         return [error]
 
-    @tile_rpc(13, "HH", "V")
+    @tile_rpc(*rpcs.GET_CONFIG_VARIABLE)
     def get_config_variable(self, config_id, offset):
         """Get a chunk of a config variable's value."""
 

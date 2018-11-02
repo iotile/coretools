@@ -22,3 +22,6 @@ All major changes in each released version of iotile-emulate are listed here.
   EmulatedTile subclasses and begin refactor to split out individual controller
   subsystems to allow for the rest of the reference IOTile controller
   functionality to be added.
+
+- Start adding global constants with good docstring descriptions to be used as
+  a basis for automatic help text generation or documentation.

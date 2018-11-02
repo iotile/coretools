@@ -1,18 +1,12 @@
 """Mixin for device updating via signed scripts."""
 
-import base64
 from future.utils import viewitems
 from iotile.core.hw.virtual import tile_rpc
 from ...virtual import SerializableState
-
-class RunLevel(object):
-    StartNow = 0
-    StartOnCommand = 1
-    SafeMode = 2
-
+from ...constants import RunLevel, TileState, rpcs
 
 class TileInfo(SerializableState):
-    def __init__(self, hw_type, name, api_info, fw_info, exec_info, slot, unique_id):
+    def __init__(self, hw_type, name, api_info, fw_info, exec_info, slot, unique_id, state=TileState.INVALID):
         super(TileInfo, self).__init__()
 
         self.hw_type = hw_type
@@ -22,6 +16,7 @@ class TileInfo(SerializableState):
         self.exec_info = exec_info
         self.slot = slot
         self.unique_id = unique_id
+        self.state = state
 
 
 class TileManagerState(SerializableState):
@@ -42,7 +37,7 @@ class TileManagerState(SerializableState):
     def _restore_registered_tiles(self, serialized_tiles):
         tiles = {}
 
-        for address, serialized_tile in serialized_tiles:
+        for address, serialized_tile in viewitems(serialized_tiles):
             address = int(address)
 
             tile = TileInfo(None, None, None, None, None, None, None)
@@ -63,7 +58,7 @@ class TileManagerMixin(object):
     def __init__(self):
         self.tile_manager = TileManagerState()
 
-    @tile_rpc(0x2a00, "3B6s6BBL", "HHH")
+    @tile_rpc(*rpcs.REGISTER_TILE)
     def register_tile(self, hw_type, api_major, api_minor, name, fw_major, fw_minor, fw_patch, exec_major, exec_minor, exec_patch, slot, unique_id):
         """Register a tile with this controller.
 
@@ -75,18 +70,28 @@ class TileManagerMixin(object):
         fw_info = (fw_major, fw_minor, fw_patch)
         exec_info = (exec_major, exec_minor, exec_patch)
 
-        info = TileInfo(hw_type, name, api_info, fw_info, exec_info, slot, unique_id)
+        info = TileInfo(hw_type, name, api_info, fw_info, exec_info, slot, unique_id, state=TileState.JUST_REGISTERED)
         address = 10 + slot
 
         self.tile_manager.registered_tiles[address] = info
 
-        run_level = RunLevel.StartOnCommand
-        if self.tile_manager.safe_mode:
-            run_level = RunLevel.SafeMode
-
         debug = int(self.tile_manager.debug_mode)
 
-        # FIXME: Also stream any config variables here
-        self._device.deferred_rpc(address, 6)
+        if self.tile_manager.safe_mode:
+            run_level = RunLevel.SAFE_MODE
+            info.state = TileState.SAFE_MODE
+        else:
+            run_level = RunLevel.START_ON_COMMAND
+            info.state = TileState.BEING_CONFIGURED
+
+            # Stream any matching config variables to this tile
+            config_rpcs = self.config_database.stream_matching(address, name)
+            for rpc in config_rpcs:
+                self._device.deferred_rpc(*rpc)
+
+            def _update_state(_response):
+                info.state = TileState.RUNNING
+
+            self._device.deferred_rpc(address, rpcs.START_APPLICATION, callback=_update_state)
 
         return [address, run_level, debug]

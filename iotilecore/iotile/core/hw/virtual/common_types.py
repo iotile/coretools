@@ -76,7 +76,7 @@ def pack_rpc_payload(arg_format, args):
         bytes: The packed argument buffer.
     """
 
-    code = _create_argcode(arg_format, args)
+    code = _create_respcode(arg_format, args)
     return struct.pack(code, *args)
 
 
