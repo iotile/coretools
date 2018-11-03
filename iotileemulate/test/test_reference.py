@@ -230,8 +230,8 @@ def test_tile_manager(reference_hw):
 
     con = tileman.describe_tile(0)
     peri = tileman.describe_tile(1)
-    assert str(con) == 'refcn1, version 1.0.0 at slot 0'
-    assert str(peri) == 'abcdef, version 1.0.0 at slot 1'
+    assert str(con) == b'refcn1, version 1.0.0 at slot 0'
+    assert str(peri) == b'abcdef, version 1.0.0 at slot 1'
 
     # Make sure reseting a tile doesn't add a new entry
     slot.reset(wait=0)
@@ -240,10 +240,10 @@ def test_tile_manager(reference_hw):
 
     con = tileman.describe_tile(0)
     peri = tileman.describe_tile(1)
-    assert str(con) == 'refcn1, version 1.0.0 at slot 0'
-    assert str(peri) == 'abcdef, version 1.0.0 at slot 1'
+    assert str(con) == b'refcn1, version 1.0.0 at slot 0'
+    assert str(peri) == b'abcdef, version 1.0.0 at slot 1'
 
     con = tileman.describe_selector('controller')
     peri = tileman.describe_selector('slot 1')
-    assert str(con) == 'refcn1, version 1.0.0 at slot 0'
-    assert str(peri) == 'abcdef, version 1.0.0 at slot 1'
+    assert str(con) == b'refcn1, version 1.0.0 at slot 0'
+    assert str(peri) == b'abcdef, version 1.0.0 at slot 1'
