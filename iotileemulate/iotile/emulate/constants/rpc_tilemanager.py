@@ -62,7 +62,7 @@ Returns:
  - uint16_t: The number of currently registered tiles.
 """
 
-DESCRIBE_TILE = RPCDeclaration(0x2a02, "H", "")
+DESCRIBE_TILE = RPCDeclaration(0x2a02, "H", "3B6s6BBL")
 """Describes the tile at the given index in the TileManager cache.
 
 The information returned is the exact same data as what REGISTER_TILE

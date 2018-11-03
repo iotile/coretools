@@ -25,3 +25,5 @@ All major changes in each released version of iotile-emulate are listed here.
 
 - Start adding global constants with good docstring descriptions to be used as
   a basis for automatic help text generation or documentation.
+
+- Adds test coverage of tile_manager and config_database subsystems.

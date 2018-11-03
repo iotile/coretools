@@ -1,6 +1,7 @@
 """Mixin for persistent database of config variables to send to tiles on reset."""
 
 import base64
+import struct
 from iotile.core.hw.virtual import tile_rpc
 from iotile.sg import SlotIdentifier
 from ...virtual import SerializableState
@@ -25,15 +26,14 @@ class ConfigEntry(object):
     def data_space(self):
         """Return how much data space this entry uses.
 
-        The variable target is stored prepended to the data so
-        even if there is no actual data, there are always two
-        bytes used.
+        The variable target is stored prepended to the data so even if there
+        is no actual data, there are always two bytes used.
 
         Returns:
             int
         """
 
-        return len(self.data) + 2
+        return len(self.data)
 
     def dump(self):
         """Serialize this object."""
@@ -60,8 +60,8 @@ class ConfigEntry(object):
 
         rpc_list = []
 
-        for offset in range(0, len(self.data), 16):
-            rpc = (address, rpcs.SET_CONFIG_VARIABLE, offset, self.data[offset:offset + 16])
+        for offset in range(2, len(self.data), 16):
+            rpc = (address, rpcs.SET_CONFIG_VARIABLE, self.var_id, offset - 2, self.data[offset:offset + 16])
             rpc_list.append(rpc)
 
         return rpc_list
@@ -148,6 +148,7 @@ class ConfigDatabase(SerializableState):
         if self.data_size - self.data_index < self.in_progress.data_space():
             return Error.DESTINATION_BUFFER_TOO_SMALL
 
+        self.in_progress.data += struct.pack("<H", var_id)
         self.data_index += self.in_progress.data_space()
 
         return Error.NO_ERROR
@@ -192,10 +193,11 @@ class ConfigDatabase(SerializableState):
         # Invalidate all previous copies of this config variable so we
         # can properly compact.
         for entry in self.entries:
-            if entry.target == self.in_progress.target:
+            if entry.target == self.in_progress.target and entry.var_id == self.in_progress.var_id:
                 entry.valid = False
 
         self.entries.append(self.in_progress)
+        self.data_index += self.in_progress.data_space() - 2  # Add in the rest of the entry size (we added two bytes at start_entry())
         self.in_progress = None
 
         return Error.NO_ERROR
@@ -277,7 +279,7 @@ class ConfigDatabaseMixin(object):
         if not entry.valid:
             return [ConfigDatabaseError.OBSOLETE_ENTRY, 0, 0, 0, b'\0'*8, 0, 0]
 
-        offset = sum(x.data_space() for x in self.config_database.entries)
+        offset = sum(x.data_space() for x in self.config_database.entries[:index - 1])
         return [Error.NO_ERROR, self.config_database.ENTRY_MAGIC, offset, entry.data_space(), entry.target.encode(), 0xFF, 0]
 
     @tile_rpc(*rpcs.COUNT_CONFIG_VAR_ENTRIES)

@@ -6,7 +6,7 @@ from ...virtual import SerializableState
 from ...constants import RunLevel, TileState, rpcs
 
 class TileInfo(SerializableState):
-    def __init__(self, hw_type, name, api_info, fw_info, exec_info, slot, unique_id, state=TileState.INVALID):
+    def __init__(self, hw_type, name, api_info, fw_info, exec_info, slot, unique_id, state=TileState.INVALID, address=None):
         super(TileInfo, self).__init__()
 
         self.hw_type = hw_type
@@ -16,7 +16,29 @@ class TileInfo(SerializableState):
         self.exec_info = exec_info
         self.slot = slot
         self.unique_id = unique_id
+
         self.state = state
+        self.address = address
+
+    def registration_packet(self):
+        """Serialize this into a tuple suitable for returning from an RPC.
+
+        Returns:
+            tuple: The serialized values.
+        """
+
+        return (self.hw_type, self.api_info[0], self.api_info[1], self.name, self.fw_info[0], self.fw_info[1], self.fw_info[2],
+                self.exec_info[0], self.exec_info[0], self.exec_info[0], self.slot, self.unique_id)
+
+    @classmethod
+    def CreateInvalid(cls):
+        """Create a blank invalid TileInfo structure.
+
+        Returns:
+            TileInfo
+        """
+
+        return TileInfo(0, '\0'*6, (0, 0), (0, 0, 0), (0, 0, 0), 0, 0)
 
 
 class TileManagerState(SerializableState):
@@ -25,27 +47,39 @@ class TileManagerState(SerializableState):
     def __init__(self):
         super(TileManagerState, self).__init__()
 
-        self.registered_tiles = {}
+        self.registered_tiles = []
         self.safe_mode = False
         self.debug_mode = False
 
         self.mark_complex('registered_tiles', self._dump_registered_tiles, self._restore_registered_tiles)
 
     def _dump_registered_tiles(self, tiles):
-        return {address: info.dump() for address, info in viewitems(tiles)}
+        return [info.dump() for info in tiles]
 
     def _restore_registered_tiles(self, serialized_tiles):
-        tiles = {}
+        tiles = []
 
-        for address, serialized_tile in viewitems(serialized_tiles):
-            address = int(address)
-
+        for serialized_tile in serialized_tiles:
             tile = TileInfo(None, None, None, None, None, None, None)
             tile.restore(serialized_tile)
 
-            tiles[address] = tile
+            tiles.append(tile)
 
         return tiles
+
+    def insert_tile(self, tile_info):
+        """Add or replace an entry in the tile cache.
+
+        Args:
+            tile_info (TileInfo): The newly registered tile.
+        """
+
+        for i, tile in enumerate(self.registered_tiles):
+            if tile.slot == tile_info.slot:
+                self.registered_tiles[i] = tile_info
+                return
+
+        self.registered_tiles.append(tile_info)
 
 
 class TileManagerMixin(object):
@@ -57,6 +91,10 @@ class TileManagerMixin(object):
 
     def __init__(self):
         self.tile_manager = TileManagerState()
+
+        # Register the controller itself into our tile_info database
+        info = TileInfo(self.hardware_type, self.name, self.api_version, self.firmware_version, self.executive_version, 0, 0, state=TileState.RUNNING)
+        self.tile_manager.insert_tile(info)
 
     @tile_rpc(*rpcs.REGISTER_TILE)
     def register_tile(self, hw_type, api_major, api_minor, name, fw_major, fw_minor, fw_patch, exec_major, exec_minor, exec_patch, slot, unique_id):
@@ -70,10 +108,10 @@ class TileManagerMixin(object):
         fw_info = (fw_major, fw_minor, fw_patch)
         exec_info = (exec_major, exec_minor, exec_patch)
 
-        info = TileInfo(hw_type, name, api_info, fw_info, exec_info, slot, unique_id, state=TileState.JUST_REGISTERED)
         address = 10 + slot
+        info = TileInfo(hw_type, name, api_info, fw_info, exec_info, slot, unique_id, state=TileState.JUST_REGISTERED, address=address)
 
-        self.tile_manager.registered_tiles[address] = info
+        self.tile_manager.insert_tile(info)
 
         debug = int(self.tile_manager.debug_mode)
 
@@ -95,3 +133,20 @@ class TileManagerMixin(object):
             self._device.deferred_rpc(address, rpcs.START_APPLICATION, callback=_update_state)
 
         return [address, run_level, debug]
+
+    @tile_rpc(*rpcs.COUNT_TILES)
+    def count_tiles(self):
+        """Count the number of registered tiles including the controller."""
+
+        return [len(self.tile_manager.registered_tiles)]
+
+    @tile_rpc(*rpcs.DESCRIBE_TILE)
+    def describe_tile(self, index):
+        """Get the registration information for the tile at the given index."""
+
+        if index >= len(self.tile_manager.registered_tiles):
+            tile = TileInfo.CreateInvalid()
+        else:
+            tile = self.tile_manager.registered_tiles[index]
+
+        return tile.registration_packet()

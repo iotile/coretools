@@ -78,13 +78,15 @@ class HardwareManager:
 
     @param("port", "string", desc="transport method to use in the format transport[:port[,connection_string]]")
     @param("record", "path", desc="Optional file to record all RPC calls and responses made on this HardwareManager")
-    def __init__(self, port=None, record=None):
-        if port is None:
+    def __init__(self, port=None, record=None, adapter=None):
+        if port is None and adapter is None:
             try:
                 conf = ConfigManager()
                 port = conf.get('core:default-port')
             except ArgumentError:
                 raise ArgumentError("No port given and no core:default-port config variable set", suggestion="Specify the port to use to connect to the IOTile devices")
+        elif port is None:
+            port = ""
 
         transport, _, arg = port.partition(':')
 
@@ -95,7 +97,7 @@ class HardwareManager:
 
         self.record = record
 
-        self.stream = self._create_stream()
+        self.stream = self._create_stream(adapter)
 
         self._stream_queue = None
         self._trace_queue = None
@@ -909,7 +911,7 @@ class HardwareManager:
         proxy_class = self._proxies[proxy]
         return proxy_class(self.stream, address)
 
-    def _create_stream(self):
+    def _create_stream(self, force_adapter=None):
         conn_string = None
         port = self.port
         if port is not None and "," in port:
@@ -919,6 +921,10 @@ class HardwareManager:
             port = port.strip()
         if conn_string is not None:
             conn_string = conn_string.strip()
+
+        #Check if we're supposed to use a specific device adapter
+        if force_adapter is not None:
+            return AdapterCMDStream(force_adapter, port, conn_string, record=self.record)
 
         #First check if this is the special none stream that creates a transport channel nowhere
         if self.transport == 'none':

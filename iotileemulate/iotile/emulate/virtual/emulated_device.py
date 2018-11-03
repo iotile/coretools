@@ -1,6 +1,7 @@
 """Base class for virtual devices designed to emulate physical devices."""
 
 from __future__ import unicode_literals, absolute_import, print_function
+import logging
 from future.utils import viewitems
 from iotile.core.exceptions import DataError
 from iotile.core.hw.virtual import VirtualIOTileDevice
@@ -31,6 +32,7 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
         VirtualIOTileDevice.__init__(self, iotile_id, name)
         EmulationMixin.__init__(self, None, self.state_history)
 
+        self._logger = logging.getLogger(__name__)
         self._deferred_rpcs = []
 
     def dump_state(self):
@@ -84,6 +86,7 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
         if arg_format is not None:
             arg_payload = pack_rpc_payload(arg_format, args)
 
+        self._logger.debug("Sending rpc to %d:%04X, payload=%s", address, rpc_id, args)
         resp_payload = self.call_rpc(address, rpc_id, arg_payload)
         if resp_format is None:
             return []

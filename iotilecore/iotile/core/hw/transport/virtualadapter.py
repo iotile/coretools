@@ -92,34 +92,51 @@ class VirtualDeviceAdapter(DeviceAdapter):
     Args:
         port (string): A port description that should be in the form of
             device_name1@<optional_config_json1;device_name2@optional_config_json2
+        devices (list of VirtualIOTileDevice): Optional list of precreated virtual
+            devices that you would like to add to this virtual adapter.  It can sometimes
+            be easier to pass precreated devices rather than needing to specify how
+            they should be created.
     """
 
     # Make devices expire after a long time only
     ExpirationTime = 600000
 
-    def __init__(self, port):
+    def __init__(self, port=None, devices=None):
         super(VirtualDeviceAdapter, self).__init__()
 
-        devs = port.split(';')
         loaded_devs = {}
+
+        if devices is None:
+            devices = []
 
         # This needs to be initialized before any VirtualAdapterAsyncChannels are
         # created because those could reference it
         self.connections = {}
 
-        for dev in devs:
-            name, _sep, config = dev.partition('@')
+        if port is not None:
+            devs = port.split(';')
 
-            if len(config) == 0:
-                config = None
+            for dev in devs:
+                name, _sep, config = dev.partition('@')
 
-            loaded_dev = self._load_device(name, config)
+                if len(config) == 0:
+                    config = None
 
-            if not self._validate_device(loaded_dev):
+                loaded_dev = self._load_device(name, config)
+
+                if not self._validate_device(loaded_dev):
+                    raise ArgumentError("Device type cannot be loaded on this adapter", name=name)
+
+                loaded_dev.start(VirtualAdapterAsyncChannel(self, loaded_dev.iotile_id))
+                loaded_devs[loaded_dev.iotile_id] = loaded_dev
+
+        # Allow explicitly passing created VirtualDevice subclasses
+        for dev in devices:
+            if not self._validate_device(dev):
                 raise ArgumentError("Device type cannot be loaded on this adapter", name=name)
 
-            loaded_dev.start(VirtualAdapterAsyncChannel(self, loaded_dev.iotile_id))
-            loaded_devs[loaded_dev.iotile_id] = loaded_dev
+            dev.start(VirtualAdapterAsyncChannel(self, dev.iotile_id))
+            loaded_devs[dev.iotile_id] = dev
 
         self.devices = loaded_devs
         self.scan_interval = self.get_config('scan_interval', 1.0)
