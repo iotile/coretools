@@ -1,6 +1,7 @@
 """Test coverage of the ReferenceDevice and ReferenceController emulated objects."""
 
 import pytest
+import sys
 from iotile.core.hw import HardwareManager
 from iotile.core.hw.proxy.external_proxy import find_proxy_plugin
 from iotile.emulate.virtual import EmulatedPeripheralTile
@@ -220,6 +221,14 @@ def test_config_database(reference_hw):
 def test_tile_manager(reference_hw):
     """Test the controller tile_manager RPCs using the canonical proxy plugin."""
 
+    # Work around inconsistency in output of iotile-support-lib-controller-3 on python 2 and 3
+    if sys.version_info.major < 3:
+        con_str = 'refcn1, version 1.0.0 at slot 0'
+        peri_str = 'abcdef, version 1.0.0 at slot 1'
+    else:
+        con_str = "b'refcn1', version 1.0.0 at slot 0"
+        peri_str = "b'abcdef', version 1.0.0 at slot 1"
+
     hw, _device, _peripheral = reference_hw
 
     con = hw.get(8, basic=True)
@@ -230,8 +239,8 @@ def test_tile_manager(reference_hw):
 
     con = tileman.describe_tile(0)
     peri = tileman.describe_tile(1)
-    assert str(con) == b'refcn1, version 1.0.0 at slot 0'
-    assert str(peri) == b'abcdef, version 1.0.0 at slot 1'
+    assert str(con) == con_str
+    assert str(peri) == peri_str
 
     # Make sure reseting a tile doesn't add a new entry
     slot.reset(wait=0)
@@ -240,10 +249,10 @@ def test_tile_manager(reference_hw):
 
     con = tileman.describe_tile(0)
     peri = tileman.describe_tile(1)
-    assert str(con) == b'refcn1, version 1.0.0 at slot 0'
-    assert str(peri) == b'abcdef, version 1.0.0 at slot 1'
+    assert str(con) == con_str
+    assert str(peri) == peri_str
 
     con = tileman.describe_selector('controller')
     peri = tileman.describe_selector('slot 1')
-    assert str(con) == b'refcn1, version 1.0.0 at slot 0'
-    assert str(peri) == b'abcdef, version 1.0.0 at slot 1'
+    assert str(con) == con_str
+    assert str(peri) == peri_str
