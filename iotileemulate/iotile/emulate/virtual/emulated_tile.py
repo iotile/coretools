@@ -5,7 +5,7 @@ from __future__ import unicode_literals, absolute_import, print_function
 import struct
 import base64
 import logging
-from future.utils import viewitems
+from future.utils import viewitems, viewvalues
 from iotile.core.exceptions import ArgumentError
 from iotile.core.hw.virtual import VirtualTile
 from iotile.core.hw.virtual import tile_rpc
@@ -156,9 +156,13 @@ class EmulatedTile(EmulationMixin, VirtualTile):
         Subclasses that override this method should always call
         super()._handle_reset() to make sure their base classes properly
         initialize their reset state.
+
+        The only thing we need to properly do is make sure our config
+        variables return to their reset states.
         """
 
-        pass
+        for config in viewvalues(self._config_variables):
+            config.clear()
 
     @tile_rpc(*rpcs.RESET)
     def reset(self):

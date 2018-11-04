@@ -1,10 +1,13 @@
 """Test coverage of the ReferenceDevice and ReferenceController emulated objects."""
 
 import pytest
+import sys
 from iotile.core.hw import HardwareManager
+from iotile.core.hw.proxy.external_proxy import find_proxy_plugin
 from iotile.emulate.virtual import EmulatedPeripheralTile
 from iotile.emulate.reference import ReferenceDevice
 from iotile.emulate.constants import rpcs, Error
+from iotile.emulate.transport import EmulatedDeviceAdapter
 
 
 @pytest.fixture(scope="function")
@@ -18,6 +21,25 @@ def reference():
     device.start()
     yield device, peripheral
     device.stop()
+
+
+@pytest.fixture(scope="function")
+def reference_hw():
+    """Get a reference device and connected HardwareManager."""
+
+    device = ReferenceDevice({})
+    peripheral = EmulatedPeripheralTile(11, b'abcdef', device)
+    peripheral.declare_config_variable("test 1", 0x8000, 'uint16_t')
+    peripheral.declare_config_variable('test 2', 0x8001, 'uint32_t[5]')
+
+    device.add_tile(11, peripheral)
+
+    adapter = EmulatedDeviceAdapter(None, devices=[device])
+
+    with HardwareManager(adapter=adapter) as hw:
+        hw.connect(1)
+
+        yield hw, device, peripheral
 
 
 def test_basic_usage():
@@ -116,3 +138,121 @@ def test_snapshot_save_load(reference):
 
     state = device.dump_state()
     device.restore_state(state)
+
+
+def test_config_database(reference_hw):
+    """Test the controller config database RPCs using the canonical proxy plugin."""
+
+    hw, _device, _peripheral = reference_hw
+
+    con = hw.get(8, basic=True)
+    slot = hw.get(11, basic=True)
+    config_db = find_proxy_plugin('iotile_standard_library/lib_controller', 'ConfigDatabasePlugin')(con)
+
+    # Make sure all of the basic RPCs work
+    assert config_db.count_variables() == 0
+    config_db.clear_variables()
+
+    # Make sure we can set and get config variables
+    config_db.set_variable('slot 1', 0x8000, 'uint16_t', 15)
+    config_db.set_variable('slot 1', 0x8001, 'uint32_t[]', "[5, 6, 7]")
+
+    assert config_db.count_variables() == 2
+    var8000 = config_db.get_variable(1)
+    var8001 = config_db.get_variable(2)
+
+    var8000['metadata'] = str(var8000['metadata'])
+    var8001['metadata'] = str(var8001['metadata'])
+
+    assert var8000 == {
+        'metadata': 'Target: slot 1\nData Offset: 0\nData Length: 4\nValid: True',
+        'name': 0x8000,
+        'data': bytearray([15, 0])
+    }
+    assert var8001 == {
+        'metadata': 'Target: slot 1\nData Offset: 4\nData Length: 14\nValid: True',
+        'name': 0x8001,
+        'data': bytearray([5, 0, 0, 0, 6, 0, 0, 0, 7, 0, 0, 0])
+    }
+
+    slot_conf = slot.config_manager()
+
+    # Make sure we stream all variables on a reset
+    slot.reset(wait=0)
+    assert slot_conf.get_variable(0x8000) == bytearray([15, 0])
+    assert slot_conf.get_variable(0x8001) == bytearray([5, 0, 0, 0, 6, 0, 0, 0, 7, 0, 0, 0])
+
+    # Make sure invalidated variables are not streamed and the tile resets them on reset
+    config_db.invalidate_variable(1)
+    assert config_db.count_variables() == 2
+    slot.reset(wait=0)
+    assert slot_conf.get_variable(0x8000) == bytearray()
+    assert slot_conf.get_variable(0x8001) == bytearray([5, 0, 0, 0, 6, 0, 0, 0, 7, 0, 0, 0])
+
+    # Check memory limits before and after compaction
+    usage = config_db.memory_limits()
+    assert usage == {
+        'data_usage': 18,
+        'data_compactable': 4,
+        'data_limit': 4096,
+        'entry_usage': 2,
+        'entry_compactable': 1,
+        'entry_limit': 255
+    }
+
+    # Make sure we remove invalid and keep valid entries upon compaction
+    config_db.compact_database()
+    usage = config_db.memory_limits()
+    assert usage == {
+        'data_usage': 14,
+        'data_compactable': 0,
+        'data_limit': 4096,
+        'entry_usage': 1,
+        'entry_compactable': 0,
+        'entry_limit': 255
+    }
+
+    assert config_db.count_variables() == 1
+    slot.reset(wait=0)
+    assert slot_conf.get_variable(0x8000) == bytearray()
+    assert slot_conf.get_variable(0x8001) == bytearray([5, 0, 0, 0, 6, 0, 0, 0, 7, 0, 0, 0])
+
+
+def test_tile_manager(reference_hw):
+    """Test the controller tile_manager RPCs using the canonical proxy plugin."""
+
+    # Work around inconsistency in output of iotile-support-lib-controller-3 on python 2 and 3
+    if sys.version_info.major < 3:
+        con_str = 'refcn1, version 1.0.0 at slot 0'
+        peri_str = 'abcdef, version 1.0.0 at slot 1'
+    else:
+        con_str = "b'refcn1', version 1.0.0 at slot 0"
+        peri_str = "b'abcdef', version 1.0.0 at slot 1"
+
+    hw, _device, _peripheral = reference_hw
+
+    con = hw.get(8, basic=True)
+    slot = hw.get(11, basic=True)
+    tileman = find_proxy_plugin('iotile_standard_library/lib_controller', 'TileManagerPlugin')(con)
+
+    assert tileman.count_tiles() == 2
+
+    con = tileman.describe_tile(0)
+    peri = tileman.describe_tile(1)
+    assert str(con) == con_str
+    assert str(peri) == peri_str
+
+    # Make sure reseting a tile doesn't add a new entry
+    slot.reset(wait=0)
+
+    assert tileman.count_tiles() == 2
+
+    con = tileman.describe_tile(0)
+    peri = tileman.describe_tile(1)
+    assert str(con) == con_str
+    assert str(peri) == peri_str
+
+    con = tileman.describe_selector('controller')
+    peri = tileman.describe_selector('slot 1')
+    assert str(con) == con_str
+    assert str(peri) == peri_str

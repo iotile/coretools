@@ -22,10 +22,12 @@ class EmulatedDeviceAdapter(VirtualDeviceAdapter):
     Args:
         port (string): A port description that should be in the form of
             device_name1@<optional_config_json1;device_name2@optional_config_json2
+        devices (list of EmulatedDevice): Optional list of specif, precreated emulated
+            devices that should be added to the device adapter.
     """
 
-    def __init__(self, port):
-        super(EmulatedDeviceAdapter, self).__init__(port)
+    def __init__(self, port, devices=None):
+        super(EmulatedDeviceAdapter, self).__init__(port, devices)
         self._logger = logging.getLogger(__name__)
 
     @classmethod

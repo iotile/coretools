@@ -36,7 +36,7 @@ def _create_argcode(code, arg_bytes):
         return "<" + code
 
     code = code[:-1]
-    fixed_size = struct.calcsize(code)
+    fixed_size = struct.calcsize("<" + code)
     var_size = len(arg_bytes) - fixed_size
 
     if var_size < 0:
@@ -54,7 +54,7 @@ def _create_respcode(code, resp):
     code = code[:-1]
 
     final_length = len(resp[-1])
-    fixed_size = struct.calcsize(code)
+    fixed_size = struct.calcsize("<" + code)
 
     if fixed_size + final_length > 20:
         raise RPCInvalidReturnValueError("Variable length return value is too large for rpc response payload (20 bytes)",
