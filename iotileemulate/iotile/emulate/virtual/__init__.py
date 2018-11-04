@@ -1,13 +1,15 @@
 """Base classes for virtual IOTile devices designed to emulate physical IOTile Devices.
 
-Classes that derive from EmulatedDevice and EmulatedTile have additional funtionality
-for saving and loading their state to provide for easy creation of testing scenarios.
+Classes that derive from EmulatedDevice and EmulatedTile have additional
+funtionality for saving and loading their state to provide for easy creation
+of testing scenarios.
 
-For example, you may have an IOTile Device that serves as a shock and vibration data
-logger.  In reality it would take time to load it up with real captured shocks and
-vibrations in order to test that we could properly create software that read those
-waveforms.  With an EmulatedDevice, you can just load in a `has 100 waveforms`
-scenario and use that as part of automated integration test cases.
+For example, you may have an IOTile Device that serves as a shock and
+vibration data logger.  In reality it would take time to load it up with real
+captured shocks and vibrations in order to test that we could properly create
+software that read those waveforms.  With an EmulatedDevice, you can just load
+in a `has 100 waveforms` scenario and use that as part of automated
+integration test cases.
 
 EmulatedDevice vs VirtualIOTileDevice
 =====================================
@@ -33,9 +35,9 @@ interact with that physical device.
 Lifecycle of an Emulated Device
 ===============================
 
-Unlike normal virtual devices, which have no specific lifecycle imposed on them,
-emulated devices are designed to act as standins for physical IOTile devices that
-do need to follow a very specific initialization process.
+Unlike normal virtual devices, which have no specific lifecycle imposed on
+them, emulated devices are designed to act as standins for physical IOTile
+devices that do need to follow a very specific initialization process.
 
 The process is as follows:
 - First the controller tile for the device boots and initializes itself.
@@ -48,7 +50,7 @@ The process is as follows:
 In an EmulatedDevice class, this process happens when start() is called on the
 device and when the controller is reset().  Each tile can also be reset
 independently in order to trigger it to go through its initialization process
-again (including registering.
+again (including registering and receiving new config variables).
 """
 
 from .emulated_device import EmulatedDevice

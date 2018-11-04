@@ -53,7 +53,8 @@ class ReferenceDevice(EmulatedDevice):
 
         self.controller.start(channel)
 
-        for address, tile in viewitems(self._tiles):
+        # Guarantee an initialization order so that our trace files are deterministic
+        for address, tile in sorted(viewitems(self._tiles)):
             if address == 8:
                 continue
 
@@ -64,8 +65,9 @@ class ReferenceDevice(EmulatedDevice):
             tile.start(channel)
 
         # This should have triggered all of the tiles to register themselves with the controller,
-        # causing it to queue up config variable and start_application rpcs back to them.
-        self.send_deferred_rpcs()
+        # causing it to queue up config variable and start_application rpcs back to them, make
+        # sure all such RPCs have been flushed.
+        self.wait_deferred_rpcs()
 
         for address, tile in viewitems(self._tiles):
             if address == 8:

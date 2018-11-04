@@ -20,7 +20,7 @@ class EmulationStateLog(object):
         self._lock = threading.Lock()
         self._whitelist = set()
 
-    def track_change(self, tile, property_name, value):
+    def track_change(self, tile, property_name, value, formatter=None):
         """Record that a change happened on a given tile's property.
 
         This will as a StateChange object to our list of changes if we
@@ -30,6 +30,11 @@ class EmulationStateLog(object):
             tile (int): The address of the tile that the change happened on.
             property_name (str): The name of the property that changed.
             value (object): The new value assigned to the property.
+            formatter (callable): Optional function to convert value to a
+                string.  This function will only be called if track_changes()
+                is enabled and `name` is on the whitelist for properties that
+                should be tracked.  If `formatter` is not passed or is None,
+                it will default to `str`.
         """
 
         if not self.tracking:
@@ -38,7 +43,10 @@ class EmulationStateLog(object):
         if len(self._whitelist) > 0 and (tile, property_name) not in self._whitelist:
             return
 
-        change = StateChange(monotonic.monotonic(), tile, property_name, value, str(value))
+        if formatter is None:
+            formatter = str
+
+        change = StateChange(monotonic.monotonic(), tile, property_name, value, formatter(value))
 
         with self._lock:
             self.changes.append(change)
