@@ -6,7 +6,7 @@ import threading
 import sys
 from collections import namedtuple
 from queue import Queue
-from future.utils import viewitems
+from future.utils import viewitems, raise_
 from iotile.core.exceptions import DataError
 from iotile.core.hw.virtual import VirtualIOTileDevice
 from iotile.core.hw.virtual.common_types import pack_rpc_payload, unpack_rpc_payload
@@ -202,7 +202,7 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
         done.wait(timeout=10)
         status_error, resp_payload = data
         if status_error is not None:
-            raise status_error[0], status_error[1], status_error[2]  #pylint:disable=unsubscriptable-object;The call to done.wait() ensures this is okay.
+            raise_(status_error[0], status_error[1], status_error[2])  #pylint:disable=unsubscriptable-object;The call to done.wait() ensures this is okay.
 
         return resp_payload
 
