@@ -27,3 +27,6 @@ All major changes in each released version of iotile-emulate are listed here.
   a basis for automatic help text generation or documentation.
 
 - Adds test coverage of tile_manager and config_database subsystems.
+
+- Moves all emulated RPCs to a single background thread so that we can support
+  sending rpcs from multiple threads without race conditions.

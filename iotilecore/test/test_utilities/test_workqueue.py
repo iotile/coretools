@@ -35,3 +35,31 @@ def test_basic_usage():
     workqueue.dispatch('test 3', callback=_callback)
     workqueue.stop()
     assert shared == [None, 'test 3']
+
+
+def test_ordering():
+    """Make sure results pop in the correct order."""
+
+    shared = []
+
+    def _callback(exc_info, return_value):
+        assert exc_info is None
+        shared.append(return_value)
+
+    workqueue = WorkQueueThread(_handler)
+    workqueue.start()
+
+    for i in range(0, 5):
+        workqueue.dispatch(i, callback=_callback)
+
+    workqueue.flush()
+    assert shared == [0, 1, 2, 3, 4]
+
+    for i in range(5, 10):
+        workqueue.dispatch(i, callback=_callback)
+
+    last = workqueue.dispatch(10)
+    assert shared == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    assert last == 10
+
+    workqueue.stop()
