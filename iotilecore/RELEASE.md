@@ -10,6 +10,11 @@ All major changes in each released version of IOTileCore are listed here.
 - Add support for passing premade DeviceAdapter classes into HardwareManager
   (Issue #545).  This is very useful for setting up complex test scenarios.
 
+- Add support for WorkQueueThread to support dispatching work to background work
+  queues and inserting sequence points where all prior work needs to be
+  finished.
+
+
 ## 3.22.13
 
 - Add "watch_reports" command, which enables a user to live view reports from the connected device

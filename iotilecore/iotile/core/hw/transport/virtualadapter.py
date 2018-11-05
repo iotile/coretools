@@ -7,9 +7,10 @@ import time
 from future.utils import itervalues, viewitems
 import pkg_resources
 from iotile.core.exceptions import ArgumentError
-from iotile.core.hw.virtual.virtualdevice import RPCInvalidIDError, TileNotFoundError, RPCNotFoundError, VirtualIOTileDevice
 from iotile.core.hw.reports import BroadcastReport
 from .adapter import DeviceAdapter
+from ..virtual import (RPCInvalidIDError, TileNotFoundError, RPCNotFoundError,
+                       VirtualIOTileDevice, RPCErrorCode)
 
 
 class VirtualAdapterAsyncChannel(object):
@@ -416,19 +417,19 @@ class VirtualDeviceAdapter(DeviceAdapter):
 
         status = (1 << 6)
         try:
+            response = bytes()
             response = dev.call_rpc(address, rpc_id, bytes(payload))
             if len(response) > 0:
                 status |= (1 << 7)
         except (RPCInvalidIDError, RPCNotFoundError):
             status = 2
-            response = bytes()
         except TileNotFoundError:
             status = 0xFF
-            response = bytes()
+        except RPCErrorCode as exc:
+            status |= exc.params['code'] & ((1 << 6) - 1)
         except Exception:
             #Don't allow exceptions or we will deadlock
             status = 3
-            response = bytes()
 
             print("*** EXCEPTION OCCURRED IN RPC ***")
             traceback.print_exc()

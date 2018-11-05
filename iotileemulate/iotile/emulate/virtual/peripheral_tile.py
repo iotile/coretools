@@ -62,7 +62,6 @@ class EmulatedPeripheralTile(EmulatedTile):
 
         # Register ourselves with the controller
         resp = self._device.rpc(8, rpcs.REGISTER_TILE, *self._registration_tuple())
-
         self._process_registration(resp)
 
     def _process_registration(self, resp):
@@ -87,6 +86,7 @@ class EmulatedPeripheralTile(EmulatedTile):
         """
 
         super(EmulatedPeripheralTile, self)._handle_reset()
+
         #TODO: If we have background tasks running, we need to cleanly stop them here and wait until they have stopped
         self._app_started.clear()
         self._device.deferred_rpc(8, rpcs.REGISTER_TILE, *self._registration_tuple(), callback=self._process_registration)

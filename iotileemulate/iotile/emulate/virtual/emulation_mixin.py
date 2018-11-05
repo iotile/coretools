@@ -47,15 +47,33 @@ class EmulationMixin(object):
 
         super(EmulationMixin, self).__setattr__(name, value)
 
-    def _track_change(self, name, value):
+    def _track_change(self, name, value, formatter=None):
         """Track that a change happened.
 
-        This function is only needed for manually recording changes
-        that are not captured by changes to properties of this object
-        that are tracked automatically.
+        This function is only needed for manually recording changes that are
+        not captured by changes to properties of this object that are tracked
+        automatically.  Classes that inherit from `emulation_mixin` should
+        use this function to record interesting changes in their internal
+        state or events that happen.
+
+        The `value` parameter that you pass here should be a native python
+        object best representing what the value of the property that changed
+        is.  When saved to disk, it will be converted to a string using:
+        `str(value)`.  If you do not like the string that would result from
+        such a call, you can pass a custom formatter that will be called as
+        `formatter(value)` and must return a string.
+
+        Args:
+            name (str): The name of the property that changed.
+            value (object): The new value of the property.
+            formatter (callable): Optional function to convert value to a
+                string.  This function will only be called if track_changes()
+                is enabled and `name` is on the whitelist for properties that
+                should be tracked.  If `formatter` is not passed or is None,
+                it will default to `str`
         """
 
-        self._emulation_log.track_change(self._emulation_address, name, value)
+        self._emulation_log.track_change(self._emulation_address, name, value, formatter)
 
     def dump_state(self):
         """Dump the current state of this emulated object as a dictionary.

@@ -2,13 +2,19 @@
 
 from __future__ import unicode_literals, absolute_import, print_function
 import logging
-from future.utils import viewitems
+import sys
+from collections import namedtuple
+from queue import Queue
+from future.utils import viewitems, raise_
 from iotile.core.exceptions import DataError
+from iotile.core.utilities import WorkQueueThread
 from iotile.core.hw.virtual import VirtualIOTileDevice
 from iotile.core.hw.virtual.common_types import pack_rpc_payload, unpack_rpc_payload
 from .emulation_mixin import EmulationMixin
 from .state_log import EmulationStateLog
 from ..constants.rpcs import RPCDeclaration
+from ..constants import rpc_name
+from ..utilities import format_rpc
 
 
 #pylint:disable=abstract-method;This is an abstract base class
@@ -18,6 +24,12 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
     This class adds additional state and test scenario loading functionality
     as well as tracing of state changes on the emulated device for comparison
     and verification purposes.
+
+    Since all IOTile devices have a single TileBus interface that serializes
+    RPCs between tiles so that only one runs at a time, this class spawns a
+    single background rpc to work through the queue of RPCs that should be
+    sent, sending them one at a time.  The rpc dispatch queue is started when
+    start() is called and stopped synchronously when stop() is called.
 
     Args:
         iotile_id (int): A 32-bit integer that specifies the globally unique ID
@@ -33,7 +45,48 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
         EmulationMixin.__init__(self, None, self.state_history)
 
         self._logger = logging.getLogger(__name__)
-        self._deferred_rpcs = []
+        self._rpc_queue = WorkQueueThread(self._background_dispatch_rpc)
+
+    def _background_dispatch_rpc(self, action):
+        """Background work queue handler to dispatch RPCs."""
+
+        address, rpc_id, arg_payload = action
+
+        try:
+            exc_status = None
+            resp = None
+
+            # Send the RPC immediately and wait for the respones
+            resp = super(EmulatedDevice, self).call_rpc(address, rpc_id, arg_payload)
+            return resp
+        except Exception as exc:
+            exc_status = exc
+            raise
+        finally:
+            self._track_change('device.rpc_sent', (address, rpc_id, arg_payload, resp, exc_status), formatter=format_rpc)
+
+    def start(self, channel=None):
+        """Start this emulated device.
+
+        This triggers the controller to call start on all peripheral tiles in the device to make sure
+        they start after the controller does and then it waits on each one to make sure they have
+        finished initializing before returning.
+
+        Args:
+            channel (IOTilePushChannel): the channel with a stream and trace
+                routine for streaming and tracing data through a VirtualInterface
+        """
+
+        super(EmulatedDevice, self).start(channel)
+        self._rpc_queue.start()
+
+    def stop(self):
+        """Stop running this virtual device including any worker threads."""
+
+        if self._rpc_queue.is_alive():
+            self._rpc_queue.stop()
+
+        super(EmulatedDevice, self).stop()
 
     def dump_state(self):
         """Dump the current state of this emulated object as a dictionary.
@@ -56,10 +109,10 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
 
         This function is meant to be used for testing purposes as well as by
         tiles inside a complex EmulatedDevice subclass that need to communicate
-        with each other.  It may only be called from the main virtual device
+        with each other.  It should only be called from the main virtual device
         thread where start() was called from.
 
-        **Background workers may not call this method since it is unsynchronized.**
+        **Background workers may not call this method since it may cause them to deadlock.**
 
         Args:
             address (int): The address of the tile that has the RPC.
@@ -87,6 +140,7 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
             arg_payload = pack_rpc_payload(arg_format, args)
 
         self._logger.debug("Sending rpc to %d:%04X, payload=%s", address, rpc_id, args)
+
         resp_payload = self.call_rpc(address, rpc_id, arg_payload)
         if resp_format is None:
             return []
@@ -94,13 +148,30 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
         resp = unpack_rpc_payload(resp_format, resp_payload)
         return resp
 
+    def call_rpc(self, address, rpc_id, payload=b""):
+        """Call an RPC by its address and ID.
+
+        This will send the RPC to the background rpc dispatch thread and
+        synchronously wait for the response.
+
+        Args:
+            address (int): The address of the mock tile this RPC is for
+            rpc_id (int): The number of the RPC
+            payload (bytes): A byte string of payload parameters up to 20 bytes
+
+        Returns:
+            bytes: The response payload from the RPC
+        """
+
+        return self._rpc_queue.dispatch((address, rpc_id, payload))
+
     def deferred_rpc(self, address, rpc_id, *args, **kwargs):
         """Queue an RPC to send later.
 
-        These RPCs will be sent deterministically whenever send_deferred_rpcs()
-        is called.
-
-        **Background workers may not call this method since it is unsynchronized.**
+        When this RPC is called, the result of calling it will be available to
+        the provided callback function if passed as keyword.  If no 'callback'
+        keyword is provided then the rpc will be called and its result will be
+        discarded.
 
         Args:
             address (int): The address of the tile that has the RPC.
@@ -114,23 +185,44 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
                   finishes.
         """
 
+        if isinstance(rpc_id, RPCDeclaration):
+            arg_format = rpc_id.arg_format
+            resp_format = rpc_id.resp_format
+            rpc_id = rpc_id.rpc_id
+        else:
+            arg_format = kwargs.get('arg_format', None)
+            resp_format = kwargs.get('resp_format', None)
+
+        arg_payload = b''
+
+        if arg_format is not None:
+            arg_payload = pack_rpc_payload(arg_format, args)
+
         callback = kwargs.get('callback')
         if 'callback' in kwargs:
             del kwargs['callback']
 
-        rpc_args = (address, rpc_id, args, kwargs, callback)
-        self._deferred_rpcs.append(rpc_args)
-
-    def send_deferred_rpcs(self):
-        """Send all deferred rpcs currently in the queue."""
-
-        for address, rpc_id, args, kwargs, callback in self._deferred_rpcs:
-            resp = self.rpc(address, rpc_id, *args, **kwargs)
-
+        def _callback(_exc_info, resp_payload):
             if callback is not None:
+                resp = unpack_rpc_payload(resp_format, resp_payload)
                 callback(resp)
 
-        self._deferred_rpcs = []
+        self._rpc_queue.dispatch((address, rpc_id, arg_payload), callback=_callback)
+
+    def wait_deferred_rpcs(self):
+        """Wait until all RPCs queued to this point have been sent.
+
+        If another RPC is queued from a background thread asynchronously with
+        the invocation of this call, it is undefined whether it is guaranteed
+        to be finished when this method returns.  It depends on exactly when
+        it it calls _rpc_queue.put() relative to when this method calls it.
+
+        The only guarantee of this function is that rpcs that have been queued
+        from this thread, before this method is called will finish before this
+        method returns.
+        """
+
+        self._rpc_queue.flush()
 
     def restore_state(self, state):
         """Restore the current state of this emulated device.
