@@ -9,8 +9,6 @@ from .const_tilemanager import RunLevel, TileState
 _RPC_NAME_MAP = {rpc_decl.rpc_id: name for name, rpc_decl in
                  getmembers(rpcs, lambda x: isinstance(x, rpcs.RPCDeclaration))}
 
-print(_RPC_NAME_MAP)
-
 def rpc_name(rpc_id):
     """Map an RPC id to a string name.
 
