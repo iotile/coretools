@@ -53,6 +53,7 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
         self._logger = logging.getLogger(__name__)
         self._rpc_queue = Queue()
         self._rpc_thread = threading.Thread(target=self._rpc_dispatch_loop)
+        self._rpc_thread.daemon = True
 
     def _rpc_dispatch_loop(self):
         """Background thread routine to dispatch RPCs."""
@@ -252,7 +253,17 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
         self._rpc_queue.put(rpc_args)
 
     def wait_deferred_rpcs(self):
-        """Wait until all RPCs queued to this point have been sent."""
+        """Wait until all RPCs queued to this point have been sent.
+
+        If another RPC is queued from a background thread asynchronously with
+        the invocation of this call, it is undefined whether it is guaranteed
+        to be finished when this method returns.  It depends on exactly when
+        it it calls _rpc_queue.put() relative to when this method calls it.
+
+        The only guarantee of this function is that rpcs that have been queued
+        from this thread, before this method is called will finish before this
+        method returns.
+        """
 
         done = threading.Event()
         def _callback():
