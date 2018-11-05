@@ -2,12 +2,12 @@
 
 from __future__ import unicode_literals, absolute_import, print_function
 import logging
-import threading
 import sys
 from collections import namedtuple
 from queue import Queue
 from future.utils import viewitems, raise_
 from iotile.core.exceptions import DataError
+from iotile.core.utilities import WorkQueueThread
 from iotile.core.hw.virtual import VirtualIOTileDevice
 from iotile.core.hw.virtual.common_types import pack_rpc_payload, unpack_rpc_payload
 from .emulation_mixin import EmulationMixin
@@ -15,12 +15,6 @@ from .state_log import EmulationStateLog
 from ..constants.rpcs import RPCDeclaration
 from ..constants import rpc_name
 from ..utilities import format_rpc
-
-# Kill signal to stop our background RPC worker thread
-_STOP_RPC_WORKER = object()
-
-# Signal to synchronously wait for all previous rpcs to be dispatched
-_WAIT_FOR_RPCS = namedtuple('_WAIT_FOR_RPCS', ['callback'])  #pylint:disable=invalid-name;
 
 
 #pylint:disable=abstract-method;This is an abstract base class
@@ -51,45 +45,25 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
         EmulationMixin.__init__(self, None, self.state_history)
 
         self._logger = logging.getLogger(__name__)
-        self._rpc_queue = Queue()
-        self._rpc_thread = threading.Thread(target=self._rpc_dispatch_loop)
-        self._rpc_thread.daemon = True
+        self._rpc_queue = WorkQueueThread(self._background_dispatch_rpc)
 
-    def _rpc_dispatch_loop(self):
-        """Background thread routine to dispatch RPCs."""
+    def _background_dispatch_rpc(self, action):
+        """Background work queue handler to dispatch RPCs."""
 
-        while True:
-            try:
-                action = self._rpc_queue.get()
+        address, rpc_id, arg_payload = action
 
-                # Handle special actions that are not RPCs
-                if action is _STOP_RPC_WORKER:
-                    return
-                elif isinstance(action, _WAIT_FOR_RPCS):
-                    action.callback()
-                    continue
+        try:
+            exc_status = None
+            resp = None
 
-                # Otherwise, we are supposed to send an RPC
-                address, rpc_id, arg_payload, callback = action
-
-                try:
-                    exc_status = None
-                    exc_info = None
-                    resp = None
-
-                    # Send the RPC immediately and wait for the respones
-                    resp = super(EmulatedDevice, self).call_rpc(address, rpc_id, arg_payload)
-                except:
-                    exc_info = sys.exc_info()
-                    exc_status = exc_info[1]
-                finally:
-                    self._track_change('device.rpc_sent', (address, rpc_id, arg_payload, resp, exc_status), formatter=format_rpc)
-
-                if callback is not None:
-                    callback(exc_info, resp)
-            except:
-                self._logger.exception("Error dispatching %s to tile %d", rpc_name(rpc_id), address)
-
+            # Send the RPC immediately and wait for the respones
+            resp = super(EmulatedDevice, self).call_rpc(address, rpc_id, arg_payload)
+            return resp
+        except Exception as exc:
+            exc_status = exc
+            raise
+        finally:
+            self._track_change('device.rpc_sent', (address, rpc_id, arg_payload, resp, exc_status), formatter=format_rpc)
 
     def start(self, channel=None):
         """Start this emulated device.
@@ -104,14 +78,13 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
         """
 
         super(EmulatedDevice, self).start(channel)
-        self._rpc_thread.start()
+        self._rpc_queue.start()
 
     def stop(self):
         """Stop running this virtual device including any worker threads."""
 
-        if self._rpc_thread.is_alive():
-            self._rpc_queue.put(_STOP_RPC_WORKER)
-            self._rpc_thread.join()
+        if self._rpc_queue.is_alive():
+            self._rpc_queue.stop()
 
         super(EmulatedDevice, self).stop()
 
@@ -190,22 +163,7 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
             bytes: The response payload from the RPC
         """
 
-        done = threading.Event()
-        data = [None, None]
-
-        def _callback(status_error, resp_payload):
-            data[0] = status_error
-            data[1] = resp_payload
-            done.set()
-
-        self._rpc_queue.put((address, rpc_id, payload, _callback))
-
-        done.wait(timeout=10)
-        status_error, resp_payload = data
-        if status_error is not None:
-            raise_(status_error[0], status_error[1], status_error[2])  #pylint:disable=unsubscriptable-object;The call to done.wait() ensures this is okay.
-
-        return resp_payload
+        return self._rpc_queue.dispatch((address, rpc_id, payload))
 
     def deferred_rpc(self, address, rpc_id, *args, **kwargs):
         """Queue an RPC to send later.
@@ -249,8 +207,7 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
                 resp = unpack_rpc_payload(resp_format, resp_payload)
                 callback(resp)
 
-        rpc_args = (address, rpc_id, arg_payload, callback)
-        self._rpc_queue.put(rpc_args)
+        self._rpc_queue.dispatch((address, rpc_id, arg_payload), callback=_callback)
 
     def wait_deferred_rpcs(self):
         """Wait until all RPCs queued to this point have been sent.
@@ -265,12 +222,7 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
         method returns.
         """
 
-        done = threading.Event()
-        def _callback():
-            done.set()
-
-        self._rpc_queue.put(_WAIT_FOR_RPCS(_callback))
-        done.wait(timeout=10)
+        self._rpc_queue.flush()
 
     def restore_state(self, state):
         """Restore the current state of this emulated device.
