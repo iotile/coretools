@@ -84,7 +84,7 @@ class UnresolvedIdentifierError(IOTileException):
 
 
 class InvalidSerializedDataError(IOTileException):
-    """Thrown when a restore() function is called and the data can be loaded.
+    """Thrown when a restore() function is called and the data cannot be loaded.
 
     This can happen either because the data is invalid or because it is valid
     but it was produced with a different device model and requires too many
