@@ -5,6 +5,7 @@ All major changes in each released version of IOTileTest are listed here.
 ## HEAD
 
 - Add emulation_test device as a basic example of the EmulatedDevice class.
+- Fix device fixture to not require the --direct argument to be specified.
 
 ## 0.9.6
 
