@@ -10,6 +10,9 @@ All major changes in each released version of iotile-sensorgraph are listed here
 - Add support to SlotIdentifier for checking if the slot identifier matches a 
   given tile.
 
+- Update SensorLog, InMemoryStorageEngine and StreamWalker to include additional
+  features needed for iotile-emulate to work properly.
+
 ## 0.7.2
 
 - Add support for broadcast streamers that indicate to the receiving tile that
