@@ -95,7 +95,7 @@ def test_storage_walker():
 
     walk = log.create_walker(DataStreamSelector.FromString('buffered 1'))
     stream = DataStream.FromString('buffered 1')
-    
+
     storage_size = model.get('max_storage_buffer')
     erase_size = model.get('buffer_erase_size')
 
@@ -110,6 +110,23 @@ def test_storage_walker():
     reading = IOTileReading(0, stream.encode(), storage_size)
     log.push(stream, reading)
     assert walk.count() == (old_count - erase_size + 1)
+
+
+def test_walker_at_beginning():
+    """Make sure we can start a walker at the beginning of a stream."""
+
+    model = DeviceModel()
+    log = SensorLog(model=model)
+
+    stream = DataStream.FromString('buffered 1')
+    reading = IOTileReading(stream.encode(), 0, 1)
+    log.push(stream, reading)
+    log.push(stream, reading)
+    log.push(DataStream.FromString('buffered 2'), reading)
+
+    walk = log.create_walker(DataStreamSelector.FromString('buffered 1'), skip_all=False)
+    assert walk.offset == 0
+    assert walk.count() == 2
 
 
 def test_storage_streaming_walkers():

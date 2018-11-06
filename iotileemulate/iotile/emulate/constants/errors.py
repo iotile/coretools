@@ -92,3 +92,34 @@ class ConfigDatabaseError(IntEnum):
 
     INVALID_ENTRY = 0x8002
     """The requested config variable entry has an invalid magic number."""
+
+
+class SensorLogError(IntEnum):
+    """These are subsystem specific error codes potentially returned by the SensorLog."""
+
+    NO_MORE_READINGS = 0x8000
+    """There are no more available readings."""
+
+    VIRTUAL_STREAM_NOT_FOUND = 0x8001
+    """There is no stream walker allocated for a specific virtual stream."""
+
+    STREAM_WALKER_NOT_FOUND = 0x8002
+    """Could not find the desired stream walker."""
+
+    IMMEDIATE_VALUE_NOT_SUPPORTED = 0x8003
+    """This stream does not support immediate values."""
+
+    CANNOT_SKIP_INEXHAUSTIBLE_STREAM = 0x8004  #pylint:disable=invalid-name;This is the name.
+    """You cannot call skip on a constant stream that is infinitely deep."""
+
+    STREAM_WALKER_NOT_INITIALIZED = 0x8005
+    """The stream walker structure was not properly initialized."""
+
+    CANNOT_USE_UNBUFFERED_STREAM = 0x8006
+    """This method cannot use an unbuffered stream."""
+
+    ID_FOUND_FOR_ANOTHER_STREAM = 0x8007
+    """Seek_id was called and the id was found but belonged to another stream."""
+
+    RING_BUFFER_FULL = 0x8008
+    """The RSL is in fill-stop mode and the desired storage area is full."""

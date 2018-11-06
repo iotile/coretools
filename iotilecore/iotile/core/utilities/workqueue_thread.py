@@ -126,6 +126,22 @@ class WorkQueueThread(threading.Thread):
         self._work_queue.put(MarkLocationItem(_callback))
         done.wait()
 
+    def defer(self, callback):
+        """Schedule a callback once all current items in the queue are finished.
+
+        This function can schedule work synchronous with the work queue without
+        passing through the work queue handler.
+
+        This method returns immediately.
+
+        Args:
+            callback (callable): A callable with no arguments that will be
+                called once all current items in the workqueue have been
+                executed.
+        """
+
+        self._work_queue.put(MarkLocationItem(callback))
+
     def run(self):
         """The target routine called to start thread activity."""
 

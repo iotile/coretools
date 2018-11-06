@@ -30,3 +30,8 @@ All major changes in each released version of iotile-emulate are listed here.
 
 - Moves all emulated RPCs to a single background thread so that we can support
   sending rpcs from multiple threads without race conditions.
+
+- Add support for the RawSensorLog task including pushing and dumping streams.
+
+- Refactor controller reset procedure to include a clear list of reset
+  tasks that happen synchronously in the emulation thread.

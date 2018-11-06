@@ -1,6 +1,7 @@
 """An in memory storage engine for sensor graph."""
 
 from builtins import str
+from iotile.core.exceptions import ArgumentError
 from iotile.sg import DataStream
 from iotile.sg.exceptions import StorageFullError, StreamEmptyError
 
@@ -25,14 +26,37 @@ class InMemoryStorageEngine(object):
     def count(self):
         """Count the number of readings.
 
-        Args:
-            stream (DataStream): The stream to count readings in
-
         Returns:
-            (int, int): The number of readings in storage and streaming
+            (int, int): The number of readings in storage and streaming buffers.
         """
 
         return (len(self.storage_data), len(self.streaming_data))
+
+    def count_matching(self, selector):
+        """Count the number of readings matching selector.
+
+        Args:
+            selector (DataStreamSelector): The selector that we want to
+                count matching readings for.
+
+        Returns:
+            int: The number of matching readings.
+        """
+
+        if selector.output:
+            data = self.streaming_data
+        elif selector.buffered:
+            data = self.storage_data
+        else:
+            raise ArgumentError("You can only pass a buffered selector to count_matching", selector=selector)
+
+        count = 0
+        for reading in data:
+            stream = DataStream.FromEncoded(reading.stream)
+            if selector.matches(stream):
+                count += 1
+
+        return count
 
     def clear(self):
         """Clear all data from this storage engine."""
@@ -115,4 +139,3 @@ class InMemoryStorageEngine(object):
             self.storage_data = remaining
 
         return popped
-

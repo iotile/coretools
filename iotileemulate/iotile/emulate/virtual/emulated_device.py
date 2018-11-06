@@ -165,6 +165,27 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
 
         return self._rpc_queue.dispatch((address, rpc_id, payload))
 
+    def deferred_task(self, callable, *args, **kwargs):
+        """Defer a callable until all current RPCs have finished.
+
+        Callable will be executed in the rpc_queue thread so that it executes
+        synchronously with RPCs.  This method is particularly useful if you
+        need to execute a task that will send RPCs and you are currently
+        inside an RPC handler.
+
+        Args:
+            callable (callable): A method with signature callable(*args, **kwargs),
+                that will be called with the optional *args and **kwargs passed
+                to this method.
+            *args: Arguments that will be passed to callable.
+            **kwargs: Keyword arguments that will be passed to callable.
+        """
+
+        def _deferred():
+            callable(*args, **kwargs)
+
+        self._rpc_queue.defer(_deferred)
+
     def deferred_rpc(self, address, rpc_id, *args, **kwargs):
         """Queue an RPC to send later.
 

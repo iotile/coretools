@@ -14,6 +14,7 @@ from .rpc_declaration import RPCDeclaration
 from .rpc_tilemanager import *
 from .rpc_config_database import *
 from .rpc_config_variables import *
+from .rpc_sensorlog import *
 
 # Tile Lifecycle Related RPCS
 

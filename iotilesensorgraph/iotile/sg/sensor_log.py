@@ -7,12 +7,12 @@ a hard cap on storage requirements.
 """
 
 import copy
-from .engine import InMemoryStorageEngine
-from .stream import DataStreamSelector, DataStream
-from .walker import VirtualStreamWalker, CounterStreamWalker, BufferedStreamWalker
-from .exceptions import StreamEmptyError, StorageFullError
 from iotile.sg.model import DeviceModel
 from iotile.core.exceptions import ArgumentError
+from .engine import InMemoryStorageEngine
+from .stream import DataStream
+from .walker import VirtualStreamWalker, CounterStreamWalker, BufferedStreamWalker
+from .exceptions import StreamEmptyError, StorageFullError, UnresolvedIdentifierError
 
 
 class SensorLog(object):
@@ -51,7 +51,9 @@ class SensorLog(object):
         """Call a function whenever a stream changes.
 
         Args:
-            selector (DataStreamSelector): The selector to watch
+            selector (DataStreamSelector): The selector to watch.
+                If this is None, it is treated as a wildcard selector
+                that matches every stream.
             callback (callable): The function to call when a new
                 reading is pushed.  Callback is called as:
                 callback(stream, value)
@@ -62,9 +64,9 @@ class SensorLog(object):
 
         self._monitors[selector].add(callback)
 
-    def create_walker(self, selector):
+    def create_walker(self, selector, skip_all=True):
         """Create a stream walker based on the given selector.
-`
+
         This function returns a StreamWalker subclass that will
         remain up to date and allow iterating over and popping readings
         from the stream(s) specified by the selector.
@@ -76,10 +78,14 @@ class SensorLog(object):
         Args:
             selector (DataStreamSelector): The selector describing the
                 streams that we want to iterate over.
+            skip_all (bool): Whether to start at the beginning of the data
+                or to skip everything and start at the end.  Defaults
+                to skipping everything.  This parameter only has any
+                effect on buffered stream selectors.
         """
 
         if selector.buffered:
-            walker = BufferedStreamWalker(selector, self._engine)
+            walker = BufferedStreamWalker(selector, self._engine, skip_all=skip_all)
             self._queue_walkers.append(walker)
             return walker
 
@@ -105,6 +111,21 @@ class SensorLog(object):
         else:
             self._virtual_walkers.remove(walker)
 
+    def destroy_all_walkers(self):
+        """Destroy any previously created stream walkers."""
+
+        self._queue_walkers = []
+        self._virtual_walkers = []
+
+    def count(self):
+        """Count many many readings are persistently stored.
+
+        Returns:
+            (int, int): The number of readings in storage and output areas.
+        """
+
+        return self._engine.count()
+
     def clear(self):
         """Clear all data from this sensor_log.
 
@@ -119,6 +140,8 @@ class SensorLog(object):
 
         for walker in self._queue_walkers:
             walker.skip_all()
+
+        self._last_values = {}
 
     def push(self, stream, reading):
         """Push a reading into a stream, updating any associated stream walkers.
@@ -148,7 +171,7 @@ class SensorLog(object):
 
         # Activate any monitors we have for this stream
         for selector in self._monitors:
-            if selector.matches(stream):
+            if selector is None or selector.matches(stream):
                 for callback in self._monitors[selector]:
                     callback(stream, reading)
 
@@ -167,7 +190,7 @@ class SensorLog(object):
 
         buffer_type = u'storage'
         if output_buffer:
-            buffer_type = 'streaming'
+            buffer_type = u'streaming'
 
         old_readings = self._engine.popn(buffer_type, erase_size)
 
@@ -181,7 +204,7 @@ class SensorLog(object):
                 if walker.selector.output == output_buffer:
                     walker.notify_rollover(stream)
 
-    def inspect_last(self, stream):
+    def inspect_last(self, stream, only_allocated=False):
         """Return the last value pushed into a stream.
 
         This function works even if the stream is virtual and no
@@ -189,7 +212,11 @@ class SensorLog(object):
         useful to aid in debugging sensor graphs.
 
         Args:
-            stream (DataStream): The stream to inspect
+            stream (DataStream): The stream to inspect.
+            only_allocated (bool): Optional parameter to only allow inspection
+                of allocated virtual streams.  This is useful for mimicking the
+                behavior of an embedded device that does not have a _last_values
+                array.
 
         Returns:
             IOTileReading: The data in the stream
@@ -197,7 +224,19 @@ class SensorLog(object):
         Raises:
             StreamEmptyError: if there has never been data written to
                 the stream.
+            UnresolvedIdentifierError: if only_allocated is True and there has not
+                been a virtual stream walker allocated to listen to this stream.
         """
+
+        if only_allocated:
+            found = False
+            for walker in self._virtual_walkers:
+                if walker.matches(stream):
+                    found = True
+                    break
+
+            if not found:
+                raise UnresolvedIdentifierError("inspect_last could not find an allocated virtual streamer for the desired stream", stream=stream)
 
         if stream in self._last_values:
             return self._last_values[stream]

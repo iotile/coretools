@@ -2,15 +2,17 @@
 
 from __future__ import print_function, absolute_import, unicode_literals
 import logging
-from iotile.core.hw.virtual import tile_rpc
+from iotile.core.hw.virtual import tile_rpc, TileNotFoundError
 from iotile.core.exceptions import ArgumentError
-
+from iotile.sg.model import DeviceModel
 from ..virtual import EmulatedTile
 from ..constants import rpcs
-from .controller_features import RemoteBridgeMixin, TileManagerMixin, ConfigDatabaseMixin
+from .controller_features import RawSensorLogMixin, RemoteBridgeMixin, TileManagerMixin, ConfigDatabaseMixin
 
 
-class ReferenceController(RemoteBridgeMixin, TileManagerMixin, ConfigDatabaseMixin, EmulatedTile):
+class ReferenceController(RawSensorLogMixin, RemoteBridgeMixin,
+                          TileManagerMixin, ConfigDatabaseMixin,
+                          EmulatedTile):
     """A reference iotile controller implementation.
 
     This tile implements the major behavior of an IOTile controller including
@@ -37,22 +39,85 @@ class ReferenceController(RemoteBridgeMixin, TileManagerMixin, ConfigDatabaseMix
         name = args.get('name', 'refcn1')
         self._device = device
         self._logger = logging.getLogger(__name__)
+        self._post_config_subsystems = []
+
+        model = DeviceModel()
 
         EmulatedTile.__init__(self, address, name, device)
 
         # Initialize all of the controller subsystems
-        RemoteBridgeMixin.__init__(self)
-        TileManagerMixin.__init__(self)
         ConfigDatabaseMixin.__init__(self, 4096, 4096)  #FIXME: Load the controller model info to get its memory map
-
-        self.sensor_graph = {
-            "nodes": [],
-            "streamers": [],
-            "constants": []
-        }
+        TileManagerMixin.__init__(self)
+        RemoteBridgeMixin.__init__(self)
+        RawSensorLogMixin.__init__(self, model)
 
         self.app_info = (0, "0.0")
         self.os_info = (0, "0.0")
+
+    def _clear_to_reset_condition(self, deferred=False):
+        """Clear all subsystems of this controller to their reset states.
+
+        The order of these calls is important to guarantee that everything
+        is in the correct state before resetting the next subsystem.
+
+        The behavior of this function is different depending on whether
+        deferred is True or False.  If it's true, this function will only
+        clear the config database and then queue all of the config streaming
+        rpcs to itself to load in all of our config variables.  Once these
+        have been sent, it will reset the rest of the controller subsystems.
+        """
+
+        # Send ourselves all of our config variable assignments
+        config_rpcs = self.config_database.stream_matching(8, self.name)
+        for rpc in config_rpcs:
+            if deferred:
+                self._device.deferred_rpc(rpc)
+            else:
+                self._device.rpc(rpc)
+
+        def _post_config_setup():
+            config_assignments = {}
+            #config_assignments = self.latch_config_variables()
+
+            for system in self._post_config_subsystems:
+                system.clear_to_reset(config_assignments)
+
+        if deferred:
+            self._device.deferred_task(_post_config_setup)
+        else:
+            _post_config_setup()
+
+    def _handle_reset(self):
+        """Reset this controller tile.
+
+        This process will call _handle_reset() for all of the controller
+        subsystem mixins in order to make sure they all return to their proper
+        reset state.
+
+        It will then reset all of the peripheral tiles to emulate the behavior
+        of a physical POD where the controller tile cuts power to all
+        peripheral tiles on reset for a clean boot.
+        """
+
+        super(ReferenceController, self)._handle_reset()
+
+        self._clear_to_reset_condition(deferred=True)
+
+        self._logger.info("Controller tile has finished resetting itself and will now reset each tile")
+        self._device.reset_peripheral_tiles()
+
+    def start(self, channel=None):
+        """Start this conrtoller tile.
+
+        This resets the controller to its reset state.
+
+        Args:
+            channel (IOTilePushChannel): the channel with a stream and trace
+                routine for streaming and tracing data through a VirtualInterface
+        """
+
+        super(ReferenceController, self).start(channel)
+        self._clear_to_reset_condition(deferred=False)
 
     def dump_state(self):
         """Dump the current state of this emulated object as a dictionary.
@@ -106,7 +171,9 @@ class ReferenceController(RemoteBridgeMixin, TileManagerMixin, ConfigDatabaseMix
         """Reset the device."""
 
         self._device.reset_count += 1
-        return []
+        self._handle_reset()
+
+        raise TileNotFoundError("Controller tile was reset via an RPC")
 
     @tile_rpc(0x1008, "", "L8xLL")
     def controller_info(self):

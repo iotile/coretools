@@ -100,15 +100,6 @@ class EmulatedDeviceAdapter(VirtualDeviceAdapter):
 
         callback(conn_id, self.id, success, retval, reason)
 
-    def periodic_callback(self):
-        super(EmulatedDeviceAdapter, self).periodic_callback()
-
-        for device in itervalues(self.connections):
-            try:
-                device.send_deferred_rpcs()
-            except:  # pylint:disable=bare-except;We need to make sure to not break the calling process
-                self._logger.exception("Error processing deferred rpcs for device")
-
     def _open_debug_interface(self, conn_id, callback, connection_string=None):
         """Enable debug interface for this IOTile device
 
