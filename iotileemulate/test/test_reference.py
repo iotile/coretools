@@ -1,7 +1,7 @@
 """Test coverage of the ReferenceDevice and ReferenceController emulated objects."""
 
-import pytest
 import sys
+import pytest
 from iotile.core.hw import HardwareManager
 from iotile.core.hw.proxy.external_proxy import find_proxy_plugin
 from iotile.emulate.virtual import EmulatedPeripheralTile
@@ -256,3 +256,38 @@ def test_tile_manager(reference_hw):
     peri = tileman.describe_selector('slot 1')
     assert str(con) == con_str
     assert str(peri) == peri_str
+
+
+def test_raw_sensor_log(reference_hw):
+    """Test to ensure that the raw sensor log works."""
+
+    hw, _device, _peripheral = reference_hw
+
+    con = hw.get(8, basic=True)
+    sensor_graph = find_proxy_plugin('iotile_standard_library/lib_controller', 'SensorGraphPlugin')(con)
+
+    assert sensor_graph.count_readings() == {
+        'streaming': 0,
+        'storage': 0
+    }
+
+    assert sensor_graph.highest_id() == 0
+
+    sensor_graph.push_many('output 1', 10, 20)
+    sensor_graph.push_many('buffered 1', 15, 25)
+
+    readings = sensor_graph.download_stream('output 1')
+    assert len(readings) == 20
+
+    readings = sensor_graph.download_stream('buffered 1')
+    assert len(readings) == 25
+
+    assert sensor_graph.highest_id() == 45
+
+    sensor_graph.clear()
+    assert sensor_graph.count_readings() == {
+        'streaming': 1,
+        'storage': 0
+    }
+
+    assert sensor_graph.highest_id() == 46

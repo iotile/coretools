@@ -10,7 +10,7 @@ Current State of Necessary TODOS:
 - [ ] Support fill-stop mode
 - [X] Support direct interaction with the rsl via rpcs
 - [ ] Support final RPCs
-    - [ ] rsl_highest_id
+    - [X] rsl_highest_id
     - [ ] rsl_dump_stream_seek
 """
 
@@ -19,24 +19,35 @@ from builtins import range
 from iotile.core.hw.virtual import tile_rpc
 from iotile.core.hw.reports import IOTileReading
 from iotile.sg import SensorLog, DataStream, DataStreamSelector
+from iotile.sg.engine import InMemoryStorageEngine
 from iotile.sg.exceptions import StorageFullError, StreamEmptyError, UnresolvedIdentifierError
-from ...constants import rpcs, pack_error, Error, ControllerSubsystem, SensorLogError
+from ...constants import rpcs, pack_error, Error, ControllerSubsystem, SensorLogError, streams
 
 
 class SensorLogSubsystem(object):
     """Container for raw sensor log state."""
 
     def __init__(self, model):
-        self.storage = SensorLog(model=model)
+        self.engine = InMemoryStorageEngine(model=model)
+        self.storage = SensorLog(self.engine, model=model)
         self.dump_walker = None
         self.next_id = 1
         self.mutex = threading.Lock()
 
-    def clear(self):
-        """Clear all data from the RSL."""
+    def clear(self, timestamp):
+        """Clear all data from the RSL.
+
+        This pushes a single reading once we clear everything so that
+        we keep track of the highest ID that we have allocated to date.
+
+        This needs the current timestamp to be able to properly timestamp
+        the cleared storage reading that it pushes
+        """
 
         with self.mutex:
             self.storage.clear()
+
+        self.push(streams.DATA_CLEARED, 0, 1)
 
     def clear_to_reset(self, _config_vars):
         """Clear all volatile information across a reset."""
@@ -152,6 +163,24 @@ class SensorLogSubsystem(object):
         except StreamEmptyError:
             return None
 
+    def highest_stored_id(self):
+        """Scan through the stored readings and report the highest stored id.
+
+        Returns:
+            int: The highest stored id.
+        """
+
+        shared = [0]
+        def _keep_max(_i, reading):
+            if reading.reading_id > shared[0]:
+                shared[0] = reading.reading_id
+
+        with self.mutex:
+            self.engine.scan_storage('storage', _keep_max)
+            self.engine.scan_storage('streaming', _keep_max)
+
+        return shared[0]
+
 
 class RawSensorLogMixin(object):
     """Reference controller subsystem for the raw sensor log.
@@ -200,7 +229,8 @@ class RawSensorLogMixin(object):
     def rsl_clear_readings(self):
         """Clear all data from the RSL."""
 
-        self.sensor_log.clear()
+        #FIXME: Fix this with timestamp from clock manager task
+        self.sensor_log.clear(0)
         return [Error.NO_ERROR]
 
     @tile_rpc(*rpcs.RSL_INSPECT_VIRTUAL_STREAM)
@@ -243,3 +273,10 @@ class RawSensorLogMixin(object):
             raise ValueError("Output format other than 1 not yet supported")
 
         return [error, timestamp, value, reading_id, stream_id, 0]
+
+    @tile_rpc(*rpcs.RSL_HIGHEST_READING_ID)
+    def rsl_get_highest_saved_id(self):
+        """Get the highest saved reading id."""
+
+        highest_id = self.sensor_log.highest_stored_id()
+        return [Error.NO_ERROR, highest_id]

@@ -87,6 +87,25 @@ class BufferedStreamWalker(StreamWalker):
                 self._count -= 1
                 return curr
 
+    def seek(self, offset):
+        """Seek this stream to a specific offset in the sensor log.
+
+        This will position the walker at the specified offset in the sensor
+        log. It will also update the count of available readings based on that
+        new location so that the count remains correct.
+
+        The offset does not need to correspond to a reading selected by this
+        walker.  If offset does not point to a selected reading, the effective
+        behavior will be as if the walker pointed to the next selected reading
+        after `offset`.
+
+        Args:
+            offset (int): The offset to seek.
+        """
+
+        self.offset = offset
+        self._count = self.engine.count_matching(self.selector, offset=self.offset)
+
     def peek(self):
         """Peek at the oldest reading in this virtual stream."""
 

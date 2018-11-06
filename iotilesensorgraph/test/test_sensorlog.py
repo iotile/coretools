@@ -1,7 +1,9 @@
 import pytest
 
+from iotile.core.exceptions import ArgumentError
 from iotile.sg.model import DeviceModel
 from iotile.sg.sensor_log import SensorLog
+from iotile.sg.engine import InMemoryStorageEngine
 from iotile.sg import DataStreamSelector, DataStream, StreamEmptyError
 from iotile.core.hw.reports import IOTileReading
 
@@ -176,3 +178,96 @@ def test_storage_streaming_walkers():
 
     assert output_walk.count() == 0
     assert output_walk.offset == 0
+
+
+def test_storage_scan():
+    """Make sure scan_storage works."""
+
+    model = DeviceModel()
+
+    engine = InMemoryStorageEngine(model)
+    log = SensorLog(engine, model=model)
+
+    storage1 = DataStream.FromString('buffered 1')
+    output1 = DataStream.FromString('output 1')
+
+    for i in range(0, 10):
+        reading = IOTileReading(0, 0, i)
+        log.push(storage1, reading)
+
+    for i in range(7, 14):
+        reading = IOTileReading(0, 0, i)
+        log.push(output1, reading)
+
+    shared = [None, 0]
+
+    def _max_counter(i, reading):
+        if reading.value > shared[1]:
+            shared[0] = i
+            shared[1] = reading.value
+
+    # Make sure scanning storage works
+    shared = [None, 0]
+    count = engine.scan_storage('storage', _max_counter)
+    assert count == 10
+    assert shared == [9, 9]
+
+    shared = [None, 0]
+    count = engine.scan_storage('storage', _max_counter, start=5, stop=9)
+    assert count == 5
+    assert shared == [9, 9]
+
+    shared = [None, 0]
+    count = engine.scan_storage('storage', _max_counter, start=5, stop=8)
+    assert count == 4
+    assert shared == [8, 8]
+
+    # Make sure scanning steaming works
+    shared = [None, 0]
+    count = engine.scan_storage('streaming', _max_counter)
+    assert count == 7
+    assert shared == [6, 13]
+
+    shared = [None, 0]
+    count = engine.scan_storage('streaming', _max_counter, start=2, stop=6)
+    assert count == 5
+    assert shared == [6, 13]
+
+    shared = [None, 0]
+    count = engine.scan_storage('streaming', _max_counter, start=2, stop=5)
+    assert count == 4
+    assert shared == [5, 12]
+
+    # Make sure errors are thrown correctly
+    with pytest.raises(ArgumentError):
+        engine.scan_storage('other_name', _max_counter)
+
+    with pytest.raises(ArgumentError):
+        engine.scan_storage('streaming', _max_counter, stop=7)
+
+
+def test_seek_walker():
+    """Make sure we can seek a walker can count with an offset."""
+
+    model = DeviceModel()
+    log = SensorLog(model=model)
+
+    stream = DataStream.FromString('buffered 1')
+    reading = IOTileReading(stream.encode(), 0, 1)
+    log.push(stream, reading)
+    log.push(stream, reading)
+    log.push(DataStream.FromString('buffered 2'), reading)
+    log.push(stream, reading)
+
+    walk = log.create_walker(DataStreamSelector.FromString('buffered 1'), skip_all=False)
+    assert walk.offset == 0
+    assert walk.count() == 3
+
+    walk.seek(1)
+    assert walk.offset == 1
+    assert walk.count() == 2
+
+    # Make sure we can seek to a position corresponding to another stream
+    walk.seek(2)
+    assert walk.offset == 2
+    assert walk.count() == 1
