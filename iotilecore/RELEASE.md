@@ -14,6 +14,9 @@ All major changes in each released version of IOTileCore are listed here.
   queues and inserting sequence points where all prior work needs to be
   finished.
 
+- Update WorkQueueThread to have a deferred_task function that will make an
+  arbitrary callback once all current work items have been cleared.
+
 
 ## 3.22.13
 

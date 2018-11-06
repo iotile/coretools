@@ -1,10 +1,12 @@
 """A reference device with properties for inspecting what has been set by update scripts."""
 
 import base64
+import logging
 from future.utils import viewitems
 from past.builtins import basestring
 from iotile.core.exceptions import ArgumentError, DataError, InternalError
 from ..virtual import EmulatedDevice, EmulatedPeripheralTile
+from ..constants import rpcs
 from .reference_controller import ReferenceController
 
 
@@ -36,6 +38,7 @@ class ReferenceDevice(EmulatedDevice):
         self.controller = ReferenceController(8, {'name': controller_name}, device=self)
         self.add_tile(8, self.controller)
         self.reset_count = 0
+        self._logger = logging.getLogger(__name__)
 
     def start(self, channel=None):
         """Start this emulated device.
@@ -76,6 +79,16 @@ class ReferenceDevice(EmulatedDevice):
             # Check and make sure that if the tile should start that it has started
             if tile.run_level != 2:
                 tile.wait_started(timeout=2.0)
+
+    def reset_peripheral_tiles(self):
+        """Reset all peripheral tiles (asynchronously)."""
+
+        for address in sorted(self._tiles):
+            if address == 8:
+                continue
+
+            self._logger.info("Sending reset signal to tile at address %d", address)
+            self.deferred_rpc(address, rpcs.RESET)
 
     def dump_state(self):
         """Dump the current state of this emulated object as a dictionary.

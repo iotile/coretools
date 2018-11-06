@@ -40,23 +40,36 @@ class BufferedStreamWalker(StreamWalker):
         selector (DataStreamSelector): The selector for the streams
             that we are walking
         engine (StorageEngine): The storage engine backing us up
+        skip_all (bool): Whether to start at the beginning of the data
+            or to skip everything and start at the end.  Defaults
+            to skipping everything.
     """
 
-    def __init__(self, selector, engine):
+    def __init__(self, selector, engine, skip_all=True):
         super(BufferedStreamWalker, self).__init__(selector)
         self.engine = engine
-        self._count = 0
 
         storage, streaming = self.engine.count()
 
+        self._count = 0
+        self.offset = 0
+        if not skip_all:
+            self._count = engine.count_matching(selector)
+
         if selector.output:
-            self.offset = streaming
+            if skip_all:
+                self.offset = streaming
+
             self.storage_type = u'streaming'
         else:
-            self.offset = storage
+            if skip_all:
+                self.offset = storage
+
             self.storage_type = u'storage'
 
     def count(self):
+        """Return the count of available readings in this stream walker."""
+
         return self._count
 
     def pop(self):

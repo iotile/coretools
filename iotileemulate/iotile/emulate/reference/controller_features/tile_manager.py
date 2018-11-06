@@ -53,6 +53,12 @@ class TileManagerState(SerializableState):
 
         self.mark_complex('registered_tiles', self._dump_registered_tiles, self._restore_registered_tiles)
 
+    def clear_to_reset(self, _config_vars):
+        """Clear to the state immediately after a reset."""
+        self.registered_tiles = self.registered_tiles[:1]
+        self.safe_mode = False
+        self.debug_mode = False
+
     def _dump_registered_tiles(self, tiles):
         return [info.dump() for info in tiles]
 
@@ -95,6 +101,8 @@ class TileManagerMixin(object):
         # Register the controller itself into our tile_info database
         info = TileInfo(self.hardware_type, self.name, self.api_version, self.firmware_version, self.executive_version, 0, 0, state=TileState.RUNNING)
         self.tile_manager.insert_tile(info)
+
+        self._post_config_subsystems.append(self.tile_manager)
 
     @tile_rpc(*rpcs.REGISTER_TILE)
     def register_tile(self, hw_type, api_major, api_minor, name, fw_major, fw_minor, fw_patch, exec_major, exec_minor, exec_patch, slot, unique_id):

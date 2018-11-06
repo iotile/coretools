@@ -6,6 +6,7 @@ from iotile.core.hw.update import UpdateScript
 from ...virtual import SerializableState
 
 
+# FIXME: Move this to constants section
 class BRIDGE_STATUS(object):
     """Enum for valid remote bridge statuses."""
     IDLE = 0
@@ -35,6 +36,11 @@ class RemoteBridgeState(SerializableState):
 
         self.mark_complex('parsed_script', self._dump_script, self._restore_script)
 
+    def clear_to_reset(self, _config_vars):
+        """Clear the RemoteBridge subsystem to its reset state."""
+        self.status = BRIDGE_STATUS.IDLE
+        self.error = 0
+
     def _dump_script(self, value):
         if value is None:
             return None
@@ -60,6 +66,7 @@ class RemoteBridgeMixin(object):
 
     def __init__(self):
         self.remote_bridge = RemoteBridgeState()
+        self._post_config_subsystems.append(self.remote_bridge)
 
     @tile_rpc(0x2100, "", "L")
     def begin_script(self):
