@@ -6,6 +6,7 @@ from iotile.core.hw import IOTileApp
 from iotile.core.hw.update import UpdateScript
 from iotile.core.dev.semver import SemanticVersion
 from iotile.cloud import IOTileCloud, device_id_to_slug
+from iotile_cloud.utils.basic import datetime_to_str
 from typedargs.annotate import docannotate, context
 from typedargs import iprint
 import requests
@@ -28,7 +29,7 @@ def _download_ota_script(script_url):
 
     try:
         blob = requests.get(script_url, stream=True)
-        return blob
+        return blob.content
     except Exception as e:
         iprint("Failed to download OTA script")
         iprint(e)
@@ -91,7 +92,7 @@ class OtaUpdater(IOTileApp):
             iprint("no OTA pending")
             return
 
-        iprint("Applying deployment " + script[0])
+        iprint("Applying deployment " + str(script[0]))
 
         iprint("Downloading script")
         iprint(script[1])
@@ -133,7 +134,7 @@ class OtaUpdater(IOTileApp):
             elif text == 'app_version':
                 ver = SemanticVersion.FromString(value)
                 if op_map[opr](self.app_info[1], ver):
-                    iprint("app_version not compatible: " + str(self.app_info[1]) + "not" + opr +value)
+                    iprint("app_version not compatible: " + str(self.app_info[1]) + "not" + opr + value)
                     return False
 
             elif text == 'controller_hw_tag':
@@ -154,19 +155,19 @@ class OtaUpdater(IOTileApp):
         requests = self._cloud.api.ota.device(self.dev_slug).get()
 
         if not requests['deployments']:
-            return
+            return False
 
         request_to_apply = None
-        oldest_date = datetime.strptime('9999-12-31', "%Y-%m-%d")
+        oldest_date = datetime.strptime('9999-12-31T00:00:00Z', "%Y-%m-%dT%H:%M:%SZ")
 
         for deployment in requests['deployments']:
             if (deployment['completed_on'] is None
                     and deployment['released_on'] is not None
-                    and datetime.strptime(deployment['released_on'], '%Y-%m-%d') < oldest_date
+                    and datetime.strptime(deployment['released_on'], "%Y-%m-%dT%H:%M:%SZ") < oldest_date
                     and self._check_criteria(deployment['selection_criteria'])):
 
                 request_to_apply = deployment
-                oldest_date = datetime.strptime(deployment['released_on'], '%Y-%m-%d')
+                oldest_date = datetime.strptime(deployment['released_on'], "%Y-%m-%dT%H:%M:%SZ")
 
         if not request_to_apply:
             return False
@@ -188,7 +189,7 @@ class OtaUpdater(IOTileApp):
         """ Inform cloud of results """
 
         now = datetime.now()
-        attempt_str = "{}-{}-{}".format(now.year, now.month, now.day)
+        attempt_str = datetime_to_str(now)
 
         payload = {"deployment": deployment_id,
                    "device": device_slug,
