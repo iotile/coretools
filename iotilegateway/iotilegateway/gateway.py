@@ -131,28 +131,31 @@ class IOTileGateway(threading.Thread):
         else:
             # Notify that we have now loaded all plugins and are starting operation (once the loop starts)
             self.loop.add_callback(lambda: self.loaded.set())
-            # Try to regularly update a supervisor about our status
-            callback = tornado.ioloop.PeriodicCallback(self._try_report_status, 60000)
-            callback.start()
+
+            # Try to regularly update a supervisor about our status if a supervisor is running
+            if self._try_initialize_supervisor():
+                callback = tornado.ioloop.PeriodicCallback(self._try_report_status, 60000)
+                callback.start()
 
         self.loop.start()
 
         # The loop has been closed, finish and quit
         self._logger.critical("Done stopping loop")
 
+    def _try_initialize_supervisor(self):
+        """Check for the existence of a supervisor"""
+        try:
+            self.supervisor = ServiceStatusClient('ws://localhost:9400/services')
+            self.supervisor.register_service('gateway', 'Device Gateway')
+            self.supervisor.post_info('gateway', "Service started successfully")
+            self.supervisor.post_headline('gateway', states.INFO_LEVEL, 'Started successfully')
+            return True
+        except Exception:  # pylint: disable=W0703
+            self._logger.info("No supervisor present")
+            return False
+
     def _try_report_status(self):
         """Periodic callback to report our gateway's status."""
-
-        if self.supervisor is None:
-            try:
-                self.supervisor = ServiceStatusClient('ws://localhost:9400/services')
-                self.supervisor.register_service('gateway', 'Device Gateway')
-                self.supervisor.post_info('gateway', "Service started successfully")
-                self.supervisor.post_headline('gateway', states.INFO_LEVEL, 'Started successfully')
-            except Exception:  # pylint: disable=W0703
-                self._logger.exception("Exception trying to create a ServiceStatusClient")
-                return
-
         self.supervisor.update_state('gateway', states.RUNNING)
         self.supervisor.send_heartbeat('gateway')
 
