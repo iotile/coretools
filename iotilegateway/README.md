@@ -8,13 +8,38 @@ pip install iotile-gateway
 ```
 ## Usage
 
-The package installs one command line program `iotile-gateway` that can be invoked with no arguments to 
+The package installs one command line program `iotile-gateway` that can be invoked with a config to 
 start a websockets server for bidirectional communication with IOTile devices.
 
 ```shell
-> iotile-gateway
+> iotile-gateway --config=<config json file>
 [C 161205 14:24:26 main:83] Starting websocket server on port 5120
 [C 161205 14:24:27 bled112:509] BLED112 adapter supports 3 connections
+```
+
+Your config json might look something like this. Note that in this example we rely on having `iotile-test` installed:
+```
+{
+    "agents":
+    [
+        {
+            "name": "websockets",
+            "args":
+            {
+                "port": 5120
+            }
+        }
+    ],
+
+    "adapters":
+    [
+        {
+            "name": "virtual",
+            "port": "realtime_test"
+        }
+    ]
+}
+
 ```
 
 You can cleanly exit the server using Ctrl+C.  If the server hangs on closing, you may have to kill the program
