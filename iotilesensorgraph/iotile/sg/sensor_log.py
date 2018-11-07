@@ -191,6 +191,9 @@ class SensorLog(object):
                 or to skip everything and start at the end.  Defaults
                 to skipping everything.  This parameter only has any
                 effect on buffered stream selectors.
+
+        Returns:
+            StreamWalker: A properly updating stream walker with the given selector.
         """
 
         if selector.buffered:
@@ -219,6 +222,31 @@ class SensorLog(object):
             self._queue_walkers.remove(walker)
         else:
             self._virtual_walkers.remove(walker)
+
+    def restore_walker(self, dumped_state):
+        """Restore a stream walker that was previously serialized.
+
+        Since stream walkers need to be tracked in an internal list for
+        notification purposes, we need to be careful with how we restore
+        them to make sure they remain part of the right list.
+
+        Args:
+            dumped_state (dict): The dumped state of a stream walker
+                from a previous call to StreamWalker.dump()
+
+        Returns:
+            StreamWalker: The correctly restored StreamWalker subclass.
+        """
+
+        selector_string = dumped_state.get(u'selector')
+        if selector_string is None:
+            raise ArgumentError("Invalid stream walker state in restore_walker, missing 'selector' key", state=dumped_state)
+
+        selector = DataStreamSelector.FromString(selector_string)
+
+        walker = self.create_walker(selector)
+        walker.restore(dumped_state)
+        return walker
 
     def destroy_all_walkers(self):
         """Destroy any previously created stream walkers."""

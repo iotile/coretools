@@ -412,3 +412,17 @@ def test_dump_restore():
     assert count1.count() == 2
     assert const1.count() == 0xFFFFFFFF
     assert unbuf1.count() == 1
+
+    # Test restoring a stream walker
+    log.clear()
+    log.destroy_all_walkers()
+    walk = log.create_walker(DataStreamSelector.FromString(str(storage)))
+
+    for _i in range(0, 25):
+        log.push(storage, reading)
+
+    assert walk.count() == 25
+    dump = walk.dump()
+    log.destroy_all_walkers()
+    walk2 = log.restore_walker(dump)
+    assert walk2.count() == 25
