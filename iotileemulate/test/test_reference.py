@@ -360,3 +360,9 @@ def test_rsl_dump_restore(reference_hw):
 
     # Make sure we have all of our data
     assert refcon.sensor_log.engine.count() == (0, 10)
+
+    readings = sensor_graph.download_stream('output 1')
+    assert len(readings) == 10
+    for i, reading in enumerate(readings):
+        assert reading.value == i
+        assert reading.reading_id == i + 1
