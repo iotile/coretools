@@ -3,8 +3,12 @@
 The raw sensor log is the subsystem that stores sensor readings
 on behalf of sensor graph and allows you to query them later.
 
-Current State of Necessary TODOS:
-- [ ] Support dumping and restoring state
+The main purpose of this subsystem is to serve as a persistent
+data store.  Since it allocates `StreamWalker` objects that
+are used by the SensorGraph and Streaming subsystems, it needs
+to have a very clear dump()/restore() process to ensure that
+those subsystems properly get their stream walkers restored
+to the correct state.
 """
 
 import threading
@@ -26,6 +30,56 @@ class SensorLogSubsystem(object):
         self.dump_walker = None
         self.next_id = 1
         self.mutex = threading.Lock()
+
+    def dump(self):
+        """Serialize the state of this subsystem into a dict.
+
+        Returns:
+            dict: The serialized state
+        """
+
+        walker = self.dump_walker
+        if walker is not None:
+            walker = walker.dump()
+
+        state = {
+            'storage': self.storage.dump(),
+            'dump_walker': walker,
+            'next_id': self.next_id
+        }
+
+        return state
+
+    def prepare_for_restore(self):
+        """Prepare the SensorLog subsystem for a restore.
+
+        This must be called at the start of the restore to clear all of the
+        stream walkers in the SensorLog storage engine, which are then added
+        back by the SensorGraph and Streaming subsystems and then restored
+        to their previous positions when restore() is called on this subsystem.
+        """
+
+        self.storage.destroy_all_walkers()
+
+    def restore(self, state):
+        """Restore the state of this subsystem from a prior call to dump().
+
+        Calling restore must be properly sequenced with calls to other
+        subsystems that include stream walkers so that their walkers are
+        properly restored.
+
+        Args:
+            state (dict): The results of a prior call to dump().
+        """
+
+        self.storage.restore(state.get('storage'))
+
+        dump_walker = state.get('dump_walker')
+        if dump_walker is not None:
+            dump_walker = self.storage.restore_walker(dump_walker)
+
+        self.dump_walker = dump_walker
+        self.next_id = state.get('next_id', 1)
 
     def clear(self, timestamp):
         """Clear all data from the RSL.

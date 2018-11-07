@@ -141,7 +141,8 @@ class ReferenceController(RawSensorLogMixin, RemoteBridgeMixin,
             # Dump all of the subsystems
             'remote_bridge': self.remote_bridge.dump(),
             'tile_manager': self.tile_manager.dump(),
-            'config_database': self.config_database.dump()
+            'config_database': self.config_database.dump(),
+            'sensor_log': self.sensor_log.dump()
         })
 
         return superstate
@@ -165,10 +166,14 @@ class ReferenceController(RawSensorLogMixin, RemoteBridgeMixin,
         self.app_info = state.get('app_info', (0, "0.0"))
         self.os_info = state.get('os_info', (0, "0.0"))
 
+        # Notify all subsystems of our intent to restore in case they need to prepare
+        self.sensor_log.prepare_for_restore()
+
         # Restore all of the subsystems
         self.remote_bridge.restore(state.get('remote_bridge', {}))
         self.tile_manager.restore(state.get('tile_manager', {}))
         self.config_database.restore(state.get('config_database', {}))
+        self.sensor_log.restore(state.get('sensor_log', {}))
 
     @tile_rpc(*rpcs.RESET)
     def reset(self):

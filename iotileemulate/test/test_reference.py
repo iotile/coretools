@@ -327,3 +327,42 @@ def test_rsl_reset_config(reference_hw):
         'streaming': 48896,
         'storage': 16128
     }
+
+
+def test_rsl_dump_restore(reference_hw):
+    """Make sure the rsl state is properly saved and restored."""
+
+    hw, device, _peripheral = reference_hw
+    refcon = device.controller
+
+    con = hw.get(8, basic=True)
+    sensor_graph = find_proxy_plugin('iotile_standard_library/lib_controller', 'SensorGraphPlugin')(con)
+
+    # Verify that we properly restore data and our download walker
+    for i in range(0, 10):
+        sensor_graph.push_reading('output 1', i)
+
+    con.rpc(0x20, 0x08, 0x5001, result_format="LLLL")
+    err, _timestamp, reading, unique_id, _act_stream = con.rpc(0x20, 0x09, 1, arg_format='B', result_format="LLLLH2x")
+    assert err == 0
+    assert reading == 0
+    assert unique_id == 1
+
+    state = device.dump_state()
+    device.restore_state(state)
+
+    # Make sure we keep our same place in the dump stream line
+    err, _timestamp, reading, unique_id, _act_stream = con.rpc(0x20, 0x09, 1, arg_format='B', result_format="LLLLH2x")
+
+    assert err == 0
+    assert reading == 1
+    assert unique_id == 2
+
+    # Make sure we have all of our data
+    assert refcon.sensor_log.engine.count() == (0, 10)
+
+    readings = sensor_graph.download_stream('output 1')
+    assert len(readings) == 10
+    for i, reading in enumerate(readings):
+        assert reading.value == i
+        assert reading.reading_id == i + 1
