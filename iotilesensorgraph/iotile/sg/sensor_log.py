@@ -135,7 +135,7 @@ class SensorLog(object):
     def set_rollover(self, area, enabled):
         """Configure whether rollover is enabled for streaming or storage streams.
 
-        Normally a SensorLog is used in ring-bufffer mode which means that old
+        Normally a SensorLog is used in ring-buffer mode which means that old
         readings are automatically overwritten as needed when new data is saved.
 
         However, you can configure it into fill-stop mode by using:
