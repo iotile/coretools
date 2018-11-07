@@ -7,8 +7,8 @@ def format_rpc(data):
     """Format an RPC call and response.
 
     Args:
-        data (tuple): A tuple containing the address, rpc_id, argument and response
-            payloads and any error code.
+        data (tuple): A tuple containing the address, rpc_id, argument and
+            response payloads and any error code.
 
     Returns:
         str: The formated RPC string.
