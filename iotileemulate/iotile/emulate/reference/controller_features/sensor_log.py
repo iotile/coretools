@@ -9,9 +9,6 @@ are used by the SensorGraph and Streaming subsystems, it needs
 to have a very clear dump()/restore() process to ensure that
 those subsystems properly get their stream walkers restored
 to the correct state.
-
-Current State of Necessary TODOS:
-- [ ] Support dumping and restoring state
 """
 
 import threading
