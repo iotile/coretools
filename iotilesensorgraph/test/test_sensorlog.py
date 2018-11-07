@@ -3,7 +3,7 @@ import pytest
 from iotile.core.exceptions import ArgumentError
 from iotile.sg.model import DeviceModel
 from iotile.sg.sensor_log import SensorLog
-from iotile.sg.exceptions import StorageFullError
+from iotile.sg.exceptions import StorageFullError, UnresolvedIdentifierError
 from iotile.sg.engine import InMemoryStorageEngine
 from iotile.sg import DataStreamSelector, DataStream, StreamEmptyError
 from iotile.core.hw.reports import IOTileReading
@@ -273,6 +273,38 @@ def test_seek_walker():
     assert walk.offset == 2
     assert walk.count() == 1
 
+    # Make sure we can find a reading by reading ID
+    walk = log.create_walker(DataStreamSelector.FromString('output 1'), skip_all=False)
+
+    output1 = DataStream.FromString('output 1')
+    output2 = DataStream.FromString('output 2')
+    log.push(output1, IOTileReading(0, 0, 1, reading_id=1))
+    log.push(output1, IOTileReading(0, 0, 1, reading_id=2))
+    log.push(output2, IOTileReading(0, 0, 1, reading_id=3))
+    log.push(output1, IOTileReading(0, 0, 1, reading_id=4))
+
+    exact = walk.seek(2, target='id')
+    assert exact is True
+    assert walk.count() == 2
+    assert walk.offset == 1
+
+    exact = walk.seek(3, target='id')
+    assert exact is False
+    assert walk.count() == 1
+    assert walk.offset == 2
+
+    # Verify exceptions thrown by seek()
+    with pytest.raises(UnresolvedIdentifierError):
+        walk.seek(5, target='id')
+
+    with pytest.raises(UnresolvedIdentifierError):
+        walk.seek(5, target=u'id')
+
+    with pytest.raises(UnresolvedIdentifierError):
+        walk.seek(5, target='offset')
+
+    with pytest.raises(ArgumentError):
+        walk.seek(2, target="unsupported")
 
 def test_fill_stop():
     """Make sure we can configure SensorLog into fill-stop mode."""

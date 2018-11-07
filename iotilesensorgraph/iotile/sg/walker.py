@@ -1,7 +1,7 @@
 """Stream walkers are the basic data retrieval mechanism in sensor graph."""
 
 from iotile.core.exceptions import ArgumentError, InternalError
-from iotile.sg.exceptions import StreamEmptyError
+from iotile.sg.exceptions import StreamEmptyError, UnresolvedIdentifierError
 from iotile.sg.stream import DataStream
 
 
@@ -87,12 +87,20 @@ class BufferedStreamWalker(StreamWalker):
                 self._count -= 1
                 return curr
 
-    def seek(self, offset):
-        """Seek this stream to a specific offset in the sensor log.
+    def seek(self, value, target="offset"):
+        """Seek this stream to a specific offset or reading id.
 
-        This will position the walker at the specified offset in the sensor
-        log. It will also update the count of available readings based on that
-        new location so that the count remains correct.
+        There are two modes of use.  You can seek to a specific reading id,
+        which means the walker will be positioned exactly at the reading
+        pointed to by the reading ID.  If the reading id cannot be found
+        an exception will be raised.  The reading id can be found but corresponds
+        to a reading that is not selected by this walker, the walker will
+        be moved to point at the first reading after that reading and False
+        will be returned.
+
+        If target=="offset", the walker will be positioned at the specified
+        offset in the sensor log. It will also update the count of available
+        readings based on that new location so that the count remains correct.
 
         The offset does not need to correspond to a reading selected by this
         walker.  If offset does not point to a selected reading, the effective
@@ -100,11 +108,76 @@ class BufferedStreamWalker(StreamWalker):
         after `offset`.
 
         Args:
-            offset (int): The offset to seek.
+            value (int): The identifier to seek, either an offset or a
+                reading id.
+            target (str): The type of thing to seek.  Can be offset or id.
+                If id is given, then a reading with the given ID will be
+                searched for.  If offset is given then the walker will
+                be positioned at the given offset.
+
+        Returns:
+            bool: True if an exact match was found, False otherwise.
+
+            An exact match means that the offset or reading ID existed and
+            corresponded to a reading selected by this walker.
+
+            An inexact match means that the offset or reading ID exited but
+            corresponded to reading that was not selected by this walker.
+
+            If the offset or reading ID could not be found an Exception is
+            thrown instead.
+
+        Raises:
+            ArgumentError: target is an invalid string, must be offset or
+                id.
+            UnresolvedIdentifierError: the desired offset or reading id
+                could not be found.
         """
 
-        self.offset = offset
+        if target not in (u'offset', u'id'):
+            raise ArgumentError("You must specify target as either offset or id", target=target)
+
+        if target == u'offset':
+            self._verify_offset(value)
+            self.offset = value
+        else:
+            self.offset = self._find_id(value)
+
         self._count = self.engine.count_matching(self.selector, offset=self.offset)
+
+        curr = self.engine.get(self.storage_type, self.offset)
+        return self.matches(DataStream.FromEncoded(curr.stream))
+
+    def _find_id(self, reading_id):
+        shared = [None]
+
+        def _id_searcher(i, reading):
+            """Find the offset of the first reading with the given reading id."""
+            if reading.reading_id == reading_id:
+                shared[0] = i
+                return True
+
+            return False
+
+        self.engine.scan_storage(self.storage_type, _id_searcher)
+        found_offset = shared[0]
+
+        if found_offset is None:
+            raise UnresolvedIdentifierError("Cannot find reading ID '%d' in storage area '%s'" % (reading_id, self.storage_type))
+
+        return found_offset
+
+    def _verify_offset(self, offset):
+        storage_count, streaming_count = self.engine.count()
+
+        if self.storage_type == u'streaming':
+            count = streaming_count
+        else:
+            count = storage_count
+
+        if offset >= count:
+            raise UnresolvedIdentifierError("Invalid offset that is larger than the number of valid readings", count=count, offset=offset)
+        self.offset = offset
 
     def peek(self):
         """Peek at the oldest reading in this virtual stream."""
