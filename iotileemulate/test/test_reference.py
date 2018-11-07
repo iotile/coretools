@@ -277,13 +277,16 @@ def test_raw_sensor_log(reference_hw):
     sensor_graph.push_many('output 1', 10, 20)
     sensor_graph.push_many('buffered 1', 15, 25)
 
+    assert sensor_graph.highest_id() == 45
+
     readings = sensor_graph.download_stream('output 1')
     assert len(readings) == 20
 
     readings = sensor_graph.download_stream('buffered 1')
     assert len(readings) == 25
 
-    assert sensor_graph.highest_id() == 45
+    readings = sensor_graph.download_stream('buffered 1', reading_id=44)
+    assert len(readings) == 2
 
     sensor_graph.clear()
     assert sensor_graph.count_readings() == {

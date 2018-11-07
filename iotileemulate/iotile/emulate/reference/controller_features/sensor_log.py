@@ -5,11 +5,6 @@ on behalf of sensor graph and allows you to query them later.
 
 Current State of Necessary TODOS:
 - [ ] Support dumping and restoring state
-- [ ] Support config variables for RSL behavior
-    - [ ] fill-stop config
-- [ ] Support fill-stop mode
-- [ ] Support final RPCs
-    - [ ] rsl_dump_stream_seek
 """
 
 import threading
@@ -158,12 +153,43 @@ class SensorLogSubsystem(object):
 
         return Error.NO_ERROR, Error.NO_ERROR, self.dump_walker.count()
 
+    def dump_seek(self, reading_id):
+        """Seek the dump streamer to a given ID.
+
+        Returns:
+            (int, int, int): Two error codes and the count of remaining readings.
+
+            The first error code covers the seeking process.
+            The second error code covers the stream counting process (cannot fail)
+            The third item in the tuple is the number of readings left in the stream.
+        """
+
+        if self.dump_walker is None:
+            return (pack_error(ControllerSubsystem.SENSOR_LOG, SensorLogError.STREAM_WALKER_NOT_INITIALIZED),
+                    Error.NO_ERROR, 0)
+
+        try:
+            with self.mutex:
+                exact = self.dump_walker.seek(reading_id, target='id')
+        except UnresolvedIdentifierError:
+            return (pack_error(ControllerSubsystem.SENSOR_LOG, SensorLogError.NO_MORE_READINGS),
+                    Error.NO_ERROR, 0)
+
+        error = Error.NO_ERROR
+        if not exact:
+            error = pack_error(ControllerSubsystem.SENSOR_LOG, SensorLogError.ID_FOUND_FOR_ANOTHER_STREAM)
+
+        return (error, error.NO_ERROR, self.dump_walker.count())
+
     def dump_next(self):
         """Dump the next reading from the stream.
 
         Returns:
             IOTileReading: The next reading or None if there isn't one
         """
+
+        if self.dump_walker is None:
+            return pack_error(ControllerSubsystem.SENSOR_LOG, SensorLogError.STREAM_WALKER_NOT_INITIALIZED)
 
         try:
             with self.mutex:
@@ -260,6 +286,12 @@ class RawSensorLogMixin(object):
 
         #FIXME: Fix this with the uptime of the clock manager task
         return [err, err2, count, 0]
+
+    @tile_rpc(*rpcs.RSL_DUMP_STREAM_SEEK)
+    def rsl_dump_stream_seek(self, reading_id):
+        """Seek a specific reading by ID."""
+
+        return self.sensor_log.dump_seek(reading_id)
 
     @tile_rpc(*rpcs.RSL_DUMP_STREAM_NEXT)
     def rsl_dump_stream_next(self, output_format):
