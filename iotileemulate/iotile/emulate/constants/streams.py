@@ -18,7 +18,7 @@ def declare_stream(string_name):
         string_name (str): The human-readable name of the stream.
 
     Returns:
-        StreamDeclaration: The stream declaration.
+        int: The stream declaration.
 """
 
     return DataStream.FromString(string_name).encode()
