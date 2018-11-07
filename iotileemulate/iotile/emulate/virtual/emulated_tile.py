@@ -249,6 +249,17 @@ class EmulatedTile(EmulationMixin, VirtualTile):
         config = ConfigDescriptor(config_id, type_name, default, name=name, python_type=convert)
         self._config_variables[config_id] = config
 
+    def reset_config_variables(self):
+        """Clear the contents of all config variables to their defaults.
+
+        This method should be used with caution.  It is designed to be called
+        during the reset process of a tile in order to properly initialize its
+        config variables.
+        """
+
+        for config in viewvalues(self._config_variables):
+            config.clear()
+
     def latch_config_variables(self):
         """Latch the current value of all config variables as python objects.
 
@@ -276,7 +287,7 @@ class EmulatedTile(EmulationMixin, VirtualTile):
             for documentation on how that method works.
         """
 
-        return {name: desc.latch() for name, desc in viewitems(self._config_variables)}
+        return {desc.name: desc.latch() for desc in viewvalues(self._config_variables)}
 
 
     def dump_state(self):
@@ -320,8 +331,7 @@ class EmulatedTile(EmulationMixin, VirtualTile):
         variables return to their reset states.
         """
 
-        for config in viewvalues(self._config_variables):
-            config.clear()
+        self.reset_config_variables()
 
     @tile_rpc(*rpcs.RESET)
     def reset(self):

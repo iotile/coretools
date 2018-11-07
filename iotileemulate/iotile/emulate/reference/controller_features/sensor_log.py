@@ -39,20 +39,30 @@ class SensorLogSubsystem(object):
         we keep track of the highest ID that we have allocated to date.
 
         This needs the current timestamp to be able to properly timestamp
-        the cleared storage reading that it pushes
+        the cleared storage reading that it pushes.
+
+        Args:
+            timestamp (int): The current timestamp to store with the
+                reading.
         """
 
         with self.mutex:
             self.storage.clear()
 
-        self.push(streams.DATA_CLEARED, 0, 1)
+        self.push(streams.DATA_CLEARED, timestamp, 1)
 
-    def clear_to_reset(self, _config_vars):
+    def clear_to_reset(self, config_vars):
         """Clear all volatile information across a reset."""
 
         with self.mutex:
             self.storage.destroy_all_walkers()
             self.dump_walker = None
+
+            if config_vars.get('storage_fillstop', False):
+                self.storage.set_rollover('storage', False)
+
+            if config_vars.get('streaming_fillstop', False):
+                self.storage.set_rollover('streaming', False)
 
     def count(self):
         """Count many many readings are persistently stored.

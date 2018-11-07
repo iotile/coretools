@@ -67,17 +67,21 @@ class ReferenceController(RawSensorLogMixin, RemoteBridgeMixin,
         have been sent, it will reset the rest of the controller subsystems.
         """
 
+        # Load in all default values into our config variables before streaming
+        # updated data into them.
+        self.reset_config_variables()
+
         # Send ourselves all of our config variable assignments
         config_rpcs = self.config_database.stream_matching(8, self.name)
         for rpc in config_rpcs:
             if deferred:
-                self._device.deferred_rpc(rpc)
+                self._device.deferred_rpc(*rpc)
             else:
-                self._device.rpc(rpc)
+                self._device.rpc(*rpc)
 
         def _post_config_setup():
-            config_assignments = {}
-            #config_assignments = self.latch_config_variables()
+            config_assignments = self.latch_config_variables()
+            self._logger.info("Latched config variables at reset for controller: %s", config_assignments)
 
             for system in self._post_config_subsystems:
                 system.clear_to_reset(config_assignments)
