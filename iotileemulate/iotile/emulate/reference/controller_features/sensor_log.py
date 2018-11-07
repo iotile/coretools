@@ -54,7 +54,7 @@ class SensorLogSubsystem(object):
         return state
 
     def prepare_for_restore(self):
-        """Preare the SensorLog subsystem for a restore.
+        """Prepare the SensorLog subsystem for a restore.
 
         This must be called at the start of the restore to clear all of the
         stream walkers in the SensorLog storage engine, which are then added
