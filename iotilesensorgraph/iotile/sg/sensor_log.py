@@ -7,10 +7,12 @@ a hard cap on storage requirements.
 """
 
 import copy
+from future.utils import viewitems
 from iotile.sg.model import DeviceModel
 from iotile.core.exceptions import ArgumentError
+from iotile.core.hw.reports import IOTileReading
 from .engine import InMemoryStorageEngine
-from .stream import DataStream
+from .stream import DataStream, DataStreamSelector
 from .walker import VirtualStreamWalker, CounterStreamWalker, BufferedStreamWalker
 from .exceptions import StreamEmptyError, StorageFullError, UnresolvedIdentifierError
 
@@ -57,6 +59,78 @@ class SensorLog(object):
         self._model = model
         self._rollover_streaming = True
         self._rollover_storage = True
+
+    def dump(self):
+        """Dump the state of this SensorLog.
+
+        The purpose of this method is to be able to restore the same state
+        later.  However there are links in the SensorLog for stream walkers.
+
+        So the dump process saves the state of each stream walker and upon
+        restore, it looks through the current set of stream walkers and
+        restores each one that existed when dump() was called to its state.
+
+        Returns:
+            dict: The serialized state of this SensorLog.
+        """
+
+        walkers = {}
+        walkers.update({str(walker.selector): walker.dump() for walker in self._queue_walkers})
+        walkers.update({str(walker.selector): walker.dump() for walker in self._virtual_walkers})
+
+        return {
+            u'engine': self._engine.dump(),
+            u'rollover_storage': self._rollover_storage,
+            u'rollover_streaming': self._rollover_streaming,
+            u'last_values': {str(stream): reading.asdict() for stream, reading in viewitems(self._last_values)},
+            u'walkers': walkers
+        }
+
+    def restore(self, state, permissive=False):
+        """Restore a state previously dumped by a call to dump().
+
+        The purpose of this method is to be able to restore a previously
+        dumped state.  However there are links in the SensorLog for stream
+        walkers.
+
+        So the restore process looks through the current set of stream walkers
+        and restores each one that existed when dump() was called to its
+        state.  If there are walkers allocated that were not present when
+        dump() was called, an exception is raised unless permissive=True,
+        in which case they are ignored.
+
+        Args:
+            state (dict): The previous state to restore, from a prior call
+                to dump().
+            permissive (bool): Whether to raise an exception is new stream
+                walkers are present that do not have dumped contents().
+
+        Raises:
+            ArgumentError: There are new stream walkers present in the current
+                SensorLog and permissive==False.
+        """
+
+        self._engine.restore(state.get(u'engine'))
+        self._last_values = {DataStream.FromString(stream): IOTileReading.FromDict(reading) for
+                             stream, reading in viewitems(state.get(u"last_values", {}))}
+
+        self._rollover_storage = state.get(u'rollover_storage', True)
+        self._rollover_streaming = state.get(u'rollover_streaming', True)
+
+        old_walkers = {DataStreamSelector.FromString(selector): dump for selector, dump in
+                       viewitems(state.get(u"walkers"))}
+
+        for walker in self._virtual_walkers:
+            if walker.selector in old_walkers:
+                walker.restore(old_walkers[walker.selector])
+            elif not permissive:
+                raise ArgumentError("Cannot restore SensorLog, walker %s exists in restored log but did not exist before" % str(walker.selector))
+
+        for walker in self._queue_walkers:
+            if walker.selector in old_walkers:
+                walker.restore(old_walkers[walker.selector])
+            elif not permissive:
+                raise ArgumentError("Cannot restore SensorLog, walker %s exists in restored log but did not exist before" % str(walker.selector))
 
     def set_rollover(self, area, enabled):
         """Configure whether rollover is enabled for streaming or storage streams.

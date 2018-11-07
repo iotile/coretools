@@ -1,8 +1,10 @@
 """Stream walkers are the basic data retrieval mechanism in sensor graph."""
 
+from builtins import range
 from iotile.core.exceptions import ArgumentError, InternalError
+from iotile.core.hw.reports import IOTileReading
 from iotile.sg.exceptions import StreamEmptyError, UnresolvedIdentifierError
-from iotile.sg.stream import DataStream
+from iotile.sg.stream import DataStream, DataStreamSelector
 
 
 class StreamWalker(object):
@@ -11,9 +13,6 @@ class StreamWalker(object):
     Args:
         selector (DataStreamSelector): The selector for the stream(s) that we
             are walking.
-
-    Returns:
-        bool: Whether the walker matches the stream
     """
 
     def __init__(self, selector):
@@ -24,12 +23,17 @@ class StreamWalker(object):
 
         Args:
             stream (DataStream): The stream to check
+
+        Returns:
+            bool: True if there is match, otherwise False
         """
 
         return self.selector.matches(stream)
 
     @property
     def buffered(self):
+        """Whether this stream walker is backed by actual persistent storage (True)."""
+
         return self.selector.buffered
 
 
@@ -66,6 +70,33 @@ class BufferedStreamWalker(StreamWalker):
                 self.offset = storage
 
             self.storage_type = u'storage'
+
+    def dump(self):
+        """Dump the state of this stream walker.
+
+        Returns:
+            dict: The serialized state.
+        """
+
+        return {
+            u'selector': str(self.selector),
+            u'offset': self.offset
+        }
+
+    def restore(self, state):
+        """Restore a previous state of this stream walker.
+
+        Raises:
+            ArgumentError: If the state refers to a different selector or the
+                offset is invalid.
+        """
+
+        selector = DataStreamSelector.FromString(state.get(u'selector'))
+        if selector != self.selector:
+            raise ArgumentError("Attempted to restore a BufferedStreamWalker with a different selector",
+                                selector=self.selector, serialized_data=state)
+
+        self.seek(state.get(u'offset'), target="offset")
 
     def count(self):
         """Return the count of available readings in this stream walker."""
@@ -253,6 +284,44 @@ class VirtualStreamWalker(StreamWalker):
 
         self.reading = None
 
+    def dump(self):
+        """Serialize the state of this stream walker.
+
+        Returns:
+            dict: The serialized state.
+        """
+
+        reading = self.reading
+        if reading is not None:
+            reading = reading.asdict()
+
+        return {
+            u'selector': str(self.selector),
+            u'reading': reading
+        }
+
+    def restore(self, state):
+        """Restore the contents of this virtual stream walker.
+
+        Args:
+            state (dict): The previously serialized state.
+
+        Raises:
+            ArgumentError: If the serialized state does not have
+                a matching selector.
+        """
+
+        reading = state.get(u'reading')
+        if reading is not None:
+            reading = IOTileReading.FromDict(reading)
+
+        selector = DataStreamSelector.FromString(state.get(u'selector'))
+        if self.selector != selector:
+            raise ArgumentError("Attempted to restore a VirtualStreamWalker with a different selector",
+                                selector=self.selector, serialized_data=state)
+
+        self.reading = reading
+
     def push(self, stream, value):
         """Update this stream walker with a new responsive reading.
 
@@ -334,6 +403,48 @@ class CounterStreamWalker(StreamWalker):
         self.reading = None
         self._count = 0
 
+    def dump(self):
+        """Serialize the state of this stream walker.
+
+        Returns:
+            dict: The serialized state.
+        """
+
+        reading = self.reading
+        if reading is not None:
+            reading = reading.asdict()
+
+        return {
+            u'selector': str(self.selector),
+            u'reading': reading,
+            u'count': self._count
+        }
+
+    def restore(self, state):
+        """Restore the contents of this counter stream walker.
+
+        Args:
+            state (dict): The previously serialized state.
+
+        Raises:
+            ArgumentError: If the serialized state does not have
+                a matching selector.
+        """
+
+        reading = state.get(u'reading')
+        if reading is not None:
+            reading = IOTileReading.FromDict(reading)
+
+        selector = DataStreamSelector.FromString(state.get(u'selector'))
+        if self.selector != selector:
+            raise ArgumentError("Attempted to restore a CounterStreamWalker with a different selector",
+                                selector=self.selector, serialized_data=state)
+
+        count = state.get(u'count')
+
+        self.reading = reading
+        self._count = count
+
     def push(self, stream, value):
         """Update this stream walker with a new responsive reading.
 
@@ -351,7 +462,7 @@ class CounterStreamWalker(StreamWalker):
     def iter(self):
         """Iterate over the readings that are responsive to this stream walker."""
 
-        for i in xrange(0, self._count):
+        for _i in range(0, self._count):
             yield self.reading
 
     def count(self):
@@ -399,6 +510,38 @@ class InvalidStreamWalker(StreamWalker):
 
     def __init__(self, selector):
         super(InvalidStreamWalker, self).__init__(selector)
+
+    def dump(self):
+        """Serialize the state of this stream walker.
+
+        Returns:
+            dict: The serialized state.
+        """
+
+        return {
+            u'selector': str(self.selector),
+            u'type': u"invalid"
+        }
+
+    def restore(self, state):
+        """Restore the contents of this virtual stream walker.
+
+        Args:
+            state (dict): The previously serialized state.
+
+        Raises:
+            ArgumentError: If the serialized state does not have
+                a matching selector.
+        """
+
+
+        selector = DataStreamSelector.FromString(state.get(u'selector'))
+        if self.selector != selector:
+            raise ArgumentError("Attempted to restore an InvalidStreamWalker with a different selector",
+                                selector=self.selector, serialized_data=state)
+
+        if state.get(u'type') != u'invalid':
+            raise ArgumentError("Invalid serialized state for InvalidStreamWalker", serialized_data=state)
 
     def matches(self, stream):
         """Check if a stream matches this walker.

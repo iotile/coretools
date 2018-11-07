@@ -16,6 +16,7 @@ def test_counter_walker():
     log = SensorLog(model=model)
 
     walk = log.create_walker(DataStreamSelector.FromString('counter 1'))
+
     stream = DataStream.FromString('counter 1')
     reading = IOTileReading(0, 1, 1)
 
@@ -25,6 +26,7 @@ def test_counter_walker():
     assert walk.peek().value == 1
 
     log.push(stream, IOTileReading(0, 1, 3))
+
     assert walk.count() == 2
     assert walk.peek().value == 3
 
@@ -348,3 +350,65 @@ def test_fill_stop():
             log.push(output, reading)
 
     assert log.count() == (16128, 48896)
+
+
+def test_dump_restore():
+    """Make sure we can properly dump and restore a SensorLog."""
+
+    model = DeviceModel()
+    log = SensorLog(model=model)
+
+    storage = DataStream.FromString('buffered 1')
+    output = DataStream.FromString('output 1')
+
+    reading = IOTileReading(0, 0, 1)
+
+    for _i in range(0, 25):
+        log.push(storage, reading)
+
+    for _i in range(0, 20):
+        log.push(output, reading)
+
+    out1 = log.create_walker(DataStreamSelector.FromString('output 1'), skip_all=False)
+    store1 = log.create_walker(DataStreamSelector.FromString('buffered 1'), skip_all=False)
+    count1 = log.create_walker(DataStreamSelector.FromString('counter 1'))
+    const1 = log.create_walker(DataStreamSelector.FromString('constant 1'))
+    unbuf1 = log.create_walker(DataStreamSelector.FromString('unbuffered 1'))
+
+    log.push(DataStream.FromString('counter 1'), reading)
+    log.push(DataStream.FromString('counter 1'), reading)
+    log.push(DataStream.FromString('constant 1'), reading)
+    log.push(DataStream.FromString('unbuffered 1'), reading)
+
+    state = log.dump()
+
+    log.clear()
+    log.destroy_all_walkers()
+
+    out1 = log.create_walker(DataStreamSelector.FromString('output 1'), skip_all=False)
+    store1 = log.create_walker(DataStreamSelector.FromString('buffered 1'), skip_all=False)
+    count1 = log.create_walker(DataStreamSelector.FromString('counter 1'))
+    const1 = log.create_walker(DataStreamSelector.FromString('constant 1'))
+    unbuf1 = log.create_walker(DataStreamSelector.FromString('unbuffered 1'))
+
+    log.restore(state)
+
+    assert store1.count() == 25
+    assert out1.count() == 20
+    assert count1.count() == 2
+    assert const1.count() == 0xFFFFFFFF
+    assert unbuf1.count() == 1
+
+    # Test permissive and non-permissive restores
+    _unbuf2 = log.create_walker(DataStreamSelector.FromString('unbuffered 2'))
+
+    with pytest.raises(ArgumentError):
+        log.restore(state)
+
+    log.clear()
+    log.restore(state, permissive=True)
+    assert store1.count() == 25
+    assert out1.count() == 20
+    assert count1.count() == 2
+    assert const1.count() == 0xFFFFFFFF
+    assert unbuf1.count() == 1

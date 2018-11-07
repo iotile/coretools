@@ -2,6 +2,7 @@
 
 from builtins import str, range
 from iotile.core.exceptions import ArgumentError
+from iotile.core.hw.reports import IOTileReading
 from iotile.sg import DataStream
 from iotile.sg.exceptions import StorageFullError, StreamEmptyError
 
@@ -22,6 +23,32 @@ class InMemoryStorageEngine(object):
         self.streaming_length = model.get(u'max_streaming_buffer')
         self.streaming_data = []
         self.storage_data = []
+
+    def dump(self):
+        """Serialize the state of this InMemoryStorageEngine to a dict.
+
+        Returns:
+            dict: The serialized data.
+        """
+
+        return {
+            u'storage_data': [x.asdict() for x in self.storage_data],
+            u'streaming_data': [x.asdict() for x in self.streaming_data]
+        }
+
+    def restore(self, state):
+        """Restore the state of this InMemoryStorageEngine from a dict."""
+
+        storage_data = state.get(u'storage_data', [])
+        streaming_data = state.get(u'streaming_data', [])
+
+        if len(storage_data) > self.storage_length or len(streaming_data) > self.streaming_length:
+            raise ArgumentError("Cannot restore InMemoryStorageEngine, too many readings",
+                                storage_size=len(storage_data), storage_max=self.storage_length,
+                                streaming_size=len(streaming_data), streaming_max=self.streaming_length)
+
+        self.storage_data = [IOTileReading.FromDict(x) for x in storage_data]
+        self.streaming_data = [IOTileReading.FromDict(x) for x in streaming_data]
 
     def count(self):
         """Count the number of readings.
