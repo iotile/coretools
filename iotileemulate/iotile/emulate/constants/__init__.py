@@ -2,7 +2,7 @@
 
 from inspect import getmembers
 from iotile.sg import DataStream
-from .errors import Error, ConfigDatabaseError, SensorLogError
+from .errors import Error, ConfigDatabaseError, SensorLogError, SensorGraphError
 from . import rpcs as rpcs
 from . import streams as streams
 from .const_tilemanager import RunLevel, TileState
