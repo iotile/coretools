@@ -156,6 +156,26 @@ class SensorLog(object):
         else:
             raise ArgumentError("You must pass one of 'storage' or 'streaming' to set_rollover", area=area)
 
+    def dump_constants(self):
+        """Dump (stream, value) pairs for all constant streams.
+
+        This method walks the internal list of defined stream walkers and
+        dumps the current value for all constant streams.
+
+        Returns:
+            list of (DataStream, IOTileReading): A list of all of the defined constants.
+        """
+
+        constants = []
+
+        for walker in self._virtual_walkers:
+            if not walker.selector.inexhaustible:
+                continue
+
+            constants.append((walker.selector.as_stream(), walker.reading))
+
+        return constants
+
     def watch(self, selector, callback):
         """Call a function whenever a stream changes.
 

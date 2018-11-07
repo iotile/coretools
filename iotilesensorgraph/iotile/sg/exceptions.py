@@ -51,6 +51,12 @@ class ProcessingFunctionError(IOTileException):
     pass
 
 
+class ResourceUsageError(IOTileException):
+    """Thrown when a sensor graph is too large for the given device model."""
+
+    pass
+
+
 class SensorGraphSyntaxError(IOTileException):
     """Thrown when there is an error parsing a sensor graph description file.
 

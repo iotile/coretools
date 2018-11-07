@@ -174,7 +174,7 @@ def parse_binary_descriptor(bindata):
     node_stream = DataStream.FromEncoded(stream_id)
 
     if a_id == 0xFFFF:
-        raise ArgumentError("Invalid binary node descriptor with invalid first import", input_selector=a_id)
+        raise ArgumentError("Invalid binary node descriptor with invalid first input", input_selector=a_id)
 
     a_selector = DataStreamSelector.FromEncoded(a_id)
     a_trigger = _process_binary_trigger(a_trig, a_cond)

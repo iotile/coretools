@@ -1,8 +1,8 @@
 """Globally available processing functions that can be used in sensor graph nodes.
 
 These functions should not be used directly but rather will be invoked by name
-when creating a sensor graph node inside the SensorGraph class.  They are found
-by looking at the installed python packages using pkg_resources.
+when creating a sensor graph node inside the SensorGraph class.  They are
+found by looking at the installed python packages using pkg_resources.
 """
 
 from iotile.core.exceptions import HardwareError
@@ -13,10 +13,9 @@ from iotile.core.hw.reports import IOTileReading
 def copy_all_a(input_a, *other_inputs, **kwargs):
     """Copy all readings in input a into the output.
 
-    All other inputs are skipped so that after this function
-    runs there are no readings left in any of the input walkers
-    when the function finishes, even if it generated no output
-    readings.
+    All other inputs are skipped so that after this function runs there are no
+    readings left in any of the input walkers when the function finishes, even
+    if it generated no output readings.
 
     Returns:
         list(IOTileReading)
@@ -35,9 +34,8 @@ def copy_all_a(input_a, *other_inputs, **kwargs):
 def copy_latest_a(input_a, *other_inputs, **kwargs):
     """Copy the latest reading from input a into the output.
 
-    All other inputs are skipped to that after this function
-    runs there are no readings left in any of the input walkers
-    even if no output is generated.
+    All other inputs are skipped to that after this function runs there are no
+    readings left in any of the input walkers even if no output is generated.
 
     Returns:
         list(IOTileReading)
@@ -72,8 +70,6 @@ def copy_count_a(input_a, *other_inputs, **kwargs):
     Returns:
         list(IOTileReading)
     """
-
-    output = []
 
     count = input_a.count()
 
