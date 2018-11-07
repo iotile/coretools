@@ -81,10 +81,8 @@ def test_empty():
 def test_unsupported_type():
     """Make sure we throw en error if we have an unknown python type."""
 
-    desc = ConfigDescriptor(0x8000, 'uint8_t', default=b'\0', python_type="unsupported")
-    desc.clear()
     with pytest.raises(ArgumentError):
-        desc.latch()
+        desc = ConfigDescriptor(0x8000, 'uint8_t', default=b'\0', python_type="unsupported")
 
 
 @pytest.mark.parametrize("type_name, default_value, latched_value, python_type, expected_exc", [
@@ -106,3 +104,20 @@ def test_default_values(type_name, default_value, latched_value, python_type, ex
             desc.latch()
     else:
         assert desc.latch() == latched_value
+
+
+def test_bool_conversion():
+    """Make sure we can convert to bool."""
+
+    desc = ConfigDescriptor(0x8000, 'uint8_t', 0, python_type='bool')
+    desc.clear()
+
+    assert desc.latch() is False
+
+    desc = ConfigDescriptor(0x8000, 'uint8_t', 1, python_type='bool')
+    desc.clear()
+
+    assert desc.latch() is True
+
+    with pytest.raises(ArgumentError):
+        desc = ConfigDescriptor(0x8000, 'uint8_t[2]', 0, python_type='bool')

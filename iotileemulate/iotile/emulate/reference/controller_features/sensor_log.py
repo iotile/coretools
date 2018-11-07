@@ -195,6 +195,11 @@ class RawSensorLogMixin(object):
         self.sensor_log = SensorLogSubsystem(model)
         self._post_config_subsystems.append(self.sensor_log)
 
+        # Declare all of our config variables
+        self.declare_config_variable('storage_fillstop', 0x2004, 'uint8_t', default=False, convert='bool')
+        self.declare_config_variable('streaming_fillstop', 0x2005, 'uint8_t', default=False, convert='bool')
+
+
     @tile_rpc(*rpcs.RSL_PUSH_READING)
     def rsl_push_reading(self, value, stream_id):
         """Push a reading to the RSL directly."""

@@ -27,10 +27,30 @@ class ConfigDescriptor(object):
         self.special_type = python_type
         self.default_value = self._convert_default_value(default)
 
+        self._validate_python_type(python_type)
+
         if name is None:
             name = "Unnamed variable 0x%X" % config_id
 
         self.name = name
+
+    def _validate_python_type(self, python_type):
+        """Validate the possible combinations of python_type and type_name."""
+
+        if python_type == 'bool':
+            if self.variable:
+                raise ArgumentError("You can only specify a bool python type on a scalar (non-array) type_name", type_name=self.type_name)
+
+            return
+
+        if python_type == 'string':
+            if not (self.variable and self.unit_size == 1):
+                raise ArgumentError("You can only pass a string python type on an array of 1-byte objects", type_name=self.type_name)
+
+            return
+
+        if python_type is not None:
+            raise ArgumentError("You can only declare a bool or string python type.  Otherwise it must be passed as None", python_type=python_type)
 
     def _convert_default_value(self, default):
         """Convert the passed default value to binary.
@@ -109,6 +129,9 @@ class ConfigDescriptor(object):
         If you want to parse a char[] or uint8_t[] as a python string, it
         needs to be null terminated and you should pass python_type='string'.
 
+        If you are declaring a scalar integer type and wish it to be decoded
+        as a bool, you can pass python_type='bool' to the constructor.
+
         All integers are decoded as little-endian.
 
         Returns:
@@ -137,8 +160,6 @@ class ConfigDescriptor(object):
                 raise DataError("String type was specified by data did not end with a null byte", data=self.current_value, name=self.name)
 
             return bytes(self.current_value[:-1]).decode('utf-8')
-        elif self.special_type is not None:
-            raise ArgumentError("Invalid python type specified, only string or None is allowed", python_type=self.special_type)
 
         fmt_code = "<" + (self.base_type * (len(self.current_value) // self.unit_size))
         data = struct.unpack(fmt_code, self.current_value)
@@ -147,6 +168,9 @@ class ConfigDescriptor(object):
             data = list(data)
         else:
             data = data[0]
+
+            if self.special_type == 'bool':
+                data = bool(data)
 
         return data
 
@@ -198,7 +222,7 @@ class EmulatedTile(EmulationMixin, VirtualTile):
         self._device = device
         self._logger = logging.getLogger(__name__)
 
-    def declare_config_variable(self, name, config_id, type_name, default_value=None, as_string=False):
+    def declare_config_variable(self, name, config_id, type_name, default=None, convert=None):  #pylint:disable=too-many-arguments;These are all necessary with sane defaults.
         """Declare a config variable that this emulated tile accepts.
 
         The default value (if passed) may be specified as either a `bytes`
@@ -214,24 +238,46 @@ class EmulatedTile(EmulationMixin, VirtualTile):
                 be printed nicely.
             config_id (int): A 16-bit integer id number to identify the config variable.
             type_name (str): An encoded type name that will be parsed by parse_size_name()
-            default_value (object): The default value if there is one.  This should be a
+            default (object): The default value if there is one.  This should be a
                 python object that will be converted to binary according to the rules for
                 the config variable type specified in type_name.
-            as_string (bool): whether this variable should be converted to a
-                python string rather than an int or a list of ints.
+            convert (str): whether this variable should be converted to a
+                python string or bool rather than an int or a list of ints.  You can
+                pass either 'bool', 'string' or None
         """
 
-        python_type = None
-        if as_string:
-            python_type = 'string'
-
-        config = ConfigDescriptor(config_id, type_name, default_value, name=name, python_type=python_type)
+        config = ConfigDescriptor(config_id, type_name, default, name=name, python_type=convert)
         self._config_variables[config_id] = config
 
     def latch_config_variables(self):
-        """Latch the current value of all config variables as python objects."""
+        """Latch the current value of all config variables as python objects.
 
-        raise NotImplementedError()
+        This function will capture the current value of all config variables
+        at the time that this method is called.  It must be called after
+        start() has been called so that any default values in the config
+        variables have been properly set otherwise DataError will be thrown.
+
+        Conceptually this method performs the operation that happens just
+        before a tile executive hands control to the tile application
+        firmware. It latches in the value of all config variables at that
+        point in time.
+
+        For convenience, this method does all necessary binary -> python
+        native object conversion so that you just get python objects back.
+
+        Returns:
+            dict: A dict of str -> object with the config variable values.
+
+            The keys in the dict will be the name passed to
+            `declare_config_variable`.
+
+            The values will be the python objects that result from calling
+            latch() on each config variable.  Consult ConfigDescriptor.latch()
+            for documentation on how that method works.
+        """
+
+        return {name: desc.latch() for name, desc in viewitems(self._config_variables)}
+
 
     def dump_state(self):
         """Dump the current state of this emulated tile as a dictionary.
