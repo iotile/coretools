@@ -3,6 +3,7 @@ import pytest
 from iotile.core.exceptions import ArgumentError
 from iotile.sg.model import DeviceModel
 from iotile.sg.sensor_log import SensorLog
+from iotile.sg.exceptions import StorageFullError
 from iotile.sg.engine import InMemoryStorageEngine
 from iotile.sg import DataStreamSelector, DataStream, StreamEmptyError
 from iotile.core.hw.reports import IOTileReading
@@ -271,3 +272,47 @@ def test_seek_walker():
     walk.seek(2)
     assert walk.offset == 2
     assert walk.count() == 1
+
+
+def test_fill_stop():
+    """Make sure we can configure SensorLog into fill-stop mode."""
+
+    model = DeviceModel()
+    log = SensorLog(model=model)
+
+    storage = DataStream.FromString('buffered 1')
+    output = DataStream.FromString('output 1')
+
+    reading = IOTileReading(0, 0, 1)
+
+    # Neither fill-stop
+    for _i in range(0, 50000):
+        log.push(storage, reading)
+
+    for _i in range(0, 50000):
+        log.push(output, reading)
+
+    log.clear()
+    log.set_rollover('storage', False)
+
+    with pytest.raises(StorageFullError):
+        for _i in range(0, 50000):
+            log.push(storage, reading)
+
+    for _i in range(0, 50000):
+        log.push(output, reading)
+
+    assert log.count() == (16128, 48720)
+
+    log.clear()
+    log.set_rollover('streaming', False)
+
+    with pytest.raises(StorageFullError):
+        for _i in range(0, 50000):
+            log.push(storage, reading)
+
+    with pytest.raises(StorageFullError):
+        for _i in range(0, 50000):
+            log.push(output, reading)
+
+    assert log.count() == (16128, 48896)

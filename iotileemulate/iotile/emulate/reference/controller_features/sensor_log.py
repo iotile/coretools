@@ -8,9 +8,7 @@ Current State of Necessary TODOS:
 - [ ] Support config variables for RSL behavior
     - [ ] fill-stop config
 - [ ] Support fill-stop mode
-- [X] Support direct interaction with the rsl via rpcs
 - [ ] Support final RPCs
-    - [X] rsl_highest_id
     - [ ] rsl_dump_stream_seek
 """
 

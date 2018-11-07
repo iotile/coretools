@@ -6,7 +6,7 @@ import struct
 import base64
 import logging
 from future.utils import viewitems, viewvalues
-from iotile.core.exceptions import ArgumentError
+from iotile.core.exceptions import ArgumentError, DataError
 from iotile.core.hw.virtual import VirtualTile
 from iotile.core.hw.virtual import tile_rpc
 from .emulated_device import EmulatedDevice
@@ -17,13 +17,14 @@ from ..constants import rpcs, Error
 class ConfigDescriptor(object):
     """Helper class for declaring a configuration variable."""
 
-    def __init__(self, config_id, type_name, default=None, name=None):
+    def __init__(self, config_id, type_name, default=None, name=None, python_type=None):
         self.config_id = config_id
         self.total_size, self.unit_size, self.base_type, self.variable = parse_size_name(type_name)
         self.max_units = self.total_size // self.unit_size
         self.type_name = type_name
         self.default_value = default
         self.current_value = bytearray()
+        self.special_type = python_type
 
         if name is None:
             name = "Unnamed variable 0x%X" % config_id
@@ -55,6 +56,62 @@ class ConfigDescriptor(object):
 
         self.current_value += bytearray(value)
         return 0
+
+    def latch(self):
+        """Convert the current value inside this config descriptor to a python object.
+
+        The conversion proceeds by mapping the given type name to a native
+        python class and performing the conversion.  You can override what
+        python object is used as the destination class by passing a
+        python_type parameter to __init__.
+
+        The default mapping is:
+        - char (u)int8_t, (u)int16_t, (u)int32_t: int
+        - char[] (u)int8_t[], (u)int16_t[]0, u(int32_t): list of int
+
+        If you want to parse a char[] or uint8_t[] as a python string, it
+        needs to be null terminated and you should pass python_type='string'.
+
+        All integers are decoded as little-endian.
+
+        Returns:
+            object: The corresponding python object.
+
+            This will either be an int, list of int or string based on the
+            type_name specified and the optional python_type keyword argument
+            to the constructor.
+
+        Raises:
+            DataError: if the object cannot be converted to the desired type.
+            ArgumentError: if an invalid python_type was specified during construction.
+        """
+
+        if len(self.current_value) == 0:
+            raise DataError("There was no data in a config variable during latching", name=self.name)
+
+        # Make sure the data ends on a unit boundary.  This would have happened automatically
+        # in an actual device by the C runtime 0 padding out the storage area.
+        remaining = len(self.current_value) % self.unit_size
+        if remaining > 0:
+            self.current_value += bytearray(remaining)
+
+        if self.special_type == 'string':
+            if self.current_value[-1] != 0:
+                raise DataError("String type was specified by data did not end with a null byte", data=self.current_value, name=self.name)
+
+            return bytes(self.current_value[:-1]).decode('utf-8')
+        elif self.special_type is not None:
+            raise ArgumentError("Invalid python type specified, only string or None is allowed", python_type=self.special_type)
+
+        fmt_code = "<" + (self.base_type * (len(self.current_value) // self.unit_size))
+        data = struct.unpack(fmt_code, self.current_value)
+
+        if self.variable:
+            data = list(data)
+        else:
+            data = data[0]
+
+        return data
 
 
 #pylint:disable=abstract-method;This is an abstract base class

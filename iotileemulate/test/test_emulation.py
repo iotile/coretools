@@ -1,7 +1,8 @@
 """Tests of various utilities used in IOTileDevice emulation."""
 
 import pytest
-from iotile.emulate.virtual.emulated_tile import parse_size_name
+from iotile.core.exceptions import DataError, ArgumentError
+from iotile.emulate.virtual.emulated_tile import parse_size_name, ConfigDescriptor
 
 
 @pytest.mark.parametrize("type_name, return_tuple", [
@@ -27,3 +28,43 @@ def test_config_parsing(type_name, return_tuple):
 
     print(type_name)
     assert return_tuple == actual_tuple
+
+
+@pytest.mark.parametrize("type_name, data, python_type, latched_value", [
+    ('uint8_t', bytearray([1]), None, 1),
+    ('uint8_t', bytearray([255]), None, 255),
+    ('int8_t', bytearray([1]), None, 1),
+    ('int8_t', bytearray([255]), None, -1),
+    ('uint16_t', bytearray([1, 0]), None, 1),
+    ('uint16_t', bytearray([255, 255]), None, 0xFFFF),
+    ('uint16_t', bytearray([255]), None, 0xFF),  # Make sure size extension happens correctly
+    ('int16_t', bytearray([1, 0]), None, 1),
+    ('int16_t', bytearray([255, 255]), None, -1),
+    ('uint32_t', bytearray([1, 0, 0, 0]), None, 1),
+    ('uint32_t', bytearray([255, 255, 255, 255]), None, 0xFFFFFFFF),
+    ('int32_t', bytearray([1, 0, 0, 0]), None, 1),
+    ('int32_t', bytearray([255, 255, 255, 255]), None, -1),
+
+    # Arrays
+    ('uint16_t[5]', bytearray([1, 0, 2, 0, 3, 0, 4, 0]), None, [1, 2, 3, 4]),
+    ('uint16_t[5]', bytearray([1, 0, 2, 0, 3, 0, 4]), None, [1, 2, 3, 4]),  # Make sure size extension happens correctly
+    ('char[16]', bytearray(b'test string') + bytearray(1), "string", u"test string")
+])
+def test_config_latching(type_name, data, python_type, latched_value):
+    """Make sure we can properly decode variables."""
+
+    print("Testing config latching of type %s with data %s" % (type_name, repr(data)))
+    desc = ConfigDescriptor(0x8000, type_name, python_type=python_type)
+    desc.update_value(0, data)
+
+    actual_latched = desc.latch()
+    assert actual_latched == latched_value
+
+
+def test_nonnull_string():
+    """Make sure we throw an exception for non-null terminated strings."""
+    desc = ConfigDescriptor(0x8000, 'char[16]', python_type='string')
+    desc.update_value(0, b'test string')
+
+    with pytest.raises(DataError):
+        desc.latch()
