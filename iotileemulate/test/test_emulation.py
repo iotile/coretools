@@ -68,3 +68,20 @@ def test_nonnull_string():
 
     with pytest.raises(DataError):
         desc.latch()
+
+
+def test_empty():
+    """Make sure we throw en error if we latch an empty config var."""
+
+    desc = ConfigDescriptor(0x8000, 'uint8_t')
+    with pytest.raises(DataError):
+        desc.latch()
+
+
+def test_unsupported_type():
+    """Make sure we throw en error if we have an unknown python type."""
+
+    desc = ConfigDescriptor(0x8000, 'uint8_t', default=b'\0', python_type="unsupported")
+    desc.clear()
+    with pytest.raises(ArgumentError):
+        desc.latch()
