@@ -20,7 +20,7 @@ from .exceptions import StreamEmptyError, StorageFullError, UnresolvedIdentifier
 class SensorLog(object):
     """A storage engine holding multiple named FIFOs.
 
-    Normally a SensorLog is used in ring-bufffer mode which means that old
+    Normally a SensorLog is used in ring-buffer mode which means that old
     readings are automatically overwritten as needed when new data is saved.
 
     However, you can configure it into fill-stop mode by using:
