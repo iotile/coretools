@@ -223,7 +223,7 @@ Returns:
     UTC time.
 """
 
-RSL_DUMP_STREAM_SEEK = RPCDeclaration(0x2012, "L", "L")
+RSL_DUMP_STREAM_SEEK = RPCDeclaration(0x2012, "L", "3L")
 """Seek to a specific reading id inside the stream we are currently dumping.
 
 See RSL_DUMP_STREAM_BEGIN for more details on the stream dumping process.

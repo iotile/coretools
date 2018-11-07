@@ -5,13 +5,6 @@ on behalf of sensor graph and allows you to query them later.
 
 Current State of Necessary TODOS:
 - [ ] Support dumping and restoring state
-- [ ] Support config variables for RSL behavior
-    - [ ] fill-stop config
-- [ ] Support fill-stop mode
-- [X] Support direct interaction with the rsl via rpcs
-- [ ] Support final RPCs
-    - [ ] rsl_highest_id
-    - [ ] rsl_dump_stream_seek
 """
 
 import threading
@@ -19,31 +12,52 @@ from builtins import range
 from iotile.core.hw.virtual import tile_rpc
 from iotile.core.hw.reports import IOTileReading
 from iotile.sg import SensorLog, DataStream, DataStreamSelector
+from iotile.sg.engine import InMemoryStorageEngine
 from iotile.sg.exceptions import StorageFullError, StreamEmptyError, UnresolvedIdentifierError
-from ...constants import rpcs, pack_error, Error, ControllerSubsystem, SensorLogError
+from ...constants import rpcs, pack_error, Error, ControllerSubsystem, SensorLogError, streams
 
 
 class SensorLogSubsystem(object):
     """Container for raw sensor log state."""
 
     def __init__(self, model):
-        self.storage = SensorLog(model=model)
+        self.engine = InMemoryStorageEngine(model=model)
+        self.storage = SensorLog(self.engine, model=model)
         self.dump_walker = None
         self.next_id = 1
         self.mutex = threading.Lock()
 
-    def clear(self):
-        """Clear all data from the RSL."""
+    def clear(self, timestamp):
+        """Clear all data from the RSL.
+
+        This pushes a single reading once we clear everything so that
+        we keep track of the highest ID that we have allocated to date.
+
+        This needs the current timestamp to be able to properly timestamp
+        the cleared storage reading that it pushes.
+
+        Args:
+            timestamp (int): The current timestamp to store with the
+                reading.
+        """
 
         with self.mutex:
             self.storage.clear()
 
-    def clear_to_reset(self, _config_vars):
+        self.push(streams.DATA_CLEARED, timestamp, 1)
+
+    def clear_to_reset(self, config_vars):
         """Clear all volatile information across a reset."""
 
         with self.mutex:
             self.storage.destroy_all_walkers()
             self.dump_walker = None
+
+            if config_vars.get('storage_fillstop', False):
+                self.storage.set_rollover('storage', False)
+
+            if config_vars.get('streaming_fillstop', False):
+                self.storage.set_rollover('streaming', False)
 
     def count(self):
         """Count many many readings are persistently stored.
@@ -139,6 +153,34 @@ class SensorLogSubsystem(object):
 
         return Error.NO_ERROR, Error.NO_ERROR, self.dump_walker.count()
 
+    def dump_seek(self, reading_id):
+        """Seek the dump streamer to a given ID.
+
+        Returns:
+            (int, int, int): Two error codes and the count of remaining readings.
+
+            The first error code covers the seeking process.
+            The second error code covers the stream counting process (cannot fail)
+            The third item in the tuple is the number of readings left in the stream.
+        """
+
+        if self.dump_walker is None:
+            return (pack_error(ControllerSubsystem.SENSOR_LOG, SensorLogError.STREAM_WALKER_NOT_INITIALIZED),
+                    Error.NO_ERROR, 0)
+
+        try:
+            with self.mutex:
+                exact = self.dump_walker.seek(reading_id, target='id')
+        except UnresolvedIdentifierError:
+            return (pack_error(ControllerSubsystem.SENSOR_LOG, SensorLogError.NO_MORE_READINGS),
+                    Error.NO_ERROR, 0)
+
+        error = Error.NO_ERROR
+        if not exact:
+            error = pack_error(ControllerSubsystem.SENSOR_LOG, SensorLogError.ID_FOUND_FOR_ANOTHER_STREAM)
+
+        return (error, error.NO_ERROR, self.dump_walker.count())
+
     def dump_next(self):
         """Dump the next reading from the stream.
 
@@ -146,11 +188,32 @@ class SensorLogSubsystem(object):
             IOTileReading: The next reading or None if there isn't one
         """
 
+        if self.dump_walker is None:
+            return pack_error(ControllerSubsystem.SENSOR_LOG, SensorLogError.STREAM_WALKER_NOT_INITIALIZED)
+
         try:
             with self.mutex:
                 return self.dump_walker.pop()
         except StreamEmptyError:
             return None
+
+    def highest_stored_id(self):
+        """Scan through the stored readings and report the highest stored id.
+
+        Returns:
+            int: The highest stored id.
+        """
+
+        shared = [0]
+        def _keep_max(_i, reading):
+            if reading.reading_id > shared[0]:
+                shared[0] = reading.reading_id
+
+        with self.mutex:
+            self.engine.scan_storage('storage', _keep_max)
+            self.engine.scan_storage('streaming', _keep_max)
+
+        return shared[0]
 
 
 class RawSensorLogMixin(object):
@@ -167,6 +230,11 @@ class RawSensorLogMixin(object):
     def __init__(self, model):
         self.sensor_log = SensorLogSubsystem(model)
         self._post_config_subsystems.append(self.sensor_log)
+
+        # Declare all of our config variables
+        self.declare_config_variable('storage_fillstop', 0x2004, 'uint8_t', default=False, convert='bool')
+        self.declare_config_variable('streaming_fillstop', 0x2005, 'uint8_t', default=False, convert='bool')
+
 
     @tile_rpc(*rpcs.RSL_PUSH_READING)
     def rsl_push_reading(self, value, stream_id):
@@ -200,7 +268,8 @@ class RawSensorLogMixin(object):
     def rsl_clear_readings(self):
         """Clear all data from the RSL."""
 
-        self.sensor_log.clear()
+        #FIXME: Fix this with timestamp from clock manager task
+        self.sensor_log.clear(0)
         return [Error.NO_ERROR]
 
     @tile_rpc(*rpcs.RSL_INSPECT_VIRTUAL_STREAM)
@@ -217,6 +286,12 @@ class RawSensorLogMixin(object):
 
         #FIXME: Fix this with the uptime of the clock manager task
         return [err, err2, count, 0]
+
+    @tile_rpc(*rpcs.RSL_DUMP_STREAM_SEEK)
+    def rsl_dump_stream_seek(self, reading_id):
+        """Seek a specific reading by ID."""
+
+        return self.sensor_log.dump_seek(reading_id)
 
     @tile_rpc(*rpcs.RSL_DUMP_STREAM_NEXT)
     def rsl_dump_stream_next(self, output_format):
@@ -243,3 +318,10 @@ class RawSensorLogMixin(object):
             raise ValueError("Output format other than 1 not yet supported")
 
         return [error, timestamp, value, reading_id, stream_id, 0]
+
+    @tile_rpc(*rpcs.RSL_HIGHEST_READING_ID)
+    def rsl_get_highest_saved_id(self):
+        """Get the highest saved reading id."""
+
+        highest_id = self.sensor_log.highest_stored_id()
+        return [Error.NO_ERROR, highest_id]

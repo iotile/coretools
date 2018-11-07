@@ -35,3 +35,6 @@ All major changes in each released version of iotile-emulate are listed here.
 
 - Refactor controller reset procedure to include a clear list of reset
   tasks that happen synchronously in the emulation thread.
+
+- Add support for properly resetting the sensor_log subsystem and latching in
+  the state of the fill/stop config variable.

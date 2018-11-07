@@ -5,8 +5,9 @@ from __future__ import unicode_literals, absolute_import, print_function
 import struct
 import base64
 import logging
+from past.builtins import basestring
 from future.utils import viewitems, viewvalues
-from iotile.core.exceptions import ArgumentError
+from iotile.core.exceptions import ArgumentError, DataError
 from iotile.core.hw.virtual import VirtualTile
 from iotile.core.hw.virtual import tile_rpc
 from .emulated_device import EmulatedDevice
@@ -17,18 +18,75 @@ from ..constants import rpcs, Error
 class ConfigDescriptor(object):
     """Helper class for declaring a configuration variable."""
 
-    def __init__(self, config_id, type_name, default=None, name=None):
+    def __init__(self, config_id, type_name, default=None, name=None, python_type=None):
         self.config_id = config_id
         self.total_size, self.unit_size, self.base_type, self.variable = parse_size_name(type_name)
         self.max_units = self.total_size // self.unit_size
         self.type_name = type_name
-        self.default_value = default
         self.current_value = bytearray()
+        self.special_type = python_type
+        self.default_value = self._convert_default_value(default)
+
+        self._validate_python_type(python_type)
 
         if name is None:
             name = "Unnamed variable 0x%X" % config_id
 
         self.name = name
+
+    def _validate_python_type(self, python_type):
+        """Validate the possible combinations of python_type and type_name."""
+
+        if python_type == 'bool':
+            if self.variable:
+                raise ArgumentError("You can only specify a bool python type on a scalar (non-array) type_name", type_name=self.type_name)
+
+            return
+
+        if python_type == 'string':
+            if not (self.variable and self.unit_size == 1):
+                raise ArgumentError("You can only pass a string python type on an array of 1-byte objects", type_name=self.type_name)
+
+            return
+
+        if python_type is not None:
+            raise ArgumentError("You can only declare a bool or string python type.  Otherwise it must be passed as None", python_type=python_type)
+
+    def _convert_default_value(self, default):
+        """Convert the passed default value to binary.
+
+        The default value (if passed) may be specified as either a `bytes`
+        object or a python int or list of ints.  If an int or list of ints is
+        passed, it is converted to binary.  Otherwise, the raw binary data is
+        used.
+
+        If you pass a bytes object with python_type as True, do not null terminate
+        it, an additional null termination will be added.
+
+        Passing a unicode string is only allowed if as_string is True and it
+        will be encoded as utf-8 and null terminated for use as a default value.
+        """
+
+        if default is None:
+            return None
+
+        if isinstance(default, basestring) and not isinstance(default, bytes):
+            if self.special_type == 'string':
+                return default.encode('utf-8') + b'\0'
+
+            raise DataError("You can only pass a unicode string if you are declaring a string type config variable", default=default)
+
+        if isinstance(default, (bytes, bytearray)):
+            if self.special_type == 'string' and isinstance(default, bytes):
+                default += b'\0'
+
+            return default
+
+        if isinstance(default, int):
+            default = [default]
+
+        format_string = "<" + (self.base_type*len(default))
+        return struct.pack(format_string, *default)
 
     def clear(self):
         """Clear this config variable to its reset value."""
@@ -55,6 +113,66 @@ class ConfigDescriptor(object):
 
         self.current_value += bytearray(value)
         return 0
+
+    def latch(self):
+        """Convert the current value inside this config descriptor to a python object.
+
+        The conversion proceeds by mapping the given type name to a native
+        python class and performing the conversion.  You can override what
+        python object is used as the destination class by passing a
+        python_type parameter to __init__.
+
+        The default mapping is:
+        - char (u)int8_t, (u)int16_t, (u)int32_t: int
+        - char[] (u)int8_t[], (u)int16_t[]0, u(int32_t): list of int
+
+        If you want to parse a char[] or uint8_t[] as a python string, it
+        needs to be null terminated and you should pass python_type='string'.
+
+        If you are declaring a scalar integer type and wish it to be decoded
+        as a bool, you can pass python_type='bool' to the constructor.
+
+        All integers are decoded as little-endian.
+
+        Returns:
+            object: The corresponding python object.
+
+            This will either be an int, list of int or string based on the
+            type_name specified and the optional python_type keyword argument
+            to the constructor.
+
+        Raises:
+            DataError: if the object cannot be converted to the desired type.
+            ArgumentError: if an invalid python_type was specified during construction.
+        """
+
+        if len(self.current_value) == 0:
+            raise DataError("There was no data in a config variable during latching", name=self.name)
+
+        # Make sure the data ends on a unit boundary.  This would have happened automatically
+        # in an actual device by the C runtime 0 padding out the storage area.
+        remaining = len(self.current_value) % self.unit_size
+        if remaining > 0:
+            self.current_value += bytearray(remaining)
+
+        if self.special_type == 'string':
+            if self.current_value[-1] != 0:
+                raise DataError("String type was specified by data did not end with a null byte", data=self.current_value, name=self.name)
+
+            return bytes(self.current_value[:-1]).decode('utf-8')
+
+        fmt_code = "<" + (self.base_type * (len(self.current_value) // self.unit_size))
+        data = struct.unpack(fmt_code, self.current_value)
+
+        if self.variable:
+            data = list(data)
+        else:
+            data = data[0]
+
+            if self.special_type == 'bool':
+                data = bool(data)
+
+        return data
 
 
 #pylint:disable=abstract-method;This is an abstract base class
@@ -104,21 +222,73 @@ class EmulatedTile(EmulationMixin, VirtualTile):
         self._device = device
         self._logger = logging.getLogger(__name__)
 
-    def declare_config_variable(self, name, config_id, type_name, default_value=None):
+    def declare_config_variable(self, name, config_id, type_name, default=None, convert=None):  #pylint:disable=too-many-arguments;These are all necessary with sane defaults.
         """Declare a config variable that this emulated tile accepts.
+
+        The default value (if passed) may be specified as either a `bytes`
+        object or a python int or list of ints.  If an int or list of ints is
+        passed, it is converted to binary.  Otherwise, the raw binary data is
+        used.
+
+        Passing a unicode string is only allowed if as_string is True and it
+        will be encoded as utf-8 and null terminated for use as a default value.
 
         Args:
             name (str): A user friendly name for this config variable so that it can
                 be printed nicely.
             config_id (int): A 16-bit integer id number to identify the config variable.
             type_name (str): An encoded type name that will be parsed by parse_size_name()
-            default_value (object): The default value if there is one.  This should be a
+            default (object): The default value if there is one.  This should be a
                 python object that will be converted to binary according to the rules for
                 the config variable type specified in type_name.
+            convert (str): whether this variable should be converted to a
+                python string or bool rather than an int or a list of ints.  You can
+                pass either 'bool', 'string' or None
         """
 
-        config = ConfigDescriptor(config_id, type_name, default_value, name=name)
+        config = ConfigDescriptor(config_id, type_name, default, name=name, python_type=convert)
         self._config_variables[config_id] = config
+
+    def reset_config_variables(self):
+        """Clear the contents of all config variables to their defaults.
+
+        This method should be used with caution.  It is designed to be called
+        during the reset process of a tile in order to properly initialize its
+        config variables.
+        """
+
+        for config in viewvalues(self._config_variables):
+            config.clear()
+
+    def latch_config_variables(self):
+        """Latch the current value of all config variables as python objects.
+
+        This function will capture the current value of all config variables
+        at the time that this method is called.  It must be called after
+        start() has been called so that any default values in the config
+        variables have been properly set otherwise DataError will be thrown.
+
+        Conceptually this method performs the operation that happens just
+        before a tile executive hands control to the tile application
+        firmware. It latches in the value of all config variables at that
+        point in time.
+
+        For convenience, this method does all necessary binary -> python
+        native object conversion so that you just get python objects back.
+
+        Returns:
+            dict: A dict of str -> object with the config variable values.
+
+            The keys in the dict will be the name passed to
+            `declare_config_variable`.
+
+            The values will be the python objects that result from calling
+            latch() on each config variable.  Consult ConfigDescriptor.latch()
+            for documentation on how that method works.
+        """
+
+        return {desc.name: desc.latch() for desc in viewvalues(self._config_variables)}
+
 
     def dump_state(self):
         """Dump the current state of this emulated tile as a dictionary.
@@ -161,8 +331,7 @@ class EmulatedTile(EmulationMixin, VirtualTile):
         variables return to their reset states.
         """
 
-        for config in viewvalues(self._config_variables):
-            config.clear()
+        self.reset_config_variables()
 
     @tile_rpc(*rpcs.RESET)
     def reset(self):

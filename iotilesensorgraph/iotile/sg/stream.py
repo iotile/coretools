@@ -158,6 +158,12 @@ class DataStream(object):
 
         return self.system == other.system and self.stream_type == other.stream_type and self.stream_id == other.stream_id
 
+    def __ne__(self, other):
+        if not isinstance(other, DataStream):
+            return NotImplemented
+
+        return not self == other
+
 
 @python_2_unicode_compatible
 class DataStreamSelector(object):
@@ -416,3 +422,9 @@ class DataStreamSelector(object):
             return NotImplemented
 
         return self.match_spec == other.match_spec and self.match_type == other.match_type and self.match_id == other.match_id
+
+    def __ne__(self, other):
+        if not isinstance(other, DataStreamSelector):
+            return NotImplemented
+
+        return not self == other
