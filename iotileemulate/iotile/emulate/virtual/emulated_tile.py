@@ -5,6 +5,7 @@ from __future__ import unicode_literals, absolute_import, print_function
 import struct
 import base64
 import logging
+from past.builtins import basestring
 from future.utils import viewitems, viewvalues
 from iotile.core.exceptions import ArgumentError, DataError
 from iotile.core.hw.virtual import VirtualTile
@@ -22,14 +23,50 @@ class ConfigDescriptor(object):
         self.total_size, self.unit_size, self.base_type, self.variable = parse_size_name(type_name)
         self.max_units = self.total_size // self.unit_size
         self.type_name = type_name
-        self.default_value = default
         self.current_value = bytearray()
         self.special_type = python_type
+        self.default_value = self._convert_default_value(default)
 
         if name is None:
             name = "Unnamed variable 0x%X" % config_id
 
         self.name = name
+
+    def _convert_default_value(self, default):
+        """Convert the passed default value to binary.
+
+        The default value (if passed) may be specified as either a `bytes`
+        object or a python int or list of ints.  If an int or list of ints is
+        passed, it is converted to binary.  Otherwise, the raw binary data is
+        used.
+
+        If you pass a bytes object with python_type as True, do not null terminate
+        it, an additional null termination will be added.
+
+        Passing a unicode string is only allowed if as_string is True and it
+        will be encoded as utf-8 and null terminated for use as a default value.
+        """
+
+        if default is None:
+            return None
+
+        if isinstance(default, basestring) and not isinstance(default, bytes):
+            if self.special_type == 'string':
+                return default.encode('utf-8') + bytes('\0')
+
+            raise DataError("You can only pass a unicode string if you are declaring a string type config variable", default=default)
+
+        if isinstance(default, (bytes, bytearray)):
+            if self.special_type == 'string' and isinstance(default, bytes):
+                default += b'\0'
+
+            return default
+
+        if isinstance(default, int):
+            default = [default]
+
+        format_string = "<" + (self.base_type*len(default))
+        return struct.pack(format_string, *default)
 
     def clear(self):
         """Clear this config variable to its reset value."""
@@ -161,8 +198,16 @@ class EmulatedTile(EmulationMixin, VirtualTile):
         self._device = device
         self._logger = logging.getLogger(__name__)
 
-    def declare_config_variable(self, name, config_id, type_name, default_value=None):
+    def declare_config_variable(self, name, config_id, type_name, default_value=None, as_string=False):
         """Declare a config variable that this emulated tile accepts.
+
+        The default value (if passed) may be specified as either a `bytes`
+        object or a python int or list of ints.  If an int or list of ints is
+        passed, it is converted to binary.  Otherwise, the raw binary data is
+        used.
+
+        Passing a unicode string is only allowed if as_string is True and it
+        will be encoded as utf-8 and null terminated for use as a default value.
 
         Args:
             name (str): A user friendly name for this config variable so that it can
@@ -172,10 +217,21 @@ class EmulatedTile(EmulationMixin, VirtualTile):
             default_value (object): The default value if there is one.  This should be a
                 python object that will be converted to binary according to the rules for
                 the config variable type specified in type_name.
+            as_string (bool): whether this variable should be converted to a
+                python string rather than an int or a list of ints.
         """
 
-        config = ConfigDescriptor(config_id, type_name, default_value, name=name)
+        python_type = None
+        if as_string:
+            python_type = 'string'
+
+        config = ConfigDescriptor(config_id, type_name, default_value, name=name, python_type=python_type)
         self._config_variables[config_id] = config
+
+    def latch_config_variables(self):
+        """Latch the current value of all config variables as python objects."""
+
+        raise NotImplementedError()
 
     def dump_state(self):
         """Dump the current state of this emulated tile as a dictionary.

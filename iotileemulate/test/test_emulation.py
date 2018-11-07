@@ -85,3 +85,24 @@ def test_unsupported_type():
     desc.clear()
     with pytest.raises(ArgumentError):
         desc.latch()
+
+
+@pytest.mark.parametrize("type_name, default_value, latched_value, python_type, expected_exc", [
+    ("uint8_t", 15, 15, None, None),
+    ("uint8_t[15]", (15, 20, 25), [15, 20, 25], None, None),
+    ("uint8_t[15]", bytearray([15, 20, 25]), [15, 20, 25], None, None),
+    ("char[16]", u'test', 'test', "string", None),
+    ("char[16]", b'test', 'test', "string", None),
+    ("char[16]", bytearray(b'test'), 'test', "string", DataError)
+])
+def test_default_values(type_name, default_value, latched_value, python_type, expected_exc):
+    """Make sure we can properly convert default values to binary."""
+
+    desc = ConfigDescriptor(0x8000, type_name, default_value, python_type=python_type)
+    desc.clear()
+
+    if expected_exc is not None:
+        with pytest.raises(expected_exc):
+            desc.latch()
+    else:
+        assert desc.latch() == latched_value
