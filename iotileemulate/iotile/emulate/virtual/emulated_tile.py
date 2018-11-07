@@ -72,7 +72,7 @@ class ConfigDescriptor(object):
 
         if isinstance(default, basestring) and not isinstance(default, bytes):
             if self.special_type == 'string':
-                return default.encode('utf-8') + bytes('\0')
+                return default.encode('utf-8') + b'\0'
 
             raise DataError("You can only pass a unicode string if you are declaring a string type config variable", default=default)
 
