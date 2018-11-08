@@ -2,6 +2,7 @@
 
 import sys
 import pytest
+import time
 from iotile.core.hw import HardwareManager
 from iotile.core.exceptions import HardwareError
 from iotile.core.hw.proxy.external_proxy import find_proxy_plugin
@@ -47,7 +48,8 @@ def basic_sg():
 
     nodes = [
         "(input 1 always) => counter 1024 using copy_latest_a",
-        "(counter 1024 when count >= 1 && constant 1030 when value == 1) => counter 1030 using copy_latest_a"
+        "(counter 1024 when count >= 1 && constant 1030 when value == 1) => counter 1030 using copy_latest_a",
+        "(counter 1030 when count >= 4) => output 1 using copy_all_a"
     ]
 
     with HardwareManager(adapter=adapter) as hw:
@@ -59,7 +61,7 @@ def basic_sg():
         for node in nodes:
             sensor_graph.add_node(node)
 
-        yield sensor_graph, hw
+        yield sensor_graph, hw, device
 
 
 def test_inspect_nodes(sg_device):
@@ -85,11 +87,39 @@ def test_inspect_nodes(sg_device):
 def test_persist(basic_sg):
     """Ensure that sensor_graph persists after reset."""
 
-    sg, hw = basic_sg
+    sg, hw, _device = basic_sg
 
     sg.persist()
-    assert sg.count_nodes() == 2
+    assert sg.count_nodes() == 3
 
     hw.get(8, basic=True).reset(wait=0)
 
-    assert sg.count_nodes() == 2
+    assert sg.count_nodes() == 3
+
+
+def test_graph_input(basic_sg):
+    """Ensure that graph_input works."""
+
+    sg, hw, device = basic_sg
+    sg.enable()
+
+    sg.push_reading('constant 1030', 1)
+    sg.input('input 1', 1)
+
+    device.wait_idle()
+
+    assert sg.inspect_virtualstream('input 1') == 1
+    assert sg.inspect_virtualstream('counter 1024') == 1
+    assert sg.count_stream('output 1') == 0
+
+    sg.input('input 1', 2)
+    device.wait_idle()
+    assert sg.count_stream('output 1') == 0
+    sg.input('input 1', 3)
+    device.wait_idle()
+    assert sg.count_stream('output 1') == 0
+    sg.input('input 1', 4)
+    device.wait_idle()
+
+    values = sg.download_stream('output 1')
+    assert [x.value for x in values] == [4, 4, 4, 4]

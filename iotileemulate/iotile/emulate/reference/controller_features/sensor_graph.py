@@ -54,6 +54,8 @@ TODO:
   - [ ] Add SG_TRIGGER_STREAMER
   - [ ] Add SG_INSPECT_STREAMER
   - [ ] Add SG_SEEK_STREAMER
+  - [ ] Add dump/restore support
+  - [ ] Properly initialize all constant streams to 0
 """
 
 import logging

@@ -86,6 +86,11 @@ class SensorGraph(object):
             selector, trigger = input_data
 
             walker = self.sensor_log.create_walker(selector)
+
+            # Constant walkers begin life initialized to 0 so they always read correctly
+            if walker.selector.inexhaustible:
+                walker.reading = IOTileReading(walker.selector.as_stream(), 0xFFFFFFFF, 0)
+
             node.connect_input(i, walker, trigger)
 
             if selector.input and not in_root:

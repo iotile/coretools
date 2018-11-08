@@ -38,3 +38,7 @@ All major changes in each released version of iotile-emulate are listed here.
 
 - Add support for properly resetting the sensor_log subsystem and latching in
   the state of the fill/stop config variable.
+
+- Add initial support for the sensor_graph subsystem except for dump/restore
+  and streamer support.  Initial RPCs are added as well except those dealing
+  with streamers.
