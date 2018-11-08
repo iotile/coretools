@@ -12,6 +12,7 @@ to the correct state.
 """
 
 import threading
+import struct
 from builtins import range
 from iotile.core.hw.virtual import tile_rpc
 from iotile.core.hw.reports import IOTileReading
@@ -367,11 +368,11 @@ class RawSensorLogMixin(object):
             error = pack_error(ControllerSubsystem.SENSOR_LOG, SensorLogError.NO_MORE_READINGS)
 
         if output_format == 0:
-            raise ValueError("Old output format for dump_stream not yet supported")
+            return [struct.pack("<LLL", error, timestamp, value)]
         elif output_format != 1:
             raise ValueError("Output format other than 1 not yet supported")
 
-        return [error, timestamp, value, reading_id, stream_id, 0]
+        return [struct.pack("<LLLLH2x", error, timestamp, value, reading_id, stream_id)]
 
     @tile_rpc(*rpcs.RSL_HIGHEST_READING_ID)
     def rsl_get_highest_saved_id(self):

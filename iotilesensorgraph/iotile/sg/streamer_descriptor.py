@@ -6,10 +6,13 @@ a streamer stored in an IOTile device's embedded firmware.
 
 from __future__ import (unicode_literals, absolute_import, print_function)
 import struct
+from builtins import str
 from typedargs.exceptions import ArgumentError
 from .slot import SlotIdentifier
 from .stream import DataStreamSelector
 from .streamer import DataStreamer
+from .exceptions import SensorGraphSemanticError
+from .parser.language import get_streamer_parser
 
 
 def parse_binary_descriptor(bindata, sensor_log=None):
@@ -81,3 +84,61 @@ def create_binary_descriptor(streamer):
         trigger = (1 << 7) | streamer.with_other
 
     return struct.pack("<8sHBBBx", streamer.dest.encode(), streamer.selector.encode(), trigger, streamer.KnownFormats[streamer.format], streamer.KnownTypes[streamer.report_type])
+
+
+def parse_string_descriptor(string_desc):
+    """Parse a string descriptor of a streamer into a DataStreamer object.
+
+    Args:
+        string_desc (str): The string descriptor that we wish to parse.
+
+    Returns:
+        DataStreamer: A DataStreamer object representing the streamer.
+    """
+
+    if not isinstance(string_desc, str):
+        string_desc = str(string_desc)
+
+    if not string_desc.endswith(';'):
+        string_desc += ';'
+
+    parsed = get_streamer_parser().parseString(string_desc)[0]
+
+    realtime = 'realtime' in parsed
+    broadcast = 'broadcast' in parsed
+    encrypted = 'security' in parsed and parsed['security'] == 'encrypted'
+    signed = 'security' in parsed and parsed['security'] == 'signed'
+    auto = 'manual' not in parsed
+
+    with_other = None
+    if 'with_other' in parsed:
+        with_other = parsed['with_other']
+        auto = False
+
+    dest = SlotIdentifier.FromString('controller')
+    if 'explicit_tile' in parsed:
+        dest = parsed['explicit_tile']
+
+    selector = parsed['selector']
+
+    # Make sure all of the combination are valid
+    if realtime and (encrypted or signed):
+        raise SensorGraphSemanticError("Realtime streamers cannot be either signed or encrypted")
+
+    if broadcast and (encrypted or signed):
+        raise SensorGraphSemanticError("Broadcast streamers cannot be either signed or encrypted")
+
+    report_type = 'broadcast' if broadcast else 'telegram'
+    dest = dest
+    selector = selector
+
+    if realtime or broadcast:
+        report_format = u'individual'
+    elif signed:
+        report_format = u'signedlist_userkey'
+    elif encrypted:
+        raise SensorGraphSemanticError("Encrypted streamers are not yet supported")
+    else:
+        report_format = u'hashedlist'
+
+    return DataStreamer(selector, dest, report_format, auto, report_type=report_type, with_other=with_other)

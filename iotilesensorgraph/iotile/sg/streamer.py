@@ -53,9 +53,31 @@ class DataStreamer(object):
         self.report_type = report_type
         self.with_other = with_other
         self.walker = None
+        self._sensor_log = None
 
         if sensor_log is not None:
-            self.walker = sensor_log.create_walker(self.selector)
+            self.link_to_storage(sensor_log)
+
+    def link_to_storage(self, sensor_log):
+        """Attach this DataStreamer to an underlying SensorLog.
+
+        Calling this method is required if you want to use this DataStreamer
+        to generate reports from the underlying data in the SensorLog.
+
+        You can call it multiple times and it will unlink itself from any
+        previous SensorLog each time.
+
+        Args:
+            sensor_log (SensorLog): Actually create a StreamWalker to go along with this
+                streamer so that we can check if it's triggered.
+        """
+
+        if self.walker is not None:
+            self._sensor_log.destroy_walker(self.walker)
+            self.walker = None
+
+        self.walker = sensor_log.create_walker(self.selector)
+        self._sensor_log = sensor_log
 
     def triggered(self, manual=False):
         """Check if this streamer should generate a report.
@@ -170,3 +192,20 @@ class DataStreamer(object):
         template = "{manual}{security}{report_type}streamer on {selector}{to_slot}{with_other}"
         return template.format(manual=manual, security=security, report_type=type_string, selector=self.selector,
                                with_other=with_statement, to_slot=to_slot)
+
+    def __hash__(self):
+        return hash(str(self))
+
+    def __eq__(self, other):
+        if not isinstance(other, DataStreamer):
+            return NotImplemented
+
+        return (self.selector == other.selector and self.dest == other.dest and
+                self.automatic == other.automatic and self.report_type == other.report_type and
+                self.with_other == other.with_other)
+
+    def __ne__(self, other):
+        if not isinstance(other, DataStreamer):
+            return NotImplemented
+
+        return not self == other
