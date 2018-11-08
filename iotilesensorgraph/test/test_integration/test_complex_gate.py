@@ -56,8 +56,8 @@ def test_complex_gate_optimization(complex_gate, complex_gate_opt):
     for x in sim2.trace:
         print("%08d %s: %d" % (x.raw_time, DataStream.FromEncoded(x.stream), x.value))
 
-    assert len(sim1.trace) == 3
-    assert len(sim2.trace) == 3
+    assert len(sim1.trace) == 4
+    assert len(sim2.trace) == 4
     assert sim1.trace == sim2.trace
 
     #Check that number of trigger streamer commands is same for optimized and unoptimized
@@ -105,6 +105,6 @@ def test_user_tick_optimization(usertick_gate, usertick_gate_opt):
     for x in sim2.trace:
         print("%08d %s: %d" % (x.raw_time, DataStream.FromEncoded(x.stream), x.value))
 
-    assert len(sim1.trace) == 3
-    assert len(sim2.trace) == 3
+    assert len(sim1.trace) == 4
+    assert len(sim2.trace) == 4
     assert sim1.trace == sim2.trace

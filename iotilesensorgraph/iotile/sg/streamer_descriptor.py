@@ -12,7 +12,7 @@ from .stream import DataStreamSelector
 from .streamer import DataStreamer
 
 
-def parse_binary_descriptor(bindata):
+def parse_binary_descriptor(bindata, sensor_log=None):
     """Convert a binary streamer descriptor into a string descriptor.
 
     Binary streamer descriptors are 20-byte binary structures that encode all
@@ -24,11 +24,14 @@ def parse_binary_descriptor(bindata):
     Args:
         bindata (bytes): The binary streamer descriptor that we want to
             understand.
+        sensor_log (SensorLog): Optional sensor_log to add this streamer to
+            a an underlying data store.
 
     Returns:
-        DataStreamer: A DataStreamer object representing the streamer.  You
-            can get a useful human readable string by calling str() on the
-            return value.
+        DataStreamer: A DataStreamer object representing the streamer.
+
+        You can get a useful human readable string by calling str() on the
+        return value.
     """
 
     if len(bindata) != 14:
@@ -58,7 +61,7 @@ def parse_binary_descriptor(bindata):
     else:
         raise ArgumentError("Unknown trigger type for streamer", trigger_code=trigger)
 
-    return DataStreamer(selector, dest_id, format_name, auto, type_name, with_other=with_other)
+    return DataStreamer(selector, dest_id, format_name, auto, type_name, with_other=with_other, sensor_log=sensor_log)
 
 
 def create_binary_descriptor(streamer):
