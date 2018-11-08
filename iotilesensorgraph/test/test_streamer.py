@@ -1,6 +1,5 @@
 """Tests of DataStreamer functionality."""
 
-from __future__ import unicode_literals
 from iotile.sg.streamer_descriptor import parse_binary_descriptor, parse_string_descriptor, create_binary_descriptor
 
 
@@ -17,7 +16,7 @@ def test_descriptors():
     streamer = parse_string_descriptor('realtime streamer on unbuffered 1 to slot 5 with streamer 0')
     assert str(streamer) == 'manual realtime streamer on unbuffered 1 to slot 5 with streamer 0'
 
-    streamer = parse_string_descriptor(b'realtime streamer on unbuffered 1 to slot 5 with streamer 0')
+    streamer = parse_string_descriptor(u'realtime streamer on unbuffered 1 to slot 5 with streamer 0')
     assert str(streamer) == 'manual realtime streamer on unbuffered 1 to slot 5 with streamer 0'
 
     bin_desc = create_binary_descriptor(streamer)
