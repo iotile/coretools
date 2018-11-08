@@ -61,6 +61,8 @@ def basic_sg():
         for node in nodes:
             sensor_graph.add_node(node)
 
+        sensor_graph.add_streamer('output 10', 'controller', True, 'individual', 'telegram')
+
         yield sensor_graph, hw, device
 
 
@@ -84,6 +86,13 @@ def test_inspect_nodes(sg_device):
     assert node2 == nodes[1]
 
 
+def test_inspect_streamers(basic_sg):
+    """Ensure that we can add and inspect streamers."""
+
+    sg, _hw, _device = basic_sg
+    assert str(sg.inspect_streamer(0)) == 'realtime streamer on output 10'
+
+
 def test_persist(basic_sg):
     """Ensure that sensor_graph persists after reset."""
 
@@ -91,10 +100,13 @@ def test_persist(basic_sg):
 
     sg.persist()
     assert sg.count_nodes() == 3
+    assert str(sg.inspect_streamer(0)) == 'realtime streamer on output 10'
 
     hw.get(8, basic=True).reset(wait=0)
 
+    # Make sure we recover both streamers and nodes
     assert sg.count_nodes() == 3
+    assert str(sg.inspect_streamer(0)) == 'realtime streamer on output 10'
 
 
 def test_graph_input(basic_sg):

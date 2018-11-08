@@ -150,6 +150,7 @@ class SensorGraph(object):
         if self._max_streamers is not None and len(self.streamers) >= self._max_streamers:
             raise ResourceUsageError("Maximum number of streamers exceeded", max_streamers=self._max_streamers)
 
+        streamer.link_to_storage(self.sensor_log)
         self.streamers.append(streamer)
 
     def add_constant(self, stream, value):
@@ -325,6 +326,11 @@ class SensorGraph(object):
 
         self.sensor_log.push(stream, value)
 
+        # FIXME: This should be specified in our device model
+        if stream.important:
+            associated_output = stream.associated_stream()
+            self.sensor_log.push(associated_output, value)
+
         to_check = deque([x for x in self.roots])
 
         while len(to_check) > 0:
@@ -425,4 +431,4 @@ class SensorGraph(object):
     def dump_streamers(self):
         """Dump all of the streamers in this sensor graph as a list of strings."""
 
-        return [str(x) for x in self.streamers]
+        return [str(streamer) for streamer in self.streamers]

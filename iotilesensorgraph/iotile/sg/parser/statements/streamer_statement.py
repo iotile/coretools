@@ -64,7 +64,7 @@ class StreamerStatement(SensorGraphStatement):
     def execute(self, sensor_graph, scope_stack):
         """Execute this statement on the sensor_graph given the current scope tree.
 
-        This adds a single DataStraemer to the current sensor graph
+        This adds a single DataStreamer to the current sensor graph
 
         Args:
             sensor_graph (SensorGraph): The sensor graph that we are building or

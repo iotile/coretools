@@ -50,20 +50,19 @@ device.
 
 TODO:
   - [ ] Add SG_QUERY_STREAMER
-  - [ ] Add SG_ADD_STREAMER
   - [ ] Add SG_TRIGGER_STREAMER
-  - [ ] Add SG_INSPECT_STREAMER
   - [ ] Add SG_SEEK_STREAMER
   - [ ] Add dump/restore support
-  - [ ] Properly initialize all constant streams to 0
+  - [ ] Add clock manager integration
+  - [ ] Add stream manager integration
 """
 
 import logging
-from builtins import range
 from iotile.core.hw.virtual import tile_rpc, RPCErrorCode
 from iotile.core.hw.reports import IOTileReading
 from iotile.sg import DataStream, DataStreamSelector, SensorGraph
 from iotile.sg.node_descriptor import parse_binary_descriptor, create_binary_descriptor
+from iotile.sg import streamer_descriptor
 from iotile.sg.exceptions import NodeConnectionError, ProcessingFunctionError, ResourceUsageError
 from ...constants import rpcs, pack_error, Error, ControllerSubsystem, streams, SensorGraphError
 
@@ -115,7 +114,9 @@ class SensorGraphSubsystem(object):
             for node in self.persisted_nodes:
                 self.graph.add_node(node)
 
-            #FIXME: Also add in streamers
+            for streamer_desc in self.persisted_streamers:
+                streamer = streamer_descriptor.parse_string_descriptor(streamer_desc)
+                self.graph.add_streamer(streamer)
 
             # Load in the constants
             for stream, reading in self.persisted_constants:
@@ -195,6 +196,35 @@ class SensorGraphSubsystem(object):
 
         return Error.NO_ERROR
 
+    def add_streamer(self, binary_descriptor):
+        """Add a streamer to the sensor_graph using a binary streamer descriptor.
+
+        Args:
+            binary_descriptor (bytes): An encoded binary streamer descriptor.
+
+        Returns:
+            int: A packed error code
+        """
+
+        streamer = streamer_descriptor.parse_binary_descriptor(binary_descriptor)
+
+        try:
+            with self._mutex:
+                self.graph.add_streamer(streamer)
+
+            return Error.NO_ERROR
+        except ResourceUsageError:
+            return _pack_sgerror(SensorGraphError.NO_MORE_STREAMER_RESOURCES)
+
+    def inspect_streamer(self, index):
+        """Inspect the streamer at the given index."""
+
+        with self._mutex:
+            if index >= len(self.graph.streamers):
+                return [_pack_sgerror(SensorGraphError.STREAMER_NOT_ALLOCATED), b'\0'*14]
+
+            return [Error.NO_ERROR, streamer_descriptor.create_binary_descriptor(self.graph.streamers[index])]
+
     def inspect_node(self, index):
         """Inspect the graph node at the given index."""
 
@@ -267,3 +297,19 @@ class SensorGraphMixin(object):
 
         desc = self.sensor_graph.inspect_node(index)
         return [desc]
+
+    @tile_rpc(*rpcs.SG_ADD_STREAMER)
+    def sg_add_streamer(self, desc):
+        """Add a graph streamer using a binary descriptor."""
+
+        if len(desc) == 13:
+            desc += b'\0'
+
+        err = self.sensor_graph.add_streamer(desc)
+        return [err]
+
+    @tile_rpc(*rpcs.SG_INSPECT_STREAMER)
+    def sg_inspect_streamer(self, index):
+        """Inspect a sensorgraph streamer by index."""
+
+        return self.sensor_graph.inspect_streamer(index)

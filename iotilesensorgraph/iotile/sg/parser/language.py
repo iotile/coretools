@@ -165,3 +165,13 @@ def get_statement():
     get_language()
 
     return simple_statement
+
+
+def get_streamer_parser():
+    """Get the parse tree for a streamer statement."""
+
+    global streamer_stmt
+
+    get_language()
+
+    return streamer_stmt

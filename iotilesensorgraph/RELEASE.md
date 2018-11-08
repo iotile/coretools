@@ -23,6 +23,12 @@ here.
 - Adjust constant stream walker allocation to align with how physical devices
   behave in order to better integrate into iotile-emulate.
 
+- Add better support for linking DataStreamer objects to a SensorLog and 
+  generating reports.
+
+- Enhances sensor-graph simulation to properly handle important system inputs
+  by inserting an autocopy rule.
+
 ## 0.7.2
 
 - Add support for broadcast streamers that indicate to the receiving tile that

@@ -265,7 +265,7 @@ Possible Errors:
   - NO_MORE_READINGS: If the reading id was not found at all in the RSL.
 """
 
-RSL_DUMP_STREAM_NEXT = RPCDeclaration(0x2009, "B", "4L2H")
+RSL_DUMP_STREAM_NEXT = RPCDeclaration(0x2009, "B", "V")
 """Dump the next reading in the previously selected stream.
 
 See RSL_DUMP_STREAM_BEGIN for more details on the stream dumping process.
@@ -290,7 +290,12 @@ Args:
     used otherwise, if 1 is passed, the new format will be used.  No value
     other than 0 or 1 should be passed.
 
-Returns:
+Returns (format 0):
+  - uint32_t: An error code.
+  - uint32_t: The reading timestamp.
+  - uint32_t: The reading value.
+
+Returns (format 1):
   - uint32_t: An error code.
   - uint32_t: The reading timestamp.
   - uint32_t: The reading value.
