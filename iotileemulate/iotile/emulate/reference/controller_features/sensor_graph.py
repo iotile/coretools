@@ -47,15 +47,21 @@ This controller subsystem mixin just wraps the underlying sensorgraph
 simulator from iotile-sensorgraph and adds the correct RPC based interface to
 it to emulate how you interact with sensor-graph in a physical IOTile based
 device.
+
+TODO:
+  - [ ] Add SG_QUERY_STREAMER
+  - [ ] Add SG_ADD_STREAMER
+  - [ ] Add SG_TRIGGER_STREAMER
+  - [ ] Add SG_INSPECT_STREAMER
+  - [ ] Add SG_SEEK_STREAMER
 """
 
-import threading
 import logging
 from builtins import range
-from iotile.core.hw.virtual import tile_rpc
+from iotile.core.hw.virtual import tile_rpc, RPCErrorCode
 from iotile.core.hw.reports import IOTileReading
 from iotile.sg import DataStream, DataStreamSelector, SensorGraph
-from iotile.sg.node_descriptor import parse_binary_descriptor
+from iotile.sg.node_descriptor import parse_binary_descriptor, create_binary_descriptor
 from iotile.sg.exceptions import NodeConnectionError, ProcessingFunctionError, ResourceUsageError
 from ...constants import rpcs, pack_error, Error, ControllerSubsystem, streams, SensorGraphError
 
@@ -69,12 +75,14 @@ class SensorGraphSubsystem(object):
     """Container for sensor graph state.
 
     There is a distinction between which sensor-graph is saved into persisted
-    storage vs currently loaded and running.
+    storage vs currently loaded and running.  This subsystem needs to be
+    created with a shared mutex with the sensor_log subsystem to make sure
+    all accesses are properly synchronized.
     """
 
-    def __init__(self, model, sensor_log):
+    def __init__(self, model, sensor_log, mutex):
         self._model = model
-        self._mutex = threading.Lock()
+        self._mutex = mutex
         self._sensor_log = sensor_log
         self._logger = logging.getLogger(__name__)
         self.graph = SensorGraph(sensor_log, model=model)
@@ -115,14 +123,38 @@ class SensorGraphSubsystem(object):
 
             #FIXME: queue sending reset readings
 
+    def process_input(self, encoded_stream, value):
+        """Process or drop a graph input.
+
+        This must not be called directly from an RPC but always via a deferred
+        task.
+        """
+
+        if not self.enabled:
+            return
+
+        stream = DataStream.FromEncoded(encoded_stream)
+
+        # FIXME: Tag this with the current timestamp
+        reading = IOTileReading(encoded_stream, 0, value)
+
+        with self._mutex:
+            self.graph.process_input(stream, reading, None)  #FIXME: add in an rpc executor for this device.
+
+    def count_nodes(self):
+        """Count the number of nodes."""
+
+        with self._mutex:
+            return len(self.graph.nodes)
+
     def persist(self):
         """Trigger saving the current sensorgraph to persistent storage."""
 
         with self._mutex:
             self.persisted_nodes = self.graph.dump_nodes()
-            self.peristed_streamers = self.graph.dump_streamers()
+            self.persisted_streamers = self.graph.dump_streamers()
             self.persisted_exists = True
-            self.peristed_constants = self._sensor_log.dump_constants()
+            self.persisted_constants = self._sensor_log.dump_constants()
 
     def reset(self):
         """Clear the sensorgraph from RAM and flash."""
@@ -160,3 +192,76 @@ class SensorGraphSubsystem(object):
             return _pack_sgerror(SensorGraphError.NO_NODE_SPACE_AVAILABLE)
 
         return Error.NO_ERROR
+
+    def inspect_node(self, index):
+        """Inspect the graph node at the given index."""
+
+        with self._mutex:
+            if index >= len(self.graph.nodes):
+                raise RPCErrorCode(6)  #FIXME: use actual error code here for UNKNOWN_ERROR status
+
+            return create_binary_descriptor(str(self.graph.nodes[index]))
+
+
+class SensorGraphMixin(object):
+    """Mixin for an IOTileController that implements the sensor-graph subsystem.
+
+    Args:
+        sensor_log (SensorLog): The storage area that should be used for storing
+            readings.
+        model (DeviceModel): A device model containing resource limits about the
+            emulated device.
+        mutex (threading.Lock): A shared mutex from the sensor_log subsystem to
+            use to make sure we only access it from a single thread at a time.
+    """
+
+    def __init__(self, sensor_log, model, mutex):
+        self.sensor_graph = SensorGraphSubsystem(model, sensor_log, mutex)
+        self._post_config_subsystems.append(self.sensor_graph)
+
+    @tile_rpc(*rpcs.SG_COUNT_NODES)
+    def sg_count_nodes(self):
+        """Count the number of nodes in the sensor_graph."""
+
+        return [self.sensor_graph.count_nodes()]
+
+    @tile_rpc(*rpcs.SG_ADD_NODE)
+    def sg_add_node(self, descriptor):
+        """Add a node to the sensor_graph using its binary descriptor."""
+
+        err = self.sensor_graph.add_node(descriptor)
+        return [err]
+
+    @tile_rpc(*rpcs.SG_SET_ONLINE)
+    def sg_set_online(self, online):
+        """Set the sensor-graph online/offline."""
+
+        self.sensor_graph.enabled = bool(online)
+        return [Error.NO_ERROR]
+
+    @tile_rpc(*rpcs.SG_GRAPH_INPUT)
+    def sg_graph_input(self, value, stream_id):
+        """"Present a graph input to the sensor_graph subsystem."""
+
+        self._device.deferred_task(self.sensor_graph.process_input, stream_id, value)
+        return [Error.NO_ERROR]
+
+    @tile_rpc(*rpcs.SG_RESET_GRAPH)
+    def sg_reset_graph(self):
+        """Clear the in-memory and persisted graph (if any)."""
+        self.sensor_graph.reset()
+        return [Error.NO_ERROR]
+
+    @tile_rpc(*rpcs.SG_PERSIST_GRAPH)
+    def sg_persist_graph(self):
+        """Save the current in-memory graph persistently."""
+
+        self.sensor_graph.persist()
+        return [Error.NO_ERROR]
+
+    @tile_rpc(*rpcs.SG_INSPECT_GRAPH_NODE)
+    def sg_inspect_graph_node(self, index):
+        """Inspect the given graph node."""
+
+        desc = self.sensor_graph.inspect_node(index)
+        return [desc]
