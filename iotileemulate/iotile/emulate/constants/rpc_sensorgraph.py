@@ -154,7 +154,7 @@ Returns:
     returned.
 """
 
-SG_ADD_STREAMER = RPCDeclaration(0x2007, "14s", "L")
+SG_ADD_STREAMER = RPCDeclaration(0x2007, "V", "L")
 """Add a streamer to the sensor-graph.
 
 A streamer is a resource inside the sensor-graph subsystem that packages up
@@ -174,7 +174,8 @@ the first time you call this RPC, the streamer will get index 0, the next
 call will be index 1, etc.
 
 Args:
-  - char[14]: A binary streamer descriptor.
+  - char[14]: A binary streamer descriptor.  The final byte is padding though
+    so you can pass either 13 or 14 bytes of data.
 
 Returns:
   - uint32_t: an error code.
@@ -362,7 +363,7 @@ Returns:
   - char[20]: A binary node descriptor for the node in question.
 """
 
-SG_INSPECT_STREAMER = RPCDeclaration(0x2017, "H", "L14s")
+SG_INSPECT_STREAMER = RPCDeclaration(0x2017, "H", "L14s2x")
 """Get a binary streamer descriptor describing a streamer by its index.
 
 This allows you to verify the action of the SG_ADD_STREAMER RPC by inspecting

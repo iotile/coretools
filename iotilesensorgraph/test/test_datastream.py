@@ -1,6 +1,8 @@
 """Tests for DataStream objects."""
 
 from builtins import str
+import pytest
+from iotile.core.exceptions import InternalError
 from iotile.sg import DataStream, DataStreamSelector
 
 
@@ -211,3 +213,22 @@ def test_buffered_pluralization():
 
     sel = DataStreamSelector.FromString('all buffered')
     assert str(sel) == 'all buffered'
+
+
+def test_important_inputs():
+    """Make sure we support matching important inputs and outputs."""
+
+    imp_stream = DataStream.FromString('system input 1024')
+    imp_store_stream = DataStream.FromString('system input 1536')
+
+    assert imp_stream.important is True
+    assert imp_store_stream.important is True
+
+    assert imp_stream.associated_stream() == DataStream.FromString('system output 1024')
+    assert imp_store_stream.associated_stream() == DataStream.FromString('system buffered 1536')
+
+    random_stream = DataStream.FromString('unbuffered 1024')
+    assert random_stream.important is False
+
+    with pytest.raises(InternalError):
+        random_stream.associated_stream()
