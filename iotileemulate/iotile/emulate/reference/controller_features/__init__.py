@@ -21,6 +21,7 @@ from .remote_bridge import RemoteBridgeMixin
 from .tile_manager import TileManagerMixin
 from .config_database import ConfigDatabaseMixin
 from .sensor_log import RawSensorLogMixin
+from .sensor_graph import SensorGraphMixin
 
 __all__ = ['RemoteBridgeMixin', 'TileManagerMixin', 'ConfigDatabaseMixin',
-           'RawSensorLogMixin']
+           'RawSensorLogMixin', 'SensorGraphMixin']

@@ -17,6 +17,9 @@ here.
 - Add support for fill-stop mode to SensorLog.  There is no way to use this from
   within iotile-sgrun itself currently but it is necessary for iotile-emulate.
 
+- Adjust constant stream walker allocation to align with how physical devices
+  behave in order to better integrate into iotile-emulate.
+
 ## 0.7.2
 
 - Add support for broadcast streamers that indicate to the receiving tile that

@@ -9,8 +9,9 @@ from future.utils import raise_
 from iotile.core.exceptions import TimeoutExpiredError
 
 STOP_WORKER_ITEM = object()
-MarkLocationItem = namedtuple('_MARK_LOCATION_ITEM', ['callback'])
+MarkLocationItem = namedtuple('MarkLocationItem', ['callback'])
 WorkItem = namedtuple("WorkItem", ['arg', 'callback'])
+WaitIdleItem = namedtuple("WaitIdleItem", ['callback'])
 
 
 class WorkQueueThread(threading.Thread):
@@ -123,7 +124,7 @@ class WorkQueueThread(threading.Thread):
         def _callback():
             done.set()
 
-        self._work_queue.put(MarkLocationItem(_callback))
+        self.defer(_callback)
         done.wait()
 
     def defer(self, callback):
@@ -142,11 +143,72 @@ class WorkQueueThread(threading.Thread):
 
         self._work_queue.put(MarkLocationItem(callback))
 
+    def defer_until_idle(self, callback):
+        """Wait until the work queue is (temporarily) empty.
+
+        This is different from flush() because processing a work queue entry
+        may add additional work queue entries.  This method lets you wait
+        until there are no more entries in the work queue.
+
+        Depending on how work is being added to the work queue, this may be
+        a very interesting condtion.
+
+        This method will return immeidately and schedule callback to be called
+        as soon as the work queue becomes empty.  You can queue as many
+        callbacks as you like via multiple calls to defer_until_idle. These
+        will be executed in the same order together the first time that the
+        queue becomes momentarily idle.
+
+        Note that the concept of an "empty" workqueue is a very unstable
+        concept in general.  Unless you as the caller know that no one else
+        except you and possibly the work-queue items themselves can add a task
+        to the work queue, then there is no guarantee that this callback will
+        ever fire since it could be that someone else is adding work queue
+        items just as fast as they are being completed.
+
+        This is a specialty method that is useful in a few defined
+        circumstances.
+
+        Args:
+            callback (callable): A callable with no arguments that will be
+                called once the queue is temporarily empty.
+        """
+
+        self._work_queue.put(WaitIdleItem(callback))
+
+    def wait_until_idle(self):
+        """Block the calling thread until the work queue is (temporarily) empty.
+
+        See the detailed discussion under defer_until_idle() for restrictions
+        and expected use cases for this method.
+
+        This routine will block the calling thread.
+        """
+
+        done = threading.Event()
+
+        def _callback():
+            done.set()
+
+        self.defer_until_idle(_callback)
+        done.wait()
+
     def run(self):
         """The target routine called to start thread activity."""
 
+        idle_watchers = []
+
         while True:
             try:
+                if self._work_queue.empty() and len(idle_watchers) > 0:
+                    for watcher in idle_watchers:
+                        try:
+                            watcher()
+                        except: #pylint:disable=bare-except;We can't let one idle watcher failure impact any other watcher
+                            self._logger.exception("Error inside queue idle watcher")
+
+                    idle_watchers = []
+
                 item = self._work_queue.get()
 
                 # Handle special actions that are not RPCs
@@ -154,6 +216,9 @@ class WorkQueueThread(threading.Thread):
                     return
                 elif isinstance(item, MarkLocationItem):
                     item.callback()
+                    continue
+                elif isinstance(item, WaitIdleItem):
+                    idle_watchers.append(item.callback)
                     continue
                 elif not isinstance(item, WorkItem):
                     self._logger.error("Invalid item passed to WorkQueueThread: %s, ignoring", item)

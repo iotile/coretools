@@ -245,6 +245,27 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
 
         self._rpc_queue.flush()
 
+    def wait_idle(self):
+        """Wait until the emulated device is idle.
+
+        An idle device is one where there are no tasks pending on the
+        emulation thread. This is different from wait_deferred_rpcs() a given
+        rpc that was scheduled before your call to wait_deferred_rpcs() could
+        have scheduled an rpc to run after your call.
+
+        This method gives you a deterministic way to wait until there is no
+        more activity on the device.  This is particularly useful for
+        deterministic testing because you can start an action and know
+        precisely when all potential chain reactions have stopped.
+
+        This method will block the calling thread until the _rpc_queue is
+        idle.
+
+        **Calling wait_idle from the emulation thread will deadlock.**
+        """
+
+        self._rpc_queue.wait_until_idle()
+
     def restore_state(self, state):
         """Restore the current state of this emulated device.
 
