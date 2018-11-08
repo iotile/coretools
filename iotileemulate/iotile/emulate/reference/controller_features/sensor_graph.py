@@ -50,11 +50,11 @@ device.
 
 TODO:
   - [ ] Add SG_QUERY_STREAMER
-  - [ ] Add SG_ADD_STREAMER
   - [ ] Add SG_TRIGGER_STREAMER
-  - [ ] Add SG_INSPECT_STREAMER
   - [ ] Add SG_SEEK_STREAMER
   - [ ] Add dump/restore support
+  - [ ] Add clock manager integration
+  - [ ] Add stream manager integration
 """
 
 import logging
@@ -114,7 +114,9 @@ class SensorGraphSubsystem(object):
             for node in self.persisted_nodes:
                 self.graph.add_node(node)
 
-            #FIXME: Also add in streamers
+            for streamer_desc in self.persisted_streamers:
+                streamer = streamer_descriptor.parse_string_descriptor(streamer_desc)
+                self.graph.add_streamer(streamer)
 
             # Load in the constants
             for stream, reading in self.persisted_constants:
@@ -204,11 +206,13 @@ class SensorGraphSubsystem(object):
             int: A packed error code
         """
 
-        streamer = streamer_descriptor.parse_binary_descriptor(binary_descriptor, self._sensor_log)
+        streamer = streamer_descriptor.parse_binary_descriptor(binary_descriptor)
 
         try:
             with self._mutex:
                 self.graph.add_streamer(streamer)
+
+            return Error.NO_ERROR
         except ResourceUsageError:
             return _pack_sgerror(SensorGraphError.NO_MORE_STREAMER_RESOURCES)
 
@@ -297,6 +301,9 @@ class SensorGraphMixin(object):
     @tile_rpc(*rpcs.SG_ADD_STREAMER)
     def sg_add_streamer(self, desc):
         """Add a graph streamer using a binary descriptor."""
+
+        if len(desc) == 13:
+            desc += b'\0'
 
         err = self.sensor_graph.add_streamer(desc)
         return [err]

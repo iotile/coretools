@@ -42,3 +42,5 @@ All major changes in each released version of iotile-emulate are listed here.
 - Add initial support for the sensor_graph subsystem except for dump/restore
   and streamer support.  Initial RPCs are added as well except those dealing
   with streamers.
+
+- Finish basic streamer support except for seeking and querying
