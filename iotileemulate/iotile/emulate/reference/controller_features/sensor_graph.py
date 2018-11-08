@@ -87,7 +87,7 @@ class SensorGraphSubsystem(object):
         self._mutex = mutex
         self._sensor_log = sensor_log
         self._logger = logging.getLogger(__name__)
-        self.graph = SensorGraph(sensor_log, model=model)
+        self.graph = SensorGraph(sensor_log, model=model, enforce_limits=True)
 
         self.persisted_exists = False
         self.persisted_nodes = []
