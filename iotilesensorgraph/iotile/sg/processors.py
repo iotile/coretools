@@ -34,7 +34,7 @@ def copy_all_a(input_a, *other_inputs, **kwargs):
 def copy_latest_a(input_a, *other_inputs, **kwargs):
     """Copy the latest reading from input a into the output.
 
-    All other inputs are skipped to that after this function runs there are no
+    All other inputs are skipped so that after this function runs there are no
     readings left in any of the input walkers even if no output is generated.
 
     Returns:
