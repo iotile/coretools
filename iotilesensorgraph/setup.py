@@ -41,6 +41,7 @@ setup(
                                            'persist_graph = iotile.sg.update:PersistGraphRecord',
                                            'reset_graph = iotile.sg.update:ResetGraphRecord',
                                            'clear_data = iotile.sg.update:ClearDataRecord',
+                                           'clear_configs = iotile.sg.update:ClearConfigVariablesRecord',
                                            'set_online = iotile.sg.update:SetGraphOnlineRecord',
                                            'set_constant = iotile.sg.update:SetConstantRecord'],
                   'iotile.virtual_tile': ['refcon_1 = iotile.sg.virtual.reference_controller:ReferenceController'],

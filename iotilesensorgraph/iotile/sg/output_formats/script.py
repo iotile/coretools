@@ -4,7 +4,8 @@ from __future__ import unicode_literals, absolute_import, print_function
 import struct
 from future.utils import viewitems
 from iotile.sg.update import (AddNodeRecord, AddStreamerRecord, SetConfigRecord, SetConstantRecord,
-                              SetGraphOnlineRecord, PersistGraphRecord, ClearDataRecord, ResetGraphRecord)
+                              SetGraphOnlineRecord, PersistGraphRecord, ClearDataRecord, ResetGraphRecord,
+                              ClearConfigVariablesRecord)
 from iotile.core.hw.update.records import SetDeviceTagRecord
 from iotile.core.hw.update import UpdateScript
 from iotile.core.exceptions import ArgumentError
@@ -42,6 +43,7 @@ def format_script(sensor_graph):
 
     records.append(PersistGraphRecord(address=8))
 
+    records.append(ClearConfigVariablesRecord())
     for slot in sorted(sensor_graph.config_database, key=lambda x: x.encode()):
         for config_id in sorted(sensor_graph.config_database[slot]):
             config_type, value = sensor_graph.config_database[slot][config_id]
