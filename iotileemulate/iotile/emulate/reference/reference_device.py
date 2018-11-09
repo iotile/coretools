@@ -80,6 +80,8 @@ class ReferenceDevice(EmulatedDevice):
             if tile.run_level != 2:
                 tile.wait_started(timeout=2.0)
 
+        self.wait_idle()
+
     def reset_peripheral_tiles(self):
         """Reset all peripheral tiles (asynchronously)."""
 
@@ -93,23 +95,41 @@ class ReferenceDevice(EmulatedDevice):
     def dump_state(self):
         """Dump the current state of this emulated object as a dictionary.
 
+        Note that dump_state happens synchronously in the emulation thread to
+        avoid any race conditions with accessing data members and ensure a
+        consistent view of all state data.
+
         Returns:
             dict: The current state of the object that could be passed to load_state.
         """
 
+        shared = [None]
         # Dump the state of all of the tiles
-        state = super(ReferenceDevice, self).dump_state()
+        def _background_dump():
+            state = super(ReferenceDevice, self).dump_state()
 
-        state['state_name'] = self.STATE_NAME
-        state['state_version'] = self.STATE_VERSION
-        state['reset_count'] = self.reset_count
-        state['received_script'] = base64.b64encode(self.script)
+            state['state_name'] = self.STATE_NAME
+            state['state_version'] = self.STATE_VERSION
+            state['reset_count'] = self.reset_count
+            state['received_script'] = base64.b64encode(self.script)
 
-        return state
+            shared[0] = state
+
+        #TODO: Add proper support for returning values from a background deferred task
+        #      and replace this explicit shared variable.  Also allow waiting for a
+        #      a deferred task.
+        self.deferred_task(_background_dump)
+        self._rpc_queue.flush()
+        return shared[0]
 
     def restore_state(self, state):
         """Restore the current state of this emulated device.
 
+        Note that restore_state happens synchronously in the emulation thread
+        to avoid any race conditions with accessing data members and ensure a
+        consistent atomic restoration process.
+
+        This method will block while the background restore happens.
         Args:
             state (dict): A previously dumped state produced by dump_state.
         """
@@ -121,8 +141,12 @@ class ReferenceDevice(EmulatedDevice):
             raise ArgumentError("Invalid emulated device state name or version", found=(state_name, state_version),
                                 expected=(self.STATE_NAME, self.STATE_VERSION))
 
-        # Restore the state of all of the tiles
-        super(ReferenceDevice, self).restore_state(state)
+        def _background_restore():
+            # Restore the state of all of the tiles
+            super(ReferenceDevice, self).restore_state(state)
 
-        self.reset_count = state.get('reset_count', 0)
-        self.script = base64.b64decode(state.get('received_script'))
+            self.reset_count = state.get('reset_count', 0)
+            self.script = base64.b64decode(state.get('received_script'))
+
+        self.deferred_task(_background_restore)
+        self._rpc_queue.flush()
