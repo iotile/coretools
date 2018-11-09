@@ -327,7 +327,8 @@ class SensorLog(object):
         if stream.buffered:
             output_buffer = stream.output
 
-            reading.reading_id = self.id_assigner(stream, reading)
+            if self.id_assigner is not None:
+                reading.reading_id = self.id_assigner(stream, reading)
 
             try:
                 self._engine.push(reading)

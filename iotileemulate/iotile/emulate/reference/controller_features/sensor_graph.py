@@ -182,7 +182,7 @@ class SensorGraphSubsystem(object):
         or too low.
         """
 
-        highest_id = self._rsl.highest_stored_id(locked=False)
+        highest_id = self._rsl.highest_stored_id()
 
         streamer = self.graph.streamers[index]
         if not streamer.walker.buffered:

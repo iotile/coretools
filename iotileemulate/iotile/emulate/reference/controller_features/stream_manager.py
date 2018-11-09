@@ -75,6 +75,10 @@ class BasicStreamingSubsystem(object):
                 to be serialized.
             callback (callable): An optional callable that will be called as:
                 callable(index, success, highest_id_received_from_other_side)
+
+        TODO:
+            This needs a refactor for cleanliness.  The hacky check for
+                IndividualReadingReport is not amazing.
         """
 
         if index in self.in_progress_streamers:
