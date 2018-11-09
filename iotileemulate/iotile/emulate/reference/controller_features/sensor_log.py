@@ -11,7 +11,6 @@ those subsystems properly get their stream walkers restored
 to the correct state.
 """
 
-import threading
 import struct
 from builtins import range
 from iotile.core.hw.virtual import tile_rpc
@@ -27,10 +26,9 @@ class SensorLogSubsystem(object):
 
     def __init__(self, model):
         self.engine = InMemoryStorageEngine(model=model)
-        self.storage = SensorLog(self.engine, model=model)
+        self.storage = SensorLog(self.engine, model=model, id_assigner=lambda x, y: self.allocate_id())
         self.dump_walker = None
         self.next_id = 1
-        self.mutex = threading.Lock()
 
     def dump(self):
         """Serialize the state of this subsystem into a dict.
@@ -96,23 +94,21 @@ class SensorLogSubsystem(object):
                 reading.
         """
 
-        with self.mutex:
-            self.storage.clear()
+        self.storage.clear()
 
         self.push(streams.DATA_CLEARED, timestamp, 1)
 
     def clear_to_reset(self, config_vars):
         """Clear all volatile information across a reset."""
 
-        with self.mutex:
-            self.storage.destroy_all_walkers()
-            self.dump_walker = None
+        self.storage.destroy_all_walkers()
+        self.dump_walker = None
 
-            if config_vars.get('storage_fillstop', False):
-                self.storage.set_rollover('storage', False)
+        if config_vars.get('storage_fillstop', False):
+            self.storage.set_rollover('storage', False)
 
-            if config_vars.get('streaming_fillstop', False):
-                self.storage.set_rollover('streaming', False)
+        if config_vars.get('streaming_fillstop', False):
+            self.storage.set_rollover('streaming', False)
 
     def count(self):
         """Count many many readings are persistently stored.
@@ -121,8 +117,7 @@ class SensorLogSubsystem(object):
             (int, int): The number of readings in storage and output areas.
         """
 
-        with self.mutex:
-            return self.storage.count()
+        return self.storage.count()
 
     def allocate_id(self):
         """Get the next unique ID.
@@ -131,13 +126,12 @@ class SensorLogSubsystem(object):
             int: A unique reading ID.
         """
 
-        with self.mutex:
-            next_id = self.next_id
-            self.next_id += 1
+        next_id = self.next_id
+        self.next_id += 1
 
         return next_id
 
-    def push(self, stream_id, timestamp, value, reading_id=None):
+    def push(self, stream_id, timestamp, value):
         """Push a value to a stream.
 
         Args:
@@ -145,21 +139,15 @@ class SensorLogSubsystem(object):
             timestamp (int): The raw timestamp of the value we want to
                 store.
             value (int): The 32-bit integer value we want to push.
-            reading_id (int): Optional reading ID to force, otherwise
-                an ID will be assigned automatically if needed.
         Returns:
             int: Packed 32-bit error code.
         """
 
         stream = DataStream.FromEncoded(stream_id)
-        if stream.buffered and reading_id is None:
-            reading_id = self.allocate_id()
-
-        reading = IOTileReading(stream_id, timestamp, value, reading_id=reading_id)
+        reading = IOTileReading(stream_id, timestamp, value)
 
         try:
-            with self.mutex:
-                self.storage.push(stream, reading)
+            self.storage.push(stream, reading)
 
             return Error.NO_ERROR
         except StorageFullError:
@@ -181,9 +169,8 @@ class SensorLogSubsystem(object):
             return [pack_error(ControllerSubsystem.SENSOR_LOG, SensorLogError.VIRTUAL_STREAM_NOT_FOUND), 0]
 
         try:
-            with self.mutex:
-                reading = self.storage.inspect_last(stream, only_allocated=True)
-                return [Error.NO_ERROR, reading.value]
+            reading = self.storage.inspect_last(stream, only_allocated=True)
+            return [Error.NO_ERROR, reading.value]
         except StreamEmptyError:
             return [Error.NO_ERROR, 0]
         except UnresolvedIdentifierError:
@@ -199,12 +186,11 @@ class SensorLogSubsystem(object):
             (int, int, int): Error code, second error code, number of available readings
         """
 
-        with self.mutex:
-            if self.dump_walker is not None:
-                self.storage.destroy_walker(self.dump_walker)
+        if self.dump_walker is not None:
+            self.storage.destroy_walker(self.dump_walker)
 
-            selector = DataStreamSelector.FromEncoded(selector_id)
-            self.dump_walker = self.storage.create_walker(selector, skip_all=False)
+        selector = DataStreamSelector.FromEncoded(selector_id)
+        self.dump_walker = self.storage.create_walker(selector, skip_all=False)
 
         return Error.NO_ERROR, Error.NO_ERROR, self.dump_walker.count()
 
@@ -224,8 +210,7 @@ class SensorLogSubsystem(object):
                     Error.NO_ERROR, 0)
 
         try:
-            with self.mutex:
-                exact = self.dump_walker.seek(reading_id, target='id')
+            exact = self.dump_walker.seek(reading_id, target='id')
         except UnresolvedIdentifierError:
             return (pack_error(ControllerSubsystem.SENSOR_LOG, SensorLogError.NO_MORE_READINGS),
                     Error.NO_ERROR, 0)
@@ -247,18 +232,13 @@ class SensorLogSubsystem(object):
             return pack_error(ControllerSubsystem.SENSOR_LOG, SensorLogError.STREAM_WALKER_NOT_INITIALIZED)
 
         try:
-            with self.mutex:
-                return self.dump_walker.pop()
+            return self.dump_walker.pop()
         except StreamEmptyError:
             return None
 
-    def highest_stored_id(self, locked=True):
+    def highest_stored_id(self):
         """Scan through the stored readings and report the highest stored id.
 
-        Args:
-            locked (bool): Optional parameter to tell this method not to acquire
-                a lock because you already have it.  Default is True, which means
-                acquire the lock.
         Returns:
             int: The highest stored id.
         """
@@ -268,13 +248,8 @@ class SensorLogSubsystem(object):
             if reading.reading_id > shared[0]:
                 shared[0] = reading.reading_id
 
-        if locked:
-            with self.mutex:
-                self.engine.scan_storage('storage', _keep_max)
-                self.engine.scan_storage('streaming', _keep_max)
-        else:
-            self.engine.scan_storage('storage', _keep_max)
-            self.engine.scan_storage('streaming', _keep_max)
+        self.engine.scan_storage('storage', _keep_max)
+        self.engine.scan_storage('streaming', _keep_max)
 
         return shared[0]
 

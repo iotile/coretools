@@ -100,7 +100,6 @@ class SensorGraphSubsystem(object):
 
         self._model = model
 
-        self._mutex = sensor_log_system.mutex
         self._sensor_log = sensor_log_system.storage
         self._allocate_id = sensor_log_system.allocate_id
 
@@ -129,30 +128,29 @@ class SensorGraphSubsystem(object):
           into it.
         """
 
-        with self._mutex:
-            self.graph.clear()
+        self.graph.clear()
 
-            if not self.persisted_exists:
-                return
+        if not self.persisted_exists:
+            return
 
-            for node in self.persisted_nodes:
-                self.graph.add_node(node)
+        for node in self.persisted_nodes:
+            self.graph.add_node(node)
 
-            for streamer_desc in self.persisted_streamers:
-                streamer = streamer_descriptor.parse_string_descriptor(streamer_desc)
-                self.graph.add_streamer(streamer)
+        for streamer_desc in self.persisted_streamers:
+            streamer = streamer_descriptor.parse_string_descriptor(streamer_desc)
+            self.graph.add_streamer(streamer)
 
-            # Load in the constants
-            for stream, reading in self.persisted_constants:
-                self._sensor_log.push(stream, reading)
+        # Load in the constants
+        for stream, reading in self.persisted_constants:
+            self._sensor_log.push(stream, reading)
 
-            self.enabled = True
+        self.enabled = True
 
-            # Set up all streamers
-            for index, value in viewitems(self.streamer_acks):
-                self._seek_streamer_unlocked(index, value)
+        # Set up all streamers
+        for index, value in viewitems(self.streamer_acks):
+            self._seek_streamer(index, value)
 
-            #FIXME: queue sending reset readings
+        #FIXME: queue sending reset readings
 
     def process_input(self, encoded_stream, value):
         """Process or drop a graph input.
@@ -169,12 +167,11 @@ class SensorGraphSubsystem(object):
         # FIXME: Tag this with the current timestamp
         reading = IOTileReading(encoded_stream, 0, value)
 
-        with self._mutex:
-            self.graph.process_input(stream, reading, None)  #FIXME: add in an rpc executor for this device.
+        self.graph.process_input(stream, reading, None)  #FIXME: add in an rpc executor for this device.
 
         self.process_streamers()
 
-    def _seek_streamer_unlocked(self, index, value):
+    def _seek_streamer(self, index, value):
         """Complex logic for actually seeking a streamer to a reading_id.
 
         This routine hides all of the gnarly logic of the various edge cases.
@@ -228,20 +225,19 @@ class SensorGraphSubsystem(object):
     def acknowledge_streamer(self, index, ack, force):
         """Acknowledge a streamer value as received from the remote side."""
 
-        with self._mutex:
-            if index >= len(self.graph.streamers):
-                return _pack_sgerror(SensorGraphError.STREAMER_NOT_ALLOCATED)
+        if index >= len(self.graph.streamers):
+            return _pack_sgerror(SensorGraphError.STREAMER_NOT_ALLOCATED)
 
-            old_ack = self.streamer_acks.get(index, 0)
+        old_ack = self.streamer_acks.get(index, 0)
 
-            if ack != 0:
-                if ack <= old_ack and not force:
-                    return _pack_sgerror(SensorGraphError.OLD_ACKNOWLEDGE_UPDATE)
+        if ack != 0:
+            if ack <= old_ack and not force:
+                return _pack_sgerror(SensorGraphError.OLD_ACKNOWLEDGE_UPDATE)
 
-                self.streamer_acks[index] = ack
+            self.streamer_acks[index] = ack
 
-            current_ack = self.streamer_acks.get(index, 0)
-            return self._seek_streamer_unlocked(index, current_ack)
+        current_ack = self.streamer_acks.get(index, 0)
+        return self._seek_streamer(index, current_ack)
 
     def _handle_streamer_finished(self, index, succeeded, highest_ack):
         """Callback when a streamer finishes processing."""
@@ -255,8 +251,7 @@ class SensorGraphSubsystem(object):
         # Check for any triggered streamers and pass them to stream manager
         in_progress = self._stream_manager.in_progress()
 
-        with self._mutex:
-            triggered = self.graph.check_streamers(blacklist=in_progress)
+        triggered = self.graph.check_streamers(blacklist=in_progress)
 
         for index, streamer in triggered:
             report_id = None
@@ -268,21 +263,20 @@ class SensorGraphSubsystem(object):
     def trigger_streamer(self, index):
         """Pass a streamer to the stream manager if it has data."""
 
-        with self._mutex:
-            self._logger.debug("trigger_streamer RPC called on streamer %d", index)
+        self._logger.debug("trigger_streamer RPC called on streamer %d", index)
 
-            if index >= len(self.graph.streamers):
-                return _pack_sgerror(SensorGraphError.STREAMER_NOT_ALLOCATED)
+        if index >= len(self.graph.streamers):
+            return _pack_sgerror(SensorGraphError.STREAMER_NOT_ALLOCATED)
 
-            if index in self._stream_manager.in_progress():
-                return _pack_sgerror(SensorGraphError.STREAM_ALREADY_IN_PROGRESS)
+        if index in self._stream_manager.in_progress():
+            return _pack_sgerror(SensorGraphError.STREAM_ALREADY_IN_PROGRESS)
 
-            streamer = self.graph.streamers[index]
-            if not streamer.triggered(manual=True):
-                return _pack_sgerror(SensorGraphError.STREAMER_HAS_NO_NEW_DATA)
+        streamer = self.graph.streamers[index]
+        if not streamer.triggered(manual=True):
+            return _pack_sgerror(SensorGraphError.STREAMER_HAS_NO_NEW_DATA)
 
-            self._logger.debug("calling mark_streamer on streamer %d from trigger_streamer RPC", index)
-            self.graph.mark_streamer(index)
+        self._logger.debug("calling mark_streamer on streamer %d from trigger_streamer RPC", index)
+        self.graph.mark_streamer(index)
 
         self.process_streamers()
 
@@ -291,29 +285,26 @@ class SensorGraphSubsystem(object):
     def count_nodes(self):
         """Count the number of nodes."""
 
-        with self._mutex:
-            return len(self.graph.nodes)
+        return len(self.graph.nodes)
 
     def persist(self):
         """Trigger saving the current sensorgraph to persistent storage."""
 
-        with self._mutex:
-            self.persisted_nodes = self.graph.dump_nodes()
-            self.persisted_streamers = self.graph.dump_streamers()
-            self.persisted_exists = True
-            self.persisted_constants = self._sensor_log.dump_constants()
+        self.persisted_nodes = self.graph.dump_nodes()
+        self.persisted_streamers = self.graph.dump_streamers()
+        self.persisted_exists = True
+        self.persisted_constants = self._sensor_log.dump_constants()
 
     def reset(self):
         """Clear the sensorgraph from RAM and flash."""
 
-        with self._mutex:
-            self.persisted_exists = False
-            self.persisted_nodes = []
-            self.persisted_streamers = []
-            self.persisted_constants = []
-            self.graph.clear()
+        self.persisted_exists = False
+        self.persisted_nodes = []
+        self.persisted_streamers = []
+        self.persisted_constants = []
+        self.graph.clear()
 
-            self.streamer_status = {}
+        self.streamer_status = {}
 
     def add_node(self, binary_descriptor):
         """Add a node to the sensor_graph using a binary node descriptor.
@@ -355,9 +346,8 @@ class SensorGraphSubsystem(object):
         streamer = streamer_descriptor.parse_binary_descriptor(binary_descriptor)
 
         try:
-            with self._mutex:
-                self.graph.add_streamer(streamer)
-                self.streamer_status[len(self.graph.streamers) - 1] = StreamerStatus()
+            self.graph.add_streamer(streamer)
+            self.streamer_status[len(self.graph.streamers) - 1] = StreamerStatus()
 
             return Error.NO_ERROR
         except ResourceUsageError:
@@ -366,32 +356,29 @@ class SensorGraphSubsystem(object):
     def inspect_streamer(self, index):
         """Inspect the streamer at the given index."""
 
-        with self._mutex:
-            if index >= len(self.graph.streamers):
-                return [_pack_sgerror(SensorGraphError.STREAMER_NOT_ALLOCATED), b'\0'*14]
+        if index >= len(self.graph.streamers):
+            return [_pack_sgerror(SensorGraphError.STREAMER_NOT_ALLOCATED), b'\0'*14]
 
-            return [Error.NO_ERROR, streamer_descriptor.create_binary_descriptor(self.graph.streamers[index])]
+        return [Error.NO_ERROR, streamer_descriptor.create_binary_descriptor(self.graph.streamers[index])]
 
     def inspect_node(self, index):
         """Inspect the graph node at the given index."""
 
-        with self._mutex:
-            if index >= len(self.graph.nodes):
-                raise RPCErrorCode(6)  #FIXME: use actual error code here for UNKNOWN_ERROR status
+        if index >= len(self.graph.nodes):
+            raise RPCErrorCode(6)  #FIXME: use actual error code here for UNKNOWN_ERROR status
 
-            return create_binary_descriptor(str(self.graph.nodes[index]))
+        return create_binary_descriptor(str(self.graph.nodes[index]))
 
     def query_streamer(self, index):
         """Query the status of the streamer at the given index."""
 
-        with self._mutex:
-            if index >= len(self.graph.streamers):
-                return None
+        if index >= len(self.graph.streamers):
+            return None
 
-            info = self.streamer_status[index]
-            highest_ack = self.streamer_acks.get(index, 0)
+        info = self.streamer_status[index]
+        highest_ack = self.streamer_acks.get(index, 0)
 
-            return [info.last_attempt_time, info.last_success_time, info.last_error, highest_ack, info.last_status, info.attempt_number, info.comm_status]
+        return [info.last_attempt_time, info.last_success_time, info.last_error, highest_ack, info.last_status, info.attempt_number, info.comm_status]
 
 
 class SensorGraphMixin(object):
