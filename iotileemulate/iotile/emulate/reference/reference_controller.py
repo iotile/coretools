@@ -7,12 +7,15 @@ from iotile.core.exceptions import ArgumentError
 from iotile.sg.model import DeviceModel
 from ..virtual import EmulatedTile
 from ..constants import rpcs
-from .controller_features import RawSensorLogMixin, RemoteBridgeMixin, TileManagerMixin, ConfigDatabaseMixin, SensorGraphMixin
+
+from .controller_features import (RawSensorLogMixin, RemoteBridgeMixin,
+                                  TileManagerMixin, ConfigDatabaseMixin, SensorGraphMixin,
+                                  StreamingSubsystemMixin)
 
 
 class ReferenceController(RawSensorLogMixin, RemoteBridgeMixin,
                           TileManagerMixin, ConfigDatabaseMixin,
-                          SensorGraphMixin, EmulatedTile):
+                          SensorGraphMixin, StreamingSubsystemMixin, EmulatedTile):
     """A reference iotile controller implementation.
 
     This tile implements the major behavior of an IOTile controller including
@@ -50,7 +53,8 @@ class ReferenceController(RawSensorLogMixin, RemoteBridgeMixin,
         TileManagerMixin.__init__(self)
         RemoteBridgeMixin.__init__(self)
         RawSensorLogMixin.__init__(self, model)
-        SensorGraphMixin.__init__(self, self.sensor_log.storage, model, self.sensor_log.mutex)
+        StreamingSubsystemMixin.__init__(self, basic=True)
+        SensorGraphMixin.__init__(self, self.sensor_log,  self.stream_manager, model=model)
 
         self.app_info = (0, "0.0")
         self.os_info = (0, "0.0")

@@ -21,11 +21,15 @@ class VirtualAdapterAsyncChannel(object):
         self.adapter = adapter
         self.iotile_id = iotile_id
 
-    def stream(self, report):
+    def stream(self, report, callback=None):
         """Queue data for streaming
 
         Args:
             report (IOTileReport): A report object to stream to a client
+            callback (callable): An optional callback that will be called with
+                a bool value of True when this report actually gets streamed.
+                If the client disconnects and the report is dropped instead,
+                callback will be called with False
         """
 
         conn_id = self._find_connection(self.iotile_id)
@@ -33,18 +37,28 @@ class VirtualAdapterAsyncChannel(object):
         if conn_id is not None or isinstance(report, BroadcastReport):
             self.adapter._trigger_callback('on_report', conn_id, report)
 
-    def trace(self, data):
+        if callback is not None:
+            callback(conn_id is not None)
+
+    def trace(self, data, callback=None):
         """Queue data for tracing
 
         Args:
             data (bytearray, string): Unstructured data to trace to any
                 connected client.
+            callback (callable): An optional callback that will be called with
+                a bool value of True when this data actually gets traced.
+                If the client disconnects and the data is dropped instead,
+                callback will be called with False.
         """
 
         conn_id = self._find_connection(self.iotile_id)
 
         if conn_id is not None:
             self.adapter._trigger_callback('on_trace', conn_id, data)
+
+        if callback is not None:
+            callback(conn_id is not None)
 
     def _find_connection(self, iotile_id):
         """Find the connection corresponding to an iotile_id

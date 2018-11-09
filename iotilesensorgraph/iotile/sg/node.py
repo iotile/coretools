@@ -325,12 +325,14 @@ class SGNode(object):
         self.func_name = name
         self.func = func
 
-    def process(self, rpc_executor):
+    def process(self, rpc_executor, mark_streamer=None):
         """Run this node's processing function.
 
         Args:
             rpc_executor (RPCExecutor): An object capable of executing RPCs
                 in case we need to do that.
+            mark_streamer (callable): Function that can be called to manually
+                mark a streamer as triggered by index.
 
         Returns:
             list(IOTileReading): A list of IOTileReadings with the results of
@@ -341,7 +343,7 @@ class SGNode(object):
         if self.func is None:
             raise ProcessingFunctionError('No processing function set for node', stream=self.stream)
 
-        results = self.func(*[x[0] for x in self.inputs], rpc_executor=rpc_executor)
+        results = self.func(*[x[0] for x in self.inputs], rpc_executor=rpc_executor, mark_streamer=mark_streamer)
         if results is None:
             results = []
 

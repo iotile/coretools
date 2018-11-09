@@ -1,6 +1,7 @@
 """Test to make sure we can create and use SensorGraph objects."""
 
 from iotile.sg import SensorGraph, DeviceModel, SensorLog, DataStream, SlotIdentifier
+from iotile.sg.streamer_descriptor import parse_string_descriptor
 from iotile.sg.known_constants import config_fast_tick_secs
 from iotile.core.hw.reports import IOTileReading
 
@@ -71,3 +72,22 @@ def test_iteration():
     assert len(in1) == 1
     assert len(out1) == 0
     assert str(in1[0].stream) == u'unbuffered 1'
+
+
+def test_triggering_streamers():
+    model = DeviceModel()
+    log = SensorLog(model=model)
+    sg = SensorGraph(log, model=model)
+
+    sg.add_node('(input 1 always) => output 1 using copy_all_a')
+    sg.add_node('(input 1 always) => output 2 using copy_all_a')
+
+    sg.add_streamer(parse_string_descriptor('streamer on output 1'))
+    sg.add_streamer(parse_string_descriptor('manual streamer on output 2 with streamer 0'))
+
+    triggered = sg.check_streamers()
+    assert len(triggered) == 0
+
+    sg.process_input(DataStream.FromString('input 1'), IOTileReading(0, 1, 1), rpc_executor=None)
+    triggered = sg.check_streamers()
+    assert len(triggered) == 2

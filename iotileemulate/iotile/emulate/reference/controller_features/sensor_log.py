@@ -252,9 +252,13 @@ class SensorLogSubsystem(object):
         except StreamEmptyError:
             return None
 
-    def highest_stored_id(self):
+    def highest_stored_id(self, locked=True):
         """Scan through the stored readings and report the highest stored id.
 
+        Args:
+            locked (bool): Optional parameter to tell this method not to acquire
+                a lock because you already have it.  Default is True, which means
+                acquire the lock.
         Returns:
             int: The highest stored id.
         """
@@ -264,7 +268,11 @@ class SensorLogSubsystem(object):
             if reading.reading_id > shared[0]:
                 shared[0] = reading.reading_id
 
-        with self.mutex:
+        if locked:
+            with self.mutex:
+                self.engine.scan_storage('storage', _keep_max)
+                self.engine.scan_storage('streaming', _keep_max)
+        else:
             self.engine.scan_storage('storage', _keep_max)
             self.engine.scan_storage('streaming', _keep_max)
 

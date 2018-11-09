@@ -152,7 +152,7 @@ class BufferedStreamWalker(StreamWalker):
             An exact match means that the offset or reading ID existed and
             corresponded to a reading selected by this walker.
 
-            An inexact match means that the offset or reading ID exited but
+            An inexact match means that the offset or reading ID existed but
             corresponded to reading that was not selected by this walker.
 
             If the offset or reading ID could not be found an Exception is

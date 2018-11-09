@@ -49,27 +49,41 @@ it to emulate how you interact with sensor-graph in a physical IOTile based
 device.
 
 TODO:
-  - [ ] Add SG_QUERY_STREAMER
-  - [ ] Add SG_TRIGGER_STREAMER
-  - [ ] Add SG_SEEK_STREAMER
+  - [X] Add SG_QUERY_STREAMER
+  - [X] Add SG_TRIGGER_STREAMER
+  - [X] Add SG_SEEK_STREAMER
   - [ ] Add dump/restore support
   - [ ] Add clock manager integration
-  - [ ] Add stream manager integration
+  - [X] Add stream manager integration
 """
 
 import logging
+import struct
+from future.utils import viewitems
 from iotile.core.hw.virtual import tile_rpc, RPCErrorCode
 from iotile.core.hw.reports import IOTileReading
 from iotile.sg import DataStream, DataStreamSelector, SensorGraph
 from iotile.sg.node_descriptor import parse_binary_descriptor, create_binary_descriptor
 from iotile.sg import streamer_descriptor
-from iotile.sg.exceptions import NodeConnectionError, ProcessingFunctionError, ResourceUsageError
-from ...constants import rpcs, pack_error, Error, ControllerSubsystem, streams, SensorGraphError
+from iotile.sg.exceptions import NodeConnectionError, ProcessingFunctionError, ResourceUsageError, UnresolvedIdentifierError, StreamEmptyError
+from ...constants import rpcs, pack_error, Error, ControllerSubsystem, streams, SensorGraphError, SensorLogError
 
 def _pack_sgerror(short_code):
     """Pack a short error code with the sensorgraph subsystem."""
 
     return pack_error(ControllerSubsystem.SENSOR_GRAPH, short_code)
+
+
+class StreamerStatus(object):
+    """A model representing the state of a streamer resource."""
+
+    def __init__(self):
+        self.last_attempt_time = 0
+        self.last_success_time = 0
+        self.last_error = 0
+        self.last_status = 0
+        self.attempt_number = 0
+        self.comm_status = 0
 
 
 class SensorGraphSubsystem(object):
@@ -81,17 +95,27 @@ class SensorGraphSubsystem(object):
     all accesses are properly synchronized.
     """
 
-    def __init__(self, model, sensor_log, mutex):
-        self._model = model
-        self._mutex = mutex
-        self._sensor_log = sensor_log
+    def __init__(self, sensor_log_system, stream_manager, model):
         self._logger = logging.getLogger(__name__)
-        self.graph = SensorGraph(sensor_log, model=model, enforce_limits=True)
+
+        self._model = model
+
+        self._mutex = sensor_log_system.mutex
+        self._sensor_log = sensor_log_system.storage
+        self._allocate_id = sensor_log_system.allocate_id
+
+        self._stream_manager = stream_manager
+        self._rsl = sensor_log_system
+
+        self.graph = SensorGraph(self._sensor_log, model=model, enforce_limits=True)
 
         self.persisted_exists = False
         self.persisted_nodes = []
         self.persisted_streamers = []
         self.persisted_constants = []
+
+        self.streamer_acks = {}
+        self.streamer_status = {}
 
         self.enabled = False
 
@@ -124,6 +148,10 @@ class SensorGraphSubsystem(object):
 
             self.enabled = True
 
+            # Set up all streamers
+            for index, value in viewitems(self.streamer_acks):
+                self._seek_streamer_unlocked(index, value)
+
             #FIXME: queue sending reset readings
 
     def process_input(self, encoded_stream, value):
@@ -143,6 +171,122 @@ class SensorGraphSubsystem(object):
 
         with self._mutex:
             self.graph.process_input(stream, reading, None)  #FIXME: add in an rpc executor for this device.
+
+        self.process_streamers()
+
+    def _seek_streamer_unlocked(self, index, value):
+        """Complex logic for actually seeking a streamer to a reading_id.
+
+        This routine hides all of the gnarly logic of the various edge cases.
+        In particular, the behavior depends on whether the reading id is found,
+        and if it is found, whether it belongs to the indicated streamer or not.
+
+        If not, the behavior depends on whether the sought reading it too high
+        or too low.
+        """
+
+        highest_id = self._rsl.highest_stored_id(locked=False)
+
+        streamer = self.graph.streamers[index]
+        if not streamer.walker.buffered:
+            return _pack_sgerror(SensorLogError.CANNOT_USE_UNBUFFERED_STREAM)
+
+        find_type = None
+        try:
+            exact = streamer.walker.seek(value, target='id')
+            if exact:
+                find_type = 'exact'
+            else:
+                find_type = 'other_stream'
+
+        except UnresolvedIdentifierError:
+            if value > highest_id:
+                find_type = 'too_high'
+            else:
+                find_type = 'too_low'
+
+        # If we found an exact match, move one beyond it
+
+        if find_type == 'exact':
+            try:
+                streamer.walker.pop()
+            except StreamEmptyError:
+                pass
+
+            error = Error.NO_ERROR
+        elif find_type == 'too_high':
+            streamer.walker.skip_all()
+            error = _pack_sgerror(SensorLogError.NO_MORE_READINGS)
+        elif find_type == 'too_low':
+            streamer.walker.seek(0, target='offset')
+            error = _pack_sgerror(SensorLogError.NO_MORE_READINGS)
+        else:
+            error = _pack_sgerror(SensorLogError.ID_FOUND_FOR_ANOTHER_STREAM)
+
+        return error
+
+    def acknowledge_streamer(self, index, ack, force):
+        """Acknowledge a streamer value as received from the remote side."""
+
+        with self._mutex:
+            if index >= len(self.graph.streamers):
+                return _pack_sgerror(SensorGraphError.STREAMER_NOT_ALLOCATED)
+
+            old_ack = self.streamer_acks.get(index, 0)
+
+            if ack != 0:
+                if ack <= old_ack and not force:
+                    return _pack_sgerror(SensorGraphError.OLD_ACKNOWLEDGE_UPDATE)
+
+                self.streamer_acks[index] = ack
+
+            current_ack = self.streamer_acks.get(index, 0)
+            return self._seek_streamer_unlocked(index, current_ack)
+
+    def _handle_streamer_finished(self, index, succeeded, highest_ack):
+        """Callback when a streamer finishes processing."""
+
+        self._logger.debug("Rolling back streamer %d after streaming, highest ack from streaming subsystem was %d", index, highest_ack)
+        self.acknowledge_streamer(index, highest_ack, False)
+
+    def process_streamers(self):
+        """Check if any streamers should be handed to the stream manager."""
+
+        # Check for any triggered streamers and pass them to stream manager
+        in_progress = self._stream_manager.in_progress()
+
+        with self._mutex:
+            triggered = self.graph.check_streamers(blacklist=in_progress)
+
+        for index, streamer in triggered:
+            report_id = None
+            if streamer.requires_id():
+                report_id = self._allocate_id()
+
+            self._stream_manager.process_streamer(index, streamer, report_id, callback=self._handle_streamer_finished)
+
+    def trigger_streamer(self, index):
+        """Pass a streamer to the stream manager if it has data."""
+
+        with self._mutex:
+            self._logger.debug("trigger_streamer RPC called on streamer %d", index)
+
+            if index >= len(self.graph.streamers):
+                return _pack_sgerror(SensorGraphError.STREAMER_NOT_ALLOCATED)
+
+            if index in self._stream_manager.in_progress():
+                return _pack_sgerror(SensorGraphError.STREAM_ALREADY_IN_PROGRESS)
+
+            streamer = self.graph.streamers[index]
+            if not streamer.triggered(manual=True):
+                return _pack_sgerror(SensorGraphError.STREAMER_HAS_NO_NEW_DATA)
+
+            self._logger.debug("calling mark_streamer on streamer %d from trigger_streamer RPC", index)
+            self.graph.mark_streamer(index)
+
+        self.process_streamers()
+
+        return Error.NO_ERROR
 
     def count_nodes(self):
         """Count the number of nodes."""
@@ -168,6 +312,8 @@ class SensorGraphSubsystem(object):
             self.persisted_streamers = []
             self.persisted_constants = []
             self.graph.clear()
+
+            self.streamer_status = {}
 
     def add_node(self, binary_descriptor):
         """Add a node to the sensor_graph using a binary node descriptor.
@@ -211,6 +357,7 @@ class SensorGraphSubsystem(object):
         try:
             with self._mutex:
                 self.graph.add_streamer(streamer)
+                self.streamer_status[len(self.graph.streamers) - 1] = StreamerStatus()
 
             return Error.NO_ERROR
         except ResourceUsageError:
@@ -234,21 +381,33 @@ class SensorGraphSubsystem(object):
 
             return create_binary_descriptor(str(self.graph.nodes[index]))
 
+    def query_streamer(self, index):
+        """Query the status of the streamer at the given index."""
+
+        with self._mutex:
+            if index >= len(self.graph.streamers):
+                return None
+
+            info = self.streamer_status[index]
+            highest_ack = self.streamer_acks.get(index, 0)
+
+            return [info.last_attempt_time, info.last_success_time, info.last_error, highest_ack, info.last_status, info.attempt_number, info.comm_status]
+
 
 class SensorGraphMixin(object):
     """Mixin for an IOTileController that implements the sensor-graph subsystem.
 
     Args:
-        sensor_log (SensorLog): The storage area that should be used for storing
-            readings.
+        sensor_log (SensorLog): The rsl subsystem.
+        stream_man (StreamManager): The stream manager subsystem
         model (DeviceModel): A device model containing resource limits about the
             emulated device.
         mutex (threading.Lock): A shared mutex from the sensor_log subsystem to
             use to make sure we only access it from a single thread at a time.
     """
 
-    def __init__(self, sensor_log, model, mutex):
-        self.sensor_graph = SensorGraphSubsystem(model, sensor_log, mutex)
+    def __init__(self, sensor_log, stream_manager, model):
+        self.sensor_graph = SensorGraphSubsystem(sensor_log, stream_manager, model)
         self._post_config_subsystems.append(self.sensor_graph)
 
     @tile_rpc(*rpcs.SG_COUNT_NODES)
@@ -313,3 +472,29 @@ class SensorGraphMixin(object):
         """Inspect a sensorgraph streamer by index."""
 
         return self.sensor_graph.inspect_streamer(index)
+
+    @tile_rpc(*rpcs.SG_TRIGGER_STREAMER)
+    def sg_trigger_streamer(self, index):
+        """Manually trigger a streamer."""
+
+        err = self.sensor_graph.trigger_streamer(index)
+
+        return [err]
+
+    @tile_rpc(*rpcs.SG_SEEK_STREAMER)
+    def sg_seek_streamer(self, index, force, value):
+        """Ackowledge a streamer."""
+
+        force = bool(force)
+        err = self.sensor_graph.acknowledge_streamer(index, value, force)
+        return [err]
+
+    @tile_rpc(*rpcs.SG_QUERY_STREAMER)
+    def sg_query_streamer(self, index):
+        """Query the current status of a streamer."""
+
+        resp = self.sensor_graph.query_streamer(index)
+        if resp is None:
+            return [struct.pack("<L", _pack_sgerror(SensorGraphError.STREAMER_NOT_ALLOCATED))]
+
+        return [struct.pack("<LLLLBBBx", *resp)]

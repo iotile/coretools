@@ -205,10 +205,15 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
 
         Args:
             *reports (list): A list of IOTileReport objects that should be sent over
-                the streaming interface.
+                the streaming interface. If you want to get a callback when the report
+                actually finishes being streamed out over the interface, you can put
+                a tuple of (IOTileReport, callback) instead of an IOTileReport.
+
+                Your callback, if supplied will be called when the report
+                finishes being streamed.
         """
 
-        for report in reports:
+        for report, callback  in reports:
             if isinstance(report, BroadcastReport):
                 with self._broadcast_lock:
                     self._broadcast_reading = report.visible_readings[0]
@@ -219,9 +224,12 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
                     else:
                         self._defer(self._command_task.sync_command, [['_set_advertising_data', 0, self._advertisement()]])
 
+                if callback is not None:
+                    callback(True)
+
                 continue
 
-            self.reports.put(report)
+            self.reports.put((report, callback))
 
     def _advertisement(self):
         # Flags for version 1 are:
@@ -570,4 +578,3 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
                 traceback.print_exc()
                 print("*** END EXCEPTION ***")
                 self._audit('ErrorStreamingTrace')  # If there was an error, stop streaming but don't choke
-

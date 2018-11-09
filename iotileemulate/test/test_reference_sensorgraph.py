@@ -66,6 +66,37 @@ def basic_sg():
         yield sensor_graph, hw, device
 
 
+@pytest.fixture(scope="function")
+def streaming_sg():
+    """A preprogrammed basic sensorgraph for testing streaming."""
+
+    device = ReferenceDevice({})
+
+    adapter = EmulatedDeviceAdapter(None, devices=[device])
+
+    nodes = [
+        "(input 1 when count >= 1) => output 1 using copy_latest_a",
+        "(input 2 when count >= 1) => output 2 using copy_latest_a",
+        "(input 3 when count >= 1 && constant 1 always) => unbuffered 1 using trigger_streamer"
+    ]
+
+    with HardwareManager(adapter=adapter) as hw:
+        hw.connect(1)
+
+        con = hw.get(8, basic=True)
+        sensor_graph = find_proxy_plugin('iotile_standard_library/lib_controller', 'SensorGraphPlugin')(con)
+
+        for node in nodes:
+            sensor_graph.add_node(node)
+
+        sensor_graph.push_reading('constant 1', 0)
+
+        sensor_graph.add_streamer('output 1', 'controller', False, 'individual', 'telegram')
+        sensor_graph.add_streamer('output 2', 'controller', False, 'hashedlist', 'telegram', withother=0)
+
+        yield sensor_graph, hw, device
+
+
 def test_inspect_nodes(sg_device):
     """Ensure that we can inspect the sensor graph nodes that we have programmed."""
 
@@ -135,3 +166,18 @@ def test_graph_input(basic_sg):
 
     values = sg.download_stream('output 1')
     assert [x.value for x in values] == [4, 4, 4, 4]
+
+
+def test_streaming(streaming_sg):
+    """Ensure that streamers work."""
+
+    sg, hw, _device = streaming_sg
+    sg.enable()
+
+    hw.enable_streaming()
+    sg.input('input 1', 1)
+    sg.input('input 2', 2)
+    sg.input('input 3', 3)
+
+    reports = hw.wait_reports(2, timeout=0.5)
+    assert len(reports) == 2
