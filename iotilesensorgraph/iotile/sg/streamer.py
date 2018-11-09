@@ -1,11 +1,13 @@
 """Configuration object describing a streamer."""
 
 from __future__ import unicode_literals, absolute_import, print_function
+from collections import namedtuple
 from future.utils import viewitems, python_2_unicode_compatible
 from iotile.core.hw.reports import IndividualReadingReport, BroadcastReport, SignedListReport
 from iotile.core.exceptions import ArgumentError, InternalError
 from iotile.sg.exceptions import StreamEmptyError
 
+StreamerReport = namedtuple("StreamerReport", ['report', 'num_readings', 'highest_id'])
 
 @python_2_unicode_compatible
 class DataStreamer(object):
@@ -152,7 +154,13 @@ class DataStreamer(object):
                 type requires signing.
 
         Returns:
-            IOTileReport: The report produced with as many readings as possible under max_size.
+            StreamerReport: The report, its highest id and the number of readings in it.
+
+            The highest reading id and number of readings are returned
+            separately from the report itself because, depending on the format
+            of the report (such as whether it is encrypted or does not contain
+            reading ids), these details may not be recoverable from the report
+            itself.
 
         Raises:
             InternalError: If there was no SensorLog passed when this streamer was created.
@@ -174,26 +182,31 @@ class DataStreamer(object):
         if self.format == 'individual':
             reading = self.walker.pop()
 
+            highest_id = reading.reading_id
+
             if self.report_type == 'telegram':
-                return IndividualReadingReport.FromReadings(device_id, [reading])
+                return StreamerReport(IndividualReadingReport.FromReadings(device_id, [reading]), 1, highest_id)
             elif self.report_type == 'broadcast':
-                return BroadcastReport.FromReadings(device_id, [reading], device_uptime)
+                return StreamerReport(BroadcastReport.FromReadings(device_id, [reading], device_uptime), 1, highest_id)
         elif self.format == 'hashedlist':
             max_readings = (max_size - 20 - 24) // 16
             if max_readings <= 0:
                 raise InternalError("max_size is too small to hold even a single reading", max_size=max_size)
 
             readings = []
+            highest_id = 0
             try:
                 while len(readings) < max_readings:
                     reading = self.walker.pop()
                     readings.append(reading)
+                    if reading.reading_id > highest_id:
+                        highest_id = reading.reading_id
             except StreamEmptyError:
                 if len(readings) == 0:
                     raise
 
-            return SignedListReport.FromReadings(device_id, readings, report_id=report_id, selector=self.selector.encode(),
-                                                 streamer=self.index, sent_timestamp=device_uptime)
+            return StreamerReport(SignedListReport.FromReadings(device_id, readings, report_id=report_id, selector=self.selector.encode(),
+                                                                streamer=self.index, sent_timestamp=device_uptime), len(readings), highest_id)
 
         raise InternalError("Streamer report format or type is not supported currently", report_format=self.format, report_type=self.report_type)
 

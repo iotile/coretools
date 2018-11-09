@@ -4,6 +4,7 @@ import sys
 import pytest
 import time
 from iotile.core.hw import HardwareManager
+from iotile.core.hw.reports import SignedListReport
 from iotile.core.exceptions import HardwareError
 from iotile.core.hw.proxy.external_proxy import find_proxy_plugin
 from iotile.emulate.virtual import EmulatedPeripheralTile
@@ -175,9 +176,25 @@ def test_streaming(streaming_sg):
     sg.enable()
 
     hw.enable_streaming()
+    sg.input('input 1', 0)
     sg.input('input 1', 1)
-    sg.input('input 2', 2)
+    sg.input('input 1', 2)
+    sg.input('input 2', 5)
+    sg.input('input 2', 6)
+    sg.input('input 2', 7)
+    sg.input('input 2', 8)
     sg.input('input 3', 3)
 
-    reports = hw.wait_reports(2, timeout=0.5)
-    assert len(reports) == 2
+    reports = hw.wait_reports(4, timeout=0.5)
+    assert len(reports) == 4
+    for i, report in enumerate(reports[:-1]):
+        assert report.visible_readings[0].value == i
+
+    signed = reports[-1]
+    assert isinstance(signed, SignedListReport)
+    readings = signed.visible_readings
+    assert len(readings) == 4
+
+    for i, reading in enumerate(readings):
+        assert reading.value == 5 + i
+        assert reading.reading_id == 4 + i

@@ -250,15 +250,10 @@ class SensorGraphSubsystem(object):
 
         # Check for any triggered streamers and pass them to stream manager
         in_progress = self._stream_manager.in_progress()
-
         triggered = self.graph.check_streamers(blacklist=in_progress)
 
-        for index, streamer in triggered:
-            report_id = None
-            if streamer.requires_id():
-                report_id = self._allocate_id()
-
-            self._stream_manager.process_streamer(index, streamer, report_id, callback=self._handle_streamer_finished)
+        for streamer in triggered:
+            self._stream_manager.process_streamer(streamer, callback=self._handle_streamer_finished)
 
     def trigger_streamer(self, index):
         """Pass a streamer to the stream manager if it has data."""

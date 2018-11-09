@@ -396,7 +396,7 @@ class SensorGraph(object):
                 not be checked right now.
 
         Returns:
-            list of (int, DataStreamer): A list of the ready streamers.
+            list of DataStreamer: A list of the ready streamers.
         """
 
         ready = []
@@ -416,14 +416,14 @@ class SensorGraph(object):
 
             if streamer.triggered(marked):
                 self._logger.debug("Streamer %d triggered, manual=%s", i, marked)
-                ready.append((i, streamer))
+                ready.append(streamer)
                 selected.add(i)
 
                 # Handle streamers triggered with another
                 for j, streamer2 in enumerate(self.streamers[i:]):
                     if streamer2.with_other == i and j not in selected and streamer2.triggered(True):
                         self._logger.debug("Streamer %d triggered due to with-other on %d", j, i)
-                        ready.append((j, streamer2))
+                        ready.append(streamer2)
                         selected.add(j)
 
         return ready
