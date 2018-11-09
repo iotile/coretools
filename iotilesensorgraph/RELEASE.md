@@ -5,6 +5,9 @@ here.
 
 ## HEAD
 
+- Fix bug in script output_format to clear configs before adding new config 
+  variables.
+
 - Move reference controller and reference device classes out of
   iotile-sensorgraph and into new iotile-emulate package.
 
