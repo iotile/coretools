@@ -101,7 +101,9 @@ class TestReportParser(unittest.TestCase):
         report = IndividualReadingReport(report_data1)
         ser = report.serialize()
 
-        report2 = IOTileReportParser.DeserializeReport(ser)
+        report_parser = IOTileReportParser()
+
+        report2 = report_parser.deserialize_report(ser)
         assert report2.origin == report.origin
         assert report2.received_time == report.received_time
 

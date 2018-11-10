@@ -52,3 +52,7 @@ def main():
 
     except Exception:  # pylint: disable=W0703
         log.exception("Fatal error starting gateway")
+
+
+if __name__ == '__main__':
+    main()
