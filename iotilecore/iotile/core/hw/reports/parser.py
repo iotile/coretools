@@ -4,6 +4,7 @@
 import pkg_resources
 from iotile.core.exceptions import ArgumentError
 
+
 class IOTileReportParser (object):
     """Accumulates data from a stream and emits IOTileReports
 

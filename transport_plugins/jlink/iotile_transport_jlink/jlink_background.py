@@ -6,12 +6,12 @@ import logging
 import struct
 import time
 from collections import namedtuple
-from Queue import Queue
 from monotonic import monotonic
 from iotile.core.exceptions import ArgumentError, HardwareError
 import iotile_transport_jlink.devices as devices
 from .structures import ControlStructure
 
+from queue import Queue
 
 #pylint:disable=invalid-name;This is not a constant so its name is okay
 logger = logging.getLogger(__name__)

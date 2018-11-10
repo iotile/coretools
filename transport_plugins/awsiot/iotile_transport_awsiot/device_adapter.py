@@ -9,11 +9,11 @@ from iotile.core.exceptions import IOTileException, ArgumentError, HardwareError
 from iotile.core.hw.transport.adapter import DeviceAdapter
 from iotile.core.hw.reports.parser import IOTileReportParser
 from iotile.core.dev.registry import ComponentRegistry
-from mqtt_client import OrderedAWSIOTClient
-from topic_validator import MQTTTopicValidator
-from connection_manager import ConnectionManager
-import messages
-
+from .mqtt_client import OrderedAWSIOTClient
+from .topic_validator import MQTTTopicValidator
+from .connection_manager import ConnectionManager
+from . import messages
+from builtins import range
 
 class AWSIOTDeviceAdapter(DeviceAdapter):
     """A device adapter allowing connections to devices over AWS IoT
@@ -72,6 +72,7 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
         self.set_config('probe_supported', True)
         self.set_config('probe_required', True)
         self.mtu = self.get_config('mtu', 60*1024)  # Split script payloads larger than this
+        self.report_parser = IOTileReportParser()
 
     def connect_async(self, connection_id, connection_string, callback):
         """Connect to a device by its connection_string
@@ -165,7 +166,7 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
                 chunks += 1
 
         # Send the script out possibly in multiple chunks if it's larger than our maximum transmit unit
-        for i in xrange(0, chunks):
+        for i in range(0, chunks):
             start = i*self.mtu
             chunk = data[start:start + self.mtu]
             encoded = base64.standard_b64encode(chunk)
@@ -285,7 +286,7 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
         conn_ids = self.conns.get_connections()
 
         # If we have any open connections, try to close them here before shutting down
-        for conn in conn_ids:
+        for conn in list(conn_ids):
             try:
                 self.disconnect_sync(conn)
             except HardwareError:
@@ -412,9 +413,9 @@ class AWSIOTDeviceAdapter(DeviceAdapter):
             serialized_report = {}
             serialized_report['report_format'] = rep_msg['report_format']
             serialized_report['encoded_report'] = rep_msg['report']
-            serialized_report['received_time'] = datetime.datetime.strptime(rep_msg['received_time'].decode(), "%Y%m%dT%H:%M:%S.%fZ")
+            serialized_report['received_time'] = datetime.datetime.strptime(rep_msg['received_time'].encode().decode(), "%Y%m%dT%H:%M:%S.%fZ")
 
-            report = IOTileReportParser.DeserializeReport(serialized_report)
+            report = self.report_parser.deserialize_report(serialized_report)
             self._trigger_callback('on_report', conn_id, report)
         except Exception:
             self._logger.exception("Error processing report conn_id=%d", conn_id)

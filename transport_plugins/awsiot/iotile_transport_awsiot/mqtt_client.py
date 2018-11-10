@@ -2,11 +2,11 @@ import json
 import logging
 import AWSIoTPythonSDK.MQTTLib
 import re
-from AWSIoTPythonSDK.exception import operationError
+from AWSIoTPythonSDK.exception.operationError import operationError
 from iotile.core.exceptions import ArgumentError, ExternalError, InternalError
 from iotile.core.dev.registry import ComponentRegistry
-from packet_queue import PacketQueue
-from topic_sequencer import TopicSequencer
+from .packet_queue import PacketQueue
+from .topic_sequencer import TopicSequencer
 
 
 class OrderedAWSIOTClient(object):
@@ -104,7 +104,7 @@ class OrderedAWSIOTClient(object):
         try:
             client.connect()
             self.client = client
-        except operationError, exc:
+        except operationError as exc:
             raise InternalError("Could not connect to AWS IOT", message=exc.message)
 
         self.sequencer.reset()
@@ -118,7 +118,7 @@ class OrderedAWSIOTClient(object):
 
         try:
             self.client.disconnect()
-        except operationError, exc:
+        except operationError as exc:
             raise InternalError("Could not disconnect from AWS IOT", message=exc.message)
 
     def publish(self, topic, message):
@@ -141,6 +141,19 @@ class OrderedAWSIOTClient(object):
             'sequence': seq,
             'message': message
         }
+        # Need to encode bytes types for json.dumps
+        if 'key' in packet['message']:
+            packet['message']['key'] = packet['message']['key'].decode('utf8')
+        if 'payload' in packet['message']:
+            packet['message']['payload'] = packet['message']['payload'].decode('utf8')
+        if 'script' in packet['message']:
+            packet['message']['script'] = packet['message']['script'].decode('utf8')
+        if 'trace' in packet['message']:
+            packet['message']['trace'] = packet['message']['trace'].decode('utf8')
+        if 'report' in packet['message']:
+            packet['message']['report'] = packet['message']['report'].decode('utf8')
+        if 'received_time' in packet['message']:
+            packet['message']['received_time'] = packet['message']['received_time'].decode('utf8')
 
         serialized_packet = json.dumps(packet)
 
@@ -148,7 +161,7 @@ class OrderedAWSIOTClient(object):
             # Limit how much we log in case the message is very long
             self._logger.debug("Publishing %s on topic %s", serialized_packet[:256], topic)
             self.client.publish(topic, serialized_packet, 1)
-        except operationError, exc:
+        except operationError as exc:
             raise InternalError("Could not publish message", topic=topic, message=exc.message)
 
     def subscribe(self, topic, callback, ordered=True):
@@ -175,7 +188,7 @@ class OrderedAWSIOTClient(object):
 
         try:
             self.client.subscribe(topic, 1, self._on_receive)
-        except operationError, exc:
+        except operationError as exc:
             raise InternalError("Could not subscribe to topic", topic=topic, message=exc.message)
 
     def reset_sequence(self, topic):
@@ -203,7 +216,7 @@ class OrderedAWSIOTClient(object):
 
         try:
             self.client.unsubscribe(topic)
-        except operationError, exc:
+        except operationError as exc:
             raise InternalError("Could not unsubscribe from topic", topic=topic, message=exc.message)
 
     def _on_receive(self, client, userdata, message):
