@@ -1,8 +1,10 @@
 import threading
-import Queue
+import queue
 import logging
-from timeout import TimeoutInterval
+from .timeout import TimeoutInterval
 from iotile.core.exceptions import ArgumentError
+from future.utils import viewitems
+from past.builtins import basestring
 
 class ConnectionAction(object):
     """A generic action handled internally by ConnectionManager
@@ -80,7 +82,7 @@ class ConnectionManager(threading.Thread):
 
         self.id = adapter_id
         self._stop_event = threading.Event()
-        self._actions = Queue.Queue()
+        self._actions = queue.Queue()
         self._connections = {}
         self._int_connections = {}
         self._data_lock = threading.Lock()
@@ -103,7 +105,7 @@ class ConnectionManager(threading.Thread):
 
                 try:
                     action = self._actions.get(timeout=0.1)
-                except Queue.Empty:
+                except queue.Empty:
                     continue
 
                 handler_name = '_{}_action'.format(action.action)
@@ -158,7 +160,7 @@ class ConnectionManager(threading.Thread):
         key = conn_or_int_id
         if isinstance(key, basestring):
             table = self._int_connections
-        elif isinstance(key, (int, long)):
+        elif isinstance(key, int):
             table = self._connections
         else:
             raise ArgumentError("You must supply either an int connection id or a string internal id to _get_connection_state", id=key)
@@ -189,7 +191,7 @@ class ConnectionManager(threading.Thread):
         key = conn_or_int_id
         if isinstance(key, basestring):
             table = self._int_connections
-        elif isinstance(key, (int, long)):
+        elif isinstance(key, int):
             table = self._connections
         else:
             raise ArgumentError("You must supply either an int connection id or a string internal id to _get_connection_state", id=key)
@@ -220,7 +222,7 @@ class ConnectionManager(threading.Thread):
         key = conn_or_int_id
         if isinstance(key, basestring):
             table = self._int_connections
-        elif isinstance(key, (int, long)):
+        elif isinstance(key, int):
             table = self._connections
         else:
             return None
@@ -245,7 +247,7 @@ class ConnectionManager(threading.Thread):
         key = conn_or_int_id
         if isinstance(key, basestring):
             table = self._int_connections
-        elif isinstance(key, (int, long)):
+        elif isinstance(key, int):
             table = self._connections
         else:
             raise ArgumentError("You must supply either an int connection id or a string internal id to _get_connection_state", id=key)
@@ -263,7 +265,7 @@ class ConnectionManager(threading.Thread):
         timeout.
         """
 
-        for conn_id, data in self._connections.iteritems():
+        for conn_id, data in viewitems(self._connections):
             if 'timeout' in data and data['timeout'].expired:
                 if data['state'] == self.Connecting:
                     self.finish_connection(conn_id, False, 'Connection attempt timed out')
@@ -332,7 +334,7 @@ class ConnectionManager(threading.Thread):
 
         # Make sure we are not reusing an id that is currently connected to something
         if self._get_connection_state(conn_id) != self.Disconnected:
-            print self._connections[conn_id]
+            print(self._connections[conn_id])
             callback(conn_id, self.id, False, 'Connection ID is already in use for another connection')
             return
 

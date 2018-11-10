@@ -1,4 +1,5 @@
-import Queue
+import queue
+
 from iotile_transport_awsiot.mqtt_client import OrderedAWSIOTClient
 import time
 
@@ -62,7 +63,7 @@ def test_tracing(gateway, hw_man, local_broker):
 
     time.sleep(0.1)
     data = hw_man.dump_trace('raw')
-    assert data == 'Hello world, this is tracing data!'
+    assert data == b'Hello world, this is tracing data!'
 
 
 def test_rpcs(gateway, hw_man, local_broker):
@@ -74,8 +75,8 @@ def test_rpcs(gateway, hw_man, local_broker):
 def test_script(gateway, hw_man, local_broker):
     """Make sure we can send scripts."""
 
-    script = bytes('ab')*10000
-    progs = Queue.Queue()
+    script = bytearray(('ab'*10000).encode('utf-8'))
+    progs = queue.Queue()
     hw_man.connect(3, wait=0.1)
 
     gateway.agents[0].throttle_progress = 0.0
@@ -104,8 +105,8 @@ def test_script(gateway, hw_man, local_broker):
 def test_script_chunking(gateway, hw_man, local_broker):
     """Make sure we can send scripts."""
 
-    script = bytes('a')*1024*80
-    progs = Queue.Queue()
+    script = bytearray(('a'*1024*80).encode('utf-8'))
+    progs = queue.Queue()
     hw_man.connect(3, wait=0.1)
 
     gateway.agents[0].throttle_progress = 0.0
@@ -135,7 +136,7 @@ def test_script_chunking(gateway, hw_man, local_broker):
 def test_script_progress_throttling(gateway, hw_man, local_broker):
     """Make sure progress updates are properly throttled."""
 
-    script = bytes('a')*1024*80
+    script = bytearray(('a'*1024*80).encode('utf-8'))
     progs = []
     hw_man.connect(3, wait=0.1)
 

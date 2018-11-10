@@ -9,7 +9,8 @@ import AWSIoTPythonSDK.MQTTLib
 from iotile.core.hw.hwmanager import HardwareManager
 from iotile.core.dev.registry import ComponentRegistry
 from iotilegateway.gateway import IOTileGateway
-
+from builtins import range
+from future.utils import viewitems
 
 Message = namedtuple('Message', ['topic', 'payload'])
 
@@ -87,7 +88,7 @@ class LocalBroker(object):
                 continue
 
             matched = True
-            for i in xrange(0, len(parts)):
+            for i in range(0, len(parts)):
                 if (parts[i] != list_parts[i]) and list_parts[i] != '+':
                     matched = False
                     break
@@ -111,7 +112,7 @@ class LocalBroker(object):
         if matched_topic in self.listeners:
             msg_obj = Message(topic, message)
 
-            for _, callback in self.listeners[matched_topic].iteritems():
+            for _, callback in viewitems(self.listeners[matched_topic]):
                 callback(self.client, None, msg_obj)
 
         if LocalBroker.expected is not None and LocalBroker.sequence >= self.expected:

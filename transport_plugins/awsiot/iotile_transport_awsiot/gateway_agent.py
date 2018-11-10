@@ -2,11 +2,12 @@ import logging
 import tornado.gen
 import binascii
 import struct
-import messages
+from . import messages
 from monotonic import monotonic
-from mqtt_client import OrderedAWSIOTClient
-from topic_validator import MQTTTopicValidator
+from .mqtt_client import OrderedAWSIOTClient
+from .topic_validator import MQTTTopicValidator
 from iotile.core.exceptions import ExternalError, ArgumentError, ValidationError
+from future.utils import viewitems
 
 
 class AWSIOTGatewayAgent(object):
@@ -80,7 +81,7 @@ class AWSIOTGatewayAgent(object):
             rawbytes = binascii.unhexlify(hexdigits)
             words = struct.unpack(">LL", rawbytes)
             return (words[0] << 32) | (words[1])
-        except ValueError, exc:
+        except ValueError as exc:
             raise ArgumentError("Could not convert device slug to hex integer", slug=slug, error=str(exc))
 
     def start(self):
@@ -104,7 +105,7 @@ class AWSIOTGatewayAgent(object):
         self.client = OrderedAWSIOTClient(self._args)
         try:
             self.client.connect(self.slug)
-        except Exception, exc:
+        except Exception as exc:
             raise ExternalError("Could not connect to AWS IOT", error=str(exc))
 
         self.topics = MQTTTopicValidator(self.prefix + 'devices/{}'.format(self.slug))
@@ -282,7 +283,7 @@ class AWSIOTGatewayAgent(object):
         slug = self._build_device_slug(uuid)
 
         try:
-            resp = yield self._manager.send_rpc(conn_id, address, rpc >> 8, rpc & 0xFF, str(payload), timeout)
+            resp = yield self._manager.send_rpc(conn_id, address, rpc >> 8, rpc & 0xFF, bytes(payload), timeout)
         except Exception as exc:
             self._logger.error("Error in manager send rpc: %s" % str(exc))
             resp = {'success': False, 'reason': "Internal error: %s" % str(exc)}
@@ -427,7 +428,7 @@ class AWSIOTGatewayAgent(object):
 
         try:
             resp = yield self._manager.open_interface(conn_id, iface)
-        except Exception, exc:
+        except Exception as exc:
             self._logger.exception("Error in manager open interface")
             resp = {'success': False, 'reason': "Internal error: %s" % str(exc)}
 
@@ -461,7 +462,7 @@ class AWSIOTGatewayAgent(object):
 
         try:
             resp = yield self._manager.close_interface(conn_id, iface)
-        except Exception, exc:
+        except Exception as exc:
             self._logger.exception("Error in manager close interface")
             resp = {'success': False, 'reason': "Internal error: %s" % str(exc)}
 
@@ -477,7 +478,7 @@ class AWSIOTGatewayAgent(object):
         """Periodic callback that checks for devices that haven't been used and disconnects them."""
 
         now = monotonic()
-        for uuid, data in self._connections.iteritems():
+        for uuid, data in viewitems(self._connections):
             if (now - data['last_touch']) > self.client_timeout:
                 self._logger.info("Disconnect inactive client %s from device 0x%X", data['client'], uuid)
                 self._loop.add_callback(self._disconnect_from_device, uuid, data['key'], data['client'], unsolicited=True)
@@ -511,7 +512,7 @@ class AWSIOTGatewayAgent(object):
 
         try:
             resp = yield self._manager.disconnect(conn_id)
-        except Exception, exc:
+        except Exception as exc:
             self._logger.exception("Error in manager disconnect")
             resp = {'success': False, 'reason': "Internal error: %s" % str(exc)}
 
@@ -684,7 +685,7 @@ class AWSIOTGatewayAgent(object):
         devices = self._manager.scanned_devices
 
         converted_devs = []
-        for uuid, info in devices.iteritems():
+        for uuid, info in viewitems(devices):
             slug = self._build_device_slug(uuid)
 
             message = {}
@@ -699,7 +700,7 @@ class AWSIOTGatewayAgent(object):
             message['connection_string'] = slug
             message['signal_strength'] = info['signal_strength']
 
-            converted_devs.append({x: y for x, y in message.iteritems()})
+            converted_devs.append({x: y for x, y in viewitems(message)})
             message['type'] = 'notification'
             message['operation'] = 'advertisement'
 
