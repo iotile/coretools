@@ -11,7 +11,7 @@ from ws4py.client.threadedclient import WebSocketClient
 from iotile.core.hw.exceptions import *
 from iotile.core.exceptions import *
 from iotile.core.hw.commands import RPCCommand
-from iotile.core.hw.reports import IOTileReportParser, BroadcastReport
+from iotile.core.hw.reports import IOTileReportParser, BroadcastReport, IOTileReading
 from .cmdstream import CMDStream
 
 
@@ -23,6 +23,7 @@ class WSIOTileClient(WebSocketClient):
         self.messages = Queue()
         self.binary = True
         self.report_callback = report_callback
+        self.report_parser = IOTileReportParser()
 
     def start(self):
         try:
@@ -69,7 +70,7 @@ class WSIOTileClient(WebSocketClient):
         unpacked_message = self.unpack(message.data)
 
         if 'type' in unpacked_message and unpacked_message['type'] == 'report':
-            report = IOTileReportParser.DeserializeReport(unpacked_message['value'])
+            report = self.report_parser.deserialize_report(unpacked_message['value'])
             self.report_callback(report)
         else:
             self.messages.put(unpacked_message)

@@ -143,6 +143,23 @@ class IOTileReportParser (object):
         fmt = self.known_formats[current_type]
         return fmt(report_data)
 
+    def deserialize_report(self, serialized):
+        """Deserialize a report that has been serialized by calling report.serialize()
+
+        Args:
+            serialized (dict): A serialized report object
+        """
+
+        type_map = self.known_formats
+
+        if serialized['report_format'] not in type_map:
+            raise ArgumentError("Unknown report format in DeserializeReport", format=serialized['report_format'])
+
+        report = type_map[serialized['report_format']](serialized['encoded_report'])
+        report.received_time = serialized['received_time']
+
+        return report
+
     def _handle_report(self, report):
         """Try to emit a report and possibly keep a copy of it
         """
@@ -167,21 +184,3 @@ class IOTileReportParser (object):
             formats[report_format.ReportType] = report_format
 
         return formats
-
-    @classmethod
-    def DeserializeReport(cls, serialized):
-        """Deserialize a report that has been serialized by calling report.serialize()
-
-        Args:
-            serialized (dict): A serialized report object
-        """
-
-        type_map = cls._build_type_map()
-
-        if serialized['report_format'] not in type_map:
-            raise ArgumentError("Unknown report format in DeserializeReport", format=serialized['report_format'])
-
-        report = type_map[serialized['report_format']](serialized['encoded_report'])
-        report.received_time = serialized['received_time']
-
-        return report
