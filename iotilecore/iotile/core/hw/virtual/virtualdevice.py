@@ -112,7 +112,7 @@ class VirtualIOTileDevice(BaseRunnable):
 
         self.stop_workers()
 
-    def stream(self, report):
+    def stream(self, report, callback=None):
         """Stream a report asynchronously.
 
         If no one is listening for the report, the report may be dropped,
@@ -120,12 +120,14 @@ class VirtualIOTileDevice(BaseRunnable):
 
         Args:
             report (IOTileReport): The report that should be streamed
+            callback (callable): Optional callback to get notified when
+                this report is actually sent.
         """
 
         if self._push_channel is None:
             return
 
-        self._push_channel.stream(report)
+        self._push_channel.stream(report, callback=callback)
 
     def stream_realtime(self, stream, value):
         """Stream a realtime value as an IndividualReadingReport.
@@ -147,7 +149,7 @@ class VirtualIOTileDevice(BaseRunnable):
         report = IndividualReadingReport.FromReadings(self.iotile_id, [reading])
         self.stream(report)
 
-    def trace(self, data):
+    def trace(self, data, callback=None):
         """Trace data asynchronously.
 
         If no one is listening for traced data, it will be dropped
@@ -156,12 +158,14 @@ class VirtualIOTileDevice(BaseRunnable):
         Args:
             data (bytearray, string): Unstructured data to trace to any
                 connected client.
+            callback (callable): Optional callback to get notified when
+                this data is actually sent.
         """
 
         if self._push_channel is None:
             return
 
-        self._push_channel.trace(data)
+        self._push_channel.trace(data, callback=callback)
 
     def register_rpc(self, address, rpc_id, func):
         """Register a single RPC handler with the given info.

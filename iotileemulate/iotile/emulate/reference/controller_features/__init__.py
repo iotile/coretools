@@ -22,6 +22,7 @@ from .tile_manager import TileManagerMixin
 from .config_database import ConfigDatabaseMixin
 from .sensor_log import RawSensorLogMixin
 from .sensor_graph import SensorGraphMixin
+from .stream_manager import StreamingSubsystemMixin
 
 __all__ = ['RemoteBridgeMixin', 'TileManagerMixin', 'ConfigDatabaseMixin',
-           'RawSensorLogMixin', 'SensorGraphMixin']
+           'RawSensorLogMixin', 'SensorGraphMixin', 'StreamingSubsystemMixin']

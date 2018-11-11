@@ -1,10 +1,13 @@
 """Configuration object describing a streamer."""
 
 from __future__ import unicode_literals, absolute_import, print_function
+from collections import namedtuple
 from future.utils import viewitems, python_2_unicode_compatible
-from iotile.core.hw.reports import IndividualReadingReport, BroadcastReport
+from iotile.core.hw.reports import IndividualReadingReport, BroadcastReport, SignedListReport
 from iotile.core.exceptions import ArgumentError, InternalError
+from iotile.sg.exceptions import StreamEmptyError
 
+StreamerReport = namedtuple("StreamerReport", ['report', 'num_readings', 'highest_id'])
 
 @python_2_unicode_compatible
 class DataStreamer(object):
@@ -53,6 +56,7 @@ class DataStreamer(object):
         self.report_type = report_type
         self.with_other = with_other
         self.walker = None
+        self.index = None
         self._sensor_log = None
 
         if sensor_log is not None:
@@ -79,6 +83,18 @@ class DataStreamer(object):
         self.walker = sensor_log.create_walker(self.selector)
         self._sensor_log = sensor_log
 
+    def has_data(self):
+        """Check whether there is any data in this streamer.
+
+        Returns:
+            bool: Whether there is any available data.
+        """
+
+        if self.walker is None:
+            raise InternalError("You can only check if a streamer is triggered if you create it with a SensorLog")
+
+        return self.walker.count() > 0
+
     def triggered(self, manual=False):
         """Check if this streamer should generate a report.
 
@@ -103,7 +119,7 @@ class DataStreamer(object):
         if not self.automatic and not manual:
             return False
 
-        return self.walker.count() > 0
+        return self.has_data()
 
     def requires_id(self):
         """Whether this streamer produces reports that require a report id.
@@ -112,7 +128,7 @@ class DataStreamer(object):
             bool
         """
 
-        return self.report_type != u'individual'
+        return self.format != u'individual'
 
     def requires_signing(self):
         """Whether this streamer produces reports that require a valid auth_chain for signing.
@@ -121,7 +137,7 @@ class DataStreamer(object):
             bool
         """
 
-        return self.report_type in (u'signedlist_userkey', u'signedlist_devicekey')
+        return self.format in (u'signedlist_userkey', u'signedlist_devicekey')
 
     def build_report(self, device_id, max_size=None, device_uptime=0, report_id=None, auth_chain=None):
         """Build a report with all of the readings in this streamer.
@@ -138,7 +154,13 @@ class DataStreamer(object):
                 type requires signing.
 
         Returns:
-            IOTileReport: The report produced with as many readings as possible under max_size.
+            StreamerReport: The report, its highest id and the number of readings in it.
+
+            The highest reading id and number of readings are returned
+            separately from the report itself because, depending on the format
+            of the report (such as whether it is encrypted or does not contain
+            reading ids), these details may not be recoverable from the report
+            itself.
 
         Raises:
             InternalError: If there was no SensorLog passed when this streamer was created.
@@ -148,8 +170,8 @@ class DataStreamer(object):
                 signing key or report_id.
         """
 
-        if self.walker is None:
-            raise InternalError("You can only check if a streamer is triggered if you create it with a SensorLog")
+        if self.walker is None or self.index is None:
+            raise InternalError("You can only build a report with a DataStreamer if you create it with a SensorLog and a streamer index")
 
         if self.requires_signing() and auth_chain is None:
             raise ArgumentError("You must pass an auth chain to sign this report.")
@@ -157,14 +179,36 @@ class DataStreamer(object):
         if self.requires_id() and report_id is None:
             raise ArgumentError("You must pass a report_id to serialize this report")
 
-        if self.report_type == 'individual':
+        if self.format == 'individual':
             reading = self.walker.pop()
-            return IndividualReadingReport.FromReadings(device_id, [reading])
-        elif self.report_type == 'broadcast':
-            reading = self.walker.pop()
-            return BroadcastReport.FromReadings(device_id, [reading], device_uptime)
 
-        raise InternalError("Streamer report type is not supported currently", report_type=self.report_type)
+            highest_id = reading.reading_id
+
+            if self.report_type == 'telegram':
+                return StreamerReport(IndividualReadingReport.FromReadings(device_id, [reading]), 1, highest_id)
+            elif self.report_type == 'broadcast':
+                return StreamerReport(BroadcastReport.FromReadings(device_id, [reading], device_uptime), 1, highest_id)
+        elif self.format == 'hashedlist':
+            max_readings = (max_size - 20 - 24) // 16
+            if max_readings <= 0:
+                raise InternalError("max_size is too small to hold even a single reading", max_size=max_size)
+
+            readings = []
+            highest_id = 0
+            try:
+                while len(readings) < max_readings:
+                    reading = self.walker.pop()
+                    readings.append(reading)
+                    if reading.reading_id > highest_id:
+                        highest_id = reading.reading_id
+            except StreamEmptyError:
+                if len(readings) == 0:
+                    raise
+
+            return StreamerReport(SignedListReport.FromReadings(device_id, readings, report_id=report_id, selector=self.selector.encode(),
+                                                                streamer=self.index, sent_timestamp=device_uptime), len(readings), highest_id)
+
+        raise InternalError("Streamer report format or type is not supported currently", report_format=self.format, report_type=self.report_type)
 
     def __str__(self):
         manual = "manual " if not self.automatic else ""

@@ -4,6 +4,7 @@ import sys
 import pytest
 import time
 from iotile.core.hw import HardwareManager
+from iotile.core.hw.reports import SignedListReport
 from iotile.core.exceptions import HardwareError
 from iotile.core.hw.proxy.external_proxy import find_proxy_plugin
 from iotile.emulate.virtual import EmulatedPeripheralTile
@@ -62,6 +63,37 @@ def basic_sg():
             sensor_graph.add_node(node)
 
         sensor_graph.add_streamer('output 10', 'controller', True, 'individual', 'telegram')
+
+        yield sensor_graph, hw, device
+
+
+@pytest.fixture(scope="function")
+def streaming_sg():
+    """A preprogrammed basic sensorgraph for testing streaming."""
+
+    device = ReferenceDevice({})
+
+    adapter = EmulatedDeviceAdapter(None, devices=[device])
+
+    nodes = [
+        "(input 1 when count >= 1) => output 1 using copy_latest_a",
+        "(input 2 when count >= 1) => output 2 using copy_latest_a",
+        "(input 3 when count >= 1 && constant 1 always) => unbuffered 1 using trigger_streamer"
+    ]
+
+    with HardwareManager(adapter=adapter) as hw:
+        hw.connect(1)
+
+        con = hw.get(8, basic=True)
+        sensor_graph = find_proxy_plugin('iotile_standard_library/lib_controller', 'SensorGraphPlugin')(con)
+
+        for node in nodes:
+            sensor_graph.add_node(node)
+
+        sensor_graph.push_reading('constant 1', 0)
+
+        sensor_graph.add_streamer('output 1', 'controller', False, 'individual', 'telegram')
+        sensor_graph.add_streamer('output 2', 'controller', False, 'hashedlist', 'telegram', withother=0)
 
         yield sensor_graph, hw, device
 
@@ -135,3 +167,34 @@ def test_graph_input(basic_sg):
 
     values = sg.download_stream('output 1')
     assert [x.value for x in values] == [4, 4, 4, 4]
+
+
+def test_streaming(streaming_sg):
+    """Ensure that streamers work."""
+
+    sg, hw, _device = streaming_sg
+    sg.enable()
+
+    hw.enable_streaming()
+    sg.input('input 1', 0)
+    sg.input('input 1', 1)
+    sg.input('input 1', 2)
+    sg.input('input 2', 5)
+    sg.input('input 2', 6)
+    sg.input('input 2', 7)
+    sg.input('input 2', 8)
+    sg.input('input 3', 3)
+
+    reports = hw.wait_reports(4, timeout=0.5)
+    assert len(reports) == 4
+    for i, report in enumerate(reports[:-1]):
+        assert report.visible_readings[0].value == i
+
+    signed = reports[-1]
+    assert isinstance(signed, SignedListReport)
+    readings = signed.visible_readings
+    assert len(readings) == 4
+
+    for i, reading in enumerate(readings):
+        assert reading.value == 5 + i
+        assert reading.reading_id == 4 + i

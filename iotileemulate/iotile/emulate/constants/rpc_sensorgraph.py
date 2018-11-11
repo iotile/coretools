@@ -186,7 +186,7 @@ Possible Errors:
 """
 
 #FIXME: Move streamer info structure to iotile.sg
-SG_QUERY_STREAMER = RPCDeclaration(0x200a, "H", "20s")
+SG_QUERY_STREAMER = RPCDeclaration(0x200a, "H", "V")
 """Query the current status of a streamer resource by its index.
 
 This method can be called at any time to inspect the current status of a
@@ -199,8 +199,11 @@ Polling this RPC is the correct way to determine what a streamer is doing.
 Args:
   - uint16_t: The index of the streamer that you wish to query.
 
-Returns:
+Returns (option 1):
   - char[20]: A binary streamer status structure.
+
+Returns (option 2):
+  - uint32_t: An error code in case the index is invalid.
 
 Possible Errors:
   - STREAMER_NOT_ALLOCATED: If the index corresponds to a streamer that has

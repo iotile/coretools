@@ -1,6 +1,7 @@
 """Sensor Graph main object."""
 
 from collections import deque
+import logging
 from pkg_resources import iter_entry_points
 from toposort import toposort_flatten
 from iotile.core.exceptions import ArgumentError
@@ -37,6 +38,9 @@ class SensorGraph(object):
 
         self.sensor_log = sensor_log
         self.model = model
+
+        self._manually_triggered_streamers = set()
+        self._logger = logging.getLogger(__name__)
 
         if enforce_limits:
             if model is None:
@@ -151,6 +155,8 @@ class SensorGraph(object):
             raise ResourceUsageError("Maximum number of streamers exceeded", max_streamers=self._max_streamers)
 
         streamer.link_to_storage(self.sensor_log)
+        streamer.index = len(self.streamers)
+
         self.streamers.append(streamer)
 
     def add_constant(self, stream, value):
@@ -336,15 +342,91 @@ class SensorGraph(object):
         while len(to_check) > 0:
             node = to_check.popleft()
             if node.triggered():
-                results = node.process(rpc_executor)
-                for result in results:
-                    result.raw_time = value.raw_time
-                    self.sensor_log.push(node.stream, result)
+                try:
+                    results = node.process(rpc_executor, self.mark_streamer)
+                    for result in results:
+                        result.raw_time = value.raw_time
+                        self.sensor_log.push(node.stream, result)
+                except:
+                    self._logger.exception("Unhandled exception in graph node processing function for node %s", str(node))
 
                 # If we generated any outputs, notify our downstream nodes
                 # so that they are also checked to see if they should run.
                 if len(results) > 0:
                     to_check.extend(node.outputs)
+
+    def mark_streamer(self, index):
+        """Manually mark a streamer that should trigger.
+
+        The next time check_streamers is called, the given streamer will be
+        manually marked that it should trigger, which will cause it to trigger
+        unless it has no data.
+
+        Args:
+            index (int): The index of the streamer that we should mark as
+                manually triggered.
+
+        Raises:
+            ArgumentError: If the streamer index is invalid.
+        """
+
+        self._logger.debug("Marking streamer %d manually", index)
+        if index >= len(self.streamers):
+            raise ArgumentError("Invalid streamer index", index=index, num_streamers=len(self.streamers))
+
+        self._manually_triggered_streamers.add(index)
+
+    def check_streamers(self, blacklist=None):
+        """Check if any streamers are ready to produce a report.
+
+        You can limit what streamers are checked by passing a set-like
+        object into blacklist.
+
+        This method is the primary way to see when you should poll a given
+        streamer for its next report.
+
+        Note, this function is not idempotent.  If a streamer is marked as
+        manual and it is triggered from a node rule inside the sensor_graph,
+        that trigger will only last as long as the next call to
+        check_streamers() so you need to explicitly build a report on all
+        ready streamers before calling check_streamers again.
+
+        Args:
+            blacklist (set): Optional set of streamer indices that should
+                not be checked right now.
+
+        Returns:
+            list of DataStreamer: A list of the ready streamers.
+        """
+
+        ready = []
+        selected = set()
+
+        for i, streamer in enumerate(self.streamers):
+            if blacklist is not None and i in blacklist:
+                continue
+
+            if i in selected:
+                continue
+
+            marked = False
+            if i in self._manually_triggered_streamers:
+                marked = True
+                self._manually_triggered_streamers.remove(i)
+
+            if streamer.triggered(marked):
+                self._logger.debug("Streamer %d triggered, manual=%s", i, marked)
+                ready.append(streamer)
+                selected.add(i)
+
+                # Handle streamers triggered with another
+                for j, streamer2 in enumerate(self.streamers[i:]):
+                    if streamer2.with_other == i and j not in selected and streamer2.triggered(True):
+                        self._logger.debug("Streamer %d triggered due to with-other on %d", j, i)
+                        ready.append(streamer2)
+                        selected.add(j)
+
+        return ready
 
     def iterate_bfs(self):
         """Generator that yields node, [inputs], [outputs] in breadth first order.

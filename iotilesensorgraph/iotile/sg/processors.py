@@ -5,7 +5,7 @@ when creating a sensor graph node inside the SensorGraph class.  They are
 found by looking at the installed python packages using pkg_resources.
 """
 
-from iotile.core.exceptions import HardwareError
+from iotile.core.exceptions import HardwareError, ArgumentError
 from iotile.sg import StreamEmptyError
 from iotile.core.hw.reports import IOTileReading
 
@@ -125,7 +125,21 @@ def trigger_streamer(*inputs, **kwargs):
         list(IOTileReading)
     """
 
-    # TODO: This function does nothing currently
+    streamer_marker = kwargs['mark_streamer']
+
+    try:
+        reading = inputs[1].pop()
+    except StreamEmptyError:
+        return []
+    finally:
+        for input_x in inputs:
+            input_x.skip_all()
+
+    try:
+        streamer_marker(reading.value)
+    except ArgumentError:
+        return []
+
     return [IOTileReading(0, 0, 0)]
 
 

@@ -4,6 +4,12 @@ All major changes in each released version of `iotile-core` are listed here.
 
 ## HEAD
 
+- Add support into VirtualInterface for sending a callback when trace and report
+  data is actually sent out of the VirtualInterface.  This is particularly
+  useful for iotile-emulate so that it can provide back-pressure on various
+  subsystems.  Previously, once a VirtualDevice queued a trace or report for
+  transmission, it had no details on when it actually got sent.
+
 - Add additional call to periodic_callback in AdapterStream to support the
   EmulatedDeviceAdapter better.
 
