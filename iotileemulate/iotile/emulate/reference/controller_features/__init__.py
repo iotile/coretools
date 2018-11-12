@@ -23,6 +23,8 @@ from .config_database import ConfigDatabaseMixin
 from .sensor_log import RawSensorLogMixin
 from .sensor_graph import SensorGraphMixin
 from .stream_manager import StreamingSubsystemMixin
+from .clock_manager import ClockManagerMixin
 
 __all__ = ['RemoteBridgeMixin', 'TileManagerMixin', 'ConfigDatabaseMixin',
-           'RawSensorLogMixin', 'SensorGraphMixin', 'StreamingSubsystemMixin']
+           'RawSensorLogMixin', 'SensorGraphMixin', 'StreamingSubsystemMixin',
+           'ClockManagerMixin']

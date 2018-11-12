@@ -3,6 +3,9 @@
 This subsystem is appropriate primarily for use with the emulated device adapter.
 It supports receiving reports from the sensor-graph subsystem and queuing them
 for transmission out of the streaming interface.
+
+TODO:
+  - [ ] Keep track of last attempt and last success times for streamers
 """
 
 
@@ -44,6 +47,9 @@ class BasicStreamingSubsystem(object):
         self._streamer_queue = []
         self._id_assigner = id_assigner
 
+        self.get_timestamp = lambda: 0
+        self.get_uptime = lambda: 0
+
     def in_progress(self):
         """Get a set of in progress streamers."""
 
@@ -77,12 +83,11 @@ class BasicStreamingSubsystem(object):
         self._device.deferred_task(self._begin_streaming, next_queued)
 
     def _build_report(self, streamer):
-        # FIXME: we need a way to get device uptime
         report_id = None
         if streamer.requires_id():
             report_id = self._id_assigner()
 
-        return streamer.build_report(self._device.iotile_id, self.MAX_REPORT_SIZE, device_uptime=0, report_id=report_id)
+        return streamer.build_report(self._device.iotile_id, self.MAX_REPORT_SIZE, device_uptime=self.get_uptime(), report_id=report_id)
 
     def _begin_streaming(self, queued):
         report, num_readings, highest_id = self._build_report(queued.streamer)

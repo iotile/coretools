@@ -44,3 +44,6 @@ All major changes in each released version of iotile-emulate are listed here.
   with streamers.
 
 - Finish basic streamer support except for seeking and querying
+
+- Add clock manager subsystem with support for uptime and utc based
+  timestamping.
