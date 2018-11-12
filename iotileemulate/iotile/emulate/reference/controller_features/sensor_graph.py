@@ -118,6 +118,9 @@ class SensorGraphSubsystem(object):
 
         self.enabled = False
 
+        # Clock manager linkage
+        self.get_timestamp = lambda: 0
+
     def clear_to_reset(self, _config_vars):
         """Clear all volatile information across a reset.
 
@@ -163,9 +166,7 @@ class SensorGraphSubsystem(object):
             return
 
         stream = DataStream.FromEncoded(encoded_stream)
-
-        # FIXME: Tag this with the current timestamp
-        reading = IOTileReading(encoded_stream, 0, value)
+        reading = IOTileReading(encoded_stream, self.get_timestamp(), value)
 
         self.graph.process_input(stream, reading, None)  #FIXME: add in an rpc executor for this device.
 

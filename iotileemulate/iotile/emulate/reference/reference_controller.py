@@ -10,12 +10,13 @@ from ..constants import rpcs
 
 from .controller_features import (RawSensorLogMixin, RemoteBridgeMixin,
                                   TileManagerMixin, ConfigDatabaseMixin, SensorGraphMixin,
-                                  StreamingSubsystemMixin)
+                                  StreamingSubsystemMixin, ClockManagerMixin)
 
 
 class ReferenceController(RawSensorLogMixin, RemoteBridgeMixin,
                           TileManagerMixin, ConfigDatabaseMixin,
-                          SensorGraphMixin, StreamingSubsystemMixin, EmulatedTile):
+                          SensorGraphMixin, StreamingSubsystemMixin,
+                          ClockManagerMixin, EmulatedTile):
     """A reference iotile controller implementation.
 
     This tile implements the major behavior of an IOTile controller including
@@ -49,12 +50,19 @@ class ReferenceController(RawSensorLogMixin, RemoteBridgeMixin,
         EmulatedTile.__init__(self, address, name, device)
 
         # Initialize all of the controller subsystems
+        ClockManagerMixin.__init__(self, has_rtc=False) #FIXME: Load the controller model info to get whether it has an RTC
         ConfigDatabaseMixin.__init__(self, 4096, 4096)  #FIXME: Load the controller model info to get its memory map
         TileManagerMixin.__init__(self)
         RemoteBridgeMixin.__init__(self)
         RawSensorLogMixin.__init__(self, model)
         StreamingSubsystemMixin.__init__(self, basic=True)
-        SensorGraphMixin.__init__(self, self.sensor_log,  self.stream_manager, model=model)
+        SensorGraphMixin.__init__(self, self.sensor_log, self.stream_manager, model=model)
+
+        # Establish required post-init linkages between subsystems
+        self.clock_manager.graph_input = self.sensor_graph.process_input
+        self.sensor_graph.get_timestamp = self.clock_manager.get_time
+        self.stream_manager.get_timestamp = self.clock_manager.get_time
+        self.stream_manager.get_uptime = lambda: self.clock_manager.get_time(False)
 
         self.app_info = (0, "0.0")
         self.os_info = (0, "0.0")
