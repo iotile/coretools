@@ -1,5 +1,6 @@
 """Tests of the clock manager subsystem."""
 
+import datetime
 import pytest
 
 from iotile.core.hw import HardwareManager
@@ -117,3 +118,29 @@ def test_tick_inputs(basic_device):
     assert len(dump4) == 2
     key_parts_4 = [(x.raw_time, x.value) for x in dump4]
     assert key_parts_4 == list(zip(range(5, 11, 5), range(5, 11, 5)))
+
+
+@pytest.mark.xfail(reason="synchronize_clock is still in prerelease")
+def test_utc_time(basic_device):
+    """Make sure we can get and set utc time."""
+
+    hw, device = basic_device
+
+    con = hw.get(8, basic=True)
+    test_interface = find_proxy_plugin('iotile_standard_library/lib_controller', 'ControllerTestPlugin')(con)
+
+    test_time = datetime.datetime(2018, 11, 11, 16, 0, 0)
+    zero = datetime.datetime(1970, 1, 1)
+
+    device.controller.clock_manager.handle_tick()
+
+    delta = (test_time - zero).total_seconds()
+
+    test_interface.synchronize_clock(delta)
+    device_time = test_interface.current_time()
+    device_uptime = test_interface.get_uptime()
+    info = test_interface.get_timeoffset()
+
+    assert device_time == 0x5
+    assert device_uptime == 0
+    assert info == {'is_utc': True, 'offset': int(delta) - 1}
