@@ -70,7 +70,6 @@ TODO: figure out a good set of options for resuming a device when utc time
       is set.
 """
 
-from collections import OrderedDict
 from future.utils import viewitems
 from iotile.core.hw.virtual import tile_rpc
 from ...constants import rpcs, pack_error, Error, ControllerSubsystem, streams
@@ -103,9 +102,10 @@ class ClockManagerSubsystem(object):
 
         self.stored_offset = None
         self.has_rtc = has_rtc
-        self.ticks = OrderedDict([('fast', 0), ('user1', 0), ('user2', 0), ('normal', 10)])
-        self.tick_counters = OrderedDict([('fast', 0), ('user1', 0), ('user2', 0), ('normal', 0)])
+        self.ticks = dict(fast=0, user1=0, user2=0, normal=10)
+        self.tick_counters = dict(fast=0, user1=0, user2=0, normal=0)
 
+        # Hook for allowing us to link this subsystem to sensor_graph
         self.graph_input = lambda x, y: None
 
     def clear_to_reset(self, config_vars):
@@ -117,7 +117,7 @@ class ClockManagerSubsystem(object):
         - otherwise the utc_offset is cleared to none
         """
 
-        self.tick_counters = OrderedDict([('fast', 0), ('user1', 0), ('user2', 0), ('normal', 0)])
+        self.tick_counters = dict(fast=0, user1=0, user2=0, normal=0)
 
         self.is_utc = False
         self.time_offset = 0

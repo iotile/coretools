@@ -17,9 +17,10 @@ def basic_device():
     adapter = EmulatedDeviceAdapter(None, devices=[device])
 
     nodes = [
-        "(input 1 always) => counter 1024 using copy_latest_a",
-        "(counter 1024 when count >= 1 && constant 1030 when value == 1) => counter 1030 using copy_latest_a",
-        "(counter 1030 when count >= 4) => output 1 using copy_all_a"
+        "(system input 2 always) => output 1 using copy_latest_a",
+        "(system input 3 always) => output 2 using copy_latest_a",
+        "(system input 5 always) => output 3 using copy_latest_a",
+        "(system input 6 always) => output 4 using copy_latest_a"
     ]
 
     with HardwareManager(adapter=adapter) as hw:
@@ -75,3 +76,44 @@ def test_user_ticks(basic_device):
     assert sensor_graph.user_tick(1) == 4
     assert sensor_graph.user_tick(2) == 7
 
+
+def test_tick_inputs(basic_device):
+    """Test to make sure that ticks are sent to sensor_graph."""
+
+    hw, device = basic_device
+
+    con = hw.get(8, basic=True)
+    sensor_graph = find_proxy_plugin('iotile_standard_library/lib_controller', 'SensorGraphPlugin')(con)
+    clock_man = device.controller.clock_manager
+
+    sensor_graph.enable()
+
+    assert clock_man.uptime == 0
+
+    sensor_graph.set_user_tick(0, 1)
+    sensor_graph.set_user_tick(1, 2)
+    sensor_graph.set_user_tick(2, 5)
+
+    for i in range(1, 11):
+        device.controller.clock_manager.handle_tick()
+        assert clock_man.uptime == i
+
+    dump1 = sensor_graph.download_stream('output 1')
+    assert len(dump1) == 1
+    key_parts_1 = [(x.raw_time, x.value) for x in dump1]
+    assert key_parts_1 == [(10, 10)]
+
+    dump2 = sensor_graph.download_stream('output 2')
+    assert len(dump2) == 10
+    key_parts_2 = [(x.raw_time, x.value) for x in dump2]
+    assert key_parts_2 == list(zip(range(1, 11), range(1, 11)))
+
+    dump3 = sensor_graph.download_stream('output 3')
+    assert len(dump3) == 5
+    key_parts_3 = [(x.raw_time, x.value) for x in dump3]
+    assert key_parts_3 == list(zip(range(2, 11, 2), range(2, 11, 2)))
+
+    dump4 = sensor_graph.download_stream('output 4')
+    assert len(dump4) == 2
+    key_parts_4 = [(x.raw_time, x.value) for x in dump4]
+    assert key_parts_4 == list(zip(range(5, 11, 5), range(5, 11, 5)))

@@ -166,7 +166,7 @@ class SensorGraphSubsystem(object):
             return
 
         stream = DataStream.FromEncoded(encoded_stream)
-        reading = IOTileReading(encoded_stream, self.get_timestamp(), value)
+        reading = IOTileReading(self.get_timestamp(), encoded_stream, value)
 
         self.graph.process_input(stream, reading, None)  #FIXME: add in an rpc executor for this device.
 
