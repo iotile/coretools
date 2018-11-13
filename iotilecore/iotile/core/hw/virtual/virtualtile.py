@@ -38,7 +38,7 @@ class VirtualTile(BaseRunnable, RPCDispatcher):
         if not isinstance(name, bytes):
             name = name.encode('utf-8')
         if len(name) < 6:
-            name += bytes(' ')*(6 - len(name))
+            name += b' '*(6 - len(name))
         elif len(name) > 6:
             raise ArgumentError("Virtual tile name is too long, it must be 6 or fewer characters")
 
