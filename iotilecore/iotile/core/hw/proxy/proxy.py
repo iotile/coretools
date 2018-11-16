@@ -16,6 +16,7 @@ from time import sleep
 from iotile.core.utilities.packed import unpack
 import struct
 from iotile.core.exceptions import *
+from ..virtual import unpack_rpc_payload
 
 
 class TileBusProxyObject(object):
@@ -59,7 +60,7 @@ class TileBusProxyObject(object):
         try:
             res = self._parse_rpc_result(status, payload, *res_type, command=(feature << 8) | cmd)
             if unpack_flag:
-                return unpack("<%s" % kw["result_format"], res['buffer'])
+                return unpack_rpc_payload("%s" % kw["result_format"], res['buffer'])
 
             return res
         except ModuleBusyError:
