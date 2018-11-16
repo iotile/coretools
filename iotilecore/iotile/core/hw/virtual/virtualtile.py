@@ -5,8 +5,6 @@ import os
 import imp
 import inspect
 import pkg_resources
-from iotile.core.hw.proxy.proxy import TileBusProxyObject
-from iotile.core.hw.hwmanager import HardwareManager
 from iotile.core.exceptions import ExternalError, ArgumentError
 from .base_runnable import BaseRunnable
 from .common_types import tile_rpc, RPCDispatcher
@@ -135,12 +133,6 @@ class VirtualTile(BaseRunnable, RPCDispatcher):
             raise ArgumentError("No VirtualTiles subclasses were defined in script", path=script_path)
         elif len(devs) > 1:
             raise ArgumentError("More than one VirtualTiles subclass was defined in script", path=script_path, tiles=devs)
-
-        # Allow automatically injecting associated proxy objects so that we can use this tile with a proxy without
-        # installing it.
-        proxies = [x for x in itervalues(mod.__dict__) if inspect.isclass(x) and issubclass(x, TileBusProxyObject) and x != TileBusProxyObject]
-        for proxy in proxies:
-            HardwareManager.RegisterDevelopmentProxy(proxy)
 
         return devs[0]
 

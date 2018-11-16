@@ -78,6 +78,8 @@ def tile_based():
         pytest.skip('Cannot pass device config because path has [@,;] in it')
 
     hw = HardwareManager('virtual:tile_based@%s' % conf_file)
+
+    hw.load_development_proxy('test/test_hw/virtual_tile.py')
     yield hw
 
     hw.disconnect()

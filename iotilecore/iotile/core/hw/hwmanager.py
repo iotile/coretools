@@ -115,7 +115,8 @@ class HardwareManager:
 
     @classmethod
     def RegisterDevelopmentProxy(cls, proxy_obj):  # pylint: disable=C0103; class methods are capitalized when expected to be invoked on types
-        """Register a proxy object that should be available for local development.
+        """
+        Register a proxy object that should be available for local development.
 
         Often during development, you need to create a virtual iotile device with
         its own proxy object.  It's easy to point CoreTools at the virtual device
@@ -166,6 +167,28 @@ class HardwareManager:
             HardwareManager.DevelopmentApps[app_tag].append((ver_range, quality, app))
 
         HardwareManager.DevelopmentAppNames[app.AppName()] = app
+
+    def load_development_proxy(self, filename):
+        """
+        Load a proxy object instead of having it pre-registered.
+        This loads the proxy for a python file that we want to use in test fixtures
+
+        This is useful for pulling in the TileBusProxyObject-related classes for a test
+        so that they don't need to be tethered to the HardwareManager (i.e. VirtualTile)
+
+
+        Args:
+            filename (str): The proxy module class that should be
+                loaded.
+        """
+
+        proxy_class = self._load_module_classes(filename, TileBusProxyObject)[0]
+
+        name = proxy_class.ModuleName()
+        if name not in HardwareManager.DevelopmentProxies:
+            HardwareManager.DevelopmentProxies[name] = []
+
+        HardwareManager.DevelopmentProxies[name].append(proxy_class)
 
     def _setup_proxies(self):
         """Load in proxy module objects for all of the registered components on this system."""
