@@ -114,17 +114,17 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
             raise
 
     def init_virtual_device_info(self, args):
-        self.virtual_info['advertising_version'] = int(args.get('advertising_version', 1),0)
+        self.virtual_info['advertising_version'] = int(args.get('advertising_version', '1'), 0)
         if self.virtual_info['advertising_version'] not in (1, 2):
             raise ArgumentError("Invalid advertising version specified in args",
             supported=(1, 2), found=self.virtual_info['advertising_version'])
 
-        self.virtual_info['reboot_count'] = int(args.get('reboot_count', 1), 0)
+        self.virtual_info['reboot_count'] = int(args.get('reboot_count', '1'), 0)
         if self.virtual_info['reboot_count'] <= 0:
             raise ArgumentError("Reboot count must be greater than 0.",
             supported="> 0", found=self.virtual_info['reboot_count'])
 
-        self.virtual_info['mac_value'] = int(args.get('mac_value', 0), 0)
+        self.virtual_info['mac_value'] = int(args.get('mac_value', '0'), 0)
         if self.virtual_info['mac_value'] < 0 or self.virtual_info['mac_value'] > 0xFFFFFFFF:
             raise ArgumentError("MAC value is limited to 32bits.",
             supported="0 - 0xFFFFFFFF", found=self.virtual_info['mac_value'])

@@ -9,7 +9,7 @@ from .node_descriptor import parse_node_descriptor
 from .slot import SlotIdentifier
 from .stream import DataStream
 from .known_constants import config_fast_tick_secs, config_tick1_secs, config_tick2_secs
-from .exceptions import NodeConnectionError, ProcessingFunctionError
+from .exceptions import NodeConnectionError, ProcessingFunctionError, ResourceUsageError
 
 
 class SensorGraph(object):
@@ -20,9 +20,13 @@ class SensorGraph(object):
             data
         model (DeviceModel): The device model to use for limiting our
             available resources
+        enforce_limits (bool): Enforce the sensor graph size limits imposed
+            by the chosen device model.  This can be useful for getting early
+            failures on sensor graphs that cannot work on a given device model.
+            Defaults to False.
     """
 
-    def __init__(self, sensor_log, model=None):
+    def __init__(self, sensor_log, model=None, enforce_limits=False):
         self.roots = []
         self.nodes = []
         self.streamers = []
@@ -33,6 +37,31 @@ class SensorGraph(object):
 
         self.sensor_log = sensor_log
         self.model = model
+
+        if enforce_limits:
+            if model is None:
+                raise ArgumentError("You must pass a device model if you set enforce_limits=True")
+
+            self._max_nodes = model.get(u'max_nodes')
+            self._max_streamers = model.get(u'max_streamers')
+        else:
+            self._max_nodes = None
+            self._max_streamers = None
+
+    def clear(self):
+        """Clear all nodes from this sensor_graph.
+
+        This function is equivalent to just creating a new SensorGraph() object
+        from scratch.  It does not clear any data from the SensorLog, however.
+        """
+
+        self.roots = []
+        self.nodes = []
+        self.streamers = []
+
+        self.constant_database = {}
+        self.metadata_database = {}
+        self.config_database = {}
 
     def add_node(self, node_descriptor):
         """Add a node to the sensor graph based on the description given.
@@ -46,6 +75,9 @@ class SensorGraph(object):
                 and output stream.
         """
 
+        if self._max_nodes is not None and len(self.nodes) >= self._max_nodes:
+            raise ResourceUsageError("Maximum number of nodes exceeded", max_nodes=self._max_nodes)
+
         node, inputs, processor = parse_node_descriptor(node_descriptor, self.model)
 
         in_root = False
@@ -54,6 +86,11 @@ class SensorGraph(object):
             selector, trigger = input_data
 
             walker = self.sensor_log.create_walker(selector)
+
+            # Constant walkers begin life initialized to 0 so they always read correctly
+            if walker.selector.inexhaustible:
+                walker.reading = IOTileReading(walker.selector.as_stream(), 0xFFFFFFFF, 0)
+
             node.connect_input(i, walker, trigger)
 
             if selector.input and not in_root:
@@ -110,6 +147,10 @@ class SensorGraph(object):
             streamer (DataStreamer): The streamer we want to add
         """
 
+        if self._max_streamers is not None and len(self.streamers) >= self._max_streamers:
+            raise ResourceUsageError("Maximum number of streamers exceeded", max_streamers=self._max_streamers)
+
+        streamer.link_to_storage(self.sensor_log)
         self.streamers.append(streamer)
 
     def add_constant(self, stream, value):
@@ -285,6 +326,11 @@ class SensorGraph(object):
 
         self.sensor_log.push(stream, value)
 
+        # FIXME: This should be specified in our device model
+        if stream.important:
+            associated_output = stream.associated_stream()
+            self.sensor_log.push(associated_output, value)
+
         to_check = deque([x for x in self.roots])
 
         while len(to_check) > 0:
@@ -381,3 +427,8 @@ class SensorGraph(object):
         """Dump all of the nodes in this sensor graph as a list of strings."""
 
         return [str(x) for x in self.nodes]
+
+    def dump_streamers(self):
+        """Dump all of the streamers in this sensor graph as a list of strings."""
+
+        return [str(streamer) for streamer in self.streamers]

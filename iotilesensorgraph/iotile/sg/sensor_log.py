@@ -7,16 +7,27 @@ a hard cap on storage requirements.
 """
 
 import copy
-from .engine import InMemoryStorageEngine
-from .stream import DataStreamSelector, DataStream
-from .walker import VirtualStreamWalker, CounterStreamWalker, BufferedStreamWalker
-from .exceptions import StreamEmptyError, StorageFullError
+from future.utils import viewitems
 from iotile.sg.model import DeviceModel
 from iotile.core.exceptions import ArgumentError
+from iotile.core.hw.reports import IOTileReading
+from .engine import InMemoryStorageEngine
+from .stream import DataStream, DataStreamSelector
+from .walker import VirtualStreamWalker, CounterStreamWalker, BufferedStreamWalker
+from .exceptions import StreamEmptyError, StorageFullError, UnresolvedIdentifierError
 
 
 class SensorLog(object):
     """A storage engine holding multiple named FIFOs.
+
+    Normally a SensorLog is used in ring-buffer mode which means that old
+    readings are automatically overwritten as needed when new data is saved.
+
+    However, you can configure it into fill-stop mode by using:
+    set_rollover("streaming"|"storage", True|False)
+
+    By default rollover is set to True for both streaming and storage and can
+    be controlled individually for each one.
 
     Args:
         engine (StorageEngine): The engine used for storing
@@ -46,12 +57,132 @@ class SensorLog(object):
 
         self._engine = engine
         self._model = model
+        self._rollover_streaming = True
+        self._rollover_storage = True
+
+    def dump(self):
+        """Dump the state of this SensorLog.
+
+        The purpose of this method is to be able to restore the same state
+        later.  However there are links in the SensorLog for stream walkers.
+
+        So the dump process saves the state of each stream walker and upon
+        restore, it looks through the current set of stream walkers and
+        restores each one that existed when dump() was called to its state.
+
+        Returns:
+            dict: The serialized state of this SensorLog.
+        """
+
+        walkers = {}
+        walkers.update({str(walker.selector): walker.dump() for walker in self._queue_walkers})
+        walkers.update({str(walker.selector): walker.dump() for walker in self._virtual_walkers})
+
+        return {
+            u'engine': self._engine.dump(),
+            u'rollover_storage': self._rollover_storage,
+            u'rollover_streaming': self._rollover_streaming,
+            u'last_values': {str(stream): reading.asdict() for stream, reading in viewitems(self._last_values)},
+            u'walkers': walkers
+        }
+
+    def restore(self, state, permissive=False):
+        """Restore a state previously dumped by a call to dump().
+
+        The purpose of this method is to be able to restore a previously
+        dumped state.  However there are links in the SensorLog for stream
+        walkers.
+
+        So the restore process looks through the current set of stream walkers
+        and restores each one that existed when dump() was called to its
+        state.  If there are walkers allocated that were not present when
+        dump() was called, an exception is raised unless permissive=True,
+        in which case they are ignored.
+
+        Args:
+            state (dict): The previous state to restore, from a prior call
+                to dump().
+            permissive (bool): Whether to raise an exception is new stream
+                walkers are present that do not have dumped contents().
+
+        Raises:
+            ArgumentError: There are new stream walkers present in the current
+                SensorLog and permissive==False.
+        """
+
+        self._engine.restore(state.get(u'engine'))
+        self._last_values = {DataStream.FromString(stream): IOTileReading.FromDict(reading) for
+                             stream, reading in viewitems(state.get(u"last_values", {}))}
+
+        self._rollover_storage = state.get(u'rollover_storage', True)
+        self._rollover_streaming = state.get(u'rollover_streaming', True)
+
+        old_walkers = {DataStreamSelector.FromString(selector): dump for selector, dump in
+                       viewitems(state.get(u"walkers"))}
+
+        for walker in self._virtual_walkers:
+            if walker.selector in old_walkers:
+                walker.restore(old_walkers[walker.selector])
+            elif not permissive:
+                raise ArgumentError("Cannot restore SensorLog, walker %s exists in restored log but did not exist before" % str(walker.selector))
+
+        for walker in self._queue_walkers:
+            if walker.selector in old_walkers:
+                walker.restore(old_walkers[walker.selector])
+            elif not permissive:
+                raise ArgumentError("Cannot restore SensorLog, walker %s exists in restored log but did not exist before" % str(walker.selector))
+
+    def set_rollover(self, area, enabled):
+        """Configure whether rollover is enabled for streaming or storage streams.
+
+        Normally a SensorLog is used in ring-buffer mode which means that old
+        readings are automatically overwritten as needed when new data is saved.
+
+        However, you can configure it into fill-stop mode by using:
+        set_rollover("streaming"|"storage", True|False)
+
+        By default rollover is set to True for both streaming and storage and can
+        be controlled individually for each one.
+
+        Args:
+            area (str): Either streaming or storage.
+            enabled (bool): Whether to enable or disable rollover.
+        """
+
+        if area == u'streaming':
+            self._rollover_streaming = enabled
+        elif area == u'storage':
+            self._rollover_storage = enabled
+        else:
+            raise ArgumentError("You must pass one of 'storage' or 'streaming' to set_rollover", area=area)
+
+    def dump_constants(self):
+        """Dump (stream, value) pairs for all constant streams.
+
+        This method walks the internal list of defined stream walkers and
+        dumps the current value for all constant streams.
+
+        Returns:
+            list of (DataStream, IOTileReading): A list of all of the defined constants.
+        """
+
+        constants = []
+
+        for walker in self._virtual_walkers:
+            if not walker.selector.inexhaustible:
+                continue
+
+            constants.append((walker.selector.as_stream(), walker.reading))
+
+        return constants
 
     def watch(self, selector, callback):
         """Call a function whenever a stream changes.
 
         Args:
-            selector (DataStreamSelector): The selector to watch
+            selector (DataStreamSelector): The selector to watch.
+                If this is None, it is treated as a wildcard selector
+                that matches every stream.
             callback (callable): The function to call when a new
                 reading is pushed.  Callback is called as:
                 callback(stream, value)
@@ -62,9 +193,9 @@ class SensorLog(object):
 
         self._monitors[selector].add(callback)
 
-    def create_walker(self, selector):
+    def create_walker(self, selector, skip_all=True):
         """Create a stream walker based on the given selector.
-`
+
         This function returns a StreamWalker subclass that will
         remain up to date and allow iterating over and popping readings
         from the stream(s) specified by the selector.
@@ -76,10 +207,17 @@ class SensorLog(object):
         Args:
             selector (DataStreamSelector): The selector describing the
                 streams that we want to iterate over.
+            skip_all (bool): Whether to start at the beginning of the data
+                or to skip everything and start at the end.  Defaults
+                to skipping everything.  This parameter only has any
+                effect on buffered stream selectors.
+
+        Returns:
+            StreamWalker: A properly updating stream walker with the given selector.
         """
 
         if selector.buffered:
-            walker = BufferedStreamWalker(selector, self._engine)
+            walker = BufferedStreamWalker(selector, self._engine, skip_all=skip_all)
             self._queue_walkers.append(walker)
             return walker
 
@@ -105,6 +243,46 @@ class SensorLog(object):
         else:
             self._virtual_walkers.remove(walker)
 
+    def restore_walker(self, dumped_state):
+        """Restore a stream walker that was previously serialized.
+
+        Since stream walkers need to be tracked in an internal list for
+        notification purposes, we need to be careful with how we restore
+        them to make sure they remain part of the right list.
+
+        Args:
+            dumped_state (dict): The dumped state of a stream walker
+                from a previous call to StreamWalker.dump()
+
+        Returns:
+            StreamWalker: The correctly restored StreamWalker subclass.
+        """
+
+        selector_string = dumped_state.get(u'selector')
+        if selector_string is None:
+            raise ArgumentError("Invalid stream walker state in restore_walker, missing 'selector' key", state=dumped_state)
+
+        selector = DataStreamSelector.FromString(selector_string)
+
+        walker = self.create_walker(selector)
+        walker.restore(dumped_state)
+        return walker
+
+    def destroy_all_walkers(self):
+        """Destroy any previously created stream walkers."""
+
+        self._queue_walkers = []
+        self._virtual_walkers = []
+
+    def count(self):
+        """Count many many readings are persistently stored.
+
+        Returns:
+            (int, int): The number of readings in storage and output areas.
+        """
+
+        return self._engine.count()
+
     def clear(self):
         """Clear all data from this sensor_log.
 
@@ -119,6 +297,8 @@ class SensorLog(object):
 
         for walker in self._queue_walkers:
             walker.skip_all()
+
+        self._last_values = {}
 
     def push(self, stream, reading):
         """Push a reading into a stream, updating any associated stream walkers.
@@ -138,6 +318,10 @@ class SensorLog(object):
             try:
                 self._engine.push(reading)
             except StorageFullError:
+                # If we are in fill-stop mode, don't auto erase old data.
+                if (stream.output and not self._rollover_streaming) or (not stream.output and not self._rollover_storage):
+                    raise
+
                 self._erase_buffer(stream.output)
                 self._engine.push(reading)
 
@@ -148,7 +332,7 @@ class SensorLog(object):
 
         # Activate any monitors we have for this stream
         for selector in self._monitors:
-            if selector.matches(stream):
+            if selector is None or selector.matches(stream):
                 for callback in self._monitors[selector]:
                     callback(stream, reading)
 
@@ -167,7 +351,7 @@ class SensorLog(object):
 
         buffer_type = u'storage'
         if output_buffer:
-            buffer_type = 'streaming'
+            buffer_type = u'streaming'
 
         old_readings = self._engine.popn(buffer_type, erase_size)
 
@@ -181,7 +365,7 @@ class SensorLog(object):
                 if walker.selector.output == output_buffer:
                     walker.notify_rollover(stream)
 
-    def inspect_last(self, stream):
+    def inspect_last(self, stream, only_allocated=False):
         """Return the last value pushed into a stream.
 
         This function works even if the stream is virtual and no
@@ -189,7 +373,11 @@ class SensorLog(object):
         useful to aid in debugging sensor graphs.
 
         Args:
-            stream (DataStream): The stream to inspect
+            stream (DataStream): The stream to inspect.
+            only_allocated (bool): Optional parameter to only allow inspection
+                of allocated virtual streams.  This is useful for mimicking the
+                behavior of an embedded device that does not have a _last_values
+                array.
 
         Returns:
             IOTileReading: The data in the stream
@@ -197,7 +385,19 @@ class SensorLog(object):
         Raises:
             StreamEmptyError: if there has never been data written to
                 the stream.
+            UnresolvedIdentifierError: if only_allocated is True and there has not
+                been a virtual stream walker allocated to listen to this stream.
         """
+
+        if only_allocated:
+            found = False
+            for walker in self._virtual_walkers:
+                if walker.matches(stream):
+                    found = True
+                    break
+
+            if not found:
+                raise UnresolvedIdentifierError("inspect_last could not find an allocated virtual streamer for the desired stream", stream=stream)
 
         if stream in self._last_values:
             return self._last_values[stream]

@@ -51,7 +51,7 @@ class DependenciesDirective (Directive):
         with open(module_settings, "r") as f:
             settings = json.load(f)
 
-        mod = settings['modules'].keys()[0]
+        mod = list(settings['modules'])[0]
         mod_settings = settings['modules'][mod]
 
         if 'depends' not in mod_settings:

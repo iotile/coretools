@@ -33,6 +33,7 @@ from iotile.core.hw.transport.adapterstream import AdapterCMDStream
 from iotile.core.dev.config import ConfigManager
 from iotile.core.hw.debug import DebugManager
 from iotile.core.utilities.linebuffer_ui import LinebufferUI
+from iotile.core.utilities.gid import uuid_to_slug
 
 from .proxy import TileBusProxyObject
 from .app import IOTileApp
@@ -77,13 +78,15 @@ class HardwareManager:
 
     @param("port", "string", desc="transport method to use in the format transport[:port[,connection_string]]")
     @param("record", "path", desc="Optional file to record all RPC calls and responses made on this HardwareManager")
-    def __init__(self, port=None, record=None):
-        if port is None:
+    def __init__(self, port=None, record=None, adapter=None):
+        if port is None and adapter is None:
             try:
                 conf = ConfigManager()
                 port = conf.get('core:default-port')
             except ArgumentError:
                 raise ArgumentError("No port given and no core:default-port config variable set", suggestion="Specify the port to use to connect to the IOTile devices")
+        elif port is None:
+            port = ""
 
         transport, _, arg = port.partition(':')
 
@@ -94,7 +97,7 @@ class HardwareManager:
 
         self.record = record
 
-        self.stream = self._create_stream()
+        self.stream = self._create_stream(adapter)
 
         self._stream_queue = None
         self._trace_queue = None
@@ -608,7 +611,7 @@ class HardwareManager:
 
             if blacklist is not None and whitelist is None and stream in blacklist:
                 return None
-            
+
             return stream
 
         if not self.stream.connected:
@@ -867,13 +870,18 @@ class HardwareManager:
 
         devices = self.stream.scan(wait=wait)
 
+        for device in devices:
+            # Add a Device Slug for user convenience
+            if 'uuid' in device:
+                device['slug'] = uuid_to_slug(device['uuid'])
+
         if sort is not None:
             devices.sort(key=lambda x: x[sort], reverse=reverse)
 
         if limit is not None:
             devices = devices[:limit]
 
-        #FIXME: Use dictionary format in bled112stream to document information returned about devices
+        # FIXME: Use dictionary format in bled112stream to document information returned about devices
         return devices
 
     def get_proxy(self, short_name):
@@ -903,7 +911,7 @@ class HardwareManager:
         proxy_class = self._proxies[proxy]
         return proxy_class(self.stream, address)
 
-    def _create_stream(self):
+    def _create_stream(self, force_adapter=None):
         conn_string = None
         port = self.port
         if port is not None and "," in port:
@@ -913,6 +921,10 @@ class HardwareManager:
             port = port.strip()
         if conn_string is not None:
             conn_string = conn_string.strip()
+
+        #Check if we're supposed to use a specific device adapter
+        if force_adapter is not None:
+            return AdapterCMDStream(force_adapter, port, conn_string, record=self.record)
 
         #First check if this is the special none stream that creates a transport channel nowhere
         if self.transport == 'none':

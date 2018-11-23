@@ -247,7 +247,7 @@ class DeviceAdapter(object):
         Args:
             interface (string): The interface to open
             conn_id (int): A unique identifier that will refer to this connection
-            connection_string (string): An optional DeviceAdapter specific string that can 
+            connection_string (string): An optional DeviceAdapter specific string that can
                 be used to connect to a device using this DeviceAdapter.
         Returns:
             dict: A dictionary with four elements
@@ -370,8 +370,8 @@ class DeviceAdapter(object):
                 'connection_id': the connection id
                 'adapter_id': this adapter's id
                 'success': a bool indicating whether we received a response to our attempted RPC
-                'failure_reason': a string with the reason for the failure if success == False
                 'retval': A command specific dictionary of return value information
+                'failure_reason': a string with the reason for the failure if success == False
         """
 
         callback(conn_id, self.id, False, None, "Debug commands are not supported by this DeviceAdapter")

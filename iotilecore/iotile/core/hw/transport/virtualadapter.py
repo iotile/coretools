@@ -1,15 +1,16 @@
-from future.utils import itervalues, viewitems
-import pkg_resources
 import json
 import os
 import traceback
 import imp
 import inspect
 import time
-from .adapter import DeviceAdapter
+from future.utils import itervalues, viewitems
+import pkg_resources
 from iotile.core.exceptions import ArgumentError
-from iotile.core.hw.virtual.virtualdevice import RPCInvalidIDError, TileNotFoundError, RPCNotFoundError, VirtualIOTileDevice
 from iotile.core.hw.reports import BroadcastReport
+from .adapter import DeviceAdapter
+from ..virtual import (RPCInvalidIDError, TileNotFoundError, RPCNotFoundError,
+                       VirtualIOTileDevice, RPCErrorCode)
 
 
 class VirtualAdapterAsyncChannel(object):
@@ -92,30 +93,51 @@ class VirtualDeviceAdapter(DeviceAdapter):
     Args:
         port (string): A port description that should be in the form of
             device_name1@<optional_config_json1;device_name2@optional_config_json2
+        devices (list of VirtualIOTileDevice): Optional list of precreated virtual
+            devices that you would like to add to this virtual adapter.  It can sometimes
+            be easier to pass precreated devices rather than needing to specify how
+            they should be created.
     """
 
     # Make devices expire after a long time only
     ExpirationTime = 600000
 
-    def __init__(self, port):
+    def __init__(self, port=None, devices=None):
         super(VirtualDeviceAdapter, self).__init__()
 
-        devs = port.split(';')
         loaded_devs = {}
+
+        if devices is None:
+            devices = []
 
         # This needs to be initialized before any VirtualAdapterAsyncChannels are
         # created because those could reference it
         self.connections = {}
 
-        for dev in devs:
-            name, _sep, config = dev.partition('@')
+        if port is not None:
+            devs = port.split(';')
 
-            if len(config) == 0:
-                config = None
+            for dev in devs:
+                name, _sep, config = dev.partition('@')
 
-            loaded_dev = self._load_device(name, config)
-            loaded_dev.start(VirtualAdapterAsyncChannel(self, loaded_dev.iotile_id))
-            loaded_devs[loaded_dev.iotile_id] = loaded_dev
+                if len(config) == 0:
+                    config = None
+
+                loaded_dev = self._load_device(name, config)
+
+                if not self._validate_device(loaded_dev):
+                    raise ArgumentError("Device type cannot be loaded on this adapter", name=name)
+
+                loaded_dev.start(VirtualAdapterAsyncChannel(self, loaded_dev.iotile_id))
+                loaded_devs[loaded_dev.iotile_id] = loaded_dev
+
+        # Allow explicitly passing created VirtualDevice subclasses
+        for dev in devices:
+            if not self._validate_device(dev):
+                raise ArgumentError("Device type cannot be loaded on this adapter", name=name)
+
+            dev.start(VirtualAdapterAsyncChannel(self, dev.iotile_id))
+            loaded_devs[dev.iotile_id] = dev
 
         self.devices = loaded_devs
         self.scan_interval = self.get_config('scan_interval', 1.0)
@@ -124,7 +146,21 @@ class VirtualDeviceAdapter(DeviceAdapter):
         self.set_config('probe_required', True)
         self.set_config('probe_supported', True)
 
-    def _find_device_script(self, script_path):
+    #pylint:disable=unused-argument;The name needs to remain without an _ for subclasses to override
+    @classmethod
+    def _validate_device(cls, device):
+        """Hook for subclases to ensure that only specific kinds of devices are loaded.
+
+        The default implementation just returns True, allowing all virtual devices.
+
+        Returns:
+            bool: Whether the virtual device is allowed to load.
+        """
+
+        return True
+
+    @classmethod
+    def _find_device_script(cls, script_path):
         """Import a virtual device from a file rather than an installed module
 
         script_path must point to a python file ending in .py that contains exactly one
@@ -381,19 +417,19 @@ class VirtualDeviceAdapter(DeviceAdapter):
 
         status = (1 << 6)
         try:
+            response = bytes()
             response = dev.call_rpc(address, rpc_id, bytes(payload))
             if len(response) > 0:
                 status |= (1 << 7)
         except (RPCInvalidIDError, RPCNotFoundError):
             status = 2
-            response = bytes()
         except TileNotFoundError:
             status = 0xFF
-            response = bytes()
+        except RPCErrorCode as exc:
+            status |= exc.params['code'] & ((1 << 6) - 1)
         except Exception:
             #Don't allow exceptions or we will deadlock
             status = 3
-            response = bytes()
 
             print("*** EXCEPTION OCCURRED IN RPC ***")
             traceback.print_exc()
@@ -463,6 +499,6 @@ class VirtualDeviceAdapter(DeviceAdapter):
         """
 
         for dev in itervalues(self.devices):
-                self._send_scan_event(dev)
+            self._send_scan_event(dev)
 
         callback(self.id, True, None)

@@ -9,6 +9,8 @@
 from iotile.core.hw.hwmanager import HardwareManager
 from iotile.core.hw.exceptions import *
 from iotile.core.exceptions import *
+from iotile.core.utilities.gid import uuid_to_slug
+
 import unittest
 import pytest
 import os.path
@@ -28,3 +30,21 @@ class TestHardwareManager(unittest.TestCase):
     def test_unknown_module(self):
         with pytest.raises(UnknownModuleTypeError):
             self.hw._create_proxy('UnknownTileBusModule', 8)
+
+    def test_uuid_to_slug(kvstore):
+        """Test UUID to DeviceSlug
+        """
+
+        with pytest.raises(ArgumentError):
+            uuid_to_slug('a')
+
+        with pytest.raises(ArgumentError):
+            uuid_to_slug(-1)
+
+        with pytest.raises(ArgumentError):
+            uuid_to_slug(0xffffffff)
+
+        assert uuid_to_slug(1) == 'd--0000-0000-0000-0001'
+        assert uuid_to_slug(0x9c400) == 'd--0000-0000-0009-c400'
+        assert uuid_to_slug(0x0fffffff) == 'd--0000-0000-0fff-ffff'
+

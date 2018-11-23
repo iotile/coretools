@@ -1,4 +1,4 @@
-from dependencies import DependenciesDirective
+from .dependencies import DependenciesDirective
 
 def setup_sphinx(app):
 	"""Add custom IOTile directives into Sphinx

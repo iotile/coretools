@@ -1,10 +1,32 @@
 # Release Notes
 
-All major changes in each released version of IOTileCore are listed here.
+All major changes in each released version of `iotile-core` are listed here.
 
 ## HEAD
 
-- Add "watch_reports" command, which enables a user to live view reports from the connected device
+- Add additional call to periodic_callback in AdapterStream to support the
+  EmulatedDeviceAdapter better.
+
+- Add support for passing premade DeviceAdapter classes into HardwareManager
+  (Issue #545).  This is very useful for setting up complex test scenarios.
+
+- Add support for WorkQueueThread to support dispatching work to background work
+  queues and inserting sequence points where all prior work needs to be
+  finished.
+
+- Update WorkQueueThread to have a deferred_task function that will make an
+  arbitrary callback once all current work items have been cleared.
+
+- Update WorkQueueThread to be able to schedule a function to run once the
+  work queue becomes idle.  There is a blocking and nonblocking version:
+  wait_until_idle() and defer_until_idle(callback)
+
+## 3.22.13
+
+- Add "watch_reports" command, which enables a user to live view reports from
+  the connected device
+- Support for loading universal wheels
+- Add Device slug to scan results
 
 ## 3.22.12
 
@@ -58,8 +80,8 @@ All major changes in each released version of IOTileCore are listed here.
 
 ## 3.22.2
 
-- Fix FlashBoardStep to have FILES variable so iotile-ship knows what files are needed
-  to archive to .ship.
+- Fix FlashBoardStep to have FILES variable so iotile-ship knows what files are
+  needed to archive to .ship.
 
 ## 3.22.1
 
@@ -71,7 +93,8 @@ All major changes in each released version of IOTileCore are listed here.
 
 - Add disconnection callback in ValidatingWSClient
 - Set how ValidatingWSClient pack its message with msgpack
-- Fix race condition in DeviceAdapter, which made awsiot and websockets tests failed sometimes
+- Fix race condition in DeviceAdapter, which made awsiot and websockets tests
+  failed sometimes
 - Make send_highspeed working with Python3
 - Add audit events for script interfaces
 - Fix error in VirtualDevice which made interfaces never close
@@ -335,11 +358,11 @@ dependencies. (Issue #387)
 
 ## 3.10.2
 
-- Add support for forcing the registry to be a specific type; either json or sqlite
-  are currently supported.  You can place a registry_type.txt file containing the
-  word json or sqlite in the folder next to the component_registry.* file and it will
-  choose json or sqlite based on what you put in the file throwing an error if a random
-  word is entered.
+- Add support for forcing the registry to be a specific type; either json or
+  sqlite are currently supported.  You can place a registry_type.txt file
+  containing the word json or sqlite in the folder next to the
+  component_registry.* file and it will choose json or sqlite based on what you
+  put in the file throwing an error if a random word is entered.
 
 ## 3.10.1
 
@@ -347,60 +370,62 @@ dependencies. (Issue #387)
 
 ## 3.10.0
 
-- Add support for a tracing interface.  The tracing interface allows sending an unstructured
-  stream of debug data from an IOTile device and dumping it to stdout or a file using the
-  iotile tool.
+- Add support for a tracing interface.  The tracing interface allows sending an
+  unstructured stream of debug data from an IOTile device and dumping it to
+  stdout or a file using the iotile tool.
 
 ## 3.9.5
 
-- Make scan wait for min_scan interval before returning if a HardwareManager is immediately
-  created.  This fixes the same issue for scanning that could cause connections to fail.
+- Make scan wait for min_scan interval before returning if a HardwareManager is
+  immediately created.  This fixes the same issue for scanning that could cause
+  connections to fail.
 
 ## 3.9.4
 
-- Allow KVStore to be backed by a JSON file or SQLite and add test coverage to make sure
-  that ComponentRegistry, which is based on KVStore works correctly with both backing store
-  types.
+- Allow KVStore to be backed by a JSON file or SQLite and add test coverage to
+  make sure that ComponentRegistry, which is based on KVStore works correctly
+  with both backing store types.
 
 ## 3.9.3
 
-- Fix KVStore to not make a directory in user's home folder when iotile-core is installed
-  in a virtual environment.
+- Fix KVStore to not make a directory in user's home folder when iotile-core is
+  installed in a virtual environment.
 
 ## 3.9.2
 
-- Fix iotile script to not hang on exit if an uncaught exception happens and we are connected
-  to a hardware device.
+- Fix iotile script to not hang on exit if an uncaught exception happens and we
+  are connected to a hardware device.
 
 ## 3.9.1
 
-- Update virtual_device to be able to find devices in python files that are not installed.
-  You just pass the path to the file rather than a name of an installed virtual device.
+- Update virtual_device to be able to find devices in python files that are not
+  installed. You just pass the path to the file rather than a name of an
+  installed virtual device.
 
 ## 3.9.0
 
 - Fix hash calculation to include footer in SignedListReport
-- Add new functionality for waiting in AdapterStream until scanned devices are seen when
-  connect is called for the first time.
+- Add new functionality for waiting in AdapterStream until scanned devices are
+  seen when connect is called for the first time.
 
 ## 3.8.1
 
-- Fix bug finding TileBusProxyObject when a tile does not have any application firmware installed
-  and add test coverage for this.
+- Fix bug finding TileBusProxyObject when a tile does not have any application
+  firmware installed and add test coverage for this.
 
 ## 3.8.0
 
-- Add support for AuthProviders that can sign/verify/encrypt/decrypt data.  This functionality
-  is needed for verifying the signatures on reports received from the devices and creating
-  signed reports.
+- Add support for AuthProviders that can sign/verify/encrypt/decrypt data.  This
+  functionality is needed for verifying the signatures on reports received from
+  the devices and creating signed reports.
 
-- Add default ChainedAuthProvider that provides report signing and verifying using either
-  SHA256 hashes (for integrity only) or HMAC-SHA256 using a key stored in an environment
-  variable.
+- Add default ChainedAuthProvider that provides report signing and verifying
+  using either SHA256 hashes (for integrity only) or HMAC-SHA256 using a key
+  stored in an environment variable.
 
-- Add support for running virtual_devices direcly without a loopback adapter.  You can use
-  the virtual:<device_name>@path_to_config_json connection string to connect to the device
-  by its uuid.
+- Add support for running virtual_devices direcly without a loopback adapter.
+  You can use the virtual:<device_name>@path_to_config_json connection string to
+  connect to the device by its uuid.
 
 - Add test coverage for signing and verifying reports.
 
@@ -420,19 +445,21 @@ dependencies. (Issue #387)
 
 ## 3.6.0
 
-- Create a virtual device interface for serving access to virtual iotile devices that
-  let people connect to computers like you connect to any other IOTile device.
+- Create a virtual device interface for serving access to virtual iotile devices
+  that let people connect to computers like you connect to any other IOTile
+  device.
 - Add virtual_device script to make it easy to setup a virtual iotile device.
 
 ## 3.5.3
 
-- Update IOTile to find component dependencies listed in architecture overlays as
-  well as those listed for a module and for an architecture.
+- Update IOTile to find component dependencies listed in architecture overlays
+  as well as those listed for a module and for an architecture.
 
 ## 3.5.2
 
 - Add the concept of coexistence classes to SemanticVersion objects so that you
-  can easily see which are compatible with each other in a semanic versioning sense
+  can easily see which are compatible with each other in a semanic versioning
+  sense
 
 ## 3.5.1
 
@@ -440,23 +467,25 @@ dependencies. (Issue #387)
 
 ## 3.5.0
 
-- Add SemanticVersionRange object that supports defining basic ranges of semantic versions
-  and checking if SemanticVersion objects are contained within them.  Currently only supports
-  ^X.Y.Z ranges and * wildcard ranges.
+- Add SemanticVersionRange object that supports defining basic ranges of
+  semantic versions and checking if SemanticVersion objects are contained within
+  them.  Currently only supports ^X.Y.Z ranges and * wildcard ranges.
 - Properly parse the semantic version range specified in an IOTile component.
 
 ## 3.4.0
 
-- Add support for sorting SemanticVersion objects and explicitly allow only a finite number
-  of types of prereleases (build, alpha, beta and rc).  There is a total ordering of
-  SemanticVersion objects where releases are better than prereleases and prereleases are ordered
-  by build < alpha < beta < rc.  Each prerelease needs to be numbered like alpha1, rc5 etc.
+- Add support for sorting SemanticVersion objects and explicitly allow only a
+  finite number of types of prereleases (build, alpha, beta and rc).  There is a
+  total ordering of SemanticVersion objects where releases are better than
+  prereleases and prereleases are ordered by build < alpha < beta < rc.  Each
+  prerelease needs to be numbered like alpha1, rc5 etc.
 
 ## 3.3.0
 
-- Add support for storing release steps in module_settings.json and parsing release steps
-  in IOTile objects.  This will allow iotile-build and others to provide the ability to
-  release built IOTileComponents for public or private distribution automatically.
+- Add support for storing release steps in module_settings.json and parsing
+  release steps in IOTile objects.  This will allow iotile-build and others to
+  provide the ability to release built IOTileComponents for public or private
+  distribution automatically.
 
 ## 3.2.0
 
@@ -464,13 +493,13 @@ dependencies. (Issue #387)
 
 ## 3.1.1
 
-- Add support for error checking in AdapterStream to catch errors connecting to a device
-  or opening interfaces and convert them into HardwareErrors
+- Add support for error checking in AdapterStream to catch errors connecting to
+  a device or opening interfaces and convert them into HardwareErrors
 
 ## 3.1.0
 
-- Add support for report streaming from IOTile devices through iotile-core and associated
-  projects.
+- Add support for report streaming from IOTile devices through iotile-core and
+  associated projects.
 
 ## 3.0.0
 

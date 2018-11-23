@@ -2,6 +2,15 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.6.14
+
+- Add update_local to DepedencyManager(). This allows updating any local dependencies of
+a component without updating all the other dependencies. 
+
+## 2.6.13
+
+- Enable using iotile build to generate py3 packages and universal wheels
+
 ## 2.6.12
 
 - Fix build_update_script, env['SLOTS'] to None by default.

@@ -1,6 +1,30 @@
 # Release Notes
 
-All major changes in each released version of iotile-sensorgraph are listed here.
+All major changes in each released version of iotile-sensorgraph are listed
+here.
+
+## HEAD
+
+- Move reference controller and reference device classes out of
+  iotile-sensorgraph and into new iotile-emulate package.
+
+- Add support to SlotIdentifier for checking if the slot identifier matches a 
+  given tile.
+
+- Update SensorLog, InMemoryStorageEngine and StreamWalker to include additional
+  features needed for iotile-emulate to work properly.
+
+- Add support for fill-stop mode to SensorLog.  There is no way to use this from
+  within iotile-sgrun itself currently but it is necessary for iotile-emulate.
+
+- Adjust constant stream walker allocation to align with how physical devices
+  behave in order to better integrate into iotile-emulate.
+
+- Add better support for linking DataStreamer objects to a SensorLog and 
+  generating reports.
+
+- Enhances sensor-graph simulation to properly handle important system inputs
+  by inserting an autocopy rule.
 
 ## 0.7.2
 

@@ -1,0 +1,44 @@
+{
+    "module_targets": {
+        "lib_controller": [
+            "nrf52832"
+        ]
+    },
+
+    "release_date": "2018-09-25T03:08:57.069501",
+    "modules": {
+        "lib_controller": {
+            "domain": "iotile_standard_library",
+            "release_steps": [
+                {
+                    "args": {
+                        "owner": "iotile",
+                        "repo": "lib_controller"
+                    },
+                    "provider": "github"
+                },
+                {
+                    "provider": "pypi"
+                }
+            ],
+            "version": "3.7.2",
+            "products": {
+                "python/lib_controller_types": "type_package"
+
+            },
+            "libcontroller_includes": [
+            ],
+            "defines": {
+                "kLowVoltageEnterVoltage": 3.2,
+                "kLowVoltageShutdownVoltage": 3.0,
+                "kModuleConfigDelayTimeMS": 10,
+                "kBusResetPowerOffTimeMS": 200,
+                "ENABLE_TRACING": 1,
+                "kLowVoltageLeaveVoltage": 3.3,
+                "kClockResolutionSeconds": 10
+            }
+        }
+    },
+    "release": true,
+    "module_name": "lib_controller"
+}

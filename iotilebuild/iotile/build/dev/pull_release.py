@@ -1,5 +1,5 @@
 from iotile.core.utilities.typedargs import context, annotated, param, return_type, iprint
-from resolverchain import DependencyResolverChain
+from .resolverchain import DependencyResolverChain
 from iotile.core.dev.semver import SemanticVersionRange
 
 @param("name", "string", desc='The fully qualified name of the released component to pull')

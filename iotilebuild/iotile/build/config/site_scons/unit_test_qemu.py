@@ -154,6 +154,10 @@ def run_qemu_command(target, source, env):
         logcontents = "Error running command: %s" % str(exc)
 
     # Write the log file
+
+    if type(logcontents) is str:
+        logcontents = logcontents.encode()
+
     with open(str(target[0]), "wb") as logfile:
         logfile.write(logcontents)
 

@@ -35,7 +35,7 @@ class SlotIdentifier(object):
         3: 'match_name'
     }
 
-    KNOWN_MATCH_NAMES = {y: x for x,y in viewitems(KNOWN_MATCH_CODES)}
+    KNOWN_MATCH_NAMES = {y: x for x, y in viewitems(KNOWN_MATCH_CODES)}
 
     def __init__(self, slot=None, controller=False):
 
@@ -57,13 +57,27 @@ class SlotIdentifier(object):
 
         Tile addresses are calculated as:
         controller: 8
-        other tiles: 9 + slot (so slot 1 is 10)
+        other tiles: 10 + slot (so slot 1 is 11)
         """
 
         if self.controller:
             return 8
 
         return 10 + self.slot
+
+    def matches(self, address, name=None):
+        """Check if this slot identifer matches the given tile.
+
+        Matching can happen either by address or by module name (not currently implemented).
+
+        Returns:
+            bool: True if there is a match, otherwise False.
+        """
+
+        if self.controller:
+            return address == 8
+
+        return self.address == address
 
     @classmethod
     def FromString(cls, desc):

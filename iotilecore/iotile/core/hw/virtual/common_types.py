@@ -30,6 +30,78 @@ class TileNotFoundError(IOTileException):
     """Exception thrown when an RPC is sent to a tile that does not exist."""
     pass
 
+class RPCErrorCode(IOTileException):
+    """Exception thrown from an RPC implementation to set the status code."""
+
+    def __init__(self, status_code):
+        super(RPCErrorCode, self).__init__("RPC returned application defined status code %d" % status_code, code=status_code)
+
+
+def _create_argcode(code, arg_bytes):
+    if not code.endswith('V'):
+        return "<" + code
+
+    code = code[:-1]
+    fixed_size = struct.calcsize("<" + code)
+    var_size = len(arg_bytes) - fixed_size
+
+    if var_size < 0:
+        raise RPCInvalidArgumentsError("Argument was too small for variable size argument value", arg_format=code,
+                                       minimum_size=fixed_size, actual_size=len(arg_bytes),
+                                       payload=binascii.hexlify(arg_bytes))
+
+    return "<" + code + "%ds" % var_size
+
+
+def _create_respcode(code, resp):
+    if not code.endswith('V'):
+        return "<" + code
+
+    code = code[:-1]
+
+    final_length = len(resp[-1])
+    fixed_size = struct.calcsize("<" + code)
+
+    if fixed_size + final_length > 20:
+        raise RPCInvalidReturnValueError("Variable length return value is too large for rpc response payload (20 bytes)",
+                                         fixed_code=code, fixed_length=fixed_size, variable_length=final_length,
+                                         variable_payload=binascii.hexlify(resp[-1]))
+    return "<" + code + "%ds" % final_length
+
+
+def pack_rpc_payload(arg_format, args):
+    """Pack an RPC payload according to arg_format.
+
+    Args:
+        arg_format (str): a struct format code (without the <) for the
+            parameter format for this RPC.  This format code may include the final
+            character V, which means that it expects a variable length bytearray.
+        args (list): A list of arguments to pack according to arg_format.
+
+    Returns:
+        bytes: The packed argument buffer.
+    """
+
+    code = _create_respcode(arg_format, args)
+    return struct.pack(code, *args)
+
+
+def unpack_rpc_payload(resp_format, payload):
+    """Unpack an RPC payload according to resp_format.
+
+    Args:
+        resp_format (str): a struct format code (without the <) for the
+            parameter format for this RPC.  This format code may include the final
+            character V, which means that it expects a variable length bytearray.
+        payload (bytes): The binary payload that should be unpacked.
+
+    Returns:
+        list: A list of the unpacked payload items.
+    """
+
+    code = _create_argcode(resp_format, payload)
+    return struct.unpack(code, payload)
+
 
 def rpc(address, rpc_id, arg_format, resp_format=None):
     """Decorator to denote that a function implements an RPC with the given ID and address.
@@ -52,9 +124,11 @@ def rpc(address, rpc_id, arg_format, resp_format=None):
         address (int): The address of the mock tile this RPC is for
         rpc_id (int): The number of the RPC
         arg_format (string): a struct format code (without the <) for the
-            parameter format for this RPC
+            parameter format for this RPC.  This format code may include the final
+            character V, which means that it expects a variable length bytearray.
         resp_format (string): an optional format code (without the <) for
-            the response format for this RPC
+            the response format for this RPC. This format code may include the final
+            character V, which means that it expects a variable length bytearray.
     """
 
     if rpc_id < 0 or rpc_id > 0xFFFF:
@@ -63,14 +137,18 @@ def rpc(address, rpc_id, arg_format, resp_format=None):
     def _rpc_wrapper(func):
         def _rpc_executor(self, payload):
             try:
-                args = struct.unpack("<{}".format(arg_format), payload)
+                args = unpack_rpc_payload(arg_format, payload)
             except struct.error as exc:
                 raise RPCInvalidArgumentsError(str(exc), arg_format=arg_format, payload=binascii.hexlify(payload))
 
             resp = func(self, *args)
+
+            if resp is None:
+                resp = []
+
             if resp_format is not None:
                 try:
-                    return struct.pack("<{}".format(resp_format), *resp)
+                    return pack_rpc_payload(resp_format, resp)
                 except struct.error as exc:
                     raise RPCInvalidReturnValueError(str(exc), resp_format=resp_format, resp=repr(resp))
 

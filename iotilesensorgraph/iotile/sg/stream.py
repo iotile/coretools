@@ -12,7 +12,7 @@ DataStreamSelector: An object that selects a specific stream or a
 # For python 2/3 compatibility using future module
 from builtins import str
 from future.utils import python_2_unicode_compatible, iteritems
-from iotile.core.exceptions import ArgumentError
+from iotile.core.exceptions import ArgumentError, InternalError
 
 
 @python_2_unicode_compatible
@@ -25,6 +25,9 @@ class DataStream(object):
         system (bool): Whether this stream is user defined or
             has global, system-wide meaning.
     """
+
+    ImportantSystemOutputStart = 1024
+    ImportantSystemStorageStart = 1024 + 512
 
     BufferedType = 0
     UnbufferedType = 1
@@ -73,6 +76,37 @@ class DataStream(object):
     @property
     def output(self):
         return self.stream_type == DataStream.OutputType
+
+    @property
+    def important(self):
+        return self.stream_type == DataStream.InputType and self.system and self.stream_id >= DataStream.ImportantSystemOutputStart
+
+    def associated_stream(self):
+        """Return the corresponding output or storage stream for an important system input.
+
+        Certain system inputs are designed as important and automatically
+        copied to output streams without requiring any manual interaction.
+
+        This method returns the corresponding stream for an important system
+        input.  It will raise an InternalError unlesss the self.important
+        property is True.
+
+        Returns:
+            DataStream: The corresponding output or storage stream.
+
+        Raises:
+            InternalError: If this stream is not marked as an important system input.
+        """
+
+        if not self.important:
+            raise InternalError("You may only call autocopied_stream on when DataStream.important is True", stream=self)
+
+        if self.stream_id >= DataStream.ImportantSystemStorageStart:
+            stream_type = DataStream.BufferedType
+        else:
+            stream_type = DataStream.OutputType
+
+        return DataStream(stream_type, self.stream_id, True)
 
     @classmethod
     def FromString(cls, string_rep):
@@ -157,6 +191,12 @@ class DataStream(object):
             return NotImplemented
 
         return self.system == other.system and self.stream_type == other.stream_type and self.stream_id == other.stream_id
+
+    def __ne__(self, other):
+        if not isinstance(other, DataStream):
+            return NotImplemented
+
+        return not self == other
 
 
 @python_2_unicode_compatible
@@ -416,3 +456,9 @@ class DataStreamSelector(object):
             return NotImplemented
 
         return self.match_spec == other.match_spec and self.match_type == other.match_type and self.match_id == other.match_id
+
+    def __ne__(self, other):
+        if not isinstance(other, DataStreamSelector):
+            return NotImplemented
+
+        return not self == other

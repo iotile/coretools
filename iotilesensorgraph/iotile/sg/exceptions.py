@@ -1,3 +1,5 @@
+"""iotile-sensorgraph specific exceptions."""
+
 from iotile.core.exceptions import IOTileException
 
 
@@ -49,6 +51,12 @@ class ProcessingFunctionError(IOTileException):
     pass
 
 
+class ResourceUsageError(IOTileException):
+    """Thrown when a sensor graph is too large for the given device model."""
+
+    pass
+
+
 class SensorGraphSyntaxError(IOTileException):
     """Thrown when there is an error parsing a sensor graph description file.
 
@@ -76,6 +84,17 @@ class UnresolvedIdentifierError(IOTileException):
     also be thrown if an identifier is found but resolves to an object of an incorrect
     type.  For example, if you are asking for a DataStream but the identifier names
     a SlotIdentifier.
+    """
+
+    pass
+
+
+class InvalidSerializedDataError(IOTileException):
+    """Thrown when a restore() function is called and the data cannot be loaded.
+
+    This can happen either because the data is invalid or because it is valid
+    but it was produced with a different device model and requires too many
+    resources for the current device model.
     """
 
     pass

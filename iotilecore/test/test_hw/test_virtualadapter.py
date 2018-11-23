@@ -202,7 +202,9 @@ def test_virtual_scan(realtime_scan_hw):
     """
     devices = realtime_scan_hw.scan()
 
-    assert len(devices) > 0
+    assert len(devices) == 1
+    assert devices[0]['uuid'] == 1
+    assert devices[0]['slug'] == 'd--0000-0000-0000-0001'
     realtime_scan_hw.connect('1')
 
 

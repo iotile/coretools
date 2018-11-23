@@ -30,9 +30,11 @@ class SemanticVersion(object):
         """Create a new SemanticVersion with the first nonzero value incremented
 
         If this version is 0.0.1, then this will return 0.0.2.  If this version
-        if 0.1.0 then this version will return 0.2.0.
+        is 0.1.0 then this version will return 0.2.0.
 
         All prerelease information is stripped so 1.0.0-alpha2 becomes 2.0.0.
+
+        :return: SemanticVersion
         """
 
         release = [x for x in self.release_tuple]
@@ -44,6 +46,34 @@ class SemanticVersion(object):
             release[2] = 0
         else:
             release[0] += 1
+            release[1] = 0
+            release[2] = 0
+
+        return SemanticVersion(*release)
+
+    def dec_first_nonzero(self):
+        """
+        Create a new SemanticVersion with the first nonzero value decremented
+
+        If the version is 0.0.2, then this will return 0.0.1. If this version
+        is 0.2.0, then this version will return 0.1.0.
+
+        All preprelease information is stripped so 2.0.0-alphga2 becomes 1.0.0
+
+        :return: SemanticVersion
+        """
+        release = [x for x in self.release_tuple]
+
+        if release[0] == 0 and release[1] == 0 and release[2] == 0:
+            raise Exception("You can't decrement a 0.0.0 release")
+
+        if release[0] == 0 and release[1] == 0:
+            release[2] -= 1
+        elif release[0] == 0:
+            release[1] -= 1
+            release[2] = 0
+        else:
+            release[0] -= 1
             release[1] = 0
             release[2] = 0
 
@@ -196,11 +226,18 @@ class SemanticVersion(object):
         template = prerelease_templates[self.release_type]
         return template % (self.major, self.minor, self.patch, self.prerelease_number)
 
+
+    def __ne__(self, other):
+        return self._ordering_tuple() != other._ordering_tuple()
+
     def __eq__(self, other):
         return self._ordering_tuple() == other._ordering_tuple()
 
     def __lt__(self, other):
         return self._ordering_tuple() < other._ordering_tuple()
+
+    def __gt__(self, other):
+        return self._ordering_tuple() > other._ordering_tuple()
 
     def __hash__(self):
         return hash(self._ordering_tuple())
@@ -355,6 +392,7 @@ class SemanticVersionRange(object):
 
             conj = (lower, upper, True, False)
             disjuncts = [[conj]]
+
         elif range_string[0] == '=':
             ver = range_string[1:]
 

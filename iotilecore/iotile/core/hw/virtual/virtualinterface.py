@@ -9,7 +9,7 @@ thing.
 from queue import Queue, Empty
 import logging
 from iotile.core.exceptions import ArgumentError
-import iotile.core.hw.virtual.audit as audit
+from . import audit
 
 
 class IOTilePushChannel(object):
