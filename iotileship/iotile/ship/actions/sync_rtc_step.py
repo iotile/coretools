@@ -30,7 +30,7 @@ class SyncRTCStep(object):
         con = hwman.hwman.controller()
         rtc_man = con.rtc_manager()
         try:
-            rtc_man.rtc_set_time()
+            rtc_man.rtc_sync_time()
             print('Time currently set at %s' % rtc_man.rtc_get_time())
         except:
             raise ArgumentError('Error setting RTC time, check if controller actually has RTC')
