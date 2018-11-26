@@ -26,11 +26,16 @@ class SyncRTCStep(object):
             resources (dict): A dictionary containing the required resources that
                 we needed access to in order to perform this step.
         """
+        try:
+            pkg_resources.get_distribution("iotile-support-con-nrf52832-3")
+        except:
+            raise ArgumentError('Proxy not installed, try calling `pip install iotile-support-con-nrf52832-3`')
+
         hwman = resources['connection']
         con = hwman.hwman.controller()
         rtc_man = con.rtc_manager()
         try:
-            rtc_man.rtc_sync_time()
-            print('Time currently set at %s' % rtc_man.rtc_get_time())
+            rtc_man.rtc_set_time_to_now()
+            print('Time currently set at %s' % rtc_man.rtc_get_timestr())
         except:
             raise ArgumentError('Error setting RTC time, check if controller actually has RTC')
