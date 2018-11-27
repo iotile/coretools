@@ -50,7 +50,7 @@ class SemihostedRPCExecutor(RPCExecutor):
         """
 
         # FIXME: Set a timeout of 1.1 seconds to make sure we fail if the device hangs but
-        #        this should be long enough to accomodate any actual RPCs we need to send.
+        #        this should be long enough to accommodate any actual RPCs we need to send.
 
-        status, response = self.hw.stream.send_rpc(address, rpc_id >> 8, rpc_id & 0xFF, payload, timeout=1.1)
+        status, response = self.hw.stream.send_rpc(address, rpc_id, payload, timeout=1.1)
         return response

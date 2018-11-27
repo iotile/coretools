@@ -9,14 +9,13 @@
 #MIB Proxy Objects
 
 from builtins import range
-from iotile.core.hw.commands import RPCCommand
 from iotile.core.hw.exceptions import *
 from iotile.core.utilities.typedargs import return_type, annotated, param, context
 from time import sleep
-from iotile.core.utilities.packed import unpack
 import struct
 from iotile.core.exceptions import *
 from ..virtual import unpack_rpc_payload
+from builtins import str, int
 
 
 class TileBusProxyObject(object):
@@ -42,11 +41,16 @@ class TileBusProxyObject(object):
         is not successful.
         """
 
+        rpc_id = (feature << 8 | cmd)
+
         if 'arg_format' in kw:
             packed_args = struct.pack("<{}".format(kw['arg_format']), *args)
-            status, payload = self.stream.send_rpc(self.addr, feature, cmd, packed_args, **kw)
+        elif not args:
+            packed_args = b''
         else:
-            status, payload = self.stream.send_rpc(self.addr, feature, cmd, *args, **kw)
+            packed_args = self._format_args(args)
+
+        status, payload = self.stream.send_rpc(self.addr, rpc_id, packed_args, **kw)
 
         unpack_flag = False
         if "result_type" in kw:
@@ -58,7 +62,7 @@ class TileBusProxyObject(object):
             res_type = (0, False)
 
         try:
-            res = self._parse_rpc_result(status, payload, *res_type, command=(feature << 8) | cmd)
+            res = self._parse_rpc_result(status, payload, *res_type, command=rpc_id)
             if unpack_flag:
                 return unpack_rpc_payload("%s" % kw["result_format"], res['buffer'])
 
@@ -75,6 +79,90 @@ class TileBusProxyObject(object):
 
             sleep(0.1)
             return self.rpc(feature, cmd, *args, **kw)
+
+    def _convert_int(self, arg):
+        out = bytearray(2)
+
+        out[0] = arg & 0xFF
+        out[1] = (arg & 0xFF00) >> 8
+
+        converted = out[0] | (out[1] << 8)
+
+        if converted != arg:
+            raise ValueError("Integer argument was too large to fit in an rpc 16 bit int: %d" % arg)
+
+        return out
+
+    def _pack_arg(self, arg):
+        if isinstance(arg, int):
+            return self._convert_int(arg), False
+        elif isinstance(arg, bytearray):
+            return arg, True
+        elif isinstance(arg, str):  # for python 3 compatibility, encode all newstr from future module
+            return bytearray(arg.encode('utf-8')), True
+        elif isinstance(arg, bytes):
+            return bytearray(arg), True
+
+        raise ValueError("Unknown argument type could not be converted for rpc call.")
+
+    def _format_args(self, args):
+        fmtd = bytearray()
+
+        num_ints = 0
+        num_bufs = 0
+
+        for arg in args:
+            a, is_buf = self._pack_arg(arg)
+            fmtd += a
+
+            if is_buf:
+                num_bufs += 1
+                buff_len = len(a)
+
+            if not is_buf:
+                if num_bufs != 0:
+                    raise ValueError("Invalid rpc parameters, integer came after buffer.")
+
+                num_ints += 1
+
+        if num_bufs > 1:
+            raise ValueError("You must pass at most 1 buffer. num_bufs=%d" % num_bufs)
+
+        if len(fmtd) > 20:
+            raise ValueError("Arguments are greater then the maximum mib packet size, size was %d" % len(fmtd))
+
+        return fmtd
+
+    def rpc_v2(self, cmd, arg_format, result_format, *args, **kw):
+        """
+        Send an RPC call to this module, interpret the return value
+        according to the result_type kw argument.  Unless raise keyword
+        is passed with value False, raise an RPCException if the command
+        is not successful.
+
+        v2 enforces the use of arg_format and result_format
+        v2 combines the feature+cmd chunks in to a single 4-byte chunk
+        """
+        packed_args = struct.pack("<{}".format(arg_format), *args)
+        status, payload = self.stream.send_rpc(self.addr, cmd, packed_args, **kw)
+        res_type = (0, True)
+
+        try:
+            res = self._parse_rpc_result(status, payload, *res_type, command=cmd)
+            return unpack_rpc_payload("%s" % result_format, res['buffer'])
+        except ModuleBusyError:
+            pass
+
+        if "retries" not in kw:
+            kw['retries'] = 10
+
+        #Sleep 100 ms and try again unless we've exhausted our retry attempts
+        if kw["retries"] > 0:
+            kw['retries'] -= 1
+
+            sleep(0.1)
+            return self.rpc_v2(cmd, arg_format, result_format, *args, **kw)
+
 
     @return_type("string")
     def hardware_version(self):

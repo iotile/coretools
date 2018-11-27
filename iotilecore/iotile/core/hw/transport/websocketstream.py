@@ -10,7 +10,6 @@ import base64
 from ws4py.client.threadedclient import WebSocketClient
 from iotile.core.hw.exceptions import *
 from iotile.core.exceptions import *
-from iotile.core.hw.commands import RPCCommand
 from iotile.core.hw.reports import IOTileReportParser, BroadcastReport, IOTileReading
 from .cmdstream import CMDStream
 

@@ -179,7 +179,7 @@ class AdapterCMDStream(CMDStream):
         except HardwareError as exc:
             raise HardwareError("Device disconnected unexpectedly and we could not reconnect", reconnect_error=exc)
 
-    def _send_rpc(self, address, feature, cmd, payload, **kwargs):
+    def _send_rpc(self, address, rpc_id, payload, **kwargs):
         timeout = 3.0
         if 'timeout' in kwargs:
             timeout = float(kwargs['timeout'])
@@ -188,7 +188,7 @@ class AdapterCMDStream(CMDStream):
         if self.connection_interrupted:
             self._try_reconnect()
 
-        result = self.adapter.send_rpc_sync(0, address, (feature << 8) | cmd, payload, timeout)
+        result = self.adapter.send_rpc_sync(0, address, rpc_id, payload, timeout)
         success = result['success']
         status = result['status']
         payload = result['payload']
