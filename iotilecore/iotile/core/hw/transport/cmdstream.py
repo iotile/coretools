@@ -8,7 +8,6 @@
 
 from iotile.core.hw.exceptions import *
 from iotile.core.exceptions import *
-from iotile.core.hw.commands import RPCCommand
 import atexit
 import json
 import binascii
@@ -124,25 +123,21 @@ class CMDStream(object):
         self._disconnect()
         self.connected = False
 
-    def send_rpc(self, address, feature, command, *args, **kwargs):
+    def send_rpc(self, address, rpc_id, call_payload, **kwargs):
         if not self.connected:
             raise HardwareError("Cannot send an RPC if we are not in a connected state")
 
         if not hasattr(self, '_send_rpc'):
             raise StreamOperationNotSupportedError(command="send_rpc")
 
-        rpc = RPCCommand(address, feature, command, *args)
-        call_payload = rpc._format_args()
-        call_payload = call_payload[:rpc.spec]
-
-        status, payload = self._send_rpc(address, feature, command, call_payload, **kwargs)
+        status, payload = self._send_rpc(address, rpc_id, call_payload, **kwargs)
 
         #If we are recording this, save off the call and response
         if self.record is not None:
             if self.connection_string not in self._recording:
                 self._recording[self.connection_string] = []
 
-            call = "{0},{1},{2},{3}".format(address, feature, command, binascii.hexlify(call_payload))
+            call = "{0},{1},{2}".format(address, rpc_id, binascii.hexlify(call_payload))
             response = "{0},{1}".format(status, binascii.hexlify(payload))
 
             self._recording[self.connection_string].append((call, response))
@@ -153,6 +148,7 @@ class CMDStream(object):
             raise ModuleNotFoundError(address)
 
         return status, bytearray(payload)
+
 
     def enable_streaming(self):
         if not self.connected:
