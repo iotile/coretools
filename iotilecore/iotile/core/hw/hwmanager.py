@@ -40,7 +40,7 @@ from .app import IOTileApp
 
 
 @context("HardwareManager")
-class HardwareManager:
+class HardwareManager(object):
     """
     A module for managing and interacting with IOTile Hardware
 
