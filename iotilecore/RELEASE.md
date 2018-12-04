@@ -2,6 +2,12 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## 3.23.1
+
+- Add support for generating semantic version range strings in a pep440
+  compliant manner.  This generates a version specifier that is wider than the
+  `~=` operator in pep440 when applied to versions that have a patch component.
+
 ## 3.23.0
 
 - Add support into VirtualInterface for sending a callback when trace and report

@@ -8,12 +8,13 @@
 # Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
-import pytest
 import os.path
 import os
 import shutil
 import subprocess
 import sys
+import pytest
+import distutils.core
 from distutils.spawn import find_executable
 from iotile.core.dev.registry import ComponentRegistry
 from iotile.core.utilities.intelhex import IntelHex
@@ -211,6 +212,37 @@ def test_build_python(tmpdir):
         os.chdir(olddir)
 
 
+def test_python_depend_specifiers(tmpdir):
+    """Make sure we generate the appropriate depdendency specifiers.
+
+    See https://github.com/iotile/coretools/issues/514
+
+    Previously we generated version specifiers for python support packages that
+    were too specific so it was difficult to get them all installed properly.
+    """
+
+    olddir = os.getcwd()
+    builddir = copy_folder('component_dep_wheels', tmpdir)
+
+    base_wheel_name = "iotile_support_lib_controller_3-3.7.2-py2.py3-none-any.whl"
+    wheel_to_copy = 'build/deps/iotile_standard_library_lib_controller/python/' + base_wheel_name
+
+    try:
+        os.chdir(builddir)
+        with open(wheel_to_copy, 'w') as outfile:
+            outfile.write("this was a triumph")
+
+        err = subprocess.call(["iotile", "build"])
+        assert err == 0
+
+        os.chdir(os.path.join('build', 'python'))
+        setup = distutils.core.run_setup('setup.py', stop_after='init')
+
+        assert setup.install_requires == ['iotile_support_lib_controller_3==3.*,>=3.7.2']
+    finally:
+        os.chdir(olddir)
+
+
 def test_build_prerelease(tmpdir):
     """Make sure we can build a component with no depends key."""
 
@@ -223,6 +255,7 @@ def test_build_prerelease(tmpdir):
         assert err == 0
     finally:
         os.chdir(olddir)
+
 
 @pytest.mark.skipif(find_executable('qemu-system-gnuarmeclipse') is None, reason="qemu emulator not installed")
 def test_unit_testing(tmpdir):
