@@ -2,6 +2,11 @@
 
 All major changes in each released version of the iotile-ext-cloud plugin are listed here.
 
+## 0.6.0
+
+- Add additional controls in to `cloud_uploader` app to allow for explicitly
+  specifying what readings to acknowledge.
+
 ## 0.5.3
 
 - Remove raised exception preventing uploading of data in the event the streamer index is too big.

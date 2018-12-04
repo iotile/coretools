@@ -2,7 +2,7 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
-## HEAD
+## 3.23.0
 
 - Add support into VirtualInterface for sending a callback when trace and report
   data is actually sent out of the VirtualInterface.  This is particularly
@@ -25,7 +25,12 @@ All major changes in each released version of `iotile-core` are listed here.
 
 - Update WorkQueueThread to be able to schedule a function to run once the
   work queue becomes idle.  There is a blocking and nonblocking version:
-  wait_until_idle() and defer_until_idle(callback)
+  wait_until_idle() and defer_until_idle(callback).
+
+- Add UTCAssigner class to iotile.hw.reports for converting device uptime into
+  absolute UTC time.
+
+- Add a dependency of iotile-core on sortedcontainers distribution.
 
 ## 3.22.13
 
