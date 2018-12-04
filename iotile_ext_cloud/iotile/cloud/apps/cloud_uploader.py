@@ -4,6 +4,7 @@ import logging
 import time
 import struct
 from builtins import range
+from future.utils import viewitems
 from iotile.core.exceptions import HardwareError, ArgumentError
 from iotile.core.hw import IOTileApp
 from iotile.core.hw.reports import SignedListReport
@@ -90,9 +91,9 @@ class CloudUploader(IOTileApp):
 
         raise HardwareError("Device took too long to stream data", timeout_seconds=timeout)
 
-    def _ack_streamer(self, index, value):
+    def _ack_streamer(self, index, value, force=False):
         if index <= 0xFF:
-            error, = self._con.rpc(0x20, 0x0f, index, 0, value, arg_format="HHL", result_format="L")
+            error, = self._con.rpc(0x20, 0x0f, index, int(force), value, arg_format="HHL", result_format="L")
 
             if error == 0x8003801e:
                 # This means the streamer value is older than what is already there, this is not an error
@@ -106,7 +107,7 @@ class CloudUploader(IOTileApp):
         time.sleep(1.0)
         self._wait_streamers_finished()
 
-    def download(self, trigger=None, acknowledge=True):
+    def download(self, trigger=None, acknowledge=True, force=None):
         """Synchronously download all reports from the device.
 
         This function will:
@@ -129,6 +130,12 @@ class CloudUploader(IOTileApp):
             acknowledge (bool): If you don't want to send all cloud acknowledgements
                 down to the device before enabling streaming, you can pass False.  The
                 default behavior is True.
+            force (dict): If you want to forcibly set the acknowledgement for a given
+                streamer you can pass it in this dictionary.  The value passed will
+                be used instead of whatever was received from the cloud.  It can be
+                a number, which is interpeted as the value to acknowledge, or it can
+                be a tuple with a number and boolean, which is interpreted as the
+                force parameter.
 
         Returns:
             list of IOTileReport: The list of reports received from the device.
@@ -138,6 +145,15 @@ class CloudUploader(IOTileApp):
         slug = device_id_to_slug(device_id)
 
         self.logger.info("Connected to device 0x%X", device_id)
+
+        streamer_acks = []
+        if force is not None:
+            for index, value in viewitems(force):
+                force_ack = False
+                if isinstance(value, tuple):
+                    value, force_ack = value
+
+                streamer_acks.append((index, value, force_ack))
 
         if acknowledge:
             self.logger.info("Getting acknowledgements from cloud for slug %s", slug)
@@ -151,10 +167,14 @@ class CloudUploader(IOTileApp):
                 last_id = ack['last_id']
 
                 if index <= 0xFF:
-                    self.logger.info("Acknowledging highest ID %d for streamer %d", last_id, index)
-                    self._ack_streamer(index, last_id)
+                    streamer_acks.append((index, last_id, False))
+
         else:
             self.logger.info("Not acknowledging readings from cloud per user request")
+
+        for index, last_id, force in streamer_acks:
+            self.logger.info("Acknowledging highest ID %d for streamer %d (force=%s)", last_id, index, force)
+            self._ack_streamer(index, last_id, force=force)
 
         # Configure Downloader to not break up the report
         self.set_report_size()  #Set to max report size
