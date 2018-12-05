@@ -112,6 +112,8 @@ def build_python_distribution(tile):
 
 
 def generate_setup_py(target, source, env):
+    """Generate the setup.py file for this distribution."""
+
     tile = env['TILE']
     data = {}
 
@@ -145,7 +147,7 @@ def generate_setup_py(target, source, env):
     data['name'] = tile.support_distribution
     data['package'] = tile.support_distribution
     data['version'] = tile.parsed_version.pep440_string()
-    data['deps'] = ["{0} ~= {1}".format(x.support_distribution, x.parsed_version.pep440_string()) for x in _iter_dependencies(tile) if x.has_wheel]
+    data['deps'] = ["{0} {1}".format(x.support_distribution, x.parsed_version.pep440_compatibility_specifier()) for x in _iter_dependencies(tile) if x.has_wheel]
 
     # If there are some python packages needed, we add them to the list of dependencies required
     if tile.support_wheel_depends:

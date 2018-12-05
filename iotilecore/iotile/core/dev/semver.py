@@ -226,6 +226,30 @@ class SemanticVersion(object):
         template = prerelease_templates[self.release_type]
         return template % (self.major, self.minor, self.patch, self.prerelease_number)
 
+    def pep440_compatibility_specifier(self):
+        """Convert this version to a pep440 compatible version specifier.
+
+        The goal of this method is to generate a string that can be placed into
+        ``install_requires`` and will select all versions compatible with this
+        one in a semantic versioning sense.
+
+        Specifically, this translates to the following string:
+
+        == X.*, >= X.Y.Z[preX]
+
+        Note that this matching process is less restrictive than the
+        ~= X.Y.Z[preX]
+        operator provided for in pep440.  That operator is found to
+        be overly restrictive since it does not allow for minor
+        version bumps in the targeted version.
+
+        Returns:
+            str: A PEP 440 compliant version specifier.
+        """
+
+        pep440 = self.pep440_string()
+
+        return ">= {}, == {}.*".format(pep440, self.major)
 
     def __ne__(self, other):
         return self._ordering_tuple() != other._ordering_tuple()

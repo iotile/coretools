@@ -2,6 +2,13 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.6.15
+
+- Fix #514, widens the versions of dependencies specified in install_requires
+  for dependent wheels to be compatible with semantic versioning.  Previously
+  versions were pinning to have the same minor release number, now they are
+  just pinned to have the same major version number.
+
 ## 2.6.14
 
 - Add update_local to DepedencyManager(). This allows updating any local dependencies of

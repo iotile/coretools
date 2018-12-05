@@ -1,3 +1,6 @@
+"""Tests of SemanticVersion."""
+
+import pkg_resources
 from iotile.core.dev.semver import SemanticVersion
 from iotile.core.exceptions import DataError
 import pytest
@@ -173,3 +176,26 @@ def test_pep440():
     assert SemanticVersion.FromString('1.2.3-beta4').pep440_string() == '1.2.3b4'
     assert SemanticVersion.FromString('1.2.3-rc4').pep440_string() == '1.2.3rc4'
     assert SemanticVersion.FromString('1.2.3-build4').pep440_string() == '1.2.3.dev4'
+
+
+def test_pep440_compat():
+    """Make sure we can generate appropriate pep440 range specifiers."""
+
+    assert SemanticVersion.FromString('1.2.3').pep440_compatibility_specifier() == '>= 1.2.3, == 1.*'
+    assert SemanticVersion.FromString('1.2.3-alpha4').pep440_compatibility_specifier() == '>= 1.2.3a4, == 1.*'
+
+    req_rel = pkg_resources.Requirement.parse('abc ' + SemanticVersion.FromString('1.2.3').pep440_compatibility_specifier())
+    req_pre = pkg_resources.Requirement.parse('abc ' + SemanticVersion.FromString('1.2.3-alpha4').pep440_compatibility_specifier())
+
+    print(str(req_rel))
+    print(str(req_pre))
+
+    assert not '1.2.2' in req_rel
+    assert '1.2.3' in req_rel
+    assert '1.3.0' in req_rel
+    assert not '2.0.0' in req_rel
+
+    assert '1.2.3' in req_pre
+    assert '1.3.0' in req_pre
+    assert '1.2.3b1' in req_pre
+    assert not '2.0.0' in req_pre
