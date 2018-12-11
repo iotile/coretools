@@ -2,6 +2,12 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.6.16
+
+- Update TRUB script autobuilder to add a 'use_safemode' option. If this option is set to True in a 
+build_update_script() call or an autobuild_trub_script call, then the firmware load records in the TRUB script will be
+sandwiched between SendRPCRecords enabling and then disabling safemode.
+
 ## 2.6.15
 
 - Fix #514, widens the versions of dependencies specified in install_requires
