@@ -7,14 +7,14 @@ from SCons.Script import Environment, Action
 from arm import ensure_image_is_hex
 from iotile.core.exceptions import BuildError
 from iotile.core.hw.update import UpdateScript
-from iotile.core.hw.update.records import ReflashTileRecord, ReflashControllerRecord, SetDeviceTagRecord
+from iotile.core.hw.update.records import ReflashTileRecord, ReflashControllerRecord, SetDeviceTagRecord, SendRPCRecord
 from iotile.build.build import ProductResolver
 from iotile.core.utilities.intelhex import IntelHex
 from iotile.sg.compiler import compile_sgf
 from iotile.sg.output_formats.script import format_script
 from iotile.core.hw.update.script import UpdateScript
 
-def build_update_script(file_name, slot_assignments=None, os_info=None, use_safemode=False, sensor_graph=None, app_info=None):
+def build_update_script(file_name, slot_assignments=None, use_safemode=False, os_info=None, sensor_graph=None, app_info=None):
     """Build a trub script that loads given firmware into the given slots.
 
     slot_assignments should be a list of tuples in the following form:
@@ -73,7 +73,7 @@ def _build_reflash_script_action(target, source, env):
     records = []
 
     if env['USE_SAFEMODE']:
-        safemode_enable = SendRPCRecord(8,0x1006,int(True))
+        safemode_enable = SendRPCRecord(8,0x1006,bytearray([1]))
         records.append(safemode_enable)
 
     #Update application firmwares
@@ -110,7 +110,7 @@ def _build_reflash_script_action(target, source, env):
         records.append(SetDeviceTagRecord(app_tag=app_tag, app_version=app_version))
 
     if env['USE_SAFEMODE']:
-        safemode_disable = SendRPCRecord(8,0x1006,int(False))
+        safemode_disable = SendRPCRecord(8,0x1006,bytearray([0]))
         records.append(safemode_disable)
 
     script = UpdateScript(records)
