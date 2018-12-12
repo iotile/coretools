@@ -2,7 +2,7 @@
 
 All major changes in each released version of iotile-emulate are listed here.
 
-## HEAD
+## 0.1.0
 
 - Add support for EmulatedDevice and EmulatedTile classes.  These classes allow
   for the creation of virtual devices that emulate physical devices with support
