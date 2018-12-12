@@ -30,7 +30,8 @@ setup(
         "python-dateutil>=2.6.0",
         "future>=0.16.0",
         "typedargs>=0.11.0",
-        "sortedcontainers ~= 2.1"
+        "sortedcontainers ~= 2.1",
+        "monotonic ~= 1.5"
     ],
     extras_require={
         'ui': ["asciimatics>=1.9.0"]
@@ -42,12 +43,11 @@ setup(
             'iotile-updateinfo = iotile.core.scripts.iotile_updateinfo_script:main'
         ],
         'iotile.cmdstream': [
-            'ws = iotile.core.hw.transport.websocketstream:WebSocketStream',
-            'recorded = iotile.core.hw.transport.recordedstream:RecordedStream'
+            'ws = iotile.core.hw.transport.websocketstream:WebSocketStream'
         ],
         'iotile.device_adapter': [
             'virtual = iotile.core.hw.transport.virtualadapter:VirtualDeviceAdapter'
-            ],
+        ],
         'iotile.report_format': [
             'individual = iotile.core.hw.reports:IndividualReadingReport',
             'signed_list = iotile.core.hw.reports:SignedListReport',

@@ -6,13 +6,52 @@
 # Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
-from iotile.core.hw.exceptions import *
-from iotile.core.exceptions import *
 import atexit
-import json
 import binascii
+from io import open
+from datetime import datetime
+from monotonic import monotonic
+from iotile.core.hw.exceptions import StreamOperationNotSupportedError, ModuleBusyError, ModuleNotFoundError
+from iotile.core.exceptions import HardwareError
+
+class _RecordedRPC(object):
+    """Internal helper class for saving recorded RPCs to csv files."""
+
+    def __init__(self, connection, start, runtime, address, rpc_id, call, response=None, status=None, error=None):
+
+        if isinstance(connection, bytes):
+            connection = connection.decode('utf-8')
+
+        self.connection = connection
+        self.start = start
+        self.runtime = runtime
+        self.address = address
+        self.rpc_id = rpc_id
+        self.call = binascii.hexlify(call).decode('utf-8')
+
+        self.response = u""
+        if response is not None:
+            self.response = binascii.hexlify(response).decode('utf-8')
+
+        if status is None:
+            status = -1
+
+        self.status = status
+
+        if error is None:
+            error = u""
+
+        self.error = error
+
+    def serialize(self):
+        """Convert this recorded RPC into a string."""
+
+        return u"{},{: <26},{:2d},{:#06x},{:#04x},{:5.0f},{: <40},{: <40},{}".format(self.connection, self.start.isoformat(), self.address, self.rpc_id,
+                                                                                     self.status, self.runtime * 1000, self.call, self.response, self.error)
+
 
 open_streams = set()
+
 
 def do_final_close():
     """
@@ -23,6 +62,7 @@ def do_final_close():
     streams = open_streams.copy()
     for stream in streams:
         stream.close()
+
 
 atexit.register(do_final_close)
 
@@ -49,7 +89,7 @@ class CMDStream(object):
         open_streams.add(self)
 
         if self.record is not None:
-            self._recording = {}
+            self._recording = []
 
         if self.connection_string != None:
             try:
@@ -130,17 +170,25 @@ class CMDStream(object):
         if not hasattr(self, '_send_rpc'):
             raise StreamOperationNotSupportedError(command="send_rpc")
 
-        status, payload = self._send_rpc(address, rpc_id, call_payload, **kwargs)
-
-        #If we are recording this, save off the call and response
         if self.record is not None:
-            if self.connection_string not in self._recording:
-                self._recording[self.connection_string] = []
+            start_time = monotonic()
+            start_stamp = datetime.utcnow()
 
-            call = "{0},{1},{2}".format(address, rpc_id, binascii.hexlify(call_payload))
-            response = "{0},{1}".format(status, binascii.hexlify(payload))
+        try:
+            status = -1
+            payload = b''
 
-            self._recording[self.connection_string].append((call, response))
+            status, payload = self._send_rpc(address, rpc_id, call_payload, **kwargs)
+        finally:
+            #If we are recording this, save off the call and response
+            if self.record is not None:
+                end_time = monotonic()
+                duration = end_time - start_time
+
+                recording = _RecordedRPC(self.connection_string, start_stamp, duration, address, rpc_id,
+                                         call_payload, payload, status)
+
+                self._recording.append(recording)
 
         if status == 0:
             raise ModuleBusyError(address)
@@ -226,7 +274,13 @@ class CMDStream(object):
         if not self.record:
             return
 
-        with open(self.record, "w") as f:
-            json.dump(self._recording, f, indent=4)
+        with open(self.record, "w", encoding="utf-8") as outfile:
+            outfile.write(u"# IOTile RPC Recording\n")
+            outfile.write(u"# Format: 1.0\n\n")
+            outfile.write(u"Connection,Timestamp [utc isoformat],Address,RPC ID,Duration [ms],Status,Call,Response,Error\n")
+
+            for recording in self._recording:
+                outfile.write(recording.serialize())
+                outfile.write(u'\n')
 
         self.record = False

@@ -224,3 +224,50 @@ def test_tilebased_device(tile_based):
 
     assert tile1.add(3, 5) == 8
     tile1.count()
+
+
+def test_recording_rpcs(tmpdir):
+    """Make sure we can record RPCs."""
+
+    record_path = tmpdir.join('recording.csv')
+    conf_file = os.path.join(os.path.dirname(__file__), 'tile_config.json')
+
+    if '@' in conf_file or ',' in conf_file or ';' in conf_file:
+        pytest.skip('Cannot pass device config because path has [@,;] in it')
+
+    with HardwareManager('virtual:tile_based@%s' % conf_file, record=str(record_path)) as hw:
+        hw.load_development_proxy('test/test_hw/virtual_tile.py')
+        hw.connect(1)
+
+        con = hw.controller()
+        tile1 = hw.get(11)
+
+        con.count()
+        tile1.add(3, 5)
+        tile1.count()
+
+    assert record_path.exists()
+
+    rpcs = record_path.readlines(cr=False)
+    assert len(rpcs) == 12
+    assert rpcs[:3] == ['# IOTile RPC Recording',
+                        '# Format: 1.0',
+                        '']
+
+    # Patch out the timestamps and run times for better comparison
+    rpc_lines = [x.split(',') for x in rpcs[4:-1]]
+
+    for rpc in rpc_lines:
+        assert len(rpc) == 9
+        rpc[1] = ""
+        rpc[5] = ""
+
+    rpc_lines = [",".join(x) for x in rpc_lines]
+
+    assert rpc_lines == ['1,, 8,0x0004,0xc0,,                                        ,ffff74657374303101000003                ,',
+                         '1,, 8,0x0004,0xc0,,                                        ,ffff74657374303101000003                ,',
+                         '1,,11,0x0004,0xc0,,                                        ,ffff74657374303101000003                ,',
+                         '1,,11,0x0004,0xc0,,                                        ,ffff74657374303101000003                ,',
+                         '1,, 8,0x8001,0xc0,,                                        ,01000000                                ,',
+                         '1,,11,0x8000,0xc0,,0300000005000000                        ,08000000                                ,',
+                         '1,,11,0x8001,0xc0,,                                        ,01000000                                ,']

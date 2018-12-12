@@ -2,6 +2,12 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## 3.24.0
+
+- Remove unused RecordedStream class.
+- Change RPC recording feature to save as a csv file instead of a json file.
+- Add modern support for recording RPCs including runtime and status codes.
+
 ## 3.23.1
 
 - Add support for generating semantic version range strings in a pep440
