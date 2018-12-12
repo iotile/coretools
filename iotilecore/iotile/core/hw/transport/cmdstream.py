@@ -15,6 +15,8 @@ from iotile.core.hw.exceptions import StreamOperationNotSupportedError, ModuleBu
 from iotile.core.exceptions import HardwareError
 
 class _RecordedRPC(object):
+    """Internal helper class for saving recorded RPCs to csv files."""
+
     def __init__(self, connection, start, runtime, address, rpc_id, call, response=None, status=None, error=None):
 
         if isinstance(connection, bytes):
