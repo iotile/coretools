@@ -14,7 +14,7 @@ from iotile.sg.compiler import compile_sgf
 from iotile.sg.output_formats.script import format_script
 from iotile.core.hw.update.script import UpdateScript
 
-def build_update_script(file_name, slot_assignments=None, use_safemode=False, os_info=None, sensor_graph=None, app_info=None):
+def build_update_script(file_name, slot_assignments=None, os_info=None, sensor_graph=None, app_info=None, use_safeupdate=False):
     """Build a trub script that loads given firmware into the given slots.
 
     slot_assignments should be a list of tuples in the following form:
@@ -35,6 +35,7 @@ def build_update_script(file_name, slot_assignments=None, use_safemode=False, os
         sensor_graph (str): Name of sgf file. Optional.
         app_info (tuple(int, str)): A tuple of App version tag and X.Y version
             number that will be set as part of the OTA script if included. Optional.
+        use_safeupdate (bool): Enables safe firmware update
     """
 
     resolver = ProductResolver.Create()
@@ -48,7 +49,7 @@ def build_update_script(file_name, slot_assignments=None, use_safemode=False, os
     else:
         env['SLOTS'] = None
 
-    env['USE_SAFEMODE'] = use_safemode
+    env['USE_SAFEUPDATE'] = use_safeupdate
     env['OS_INFO'] = os_info
     env['APP_INFO'] = app_info
     env['UPDATE_SENSORGRAPH'] = False
@@ -72,8 +73,10 @@ def _build_reflash_script_action(target, source, env):
     source = [str(x) for x in source]
     records = []
 
-    if env['USE_SAFEMODE']:
-        safemode_enable = SendRPCRecord(8,0x1006,bytearray([1]))
+    if env['USE_SAFEUPDATE']:
+        sgf_off = SendRPCRecord(8,0x2005,bytearray([0])) #Disable Sensorgraph
+        records.append(sgf_off)
+        safemode_enable = SendRPCRecord(8,0x1006,bytearray([1])) #Enable Safemode
         records.append(safemode_enable)
 
     #Update application firmwares
@@ -109,9 +112,11 @@ def _build_reflash_script_action(target, source, env):
         app_tag, app_version = app_info
         records.append(SetDeviceTagRecord(app_tag=app_tag, app_version=app_version))
 
-    if env['USE_SAFEMODE']:
-        safemode_disable = SendRPCRecord(8,0x1006,bytearray([0]))
+    if env['USE_SAFEUPDATE']:
+        safemode_disable = SendRPCRecord(8,0x1006,bytearray([0])) # Disable safemode
         records.append(safemode_disable)
+        sgf_on = SendRPCRecord(8,0x2005,bytearray([1]))  # Enable Sensorgraph
+        records.append(sgf_on)
 
     script = UpdateScript(records)
 

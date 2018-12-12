@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.6.17
+
+- Add disable/reenable sensorgraph to safely reflash firmware
+
 ## 2.6.16
 
 - Update TRUB script autobuilder to add a 'use_safemode' option. If this option is set to True in a 
