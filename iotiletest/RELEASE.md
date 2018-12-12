@@ -2,10 +2,14 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
-## HEAD
+## 0.10.0
 
 - Add emulation_test device as a basic example of the EmulatedDevice class.
 - Fix device fixture to not require the --direct argument to be specified.
+- Add support for recording the rpcs that are sent during a pytest session
+  using the device fixture by passing a `--record <path>` parameter.  The
+  parameter can contain a `{}` to include the name of the test module or
+  function in the output recording path.
 
 ## 0.9.6
 

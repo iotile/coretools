@@ -22,11 +22,8 @@ from future.utils import itervalues
 from typedargs.annotate import annotated, param, return_type, finalizer, docannotate, context
 
 from iotile.core.dev.semver import SemanticVersion
-#from iotile.core.hw.transport import *
 from iotile.core.hw.transport import CMDStream
-#from iotile.core.hw.exceptions import *
 from iotile.core.hw.exceptions import UnknownModuleTypeError
-#from iotile.core.exceptions import *
 from iotile.core.exceptions import ArgumentError, HardwareError, ValidationError, TimeoutExpiredError, ExternalError
 from iotile.core.dev.registry import ComponentRegistry
 from iotile.core.hw.transport.adapterstream import AdapterCMDStream
@@ -95,7 +92,7 @@ class HardwareManager(object):
         if arg != "":
             self.port = arg
 
-        self.record = record
+        self._record = record
 
         self.stream = self._create_stream(adapter)
 
@@ -947,11 +944,11 @@ class HardwareManager(object):
 
         #Check if we're supposed to use a specific device adapter
         if force_adapter is not None:
-            return AdapterCMDStream(force_adapter, port, conn_string, record=self.record)
+            return AdapterCMDStream(force_adapter, port, conn_string, record=self._record)
 
         #First check if this is the special none stream that creates a transport channel nowhere
         if self.transport == 'none':
-            return CMDStream(port, conn_string, record=self.record)
+            return CMDStream(port, conn_string, record=self._record)
 
         #Next attempt to find a CMDStream that is registered for this transport type
         for stream_entry in pkg_resources.iter_entry_points('iotile.cmdstream'):
@@ -959,7 +956,7 @@ class HardwareManager(object):
                 continue
 
             stream_factory = stream_entry.load()
-            return stream_factory(port, conn_string, record=self.record)
+            return stream_factory(port, conn_string, record=self._record)
 
         #Otherwise attempt to find a DeviceAdapter that we can turn into a CMDStream
         for adapter_entry in pkg_resources.iter_entry_points('iotile.device_adapter'):
@@ -967,6 +964,6 @@ class HardwareManager(object):
                 continue
 
             adapter_factory = adapter_entry.load()
-            return AdapterCMDStream(adapter_factory(port), port, conn_string, record=self.record)
+            return AdapterCMDStream(adapter_factory(port), port, conn_string, record=self._record)
 
         raise HardwareError("Could not find transport object registered to handle passed transport type", transport=self.transport)
