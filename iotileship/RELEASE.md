@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileShip are listed here.
 
+## 0.1.5
+
+- VerifyDeviceStep only checks os/app tags insteads of settings them
+
 ## 0.1.4
 
 - Add SyncRTCStep to set the RTC to current UTC time.

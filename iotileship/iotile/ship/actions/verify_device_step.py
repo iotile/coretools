@@ -41,19 +41,9 @@ class VerifyDeviceStep(object):
                     expected_version=expected_tile_version, actual_version=actual_tile_version)
 
     def _verify_os_app_settings(self, hw):
-        """Change os and app tags/versions and verify that they've been changed
+        """Verify that the os and app tags/versions are set correctly
         """
         con = hw.controller()
-        rb = con.remote_bridge()
-        rb.create_script()
-        if self._os_tag is not None:
-            rb.add_setversion_action('os', self._os_tag, self._os_version)
-        if self._app_tag is not None:
-            rb.add_setversion_action('app', self._app_tag, self._app_version)
-        info = con.test_interface().get_info()
-        rb.send_script()
-        rb.wait_script()
-
         info = con.test_interface().get_info()
         if self._os_tag is not None:
             if info['os_tag'] != self._os_tag:
