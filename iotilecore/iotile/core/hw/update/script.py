@@ -70,14 +70,15 @@ class UpdateScript(object):
         return ScriptHeader(UpdateScript.SCRIPT_HEADER_LENGTH, False, True, False)
 
     @classmethod
-    def FromBinary(cls, script_data, allow_unknown=True, show_generic=False):
+    def FromBinary(cls, script_data, allow_unknown=True, show_rpcs=False):
         """Parse a binary update script.
 
         Args:
             script_data (bytearray): The binary data containing the script.
             allow_unknown (bool): Allow the script to contain unknown records
                 so long as they have correct headers to allow us to skip them.
-            show_generic (bool): Show generic matches for each record
+            show_rpcs (bool): Show SendRPCRecord matches for each record rather than
+                the more specific operation
         Raises:
             ArgumentError: If the script contains malformed data that cannot
                 be parsed.
@@ -116,7 +117,7 @@ class UpdateScript(object):
 
 
             try:
-                record = UpdateRecord.FromBinary(record_data, record_count, show_generic)
+                record = UpdateRecord.FromBinary(record_data, record_count, show_rpcs)
             except DeferMatching as defer:
                 # If we're told to defer matching, continue accumulating record_data
                 # until we get a complete match.  If a partial match is available, keep track of

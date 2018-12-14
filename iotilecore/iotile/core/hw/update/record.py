@@ -146,7 +146,7 @@ class UpdateRecord(object):
         UpdateRecord.KNOWN_CLASSES[record_type].append(record_class)
 
     @classmethod
-    def FromBinary(cls, record_data, record_count=1, show_generic=False):
+    def FromBinary(cls, record_data, record_count=1, show_rpcs=False):
         """Create an UpdateRecord subclass from binary record data.
 
         This should be called with a binary record blob (including the record
@@ -159,8 +159,8 @@ class UpdateRecord(object):
             record_count (int): If we are asked to create a record from multiple
                 records, the record_data will be passed to the record subclass
                 with headers intact since there will be more than one header.
-            show_generic (bool): Returns the generic matching class rather than
-                the best matching class. This is useful to show the actual RPC calls.
+            show_rpcs (bool): Returns the RPC matching class rather than
+                the best matching class if available. This is useful to show the actual RPC calls.
 
         Raises:
             ArgumentError: If the record_data is malformed and cannot be parsed.
@@ -200,14 +200,15 @@ class UpdateRecord(object):
 
             quality = record_class.MatchQuality(match_data, record_count)
 
-            #swap generic/perfect matches
-            if show_generic:
+            if show_rpcs:
+                # Defer is used to combine multiple RPCs into a single
+                # logical operation. Reduce quality so that we get actual RPCs.
+                if quality == MatchQuality.DeferMatch:
+                    quality = 10
                 if quality == MatchQuality.GenericMatch:
                     quality = MatchQuality.PerfectMatch
                 if quality == MatchQuality.PerfectMatch:
                     quality = MatchQuality.GenericMatch
-                if quality == MatchQuality.DeferMatch:
-                    quality = 10
 
             if quality > best_match:
                 best_match = quality

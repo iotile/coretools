@@ -72,7 +72,7 @@ def main(argv=None):
         return 1
 
     try:
-        script = UpdateScript.FromBinary(binary_script, allow_unknown=args.allow_unknown, show_generic=args.show_rpcs)
+        script = UpdateScript.FromBinary(binary_script, allow_unknown=args.allow_unknown, show_rpcs=args.show_rpcs)
     except ArgumentError as err:
         print("ERROR: could not parse script")
         print(str(err))
