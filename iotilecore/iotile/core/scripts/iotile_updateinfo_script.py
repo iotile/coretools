@@ -24,6 +24,7 @@ def build_args():
 
     parser.add_argument('script', type=str, help="The binary update script to load")
     parser.add_argument('-v', '--verbose', action="count", help="Increase logging level (goes error, warn, info, debug)")
+    parser.add_argument('--show-rpcs', '-r', action="store_true", help="Show TRUB steps as RPC calls where applicable")
     parser.add_argument('--allow-unknown', '-u', action="store_true", help="Don't complain if the script contains unknown actions")
     parser.add_argument('-f', '--format', choices=['text', 'json'], default="text", help="The output format to use to display the script")
 
@@ -71,13 +72,13 @@ def main(argv=None):
         return 1
 
     try:
-        script = UpdateScript.FromBinary(binary_script, allow_unknown=args.allow_unknown)
+        script = UpdateScript.FromBinary(binary_script, allow_unknown=args.allow_unknown, show_rpcs=args.show_rpcs)
     except ArgumentError as err:
-        print("ERROR: could not parse script")
+        print("ERROR: ArgumentError: could not parse script")
         print(str(err))
         return 3
     except DataError as err:
-        print("ERROR: could not parse script")
+        print("ERROR: DataError: could not parse script")
         print(str(err))
         return 4
 

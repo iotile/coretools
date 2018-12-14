@@ -2,6 +2,11 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## 3.24.1
+
+- Add 'show_rpcs' command line option to the iotile-updateinfo script to allow
+  display of the actual RPCs in trub scripts.
+
 ## 3.24.0
 
 - Remove unused RecordedStream class.
