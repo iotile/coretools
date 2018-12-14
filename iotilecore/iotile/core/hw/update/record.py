@@ -5,7 +5,6 @@ All records must inherit from this base class and implement its required methods
 
 from __future__ import (print_function, absolute_import, unicode_literals)
 import struct
-import logging
 from iotile.core.exceptions import ArgumentError, DataError
 
 
@@ -31,8 +30,6 @@ class DeferMatching(Exception):
 
 class UpdateRecord(object):
     """The base class for all update actions inside of an update script."""
-
-    logger = logging.getLogger(__name__)
 
     HEADER_LENGTH = 8
 
