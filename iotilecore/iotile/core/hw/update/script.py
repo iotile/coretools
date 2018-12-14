@@ -118,6 +118,7 @@ class UpdateScript(object):
 
             try:
                 if show_rpcs and record_type == SendRPCRecord.MatchType():
+                    cls.logger.debug("   {0}".format(hexlify(record_data)))
                     record = SendRPCRecord.FromBinary(record_data[UpdateRecord.HEADER_LENGTH:], record_count)
                 elif show_rpcs and record_type == SendErrorCheckingRPCRecord.MatchType():
                     cls.logger.debug("   {0}".format(hexlify(record_data)))
