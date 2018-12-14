@@ -9,7 +9,7 @@ from binascii import hexlify
 from collections import namedtuple
 from iotile.core.exceptions import ArgumentError, DataError
 from .record import UpdateRecord, DeferMatching
-from .records import UnknownRecord
+from .records import UnknownRecord, SendRPCRecord, SendErrorCheckingRPCRecord
 
 ScriptHeader = namedtuple('ScriptHeader', ['header_length', 'authenticated', 'integrity_checked', 'encrypted'])
 
@@ -117,17 +117,24 @@ class UpdateScript(object):
 
 
             try:
-                record = UpdateRecord.FromBinary(record_data, record_count, show_rpcs)
+                if show_rpcs and record_type == SendRPCRecord.MatchType():
+                    record = SendRPCRecord.FromBinary(record_data[UpdateRecord.HEADER_LENGTH:], record_count)
+                elif show_rpcs and record_type == SendErrorCheckingRPCRecord.MatchType():
+                    cls.logger.debug("   {0}".format(hexlify(record_data)))
+                    record = SendErrorCheckingRPCRecord.FromBinary(record_data[UpdateRecord.HEADER_LENGTH:], record_count)
+                else:
+                    record = UpdateRecord.FromBinary(record_data, record_count)
+
             except DeferMatching as defer:
                 # If we're told to defer matching, continue accumulating record_data
                 # until we get a complete match.  If a partial match is available, keep track of
                 # that partial match so that we can use it once the record no longer matches.
-
                 if defer.partial_match is not None:
                     partial_match = defer.partial_match
                     match_offset = curr
 
                 continue
+
             except DataError:
                 if record_count > 1 and partial_match:
                     record = partial_match

@@ -74,11 +74,11 @@ def main(argv=None):
     try:
         script = UpdateScript.FromBinary(binary_script, allow_unknown=args.allow_unknown, show_rpcs=args.show_rpcs)
     except ArgumentError as err:
-        print("ERROR: could not parse script")
+        print("ERROR: ArgumentError: could not parse script")
         print(str(err))
         return 3
     except DataError as err:
-        print("ERROR: could not parse script")
+        print("ERROR: DataError: could not parse script")
         print(str(err))
         return 4
 
