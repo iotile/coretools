@@ -5,6 +5,7 @@ All records must inherit from this base class and implement its required methods
 
 from __future__ import (print_function, absolute_import, unicode_literals)
 import struct
+import logging
 from iotile.core.exceptions import ArgumentError, DataError
 
 
@@ -30,6 +31,8 @@ class DeferMatching(Exception):
 
 class UpdateRecord(object):
     """The base class for all update actions inside of an update script."""
+
+    logger = logging.getLogger(__name__)
 
     HEADER_LENGTH = 8
 
@@ -143,7 +146,7 @@ class UpdateRecord(object):
         UpdateRecord.KNOWN_CLASSES[record_type].append(record_class)
 
     @classmethod
-    def FromBinary(cls, record_data, record_count=1):
+    def FromBinary(cls, record_data, record_count=1, show_generic=False):
         """Create an UpdateRecord subclass from binary record data.
 
         This should be called with a binary record blob (including the record
@@ -156,6 +159,8 @@ class UpdateRecord(object):
             record_count (int): If we are asked to create a record from multiple
                 records, the record_data will be passed to the record subclass
                 with headers intact since there will be more than one header.
+            show_generic (bool): Returns the generic matching class rather than
+                the best matching class. This is useful to show the actual RPC calls.
 
         Raises:
             ArgumentError: If the record_data is malformed and cannot be parsed.
@@ -184,6 +189,9 @@ class UpdateRecord(object):
         best_match = MatchQuality.NoMatch
         matching_class = None
 
+
+
+
         for record_class in record_classes:
             match_data = record_data[UpdateRecord.HEADER_LENGTH:]
 
@@ -191,6 +199,15 @@ class UpdateRecord(object):
                 match_data = record_data
 
             quality = record_class.MatchQuality(match_data, record_count)
+
+            #swap generic/perfect matches
+            if show_generic:
+                if quality == MatchQuality.GenericMatch:
+                    quality = MatchQuality.PerfectMatch
+                if quality == MatchQuality.PerfectMatch:
+                    quality = MatchQuality.GenericMatch
+                if quality == MatchQuality.DeferMatch:
+                    quality = 10
 
             if quality > best_match:
                 best_match = quality
