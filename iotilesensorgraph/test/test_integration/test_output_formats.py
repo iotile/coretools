@@ -1,14 +1,21 @@
+from __future__ import print_function
 import os.path
-import binascii
 from iotile.sg.output_formats import format_script, format_snippet, format_config, format_ascii
 
-def compare_binary_data(data, reference_file):
+def compare_binary_data(data, reference_file, tmpdir=None):
     """Compare binary data with a reference file."""
 
     in_path = os.path.join(os.path.dirname(__file__), 'reference_output', reference_file)
 
     with open(in_path, "rb") as in_file:
         ref_data = in_file.read()
+
+    if tmpdir is not None:
+        actpath = tmpdir.join(reference_file)
+        with open(str(actpath), "wb") as out_file:
+            out_file.write(data)
+
+        print("Saving test version of %s to %s" % (reference_file, str(actpath)))
 
     assert data == bytearray(ref_data)
 
@@ -29,13 +36,13 @@ def compare_string_data(data, reference_file):
     assert data_lines == ref_lines
 
 
-def test_script_output_format(usertick_gate_opt, streamer_types):
+def test_script_output_format(tmpdir, usertick_gate_opt, streamer_types):
     """Make sure the output script format works."""
 
     output = format_script(usertick_gate_opt)
     streamer_out = format_script(streamer_types)
 
-    compare_binary_data(output, 'usertick_optimized_script.trub')
+    compare_binary_data(output, 'usertick_optimized_script.trub', tmpdir=tmpdir)
     compare_binary_data(streamer_out, 'streamers_script.trub')
 
 

@@ -3,7 +3,13 @@
 All major changes in each released version of iotile-sensorgraph are listed
 here.
 
-## HEAD
+## 0.8.0
+
+- Fix critical bug in update script generation that incorrectly handled nodes
+  that only had a single input and specified a triggering condition that 
+  depended on the value of that input.  The result was that the node would
+  fire every time the input changed, rather than just when the new value
+  matched the expected triggering condition.
 
 - Fix bug in script output_format to clear configs before adding new config 
   variables.
