@@ -3,7 +3,7 @@
 from __future__ import (unicode_literals, absolute_import, print_function)
 from builtins import str
 import struct
-from pyparsing import Word, Regex, nums, hexnums, Literal, Optional, Group, oneOf, QuotedString, ParseException
+from pyparsing import Regex, Literal, Optional, oneOf, ParseException
 from typedargs.exceptions import ArgumentError
 from .node import SGNode, InputTrigger, FalseTrigger, TrueTrigger
 from .stream import DataStream, DataStreamSelector
@@ -77,10 +77,10 @@ def parse_node_descriptor(desc, model):
 
         inputs.append((stream_a, trigger_a))
 
-    if 'combiner' in data and str(data['combiner']) == u'&&':
-        node.trigger_combiner = SGNode.AndTriggerCombiner
-    else:
+    if 'combiner' in data and str(data['combiner']) == u'||':
         node.trigger_combiner = SGNode.OrTriggerCombiner
+    else:
+        node.trigger_combiner = SGNode.AndTriggerCombiner
 
     processing = data['processor']
     return node, inputs, processing

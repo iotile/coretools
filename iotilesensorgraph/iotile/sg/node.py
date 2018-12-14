@@ -170,12 +170,12 @@ class SGNode(object):
         max_inputs = model.get('max_node_inputs')
         max_outputs = model.get('max_node_outputs')
 
-        self.inputs = [(InvalidStreamWalker(None), FalseTrigger())]*max_inputs
+        self.inputs = [(InvalidStreamWalker(None), TrueTrigger())]*max_inputs
         self.outputs = []
         self.stream = stream
         self.func_name = None
         self.func = None
-        self.trigger_combiner = SGNode.OrTriggerCombiner
+        self.trigger_combiner = SGNode.AndTriggerCombiner
 
         self.max_outputs = max_outputs
 
