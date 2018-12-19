@@ -79,7 +79,20 @@ def _build_reflash_script_action(target, source, env):
         safemode_enable = SendRPCRecord(8,0x1006,bytearray([1])) #Enable Safemode
         records.append(safemode_enable)
 
-    #Update application firmwares
+    #Update sensorgraph
+    if env['UPDATE_SENSORGRAPH']:
+        sensor_graph_file = source[-1]
+        sensor_graph = compile_sgf(sensor_graph_file)
+        output = format_script(sensor_graph)
+        records += UpdateScript.FromBinary(output).records
+    
+    #Update App Tag
+    app_info = env['APP_INFO']
+    if app_info is not None:
+        app_tag, app_version = app_info
+        records.append(SetDeviceTagRecord(app_tag=app_tag, app_version=app_version))
+
+    #Update application firmware
     if env['SLOTS'] is not None:
         for (controller, slot_id), image_path in zip(env['SLOTS'], source):
             hex_data = IntelHex(image_path)
@@ -94,24 +107,13 @@ def _build_reflash_script_action(target, source, env):
                 record = ReflashTileRecord(slot_id, bin_data, offset)
 
             records.append(record)
-
-    #Update sensorgraph
-    if env['UPDATE_SENSORGRAPH']:
-        sensor_graph_file = source[-1]
-        sensor_graph = compile_sgf(sensor_graph_file)
-        output = format_script(sensor_graph)
-        records += UpdateScript.FromBinary(output).records
-
-    #Update App and OS Tag
+    
+    #Update OS Tag
     os_info = env['OS_INFO']
-    app_info = env['APP_INFO']
     if os_info is not None:
         os_tag, os_version = os_info
         records.append(SetDeviceTagRecord(os_tag=os_tag, os_version=os_version))
-    if app_info is not None:
-        app_tag, app_version = app_info
-        records.append(SetDeviceTagRecord(app_tag=app_tag, app_version=app_version))
-
+    
     if env['USE_SAFEUPDATE']:
         safemode_disable = SendRPCRecord(8,0x1006,bytearray([0])) # Disable safemode
         records.append(safemode_disable)
