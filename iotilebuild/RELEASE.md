@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.6.18
+
+- Reorder TRUB script build to apply the sensorgraph BEFORE applying the firmware updates
+
 ## 2.6.17
 
 - Add disable/reenable sensorgraph to safely reflash firmware
