@@ -26,6 +26,7 @@ def main(argv=None):
 
     parser.add_argument('interface', help="The name of the virtual device interface to use")
     parser.add_argument('device', help="The name of the virtual device to create")
+    parser.add_argument('-v', '--verbose', action="count", default=0, help="Increase logging level (goes error, warn, info, debug)")
     parser.add_argument('-c', '--config', help="An optional JSON config file with arguments for the interface and device")
     parser.add_argument('-l', '--list', action='store_true', help="List all known installed interfaces and devices and then exit")
     parser.add_argument('-n', '--scenario', help="Load a test scenario from the given file")
@@ -48,6 +49,20 @@ def main(argv=None):
         return 0
 
     args = parser.parse_args(argv)
+
+    if args.verbose > 0:
+        root = logging.getLogger()
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter('%(asctime)s.%(msecs)03d %(levelname).3s %(name)s %(message)s',
+                                      '%y-%m-%d %H:%M:%S')
+        handler.setFormatter(formatter)
+        loglevels = [logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG]
+        if args.verbosity >= len(loglevels):
+            args.verbosity = len(loglevels) - 1
+
+        level = loglevels[args.verbosity]
+        root.setLevel(level)
+        root.addHandler(handler)
 
     config = {}
     iface = None
