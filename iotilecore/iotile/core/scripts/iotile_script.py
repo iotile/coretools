@@ -19,7 +19,7 @@ import logging
 
 from typedargs.shell import HierarchicalShell
 from typedargs import type_system
-from iotile.core.exceptions import IOTileException, APIError
+from iotile.core.exceptions import IOTileException, APIError, ArgumentError
 from iotile.core.dev.registry import ComponentRegistry
 import iotile.core.hw.transport.cmdstream as cmdstream
 
@@ -212,6 +212,10 @@ def main(argv=None):
         #just exit rather than drop the user into a shell.
         cmdstream.do_final_close()
         return 1
+    except ArgumentError as exc:
+        print(exc.format())
+        return 1
+
     except Exception:  # pylint:disable=broad-except; We need to make sure we always call cmdstream.do_final_close()
         #Catch all exceptions because otherwise we won't properly close cmdstreams
         #since the program will be said to except 'abnormally'
