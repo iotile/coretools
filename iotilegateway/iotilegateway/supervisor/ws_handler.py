@@ -24,8 +24,8 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
     @classmethod
     def decode_datetime(cls, obj):
         """Decode a datetime from msgpack."""
-        if b'__datetime__' in obj:
-            obj = datetime.datetime.strptime(obj[b'as_str'].decode(), "%Y%m%dT%H:%M:%S.%f")
+        if '__datetime__' in obj:
+            obj = datetime.datetime.strptime(obj['as_str'].decode(), "%Y%m%dT%H:%M:%S.%f")
         return obj
 
     @classmethod

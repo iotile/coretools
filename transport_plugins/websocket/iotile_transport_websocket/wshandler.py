@@ -41,9 +41,8 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
     @classmethod
     def decode_datetime(cls, obj):
         """Decode a msgpack'ed datetime."""
-
-        if b'__datetime__' in obj:
-            obj = datetime.datetime.strptime(obj[b'as_str'].decode(), "%Y%m%dT%H:%M:%S.%f")
+        if '__datetime__' in obj:
+            obj = datetime.datetime.strptime(obj['as_str'].decode(), "%Y%m%dT%H:%M:%S.%f")
         return obj
 
     @classmethod
@@ -194,7 +193,6 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         """
 
         try:
-
             message = msgpack.unpackb(message, raw=False, object_hook=self.decode_datetime)
 
             connection_string = message.get('connection_string', None)
