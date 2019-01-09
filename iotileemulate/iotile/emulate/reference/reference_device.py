@@ -4,7 +4,7 @@ import base64
 import logging
 from future.utils import viewitems
 from past.builtins import basestring
-from iotile.core.exceptions import ArgumentError, DataError, InternalError
+from iotile.core.exceptions import ArgumentError, DataError
 from ..virtual import EmulatedDevice, EmulatedPeripheralTile
 from ..constants import rpcs
 from .reference_controller import ReferenceController
@@ -77,6 +77,7 @@ class ReferenceDevice(EmulatedDevice):
                 continue
 
             # Check and make sure that if the tile should start that it has started
+            # FIXME: Remove hardcoded run level constant
             if tile.run_level != 2:
                 tile.wait_started(timeout=2.0)
 
@@ -84,6 +85,8 @@ class ReferenceDevice(EmulatedDevice):
 
     def reset_peripheral_tiles(self):
         """Reset all peripheral tiles (asynchronously)."""
+
+        self._logger.info("Resetting all peripheral tiles")
 
         for address in sorted(self._tiles):
             if address == 8:

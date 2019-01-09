@@ -120,6 +120,7 @@ class UTCAssigner(object):
         if uptime is None and utc is None:
             return
 
+        ##FIXME: if uptime is None, this will break
         if uptime & (1 << 31):
             if utc is not None:
                 return

@@ -198,10 +198,10 @@ class AdapterCMDStream(CMDStream):
         if self.connection_interrupted:
             self._try_reconnect()
 
+        self.adapter.periodic_callback()
+
         if not success:
             raise HardwareError("Could not send RPC", reason=result['failure_reason'])
-
-        self.adapter.periodic_callback()
 
         return status, payload
 

@@ -2,18 +2,15 @@
 
 from __future__ import unicode_literals, absolute_import, print_function
 import logging
-import sys
-from collections import namedtuple
-from queue import Queue
-from future.utils import viewitems, raise_
-from iotile.core.exceptions import DataError
+import threading
+from future.utils import viewitems
+from iotile.core.exceptions import DataError, InternalError
 from iotile.core.utilities import WorkQueueThread
 from iotile.core.hw.virtual import VirtualIOTileDevice
 from iotile.core.hw.virtual.common_types import pack_rpc_payload, unpack_rpc_payload
 from .emulation_mixin import EmulationMixin
 from .state_log import EmulationStateLog
 from ..constants.rpcs import RPCDeclaration
-from ..constants import rpc_name
 from ..utilities import format_rpc
 
 
@@ -46,6 +43,35 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
 
         self._logger = logging.getLogger(__name__)
         self._rpc_queue = WorkQueueThread(self._background_dispatch_rpc)
+        self._pending_rpcs = {}
+        self._deadlock_check = threading.local()
+        self._setup_deadlock_check()
+
+    def _setup_deadlock_check(self):
+        """Initialize thread-local storage to detect potential deadlocks.
+
+        If a blocking RPC is called from the rpc thread itself, then it can
+        never complete because the thread that can execute it is blocked
+        waiting for it to finish.  This can lead to tough-to-debug situations
+        so we automatically detect when this happens and throw an exception
+        instead.
+
+        The check is based on creating a thread-local variable that is true
+        in the rpc dispatch thread and false in all other threads.  This
+        variable is checked before queuing an RPC.  If it is true, then
+        we would deadlock and an exception is thrown instead.
+
+        Since the rpc thread isn't running until start() is called, we
+        queue a deferred task to setup the thread local as the first
+        thing done by the background thread.
+        """
+
+        self._deadlock_check.__dict__.setdefault('is_rpc_thread', False)
+
+        def _init_tls():
+            self._deadlock_check.is_rpc_thread = True
+
+        self._rpc_queue.defer(_init_tls)
 
     def _background_dispatch_rpc(self, action):
         """Background work queue handler to dispatch RPCs."""
@@ -56,9 +82,12 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
             exc_status = None
             resp = None
 
-            # Send the RPC immediately and wait for the respones
+            # Send the RPC immediately and wait for the response
             resp = super(EmulatedDevice, self).call_rpc(address, rpc_id, arg_payload)
             return resp
+        except AsynchronousRPCResponse:
+
+            self._
         except Exception as exc:
             exc_status = exc
             raise
@@ -68,9 +97,10 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
     def start(self, channel=None):
         """Start this emulated device.
 
-        This triggers the controller to call start on all peripheral tiles in the device to make sure
-        they start after the controller does and then it waits on each one to make sure they have
-        finished initializing before returning.
+        This triggers the controller to call start on all peripheral tiles in
+        the device to make sure they start after the controller does and then
+        it waits on each one to make sure they have finished initializing
+        before returning.
 
         Args:
             channel (IOTilePushChannel): the channel with a stream and trace
@@ -108,9 +138,9 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
         """Immediately dispatch an RPC inside this EmulatedDevice.
 
         This function is meant to be used for testing purposes as well as by
-        tiles inside a complex EmulatedDevice subclass that need to communicate
-        with each other.  It should only be called from the main virtual device
-        thread where start() was called from.
+        tiles inside a complex EmulatedDevice subclass that need to
+        communicate with each other.  It should only be called from the main
+        virtual device thread where start() was called from.
 
         **Background workers may not call this method since it may cause them to deadlock.**
 
@@ -125,6 +155,11 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
         Returns:
             list: A list of the decoded response members from the RPC.
         """
+
+        if self._deadlock_check.is_rpc_thread:
+            self._logger.critical("Deadlock due to rpc thread calling EmulatedDevice.rpc: address: 0x%02X, rpc: 0x%04X",
+                                  address, rpc_id)
+            raise InternalError("EmulatedDevice.rpc called from rpc dispatch thread.  This would have caused a deadlock")
 
         if isinstance(rpc_id, RPCDeclaration):
             arg_format = rpc_id.arg_format

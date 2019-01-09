@@ -9,7 +9,7 @@ from past.builtins import basestring
 from future.utils import viewitems, viewvalues
 from iotile.core.exceptions import ArgumentError, DataError
 from iotile.core.hw.virtual import VirtualTile
-from iotile.core.hw.virtual import tile_rpc
+from iotile.core.hw.virtual import tile_rpc, TileNotFoundError
 from .emulated_device import EmulatedDevice
 from .emulation_mixin import EmulationMixin
 from ..constants import rpcs, Error
@@ -289,7 +289,6 @@ class EmulatedTile(EmulationMixin, VirtualTile):
 
         return {desc.name: desc.latch() for desc in viewvalues(self._config_variables)}
 
-
     def dump_state(self):
         """Dump the current state of this emulated tile as a dictionary.
 
@@ -338,6 +337,7 @@ class EmulatedTile(EmulationMixin, VirtualTile):
         """Reset this tile."""
 
         self._handle_reset()
+        raise TileNotFoundError("tile was reset via an RPC")
 
     @tile_rpc(*rpcs.LIST_CONFIG_VARIABLES)
     def list_config_variables(self, offset):

@@ -259,7 +259,7 @@ class ClockManagerMixin(object):
 
         return [time]
 
-    @tile_rpc(*rpcs.GET_CURRENT_TIME)
+    @tile_rpc(*rpcs.GET_CURRENT_UPTIME)
     def get_current_uptime(self):
         """Get the device's current time."""
 
