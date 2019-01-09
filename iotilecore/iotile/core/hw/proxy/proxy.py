@@ -64,7 +64,10 @@ class TileBusProxyObject(object):
         try:
             res = self._parse_rpc_result(status, payload, *res_type, command=rpc_id)
             if unpack_flag:
-                return unpack_rpc_payload("%s" % kw["result_format"], res['buffer'])
+                try:
+                    return unpack_rpc_payload("%s" % kw["result_format"], res['buffer'])
+                except struct.error as err:
+                    raise InvalidReturnValueError(self.addr, rpc_id, kw['result_format'], res['buffer'], status=status)
 
             return res
         except ModuleBusyError:
@@ -287,20 +290,25 @@ class TileBusProxyObject(object):
         parsed['status'] = status
         parsed['return_value'] = status & 0b00111111
 
-        #Check for protocol defined errors
+        # Check for protocol defined errors
         if not status & (1<<6):
             if status == 2:
                 raise UnsupportedCommandError(address=self.addr, command=command)
 
             raise RPCError("Unknown status code received from RPC call", address=self.addr, status_code=status)
 
+        # This second check below is a workaround for a lib_controller bug introduced
+        # 9/27/2017 that causes the app_defined status bit to be set for all status
+        # codes that come from a controller.
+        if self.addr == 8 and status == ((1 << 6) | 2):
+            raise UnsupportedCommandError(address=self.addr, command=command)
 
         #Otherwise, parse the results according to the type information given
         size = len(payload)
 
         if size < 2*num_ints:
             raise RPCError('Return value too short to unpack', expected_minimum_size=2*num_ints, actual_size=size, status_code=status, payload=payload)
-        elif buff == False and size != 2*num_ints:
+        elif buff is False and size != 2*num_ints:
             raise RPCError('Return value was not the correct size', expected_size=2*num_ints, actual_size=size, status_code=status, payload=payload)
 
         for i in range(0, num_ints):

@@ -2,6 +2,15 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## 3.24.2
+
+- Add a better exception when the return value received from an RPC does not
+  match the format that we expect.  
+
+- Add a workaround for a controller firmware bug so that CommandNotFound 
+  exceptions are properly raised when an RPC does not exist on the controller
+  tile.
+
 ## 3.24.1
 
 - Add 'show_rpcs' command line option to the iotile-updateinfo script to allow

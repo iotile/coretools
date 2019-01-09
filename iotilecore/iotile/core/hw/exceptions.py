@@ -34,5 +34,17 @@ class StreamOperationNotSupportedError(RPCError):
     def __init__(self, **kwargs):
         super(StreamOperationNotSupportedError, self).__init__("Underlying command stream does not support the required operation", **kwargs)
 
+class InvalidReturnValueError(RPCError):
+    """Exception thrown when the return value of an RPC does not conform to its known format."""
+
+    def __init__(self, address, rpc_id, format_code, response, **kwargs):
+        super(InvalidReturnValueError, self).__init__("Invalid return value from Tile %d, RPC 0x%04x, expected format %s, got %d bytes"
+                                                      % (address, rpc_id, format_code, len(response)), **kwargs)
+
+        self.address = address
+        self.rpc_id = rpc_id
+        self.format_code = format_code
+        self.response = response
+
 class UnknownModuleTypeError(iotile.core.exceptions.TypeSystemError):
     pass
