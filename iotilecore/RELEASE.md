@@ -2,6 +2,11 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## 3.24.3
+
+- Fix UTCAssigner to properly handle anchor streams and add support for decoding
+  both RTC (y2k based) and epoch based timestamps.
+
 ## 3.24.2
 
 - Add a better exception when the return value received from an RPC does not
