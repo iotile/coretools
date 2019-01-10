@@ -100,7 +100,7 @@ class UTCAssigner(object):
 
     @classmethod
     def _convert_rtc_anchor(cls, reading):
-        """Conert a reading containin an RTC timestamp to datetime."""
+        """Convert a reading containing an RTC timestamp to datetime."""
 
         return cls.convert_rtc(reading.value)
 
