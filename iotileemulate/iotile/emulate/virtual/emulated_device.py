@@ -78,8 +78,6 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
 
         address, rpc_id, arg_payload = action
 
-        # FIXME: Check for a queued RPC and return busy
-
         try:
             # Send the RPC immediately and wait for the response
             resp = super(EmulatedDevice, self).call_rpc(address, rpc_id, arg_payload)
