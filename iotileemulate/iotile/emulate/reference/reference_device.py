@@ -6,7 +6,7 @@ from future.utils import viewitems
 from past.builtins import basestring
 from iotile.core.exceptions import ArgumentError, DataError
 from ..virtual import EmulatedDevice, EmulatedPeripheralTile
-from ..constants import rpcs
+from ..constants import rpcs, RunLevel
 from .reference_controller import ReferenceController
 
 
@@ -77,8 +77,7 @@ class ReferenceDevice(EmulatedDevice):
                 continue
 
             # Check and make sure that if the tile should start that it has started
-            # FIXME: Remove hardcoded run level constant
-            if tile.run_level != 2:
+            if tile.run_level != RunLevel.SAFE_MODE:
                 tile.wait_started(timeout=2.0)
 
         self.wait_idle()
