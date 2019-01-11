@@ -7,6 +7,13 @@ All major changes in each released version of iotile-emulate are listed here.
 - Cleanup and slightly refactor reset code.  Improve reset behavior to be more
   synchronous.
 
+- Add support for asynchronous RPCs.
+
+- Update the DemoDevice to have an async rpc implementation on the peripheral
+  tile to test the async rpc implementation.
+
+## 0.0.1
+
 - Add support for EmulatedDevice and EmulatedTile classes.  These classes allow
   for the creation of virtual devices that emulate physical devices with support
   for state snapshotting to save/load device state and test scenarios to allow

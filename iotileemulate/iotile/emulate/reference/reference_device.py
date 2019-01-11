@@ -133,6 +133,7 @@ class ReferenceDevice(EmulatedDevice):
         consistent atomic restoration process.
 
         This method will block while the background restore happens.
+
         Args:
             state (dict): A previously dumped state produced by dump_state.
         """

@@ -267,7 +267,7 @@ class WorkQueueThread(threading.Thread):
                 finally:
                     self._current_item = None
 
-                if item.callback is not None and retval is not STILL_PENDING:
+                if item.callback is not None and retval is not self.STILL_PENDING:
                     item.callback(exc_info, retval)
             except:  #pylint:disable=bare-except;We cannot let this background thread die until we are told to stop()
                 self._logger.exception("Error inside background workqueue thread")

@@ -4,10 +4,10 @@ from __future__ import unicode_literals, absolute_import, print_function
 import logging
 import threading
 from future.utils import viewitems
-from iotile.core.exceptions import DataError, InternalError
+from iotile.core.exceptions import DataError, InternalError, ArgumentError
 from iotile.core.utilities import WorkQueueThread
 from iotile.core.hw.virtual import VirtualIOTileDevice
-from iotile.core.hw.virtual.common_types import pack_rpc_payload, unpack_rpc_payload
+from iotile.core.hw.virtual.common_types import pack_rpc_payload, unpack_rpc_payload, AsynchronousRPCResponse
 from .emulation_mixin import EmulationMixin
 from .state_log import EmulationStateLog
 from ..constants.rpcs import RPCDeclaration
@@ -78,21 +78,74 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
 
         address, rpc_id, arg_payload = action
 
-        try:
-            exc_status = None
-            resp = None
+        # FIXME: Check for a queued RPC and return busy
 
+        try:
             # Send the RPC immediately and wait for the response
             resp = super(EmulatedDevice, self).call_rpc(address, rpc_id, arg_payload)
+            self._track_change('device.rpc_sent', (address, rpc_id, arg_payload, resp, None), formatter=format_rpc)
+
             return resp
         except AsynchronousRPCResponse:
+            self._queue_async_rpc(address, rpc_id, self._rpc_queue.current_callback())
+            self._track_change('device.rpc_started', (address, rpc_id, arg_payload, None, None), formatter=format_rpc)
 
-            self._
+            return WorkQueueThread.STILL_PENDING
         except Exception as exc:
-            exc_status = exc
+            self._track_change('device.rpc_exception', (address, rpc_id, arg_payload, None, exc), formatter=format_rpc)
             raise
-        finally:
-            self._track_change('device.rpc_sent', (address, rpc_id, arg_payload, resp, exc_status), formatter=format_rpc)
+
+    def _queue_async_rpc(self, address, rpc_id, callback):
+        if address not in self._pending_rpcs:
+            self._pending_rpcs[address] = {}
+
+        self._pending_rpcs[address][rpc_id] = callback
+
+        self._logger.debug("Queued asynchronous rpc on tile %d, rpc_id: 0x%04X", address, rpc_id)
+
+    def finish_async_rpc(self, address, rpc_id, response, sync=True):
+        """Finish a previous asynchronous RPC.
+
+        This method should be called by a peripheral tile that previously
+        had an RPC called on it and chose to response asynchronously by
+        raising ``AsynchronousRPCResponse`` in the RPC handler itself.
+
+        The response passed to this function will be returned to the caller
+        as if the RPC had returned it immediately.
+
+        The rpc response will be sent in the RPC thread.  By default this
+        method will block until the response is finished.  If you don't
+        want to block, you can pass sync=False
+
+        Args:
+            address (int): The tile address the RPC was called on.
+            rpc_id (int): The ID of the RPC that was called.
+            response (bytes): The bytes that should be returned to
+                the caller of the RPC.
+            sync (bool): Block inside this method until the RPC response
+                has been sent, defaults to True.
+        """
+
+        pending = self._pending_rpcs.get(address)
+
+        if pending is None:
+            raise ArgumentError("No asynchronously RPC currently in progress on tile %d" % address)
+
+        callback = pending.get(rpc_id)
+        if callback is None:
+            raise ArgumentError("RPC %04X is not running asynchronous on tile %d" % (rpc_id, address))
+
+        del pending[rpc_id]
+
+        def _finish_rpc():
+            self._track_change('device.rpc_started', (address, rpc_id, None, response, None), formatter=format_rpc)
+            callback(None, response)  # This is the workqueue callback which includes exception info
+
+        # Make sure the RPC response comes back in the RPC thread
+        self.deferred_task(_finish_rpc)
+
+        if sync:
+            self.wait_deferred_rpcs()
 
     def start(self, channel=None):
         """Start this emulated device.
@@ -278,6 +331,10 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
         method returns.
         """
 
+        if self._deadlock_check.is_rpc_thread:
+            self._logger.critical("Deadlock due to rpc thread calling EmulatedDevice.wait_deferred_rpcs")
+            raise InternalError("EmulatedDevice.wait_deferred_rpcs called from rpc dispatch thread.  This would have caused a deadlock")
+
         self._rpc_queue.flush()
 
     def wait_idle(self):
@@ -296,8 +353,13 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
         This method will block the calling thread until the _rpc_queue is
         idle.
 
-        **Calling wait_idle from the emulation thread will deadlock.**
+        **Calling wait_idle from the emulation thread would deadlock and will
+        raise an exception.**
         """
+
+        if self._deadlock_check.is_rpc_thread:
+            self._logger.critical("Deadlock due to rpc thread calling EmulatedDevice.wait_idle")
+            raise InternalError("EmulatedDevice.wait_idle called from rpc dispatch thread.  This would have caused a deadlock")
 
         self._rpc_queue.wait_until_idle()
 

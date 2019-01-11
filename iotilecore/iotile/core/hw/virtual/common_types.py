@@ -41,7 +41,8 @@ class RPCErrorCode(IOTileException):
 class AsynchronousRPCResponse(IOTileException):
     """Exception thrown from an RPC implementation when it will return asynchronously."""
 
-    pass
+    def __init__(self):
+        super(AsynchronousRPCResponse, self).__init__("RPC handler elected to return asynchronously")
 
 
 def _create_argcode(code, arg_bytes):
