@@ -6,7 +6,7 @@ import sys
 from collections import namedtuple
 from queue import Queue
 from future.utils import raise_
-from iotile.core.exceptions import TimeoutExpiredError
+from iotile.core.exceptions import TimeoutExpiredError, DataError
 
 STOP_WORKER_ITEM = object()
 MarkLocationItem = namedtuple('MarkLocationItem', ['callback'])
@@ -39,11 +39,21 @@ class WorkQueueThread(threading.Thread):
       was called have been processed.
 
     Args:
-        handler (callable): The handler function that will be pasesd all of the
+        handler (callable): The handler function that will be passed all of the
             work items queued in dispatch() and should return a result that will
             be the return value of dispatch().  If this function throws an exception,
             it will be rethrown from dispatch.
     """
+
+    STILL_PENDING = object()
+    """Special return value from handler to indicate callback should be deferred.
+
+    This allows the background handler function to store away a callback
+    and call it in the future if it needs to.  The handler can inspect
+    the callback by calling current_callback(), which will raise an
+    exception if not called while an item is being dispatched.
+    """
+
 
     def __init__(self, handler):
         super(WorkQueueThread, self).__init__()
@@ -51,7 +61,28 @@ class WorkQueueThread(threading.Thread):
 
         self._routine = handler
         self._work_queue = Queue()
+        self._current_item = None
         self._logger = logging.getLogger(__name__)
+
+    def current_callback(self):
+        """Get the current callback from a handler function.
+
+        This method allows a handler to get the callback that would
+        be called when it returns.  It is only useful to use in
+        conjunction with the STILL_PENDING return value so that the
+        handler can store the callback away and call it later when
+        a long-running operation has finished.
+
+        Returns:
+            callable: The callback function associated with the current work item.
+
+            This will be None if there was no callback passed.
+        """
+
+        if self._current_item is None:
+            raise DataError("WorkQueueThread.current_callback() called while a work item was not executing")
+
+        return self._current_item.callback
 
     def dispatch(self, value, callback=None):
         """Dispatch an item to the workqueue and optionally wait.
@@ -225,14 +256,18 @@ class WorkQueueThread(threading.Thread):
                     continue
 
                 try:
+                    self._current_item = item
+
                     exc_info = None
                     retval = None
 
                     retval = self._routine(item.arg)
                 except:  #pylint:disable=bare-except;We need to capture the exception and feed it back to the caller
                     exc_info = sys.exc_info()
+                finally:
+                    self._current_item = None
 
-                if item.callback is not None:
+                if item.callback is not None and retval is not self.STILL_PENDING:
                     item.callback(exc_info, retval)
             except:  #pylint:disable=bare-except;We cannot let this background thread die until we are told to stop()
                 self._logger.exception("Error inside background workqueue thread")

@@ -1,5 +1,6 @@
 """Tests for the EmulatedDeviceAdapter class."""
 
+from __future__ import print_function
 import json
 from iotile.core.hw import HardwareManager
 
@@ -89,3 +90,34 @@ def test_saving_changes(tmpdir):
         debug.save_changes(str(change_file))
 
     assert change_file.exists()
+
+
+def test_async_rpc():
+    """Make sure we can send an asynchronous rpc."""
+
+    with HardwareManager(port='emulated:emulation_demo') as hw:
+        hw.connect(1)
+
+        proxy = hw.get(11, basic=True)
+
+        # This RPC is async
+        echo, = proxy.rpc_v2(0x8000, "L", "L", 5)
+        assert echo == 5
+
+        # This RPC is sync
+        echo, = proxy.rpc_v2(0x8001, "L", "L", 6)
+        assert echo == 6
+
+
+def test_racefree_reset():
+    """Make sure we can reset at will."""
+
+    with HardwareManager(port='emulated:emulation_demo') as hw:
+        hw.connect(1)
+
+        proxy = hw.get(8, basic=True)
+
+        for i in range(0, 10):
+            print("starting reset %d" % i)
+            proxy.reset(wait=0)
+            print("finished reset %d" % i)

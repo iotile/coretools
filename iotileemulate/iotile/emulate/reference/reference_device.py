@@ -4,9 +4,9 @@ import base64
 import logging
 from future.utils import viewitems
 from past.builtins import basestring
-from iotile.core.exceptions import ArgumentError, DataError, InternalError
+from iotile.core.exceptions import ArgumentError, DataError
 from ..virtual import EmulatedDevice, EmulatedPeripheralTile
-from ..constants import rpcs
+from ..constants import rpcs, RunLevel
 from .reference_controller import ReferenceController
 
 
@@ -77,13 +77,15 @@ class ReferenceDevice(EmulatedDevice):
                 continue
 
             # Check and make sure that if the tile should start that it has started
-            if tile.run_level != 2:
+            if tile.run_level != RunLevel.SAFE_MODE:
                 tile.wait_started(timeout=2.0)
 
         self.wait_idle()
 
     def reset_peripheral_tiles(self):
         """Reset all peripheral tiles (asynchronously)."""
+
+        self._logger.info("Resetting all peripheral tiles")
 
         for address in sorted(self._tiles):
             if address == 8:
@@ -130,6 +132,7 @@ class ReferenceDevice(EmulatedDevice):
         consistent atomic restoration process.
 
         This method will block while the background restore happens.
+
         Args:
             state (dict): A previously dumped state produced by dump_state.
         """

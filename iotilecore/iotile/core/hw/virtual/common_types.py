@@ -30,11 +30,19 @@ class TileNotFoundError(IOTileException):
     """Exception thrown when an RPC is sent to a tile that does not exist."""
     pass
 
+
 class RPCErrorCode(IOTileException):
     """Exception thrown from an RPC implementation to set the status code."""
 
     def __init__(self, status_code):
         super(RPCErrorCode, self).__init__("RPC returned application defined status code %d" % status_code, code=status_code)
+
+
+class AsynchronousRPCResponse(IOTileException):
+    """Exception thrown from an RPC implementation when it will return asynchronously."""
+
+    def __init__(self):
+        super(AsynchronousRPCResponse, self).__init__("RPC handler elected to return asynchronously")
 
 
 def _create_argcode(code, arg_bytes):

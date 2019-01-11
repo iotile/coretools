@@ -2,6 +2,11 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## HEAD
+
+- Fix support for STILL_PENDING flag in WorkQueueThread
+- Update AsynchronousRPCResponse exception to not need an `__init__` argument.
+
 ## 3.24.3
 
 - Fix UTCAssigner to properly handle anchor streams and add support for decoding

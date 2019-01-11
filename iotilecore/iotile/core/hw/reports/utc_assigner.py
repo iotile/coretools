@@ -120,7 +120,7 @@ class UTCAssigner(object):
         if uptime is None and utc is None:
             return
 
-        if uptime & (1 << 31):
+        if uptime is not None and uptime & (1 << 31):
             if utc is not None:
                 return
 

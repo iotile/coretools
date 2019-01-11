@@ -99,6 +99,8 @@ class ReferenceController(RawSensorLogMixin, RemoteBridgeMixin,
             for system in self._post_config_subsystems:
                 system.clear_to_reset(config_assignments)
 
+            self._logger.info("Finished clearing controller to reset condition")
+
         if deferred:
             self._device.deferred_task(_post_config_setup)
         else:
@@ -116,15 +118,16 @@ class ReferenceController(RawSensorLogMixin, RemoteBridgeMixin,
         peripheral tiles on reset for a clean boot.
         """
 
+        self._logger.info("Resetting controller")
+        self._device.reset_count += 1
+
         super(ReferenceController, self)._handle_reset()
 
         self._clear_to_reset_condition(deferred=True)
-
-        self._logger.info("Controller tile has finished resetting itself and will now reset each tile")
-        self._device.reset_peripheral_tiles()
+        self._device.deferred_task(self._device.reset_peripheral_tiles)
 
     def start(self, channel=None):
-        """Start this conrtoller tile.
+        """Start this controller tile.
 
         This resets the controller to its reset state.
 
@@ -192,7 +195,6 @@ class ReferenceController(RawSensorLogMixin, RemoteBridgeMixin,
     def reset(self):
         """Reset the device."""
 
-        self._device.reset_count += 1
         self._handle_reset()
 
         raise TileNotFoundError("Controller tile was reset via an RPC")

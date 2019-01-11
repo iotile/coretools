@@ -78,7 +78,6 @@ class ConfigEntry(object):
         return ConfigEntry(target, var_id, data, valid)
 
 
-
 class ConfigDatabase(SerializableState):
     """Emulated state of the config database.
 

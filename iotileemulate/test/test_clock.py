@@ -120,7 +120,6 @@ def test_tick_inputs(basic_device):
     assert key_parts_4 == list(zip(range(5, 11, 5), range(5, 11, 5)))
 
 
-@pytest.mark.xfail(reason="synchronize_clock is still in prerelease")
 def test_utc_time(basic_device):
     """Make sure we can get and set utc time."""
 
@@ -131,16 +130,19 @@ def test_utc_time(basic_device):
 
     test_time = datetime.datetime(2018, 11, 11, 16, 0, 0)
     zero = datetime.datetime(1970, 1, 1)
+    y2k_zero = datetime.datetime(2000, 1, 1)
 
     device.controller.clock_manager.handle_tick()
 
     delta = (test_time - zero).total_seconds()
+    y2k_delta = (test_time - y2k_zero).total_seconds()
 
     test_interface.synchronize_clock(delta)
     device_time = test_interface.current_time()
     device_uptime = test_interface.get_uptime()
     info = test_interface.get_timeoffset()
 
-    assert device_time == 0x5
-    assert device_uptime == 0
-    assert info == {'is_utc': True, 'offset': int(delta) - 1}
+    assert device_time & (1 << 31)
+    assert (device_time & ~(1 << 31)) == int(y2k_delta)
+    assert device_uptime == 1
+    assert info == {'is_utc': True, 'offset': int(y2k_delta) - 1}
