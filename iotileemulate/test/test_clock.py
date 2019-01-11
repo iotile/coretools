@@ -120,7 +120,6 @@ def test_tick_inputs(basic_device):
     assert key_parts_4 == list(zip(range(5, 11, 5), range(5, 11, 5)))
 
 
-#@pytest.mark.xfail(reason="synchronize_clock is still in prerelease")
 def test_utc_time(basic_device):
     """Make sure we can get and set utc time."""
 
