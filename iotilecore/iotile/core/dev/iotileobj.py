@@ -3,6 +3,7 @@
 
 import itertools
 from collections import namedtuple
+from string import Template
 import json
 import os.path
 import sys
@@ -15,6 +16,9 @@ ReleaseStep = namedtuple('ReleaseStep', ['provider', 'args'])
 ReleaseInfo = namedtuple('ReleaseInfo', ['release_date', 'dependency_versions'])
 TileInfo = namedtuple('TileInfo', ['module_name', 'settings', 'architectures', 'targets', 'release_data'])
 
+_ProductDeclaration = namedtuple('_ProductDeclaration', ['dev_path', 'release_path', 'process_func'])
+_ReleaseOnlyProduct = _ProductDeclaration(r"${release}/${product}", r"${release}/${product}", None)
+_DevOnlyProduct = _ProductDeclaration(r"${module}/${product}", r"${module}/${product}", None)
 
 class IOTile(object):
     """
@@ -26,6 +30,45 @@ class IOTile(object):
 
     V1_FORMAT = "v1"
     V2_FORMAT = "v2"
+
+    PYTHON_PRODUCTS = frozenset([
+        "build_step",
+        "app_module",
+        "proxy_module",
+        "type_package",
+        "proxy_plugin"
+    ])
+    """The canonical list of all product types that contain python code.
+
+    This is used to know if this IOTile component will contain a support
+    wheel, which happens if it produces any products of these types.
+    """
+
+    LIST_PRODUCTS = frozenset([
+        "include_directories",
+        "tilebus_definitions"
+    ])
+    """The canonical list of products that are stored as a list.
+
+    Most products are stored in module_settings.json in the products map where
+    the key is the path to the product and the value is the type of product.
+    Some products, those in this property, are stored where the key is the
+    type of product and all of the specific products are stored in a single
+    list under that key.
+    """
+
+    PATH_PRODUCTS = {
+        "include_directories": _ProductDeclaration(r"${release}/include/${product}", r"${release}/include/${product}", None),
+        "tilebus_definitions": _ProductDeclaration(r"${module}/firmware/src/${raw_product}", r"${release}/tilebus/${product}", os.path.basename),
+        "linker_script": _ProductDeclaration(r"${release}/linker/${product}", r"${release}/linker/${product}", None),
+        "type_package": _DevOnlyProduct,
+        "build_step": _DevOnlyProduct,
+        "app_module": _DevOnlyProduct,
+        "proxy_module": _DevOnlyProduct,
+        "proxy_plugin": _DevOnlyProduct,
+        "firmware_image": _ReleaseOnlyProduct
+    }
+    """Declarations for products that require special path processing."""
 
     def __init__(self, folder):
         self.folder = folder
@@ -251,157 +294,193 @@ class IOTile(object):
         self.support_wheel = "{0}-{1}-{2}-none-any.whl".format(self.support_distribution,
                                                                self.parsed_version.pep440_string(),
                                                                py_version)
-        self.has_wheel = False
+        self.has_wheel = self._check_has_wheel()
 
-        if len(self.proxy_modules()) > 0 or len(self.proxy_plugins()) > 0 or len(self.type_packages()) > 0 or \
-           len(self.app_modules()) > 0 or len(self.build_steps()) > 0:
-            self.has_wheel = True
+    def _check_has_wheel(self):
+        for prod in self.PYTHON_PRODUCTS:
+            if self.find_products(prod) > 0:
+                return True
 
-    def include_directories(self):
+        return False
+
+    @classmethod
+    def _ensure_product_string(cls, product):
+        """Ensure that all product locations are strings.
+
+        Older components specify paths as lists of path components.  Join
+        those paths into a normal path string.
         """
-        Return a list of all include directories that this IOTile could provide other tiles
+
+        if isinstance(product, basestring):
+            return product
+
+        if isinstance(product, list):
+            return os.path.join(*product)
+
+        raise DataError("Unknown object (not str or list) specified as a component product", product=product)
+
+    def _process_product_path(self, product, declaration):
+        processed = product
+        if declaration.process_func is not None:
+            processed = declaration.process_func(product)
+
+        if self.release:
+            base = Template(declaration.release_path)
+        else:
+            base = Template(declaration.dev_path)
+
+        path_string = base.substitute(module=self.folder, release=self.output_folder, raw_product=product, product=processed)
+        return os.path.normpath(path_string)
+
+    def find_products(self, product_type):
+        """Search for products of a given type.
+
+        Search through the products declared by this IOTile component and
+        return only those matching the given type.  If the product is decribed
+        by the path to a file, a complete normalized path will be returned.
+        The path could be different depending on whether this IOTile component
+        is in development or release mode.
+
+        Args:
+            product_type (str): The type of product that we wish to return.
+
+        Returns:
+            list of str: The list of all products of the given type.
+
+            If no such products are found, an empty list will be returned.
+            If filter_products() has been called and the filter does not include
+            this product type, an empty list will be returned.
         """
 
-        #Only return include directories if we're returning everything or we were asked for it
-        if self.filter_prods and 'include_directories' not in self.desired_prods:
+        if self.filter_prods and product_type not in self.desired_prods:
             return []
 
-        if 'include_directories' in self.products:
-            if self.release:
-                joined_dirs = [os.path.join(self.output_folder, 'include', *x) for x in self.products['include_directories']]
-            else:
-                joined_dirs = [os.path.join(self.output_folder, *x) for x in self.products['include_directories']]
-            return joined_dirs
+        if product_type in self.LIST_PRODUCTS:
+            found_products = self.products.get(product_type, [])
+        else:
+            found_products = [x[0] for x in viewitems(self.products) if x[1] == product_type]
 
-        return []
+        found_products = [self._ensure_product_string(x) for x in found_products]
+
+        declaration = self.PATH_PRODUCTS.get(product_type)
+        if declaration is not None:
+            found_products = [self._process_product_path(x, declaration) for x in found_products]
+
+        return found_products
+
+    def include_directories(self):
+        """Return a list of all include directories that this IOTile could provide other tiles.
+
+        Deprecated:
+            This method has been superseded by the unified find_products("include_directories")
+            and will be removed in future releases.
+        """
+
+        return self.find_products('include_directories')
 
     def libraries(self):
-        """
-        Return a list of all libraries produced by this IOTile that could be provided to other tiles
+        """Return a list of all libraries produced by this IOTile that could be provided to other tiles.
+
+        Deprecated:
+            This method has been superseded by the unified
+            ``find_products("library")`` and will be removed in a future release.
+
+            ``find_products("library")`` does not remove the "lib: prefix from
+            what it returns, so callers will be expected to do that if needed.
         """
 
-        libs = [x[0] for x in viewitems(self.products) if x[1] == 'library']
-
-        if self.filter_prods:
-            libs = [x for x in libs if x in self.desired_prods]
+        libs = self.find_products('library')
 
         badlibs = [x for x in libs if not x.startswith('lib')]
         if len(badlibs) > 0:
             raise DataError("A library product was listed in a module's products without the name starting with lib", bad_libraries=badlibs)
 
-        #Remove the prepended lib from each library name
+        # Remove the prepended lib from each library name
         return [x[3:] for x in libs]
 
     def type_packages(self):
+        """Return a list of the python type packages that are provided by this tile.
+
+        Deprecated:
+            This method has been superseded by ``find_products("type_package")`` and
+            will be removed in a future release.
         """
-        Return a list of the python type packages that are provided by this tile
-        """
 
-        libs = [x[0] for x in viewitems(self.products) if x[1] == 'type_package']
-
-        if self.filter_prods:
-            libs = [x for x in libs if x in self.desired_prods]
-
-        libs = [os.path.join(self.folder, x) for x in libs]
-
-        return libs
+        return self.find_products('type_package')
 
     def linker_scripts(self):
+        """Return a list of the linker scripts that are provided by this tile.
+
+        Deprecated:
+            This method has been superseded by ``find_products("linker_script")`` and
+            will be removed in a future release.
         """
-        Return a list of the linker scripts that are provided by this tile
-        """
 
-        ldscripts = [x[0] for x in viewitems(self.products) if x[1] == 'linker_script']
-
-        if self.filter_prods:
-            ldscripts = [x for x in ldscripts if x in self.desired_prods]
-
-        # Now append the whole path so that the above comparison works based on the name of the product only
-        ldscripts = [os.path.join(self.output_folder, 'linker', x) for x in ldscripts]
-        return ldscripts
+        return self.find_products('linker_script')
 
     def proxy_modules(self):
+        """Return a list of the python proxy modules that are provided by this tile.
+
+        Deprecated:
+            This method has been superseded by ``find_products("proxy_module")`` and
+            will be removed in a future release.
         """
-        Return a list of the python proxy modules that are provided by this tile
-        """
 
-        libs = [x[0] for x in viewitems(self.products) if x[1] == 'proxy_module']
-
-        if self.filter_prods:
-            libs = [x for x in libs if x in self.desired_prods]
-
-        libs = [os.path.join(self.folder, x) for x in libs]
-        return libs
+        return self.find_products('proxy_module')
 
     def app_modules(self):
-        """Return a list of all of the python app module that are provided by this tile."""
+        """Return a list of the python app modules that are provided by this tile.
 
-        libs = [x[0] for x in viewitems(self.products) if x[1] == 'app_module']
+        Deprecated:
+            This method has been superseded by ``find_products("app_module")`` and
+            will be removed in a future release.
+        """
 
-        if self.filter_prods:
-            libs = [x for x in libs if x in self.desired_prods]
-
-        libs = [os.path.join(self.folder, x) for x in libs]
-        return libs
+        return self.find_products('app_module')
 
     def build_steps(self):
-        """Return a list of all of the python build steps that are provided by this tile."""
+        """Return a list of the iotile-ship build step that are provided by this tile.
 
-        libs = [x[0] for x in viewitems(self.products) if x[1] == 'build_step']
+        Deprecated:
+            This method has been superseded by ``find_products("build_step")`` and
+            will be removed in a future release.
+        """
 
-        if self.filter_prods:
-            libs = [x for x in libs if x in self.desired_prods]
-
-        libs = [os.path.join(self.folder, x) for x in libs]
-        return libs
+        return self.find_products('build_step')
 
     def proxy_plugins(self):
+        """Return a list of the python proxy plugins that are provided by this tile.
+
+        Deprecated:
+            This method has been superseded by ``find_products("proxy_plugin")`` and
+            will be removed in a future release.
         """
-        Return a list of the python proxy plugins that are provided by this tile
-        """
-
-        libs = [x[0] for x in viewitems(self.products) if x[1] == 'proxy_plugin']
-
-        if self.filter_prods:
-            libs = [x for x in libs if x in self.desired_prods]
-
-        libs = [os.path.join(self.folder, x) for x in libs]
-        return libs
+        return self.find_products('proxy_plugin')
 
     def firmware_images(self):
+        """Return a list of all firmware images produced by this IOTile.
+
+        Deprecated:
+            This method has been superseded by ``find_products('firmware_image')`` and
+            will be removed in a future release.
         """
-        Return a list of the python proxy plugins that are provided by this tile
-        """
 
-        libs = [x[0] for x in viewitems(self.products) if x[1] == 'firmware_image']
-
-        if self.filter_prods:
-            libs = [x for x in libs if x in self.desired_prods]
-
-        libs = [os.path.join(self.output_folder, x) for x in libs]
-        return libs
+        return self.find_products('firmware_image')
 
     def tilebus_definitions(self):
+        """Return a list of all tilebus definitions that this IOTile could provide other tiles.
+
+        Deprecated:
+            This method has been superseded by ``find_products('tilebus_definitions')`` and
+            will be removed in a future release.
         """
-        Return a list of all tilebus definitions that this IOTile could provide other tiles
-        """
 
-        #Only return include directories if we're returning everything or we were asked for it
-        if self.filter_prods and 'tilebus_definitions' not in self.desired_prods:
-            return []
-
-        if 'tilebus_definitions' in self.products:
-            if self.release:
-                #For released tiles, all of the tilebus definitions are copies to the same directory
-                joined_dirs = [os.path.join(self.output_folder, 'tilebus', os.path.basename(os.path.join(*x))) for x in self.products['tilebus_definitions']]
-            else:
-                joined_dirs = [os.path.join(self.folder, 'firmware', 'src', *x) for x in self.products['tilebus_definitions']]
-            return joined_dirs
-
-        return []
+        return self.find_products('tilebus_definitions')
 
     def library_directories(self):
-        libs = self.libraries()
+        """Return a list of directories containing any static libraries built by this IOTile."""
+
+        libs = self.find_products('library')
 
         if len(libs) > 0:
             return [os.path.join(self.output_folder)]

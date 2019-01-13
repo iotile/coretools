@@ -2,6 +2,7 @@
 
 import os
 import pytest
+from iotile.core.dev import ComponentRegistry
 from iotile.core.hw import HardwareManager, IOTileApp
 from iotile.core.dev.semver import SemanticVersionRange
 from iotile.core.exceptions import HardwareError
@@ -30,12 +31,13 @@ def virtual_app():
 
 @pytest.fixture(scope="function")
 def register_apps():
-    HardwareManager.ClearDevelopmentApps()
-    HardwareManager.RegisterDevelopmentApp(FakeApp)
+    reg = ComponentRegistry()
+    reg.clear_extensions('iotile.app')
+    reg.register_extension('iotile.app', 'app', FakeApp)
 
     yield
-    HardwareManager.ClearDevelopmentApps()
 
+    reg.clear_extensions('iotile.app')
 
 def test_noapp_matching(virtual_app):
     """Make sure we throw an exception when no matching app is found."""
@@ -49,7 +51,7 @@ def test_noapp_matching(virtual_app):
     info = hw.app('device_info')
 
 
-def test_app_matching(virtual_app, register_apps):
+def test_app_matching(register_apps, virtual_app):
     """Make sure matching by name and version works."""
 
     hw = virtual_app

@@ -4,6 +4,9 @@ All major changes in each released version of `iotile-core` are listed here.
 
 ## HEAD
 
+- Consolidate entry point related code into ComponentRegistry with a single
+  implementation of extension finding and importing.  Remove now redundant
+  reimplementations of the same code.
 - Fix support for STILL_PENDING flag in WorkQueueThread
 - Update AsynchronousRPCResponse exception to not need an `__init__` argument.
 

@@ -10,6 +10,7 @@ from iotile.core.hw.hwmanager import HardwareManager
 from iotile.core.hw.reports.signed_list_format import SignedListReport
 from iotile.core.hw.exceptions import *
 from iotile.core.exceptions import *
+from iotile.core.dev import ComponentRegistry
 import pytest
 import os.path
 import os
@@ -77,11 +78,13 @@ def tile_based():
     if '@' in conf_file or ',' in conf_file or ';' in conf_file:
         pytest.skip('Cannot pass device config because path has [@,;] in it')
 
-    hw = HardwareManager('virtual:tile_based@%s' % conf_file)
+    reg = ComponentRegistry()
+    reg.register_extension('iotile.proxy', 'vitual_tile', 'test/test_hw/virtual_tile.py')
 
-    hw.load_development_proxy('test/test_hw/virtual_tile.py')
+    hw = HardwareManager('virtual:tile_based@%s' % conf_file)
     yield hw
 
+    reg.clear_extensions()
     hw.disconnect()
 
 @pytest.fixture
@@ -235,16 +238,21 @@ def test_recording_rpcs(tmpdir):
     if '@' in conf_file or ',' in conf_file or ';' in conf_file:
         pytest.skip('Cannot pass device config because path has [@,;] in it')
 
-    with HardwareManager('virtual:tile_based@%s' % conf_file, record=str(record_path)) as hw:
-        hw.load_development_proxy('test/test_hw/virtual_tile.py')
-        hw.connect(1)
+    reg = ComponentRegistry()
+    reg.register_extension('iotile.proxy', 'vitual_tile', 'test/test_hw/virtual_tile.py')
 
-        con = hw.controller()
-        tile1 = hw.get(11)
+    try:
+        with HardwareManager('virtual:tile_based@%s' % conf_file, record=str(record_path)) as hw:
+            hw.connect(1)
 
-        con.count()
-        tile1.add(3, 5)
-        tile1.count()
+            con = hw.controller()
+            tile1 = hw.get(11)
+
+            con.count()
+            tile1.add(3, 5)
+            tile1.count()
+    finally:
+        reg.clear_extensions()
 
     assert record_path.exists()
 
