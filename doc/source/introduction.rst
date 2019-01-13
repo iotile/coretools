@@ -41,7 +41,7 @@ Note that *virtualenv* only needs to be installed once; iotile must be activated
 
 Installing CoreTools is just a normal pip install:
 
-    pip install iotile-core iotile-test iotile-transport-bled112
+    pip install iotile-core iotile-test iotile-emulate iotile-transport-bled112
 
 .. seealso::
     If you plan on building your own IOTile device, you should also install 
