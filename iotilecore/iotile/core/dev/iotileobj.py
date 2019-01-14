@@ -22,11 +22,35 @@ _DevOnlyProduct = _ProductDeclaration(r"${module}/${product}", r"${module}/${pro
 
 
 class IOTile(object):
-    """
-    IOTile
+    """Object representing an IOTile component that implements or extends CoreTools.
 
-    A python representation of an IOTile module allowing you to inspect the products
-    that its build produces and include it as a dependency in another build process.
+    IOTile components are "projects" in the sense of traditional IDEs,
+    "packages" in nodejs or "distributions" in python.  They are single
+    directories that contain related code and a metadata file that describes
+    what the project is and how to use it.
+
+    Since IOTile components describe building blocks for IOT devies, they do not
+    contain code in a single language but could describe a variety of different
+    kinds of artifacts such as:
+
+    - firmware images
+    - python extensions for CoreTools
+    - build automation steps used in hardware manufacturing
+    - emulators for specific IOTile devices
+
+    The unifying concepts that extend to all of the above finds of components are
+    that they product "artifacts" through a build process, the entire component
+    has a single version and it can have dependencies on other components.
+
+    There is a single file inside the root of the component directory,
+    `module_settings.json` that contains all of this metadata.
+
+    The `IOTile` object is constructed from a `module_settings.json` file and
+    provides helper routines to parse and search its contents.
+
+    Args:
+        folder (str): The path to a folder containing a `module_settings.json`
+            file that will be loaded into this IOTile object.
     """
 
     V1_FORMAT = "v1"
@@ -489,12 +513,11 @@ class IOTile(object):
         return []
 
     def filter_products(self, desired_prods):
-        """
-        When asked for a product that this iotile produces, filter only those on this list
-        """
+        """When asked for a product, filter only those on this list."""
 
         self.filter_prods = True
         self.desired_prods = set(desired_prods)
 
     def path(self):
+        """The path to this component."""
         return self.folder

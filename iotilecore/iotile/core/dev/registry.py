@@ -69,7 +69,7 @@ class ComponentRegistry(object):
 
         return self._plugins
 
-    def load_extensions(self, group, name_filter=None, class_filter=None, product_name=None):
+    def load_extensions(self, group, name_filter=None, comp_filter=None, class_filter=None, product_name=None, unique=False):
         """Dynamically load and return extension objects of a given type.
 
         This is the centralized way for all parts of CoreTools to allow plugin
@@ -94,16 +94,26 @@ class ComponentRegistry(object):
         module. The module will be search for object definitions that match
         the defined class.
 
+        The order of the returned objects list is only partially defined.
+        Locally installed components are searched before pip installed
+        packages with entry points.  The order of results within each group is
+        not specified.
+
         Args:
             group (str): The extension type that you wish to enumerate.  This
                 will be used as the entry_point group for searching pip
                 installed packages.
             name_filter (str): Only return objects with the given name
+            comp_filter (str): When searching through installed components
+                (not entry_points), only search through components with the
+                given name.
             class_filter (type or tuple of types): An object that will be passed to
                 instanceof() to verify that all extension objects have the correct
                 types.  If not passed, no checking will be done.
             product_name (str): If this extension can be provided by a registered
                 local component, the name of the product that should be loaded.
+            unique (bool): If True (default is False), there must be exactly one object
+                found inside this extension that matches all of the other criteria.
 
         Returns:
             list of (str, object): A list of the found and loaded extension objects.
@@ -112,24 +122,20 @@ class ComponentRegistry(object):
             entry_point or the base name of the file in the component or the
             value provided by the call to register_extension depending on how
             the extension was found.
+
+            If unique is True, then the list only contains a single entry and that
+            entry will be directly returned.
         """
 
         found_extensions = []
 
         import pkg_resources
 
-        for entry in pkg_resources.iter_entry_points(group):
-            name = entry.name
-
-            if name_filter is not None and name != name_filter:
-                continue
-
-            ext = entry.load()
-
-            found_extensions.extend((name, x) for x in self._filter_subclasses(ext, class_filter))
-
         if product_name is not None:
             for comp in self.iter_components():
+                if comp_filter is not None and comp != comp_filter:
+                    continue
+
                 products = comp.find_products(product_name)
                 for product in products:
                     try:
@@ -143,12 +149,30 @@ class ComponentRegistry(object):
                     except:  #pylint:disable=bare-except;We don't want a broken extension to take down the whole system
                         self._logger.exception("Unable to load extension %s from local component %s at path %s", product_name, comp, product)
 
-        for (name, ext) in self._registered_extensions.get(group, []):
+        for entry in pkg_resources.iter_entry_points(group):
+            name = entry.name
 
             if name_filter is not None and name != name_filter:
                 continue
 
+            ext = entry.load()
+
             found_extensions.extend((name, x) for x in self._filter_subclasses(ext, class_filter))
+
+
+        for (name, ext) in self._registered_extensions.get(group, []):
+            if name_filter is not None and name != name_filter:
+                continue
+
+            found_extensions.extend((name, x) for x in self._filter_subclasses(ext, class_filter))
+
+        if unique is True:
+            if len(found_extensions) > 1:
+                raise ArgumentError("Extension %s should have had exactly one instance of class %s, found %d" % (group, class_filter.__name__, len(found_extensions)), classes=found_extensions)
+            elif len(found_extensions) == 0:
+                raise ArgumentError("Extension %s had no instances of class %s" % (group, class_filter.__name__))
+
+            return found_extensions[0]
 
         return found_extensions
 
