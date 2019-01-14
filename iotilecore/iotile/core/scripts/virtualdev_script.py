@@ -5,11 +5,8 @@ import argparse
 import sys
 import logging
 import json
-import imp
-import os.path
-import inspect
-import pkg_resources
-from future.utils import itervalues
+from iotile.core.dev import ComponentRegistry
+from iotile.core.exceptions import ArgumentError
 from iotile.core.hw.virtual import VirtualIOTileDevice, VirtualIOTileInterface
 
 
@@ -37,14 +34,15 @@ def main(argv=None):
     args, _rest = list_parser.parse_known_args(argv)
 
     if args.list:
-        #List out known virtual interfaces
+        reg = ComponentRegistry()
         print("Installed Virtual Interfaces:")
-        for entry in pkg_resources.iter_entry_points('iotile.virtual_interface'):
-            print('- {}'.format(entry.name))
+        for name, _iface in reg.load_extensions('iotile.virtual_interface', class_filter=VirtualIOTileInterface):
+            print('- {}'.format(name))
 
         print("\nInstalled Virtual Devices:")
-        for entry in pkg_resources.iter_entry_points('iotile.virtual_device'):
-            print('- {}'.format(entry.name))
+        for name, _dev in reg.load_extensions('iotile.virtual_device', class_filter=VirtualIOTileDevice,
+                                              product_name="virtual_device"):
+            print('- {}'.format(name))
 
         return 0
 
@@ -132,52 +130,6 @@ def main(argv=None):
     return 0
 
 
-def import_device_script(script_path):
-    """Import a virtual device from a file rather than an installed module
-
-    script_path must point to a python file ending in .py that contains exactly one
-    VirtualIOTileDevice class definitions.  That class is loaded and executed as if it
-    were installed.
-
-    Args:
-        script_path (string): The path to the script to load
-
-    Returns:
-        VirtualIOTileDevice: A subclass of VirtualIOTileDevice that was loaded from script_path
-    """
-
-    search_dir, filename = os.path.split(script_path)
-    if search_dir == '':
-        search_dir = './'
-
-    if filename == '' or not os.path.exists(script_path):
-        print("Could not find script to load virtual device, path was %s" % script_path)
-        sys.exit(1)
-
-    module_name, ext = os.path.splitext(filename)
-    if ext != '.py':
-        print("Script did not end with .py")
-        sys.exit(1)
-
-    try:
-        file = None
-        file, pathname, desc = imp.find_module(module_name, [search_dir])
-        mod = imp.load_module(module_name, file, pathname, desc)
-    finally:
-        if file is not None:
-            file.close()
-
-    devs = [x for x in itervalues(mod.__dict__) if inspect.isclass(x) and issubclass(x, VirtualIOTileDevice) and x != VirtualIOTileDevice]
-    if len(devs) == 0:
-        print("No VirtualIOTileDevice subclasses were defined in script")
-        sys.exit(1)
-    elif len(devs) > 1:
-        print("More than one VirtualIOTileDevice subclass was defined in script: %s" % str(devs))
-        sys.exit(1)
-
-    return devs[0]
-
-
 def instantiate_device(virtual_dev, config):
     """Find a virtual device by name and instantiate it
 
@@ -196,16 +148,20 @@ def instantiate_device(virtual_dev, config):
         conf = config['device']
 
     #If we're given a path to a script, try to load and use that rather than search for an installed module
-    if virtual_dev.endswith('.py'):
-        dev = import_device_script(virtual_dev)
-        return dev(conf)
+    try:
+        reg = ComponentRegistry()
 
-    for entry in pkg_resources.iter_entry_points('iotile.virtual_device', name=virtual_dev):
-        dev = entry.load()
-        return dev(conf)
+        if virtual_dev.endswith('.py'):
+            _name, dev = reg.load_extension(virtual_dev, class_filter=VirtualIOTileDevice, unique=True)
+        else:
+            _name, dev = reg.load_extensions('iotile.virtual_device', name_filter=virtual_dev,
+                                             class_filter=VirtualIOTileDevice,
+                                             product_name="virtual_device", unique=True)
 
-    print("Could not find an installed virtual device with the given name: {}".format(virtual_dev))
-    sys.exit(1)
+        return dev(conf)
+    except ArgumentError as err:
+        print("ERROR: Could not load virtual device (%s): %s" % (virtual_dev, err.msg))
+        sys.exit(1)
 
 
 def instantiate_interface(virtual_iface, config):
@@ -229,9 +185,15 @@ def instantiate_interface(virtual_iface, config):
     if 'interface' in config:
         conf = config['interface']
 
-    for entry in pkg_resources.iter_entry_points('iotile.virtual_interface', name=virtual_iface):
-        interface = entry.load()
-        return interface(conf)
+    try:
+        reg = ComponentRegistry()
+        if virtual_iface.endswith('.py'):
+            _name, iface = reg.load_extension(virtual_iface, class_filter=VirtualIOTileInterface, unique=True)
+        else:
+            _name, iface = reg.load_extensions('iotile.virtual_interface', name_filter=virtual_iface,
+                                               class_filter=VirtualIOTileInterface, unique=True)
 
-    print("Could not find an installed virtual interface with the given name: {}".format(virtual_iface))
-    sys.exit(1)
+        return iface(conf)
+    except ArgumentError as err:
+        print("ERROR: Could not load virtual interface (%s): %s" % (virtual_iface, err.msg))
+        sys.exit(1)

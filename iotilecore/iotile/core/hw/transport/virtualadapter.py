@@ -1,12 +1,9 @@
 import json
-import os
 import traceback
-import imp
-import inspect
 import time
 from future.utils import itervalues, viewitems
-import pkg_resources
 from iotile.core.exceptions import ArgumentError
+from iotile.core.dev import ComponentRegistry
 from iotile.core.hw.reports import BroadcastReport
 from .adapter import DeviceAdapter
 from ..virtual import (RPCInvalidIDError, TileNotFoundError, RPCNotFoundError,
@@ -173,48 +170,6 @@ class VirtualDeviceAdapter(DeviceAdapter):
 
         return True
 
-    @classmethod
-    def _find_device_script(cls, script_path):
-        """Import a virtual device from a file rather than an installed module
-
-        script_path must point to a python file ending in .py that contains exactly one
-        VirtualIOTileDevice class definitions.  That class is loaded and executed as if it
-        were installed.
-
-        Args:
-            script_path (string): The path to the script to load
-
-        Returns:
-            VirtualIOTileDevice: A subclass of VirtualIOTileDevice that was loaded from script_path
-        """
-
-        search_dir, filename = os.path.split(script_path)
-        if search_dir == '':
-            search_dir = './'
-
-        if filename == '' or not os.path.exists(script_path):
-            raise ArgumentError("Could not find script to load virtual device", path=script_path)
-
-        module_name, ext = os.path.splitext(filename)
-        if ext != '.py':
-            raise ArgumentError("Script did not end with .py", filename=filename)
-
-        try:
-            file = None
-            file, pathname, desc = imp.find_module(module_name, [search_dir])
-            mod = imp.load_module(module_name, file, pathname, desc)
-        finally:
-            if file is not None:
-                file.close()
-
-        devs = [x for x in itervalues(mod.__dict__) if inspect.isclass(x) and issubclass(x, VirtualIOTileDevice) and x != VirtualIOTileDevice]
-        if len(devs) == 0:
-            raise ArgumentError("No VirtualIOTileDevice subclasses were defined in script", path=script_path)
-        elif len(devs) > 1:
-            raise ArgumentError("More than one VirtualIOTileDevice subclass was defined in script", path=script_path, devices=devs)
-
-        return devs[0]
-
     def _load_device(self, name, config):
         """Load a device either from a script or from an installed module
         """
@@ -240,17 +195,18 @@ class VirtualDeviceAdapter(DeviceAdapter):
 
             config_dict = data['device']
 
+        reg = ComponentRegistry()
+
         if name.endswith('.py'):
-            device_factory = self._find_device_script(name)
+            _name, device_factory = reg.load_extension(name, class_filter=VirtualIOTileDevice, unique=True)
             return device_factory(config_dict)
 
         seen_names = []
-        for entry in pkg_resources.iter_entry_points('iotile.virtual_device'):
-            if entry.name == name:
-                device_factory = entry.load()
+        for device_name, device_factory in reg.load_extensions('iotile.virtual_device', class_filter=VirtualIOTileDevice):
+            if device_name == name:
                 return device_factory(config_dict)
 
-            seen_names.append(entry.name)
+            seen_names.append(device_name)
 
         raise ArgumentError("Could not find virtual_device by name", name=name, known_names=seen_names)
 

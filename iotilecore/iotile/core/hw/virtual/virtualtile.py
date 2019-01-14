@@ -1,11 +1,9 @@
 """A virtual tile that ensapsulates resuable behavior."""
 
 from future.utils import itervalues
-import os
-import imp
-import inspect
 import pkg_resources
 from iotile.core.exceptions import ExternalError, ArgumentError
+from iotile.core.dev import ComponentRegistry
 from .base_runnable import BaseRunnable
 from .common_types import tile_rpc, RPCDispatcher
 
@@ -81,12 +79,9 @@ class VirtualTile(BaseRunnable, RPCDispatcher):
         if name.endswith('.py'):
             return cls.LoadFromFile(name)
 
-        for entry in pkg_resources.iter_entry_points("iotile.virtual_tile", name):
-            obj = entry.load()
-            if not issubclass(obj, VirtualTile):
-                raise ExternalError("External virtual tile could not be loaded because it does not inherit from VirtualTile")
-
-            return obj
+        reg = ComponentRegistry()
+        for _name, tile in reg.load_extensions('iotile.virtual_tile', name_filter=name, class_filter=VirtualTile):
+            return tile
 
         raise ArgumentError("VirtualTile could not be found by name", name=name)
 
@@ -109,32 +104,8 @@ class VirtualTile(BaseRunnable, RPCDispatcher):
             VirtualTile: A subclass of VirtualTile that was loaded from script_path
         """
 
-        search_dir, filename = os.path.split(script_path)
-        if search_dir == '':
-            search_dir = './'
-
-        if filename == '' or not os.path.exists(script_path):
-            raise ArgumentError("Could not find script to load virtual tile", path=script_path)
-
-        module_name, ext = os.path.splitext(filename)
-        if ext != '.py':
-            raise ArgumentError("Script did not end with .py", filename=filename)
-
-        try:
-            file_obj = None
-            file_obj, pathname, desc = imp.find_module(module_name, [search_dir])
-            mod = imp.load_module(module_name, file_obj, pathname, desc)
-        finally:
-            if file_obj is not None:
-                file_obj.close()
-
-        devs = [x for x in itervalues(mod.__dict__) if inspect.isclass(x) and issubclass(x, VirtualTile) and x != VirtualTile]
-        if len(devs) == 0:
-            raise ArgumentError("No VirtualTiles subclasses were defined in script", path=script_path)
-        elif len(devs) > 1:
-            raise ArgumentError("More than one VirtualTiles subclass was defined in script", path=script_path, tiles=devs)
-
-        return devs[0]
+        _name, dev = ComponentRegistry().load_extension(script_path, class_filter=VirtualTile, unique=True)
+        return dev
 
     @tile_rpc(0x0004, "", "H6sBBBB")
     def tile_status(self):
