@@ -63,7 +63,7 @@ Read the latest [Documentation](http://coretools.readthedocs.io/en/latest/)!
 The core set of tools is divided into three pip installable packages
 
 ```shell
-pip install iotile-core iotile-transport-bled112
+pip install iotile-core iotile-emulate iotile-transport-bled112
 ```
 
 If you also wish to use the IOTile build system to build IOTile components, you
