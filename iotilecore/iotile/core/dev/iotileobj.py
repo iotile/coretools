@@ -20,6 +20,7 @@ _ProductDeclaration = namedtuple('_ProductDeclaration', ['dev_path', 'release_pa
 _ReleaseOnlyProduct = _ProductDeclaration(r"${release}/${product}", r"${release}/${product}", None)
 _DevOnlyProduct = _ProductDeclaration(r"${module}/${product}", r"${module}/${product}", None)
 
+
 class IOTile(object):
     """
     IOTile
@@ -298,7 +299,7 @@ class IOTile(object):
 
     def _check_has_wheel(self):
         for prod in self.PYTHON_PRODUCTS:
-            if self.find_products(prod) > 0:
+            if len(self.find_products(prod)) > 0:
                 return True
 
         return False

@@ -363,6 +363,13 @@ def test_build_step_finding():
     assert tile_rel.find_products('build_step') == tile_rel.build_steps()
 
 
+def test_unicode_finding():
+    """Make sure unicode strings work in find_products()."""
+
+    tile_dev = load_tile('comp_w_products')
+    assert tile_dev.find_products('app_module') == tile_dev.find_products(u'app_module')
+
+
 def test_app_module_finding():
     """Make sure we can find app modules."""
 
