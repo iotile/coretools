@@ -55,10 +55,10 @@ def main(argv=None):
                                       '%y-%m-%d %H:%M:%S')
         handler.setFormatter(formatter)
         loglevels = [logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG]
-        if args.verbosity >= len(loglevels):
-            args.verbosity = len(loglevels) - 1
+        if args.verbose >= len(loglevels):
+            args.verbose = len(loglevels) - 1
 
-        level = loglevels[args.verbosity]
+        level = loglevels[args.verbose]
         root.setLevel(level)
         root.addHandler(handler)
 
