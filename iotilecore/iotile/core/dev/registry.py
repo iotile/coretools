@@ -159,7 +159,6 @@ class ComponentRegistry(object):
 
             found_extensions.extend((name, x) for x in self._filter_subclasses(ext, class_filter))
 
-
         for (name, ext) in self._registered_extensions.get(group, []):
             if name_filter is not None and name != name_filter:
                 continue
