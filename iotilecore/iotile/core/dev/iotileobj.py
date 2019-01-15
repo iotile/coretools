@@ -366,6 +366,21 @@ class IOTile(object):
         The path could be different depending on whether this IOTile component
         is in development or release mode.
 
+        The behavior of this function when filter_products has been called is
+        slightly different based on whether product_type is in LIST_PRODUCTS
+        or not.  If product type is in LIST_PRODUCTS, then all matching
+        products are returned if product_type itself was passed.  So to get
+        all tilebus_definitions you would call
+        ``filter_products('tilebus_definitions')``
+
+        By constast, other products are filtered product-by-product.  So there
+        is no way to filter and get **all libraries**.  Instead you pass the
+        specific product names of the libraries that you want to
+        ``filter_products`` and those specific libraries are returned.
+        Passing the literal string ``library`` to ``filter_products`` will not
+        return only the libraries, it will return nothing since no library is
+        named ``library``.
+
         Args:
             product_type (str): The type of product that we wish to return.
 
@@ -377,13 +392,14 @@ class IOTile(object):
             this product type, an empty list will be returned.
         """
 
-        if self.filter_prods and product_type not in self.desired_prods:
+        if self.filter_prods and product_type in self.LIST_PRODUCTS and product_type not in self.desired_prods:
             return []
 
         if product_type in self.LIST_PRODUCTS:
             found_products = self.products.get(product_type, [])
         else:
-            found_products = [x[0] for x in viewitems(self.products) if x[1] == product_type]
+            found_products = [x[0] for x in viewitems(self.products)
+                              if x[1] == product_type and (not self.filter_prods or x[0] in self.desired_prods)]
 
         found_products = [self._ensure_product_string(x) for x in found_products]
 

@@ -202,7 +202,8 @@ class VirtualDeviceAdapter(DeviceAdapter):
             return device_factory(config_dict)
 
         seen_names = []
-        for device_name, device_factory in reg.load_extensions('iotile.virtual_device', class_filter=VirtualIOTileDevice):
+        for device_name, device_factory in reg.load_extensions('iotile.virtual_device', class_filter=VirtualIOTileDevice,
+                                                               product_name="virtual_device"):
             if device_name == name:
                 return device_factory(config_dict)
 
