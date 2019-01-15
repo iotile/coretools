@@ -77,6 +77,15 @@ def autobuild_arm_library(libname):
         print(e.format())
         Exit(1)
 
+
+def autobuild_python_test(path):
+    """Add pytest unit tests to be built as part of build/test/output."""
+
+    env = Environment(tools=[])
+    target = env.Command(['build/test/output/pytest.log'], [path], action=env.Action(run_pytest, "Running python unit tests"))
+    env.AlwaysBuild(target)
+
+
 def autobuild_onlycopy():
     """Autobuild a project that does not require building firmware, pcb or documentation
     """
@@ -245,7 +254,7 @@ def autobuild_trub_script(file_name, slot_assignments=None, os_info=None, sensor
         sensor_graph (str): Name of sgf file. Optional.
         app_info (tuple(int, str)): A tuple of App version tag and X.Y version
             number that will be set as part of the OTA script if included. Optional.
-        use_safeupdate (bool): If True, Enables safemode before the firmware update records, then 
+        use_safeupdate (bool): If True, Enables safemode before the firmware update records, then
             disables them after the firmware update records.
     """
 

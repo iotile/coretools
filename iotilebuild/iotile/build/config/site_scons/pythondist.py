@@ -3,6 +3,7 @@ import os
 import sys
 import glob
 import itertools
+import subprocess
 from SCons.Script import *
 from docbuild import *
 from release import *
@@ -170,3 +171,19 @@ def generate_setup_py(target, source, env):
             setuptools.sandbox.run_setup('setup.py', ['-q', 'clean', 'bdist_wheel'])
     finally:
         os.chdir(curr)
+
+
+def run_pytest(target, source, env):
+    """Run pytest, saving its log output to the target file."""
+
+    try:
+        return_value = 0
+        output = subprocess.check_output(['pytest', str(source[0])], stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as err:
+        output = err.output
+        return_value = err.returncode
+
+    with open(str(target[0]), "wb") as outfile:
+        outfile.write(output)
+
+    return return_value
