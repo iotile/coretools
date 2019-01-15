@@ -12,6 +12,10 @@ All major changes in each released version of iotile-emulate are listed here.
 - Update the DemoDevice to have an async rpc implementation on the peripheral
   tile to test the async rpc implementation.
 
+- Update base classes for EmulatedDevice and EmulatedTile to not be 
+  importable via `ComponentRegistry.load_extensions()` so that they are not
+  imported multiple times when trying to import their subclasses.
+
 ## 0.0.1
 
 - Add support for EmulatedDevice and EmulatedTile classes.  These classes allow
