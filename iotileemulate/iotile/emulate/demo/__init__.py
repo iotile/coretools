@@ -2,4 +2,4 @@
 
 from .demo_device import DemoEmulatedDevice
 
-__all__ = ['DemoEmulatedDevice']
+__all__ = ['DemoEmulatedDevice', 'DemoReferenceDevice']
