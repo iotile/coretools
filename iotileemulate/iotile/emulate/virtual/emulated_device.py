@@ -35,6 +35,8 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
             for the controller's name of this IOTile device using an RPC
     """
 
+    __NO_EXTENSION__ = True
+
     def __init__(self, iotile_id, name):
         self.state_history = EmulationStateLog()
 

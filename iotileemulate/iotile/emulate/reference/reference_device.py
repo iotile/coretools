@@ -23,6 +23,8 @@ class ReferenceDevice(EmulatedDevice):
                 defaults to 1 if not specified.
     """
 
+    __NO_EXTENSION__ = True
+
     STATE_NAME = "reference_device"
     STATE_VERSION = "0.1.0"
 
