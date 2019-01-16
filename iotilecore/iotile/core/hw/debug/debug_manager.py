@@ -72,8 +72,6 @@ class DebugManager(object):
         internal_state = self.dump_snapshot()
         internal_state = _clean_intenum(internal_state)
 
-        print(internal_state)
-
         with open(out_path, "w") as outfile:
             json.dump(internal_state, outfile, indent=4)
 
