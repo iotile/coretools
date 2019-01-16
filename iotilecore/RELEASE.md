@@ -10,6 +10,8 @@ All major changes in each released version of `iotile-core` are listed here.
 - Add support for temporarily registering components without committing them to
   the persistent key-value store.
 
+- Fix `iotile-updateinfo` to work without a -v flag.
+
 ## 3.24.4
 
 =======
