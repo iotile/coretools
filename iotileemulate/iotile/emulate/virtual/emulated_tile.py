@@ -303,7 +303,7 @@ class EmulatedTile(EmulationMixin, VirtualTile):
         """
 
         return {
-            "config_variables": {x: base64.b64encode(y.current_value) for x, y in viewitems(self._config_variables)},
+            "config_variables": {x: base64.b64encode(y.current_value).decode('utf-8') for x, y in viewitems(self._config_variables)},
         }
 
     def restore_state(self, state):

@@ -46,7 +46,7 @@ class RemoteBridgeState(SerializableState):
             return None
 
         encoded = value.encode()
-        return base64.b64encode(encoded)
+        return base64.b64encode(encoded).decode('utf-8')
 
     @classmethod
     def _restore_script(cls, b64encoded):
