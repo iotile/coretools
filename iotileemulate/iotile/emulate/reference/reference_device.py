@@ -4,6 +4,7 @@ import base64
 import logging
 import threading
 import time
+from monotonic import monotonic
 from future.utils import viewitems
 from past.builtins import basestring
 from iotile.core.exceptions import ArgumentError, DataError
@@ -45,11 +46,32 @@ class ReferenceDevice(EmulatedDevice):
         self._logger = logging.getLogger(__name__)
         self._time_thread = threading.Thread(target=self._time_ticker)
         self._simulating_time = args.get('simulate_time', True)
+        self._accelerating_time = args.get('accelerate_time', False)
 
     def _time_ticker(self):
+        # Make sure the rpc queue is up and running before calling wait_idle()
+        # that needs the deadlock checker set up
+        self._rpc_queue.flush()
+        self._deadlock_check.__dict__.setdefault('is_rpc_thread', False)
+
+        start = monotonic()
+        counter = 0
         while self._simulating_time:
             self.deferred_task(self.controller.clock_manager.handle_tick)
-            time.sleep(1.0)
+            self.wait_idle()
+
+            counter += 1
+            next_tick = start + counter
+            if not self._accelerating_time:
+                now = monotonic()
+
+                while now < next_tick:
+                    if not self._simulating_time:
+                        return
+
+                    step = min(next_tick - now, 0.1)
+                    time.sleep(step)
+                    now = monotonic()
 
     def start(self, channel=None):
         """Start this emulated device.
