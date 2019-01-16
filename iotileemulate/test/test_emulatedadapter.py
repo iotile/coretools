@@ -61,7 +61,7 @@ def test_loading_scenario(tmpdir):
         debug.save_snapshot(saved)
 
     with open(saved, "r") as infile:
-        state = json.load(infile)
+        json.load(infile)
 
 
 def test_saving_changes(tmpdir):
