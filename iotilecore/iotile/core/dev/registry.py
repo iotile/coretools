@@ -32,6 +32,7 @@ class ComponentRegistry(object):
     BackingFileName = 'component_registry.db'
 
     _registered_extensions = {}
+    _component_overlays = {}
 
     def __init__(self):
         self._kvstore = None
@@ -165,6 +166,8 @@ class ComponentRegistry(object):
 
             found_extensions.extend((name, x) for x in self._filter_subclasses(ext, class_filter))
 
+        found_extensions = [(name, x) for name, x in found_extensions if self._filter_nonextensions(x)]
+
         if unique is True:
             if len(found_extensions) > 1:
                 raise ArgumentError("Extension %s should have had exactly one instance of class %s, found %d" % (group, class_filter.__name__, len(found_extensions)), classes=found_extensions)
@@ -232,6 +235,8 @@ class ComponentRegistry(object):
             return []
 
         found = [(name, x) for x in self._filter_subclasses(ext, class_filter)]
+        found = [(name, x) for name, x in found if self._filter_nonextensions(x)]
+
         if not unique:
             return found
 
@@ -241,6 +246,26 @@ class ComponentRegistry(object):
             raise ArgumentError("Extension %s had no instances of class %s" % (path, class_filter.__name__))
 
         return found[0]
+
+    def _filter_nonextensions(self, obj):
+        """Remove all classes marked as not extensions.
+
+        This allows us to have a deeper hierarchy of classes than just
+        one base class that is filtered by _filter_subclasses.  Any
+        class can define a class propery named:
+
+        __NO_EXTENSION__ = True
+
+        That class will never be returned as an extension.  This is useful
+        for masking out base classes for extensions that are declared in
+        CoreTools and would be present in module imports but should not
+        create a second entry point.
+        """
+
+        if obj.__dict__.get('__NO_EXTENSION__', False) is True:
+            return False
+
+        return True
 
     def _filter_subclasses(self, obj, class_filter):
         if class_filter is None:
@@ -276,20 +301,38 @@ class ComponentRegistry(object):
             cls.BackingType = SQLiteKVStore
             cls.BackingFileName = 'component_registry.db'
 
-    def add_component(self, component):
-        """
-        Register a component with ComponentRegistry.
+    def add_component(self, component, temporary=False):
+        """Register a component with ComponentRegistry.
 
-        Component must be a buildable object with a module_settings.json file that
-        describes its name and the domain that it is part of.
+        Component must be a buildable object with a module_settings.json file
+        that describes its name and the domain that it is part of.  By
+        default, this component is saved in the permanent registry associated
+        with this environment and will remain registered for future CoreTools
+        invocations.
+
+        If you only want this component to be temporarily registered during
+        this program's session, you can pass temporary=True and the component
+        will be stored in RAM only, not persisted to the underlying key-value
+        store.
+
+        Args:
+            component (str): The path to a component that should be registered.
+            temporary (bool): Optional flag to only temporarily register the
+                component for the duration of this program invocation.
         """
 
         tile = IOTile(component)
         value = os.path.normpath(os.path.abspath(component))
 
-        self.kvstore.set(tile.name, value)
+        if temporary is True:
+            self._component_overlays[tile.name] = value
+        else:
+            self.kvstore.set(tile.name, value)
 
     def get_component(self, component):
+        if component in self._component_overlays:
+            return IOTile(self._component_overlays[component])
+
         try:
             comp_path = self.kvstore.get(component)
         except KeyError:
@@ -308,7 +351,7 @@ class ComponentRegistry(object):
 
     def find_component(self, key, domain=""):
         try:
-            if domain is not "":
+            if len(domain) != 0:
                 key = domain.lower() + '/' + key.lower()
 
             return IOTile(self.kvstore.get(key))
@@ -325,6 +368,8 @@ class ComponentRegistry(object):
         """Clear all of the registered components
         """
 
+        ComponentRegistry._component_overlays = {}
+
         for key in self.list_components():
             self.remove_component(key)
 
@@ -335,12 +380,23 @@ class ComponentRegistry(object):
         self.kvstore.clear()
 
     def list_components(self):
-        """List all of the registered component names
+        """List all of the registered component names.
+
+        This list will include all of the permanently stored components as
+        well as any temporary components that were added with a temporary=True
+        flag in this session.
+
+        Returns:
+            list of str: The list of component names.
+
+            Any of these names can be passed to get_component as is to get the
+            corresponding IOTile object.
         """
 
+        overlays = list(self._component_overlays)
         items = self.kvstore.get_all()
 
-        return [x[0] for x in items if not x[0].startswith('config:')]
+        return overlays + [x[0] for x in items if not x[0].startswith('config:')]
 
     def iter_components(self):
         """Iterate over all defined components yielding IOTile objects."""
@@ -354,9 +410,8 @@ class ComponentRegistry(object):
         """List all of the configuration variables
         """
         items = self.kvstore.get_all()
-        cfgitems = ["{0}={1}".format(x[0][len('config:'):],x[1])
+        return ["{0}={1}".format(x[0][len('config:'):], x[1])
                 for x in items if x[0].startswith('config:')]
-        return cfgitems
 
     def set_config(self, key, value):
         """Set a persistent config key to a value, stored in the registry

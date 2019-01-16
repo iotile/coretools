@@ -4,13 +4,24 @@ All major changes in each released version of iotile-emulate are listed here.
 
 ## HEAD
 
+- Add support for sending RPCs from the sensorgraph task in the reference 
+  controller. The sensorgraph implementation should now be complete enough
+  to run unmodified sensorgraphs including realtime data streaming.
+
+- Add support for simulating the passage of time.  Time simulation is on by
+  default for devices that inherit from ReferenceDevice and can be sped up
+  by passing an `"accelerate_time": true` key or stopped by passing a 
+  `"simulate_time": false` key.
+
 - Cleanup and slightly refactor reset code.  Improve reset behavior to be more
   synchronous.
 
-- Add support for asynchronous RPCs.
+- Add support for asynchronous RPCs. Update the DemoDevice to have an async rpc
+  implementation on the peripheral tile to test the async rpc implementation.
 
-- Update the DemoDevice to have an async rpc implementation on the peripheral
-  tile to test the async rpc implementation.
+- Update base classes for EmulatedDevice and EmulatedTile to not be 
+  importable via `ComponentRegistry.load_extensions()` so that they are not
+  imported multiple times when trying to import their subclasses.
 
 ## 0.0.1
 

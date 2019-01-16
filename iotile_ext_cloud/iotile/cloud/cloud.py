@@ -3,12 +3,13 @@
 
 from builtins import input
 from io import BytesIO
+import sys
 import getpass
 import datetime
-import requests
 from dateutil.tz import tzutc
 import dateutil.parser
 from collections import namedtuple
+import requests
 
 from iotile_cloud.api.connection import Api
 from iotile_cloud.api.exceptions import RestHttpBaseException, HttpNotFoundError
@@ -60,10 +61,7 @@ class IOTileCloud(object):
             # If we are interactive, try to get the user to login for a single
             # session rather than making them call link_cloud to store a cloud token
             if type_system.interactive:
-                if username is None:
-                    username = input("Please enter your (%s) username: " % domain)
-
-                password = getpass.getpass('Please enter the (%s) password for %s: ' % (domain, username))
+                username, password = self._prompt_user_pass(username, domain)
                 ok_resp = self.api.login(email=username, password=password)
 
                 if not ok_resp:
@@ -73,6 +71,23 @@ class IOTileCloud(object):
 
         self.token = self.api.token
         self.token_type = self.api.token_type
+
+    def _prompt_user_pass(self, username, domain):
+        if username is None:
+            # Both python 2 and 3 require native strings to be passed into getpass
+            prompt_str = "Please enter your IOTile.cloud email: "
+            if sys.version_info.major < 3:
+                prompt_str = prompt_str.encode('utf-8')
+
+            username = input(prompt_str)
+
+        # Both python 2 and 3 require native strings to be passed into getpass
+        prompt_str = "Please enter your IOTile.cloud password: "
+        if sys.version_info.major < 3:
+            prompt_str = prompt_str.encode('utf-8')
+        password = getpass.getpass(prompt_str)
+
+        return username, password
 
     @property
     def refresh_required(self):

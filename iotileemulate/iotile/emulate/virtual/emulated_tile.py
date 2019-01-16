@@ -196,6 +196,9 @@ class EmulatedTile(EmulationMixin, VirtualTile):
         device (TileBasedVirtualDevice): Device on which this tile is running.
             This parameter is not optional on EmulatedTiles.
     """
+
+    __NO_EXTENSION__ = True
+
     hardware_type = 0
     """The hardware type is a single uint8_t that can be used to record the chip architecture used."""
 

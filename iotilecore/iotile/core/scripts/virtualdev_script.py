@@ -5,9 +5,42 @@ import argparse
 import sys
 import logging
 import json
+from typedargs.doc_parser import ParsedDocstring
 from iotile.core.dev import ComponentRegistry
 from iotile.core.exceptions import ArgumentError
 from iotile.core.hw.virtual import VirtualIOTileDevice, VirtualIOTileInterface
+
+
+def one_line_desc(obj):
+    """Get a one line description of a class."""
+
+    logger = logging.getLogger(__name__)
+
+    try:
+        doc = ParsedDocstring(obj.__doc__)
+        return doc.short_desc
+    except:  #pylint:disable=bare-except;We don't want a misbehaving exception to break the program
+        logger.warn("Could not parse docstring for %s", obj, exc_info=True)
+        return ""
+
+
+def configure_logging(verbose):
+    root = logging.getLogger()
+
+    if verbose > 0:
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter('%(asctime)s.%(msecs)03d %(levelname).3s %(name)s %(message)s',
+                                      '%y-%m-%d %H:%M:%S')
+        handler.setFormatter(formatter)
+        loglevels = [logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG]
+        if verbose >= len(loglevels):
+            verbose = len(loglevels) - 1
+
+        level = loglevels[verbose]
+        root.setLevel(level)
+        root.addHandler(handler)
+    else:
+        root.addHandler(logging.NullHandler())
 
 
 def main(argv=None):
@@ -18,49 +51,40 @@ def main(argv=None):
 
     list_parser = argparse.ArgumentParser(add_help=False)
     list_parser.add_argument('-l', '--list', action='store_true', help="List all known installed interfaces and devices and then exit")
+    list_parser.add_argument('-v', '--verbose', action="count", default=0, help="Increase logging level (goes error, warn, info, debug)")
 
     parser = argparse.ArgumentParser(description="Serve acess to a virtual IOTile device using a virtual IOTile interface")
 
     parser.add_argument('interface', help="The name of the virtual device interface to use")
     parser.add_argument('device', help="The name of the virtual device to create")
-    parser.add_argument('-v', '--verbose', action="count", default=0, help="Increase logging level (goes error, warn, info, debug)")
     parser.add_argument('-c', '--config', help="An optional JSON config file with arguments for the interface and device")
     parser.add_argument('-l', '--list', action='store_true', help="List all known installed interfaces and devices and then exit")
     parser.add_argument('-n', '--scenario', help="Load a test scenario from the given file")
     parser.add_argument('-s', '--state', help="Load a given state into the device before starting to serve it.  Only works with emulated devices.")
     parser.add_argument('-d', '--dump', help="Dump the device's state when we exit the program.  Only works with emulated devices.")
     parser.add_argument('-t', '--track', help="Track all changes to the device's state.  Only works with emulated devices.")
+    parser.add_argument('-v', '--verbose', action="count", default=0, help="Increase logging level (goes error, warn, info, debug)")
 
     args, _rest = list_parser.parse_known_args(argv)
 
     if args.list:
+        configure_logging(args.verbose)
+
         reg = ComponentRegistry()
         print("Installed Virtual Interfaces:")
         for name, _iface in reg.load_extensions('iotile.virtual_interface', class_filter=VirtualIOTileInterface):
             print('- {}'.format(name))
 
         print("\nInstalled Virtual Devices:")
-        for name, _dev in reg.load_extensions('iotile.virtual_device', class_filter=VirtualIOTileDevice,
-                                              product_name="virtual_device"):
-            print('- {}'.format(name))
+        for name, dev in reg.load_extensions('iotile.virtual_device', class_filter=VirtualIOTileDevice,
+                                             product_name="virtual_device"):
+            print('- {}: {}'.format(name, one_line_desc(dev)))
 
         return 0
 
     args = parser.parse_args(argv)
 
-    if args.verbose > 0:
-        root = logging.getLogger()
-        handler = logging.StreamHandler()
-        formatter = logging.Formatter('%(asctime)s.%(msecs)03d %(levelname).3s %(name)s %(message)s',
-                                      '%y-%m-%d %H:%M:%S')
-        handler.setFormatter(formatter)
-        loglevels = [logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG]
-        if args.verbose >= len(loglevels):
-            args.verbose = len(loglevels) - 1
-
-        level = loglevels[args.verbose]
-        root.setLevel(level)
-        root.addHandler(handler)
+    configure_logging(args.verbose)
 
     config = {}
     iface = None

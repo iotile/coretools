@@ -1,12 +1,14 @@
 """Command line script to compile a sensor graph."""
 
+from __future__ import print_function
 import sys
 import argparse
 from builtins import str
-from iotile.sg import SensorGraph, SensorLog, DeviceModel
+from io import open
+from iotile.sg import DeviceModel
 from iotile.sg.parser import SensorGraphFileParser
 from iotile.sg.optimizer import SensorGraphOptimizer
-from iotile.sg.output_formats import known_formats
+from iotile.sg.output_formats import KNOWN_FORMATS
 
 
 def build_args():
@@ -20,7 +22,34 @@ def build_args():
     return parser
 
 
+def write_output(output, text=True, output_path=None):
+    """Write binary or text output to a file or stdout."""
+
+    if output_path is None and text is False:
+        print("ERROR: You must specify an output file using -o/--output for binary output formats")
+        sys.exit(1)
+
+    if output_path is not None:
+        if text:
+            outfile = open(output_path, "w", encoding="utf-8")
+        else:
+            outfile = open(output_path, "wb")
+    else:
+        outfile = sys.stdout
+
+    try:
+        if text and isinstance(output, bytes):
+            output = output.decode('utf-8')
+
+        outfile.write(output)
+    finally:
+        if outfile is not sys.stdout:
+            outfile.close()
+
+
 def main():
+    """Main entry point for iotile-sgcompile."""
+
     arg_parser = build_args()
     args = arg_parser.parse_args()
 
@@ -29,14 +58,8 @@ def main():
     parser = SensorGraphFileParser()
     parser.parse_file(args.sensor_graph)
 
-    outfile = sys.stdout
-
-    if args.output is not None:
-        outfile = open(args.output, "wb")
-
     if args.format == u'ast':
-        outfile.write(parser.dump_tree().encode())
-        outfile.close()
+        write_output(parser.dump_tree(), True, args.output)
         sys.exit(0)
 
     parser.compile(model)
@@ -46,20 +69,14 @@ def main():
         opt.optimize(parser.sensor_graph, model=model)
 
     if args.format == u'nodes':
-        for node in parser.sensor_graph.dump_nodes():
-            outfile.write((node + u'\n').encode())
-
+        output = u'\n'.join(parser.sensor_graph.dump_nodes()) + u'\n'
+        write_output(output, True, args.output)
     else:
-        if args.format not in known_formats:
+        if args.format not in KNOWN_FORMATS:
             print("Unknown output format: {}".format(args.format))
-            outfile.close()
             sys.exit(1)
 
-        output = known_formats[args.format](parser.sensor_graph)
+        output_format = KNOWN_FORMATS[args.format]
+        output = output_format.format(parser.sensor_graph)
 
-        if args.format in (u'snippet', u'ascii', u'config'):
-            outfile.write(output.encode())
-        else:
-            outfile.write(output)
-
-    outfile.close()
+        write_output(output, output_format.text, args.output)

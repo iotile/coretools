@@ -2,15 +2,20 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## HEAD
+
+- Add support for running pytest unit tests as part of the build process.
+
 ## 2.6.17
 
 - Add disable/reenable sensorgraph to safely reflash firmware
 
 ## 2.6.16
 
-- Update TRUB script autobuilder to add a 'use_safemode' option. If this option is set to True in a 
-build_update_script() call or an autobuild_trub_script call, then the firmware load records in the TRUB script will be
-sandwiched between SendRPCRecords enabling and then disabling safemode.
+- Update TRUB script autobuilder to add a 'use_safemode' option. If this option
+  is set to True in a build_update_script() call or an autobuild_trub_script
+  call, then the firmware load records in the TRUB script will be sandwiched
+  between SendRPCRecords enabling and then disabling safemode.
 
 ## 2.6.15
 

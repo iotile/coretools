@@ -4,8 +4,17 @@ All major changes in each released version of `iotile-core` are listed here.
 
 ## HEAD
 
+- Add support for a `__NO_EXTENSION__` flag in classes so that
+  ComponentRegistry.load_extensions will ignore them.
+
+- Add support for temporarily registering components without committing them to
+  the persistent key-value store.
+
+- Fix `iotile-updateinfo` to work without a -v flag.
+
 ## 3.24.4
 
+=======
 - Consolidate entry point related code into ComponentRegistry with a single
   implementation of extension finding and importing.  Remove now redundant
   reimplementations of the same code.

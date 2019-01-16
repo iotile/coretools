@@ -8,6 +8,7 @@
 # Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
+from __future__ import print_function
 import os.path
 import os
 import shutil
@@ -70,7 +71,7 @@ def test_build_nodepends(tmpdir):
 
     try:
         os.chdir(builddir)
-        err = subprocess.check_call(["iotile", "build"])
+        err = subprocess.call(["iotile", "build"])
         assert err == 0
     finally:
         os.chdir(olddir)
@@ -119,7 +120,7 @@ def test_build_wheel_compatible(tmpdir):
         w = open(wheel_to_copy, 'w')
         w.write("this was a triumph")
         w.close()
-        err = subprocess.check_call(["iotile", "build"])
+        err = subprocess.call(["iotile", "build"])
         assert err == 0
     finally:
         os.chdir(olddir)
@@ -163,7 +164,7 @@ def test_build_wheel_universal_valid(tmpdir):
         w = open(wheel_to_copy, 'w')
         w.write("this was a triumph")
         w.close()
-        err = subprocess.check_call(["iotile", "build"])
+        err = subprocess.call(["iotile", "build"])
         assert err == 0
 
     finally:
@@ -178,7 +179,7 @@ def test_build_with_python_depends(tmpdir):
 
     try:
         os.chdir(builddir)
-        err = subprocess.check_call(["iotile", "build"])
+        err = subprocess.call(["iotile", "build"])
         assert err == 0
     finally:
         os.chdir(olddir)
@@ -192,7 +193,7 @@ def test_build_arm(tmpdir):
 
     try:
         os.chdir(builddir)
-        err = subprocess.check_call(["iotile", "build"])
+        err = subprocess.call(["iotile", "build"])
         assert err == 0
     finally:
         os.chdir(olddir)
@@ -206,7 +207,7 @@ def test_build_python(tmpdir):
 
     try:
         os.chdir(builddir)
-        err = subprocess.check_call(["iotile", "build"])
+        err = subprocess.call(["iotile", "build"])
         assert err == 0
     finally:
         os.chdir(olddir)
@@ -251,7 +252,7 @@ def test_build_prerelease(tmpdir):
 
     try:
         os.chdir(builddir)
-        err = subprocess.check_call(["iotile", "build"])
+        err = subprocess.call(["iotile", "build"])
         assert err == 0
     finally:
         os.chdir(olddir)
@@ -266,7 +267,7 @@ def test_unit_testing(tmpdir):
 
     try:
         os.chdir(builddir)
-        err = subprocess.check_call(["iotile", "build", "build/test"])
+        err = subprocess.call(["iotile", "build", "build/test"])
         assert err == 0
     finally:
         os.chdir(olddir)
@@ -280,18 +281,33 @@ def test_bootstrap_file(tmpdir):
     try:
         os.chdir(builddir)
 
-        print(os.listdir(os.path.join('build', 'output', builddir)))
-
         hexdata = IntelHex(os.path.join('build', 'output', 'test1.hex'))
         assert hexdata.segments() == [(0x10001014, 0x10001018)]
 
         assert not os.path.isfile(os.path.join('build', 'output', 'test2.hex'))
 
-        err = subprocess.check_call(["iotile", "build"])
+        err = subprocess.call(["iotile", "build"])
         assert err == 0
 
         hexdata = IntelHex(os.path.join('build', 'output', 'test_final.hex'))
         hexdata_dup = IntelHex(os.path.join('build', 'output', 'test_final_dup.hex'))
         assert hexdata.segments() == hexdata_dup.segments()
+    finally:
+        os.chdir(olddir)
+
+
+def test_pytest(tmpdir):
+    """Make sure we can run pytest unit tests."""
+
+    olddir = os.getcwd()
+    builddir = copy_folder('python_pytests_comp', tmpdir)
+
+    try:
+        os.chdir(builddir)
+
+        err = subprocess.call(["iotile", "build"])
+        assert err == 0
+
+        assert os.path.exists(os.path.join('build', 'test', 'output', 'pytest.log'))
     finally:
         os.chdir(olddir)

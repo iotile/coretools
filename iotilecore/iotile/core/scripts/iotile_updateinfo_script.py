@@ -23,7 +23,7 @@ def build_args():
     parser = argparse.ArgumentParser(description=DESCRIPTION, formatter_class=argparse.RawDescriptionHelpFormatter)
 
     parser.add_argument('script', type=str, help="The binary update script to load")
-    parser.add_argument('-v', '--verbose', action="count", help="Increase logging level (goes error, warn, info, debug)")
+    parser.add_argument('-v', '--verbose', action="count", default=0, help="Increase logging level (goes error, warn, info, debug)")
     parser.add_argument('--show-rpcs', '-r', action="store_true", help="Show TRUB steps as RPC calls where applicable")
     parser.add_argument('--allow-unknown', '-u', action="store_true", help="Don't complain if the script contains unknown actions")
     parser.add_argument('-f', '--format', choices=['text', 'json'], default="text", help="The output format to use to display the script")

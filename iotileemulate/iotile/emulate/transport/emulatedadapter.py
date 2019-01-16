@@ -22,7 +22,7 @@ class EmulatedDeviceAdapter(VirtualDeviceAdapter):
     Args:
         port (string): A port description that should be in the form of
             device_name1@<optional_config_json1;device_name2@optional_config_json2
-        devices (list of EmulatedDevice): Optional list of specif, precreated emulated
+        devices (list of EmulatedDevice): Optional list of specific, precreated emulated
             devices that should be added to the device adapter.
     """
 

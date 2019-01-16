@@ -111,7 +111,9 @@ def simple_hw():
             [
                 [0.001, "hello "],
                 [0.001, "goodbye "]
-            ]
+            ],
+
+            "simulate_time": true
         }}
     }}
 """
@@ -121,7 +123,5 @@ def simple_hw():
         with open(fname, 'w') as tf:
             tf.write(simple_file.format(str(i)))
 
-    hw = HardwareManager('virtual:reference_1_0@dev1.json;reference_1_0@dev4.json;reference_1_0@dev3.json;reference_1_0@dev6.json')
-    yield hw
-
-    hw.disconnect()
+    with HardwareManager('virtual:reference_1_0@dev1.json;reference_1_0@dev4.json;reference_1_0@dev3.json;reference_1_0@dev6.json') as hw:
+        yield hw

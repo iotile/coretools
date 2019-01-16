@@ -414,8 +414,5 @@ def test_product_filtering():
     tile_dev = load_tile('comp_w_products')
     assert len(tile_dev.find_products('proxy_plugin')) == 5
 
-    tile_dev.filter_products(['proxy_plugin', 'include_directories'])
-    assert len(tile_dev.find_products('proxy_plugin')) == 5
-
     tile_dev.filter_products(['include_directories'])
     assert len(tile_dev.find_products('proxy_plugin')) == 0

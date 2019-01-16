@@ -147,7 +147,9 @@ class HardwareManager(object):
 
     @param("address", "integer", "positive", desc="numerical address of module to get")
     @param("basic", "bool", desc="return a basic global proxy rather than a specialized one")
-    def get(self, address, basic=False):
+    @param("force", "str", desc="Explicitly set the 6-character ID to match against")
+    @param("uuid", "integer", desc="UUID of the device we would like to connect to")
+    def get(self, address, basic=False, force=None, uuid=None):
         """Create a proxy object for a tile by address.
 
         The correct proxy object is determined by asking the tile for its
@@ -156,13 +158,25 @@ class HardwareManager(object):
         basic TileBusProxyObject by passing basic=True.
         """
 
+        if basic is True and force is not None:
+            raise ArgumentError("You cannot conbine basic and force, they have opposite effects")
+
+        if force is not None and len(force) != 6:
+            raise ArgumentError("You must specify a 6 character name when using the force parameter", force=force)
+
+        if uuid is not None:
+            self.connect(uuid)
+
         tile = self._create_proxy('TileBusProxyObject', address)
 
         if basic:
             return tile
 
         name = tile.tile_name()
-        version = tile.tile_version()
+        _version = tile.tile_version()
+
+        if force is not None:
+            name = force
 
         # Now create the appropriate proxy object based on the name and version of the tile
         tile_type = self.get_proxy(name)
@@ -175,7 +189,7 @@ class HardwareManager(object):
         return tile
 
     @docannotate
-    def app(self, name=None, path=None):
+    def app(self, name=None, path=None, uuid=None):
         """Find the best IOTileApp for the device we are connected to.
 
         Apps are matched by looking at the app tag and version information
@@ -187,6 +201,9 @@ class HardwareManager(object):
             name (str): Optional name of the app that you wish to load.
             path (str): Optional path to a python file containing the
                 app that you wish to load.
+            uuid (int): Optional uuid of device to directly connect to.
+                Passing this parameter is equivalent to calling ``connect``
+                before calling this method
 
         Returns:
             IOTileApp show-as context: The IOTileApp class that was loaded
@@ -195,6 +212,9 @@ class HardwareManager(object):
 
         if name is not None and path is not None:
             raise ArgumentError("You cannot specify both an app name and an app path", name=name, path=path)
+
+        if uuid is not None:
+            self.connect(uuid)
 
         # We perform all app matching by asking the device's controller for its app and os info
         tile = self._create_proxy('TileBusProxyObject', 8)
@@ -236,16 +256,16 @@ class HardwareManager(object):
         app = app_class(self, (app_tag, app_version), (os_tag, os_version), device_id)
         return app
 
-    @annotated
-    def controller(self):
+    @param("uuid", "integer", desc="UUID of the device we would like to connect to")
+    def controller(self, uuid=None):
         """
         Find an attached IOTile controller and attempt to connect to it.
         """
 
-        con = self.get(8)
-        con._hwmanager = self
+        if uuid is not None:
+            self.connect(uuid)
 
-        return con
+        return self.get(8)
 
     @param("device_uuid", "integer", desc="UUID of the device we would like to connect to")
     @param("wait", "float", desc="Time to wait for devices to show up before connecting")
