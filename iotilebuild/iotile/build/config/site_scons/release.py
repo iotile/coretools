@@ -40,7 +40,7 @@ def copy_tilebus_definitions(tile):
     destdir = os.path.join('build', 'output', 'tilebus')
 
     env = Environment(tools=[])
-    for tbdef in tile.tilebus_definitions():
+    for tbdef in tile.find_products('tilebus_definitions'):
         tbname = os.path.basename(tbdef)
 
         infile = tbdef
@@ -50,7 +50,7 @@ def copy_tilebus_definitions(tile):
 def copy_linker_scripts(tile):
     destdir = os.path.join('build', 'output', 'linker')
 
-    linkers = tile.linker_scripts()
+    linkers = tile.find_products('linker_script')
     env = Environment(tools=[])
 
     for linker in linkers:
@@ -154,7 +154,7 @@ def copy_dependency_images(tile):
 
         deptile = IOTile(depdir)
 
-        for image in deptile.firmware_images():
+        for image in deptile.find_products('firmware_image'):
             name = os.path.basename(image)
             input_path = os.path.join(depdir, name)
             output_path = os.path.join(outputdir, name)
