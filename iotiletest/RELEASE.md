@@ -2,6 +2,13 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 0.11.0
+
+- Remove `emulation_test` device since `iotile-emulate` includes built-in
+  demo devices to show the emulation functionality.  This removes the issue
+  where installing `iotile-test` will require you to also install 
+  `iotile-emulate`.
+
 ## 0.10.0
 
 - Add emulation_test device as a basic example of the EmulatedDevice class.
