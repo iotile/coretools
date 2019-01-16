@@ -95,3 +95,5 @@ def test_idle_watch():
     workqueue.defer_until_idle(_idle_callback)
     workqueue.wait_until_idle()
     assert idle_called[0] is True
+
+    workqueue.stop()
