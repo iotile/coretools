@@ -260,9 +260,6 @@ def test_type_package_finding():
     assert relative_paths(dev_types) == [os.path.join('comp_w_products', 'python', 'lib_controller_types')]
     assert relative_paths(rel_types) == [os.path.join('releasemode_comp_w_prod', 'python', 'lib_controller_types')]
 
-    assert tile_dev.find_products('type_package') == tile_dev.type_packages()
-    assert tile_rel.find_products('type_package') == tile_rel.type_packages()
-
 
 def test_tilebus_definition_finding():
     """Make sure we can find tilebus definitions."""
@@ -340,9 +337,6 @@ def test_proxy_module_finding():
     assert relative_paths(dev_types) == [os.path.join('comp_w_products', 'python', 'proxy.py')]
     assert relative_paths(rel_types) == [os.path.join('releasemode_comp_w_prod', 'python', 'proxy.py')]
 
-    assert tile_dev.find_products('proxy_module') == tile_dev.proxy_modules()
-    assert tile_rel.find_products('proxy_module') == tile_rel.proxy_modules()
-
 
 def test_build_step_finding():
     """Make sure we can find build steps."""
@@ -358,9 +352,6 @@ def test_build_step_finding():
 
     assert relative_paths(dev_types) == [os.path.join('comp_w_products', 'python', 'buildstep.py:MyStep')]
     assert relative_paths(rel_types) == [os.path.join('releasemode_comp_w_prod', 'python', 'buildstep.py:MyStep')]
-
-    assert tile_dev.find_products('build_step') == tile_dev.build_steps()
-    assert tile_rel.find_products('build_step') == tile_rel.build_steps()
 
 
 def test_unicode_finding():
@@ -384,9 +375,6 @@ def test_app_module_finding():
 
     assert relative_paths(dev_types) == [os.path.join('comp_w_products', 'python', 'app.py')]
     assert relative_paths(rel_types) == [os.path.join('releasemode_comp_w_prod', 'python', 'app.py')]
-
-    assert tile_dev.find_products('app_module') == tile_dev.app_modules()
-    assert tile_rel.find_products('app_module') == tile_rel.app_modules()
 
 
 def test_proxy_plugin_finding():
