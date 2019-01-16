@@ -17,7 +17,7 @@ from iotile.emulate.transport import EmulatedDeviceAdapter
 def sg_device():
     """Get a reference device and connected HardwareManager."""
 
-    device = ReferenceDevice({})
+    device = ReferenceDevice({'simulate_time': False})
     peripheral = EmulatedPeripheralTile(11, b'abcdef', device)
     peripheral.declare_config_variable("test 1", 0x8000, 'uint16_t')
     peripheral.declare_config_variable('test 2', 0x8001, 'uint32_t[5]')
@@ -39,7 +39,7 @@ def sg_device():
 def basic_sg():
     """A preprogrammed basic sensorgraph for testing."""
 
-    device = ReferenceDevice({})
+    device = ReferenceDevice({'simulate_time': False})
     peripheral = EmulatedPeripheralTile(11, b'abcdef', device)
     peripheral.declare_config_variable("test 1", 0x8000, 'uint16_t')
     peripheral.declare_config_variable('test 2', 0x8001, 'uint32_t[5]')
@@ -72,7 +72,7 @@ def basic_sg():
 def streaming_sg():
     """A preprogrammed basic sensorgraph for testing streaming."""
 
-    device = ReferenceDevice({})
+    device = ReferenceDevice({'simulate_time': False})
 
     adapter = EmulatedDeviceAdapter(None, devices=[device])
 
@@ -103,7 +103,7 @@ def streaming_sg():
 def rpc_sg():
     """A basic sg for testing the rpc executor."""
 
-    device = DemoEmulatedDevice({})
+    device = DemoEmulatedDevice({'simulate_time': False})
 
     adapter = EmulatedDeviceAdapter(None, devices=[device])
 

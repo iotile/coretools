@@ -2,6 +2,8 @@
 
 import base64
 import logging
+import threading
+import time
 from future.utils import viewitems
 from past.builtins import basestring
 from iotile.core.exceptions import ArgumentError, DataError
@@ -41,6 +43,13 @@ class ReferenceDevice(EmulatedDevice):
         self.add_tile(8, self.controller)
         self.reset_count = 0
         self._logger = logging.getLogger(__name__)
+        self._time_thread = threading.Thread(target=self._time_ticker)
+        self._simulating_time = args.get('simulate_time', True)
+
+    def _time_ticker(self):
+        while self._simulating_time:
+            self.deferred_task(self.controller.clock_manager.handle_tick)
+            time.sleep(1.0)
 
     def start(self, channel=None):
         """Start this emulated device.
@@ -83,6 +92,19 @@ class ReferenceDevice(EmulatedDevice):
                 tile.wait_started(timeout=2.0)
 
         self.wait_idle()
+
+        if self._simulating_time:
+            self._time_thread.start()
+
+    def stop(self):
+        """Stop this emulated device."""
+
+        self._simulating_time = False
+
+        if self._time_thread.is_alive():
+            self._time_thread.join()
+
+        super(ReferenceDevice, self).stop()
 
     def reset_peripheral_tiles(self):
         """Reset all peripheral tiles (asynchronously)."""

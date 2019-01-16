@@ -14,7 +14,7 @@ from iotile.emulate.transport import EmulatedDeviceAdapter
 def basic_device():
     """A preprogrammed basic sensorgraph for testing."""
 
-    device = ReferenceDevice({})
+    device = ReferenceDevice({'simulate_time': False})
     adapter = EmulatedDeviceAdapter(None, devices=[device])
 
     nodes = [

@@ -95,7 +95,7 @@ def test_saving_changes(tmpdir):
 def test_async_rpc():
     """Make sure we can send an asynchronous rpc."""
 
-    with HardwareManager(port='emulated:emulation_demo') as hw:
+    with HardwareManager(port='emulated:emulation_demo@#eyJzaW11bGF0ZV90aW1lIjogZmFsc2V9') as hw:
         hw.connect(1)
 
         proxy = hw.get(11, basic=True)
@@ -112,7 +112,7 @@ def test_async_rpc():
 def test_racefree_reset():
     """Make sure we can reset at will."""
 
-    with HardwareManager(port='emulated:emulation_demo') as hw:
+    with HardwareManager(port='emulated:emulation_demo@#eyJzaW11bGF0ZV90aW1lIjogZmFsc2V9') as hw:
         hw.connect(1)
 
         proxy = hw.get(8, basic=True)
