@@ -183,6 +183,8 @@ def run_pytest(target, source, env):
         output = err.output
         return_value = err.returncode
 
+        print(output.decode('utf-8'))
+
     with open(str(target[0]), "wb") as outfile:
         outfile.write(output)
 

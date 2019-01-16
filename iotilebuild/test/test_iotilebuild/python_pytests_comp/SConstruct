@@ -1,0 +1,4 @@
+import autobuild
+
+autobuild.autobuild_release()
+autobuild.autobuild_python_test("python/test")
