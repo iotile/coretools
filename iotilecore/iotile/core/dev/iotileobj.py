@@ -413,66 +413,6 @@ class IOTile(object):
 
         return found_products
 
-    def include_directories(self):
-        """Return a list of all include directories that this IOTile could provide other tiles.
-
-        Deprecated:
-            This method has been superseded by the unified find_products("include_directories")
-            and will be removed in future releases.
-        """
-
-        return self.find_products('include_directories')
-
-    def libraries(self):
-        """Return a list of all libraries produced by this IOTile that could be provided to other tiles.
-
-        Deprecated:
-            This method has been superseded by the unified
-            ``find_products("library")`` and will be removed in a future release.
-
-            ``find_products("library")`` does not remove the "lib: prefix from
-            what it returns, so callers will be expected to do that if needed.
-        """
-
-        libs = self.find_products('library')
-
-        badlibs = [x for x in libs if not x.startswith('lib')]
-        if len(badlibs) > 0:
-            raise DataError("A library product was listed in a module's products without the name starting with lib", bad_libraries=badlibs)
-
-        # Remove the prepended lib from each library name
-        return [x[3:] for x in libs]
-
-    def linker_scripts(self):
-        """Return a list of the linker scripts that are provided by this tile.
-
-        Deprecated:
-            This method has been superseded by ``find_products("linker_script")`` and
-            will be removed in a future release.
-        """
-
-        return self.find_products('linker_script')
-
-    def firmware_images(self):
-        """Return a list of all firmware images produced by this IOTile.
-
-        Deprecated:
-            This method has been superseded by ``find_products('firmware_image')`` and
-            will be removed in a future release.
-        """
-
-        return self.find_products('firmware_image')
-
-    def tilebus_definitions(self):
-        """Return a list of all tilebus definitions that this IOTile could provide other tiles.
-
-        Deprecated:
-            This method has been superseded by ``find_products('tilebus_definitions')`` and
-            will be removed in a future release.
-        """
-
-        return self.find_products('tilebus_definitions')
-
     def library_directories(self):
         """Return a list of directories containing any static libraries built by this IOTile."""
 
