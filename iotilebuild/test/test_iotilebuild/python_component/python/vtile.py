@@ -1,0 +1,3 @@
+
+class VirtualTile(object):
+    pass
