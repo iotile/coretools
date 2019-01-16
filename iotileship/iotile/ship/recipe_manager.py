@@ -1,6 +1,6 @@
 from __future__ import (unicode_literals, print_function, absolute_import)
 import os
-import pkg_resources
+from iotile.core.dev import ComponentRegistry
 from iotile.ship.recipe import RecipeObject
 from iotile.ship.exceptions import RecipeNotFoundError
 
@@ -25,13 +25,12 @@ class RecipeManager(object):
         self._recipe_resources = {}
         self._recipes = {}
 
-        for entry in pkg_resources.iter_entry_points('iotile.recipe_action'):
-            action = entry.load()
-            self._recipe_actions[entry.name] = action
+        reg = ComponentRegistry()
+        for name, action in reg.load_extensions('iotile.recipe_action', product_name='build_step'):
+            self._recipe_actions[name] = action
 
-        for entry in pkg_resources.iter_entry_points('iotile.recipe_resource'):
-            resource = entry.load()
-            self._recipe_resources[entry.name] = resource
+        for name, resource in reg.load_extensions('iotile.recipe_resource'):
+            self._recipe_resources[name] = resource
 
     def is_valid_action(self, name):
         """Check if a name describes a valid action.
@@ -90,7 +89,7 @@ class RecipeManager(object):
         """Add additional valid recipe actions to RecipeManager
 
         args:
-            recipe_actions (list): List of tuples. First value of tuple is the classname, 
+            recipe_actions (list): List of tuples. First value of tuple is the classname,
                 second value of tuple is RecipeAction Object
 
         """
