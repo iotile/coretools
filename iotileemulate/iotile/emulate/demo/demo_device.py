@@ -9,6 +9,10 @@ from ..reference import ReferenceDevice
 class DemoEmulatedTile(EmulatedPeripheralTile):
     """A basic demo emulated tile with an async rpc."""
 
+    def __init__(self, address, name, device):
+        super(DemoEmulatedTile, self).__init__(address, name, device)
+        self._counter = 0
+
     @tile_rpc(0x8000, "L", "L")
     def async_echo(self, arg):
         """Asynchronously echo the argument number."""
@@ -21,6 +25,14 @@ class DemoEmulatedTile(EmulatedPeripheralTile):
         """Synchronously echo the argument number."""
 
         return [arg]
+
+    @tile_rpc(0x8002, "", "L")
+    def counter(self):
+        """A counter that increments everytime it is called."""
+
+        value = self._counter
+        self._counter += 1
+        return [value]
 
 
 class DemoEmulatedDevice(ReferenceDevice):

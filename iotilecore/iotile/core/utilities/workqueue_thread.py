@@ -3,7 +3,7 @@
 import threading
 import logging
 import sys
-from collections import namedtuple
+from collections import namedtuple, deque
 from queue import Queue
 from future.utils import raise_
 from iotile.core.exceptions import TimeoutExpiredError, DataError
@@ -61,7 +61,7 @@ class WorkQueueThread(threading.Thread):
 
         self._routine = handler
         self._work_queue = Queue()
-        self._current_item = None
+        self._current_callbacks = deque()
         self._logger = logging.getLogger(__name__)
 
     def current_callback(self):
@@ -79,10 +79,10 @@ class WorkQueueThread(threading.Thread):
             This will be None if there was no callback passed.
         """
 
-        if self._current_item is None:
+        if len(self._current_callbacks) == 0:
             raise DataError("WorkQueueThread.current_callback() called while a work item was not executing")
 
-        return self._current_item.callback
+        return self._current_callbacks[0]
 
     def dispatch(self, value, callback=None):
         """Dispatch an item to the workqueue and optionally wait.
@@ -224,6 +224,33 @@ class WorkQueueThread(threading.Thread):
         self.defer_until_idle(_callback)
         done.wait()
 
+    def direct_dispatch(self, arg, callback):
+        """Directly dispatch a work item.
+
+        This method MUST only be called from inside of another work item and
+        will synchronously invoke the work item as if it was passed to
+        dispatch().  Calling this method from any other thread has undefined
+        consequences since it will be unsynchronized with respect to items
+        dispatched from inside the background work queue itself.
+        """
+
+        try:
+            self._current_callbacks.appendleft(callback)
+
+            exc_info = None
+            retval = None
+
+            retval = self._routine(arg)
+        except:  #pylint:disable=bare-except;We need to capture the exception and feed it back to the caller
+            exc_info = sys.exc_info()
+        finally:
+            self._current_callbacks.popleft()
+
+        if callback is not None and retval is not self.STILL_PENDING:
+            callback(exc_info, retval)
+
+        return retval, exc_info
+
     def run(self):
         """The target routine called to start thread activity."""
 
@@ -255,20 +282,8 @@ class WorkQueueThread(threading.Thread):
                     self._logger.error("Invalid item passed to WorkQueueThread: %s, ignoring", item)
                     continue
 
-                try:
-                    self._current_item = item
+                self.direct_dispatch(item.arg, item.callback)
 
-                    exc_info = None
-                    retval = None
-
-                    retval = self._routine(item.arg)
-                except:  #pylint:disable=bare-except;We need to capture the exception and feed it back to the caller
-                    exc_info = sys.exc_info()
-                finally:
-                    self._current_item = None
-
-                if item.callback is not None and retval is not self.STILL_PENDING:
-                    item.callback(exc_info, retval)
             except:  #pylint:disable=bare-except;We cannot let this background thread die until we are told to stop()
                 self._logger.exception("Error inside background workqueue thread")
 

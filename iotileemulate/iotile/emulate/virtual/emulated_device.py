@@ -251,6 +251,10 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
             bytes: The response payload from the RPC
         """
 
+        if self._deadlock_check.is_rpc_thread:
+            self._logger.critical("Deadlock due to rpc thread calling EmulatedDevice.call_rpc")
+            raise InternalError("EmulatedDevice.call_rpc called from rpc dispatch thread.  This would have caused a deadlock")
+
         return self._rpc_queue.dispatch((address, rpc_id, payload))
 
     def deferred_task(self, callable, *args, **kwargs):
