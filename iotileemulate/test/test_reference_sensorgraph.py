@@ -225,7 +225,7 @@ def test_streaming(streaming_sg):
 
     for i, reading in enumerate(readings):
         assert reading.value == 5 + i
-        assert reading.reading_id == 4 + i
+        assert reading.reading_id == 5 + i
 
 
 def test_rpc_engine(rpc_sg):
