@@ -1,0 +1,58 @@
+{	
+	"module_targets": 
+	{
+		"tile_gpio": ["lpc824"]
+	},
+
+	"dependency_versions": {
+        "iotile_standard_library_lib_cortexm0p_runtime": "1.1.0",
+        "iotile_standard_library_hw_accelerometer_v2": "2.0.1",
+        "iotile_standard_library_lib_lpc824": "1.3.1",
+        "iotile_standard_library_lib_common": "1.3.0"
+    },
+    
+    "release_date": "2018-12-05T21:50:38.283000",
+    "release": true,
+   
+	"modules":
+	{
+		"tile_gpio":
+		{
+			"overlays":
+			{
+				"lpc824":
+				{
+					"defines":
+					{
+						"kModuleHardwareType":	"kLPC824HardwareType"
+					}
+				}
+			},
+			
+			"depends":
+			{
+				"iotile_standard_library/common": ["include_directories"],
+				"iotile_standard_library/liblpc824": ["include_directories", "liblpc824_lpc824.a"],
+				"iotile_standard_library/libcortexm0p_runtime": ["include_directories", "cortex_m0p_cdb_application.ld", "libcortexm0p_runtime_lpc824.a"]
+			},
+
+			"domain": "iotile_standard_library",
+
+			"defines":
+			{
+				"kVoltageControlPin": 9,
+				"kVoltageSourcePin1": 8,
+				"kVoltageSourcePin2": 23,
+				"kVoltageSensePin2": 14,
+				"kVoltageSenseChannel2": 2, 
+				"kSensePin": 6,
+				"kSenseChannel": 1
+			},
+
+			"products":
+			{
+				"python/gpio1_proxy.py": "proxy_module"
+			}
+		}
+	}
+}
