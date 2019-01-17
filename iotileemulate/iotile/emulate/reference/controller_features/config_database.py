@@ -40,7 +40,7 @@ class ConfigEntry(object):
 
         return {
             'target': str(self.target),
-            'data': base64.b64encode(self.data),
+            'data': base64.b64encode(self.data).decode('utf-8'),
             'var_id': self.var_id,
             'valid': self.valid
         }

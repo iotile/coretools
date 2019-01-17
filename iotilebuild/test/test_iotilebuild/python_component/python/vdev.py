@@ -1,0 +1,2 @@
+class VirtualDevice(object):
+    pass

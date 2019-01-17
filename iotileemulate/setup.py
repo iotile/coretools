@@ -10,7 +10,7 @@ setup(
     license="LGPLv3",
     description="IOTile Device Emulation",
     install_requires=[
-        "iotile-core>=3.16.7",
+        "iotile-core >=3.25.0, < 4.0.0",
         "iotile-sensorgraph>=0.7.2",
         'enum34;python_version<"3.4"'
     ],

@@ -2,9 +2,11 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
-## HEAD
+## 2.7.0
 
 - Add support for running pytest unit tests as part of the build process.
+- Refactor python support wheel building process to accommodate additional
+  python products and increase test coverage of the wheel generation process.
 
 ## 2.6.17
 

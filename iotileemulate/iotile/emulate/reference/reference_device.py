@@ -159,7 +159,7 @@ class ReferenceDevice(EmulatedDevice):
             state['state_name'] = self.STATE_NAME
             state['state_version'] = self.STATE_VERSION
             state['reset_count'] = self.reset_count
-            state['received_script'] = base64.b64encode(self.script)
+            state['received_script'] = base64.b64encode(self.script).decode('utf-8')
 
             shared[0] = state
 

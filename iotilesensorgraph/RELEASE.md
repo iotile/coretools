@@ -3,7 +3,7 @@
 All major changes in each released version of iotile-sensorgraph are listed
 here.
 
-## HEAD
+## 0.8.1
 
 - Fix bug in iotile-sgcompile that could not write output formats to stdout
   on python 3.

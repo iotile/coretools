@@ -2,7 +2,7 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
-## HEAD
+## 3.25.0
 
 - Add support for a `__NO_EXTENSION__` flag in classes so that
   ComponentRegistry.load_extensions will ignore them.
@@ -14,12 +14,14 @@ All major changes in each released version of `iotile-core` are listed here.
 
 ## 3.24.4
 
-=======
 - Consolidate entry point related code into ComponentRegistry with a single
   implementation of extension finding and importing.  Remove now redundant
   reimplementations of the same code.
+
 - Fix support for STILL_PENDING flag in WorkQueueThread
+
 - Update AsynchronousRPCResponse exception to not need an `__init__` argument.
+
 - Fix verbosity argument for using virtual_device logging flag.
 
 ## 3.24.3

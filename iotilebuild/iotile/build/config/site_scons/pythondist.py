@@ -14,6 +14,53 @@ from iotile.core.dev.iotileobj import IOTile
 import setuptools.sandbox
 
 
+ENTRY_POINT_MAP = {
+    'build_step': 'iotile.recipe_action',
+    'app_module': 'iotile.app',
+    'proxy_module': 'iotile.proxy',
+    'type_package': 'iotile.type_package',
+    'proxy_plugin': 'iotile.proxy_plugin',
+    'virtual_tile': 'iotile.virtual_tile',
+    'virtual_device': 'iotile.virtual_device'
+}
+
+
+def iter_python_modules(tile):
+    """Iterate over all python products in the given tile.
+
+    This will yield tuples where the first entry is the path to the module
+    containing the product the second entry is the appropriate
+    import string to include in an entry point, and the third entry is
+    the entry point name.
+    """
+
+    for product_type in tile.PYTHON_PRODUCTS:
+        for product in tile.find_products(product_type):
+            entry_point = ENTRY_POINT_MAP.get(product_type)
+            if entry_point is None:
+                raise BuildError("Found an unknown python product (%s) whose entrypoint could not be determined (%s)" % (product_type, product))
+
+            if ':' in product:
+                module, _, obj_name = product.rpartition(':')
+            else:
+                module = product
+                obj_name = None
+
+            if not os.path.exists(module):
+                raise BuildError("Found a python product whose path did not exist: %s" % module)
+
+            product_name = os.path.basename(module)
+            if product_name.endswith(".py"):
+                product_name = product_name[:-3]
+
+            import_string = "{} = {}.{}".format(product_name, tile.support_distribution, product_name)
+
+            if obj_name is not None:
+                import_string += ":{}".format(obj_name)
+
+            yield (module, import_string, entry_point)
+
+
 def build_python_distribution(tile):
     env = Environment(tools=[])
     srcdir = 'python'
@@ -22,18 +69,10 @@ def build_python_distribution(tile):
     outdir = os.path.join('build', 'output', 'python')
     outsrcdir = os.path.join(outdir, 'src')
 
-    proxies = tile.proxy_modules()
-    typelibs = tile.type_packages()
-    plugins = tile.proxy_plugins()
-    appmodules = tile.app_modules()
-    buildentries = tile.build_steps()
-
-    buildentry_modules = [x.split(':')[0] for x in buildentries]
-
-    if len(proxies) == 0 and len(typelibs) == 0 and len(plugins) == 0 and len(appmodules) == 0 and len(buildentries) == 0:
+    if not tile.has_wheel:
         return
 
-    srcnames = [os.path.basename(x) for x in itertools.chain(iter(proxies), iter(buildentry_modules), iter(typelibs), iter(plugins), iter(appmodules))]
+    srcnames = [os.path.basename(mod) for mod, _import, _entry in iter_python_modules(tile)]
     buildfiles = []
 
     pkg_init = os.path.join(packagedir, '__init__.py')
@@ -118,32 +157,13 @@ def generate_setup_py(target, source, env):
     tile = env['TILE']
     data = {}
 
-    # Figure out the packages and modules that we need to put in this package
-    typelibs = [os.path.basename(x) for x in tile.type_packages()]
-
-    # Now figure out all of the entry points that group type_packages, proxy_plugins and proxy_modules
-    # and allow us to find them.
-
     entry_points = {}
 
-    modentries = [os.path.splitext(os.path.basename(x))[0] for x in tile.proxy_modules()]
-    pluginentries = [os.path.splitext(os.path.basename(x))[0] for x in tile.proxy_plugins()]
-    appentries = [os.path.splitext(os.path.basename(x))[0] for x in tile.app_modules()]
+    for _mod, import_string, entry_point in iter_python_modules(tile):
+        if entry_point not in entry_points:
+            entry_points[entry_point] = []
 
-    buildentries = tile.build_steps()
-    buildentry_parsed = [x.split(':') for x in buildentries]
-    buildentries = [(os.path.splitext(os.path.basename(x[0]))[0], x[1]) for x in buildentry_parsed]
-
-    if len(modentries) > 0:
-        entry_points['iotile.proxy'] = ["{0} = {1}.{0}".format(x, tile.support_distribution) for x in modentries]
-    if len(pluginentries) > 0:
-        entry_points['iotile.proxy_plugin'] = ["{0} = {1}.{0}".format(x, tile.support_distribution) for x in pluginentries]
-    if len(typelibs) > 0:
-        entry_points['iotile.type_package'] = ["{0} = {1}.{0}".format(x, tile.support_distribution) for x in typelibs]
-    if len(appentries) > 0:
-        entry_points['iotile.app'] = ["{0} = {1}.{0}".format(x, tile.support_distribution) for x in appentries]
-    if len(buildentries) > 0:
-        entry_points['iotile.recipe_action'] = ["{1} = {2}.{0}:{1}".format(x[0], x[1], tile.support_distribution) for x in buildentries]
+        entry_points[entry_point].append(import_string)
 
     data['name'] = tile.support_distribution
     data['package'] = tile.support_distribution

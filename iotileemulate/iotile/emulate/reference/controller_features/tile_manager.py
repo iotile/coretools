@@ -1,5 +1,6 @@
 """Mixin for device updating via signed scripts."""
 
+import base64
 from future.utils import viewitems
 from iotile.core.hw.virtual import tile_rpc
 from ...virtual import SerializableState
@@ -19,6 +20,14 @@ class TileInfo(SerializableState):
 
         self.state = state
         self.address = address
+
+        self.mark_complex('name', self._dump_name, self._restore_name)
+
+    def _dump_name(self, name):
+        return base64.b64encode(name).decode('utf-8')
+
+    def _restore_name(self, name):
+        return base64.b64decode(name)
 
     def registration_packet(self):
         """Serialize this into a tuple suitable for returning from an RPC.

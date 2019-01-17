@@ -140,12 +140,12 @@ def main(argv=None):
     except KeyboardInterrupt:
         print("Break received, cleanly exiting...")
     finally:
-        if iface is not None and started:
-            iface.stop()
-
         if args.dump is not None and device is not None:
             print("Dumping final device state to %s" % args.dump)
             device.save_state(args.dump)
+
+        if iface is not None and started:
+            iface.stop()
 
         if args.track is not None and device is not None:
             print("Saving state history to file %s" % args.track)

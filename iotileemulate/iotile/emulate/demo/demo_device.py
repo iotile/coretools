@@ -11,7 +11,13 @@ class DemoEmulatedTile(EmulatedPeripheralTile):
 
     def __init__(self, address, name, device):
         super(DemoEmulatedTile, self).__init__(address, name, device)
+        self.register_scenario('loaded_counter', self.load_counter)
         self._counter = 0
+
+
+    def load_counter(self, counter):
+        """Load the counter value of this device."""
+        self._counter = counter
 
     @tile_rpc(0x8000, "L", "L")
     def async_echo(self, arg):

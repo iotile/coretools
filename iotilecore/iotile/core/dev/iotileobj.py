@@ -61,7 +61,9 @@ class IOTile(object):
         "app_module",
         "proxy_module",
         "type_package",
-        "proxy_plugin"
+        "proxy_plugin",
+        "virtual_tile",
+        "virtual_device"
     ])
     """The canonical list of all product types that contain python code.
 
@@ -91,6 +93,8 @@ class IOTile(object):
         "app_module": _DevOnlyProduct,
         "proxy_module": _DevOnlyProduct,
         "proxy_plugin": _DevOnlyProduct,
+        "virtual_tile": _DevOnlyProduct,
+        "virtual_device": _DevOnlyProduct,
         "firmware_image": _ReleaseOnlyProduct
     }
     """Declarations for products that require special path processing."""
@@ -408,115 +412,6 @@ class IOTile(object):
             found_products = [self._process_product_path(x, declaration) for x in found_products]
 
         return found_products
-
-    def include_directories(self):
-        """Return a list of all include directories that this IOTile could provide other tiles.
-
-        Deprecated:
-            This method has been superseded by the unified find_products("include_directories")
-            and will be removed in future releases.
-        """
-
-        return self.find_products('include_directories')
-
-    def libraries(self):
-        """Return a list of all libraries produced by this IOTile that could be provided to other tiles.
-
-        Deprecated:
-            This method has been superseded by the unified
-            ``find_products("library")`` and will be removed in a future release.
-
-            ``find_products("library")`` does not remove the "lib: prefix from
-            what it returns, so callers will be expected to do that if needed.
-        """
-
-        libs = self.find_products('library')
-
-        badlibs = [x for x in libs if not x.startswith('lib')]
-        if len(badlibs) > 0:
-            raise DataError("A library product was listed in a module's products without the name starting with lib", bad_libraries=badlibs)
-
-        # Remove the prepended lib from each library name
-        return [x[3:] for x in libs]
-
-    def type_packages(self):
-        """Return a list of the python type packages that are provided by this tile.
-
-        Deprecated:
-            This method has been superseded by ``find_products("type_package")`` and
-            will be removed in a future release.
-        """
-
-        return self.find_products('type_package')
-
-    def linker_scripts(self):
-        """Return a list of the linker scripts that are provided by this tile.
-
-        Deprecated:
-            This method has been superseded by ``find_products("linker_script")`` and
-            will be removed in a future release.
-        """
-
-        return self.find_products('linker_script')
-
-    def proxy_modules(self):
-        """Return a list of the python proxy modules that are provided by this tile.
-
-        Deprecated:
-            This method has been superseded by ``find_products("proxy_module")`` and
-            will be removed in a future release.
-        """
-
-        return self.find_products('proxy_module')
-
-    def app_modules(self):
-        """Return a list of the python app modules that are provided by this tile.
-
-        Deprecated:
-            This method has been superseded by ``find_products("app_module")`` and
-            will be removed in a future release.
-        """
-
-        return self.find_products('app_module')
-
-    def build_steps(self):
-        """Return a list of the iotile-ship build step that are provided by this tile.
-
-        Deprecated:
-            This method has been superseded by ``find_products("build_step")`` and
-            will be removed in a future release.
-        """
-
-        return self.find_products('build_step')
-
-    def proxy_plugins(self):
-        """Return a list of the python proxy plugins that are provided by this tile.
-
-        Deprecated:
-            This method has been superseded by ``find_products("proxy_plugin")`` and
-            will be removed in a future release.
-        """
-        return self.find_products('proxy_plugin')
-
-    def firmware_images(self):
-        """Return a list of all firmware images produced by this IOTile.
-
-        Deprecated:
-            This method has been superseded by ``find_products('firmware_image')`` and
-            will be removed in a future release.
-        """
-
-        return self.find_products('firmware_image')
-
-    def tilebus_definitions(self):
-        """Return a list of all tilebus definitions that this IOTile could provide other tiles.
-
-        Deprecated:
-            This method has been superseded by ``find_products('tilebus_definitions')`` and
-            will be removed in a future release.
-        """
-
-        return self.find_products('tilebus_definitions')
 
     def library_directories(self):
         """Return a list of directories containing any static libraries built by this IOTile."""

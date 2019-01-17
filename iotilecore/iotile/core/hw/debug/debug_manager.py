@@ -8,9 +8,11 @@ initial code bootstrapping.
 
 import os.path
 import os
+from enum import IntEnum
 import subprocess
 import tempfile
 import json
+from future.utils import viewitems
 from typedargs.annotate import context, docannotate
 from iotile.core.exceptions import ArgumentError, ExternalError
 from iotile.core.utilities.console import ProgressBar
@@ -68,6 +70,7 @@ class DebugManager(object):
         """
 
         internal_state = self.dump_snapshot()
+        internal_state = _clean_intenum(internal_state)
 
         with open(out_path, "w") as outfile:
             json.dump(internal_state, outfile, indent=4)
@@ -268,3 +271,22 @@ class DebugManager(object):
         finally:
             if os.path.isfile(tmp.name):
                 os.remove(tmp.name)
+
+
+def _clean_intenum(obj):
+    """Remove all IntEnum classes from a map."""
+
+    if isinstance(obj, dict):
+        for key, value in viewitems(obj):
+            if isinstance(value, IntEnum):
+                obj[key] = value.value
+            elif isinstance(value, (dict, list)):
+                obj[key] = _clean_intenum(value)
+    elif isinstance(obj, list):
+        for i, value in enumerate(obj):
+            if isinstance(value, IntEnum):
+                obj[i] = value.value
+            elif isinstance(value, (dict, list)):
+                obj[i] = _clean_intenum(value)
+
+    return obj
