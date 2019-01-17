@@ -4,7 +4,9 @@ All major changes in each released version of the websocket transport plugin are
 
 ## HEAD
 
-- open_debug_interface has optional arugment connection_string
+- Fix python 3 compatibility issue when calling an RPC that throws an exception.
+  (Issue #639)
+- open_debug_interface has optional argument connection_string
 
 ## 1.0.0
 
