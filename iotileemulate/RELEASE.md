@@ -2,7 +2,7 @@
 
 All major changes in each released version of iotile-emulate are listed here.
 
-## HEAD
+## 0.1.0
 
 - Add support for sending RPCs from the sensorgraph task in the reference 
   controller. The sensorgraph implementation should now be complete enough
