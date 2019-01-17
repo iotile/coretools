@@ -17,6 +17,7 @@ from .rpc_config_variables import *
 from .rpc_sensorlog import *
 from .rpc_sensorgraph import *
 from .rpc_clockmanager import *
+from .rpc_controller import *
 
 
 # Tile Lifecycle Related RPCS

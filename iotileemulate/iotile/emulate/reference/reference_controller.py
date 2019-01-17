@@ -6,7 +6,7 @@ from iotile.core.hw.virtual import tile_rpc, TileNotFoundError
 from iotile.core.exceptions import ArgumentError
 from iotile.sg.model import DeviceModel
 from ..virtual import EmulatedTile
-from ..constants import rpcs
+from ..constants import rpcs, Error
 
 from .controller_features import (RawSensorLogMixin, RemoteBridgeMixin,
                                   TileManagerMixin, ConfigDatabaseMixin, SensorGraphMixin,
@@ -205,6 +205,21 @@ class ReferenceController(RawSensorLogMixin, RemoteBridgeMixin,
 
         return [self._device.iotile_id, _pack_version(*self.os_info), _pack_version(*self.app_info)]
 
+    @tile_rpc(*rpcs.SET_OS_APP_TAG)
+    def set_app_os_tag(self, os_tag, app_tag, update_os, update_app):
+        """Update the app and/or os tags."""
+
+        update_os = bool(update_os)
+        update_app = bool(update_app)
+
+        if update_os:
+            self.os_info = _unpack_version(os_tag)
+
+        if update_app:
+            self.app_info = _unpack_version(app_tag)
+
+        return [Error.NO_ERROR]
+
 
 def _pack_version(tag, version):
     if tag >= (1 << 20):
@@ -226,3 +241,32 @@ def _pack_version(tag, version):
     version_number = (major << 6) | minor
     combined_tag = (version_number << 20) | tag
     return combined_tag
+
+
+def _unpack_version(tag_data):
+    """Parse a packed version info struct into tag and major.minor version.
+
+    The tag and version are parsed out according to 20 bits for tag and
+    6 bits each for major and minor.  The more interesting part is the
+    blacklisting performed for tags that are known to be untrustworthy.
+
+    In particular, the following applies to tags.
+
+    - tags < 1024 are reserved for development and have only locally defined
+      meaning.  They are not for use in production.
+    - tags in [1024, 2048) are production tags but were used inconsistently
+      in the early days of Arch and hence cannot be trusted to correspond with
+      an actual device model.
+    - tags >= 2048 are reserved for supported production device variants.
+    - the tag and version 0 (0.0) is reserved for an unknown wildcard that
+      does not convey any information except that the tag and version are
+      not known.
+    """
+
+    tag = tag_data & ((1 << 20) - 1)
+
+    version_data = tag_data >> 20
+    major = (version_data >> 6) & ((1 << 6) - 1)
+    minor = (version_data >> 0) & ((1 << 6) - 1)
+
+    return (tag, "{}.{}".format(major, minor))

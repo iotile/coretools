@@ -9,7 +9,7 @@ from future.utils import viewitems
 from past.builtins import basestring
 from iotile.core.exceptions import ArgumentError, DataError
 from ..virtual import EmulatedDevice, EmulatedPeripheralTile
-from ..constants import rpcs, RunLevel
+from ..constants import rpcs, RunLevel, streams
 from .reference_controller import ReferenceController
 
 
@@ -127,6 +127,33 @@ class ReferenceDevice(EmulatedDevice):
             self._time_thread.join()
 
         super(ReferenceDevice, self).stop()
+
+    def open_streaming_interface(self):
+        """Called when someone opens a streaming interface to the device.
+
+        This method will automatically notify sensor_graph that there is a
+        streaming interface opened.
+
+        Returns:
+            list: A list of IOTileReport objects that should be sent out
+                the streaming interface.
+        """
+
+        super(ReferenceDevice, self).open_streaming_interface()
+
+        self.deferred_rpc(8, rpcs.SG_GRAPH_INPUT, 8, streams.COMM_TILE_OPEN)
+        return []
+
+    def close_streaming_interface(self):
+        """Called when someone closes the streaming interface to the device.
+
+        This method will automatically notify sensor_graph that there is a no
+        longer a streaming interface opened.
+        """
+
+        super(ReferenceDevice, self).close_streaming_interface()
+
+        self.deferred_rpc(8, rpcs.SG_GRAPH_INPUT, 8, streams.COMM_TILE_CLOSED)
 
     def reset_peripheral_tiles(self):
         """Reset all peripheral tiles (asynchronously)."""
