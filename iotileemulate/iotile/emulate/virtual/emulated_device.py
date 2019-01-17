@@ -68,8 +68,6 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
         thing done by the background thread.
         """
 
-        self._deadlock_check.__dict__.setdefault('is_rpc_thread', False)
-
         def _init_tls():
             self._deadlock_check.is_rpc_thread = True
 
@@ -209,7 +207,7 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
             list: A list of the decoded response members from the RPC.
         """
 
-        if self._deadlock_check.is_rpc_thread:
+        if self._deadlock_check.__dict__.get('is_rpc_thread', False):
             self._logger.critical("Deadlock due to rpc thread calling EmulatedDevice.rpc: address: 0x%02X, rpc: 0x%04X",
                                   address, rpc_id)
             raise InternalError("EmulatedDevice.rpc called from rpc dispatch thread.  This would have caused a deadlock")
@@ -251,7 +249,7 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
             bytes: The response payload from the RPC
         """
 
-        if self._deadlock_check.is_rpc_thread:
+        if self._deadlock_check.__dict__.get('is_rpc_thread', False):
             self._logger.critical("Deadlock due to rpc thread calling EmulatedDevice.call_rpc")
             raise InternalError("EmulatedDevice.call_rpc called from rpc dispatch thread.  This would have caused a deadlock")
 
@@ -335,7 +333,7 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
         method returns.
         """
 
-        if self._deadlock_check.is_rpc_thread:
+        if self._deadlock_check.__dict__.get('is_rpc_thread', False):
             self._logger.critical("Deadlock due to rpc thread calling EmulatedDevice.wait_deferred_rpcs")
             raise InternalError("EmulatedDevice.wait_deferred_rpcs called from rpc dispatch thread.  This would have caused a deadlock")
 
@@ -361,7 +359,7 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
         raise an exception.**
         """
 
-        if self._deadlock_check.is_rpc_thread:
+        if self._deadlock_check.__dict__.get('is_rpc_thread', False):
             self._logger.critical("Deadlock due to rpc thread calling EmulatedDevice.wait_idle")
             raise InternalError("EmulatedDevice.wait_idle called from rpc dispatch thread.  This would have caused a deadlock")
 
