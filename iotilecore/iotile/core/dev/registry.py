@@ -141,8 +141,7 @@ class ComponentRegistry(object):
                 for product in products:
                     try:
                         entries = self.load_extension(product, name_filter=name_filter, class_filter=class_filter)
-
-                        if len(entries) == 0:
+                        if len(entries) == 0 and name_filter is None:  # Don't warn if we're filtering by name since most extensions won't match
                             self._logger.warn("Found no valid extensions in product %s of component %s", product, comp.path)
                             continue
 

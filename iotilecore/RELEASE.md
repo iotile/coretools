@@ -4,6 +4,7 @@ All major changes in each released version of `iotile-core` are listed here.
 
 ## HEAD
 
+- Remove nuisance log warning when loading extensions by name (Issue #637) 
 - Fix problem loading `module_settings.json` files for components that had been
   built before on python 3.  (Issue #636)
 
