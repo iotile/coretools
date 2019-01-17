@@ -2,6 +2,11 @@
 
 All major changes in each released version of iotile-emulate are listed here.
 
+## HEAD
+
+- Fix deadlock_check to work on multiple threads (not just the one that
+  `__init__` was called on.).  Issue #638.
+
 ## 0.2.0
 
 - Add support for sending RPCs from the sensorgraph task in the reference 
