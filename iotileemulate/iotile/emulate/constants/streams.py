@@ -74,6 +74,24 @@ These ticks are most valuable for implementing field-programmable timers that
 are easy to change with a simple RPC.
 """
 
+COMM_TILE_OPEN = declare_stream('system input 1025')
+"""Sent when a communications tile opens its streaming interface.
+
+The value in the stream is the address of the tile that opened its streaming
+interface.  This input to sensor_graph can be used for entering high-power or
+high-speed modes to send more data when there is a user actively connected to
+the device.
+"""
+
+COMM_TILE_CLOSED = declare_stream('system input 1026')
+"""Sent when a communications tile closes its streaming interface.
+
+The value in the stream is the address of the tile the closed its streaming
+interface.  This input can be used for leaving high-power or high-speed data
+collection modes since there is not longer a user actively connected to the
+device.
+"""
+
 DATA_CLEARED = declare_stream('system output 1027')
 """Logs a reading every time the sensor log subsystem receives a clear() command.
 
