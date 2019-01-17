@@ -611,10 +611,10 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
 
             except (RPCInvalidIDError, RPCNotFoundError):
                 status = (1 << 1)  # Indicates RPC address or id not correct
-                return_value = ''
+                return_value = b''
             except TileNotFoundError:
                 status = 0xFF  # Indicates RPC had an error
-                return_value = ''
+                return_value = b''
 
         result = {
             'success': error is None
