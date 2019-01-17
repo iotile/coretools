@@ -242,7 +242,7 @@ class IOTile(object):
             if os.path.exists(os.path.join(self.output_folder, 'module_settings.json')):
                 release_settings = os.path.join(self.output_folder, 'module_settings.json')
 
-                with open(release_settings, 'rb') as infile:
+                with open(release_settings, 'r') as infile:
                     release_dict = json.load(infile)
 
                 import dateutil.parser

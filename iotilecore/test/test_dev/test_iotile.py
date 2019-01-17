@@ -106,6 +106,17 @@ def test_builtnewstyle_component():
     assert tile.release_date == datetime.datetime(2018, 3, 15, 14, 42, tzinfo=tzutc())
 
 
+def test_builtoldstyle_component():
+    """Make sure we can load a v2 file format component."""
+    tile = load_tile('oldstyle_built_component')
+
+    assert tile.release is False
+    assert tile.short_name == 'tile_gpio'
+    assert tile.output_folder != tile.folder
+    assert tile.can_release is False
+    assert tile.release_date == datetime.datetime(2018, 12, 5, 21, 50, 38, 283000)
+
+
 def test_load_invaliddepends():
     with pytest.raises(DataError) as excinfo:
         _tile = load_tile('comp_w_depslist')
