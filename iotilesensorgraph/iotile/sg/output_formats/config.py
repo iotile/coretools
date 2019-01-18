@@ -5,9 +5,9 @@ definitions run using an embedded sensor graph engine on an IOTile Device and
 static configuration information that defines how the IOTile device is configured.
 """
 
-from iotile.core.utilities.command_file import CommandFile
 from binascii import hexlify
 from future.utils import viewitems
+from iotile.core.utilities.command_file import CommandFile
 
 
 def format_config(sensor_graph):

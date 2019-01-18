@@ -3,6 +3,11 @@
 All major changes in each released version of iotile-sensorgraph are listed
 here.
 
+## HEAD
+
+- Add support for directly passing an sgf string to the parser.  This helps
+  when compiling a sensorgraph programmatically.
+
 ## 0.8.1
 
 - Fix bug in iotile-sgcompile that could not write output formats to stdout
