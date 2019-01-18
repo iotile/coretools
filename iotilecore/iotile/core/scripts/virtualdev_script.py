@@ -33,6 +33,7 @@ def configure_logging(verbose):
                                       '%y-%m-%d %H:%M:%S')
         handler.setFormatter(formatter)
         loglevels = [logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG]
+
         if verbose >= len(loglevels):
             verbose = len(loglevels) - 1
 
@@ -118,12 +119,6 @@ def main(argv=None):
         if args.track is not None:
             print("Tracking all state changes to device")
             device.state_history.enable()
-
-        handler = logging.StreamHandler()
-        handler.setFormatter(logging.Formatter('%(asctime)s [AUDIT %(event_name)s] %(message)s'))
-
-        iface.audit_logger.addHandler(handler)
-        iface.audit_logger.setLevel(logging.INFO)
 
         iface.start(device)
         started = True
