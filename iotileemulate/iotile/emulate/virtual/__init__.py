@@ -97,7 +97,7 @@ finishes.
 
 from .emulated_device import EmulatedDevice
 from .peripheral_tile import EmulatedPeripheralTile
-from .emulated_tile import EmulatedTile
+from .emulated_tile import EmulatedTile, synchronized
 from .simple_state import SerializableState
 
-__all__ = ['EmulatedDevice', 'EmulatedTile', 'SerializableState', 'EmulatedPeripheralTile']
+__all__ = ['EmulatedDevice', 'EmulatedTile', 'SerializableState', 'EmulatedPeripheralTile', 'synchronized']

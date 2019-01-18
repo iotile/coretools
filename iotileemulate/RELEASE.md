@@ -4,10 +4,17 @@ All major changes in each released version of iotile-emulate are listed here.
 
 ## HEAD
 
+- Add support for loading and sgf file or string directly using a test_scenario
+  registered on ReferenceController.  The sgf file is directly loaded into 
+  persistent storage as well as the config_database.  An embedded app_tag is
+  also set.
+
 - Fix deadlock_check to work on multiple threads (not just the one that
   `__init__` was called on.).  Issue #638.
+
 - Add support for notifying sensorgraph when a streaming interface is opened/
   closed.
+
 - Add support into ReferenceController for setting app/os tags and versions.
 
 ## 0.2.0

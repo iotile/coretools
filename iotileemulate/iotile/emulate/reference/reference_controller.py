@@ -2,10 +2,14 @@
 
 from __future__ import print_function, absolute_import, unicode_literals
 import logging
+from future.utils import viewitems
 from iotile.core.hw.virtual import tile_rpc, TileNotFoundError
+from iotile.core.hw.reports import IOTileReading
 from iotile.core.exceptions import ArgumentError
 from iotile.sg.model import DeviceModel
-from ..virtual import EmulatedTile
+from iotile.sg.parser import SensorGraphFileParser
+from iotile.sg.optimizer import SensorGraphOptimizer
+from ..virtual import EmulatedTile, synchronized
 from ..constants import rpcs, Error
 
 from .controller_features import (RawSensorLogMixin, RemoteBridgeMixin,
@@ -66,6 +70,8 @@ class ReferenceController(RawSensorLogMixin, RemoteBridgeMixin,
 
         self.app_info = (0, "0.0")
         self.os_info = (0, "0.0")
+
+        self.register_scenario('load_sgf', self.load_sgf)
 
     def _clear_to_reset_condition(self, deferred=False):
         """Clear all subsystems of this controller to their reset states.
@@ -219,6 +225,69 @@ class ReferenceController(RawSensorLogMixin, RemoteBridgeMixin,
             self.app_info = _unpack_version(app_tag)
 
         return [Error.NO_ERROR]
+
+    @synchronized
+    def load_sgf(self, sgf_data):
+        """Load, persist a sensor_graph file.
+
+        The data passed in `sgf_data` can either be a path or the already
+        loaded sgf lines as a string.  It is determined to be sgf lines if
+        there is a '\n' character in the data, otherwise it is interpreted as
+        a path.
+
+        Note that this scenario just loads the sensor_graph directly into the
+        persisted sensor_graph inside the device.  You will still need to
+        reset the device for the sensor_graph to enabled and run.
+
+        Args:
+            sgf_data (str): Either the path to an sgf file or its contents
+                as a string.
+        """
+
+        if '\n' not in sgf_data:
+            with open(sgf_data, "r") as infile:
+                sgf_data = infile.read()
+
+        model = DeviceModel()
+
+        parser = SensorGraphFileParser()
+        parser.parse_file(data=sgf_data)
+
+        parser.compile(model)
+        opt = SensorGraphOptimizer()
+        opt.optimize(parser.sensor_graph, model=model)
+
+        sensor_graph = parser.sensor_graph
+        self._logger.info("Loading sensor_graph with %d nodes, %d streamers and %d configs",
+                          len(sensor_graph.nodes), len(sensor_graph.streamers), len(sensor_graph.config_database))
+
+        # Directly load the sensor_graph into our persisted storage
+        self.sensor_graph.persisted_nodes = sensor_graph.dump_nodes()
+        self.sensor_graph.persisted_streamers = sensor_graph.dump_streamers()
+
+        self.sensor_graph.persisted_constants = []
+        for stream, value in sorted(viewitems(sensor_graph.constant_database), key=lambda x: x[0].encode()):
+            reading = IOTileReading(stream.encode(), 0, value)
+            self.sensor_graph.persisted_constants.append((stream, reading))
+
+        self.sensor_graph.persisted_exists = True
+
+        # Clear all config variables and load in those from this sgf file
+        self.config_database.clear()
+
+        for slot in sorted(sensor_graph.config_database, key=lambda x: x.encode()):
+            for conf_var, (conf_type, conf_val) in sorted(viewitems(sensor_graph.config_database[slot])):
+                self.config_database.add_direct(slot, conf_var, conf_type, conf_val)
+
+        # If we have an app tag and version set program them in
+        app_tag = sensor_graph.metadata_database.get('app_tag')
+        app_version = sensor_graph.metadata_database.get('app_version')
+
+        if app_tag is not None:
+            if app_version is None:
+                app_version = "0.0"
+
+            self.app_info = (app_tag, app_version)
 
 
 def _pack_version(tag, version):
