@@ -32,6 +32,21 @@ not a straightforward, portable way to determine the response code caused by
 the tile resetting from a response code caused by an issue running this RPC.
 """
 
+HARDWARE_VERSION = RPCDeclaration(2, "", "10s")
+"""Get a hardware identification string.
+
+This RPC returns a string of up to 10 bytes (padded with null bytes) to
+a fixed 10 byte length that contains a hardware identification string.
+The meaning of the string is opaque and defined by the firmware that is
+returning this string.  The typical use of this value is to determine
+what tile hardware is running if a given tile firmware is compatible
+with multiple boards.
+
+Returns:
+  - char[10]: A utf-8 hardware string padded with null bytes to 10
+    bytes.
+"""
+
 TILE_STATUS = RPCDeclaration(4, "", "H6s3BB")
 """Query the tile's name and status.
 

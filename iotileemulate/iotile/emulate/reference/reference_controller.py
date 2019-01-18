@@ -205,6 +205,23 @@ class ReferenceController(RawSensorLogMixin, RemoteBridgeMixin,
 
         raise TileNotFoundError("Controller tile was reset via an RPC")
 
+    @tile_rpc(*rpcs.HARDWARE_VERSION)
+    def hardware_version(self):
+        """Get a hardware identification string."""
+
+        hardware_string = self.hardware_string
+
+        if not isinstance(hardware_string, bytes):
+            hardware_string = self.hardware_string.encode('utf-8')
+
+        if len(hardware_string) > 10:
+            self._logger.warn("Truncating hardware string that was longer than 10 bytes: %s", self.hardware_string)
+
+        if len(hardware_string) < 10:
+            hardware_string += b'\0'*(10 - len(hardware_string))
+
+        return [hardware_string]
+
     @tile_rpc(0x1008, "", "L8xLL")
     def controller_info(self):
         """Get the controller UUID, app tag and os tag."""
