@@ -5,9 +5,10 @@ from __future__ import unicode_literals, absolute_import, print_function
 import struct
 import base64
 import logging
+from decorator import decorate
 from past.builtins import basestring
 from future.utils import viewitems, viewvalues
-from iotile.core.exceptions import ArgumentError, DataError
+from iotile.core.exceptions import ArgumentError, DataError, InternalError
 from iotile.core.hw.virtual import VirtualTile
 from iotile.core.hw.virtual import tile_rpc, TileNotFoundError
 from .emulated_device import EmulatedDevice
@@ -430,3 +431,25 @@ def parse_size_name(type_name):
     total_size = base_size*count
 
     return total_size, base_size, matched_type, variable
+
+
+def synchronized(func):
+    """Decorator that marks a function as running in the emulation thread.
+
+    This method can only be called on a method defined on an EmulatedDevice
+    subclass.  It checks if the method is being called in the RPC thread
+    and if so runs it directly, otherwise, it dispatches the method to the
+    RPC thread and blocks the current thread until it finishes.
+
+    If the tile has not yet started execution so there is no running
+    background rpc thread, then the method is executed directly as well on the
+    calling thread.
+    """
+
+    def _check_and_dispatch(func, self, *args, **kwargs):
+        if not isinstance(self, EmulatedTile):
+            raise InternalError("You may only use the synchronized method on an EmulatedTile method")
+
+        return self._device.synchronize_task(func, self, *args, **kwargs)
+
+    return decorate(func, _check_and_dispatch)

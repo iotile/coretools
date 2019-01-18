@@ -50,7 +50,6 @@ device.
 
 TODO:
   - [ ] Add dump/restore support
-  - [ ] Add clock manager integration
   - [ ] Add support for logging information on reset
 """
 

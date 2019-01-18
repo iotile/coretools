@@ -3,7 +3,8 @@
 from __future__ import unicode_literals, absolute_import, print_function
 import logging
 import threading
-from future.utils import viewitems
+import sys
+from future.utils import viewitems, raise_
 from iotile.core.exceptions import DataError, InternalError, ArgumentError
 from iotile.core.utilities import WorkQueueThread
 from iotile.core.hw.virtual import VirtualIOTileDevice
@@ -48,6 +49,24 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
         self._pending_rpcs = {}
         self._deadlock_check = threading.local()
         self._setup_deadlock_check()
+
+    def on_rpc_thread(self, require_running=False):
+        """Returns whether we are running on the rpc thread.
+
+        If ``require_running`` is True, then this method will raise an
+        exception if the rpc thread has not yet been started.
+
+        This allows you to check for a deadlock by blocking on the RPC thread
+        when its not running so it can never unblock you.
+
+        Returns:
+            bool: True if we are on the rpc thread, else False.
+        """
+
+        if require_running and not self._rpc_queue.is_alive():
+            raise InternalError("on_rpc_thread() called when the RPC thread is not yet running.")
+
+        return self._deadlock_check.__dict__.get('is_rpc_thread', False)
 
     def _setup_deadlock_check(self):
         """Initialize thread-local storage to detect potential deadlocks.
@@ -275,6 +294,56 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
             callable(*args, **kwargs)
 
         self._rpc_queue.defer(_deferred)
+
+    def synchronize_task(self, callable, *args, **kwargs):
+        """Run callable in the rpc thread and wait for its.
+
+        Callable will be executed in the rpc_queue thread so that it executes
+        synchronously with RPCs.  This method is particularly useful if you
+        need to execute a task that will send RPCs and you are currently
+        inside an RPC handler.
+
+        Unlike the defer_task() method, this method will block until the task
+        is finished and return/raise whatever that callable returns/raises.
+
+        This method is mainly useful for performing an activity that needs to
+        be synchronized with the rpc thread for safety reasons.
+
+        If this method is called from the rpc thread itself, it will just
+        run the task and return its result.
+
+        Args:
+            callable (callable): A method with signature callable(*args, **kwargs),
+                that will be called with the optional *args and **kwargs passed
+                to this method.
+            *args: Arguments that will be passed to callable.
+            **kwargs: Keyword arguments that will be passed to callable.
+
+        Returns:
+            object: Whatever callable returns after it runs.
+        """
+
+        if not self._rpc_queue.is_alive() or self._deadlock_check.__dict__.get('is_rpc_thread', False):
+            return callable(*args, **kwargs)
+
+        # Otherwise, defer callable into the rpc task and wait for it.
+        shared = [None, None]
+        event = threading.Event()
+        def _deferred():
+            try:
+                shared[0] = callable(*args, **kwargs)
+            except:  #pylint:disable=bare-except;We need to pass all exceptions back to the calling thread.
+                shared[1] = sys.exc_info()
+            finally:
+                event.set()
+
+        self._rpc_queue.defer(_deferred)
+        event.wait()
+
+        if shared[1] is not None:
+            raise_(*shared[1])  #pylint:disable=not-an-iterable;We know that it is because of our logic structure
+
+        return shared[0]
 
     def deferred_rpc(self, address, rpc_id, *args, **kwargs):
         """Queue an RPC to send later.
