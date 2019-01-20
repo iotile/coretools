@@ -1,10 +1,9 @@
-from iotile.core.exceptions import *
-from iotile.core.dev.iotileobj import IOTile
 import os
 import json
-import pkg_resources
 import logging
 import shutil
+from iotile.core.exceptions import *
+from iotile.core.dev import IOTile, ComponentRegistry
 
 class DependencyResolverChain(object):
     """A set of rules mapping dependencies to DependencyResolver instances
@@ -27,12 +26,13 @@ class DependencyResolverChain(object):
 
         #Find all registered default builders and load them in priority order
         #Each default resolver should be a 4-tuple with (priority, matching_regex, factory, default args)
-        for entry in pkg_resources.iter_entry_points('iotile.build.default_depresolver'):
-            resolver_entry = entry.load()
+        reg = ComponentRegistry()
+
+        for name, resolver_entry in reg.load_extensions('iotile.build.default_depresolver'):
             try:
                 priority, regex, factory, settings = resolver_entry
             except TypeError:
-                logger.warn('Invalid default resolver entry that was not a 4-tuple: %s', str(resolver_entry))
+                logger.warn('Invalid default resolver entry %s that was not a 4-tuple: %s', name, str(resolver_entry))
                 continue
 
             self.rules.append((priority, (regex, factory, settings)))
@@ -40,8 +40,7 @@ class DependencyResolverChain(object):
         self.rules.sort(key=lambda x: x[0])
 
         self._known_resolvers = {}
-        for entry in pkg_resources.iter_entry_points('iotile.build.depresolver'):
-            factory = entry.load()
+        for _, factory in reg.load_extensions('iotile.build.depresolver'):
             name = factory.__name__
 
             if name in self._known_resolvers:
@@ -86,10 +85,10 @@ class DependencyResolverChain(object):
         unique_id = name.replace('/', '_')
 
         depdict = {
-                'name': name,
-                'unique_id': unique_id,
-                'required_version': version,
-                'required_version_string': str(version)
+            'name': name,
+            'unique_id': unique_id,
+            'required_version': version,
+            'required_version_string': str(version)
         }
 
         destdir = os.path.join(destfolder, unique_id)
@@ -165,8 +164,8 @@ class DependencyResolverChain(object):
 
             if had_version:
                 return "updated"
-            else:
-                return "installed"
+
+            return "installed"
 
         if has_version:
             return "already installed"
@@ -197,7 +196,7 @@ class DependencyResolverChain(object):
 
         try:
             settings = self._load_depsettings(deptile)
-        except IOError as e:
+        except IOError:
             return False
 
         #If this dependency was initially resolved with a different resolver, then

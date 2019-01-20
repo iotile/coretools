@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## HEAD
+
+- Refactor to remove all references to `pkg_resources`.  Uses centralized 
+  entrypoint loading system from iotile.core instead.
+
 ## 2.7.0
 
 - Add support for running pytest unit tests as part of the build process.

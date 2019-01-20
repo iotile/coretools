@@ -10,21 +10,20 @@
 #Return the build settings json file.
 
 from __future__ import print_function, absolute_import
-from builtins import range
-from past.builtins import basestring
 import sys
 from copy import deepcopy
 import itertools
 import os
 from collections import namedtuple
-from pkg_resources import resource_filename, Requirement
+from builtins import range
+from past.builtins import basestring
 from future.utils import viewitems
 from typedargs.annotate import takes_cmdline
 from iotile.core.exceptions import BuildError, InternalError, ArgumentError, DataError
 from iotile.core.dev.iotileobj import IOTile
+from iotile.build.utilities import resource_path
 
 SCONS_VERSION = "3.0.1"
-
 
 
 @takes_cmdline
@@ -37,14 +36,13 @@ def build(args):
     # Do some sluething work to find scons if it's not installed into an importable
     # place, as it is usually not.
     try:
-        scons_path = os.path.join(resource_filename(Requirement.parse("iotile-build"), "iotile/build/config"), 'scons-local-{}'.format(SCONS_VERSION))
+        scons_path = resource_path('scons-local-{}'.format(SCONS_VERSION), expect='folder')
         sys.path.insert(0, scons_path)
         import SCons.Script
     except ImportError:
         raise BuildError("Could not find internal scons packaged with iotile-build.  This is a bug that should be reported", scons_path=scons_path)
 
-    site_tools = os.path.join(resource_filename(Requirement.parse("iotile-build"), "iotile/build/config"), 'site_scons')
-    site_path = os.path.abspath(site_tools)
+    site_path = resource_path('site_scons', expect='folder')
 
     all_args = ['iotile', '--site-dir=%s' % site_path, '-Q']
     sys.argv = all_args + list(args)

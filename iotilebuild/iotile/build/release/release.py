@@ -1,9 +1,8 @@
 """Tools for automatically releasing built IOTile components
 """
 
-import pkg_resources
 from builtins import range
-from iotile.core.dev.iotileobj import IOTile
+from iotile.core.dev import IOTile, ComponentRegistry
 from iotile.core.utilities.typedargs import param
 from iotile.core.exceptions import ArgumentError, DataError, BuildError, IOTileException
 
@@ -89,6 +88,7 @@ def release(component=".", cloud=False):
         try:
             prov.release()
         except IOTileException as exc:
+            j = None
             try:
                 #There was an error, roll back
                 for j in range(0, i):
@@ -102,9 +102,6 @@ def release(component=".", cloud=False):
 
 
 def _find_release_providers():
-    provs = {}
-
-    for entry in pkg_resources.iter_entry_points('iotile.build.release_provider'):
-        provs[entry.name] = entry.load()
-
-    return provs
+    reg = ComponentRegistry()
+    return {name: entry for name, entry
+            in reg.load_extensions('iotile.build.release_provider')}

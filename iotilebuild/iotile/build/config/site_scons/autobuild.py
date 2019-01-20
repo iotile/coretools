@@ -10,24 +10,23 @@
 # scons based iotile build system
 
 from __future__ import print_function
-import utilities
-import unit_test
-import unit_test_qemu
-from SCons.Script import *
 import os.path
 import os
 import sys
-import itertools
+
+from SCons.Script import *
+
+import utilities
+import unit_test
+import unit_test_qemu
 import arm
 import platform
 from docbuild import *
 from pythondist import *
 from release import *
 from iotile.core.exceptions import *
-import iotile.core
-from iotile.core.dev.iotileobj import IOTile
+from iotile.core.dev import IOTile, ComponentRegistry
 from iotile.build.build import ProductResolver
-import pkg_resources
 from trub_script import build_update_script
 
 
@@ -48,10 +47,9 @@ def require(builder_name):
         callable: the autobuilder function found in the search
     """
 
-    for entry in pkg_resources.iter_entry_points('iotile.autobuild'):
-        if entry.name == builder_name:
-            autobuild_func = entry.load()
-            return autobuild_func
+    reg = ComponentRegistry()
+    for _name, autobuild_func in reg.load_extensions('iotile.autobuild', name_filter=builder_name):
+        return autobuild_func
 
     raise BuildError('Cannot find required autobuilder, make sure the distribution providing it is installed', name=builder_name)
 
