@@ -8,7 +8,10 @@ import json
 import os.path
 import sys
 from future.utils import viewitems, itervalues
-from past.builtins import basestring
+
+if sys.version_info >= (3, 0, 0):
+    from past.builtins import basestring
+
 from iotile.core.exceptions import DataError, ExternalError
 from .semver import SemanticVersion, SemanticVersionRange
 

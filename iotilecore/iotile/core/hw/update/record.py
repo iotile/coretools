@@ -5,6 +5,7 @@ All records must inherit from this base class and implement its required methods
 
 from __future__ import (print_function, absolute_import, unicode_literals)
 import struct
+from iotile.core.dev import ComponentRegistry
 from iotile.core.exceptions import ArgumentError, DataError
 
 
@@ -85,10 +86,8 @@ class UpdateRecord(object):
         if cls.PLUGINS_LOADED:
             return
 
-        import pkg_resources
-
-        for entry in pkg_resources.iter_entry_points('iotile.update_record'):
-            record = entry.load()
+        reg = ComponentRegistry()
+        for _, record in reg.load_extensions('iotile.update_record'):
             cls.RegisterRecordType(record)
 
         cls.PLUGINS_LOADED = True
@@ -119,11 +118,12 @@ class UpdateRecord(object):
                 then this will indicate how many binary records are included together.
 
         Returns:
-            int: The match quality between 0 and 100.  You should use the
-                constants defined in MatchQuality as much as possible.  The only
-                exception to the 0 to 100 rules is if you retern MatchQuality.DeferMatch
-                which means that we are matching a multi-record statement with a single
-                logical UpdateRecord.
+            int: The match quality between 0 and 100.
+
+            You should use the constants defined in MatchQuality as much as
+            possible.  The only exception to the 0 to 100 rules is if you
+            retern MatchQuality.DeferMatch which means that we are matching a
+            multi-record statement with a single logical UpdateRecord.
         """
 
         raise NotImplementedError()

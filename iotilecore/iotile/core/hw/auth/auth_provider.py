@@ -6,10 +6,10 @@ methods that it provides with their own implementations.
 
 #pylint:disable=C0103
 
-import pkg_resources
 import hashlib
 import struct
 import hmac
+from iotile.core.dev import ComponentRegistry
 from iotile.core.exceptions import NotFoundError, ArgumentError
 
 
@@ -51,9 +51,9 @@ class AuthProvider(object):
     def FindByName(cls, name):
         """Find a specific installed auth provider by name."""
 
-        for entry in pkg_resources.iter_entry_points('iotile.auth_provider'):
-            if entry.name == name:
-                return entry.load()
+        reg = ComponentRegistry()
+        for _, entry in reg.load_extensions('iotile.auth_provider', name_filter=name):
+            return entry
 
     @classmethod
     def VerifyRoot(cls, root):

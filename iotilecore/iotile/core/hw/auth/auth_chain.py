@@ -1,8 +1,8 @@
 """An ordered list of authentication providers that are checked in turn to attempt a crypto operation
 """
 
-import pkg_resources
 from iotile.core.exceptions import NotFoundError, ExternalError
+from iotile.core.dev import ComponentRegistry
 from .auth_provider import AuthProvider
 
 
@@ -26,13 +26,13 @@ class ChainedAuthProvider(AuthProvider):
         #FIXME: Allow overwriting default providers via args
         self._load_installed_providers()
 
-        sub_providers = []
-        for entry in pkg_resources.iter_entry_points('iotile.default_auth_providers'):
-            priority, provider, args = entry.load()
+        reg = ComponentRegistry()
 
+        sub_providers = []
+        for _, (priority, provider, provider_args) in reg.load_extensions('iotile.default_auth_providers'):
             if provider not in self._auth_factories:
                 raise ExternalError("Default authentication provider list references unknown auth provider", provider_name=provider, known_providers=self._auth_factories.keys())
-            configured = self._auth_factories[provider](args)
+            configured = self._auth_factories[provider](provider_args)
             sub_providers.append((priority, configured))
 
         sub_providers.sort(key=lambda x: x[0])
@@ -40,9 +40,10 @@ class ChainedAuthProvider(AuthProvider):
 
     def _load_installed_providers(self):
         self._auth_factories = {}
+        reg = ComponentRegistry()
 
-        for entry in pkg_resources.iter_entry_points('iotile.auth_provider'):
-            self._auth_factories[entry.name] = entry.load()
+        for name, entry in reg.load_extensions('iotile.auth_provider'):
+            self._auth_factories[name] = entry
 
     def encrypt_report(self, device_id, root, data, **kwargs):
         """Encrypt a buffer of report data on behalf of a device.
