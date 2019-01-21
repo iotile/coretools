@@ -215,6 +215,8 @@ class EmulatedTile(EmulationMixin, VirtualTile):
     app_started = None
     """Default implementation of tiles does not have a separate phase before application code runs."""
 
+    hardware_string = b'pythontile'
+
     def __init__(self, address, name, device):
         if not isinstance(device, EmulatedDevice):
             raise ArgumentError("You can only add an EmulatedTile to an EmulatedDevice", device=device)

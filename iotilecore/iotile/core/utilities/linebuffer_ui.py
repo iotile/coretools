@@ -37,8 +37,11 @@ that doesn't flicker or scroll.
 
 from collections import namedtuple
 import time
+import sys
 from future.utils import viewvalues
-from past.builtins import basestring
+if sys.version_info >= (3, 0, 0):
+    from past.builtins import basestring
+
 from iotile.core.exceptions import ExternalError
 
 LineEntry = namedtuple("LineEntry", ['text', 'id', 'sort_key', 'object'])

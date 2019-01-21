@@ -1,8 +1,6 @@
 """A virtual tile that ensapsulates resuable behavior."""
 
-from future.utils import itervalues
-import pkg_resources
-from iotile.core.exceptions import ExternalError, ArgumentError
+from iotile.core.exceptions import ArgumentError
 from iotile.core.dev import ComponentRegistry
 from .base_runnable import BaseRunnable
 from .common_types import tile_rpc, RPCDispatcher

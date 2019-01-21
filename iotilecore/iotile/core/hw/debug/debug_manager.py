@@ -16,7 +16,6 @@ from future.utils import viewitems
 from typedargs.annotate import context, docannotate
 from iotile.core.exceptions import ArgumentError, ExternalError
 from iotile.core.utilities.console import ProgressBar
-from iotile.core.utilities.intelhex import IntelHex
 
 
 @context("DebugManager")
@@ -249,6 +248,9 @@ class DebugManager(object):
         """This function returns a list of base addresses and a list of the binary data
         for each segment.
         """
+
+        from iotile.core.utilities.intelhex import IntelHex
+
         ihex           = IntelHex(in_path)
         segments       = ihex.segments()
         segments_start = [segment[0] for segment in segments]

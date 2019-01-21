@@ -2,8 +2,6 @@
 
 from __future__ import unicode_literals
 from functools import reduce
-import pkg_resources
-
 
 # Recreate all old imports
 from typedargs.annotate import param, returns, context, finalizer, takes_cmdline, annotated, return_type, stringable
@@ -11,7 +9,7 @@ from typedargs.typeinfo import type_system, iprint
 
 
 def load_external_components(typesys):
-    """Load all external typed defined by iotile plugins.
+    """Load all external types defined by iotile plugins.
 
     This allows plugins to register their own types for type annotations and
     allows all registered iotile components that have associated type libraries to
@@ -24,7 +22,7 @@ def load_external_components(typesys):
     reg = ComponentRegistry()
     modules = reg.list_components()
 
-    typelibs = reduce(lambda x, y: x+y, [reg.find_component(x).type_packages() for x in modules], [])
+    typelibs = reduce(lambda x, y: x+y, [reg.find_component(x).find_products('type_package') for x in modules], [])
     for lib in typelibs:
         if lib.endswith('.py'):
             lib = lib[:-3]

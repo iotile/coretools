@@ -16,7 +16,7 @@ If there is no default value, a 3-tuple can be used with just name, type
 and description.
 
 """
-import pkg_resources
+
 import fnmatch
 from collections import namedtuple
 from iotile.core.dev.registry import ComponentRegistry
@@ -44,16 +44,16 @@ class ConfigManager(object):
         """Load all config_variables providers using pkg_resources
         """
 
-        for entry in pkg_resources.iter_entry_points('iotile.config_variables'):
+        reg = ComponentRegistry()
+        for name, provider in reg.load_extensions('iotile.config_variables'):
             try:
-                provider = entry.load()
                 prefix, conf_vars = provider()
             except (ValueError, TypeError) as exc:
-                raise ExternalError("Error loading config variables", package=entry.name, error=str(exc))
+                raise ExternalError("Error loading config variables", package=name, error=str(exc))
 
             for var in conf_vars:
                 if len(var) != 3 and len(var) != 4:
-                    raise ExternalError("Error loading config variable, invalid length", data=var, package=entry.name)
+                    raise ExternalError("Error loading config variable, invalid length", data=var, package=name)
 
                 name = prefix + ':' + var[0]
                 if len(var) == 3:
@@ -74,9 +74,9 @@ class ConfigManager(object):
         behavior that is callable from the iotile command line tool
         """
 
-        for entry in pkg_resources.iter_entry_points('iotile.config_function'):
+        reg = ComponentRegistry()
+        for _, conf_func in reg.load_extensions('iotile.config_function'):
             try:
-                conf_func = entry.load()
                 name = conf_func.__name__
 
                 self.add_function(name, conf_func)

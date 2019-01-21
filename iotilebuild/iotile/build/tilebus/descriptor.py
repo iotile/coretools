@@ -10,14 +10,14 @@
 #Define a Domain Specific Language for specifying MIB endpoints
 
 import os.path
+import struct
 from future.utils import viewitems
 from past.builtins import basestring, long
-import struct
-from pkg_resources import resource_filename, Requirement
 from pyparsing import Regex, Literal, Optional, Group, oneOf, QuotedString, delimitedList, ParseException
-from iotile.core.exceptions import *
+from iotile.core.exceptions import ArgumentError, DataError
 from .block import TBBlock
 from .handler import TBHandler
+from ..utilities import resource_path
 
 
 #DSL for mib definitions
@@ -76,7 +76,7 @@ class TBDescriptor:
         self.configs = {}
         self.valid = False
 
-        self.include_dirs = include_dirs + [resource_filename(Requirement.parse("iotile-build"), "iotile/build/config")]
+        self.include_dirs = include_dirs + [resource_path(expect='folder')]
 
         if isinstance(source, basestring):
             source = [source]

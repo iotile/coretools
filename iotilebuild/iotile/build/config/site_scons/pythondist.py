@@ -1,17 +1,20 @@
+"""Functions for building a python support wheel."""
+
+from __future__ import print_function
 import os.path
 import os
 import sys
 import glob
-import itertools
 import subprocess
+import setuptools.sandbox
+
 from SCons.Script import *
 from docbuild import *
 from release import *
-from iotile.core.exceptions import *
 from dependencies import find_dependency_wheels, _iter_dependencies
 from iotile.build.utilities import render_template
 from iotile.core.dev.iotileobj import IOTile
-import setuptools.sandbox
+from iotile.core.exceptions import *
 
 
 ENTRY_POINT_MAP = {
@@ -23,6 +26,52 @@ ENTRY_POINT_MAP = {
     'virtual_tile': 'iotile.virtual_tile',
     'virtual_device': 'iotile.virtual_device'
 }
+
+
+def get_support_package(tile):
+    """Returns the support_package product."""
+
+    packages = tile.find_products('support_package')
+    if len(packages) == 0:
+        return None
+    elif len(packages) == 1:
+        return packages[0]
+
+    raise BuildError("Tile declared multiple support packages, only one is supported", packages=packages)
+
+
+def iter_support_files(tile):
+    """Iterate over all files that go in the support wheel.
+
+    This method has two possible behaviors.  If there is a 'support_package'
+    product defined, then this recursively enumerates all .py files inside
+    that folder and adds them all in the same hierarchy to the support wheel.
+
+    If there is no support_package product defined, then the old behavior
+    takes over, where all files containing python entrypoints are iterated
+    over using iter_python_modules() and they are copied into the support
+    wheel and then an __init__.py file is added.
+
+    The files are yielded as tuples of (copy_name, input_path).
+    """
+
+    support_package = get_support_package(tile)
+    if support_package is None:
+        for module, _, _ in iter_python_modules(tile):
+            yield os.path.basename(module), module
+    else:
+        for dirpath, _dirnames, filenames in os.walk(support_package):
+            for filename in filenames:
+                if not filename.endswith('.py'):
+                    continue
+
+                input_path = os.path.join(dirpath, filename)
+                output_path = os.path.relpath(input_path, start=support_package)
+
+                if output_path == "__init__.py":
+                    continue
+
+                yield output_path, input_path
 
 
 def iter_python_modules(tile):
@@ -63,7 +112,7 @@ def iter_python_modules(tile):
 
 def build_python_distribution(tile):
     env = Environment(tools=[])
-    srcdir = 'python'
+
     builddir = os.path.join('build', 'python')
     packagedir = os.path.join(builddir, tile.support_distribution)
     outdir = os.path.join('build', 'output', 'python')
@@ -72,7 +121,6 @@ def build_python_distribution(tile):
     if not tile.has_wheel:
         return
 
-    srcnames = [os.path.basename(mod) for mod, _import, _entry in iter_python_modules(tile)]
     buildfiles = []
 
     pkg_init = os.path.join(packagedir, '__init__.py')
@@ -95,20 +143,16 @@ def build_python_distribution(tile):
         Mkdir(outsrcdir),
         Touch(os.path.join(outsrcdir, ".timestamp"))])
 
-    for infile in srcnames:
-        inpath = os.path.join(srcdir, infile)
-        outfile = os.path.join(outsrcdir, infile)
-        buildfile = os.path.join(packagedir, infile)
 
-        if os.path.isdir(inpath):
-            srclist = inpath
-        else:
-            srclist = [inpath]
+    for outpath, inpath in iter_support_files(tile):
+        outfile = os.path.join(outsrcdir, outpath)
+        buildfile = os.path.join(packagedir, outpath)
 
-        target = env.Command(outfile, srclist, Copy("$TARGET", "$SOURCE"))
+        target = env.Command(outfile, inpath, Copy("$TARGET", "$SOURCE"))
         env.Depends(target, outsrcnode)
 
-        env.Command(buildfile, [inpath, pkg_init], Copy("$TARGET", "$SOURCE"))
+        target = env.Command(buildfile, inpath, Copy("$TARGET", "$SOURCE"))
+        env.Depends(target, pkg_init)
 
         buildfiles.append(buildfile)
 
@@ -135,7 +179,6 @@ def build_python_distribution(tile):
         required_version = "py3" if sys.version_info[0] == 3 else "py2"
 
     for wheel in wheels:
-
         wheel_name = os.path.basename(wheel)
         wheel_basename = '-'.join(wheel.split('-')[:-3])
         wheel_pattern = wheel_basename + "-*" + required_version + '*'

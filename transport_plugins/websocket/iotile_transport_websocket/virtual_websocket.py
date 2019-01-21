@@ -39,7 +39,6 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
 
         # Set logger
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)  # TODO: remove this line
         self.logger.addHandler(logging.NullHandler())
 
         # Initialize states

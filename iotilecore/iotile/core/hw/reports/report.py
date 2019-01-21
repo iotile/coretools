@@ -2,7 +2,6 @@
 """
 
 import datetime
-import dateutil.parser
 from iotile.core.exceptions import NotFoundError
 
 
@@ -81,6 +80,7 @@ class IOTileReading(object):
 
         timestamp = obj.get('timestamp')
         if timestamp is not None:
+            import dateutil.parser
             timestamp = dateutil.parser.parse(timestamp)
 
         return IOTileReading(obj.get('device_timestamp'), obj.get('stream'), obj.get('value'), reading_id=obj.get('streamer_local_id'), reading_time=timestamp)
@@ -179,6 +179,7 @@ class IOTileEvent(object):
 
         timestamp = obj.get('timestamp')
         if timestamp is not None:
+            import dateutil.parser
             timestamp = dateutil.parser.parse(timestamp)
 
         return IOTileEvent(obj.get('device_timestamp'), obj.get('stream'), obj.get('extra_data'), obj.get('data'), reading_id=obj.get('streamer_local_id'), reading_time=timestamp)

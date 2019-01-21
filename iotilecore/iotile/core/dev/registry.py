@@ -6,14 +6,19 @@ import sys
 import logging
 import imp
 import inspect
+import json
 from types import ModuleType
 from future.utils import itervalues
-from past.builtins import basestring
+
+if sys.version_info >= (3, 0, 0):
+    from past.builtins import basestring
+
+import entrypoints
 
 from iotile.core.utilities.kvstore_sqlite import SQLiteKVStore
 from iotile.core.utilities.kvstore_json import JSONKVStore
 from iotile.core.utilities.kvstore_mem import InMemoryKVStore
-from iotile.core.exceptions import ArgumentError
+from iotile.core.exceptions import ArgumentError, ExternalError
 from iotile.core.utilities.paths import settings_directory
 from .iotileobj import IOTile
 
@@ -33,11 +38,19 @@ class ComponentRegistry(object):
 
     _registered_extensions = {}
     _component_overlays = {}
+    _frozen_extensions = None
 
     def __init__(self):
         self._kvstore = None
         self._plugins = None
         self._logger = logging.getLogger(__name__)
+
+    @property
+    def frozen(self):
+        """Return whether we have a cached list of all installed entry_points."""
+
+        frozen_path = os.path.join(_registry_folder(), 'frozen_extensions.json')
+        return os.path.isfile(frozen_path)
 
     @property
     def kvstore(self):
@@ -58,12 +71,9 @@ class ComponentRegistry(object):
         """
 
         if self._plugins is None:
-            import pkg_resources
-
             self._plugins = {}
 
-            for entry in pkg_resources.iter_entry_points('iotile.plugin'):
-                plugin = entry.load()
+            for _, plugin in self.load_extensions('iotile.plugin'):
                 links = plugin()
                 for name, value in links:
                     self._plugins[name] = value
@@ -130,8 +140,6 @@ class ComponentRegistry(object):
 
         found_extensions = []
 
-        import pkg_resources
-
         if product_name is not None:
             for comp in self.iter_components():
                 if comp_filter is not None and comp != comp_filter:
@@ -140,7 +148,8 @@ class ComponentRegistry(object):
                 products = comp.find_products(product_name)
                 for product in products:
                     try:
-                        entries = self.load_extension(product, name_filter=name_filter, class_filter=class_filter)
+                        entries = self.load_extension(product, name_filter=name_filter, class_filter=class_filter,
+                                                      component=comp)
                         if len(entries) == 0 and name_filter is None:  # Don't warn if we're filtering by name since most extensions won't match
                             self._logger.warn("Found no valid extensions in product %s of component %s", product, comp.path)
                             continue
@@ -149,7 +158,7 @@ class ComponentRegistry(object):
                     except:  #pylint:disable=bare-except;We don't want a broken extension to take down the whole system
                         self._logger.exception("Unable to load extension %s from local component %s at path %s", product_name, comp, product)
 
-        for entry in pkg_resources.iter_entry_points(group):
+        for entry in self._iter_entrypoint_group(group):
             name = entry.name
 
             if name_filter is not None and name != name_filter:
@@ -206,7 +215,36 @@ class ComponentRegistry(object):
         if group in self._registered_extensions:
             self._registered_extensions[group] = []
 
-    def load_extension(self, path, name_filter=None, class_filter=None, unique=False):
+    def freeze_extensions(self):
+        """Freeze the set of extensions into a single file.
+
+        Freezing extensions can speed up the extension loading process on
+        machines with slow file systems since it requires only a single file
+        to store all of the extensions.
+
+        Calling this method will save a file into the current virtual
+        environment that stores a list of all currently found extensions that
+        have been installed as entry_points.  Future calls to
+        `load_extensions` will only search the one single file containing
+        frozen extensions rather than enumerating all installed distributions.
+        """
+
+        output_path = os.path.join(_registry_folder(), 'frozen_extensions.json')
+
+        with open(output_path, "w") as outfile:
+            json.dump(self._dump_extensions(), outfile)
+
+    def unfreeze_extensions(self):
+        """Remove a previously frozen list of extensions."""
+
+        output_path = os.path.join(_registry_folder(), 'frozen_extensions.json')
+        if not os.path.isfile(output_path):
+            raise ExternalError("There is no frozen extension list")
+
+        os.remove(output_path)
+        ComponentRegistry._frozen_extensions = None
+
+    def load_extension(self, path, name_filter=None, class_filter=None, unique=False, component=None):
         """Load a single python module extension.
 
         This function is similar to using the imp module directly to load a
@@ -220,6 +258,9 @@ class ComponentRegistry(object):
             class_filter (type): If passed, only instance of this class are returned.
             unique (bool): If True (default is False), there must be exactly one object
                 found inside this extension that matches all of the other criteria.
+            component (IOTile): The component that this extension comes from if it is
+                loaded from an installed component.  This is used to properly import
+                the extension as a submodule of the component's support package.
 
         Returns:
             list of (name, type): A list of the objects found at the extension path.
@@ -228,7 +269,11 @@ class ComponentRegistry(object):
             entry will be directly returned.
         """
 
-        name, ext = _try_load_module(path)
+        import_name = None
+        if component is not None:
+            import_name = _ensure_package_loaded(path, component)
+
+        name, ext = _try_load_module(path, import_name=import_name)
 
         if name_filter is not None and name != name_filter:
             return []
@@ -246,7 +291,40 @@ class ComponentRegistry(object):
 
         return found[0]
 
-    def _filter_nonextensions(self, obj):
+    def _load_frozen_extensions(self):
+        self._logger.critical("Loading frozen extensions from file, new extensions will not be found")
+
+        frozen_path = os.path.join(_registry_folder(), 'frozen_extensions.json')
+        with open(frozen_path, "r") as infile:
+            extensions = json.load(infile)
+
+        ComponentRegistry._frozen_extensions = {}
+        for group in extensions:
+            ComponentRegistry._frozen_extensions[group] = []
+
+            for ext_info in extensions.get(group, []):
+                name = ext_info['name']
+                obj_path = ext_info['object']
+                distro_info = ext_info['distribution']
+
+                distro = None
+                if distro_info is not None:
+                    distro = entrypoints.Distribution(*distro_info)
+
+                entry = entrypoints.EntryPoint.from_string(obj_path, name, distro=distro)
+                ComponentRegistry._frozen_extensions[group].append(entry)
+
+    def _iter_entrypoint_group(self, group):
+        if not self.frozen:
+            return entrypoints.get_group_all(group)
+
+        if self._frozen_extensions is None:
+            self._load_frozen_extensions()
+
+        return self._frozen_extensions.get(group, [])
+
+    @classmethod
+    def _filter_nonextensions(cls, obj):
         """Remove all classes marked as not extensions.
 
         This allows us to have a deeper hierarchy of classes than just
@@ -261,10 +339,34 @@ class ComponentRegistry(object):
         create a second entry point.
         """
 
-        if obj.__dict__.get('__NO_EXTENSION__', False) is True:
+        # Not all objects have __dict__ attributes.  For example, tuples don't.
+        # and tuples are used in iotile.build for some entry points.
+        if hasattr(obj, '__dict__') and obj.__dict__.get('__NO_EXTENSION__', False) is True:
             return False
 
         return True
+
+    @classmethod
+    def _dump_extensions(cls, prefix="iotile."):
+        extensions = {}
+
+        for config, distro in entrypoints.iter_files_distros():
+            if distro is None:
+                distro_info = None
+            else:
+                distro_info = (distro.name, distro.version)
+
+            for group in config:
+                if prefix is not None and not group.startswith(prefix):
+                    continue
+
+                if group not in extensions:
+                    extensions[group] = []
+
+                for name, epstr in config[group].items():
+                    extensions[group].append(dict(name=name, object=epstr, distribution=distro_info))
+
+        return extensions
 
     def _filter_subclasses(self, obj, class_filter):
         if class_filter is None:
@@ -458,6 +560,20 @@ class ComponentRegistry(object):
         self.kvstore.remove(keyname)
 
 
+def _registry_folder(folder=None):
+    if folder is None:
+        folder = settings_directory()
+
+        #If we are relative to a virtual environment, place the registry into that virtual env
+        #Support both virtualenv and pythnon 3 venv
+        if hasattr(sys, 'real_prefix'):
+            folder = sys.prefix
+        elif hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix:
+            folder = sys.prefix
+
+    return folder
+
+
 def _check_registry_type(folder=None):
     """Check if the user has placed a registry_type.txt file to choose the registry type
 
@@ -468,15 +584,7 @@ def _check_registry_type(folder=None):
         folder (string): The folder that we should check for a default registry type
     """
 
-    if folder is None:
-        folder = settings_directory()
-
-        #If we are relative to a virtual environment, place the registry into that virtual env
-        #Support both virtualenv and pythnon 3 venv
-        if hasattr(sys, 'real_prefix'):
-            folder = sys.prefix
-        elif hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix:
-            folder = sys.prefix
+    folder = _registry_folder(folder)
 
     default_file = os.path.join(folder, 'registry_type.txt')
 
@@ -490,7 +598,46 @@ def _check_registry_type(folder=None):
         pass
 
 
-def _try_load_module(path):
+def _ensure_package_loaded(path, component):
+    """Ensure that the given module is loaded as a submodule.
+
+    Returns:
+        str: The name that the module should be imported as.
+    """
+
+    logger = logging.getLogger(__name__)
+
+    packages = component.find_products('support_package')
+    if len(packages) == 0:
+        return None
+    elif len(packages) > 1:
+        raise ExternalError("Component had multiple products declared as 'support_package", products=packages)
+
+    if len(path) > 2 and ':' in path[2:]:  # Don't flag windows C: type paths
+        path, _, _ = path.rpartition(":")
+
+    package_base = packages[0]
+    relative_path = os.path.normpath(os.path.relpath(path, start=package_base))
+    if relative_path.startswith('..'):
+        raise ExternalError("Component had python product output of support_package", package=package_base, product=path)
+
+    if not relative_path.endswith('.py'):
+        raise ExternalError("Python product did not end with .py", path=path)
+
+    relative_path = relative_path[:-3]
+    if os.pathsep in relative_path:
+        raise ExternalError("Python support wheels with multiple subpackages not yet supported", relative_path=relative_path)
+
+    support_distro = component.support_distribution
+    if support_distro not in sys.modules:
+        logger.debug("Creating dynamic support wheel package: %s", support_distro)
+        file, path, desc = imp.find_module(os.path.basename(package_base), [os.path.dirname(package_base)])
+        imp.load_module(support_distro, file, path, desc)
+
+    return "{}.{}".format(support_distro, relative_path)
+
+
+def _try_load_module(path, import_name=None):
     """Try to programmatically load a python module by path.
 
     Path should point to a python file (optionally without the .py) at the
@@ -499,10 +646,17 @@ def _try_load_module(path):
 
     Args:
         path (str): The path of the module to load
+        import_name (str): The explicity name that the module should be given.
+            If not specified, this defaults to being the basename() of
+            path.  However, if the module is inside of a support package,
+            you should pass the correct name so that relative imports
+            proceed correctly.
 
     Returns:
         str, object: The basename of the module loaded and the requested object.
     """
+
+    logger = logging.getLogger(__name__)
 
     obj_name = None
     if len(path) > 2 and ':' in path[2:]:  # Don't flag windows C: type paths
@@ -519,6 +673,11 @@ def _try_load_module(path):
     if ext not in (".py", ".pyc", ""):
         raise ArgumentError("Attempted to load module is not a python package or module (.py or .pyc)", path=path)
 
+    if import_name is None:
+        import_name = basename
+    else:
+        logger.debug("Importing module as subpackage: %s", import_name)
+
     try:
         fileobj = None
         fileobj, pathname, description = imp.find_module(basename, [folder])
@@ -527,7 +686,7 @@ def _try_load_module(path):
         if basename in sys.modules:
             mod = sys.modules[basename]
         else:
-            mod = imp.load_module(basename, fileobj, pathname, description)
+            mod = imp.load_module(import_name, fileobj, pathname, description)
 
         if obj_name is not None:
             if obj_name not in mod.__dict__:

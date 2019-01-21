@@ -1,11 +1,11 @@
 """State machine for parsing IOTile reports coming in on a streaming basis
 """
 
-import pkg_resources
 from iotile.core.exceptions import ArgumentError
+from iotile.core.dev import ComponentRegistry
 
 
-class IOTileReportParser (object):
+class IOTileReportParser(object):
     """Accumulates data from a stream and emits IOTileReports
 
     Every time new data is available on the stream, add_data should be called.
@@ -177,10 +177,5 @@ class IOTileReportParser (object):
         """Build a map of all of the known report format processors
         """
 
-        formats = {}
-
-        for entry in pkg_resources.iter_entry_points('iotile.report_format'):
-            report_format = entry.load()
-            formats[report_format.ReportType] = report_format
-
-        return formats
+        return {report_format.ReportType: report_format for _, report_format in
+                ComponentRegistry().load_extensions('iotile.report_format')}

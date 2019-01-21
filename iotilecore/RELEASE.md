@@ -4,9 +4,21 @@ All major changes in each released version of `iotile-core` are listed here.
 
 ## HEAD
 
+- Support freezing the current list of extensions into a single file that is
+  stored with the virtual environment, speeding up small program invocations
+  by removing the necessity to enumerate all installed packages.
+
+- Make log messages from virtual_device script less chatty by removing audit 
+  log messages by default.
+
 - Remove nuisance log warning when loading extensions by name (Issue #637) 
+
 - Fix problem loading `module_settings.json` files for components that had been
   built before on python 3.  (Issue #636)
+
+- Adds support for complex python support wheels in ComponentRegistry.  
+  Submodules inside the support package are now imported correctly so that
+  relative imports among the modules work.
 
 ## 3.25.0
 

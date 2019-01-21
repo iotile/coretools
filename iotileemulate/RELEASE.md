@@ -4,6 +4,9 @@ All major changes in each released version of iotile-emulate are listed here.
 
 ## HEAD
 
+- Add support for hardware version RPC on the controller.  The default
+  implementation returns the hardware string 'pythontile'
+
 - Add support for loading and sgf file or string directly using a test_scenario
   registered on ReferenceController.  The sgf file is directly loaded into 
   persistent storage as well as the config_database.  An embedded app_tag is
@@ -16,6 +19,10 @@ All major changes in each released version of iotile-emulate are listed here.
   closed.
 
 - Add support into ReferenceController for setting app/os tags and versions.
+
+- Improve SerializableState to allow for marking the object types of lists,
+  properties and dicts to enable them to be properly serialized and
+  deserialized without needing to explicitly call `mark_complex_type`.
 
 ## 0.2.0
 
