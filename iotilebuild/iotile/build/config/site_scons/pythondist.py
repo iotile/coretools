@@ -57,7 +57,7 @@ def iter_support_files(tile):
 
     support_package = get_support_package(tile)
     if support_package is None:
-        for module, _, _ in iter_support_files(tile):
+        for module, _, _ in iter_python_modules(tile):
             yield os.path.basename(module), module
     else:
         for dirpath, _dirnames, filenames in os.walk(support_package):
