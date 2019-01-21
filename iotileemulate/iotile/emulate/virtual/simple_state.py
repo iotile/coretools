@@ -1,7 +1,8 @@
 """Helper class for automatically dumping and restoring all member variables."""
 
 import inspect
-from iotile.core.exceptions import ArgumentError
+from future.utils import viewitems
+from iotile.core.exceptions import ArgumentError, DataError
 
 
 class SerializableState(object):
@@ -62,6 +63,114 @@ class SerializableState(object):
         """
 
         self._complex_properties[name] = (serializer, deserializer)
+
+    def mark_typed_list(self, name, type_object):
+        """Mark a property as containing serializable objects of a given type.
+
+        This convenience method allows you to avoid having to call
+        ``mark_complex()`` whenever you need to serialize a list of objects.
+        This method requires that all members of the given list be of a single
+        class that contains a dump() method and a Restore() class method where
+        type_object.Restore(x.dump()) == x.
+
+        Args:
+            name (str): The name of the complex property.
+            type_object: The class object that will be contained inside
+                this list.
+        """
+
+        if not hasattr(type_object, 'dump'):
+            raise ArgumentError("The passed type object %s is missing required method: dump()" % type_object)
+        if not hasattr(type_object, 'Restore'):
+            raise ArgumentError("The passed type object %s is missing required method: Restore()" % type_object)
+
+        def _dump_list(obj):
+            if obj is None:
+                return None
+
+            if not isinstance(obj, list):
+                raise DataError("Property %s marked as list was not a list: %s" % (name, repr(obj)))
+
+            return [x.dump() for x in obj]
+
+        def _restore_list(obj):
+            if obj is None:
+                return obj
+
+            return [type_object.Restore(x) for x in obj]
+
+        self.mark_complex(name, _dump_list, _restore_list)
+
+    def mark_typed_map(self, name, type_object):
+        """Mark a property as containing a map str to serializable object.
+
+        This convenience method allows you to avoid having to call
+        ``mark_complex()`` whenever you need to serialize a dict of objects.
+        This method requires that all members of the given dict be of a single
+        class that contains a dump() method and a Restore() class method where
+        type_object.Restore(x.dump()) == x.
+
+        Args:
+            name (str): The name of the complex property.
+            type_object: The class object that will be contained inside
+                this dict.
+        """
+
+        if not hasattr(type_object, 'dump'):
+            raise ArgumentError("The passed type object %s is missing required method: dump()" % type_object)
+        if not hasattr(type_object, 'Restore'):
+            raise ArgumentError("The passed type object %s is missing required method: Restore()" % type_object)
+
+        def _dump_map(obj):
+            if obj is None:
+                return None
+
+            if not isinstance(obj, dict):
+                raise DataError("Property %s marked as list was not a dict: %s" % (name, repr(obj)))
+
+            return {key: val.dump() for key, val in viewitems(obj)}
+
+        def _restore_map(obj):
+            if obj is None:
+                return obj
+
+            return {key: type_object.Restore(val) for key, val in viewitems(obj)}
+
+        self.mark_complex(name, _dump_map, _restore_map)
+
+    def mark_typed_object(self, name, type_object):
+        """Mark a property as containing a serializable object.
+
+        This convenience method allows you to avoid having to call
+        ``mark_complex()`` whenever you need to serialize a complex object.
+        This method requires that property ``name`` be a single class that
+        contains a dump() method and a Restore() class method where
+        type_object.Restore(x.dump()) == x.
+
+        Args:
+            name (str): The name of the complex property.
+            type_object: The class object that will be contained inside
+                this property.
+        """
+
+        if not hasattr(type_object, 'dump'):
+            raise ArgumentError("The passed type object %s is missing required method: dump()" % type_object)
+        if not hasattr(type_object, 'Restore'):
+            raise ArgumentError("The passed type object %s is missing required method: Restore()" % type_object)
+
+        def _dump_obj(obj):
+            if obj is None:
+                return None
+
+            return obj.dump()
+
+        def _restore_obj(obj):
+            if obj is None:
+                return obj
+
+            return type_object.Restore(obj)
+
+        self.mark_complex(name, _dump_obj, _restore_obj)
 
     def dump_property(self, name):
         """Serialize a property of this class by name.

@@ -20,6 +20,10 @@ All major changes in each released version of iotile-emulate are listed here.
 
 - Add support into ReferenceController for setting app/os tags and versions.
 
+- Improve SerializableState to allow for marking the object types of lists,
+  properties and dicts to enable them to be properly serialized and
+  deserialized without needing to explicitly call `mark_complex_type`.
+
 ## 0.2.0
 
 - Add support for sending RPCs from the sensorgraph task in the reference 
