@@ -16,6 +16,10 @@ All major changes in each released version of `iotile-core` are listed here.
 - Fix problem loading `module_settings.json` files for components that had been
   built before on python 3.  (Issue #636)
 
+- Adds support for complex python support wheels in ComponentRegistry.  
+  Submodules inside the support package are now imported correctly so that
+  relative imports among the modules work.
+
 ## 3.25.0
 
 - Add support for a `__NO_EXTENSION__` flag in classes so that

@@ -148,7 +148,8 @@ class ComponentRegistry(object):
                 products = comp.find_products(product_name)
                 for product in products:
                     try:
-                        entries = self.load_extension(product, name_filter=name_filter, class_filter=class_filter)
+                        entries = self.load_extension(product, name_filter=name_filter, class_filter=class_filter,
+                                                      component=comp)
                         if len(entries) == 0 and name_filter is None:  # Don't warn if we're filtering by name since most extensions won't match
                             self._logger.warn("Found no valid extensions in product %s of component %s", product, comp.path)
                             continue
@@ -243,7 +244,7 @@ class ComponentRegistry(object):
         os.remove(output_path)
         ComponentRegistry._frozen_extensions = None
 
-    def load_extension(self, path, name_filter=None, class_filter=None, unique=False):
+    def load_extension(self, path, name_filter=None, class_filter=None, unique=False, component=None):
         """Load a single python module extension.
 
         This function is similar to using the imp module directly to load a
@@ -257,6 +258,9 @@ class ComponentRegistry(object):
             class_filter (type): If passed, only instance of this class are returned.
             unique (bool): If True (default is False), there must be exactly one object
                 found inside this extension that matches all of the other criteria.
+            component (IOTile): The component that this extension comes from if it is
+                loaded from an installed component.  This is used to properly import
+                the extension as a submodule of the component's support package.
 
         Returns:
             list of (name, type): A list of the objects found at the extension path.
@@ -265,7 +269,11 @@ class ComponentRegistry(object):
             entry will be directly returned.
         """
 
-        name, ext = _try_load_module(path)
+        import_name = None
+        if component is not None:
+            import_name = _ensure_package_loaded(path, component)
+
+        name, ext = _try_load_module(path, import_name=import_name)
 
         if name_filter is not None and name != name_filter:
             return []
@@ -590,7 +598,46 @@ def _check_registry_type(folder=None):
         pass
 
 
-def _try_load_module(path):
+def _ensure_package_loaded(path, component):
+    """Ensure that the given module is loaded as a submodule.
+
+    Returns:
+        str: The name that the module should be imported as.
+    """
+
+    logger = logging.getLogger(__name__)
+
+    packages = component.find_products('support_package')
+    if len(packages) == 0:
+        return None
+    elif len(packages) > 1:
+        raise ExternalError("Component had multiple products declared as 'support_package", products=packages)
+
+    if len(path) > 2 and ':' in path[2:]:  # Don't flag windows C: type paths
+        path, _, _ = path.rpartition(":")
+
+    package_base = packages[0]
+    relative_path = os.path.normpath(os.path.relpath(path, start=package_base))
+    if relative_path.startswith('..'):
+        raise ExternalError("Component had python product output of support_package", package=package_base, product=path)
+
+    if not relative_path.endswith('.py'):
+        raise ExternalError("Python product did not end with .py", path=path)
+
+    relative_path = relative_path[:-3]
+    if os.pathsep in relative_path:
+        raise ExternalError("Python support wheels with multiple subpackages not yet supported", relative_path=relative_path)
+
+    support_distro = component.support_distribution
+    if support_distro not in sys.modules:
+        logger.debug("Creating dynamic support wheel package: %s", support_distro)
+        file, path, desc = imp.find_module(os.path.basename(package_base), [os.path.dirname(package_base)])
+        imp.load_module(support_distro, file, path, desc)
+
+    return "{}.{}".format(support_distro, relative_path)
+
+
+def _try_load_module(path, import_name=None):
     """Try to programmatically load a python module by path.
 
     Path should point to a python file (optionally without the .py) at the
@@ -599,10 +646,17 @@ def _try_load_module(path):
 
     Args:
         path (str): The path of the module to load
+        import_name (str): The explicity name that the module should be given.
+            If not specified, this defaults to being the basename() of
+            path.  However, if the module is inside of a support package,
+            you should pass the correct name so that relative imports
+            proceed correctly.
 
     Returns:
         str, object: The basename of the module loaded and the requested object.
     """
+
+    logger = logging.getLogger(__name__)
 
     obj_name = None
     if len(path) > 2 and ':' in path[2:]:  # Don't flag windows C: type paths
@@ -619,6 +673,11 @@ def _try_load_module(path):
     if ext not in (".py", ".pyc", ""):
         raise ArgumentError("Attempted to load module is not a python package or module (.py or .pyc)", path=path)
 
+    if import_name is None:
+        import_name = basename
+    else:
+        logger.debug("Importing module as subpackage: %s", import_name)
+
     try:
         fileobj = None
         fileobj, pathname, description = imp.find_module(basename, [folder])
@@ -627,7 +686,7 @@ def _try_load_module(path):
         if basename in sys.modules:
             mod = sys.modules[basename]
         else:
-            mod = imp.load_module(basename, fileobj, pathname, description)
+            mod = imp.load_module(import_name, fileobj, pathname, description)
 
         if obj_name is not None:
             if obj_name not in mod.__dict__:
