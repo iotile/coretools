@@ -33,7 +33,7 @@ setup(
         "typedargs>=0.11.0",
         "sortedcontainers ~= 2.1",
         "monotonic ~= 1.5",
-        "entrypoints >= 0.3.0",
+        "entrypoints >= 0.3.0"
     ],
     extras_require={
         'ui': ["asciimatics>=1.9.0"]
