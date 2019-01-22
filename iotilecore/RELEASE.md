@@ -2,7 +2,7 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
-## HEAD
+## 3.26.0
 
 - Support freezing the current list of extensions into a single file that is
   stored with the virtual environment, speeding up small program invocations
