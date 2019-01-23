@@ -14,7 +14,7 @@ from iotile.core.utilities.typedargs import return_type, annotated, param, conte
 from time import sleep
 import struct
 from iotile.core.exceptions import *
-from ..virtual import unpack_rpc_payload
+from ..virtual import pack_rpc_payload, unpack_rpc_payload
 from builtins import str, int
 
 
@@ -146,7 +146,10 @@ class TileBusProxyObject(object):
         v2 enforces the use of arg_format and result_format
         v2 combines the feature+cmd chunks in to a single 4-byte chunk
         """
-        packed_args = struct.pack("<{}".format(arg_format), *args)
+        if args:
+            packed_args = pack_rpc_payload(arg_format, list(args))
+        else:
+            packed_args = b''
         status, payload = self.stream.send_rpc(self.addr, cmd, packed_args, **kw)
         res_type = (0, True)
 
