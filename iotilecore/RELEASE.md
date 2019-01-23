@@ -2,6 +2,9 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## 3.26.1
+- Update rpc_v2 mechanism to support "V" as a valid packing mechanism
+
 ## 3.26.0
 
 - Support freezing the current list of extensions into a single file that is
