@@ -84,9 +84,11 @@ Like a normal shell, we can use <TAB> to see a list of supported commands::
 
     iotile hw --port=virtual:simple
     (HardwareManager) 
-    add_proxies      connect          count_reports    get              quit
-    back             connect_direct   disconnect       heartbeat        reset
-    close            controller       enable_streaming help             scan
+    app                  controller           enable_broadcasting  help                 watch_reports
+    back                 count_reports        enable_streaming     quit                 watch_scan
+    close                debug                enable_tracing       reset
+    connect              disconnect           get                  scan
+    connect_direct       dump_trace           heartbeat            watch_broadcasts
 
 At this point, we have not connected to the ``simple`` device yet, so let's 
 connect directly to it::
@@ -104,8 +106,8 @@ the ``controller`` command::
 
     (HardwareManager) controller
     (SimpleProxy) <TAB>
-    back           help           reset          tile_name      tile_version
-    config_manager quit           status         tile_status
+    back              config_manager    help              reset             tile_name         tile_version
+    check_hardware    hardware_version  quit              status            tile_status
 
 Notice how the prompt changes to indicate what context we're in.  When we typed
 ``controller`` we moved from the ``HardwareManager`` context to the ``SimpleProxy``
