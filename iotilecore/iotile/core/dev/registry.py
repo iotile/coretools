@@ -142,7 +142,7 @@ class ComponentRegistry(object):
 
         if product_name is not None:
             for comp in self.iter_components():
-                if comp_filter is not None and comp != comp_filter:
+                if comp_filter is not None and comp.name != comp_filter:
                     continue
 
                 products = comp.find_products(product_name)

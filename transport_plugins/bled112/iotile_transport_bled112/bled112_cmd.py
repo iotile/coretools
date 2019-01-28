@@ -413,7 +413,6 @@ class BLED112CommandProcessor(threading.Thread):
 
         if ack:
             events = self._wait_process_events(timeout, lambda x: False, write_handle_acked)
-            self._logger.info("Num events in _write_handle: %d", len(events))
             if len(events) == 0:
                 return False, {'reason': 'Timeout waiting for acknowledge on write'}
 

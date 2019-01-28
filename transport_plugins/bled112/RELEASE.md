@@ -2,12 +2,15 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
-## HEAD
+## 1.8.0
 
 - Update virtual interface for compatibility with new iotile-core version that
   adds callbacks when reports and traced data are actually sent.  Since the
   BLED112 virtual interface snoops on \_queue_reports, it needs to be updated
   to understand the new format of what the arguments to that method mean.
+
+- Refactor broadcast and advertisement packet decoding to better support 
+  v2 advertisement packets.
 
 ## 1.7.4
 

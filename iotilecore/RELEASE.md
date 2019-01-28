@@ -2,6 +2,11 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## 3.26.2
+
+- Fix compatibility issue when searching for proxy plugins that should be
+  filtered by component name.
+
 ## 3.26.1
 - Update rpc_v2 mechanism to support "V" as a valid packing mechanism
 
