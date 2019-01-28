@@ -7,7 +7,6 @@ import time
 import threading
 import logging
 import datetime
-import uuid
 import copy
 from future.utils import viewitems
 import serial
@@ -71,17 +70,23 @@ class BLED112Adapter(DeviceAdapter):
         self.scanning = False
         self.stopped = False
 
+        config = ConfigManager()
+
         if passive is not None:
             self._active_scan = not passive
         else:
-            config = ConfigManager()
             self._active_scan = config.get('bled112:active-scan')
+
+        self._throttle_broadcast = config.get('bled112:throttle-broadcast')
 
         # Prepare internal state of scannable and in progress devices
         # Do this before spinning off the BLED112CommandProcessor
         # in case a scanned device is seen immediately.
         self.partial_scan_responses = {}
+
+        self._broadcast_state = {}
         self._connections = {}
+
         self.count_lock = threading.Lock()
         self.connecting_count = 0
         self.maximum_connections = 0
@@ -95,7 +100,6 @@ class BLED112Adapter(DeviceAdapter):
         self._command_task = BLED112CommandProcessor(self._stream, self._commands, stop_check_interval=stop_check_interval)
         self._command_task.event_handler = self._handle_event
         self._command_task.start()
-
 
         try:
             self.initialize_system_sync()
@@ -442,9 +446,10 @@ class BLED112Adapter(DeviceAdapter):
         callback(context['connection_id'], self.id, success, failure)
 
     def _handle_event(self, event):
+        # See https://www.silabs.com/documents/login/reference-manuals/Bluetooth_Smart_Software-BLE-1.7-API-RM.PDF
+        # page 109 for reference on scan event packets
         if event.command_class == 6 and event.command == 0:
-            # Handle scan response events
-            self._parse_scan_response(event)
+            self._process_scan_event(event)
         elif event.command_class == 3 and event.command == 4:
             # Handle disconnect event
             conn, reason = unpack("<BH", event.payload)
@@ -505,242 +510,183 @@ class BLED112Adapter(DeviceAdapter):
         else:
             self._logger.warning('Unhandled BLE event: ' + str(event))
 
-    def _parse_scan_response(self, response):
+    def _process_scan_event(self, response):
+        """Parse the BLE advertisement packet.
+
+        If it's an IOTile device, parse and add to the scanned devices. Then,
+        parse advertisement and determine if it matches V1 or V2.  There are
+        two supported type of advertisements:
+
+        v1: There is both an advertisement and a scan response (if active scanning
+            is enabled).
+        v2: There is only an advertisement and no scan response.
         """
-        Parse the BLE advertisement packet. If it's an IOTile device, parse and add to the scanned devices.
-        Then, parse advertisement and determine if it matches V1 or V2.
-        """
+
         payload = response.payload
         length = len(payload) - 10
 
         if length < 0:
             return
 
-        rssi, packet_type, sender, addr_type, bond, data = unpack("<bB6sBB%ds" % length, payload)
+        rssi, packet_type, sender, _addr_type, _bond, data = unpack("<bB6sBB%ds" % length, payload)
+        string_address = ':'.join([format(x, "02X") for x in bytearray(sender[::-1])])
 
         # Scan data is prepended with a length
         if len(data) > 0:
-            scan_data = bytearray(data[1:])
+            data = bytearray(data[1:])
         else:
-            scan_data = bytearray([])
+            data = bytearray([])
 
-        # If this is an advertisement response, see if its an IOTile device
-        if packet_type in (0, 6):
+        # If this is an advertisement packet, see if its an IOTile device
+        # packet_type = 4 is scan_response, 0, 2 and 6 are advertisements
+        if packet_type in (0, 2, 6):
+            if len(data) != 31:
+                return
 
-            if (len(scan_data) > 4 and
-                    scan_data[3] == 17 and
-                    scan_data[4] == 6):
-
-                self._parse_v1_scan_response(response)
-
-            # See if the data length is 27 (0x1B), service = 0x16, ArchUUID = 0x03C0
-            elif (len(scan_data) > 6 and
-                  scan_data[3] == 27 and
-                  scan_data[4] == 0x16 and
-                  scan_data[5] == 0xc0 and
-                  scan_data[6] == 0x03):
-
-                self._parse_v2_scan_response(response)
-
+            if data[22] == 0xFF and data[23] == 0xC0 and data[24] == 0x3:
+                self._parse_v1_advertisement(rssi, string_address, data)
+            elif data[3] == 27 and data[4] == 0x16 and data[5] == 0xdd and data[6] == 0xfd:
+                self._parse_v2_advertisement(rssi, string_address, data)
             else:
-                return
+                pass # This just means the advertisement was from a non-IOTile device
+        elif packet_type == 4:
+            self._parse_v1_scan_response(string_address, data)
 
-        else:
-            self._parse_v1_scan_response(response)
-
-        return
-
-    def _parse_v2_scan_response(self, response):
+    def _parse_v2_advertisement(self, rssi, sender, data):
         """ Parse the IOTile Specific advertisement packet"""
-        payload = response.payload
-        length = len(payload) - 10
 
-        rssi, packet_type, sender, addr_type, bond, data = unpack("<bB6sBB%ds" % length, payload)
-
-        parsed = {}
-        parsed['rssi'] = rssi
-        parsed['type'] = packet_type
-        parsed['address_raw'] = sender
-        parsed['address'] = ':'.join([format(x, "02X") for x in bytearray(sender[::-1])])
-        parsed['address_type'] = addr_type
-
-        # Scan data is prepended with a length
-        if len(data) > 0:
-            parsed['scan_data'] = bytearray(data[1:])
-        else:
-            parsed['scan_data'] = bytearray([])
-
-        # If this is an advertisement response, see if its an IOTile device
-        if parsed['type'] == 0 or parsed['type'] == 6:
-            scan_data = parsed['scan_data']
-
-            if len(scan_data) != 31:
-                self._logger.error("Advertising V2 packet is not the proper size. {0}".format(len(scan_data)))
-                return
-            # Skip BLE flags
-            scan_data = scan_data[3:]
-
-            if (scan_data[0] == 27 and
-                    scan_data[1] == 0x16 and
-                    scan_data[2] == 0xC0 and
-                    scan_data[3] == 0x03):
-
-                scan_data = scan_data[4:]
-                # FIXME: OTHER
-                device_uuid, reboot_low, reboot_high, flags, timestamp, \
-                battery, OTHER, bcast_stream, bcast_value, mac = unpack("<LHBBLBBHLL", scan_data)
-                reboots = reboot_high << 16 | reboot_low
-
-                # Flags for version 2 are:
-                #   bit 0: User is connected
-                #   bit 1: POD has data to stream
-                #   bit 2: Broadcast data is encrypted and authenticated using AES-128 CCM
-                #   bit 3: Broadcast key is device key (otherwise user key)
-                #   bit 4-7: Reserved
-                pending = False
-                user_connected = False
-                is_encrypted = False
-                use_device_key = False
-
-                if flags & (1 << 0):
-                    user_connected = True
-                if flags & (1 << 1):
-                    pending = True
-                if flags & (1 << 2):
-                    is_encrypted = True
-                if flags & (1 << 3):
-                    use_device_key = True
-
-                info = {'user_connected': user_connected,
-                        'connection_string': parsed['address'],
-                        'uuid': device_uuid,
-                        'pending_data': pending,
-                        'broadcast_encrypted': is_encrypted,
-                        'use_device_key': use_device_key,
-                        'signal_strength': parsed['rssi'],
-                        'reboots':reboots,
-                        'timestamp':timestamp,
-                        'battery':battery / 32.0,
-                        'bcast_stream':bcast_stream,
-                        'bcast_value':bcast_value,
-                        'mac':mac,
-                        'advertising_version':2}
-
-                if not self._active_scan:
-                    self._trigger_callback('on_scan', self.id, info, self.ExpirationTime)
-                else:
-                    self.partial_scan_responses[parsed['address']] = info
-
-        elif parsed['type'] == 4 and parsed['address'] in self.partial_scan_responses:
-            # Check if this is a scan response packet from an iotile based device
-            scan_data = parsed['scan_data']
-            if len(scan_data) != 31:
-                self._logger.error("Scan data should have 31 bytes")
-                return
-
-            self._logger.error("Not Implemented")
-        return
-
-    def _parse_v1_scan_response(self, response):
-        payload = response.payload
-        length = len(payload) - 10
-
-        if length < 0:
+        if len(data) != 31:
             return
-        rssi, packet_type, sender, addr_type, bond, data = unpack("<bB6sBB%ds" % length, payload)
 
-        parsed = {}
-        parsed['rssi'] = rssi
-        parsed['type'] = packet_type
-        parsed['address_raw'] = sender
-        parsed['address'] = ':'.join([format(x, "02X") for x in bytearray(sender[::-1])])
-        parsed['address_type'] = addr_type
+        # We have already verified that the device is an IOTile device
+        # by checking its service data uuid in _process_scan_event so
+        # here we just parse out the required information
 
-        # Scan data is prepended with a length
-        if len(data) > 0:
-            parsed['scan_data'] = bytearray(data[1:])
-        else:
-            parsed['scan_data'] = bytearray([])
+        device_id, reboot_low, reboot_high_packed, flags, timestamp, \
+        battery, counter_packed, broadcast_stream_packed, broadcast_value, \
+        _mac = unpack("<LHBBLBBHLL", data[7:])
 
-        # If this is an advertisement response, see if its an IOTile device
-        if parsed['type'] == 0 or parsed['type'] == 6:
-            scan_data = parsed['scan_data']
+        reboots = (reboot_high_packed & 0xF) << 16 | reboot_low
+        counter = counter_packed & ((1 << 5) - 1)
+        broadcast_multiplex = counter_packed >> 5
+        broadcast_toggle = broadcast_stream_packed >> 15
+        broadcast_stream = broadcast_stream_packed & ((1 << 15) - 1)
 
-            if len(scan_data) < 29:
-                self._logger.error("Advertising packet is too small.")
+        # Flags for version 2 are:
+        #   bit 0: Has pending data to stream
+        #   bit 1: Low voltage indication
+        #   bit 2: User connected
+        #   bit 3: Broadcast data is encrypted
+        #   bit 4: Encryption key is device key
+        #   bit 5: Encryption key is user key
+        #   bit 6: broadcast data is time synchronized to avoid leaking
+        #   information about when it changes
+
+        info = {'connection_string': sender,
+                'uuid': device_id,
+                'pending_data': bool(flags & (1 << 0)),
+                'low_voltage': bool(flags & (1 << 1)),
+                'user_connected': bool(flags & (1 << 2)),
+                'signal_strength': rssi,
+                'reboot_counter': reboots,
+                'sequence': counter,
+                'broadcast_toggle': broadcast_toggle,
+                'timestamp': timestamp,
+                'battery': battery / 32.0,
+                'advertising_version':2}
+
+        self._trigger_callback('on_scan', self.id, info, self.ExpirationTime)
+
+        # If there is a valid reading on the advertising data, broadcast it
+        if broadcast_stream != 0xFFFF & ((1 << 15) - 1):
+            if self._throttle_broadcast and \
+               self._check_update_seen_broadcast(sender, timestamp, broadcast_stream, broadcast_value,
+                                                 broadcast_toggle, counter=counter, channel=broadcast_multiplex):
                 return
 
-            # Skip BLE flags
-            scan_data = scan_data[3:]
+            reading = IOTileReading(timestamp, broadcast_stream, broadcast_value, reading_time=datetime.datetime.utcnow())
+            report = BroadcastReport.FromReadings(info['uuid'], [reading], timestamp)
+            self._trigger_callback('on_report', None, report)
 
-            # Make sure the scan data comes back with an incomplete UUID list
-            if scan_data[0] != 17 or scan_data[1] != 6:
-                self._logger.error("Scan data does not have an incomplete UUID list")
+    def _check_update_seen_broadcast(self, sender, device_time, stream, value, toggle=None, counter=None, channel=0):
+        key = (sender, channel)
+
+        info = self._broadcast_state.get(key)
+
+        if info is not None:
+            old_time, old_stream, old_value, old_toggle, old_counter = info
+
+            if toggle is not None and counter is not None:
+                if old_toggle == toggle and old_counter == counter:
+                    return True
+            else:
+                if old_value == value and old_stream == stream and old_time == device_time:
+                    return True
+
+        self._broadcast_state[key] = (device_time, stream, value, toggle, counter)
+        return False
+
+
+    def _parse_v1_advertisement(self, rssi, sender, advert):
+        if len(advert) != 31:
+            return
+
+        # Make sure the scan data comes back with an incomplete UUID list
+        if advert[3] != 17 or advert[4] != 6:
+            return
+
+
+        # Make sure the uuid is our tilebus UUID
+        if advert[5:21] == TileBusService.bytes_le:
+            # Now parse out the manufacturer specific data
+            manu_data = advert[21:]
+
+            _length, _datatype, _manu_id, device_uuid, flags = unpack("<BBHLH", manu_data)
+
+            # Flags for version 1 are:
+            #   bit 0: whether we have pending data
+            #   bit 1: whether we are in a low voltage state
+            #   bit 2: whether another user is connected
+            #   bit 3: whether we support robust reports
+            #   bit 4: whether we allow fast writes
+            info = {'connection_string': sender,
+                    'uuid': device_uuid,
+                    'pending_data': bool(flags & (1 << 0)),
+                    'low_voltage': bool(flags & (1 << 1)),
+                    'user_connected': bool(flags & (1 << 2)),
+                    'signal_strength': rssi,
+                    'advertising_version': 1}
+
+            if self._active_scan:
+                self.partial_scan_responses[sender] = info
+            else:
+                self._trigger_callback('on_scan', self.id, info, self.ExpirationTime)
+
+    def _parse_v1_scan_response(self, sender, scan_data):
+        if len(scan_data) != 31:
+            return
+
+        info = self.partial_scan_responses.pop(sender, None)
+        if info is None:
+            return
+
+        # Check if this is a scan response packet from an iotile based device
+        _length, _datatype, _manu_id, voltage, stream, reading, reading_time, curr_time = unpack("<BBHHHLLL11x", scan_data)
+
+        info['voltage'] = voltage / 256.0
+        info['current_time'] = curr_time
+        info['last_seen'] = datetime.datetime.now()
+
+        self._trigger_callback('on_scan', self.id, info, self.ExpirationTime)
+
+        # If there is a valid reading on the advertising data, broadcast it
+        if stream != 0xFFFF:
+            if self._throttle_broadcast and self._check_update_seen_broadcast(sender, reading_time, stream, reading):
                 return
 
-            uuid_buf = scan_data[2:18]
-            assert len(uuid_buf) == 16
-            service = uuid.UUID(bytes_le=bytes(uuid_buf))
-
-            if service == TileBusService:
-                # Now parse out the manufacturer specific data
-                manu_data = scan_data[18:]
-                assert len(manu_data) == 10
-
-                # FIXME: Move flag parsing code flag definitions somewhere else
-                length, datatype, manu_id, device_uuid, flags = unpack("<BBHLH", manu_data)
-
-                # Flags for version 1 are:
-                #   bit 0: whether we have pending data
-                #   bit 1: whether we are in a low voltage state
-                #   bit 2: whether another user is connected
-                #   bit 3: whether we support robust reports
-                #   bit 4: whether we allow fast writes
-                pending = False
-                low_voltage = False
-                user_connected = False
-                if flags & (1 << 0):
-                    pending = True
-                if flags & (1 << 1):
-                    low_voltage = True
-                if flags & (1 << 2):
-                    user_connected = True
-
-                info = {'user_connected': user_connected,
-                        'connection_string': parsed['address'],
-                        'uuid': device_uuid,
-                        'pending_data': pending,
-                        'low_voltage': low_voltage,
-                        'signal_strength': parsed['rssi'],
-                        'advertising_version': 1}
-
-                if not self._active_scan:
-                    self._trigger_callback('on_scan', self.id, info, self.ExpirationTime)
-                else:
-                    self.partial_scan_responses[parsed['address']] = info
-
-        elif parsed['type'] == 4 and parsed['address'] in self.partial_scan_responses:
-            # Check if this is a scan response packet from an iotile based device
-            scan_data = parsed['scan_data']
-            if len(scan_data) != 31:
-                self._logger.error("Scan data should have 31 bytes")
-                return
-
-            length, datatype, manu_id, voltage, stream, reading, reading_time, curr_time = unpack("<BBHHHLLL11x", scan_data)
-
-            info = self.partial_scan_responses[parsed['address']]
-            info['voltage'] = voltage / 256.0
-            info['current_time'] = curr_time
-            info['last_seen'] = datetime.datetime.now()
-
-            # If there is a valid reading on the advertising data, broadcast it
-            if stream != 0xFFFF:
-                reading = IOTileReading(reading_time, stream, reading, reading_time=datetime.datetime.utcnow())
-                report = BroadcastReport.FromReadings(info['uuid'], [reading], curr_time)
-                self._trigger_callback('on_report', None, report)
-
-            del self.partial_scan_responses[parsed['address']]
-            self._trigger_callback('on_scan', self.id, info, self.ExpirationTime)
+            reading = IOTileReading(reading_time, stream, reading, reading_time=datetime.datetime.utcnow())
+            report = BroadcastReport.FromReadings(info['uuid'], [reading], curr_time)
+            self._trigger_callback('on_report', None, report)
 
     def probe_services(self, handle, conn_id, callback):
         """Given a connected device, probe for its GATT services and characteristics
