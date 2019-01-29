@@ -10,14 +10,13 @@
 #Utilities for producing skeleton code for application modules, unit tests,
 #etc. using the Cheetah templating library.
 
-import os.path
-from future.utils import viewitems
 import os
 import shutil
+from future.utils import viewitems
 from past.builtins import basestring
-from pkg_resources import resource_filename, Requirement
 from jinja2 import Environment, PackageLoader, FileSystemLoader
 from typedargs.exceptions import ArgumentError
+from .bundled_data import resource_path
 
 
 def render_template_inplace(template_path, info, dry_run=False, extra_filters=None, resolver=None):
@@ -154,8 +153,8 @@ def render_recursive_template(template_folder, info, out_folder, preserve=None, 
 
     preserve = set(preserve)
 
-    template_dir = os.path.join(resource_filename(Requirement.parse("iotile-build"), "iotile/build/config/templates"))
-    indir = os.path.abspath(os.path.join(template_dir, template_folder))
+    template_dir = resource_path('templates', expect='folder')
+    indir = os.path.join(template_dir, template_folder)
 
     if not os.path.exists(indir):
         raise ArgumentError("Input template folder for recursive template not found", template_folder=template_folder, absolute_path=indir)

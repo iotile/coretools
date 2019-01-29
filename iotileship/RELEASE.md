@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileShip are listed here.
 
+## 0.2.0
+
+- Refactor extension importing system to use new 
+  ComponentRegistry.load_extensions() functionality provided by `iotile-core`.
+
 ## 0.1.5
 
 - VerifyDeviceStep only checks os/app tags insteads of settings them

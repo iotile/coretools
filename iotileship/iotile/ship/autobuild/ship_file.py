@@ -37,9 +37,8 @@ def autobuild_shiparchive(src_file):
     resolver = ProductResolver.Create()
 
     #Parse through build_step products to see what needs to imported
-    build_steps = family.tile.build_steps()
     custom_steps = []
-    for build_step in build_steps:
+    for build_step in family.tile.find_products('build_step'):
         full_file_name = build_step.split(":")[0]
         basename = os.path.splitext(os.path.basename(full_file_name))[0]
         folder = os.path.dirname(full_file_name)

@@ -9,6 +9,7 @@ from iotile.core.exceptions import HardwareError
 from iotile.core.hw.proxy.external_proxy import find_proxy_plugin
 from iotile.emulate.virtual import EmulatedPeripheralTile
 from iotile.emulate.reference import ReferenceDevice
+from iotile.emulate.demo import DemoEmulatedDevice
 from iotile.emulate.constants import rpcs, Error
 from iotile.emulate.transport import EmulatedDeviceAdapter
 
@@ -16,7 +17,7 @@ from iotile.emulate.transport import EmulatedDeviceAdapter
 def sg_device():
     """Get a reference device and connected HardwareManager."""
 
-    device = ReferenceDevice({})
+    device = ReferenceDevice({'simulate_time': False})
     peripheral = EmulatedPeripheralTile(11, b'abcdef', device)
     peripheral.declare_config_variable("test 1", 0x8000, 'uint16_t')
     peripheral.declare_config_variable('test 2', 0x8001, 'uint32_t[5]')
@@ -38,7 +39,7 @@ def sg_device():
 def basic_sg():
     """A preprogrammed basic sensorgraph for testing."""
 
-    device = ReferenceDevice({})
+    device = ReferenceDevice({'simulate_time': False})
     peripheral = EmulatedPeripheralTile(11, b'abcdef', device)
     peripheral.declare_config_variable("test 1", 0x8000, 'uint16_t')
     peripheral.declare_config_variable('test 2', 0x8001, 'uint32_t[5]')
@@ -71,7 +72,7 @@ def basic_sg():
 def streaming_sg():
     """A preprogrammed basic sensorgraph for testing streaming."""
 
-    device = ReferenceDevice({})
+    device = ReferenceDevice({'simulate_time': False})
 
     adapter = EmulatedDeviceAdapter(None, devices=[device])
 
@@ -94,6 +95,33 @@ def streaming_sg():
 
         sensor_graph.add_streamer('output 1', 'controller', False, 'individual', 'telegram')
         sensor_graph.add_streamer('output 2', 'controller', False, 'hashedlist', 'telegram', withother=0)
+
+        yield sensor_graph, hw, device
+
+
+@pytest.fixture(scope="function")
+def rpc_sg():
+    """A basic sg for testing the rpc executor."""
+
+    device = DemoEmulatedDevice({'simulate_time': False})
+
+    adapter = EmulatedDeviceAdapter(None, devices=[device])
+
+    nodes = [
+        "(input 1 always) => unbuffered 1024 using copy_latest_a",
+        "(unbuffered 1024 when count == 1 && constant 1024 always) => output 1 using call_rpc"
+    ]
+
+    with HardwareManager(adapter=adapter) as hw:
+        hw.connect(1)
+
+        con = hw.get(8, basic=True)
+        sensor_graph = find_proxy_plugin('iotile_standard_library/lib_controller', 'SensorGraphPlugin')(con)
+
+        for node in nodes:
+            sensor_graph.add_node(node)
+
+        sensor_graph.push_reading('constant 1024', 753666)
 
         yield sensor_graph, hw, device
 
@@ -197,4 +225,25 @@ def test_streaming(streaming_sg):
 
     for i, reading in enumerate(readings):
         assert reading.value == 5 + i
-        assert reading.reading_id == 4 + i
+        assert reading.reading_id == 5 + i
+
+
+def test_rpc_engine(rpc_sg):
+    """Ensure that our rpc executor works.
+
+    This test sensorgraph calls an rpc that returns an incrementing counter on
+    each call.
+    """
+
+    sg, hw, _device = rpc_sg
+    sg.enable()
+
+    assert sg.count_readings()['streaming'] == 0
+
+    sg.input('input 1', 0)
+    assert sg.count_readings()['streaming'] == 1
+    sg.input('input 1', 0)
+    assert sg.count_readings()['streaming'] == 2
+
+    values = sg.download_stream('output 1')
+    assert [x.value for x in values] == [0, 1]

@@ -62,6 +62,7 @@ class UTCAssigner(object):
     """Helper class to assign UTC timestamps to device readings."""
 
     _Y2KReference = datetime.datetime(2000, 1, 1)
+    _EpochReference = datetime.datetime(1970, 1, 1)
 
     def __init__(self):
         self._anchor_points = SortedKeyList(key=lambda x: x.reading_id)
@@ -69,7 +70,8 @@ class UTCAssigner(object):
         self._break_streams = set()
 
         self._known_converters = {
-            'rtc': UTCAssigner.convert_rtc
+            'rtc': UTCAssigner._convert_rtc_anchor,
+            'epoch': UTCAssigner._convert_epoch_anchor
         }
 
     def _load_known_breaks(self):
@@ -96,6 +98,19 @@ class UTCAssigner(object):
         delta = datetime.timedelta(seconds=timestamp)
         return cls._Y2KReference + delta
 
+    @classmethod
+    def _convert_rtc_anchor(cls, reading):
+        """Convert a reading containing an RTC timestamp to datetime."""
+
+        return cls.convert_rtc(reading.value)
+
+    @classmethod
+    def _convert_epoch_anchor(cls, reading):
+        """Convert a reading containing an epoch timestamp to datetime."""
+
+        delta = datetime.timedelta(seconds=reading.value)
+        return cls._EpochReference + delta
+
     def add_point(self, reading_id, uptime=None, utc=None, is_break=False):
         """Add a time point that could be used as a UTC reference."""
 
@@ -105,7 +120,7 @@ class UTCAssigner(object):
         if uptime is None and utc is None:
             return
 
-        if uptime & (1 << 31):
+        if uptime is not None and uptime & (1 << 31):
             if utc is not None:
                 return
 

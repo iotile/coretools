@@ -107,7 +107,7 @@ Returns:
   - uint32_t: The current UTC or uptime.
 """
 
-GET_CURRENT_UPTIME = RPCDeclaration(0x1001, "", "L")
+GET_CURRENT_UPTIME = RPCDeclaration(0x100f, "", "L")
 """Get the current uptime of the device.
 
 This RPC will always return  the number of seconds since the device last reset

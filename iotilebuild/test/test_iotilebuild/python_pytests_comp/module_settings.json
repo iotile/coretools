@@ -1,0 +1,30 @@
+{
+	"module_name": "progtest",
+	
+	"module_targets": 
+	{
+		"progtest": ["none"]
+	},
+
+	"modules":
+	{
+		"progtest":
+		{
+			"version": "1.0.0",
+			
+			"depends": {},
+
+			"products": 
+			{
+				"python/arm_proxy.py": "proxy_module",
+				"python/lib_armtypes": "type_package",
+				"python/arm_app.py": "app_module"
+			}
+		}
+	},
+
+	"architectures":
+	{
+	
+	}
+}

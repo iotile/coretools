@@ -7,4 +7,5 @@
 # are copyright Arch Systems Inc.
 
 from .cmdstream import CMDStream
-from .websocketstream import WebSocketStream
+
+__all__ = ['CMDStream']

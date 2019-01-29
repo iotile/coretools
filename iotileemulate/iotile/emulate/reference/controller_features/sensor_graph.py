@@ -49,24 +49,22 @@ it to emulate how you interact with sensor-graph in a physical IOTile based
 device.
 
 TODO:
-  - [X] Add SG_QUERY_STREAMER
-  - [X] Add SG_TRIGGER_STREAMER
-  - [X] Add SG_SEEK_STREAMER
   - [ ] Add dump/restore support
-  - [ ] Add clock manager integration
-  - [X] Add stream manager integration
+  - [ ] Add support for logging information on reset
 """
 
 import logging
 import struct
-from future.utils import viewitems
+from future.utils import viewitems, raise_
 from iotile.core.hw.virtual import tile_rpc, RPCErrorCode
 from iotile.core.hw.reports import IOTileReading
-from iotile.sg import DataStream, DataStreamSelector, SensorGraph
+from iotile.core.exceptions import InternalError
+from iotile.sg import DataStream, SensorGraph
+from iotile.sg.sim.executor import RPCExecutor
 from iotile.sg.node_descriptor import parse_binary_descriptor, create_binary_descriptor
 from iotile.sg import streamer_descriptor
 from iotile.sg.exceptions import NodeConnectionError, ProcessingFunctionError, ResourceUsageError, UnresolvedIdentifierError, StreamEmptyError
-from ...constants import rpcs, pack_error, Error, ControllerSubsystem, streams, SensorGraphError, SensorLogError
+from ...constants import rpcs, pack_error, Error, ControllerSubsystem, SensorGraphError, SensorLogError
 
 def _pack_sgerror(short_code):
     """Pack a short error code with the sensorgraph subsystem."""
@@ -86,6 +84,25 @@ class StreamerStatus(object):
         self.comm_status = 0
 
 
+class EmulatedRPCExecutor(RPCExecutor):
+    def __init__(self, device):
+        super(EmulatedRPCExecutor, self).__init__()
+        self.device = device
+        self.logger = logging.getLogger(__name__)
+
+    def _call_rpc(self, address, rpc_id, payload):
+        self.logger.debug("Sending rpc from sensograph to %d:%04X", address, rpc_id)
+
+        retval, exc_info = self.device._rpc_queue.direct_dispatch((address, rpc_id, payload), None)
+        if exc_info is not None:
+            raise_(*exc_info)
+
+        if retval == self.device._rpc_queue.STILL_PENDING:
+            raise InternalError("Asynchronous RPCs called from sensor graph are not yet supported: %d:%04X" % (address, rpc_id))
+
+        return retval
+
+
 class SensorGraphSubsystem(object):
     """Container for sensor graph state.
 
@@ -95,7 +112,7 @@ class SensorGraphSubsystem(object):
     all accesses are properly synchronized.
     """
 
-    def __init__(self, sensor_log_system, stream_manager, model):
+    def __init__(self, sensor_log_system, stream_manager, model, executor=None):
         self._logger = logging.getLogger(__name__)
 
         self._model = model
@@ -105,6 +122,7 @@ class SensorGraphSubsystem(object):
 
         self._stream_manager = stream_manager
         self._rsl = sensor_log_system
+        self._executor = executor
 
         self.graph = SensorGraph(self._sensor_log, model=model, enforce_limits=True)
 
@@ -168,7 +186,7 @@ class SensorGraphSubsystem(object):
         stream = DataStream.FromEncoded(encoded_stream)
         reading = IOTileReading(self.get_timestamp(), encoded_stream, value)
 
-        self.graph.process_input(stream, reading, None)  #FIXME: add in an rpc executor for this device.
+        self.graph.process_input(stream, reading, self._executor)
 
         self.process_streamers()
 
@@ -385,12 +403,10 @@ class SensorGraphMixin(object):
         stream_man (StreamManager): The stream manager subsystem
         model (DeviceModel): A device model containing resource limits about the
             emulated device.
-        mutex (threading.Lock): A shared mutex from the sensor_log subsystem to
-            use to make sure we only access it from a single thread at a time.
     """
 
     def __init__(self, sensor_log, stream_manager, model):
-        self.sensor_graph = SensorGraphSubsystem(sensor_log, stream_manager, model)
+        self.sensor_graph = SensorGraphSubsystem(sensor_log, stream_manager, model, executor=EmulatedRPCExecutor(self._device))
         self._post_config_subsystems.append(self.sensor_graph)
 
     @tile_rpc(*rpcs.SG_COUNT_NODES)

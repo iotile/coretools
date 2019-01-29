@@ -8,7 +8,7 @@ import threading
 import time
 from iotile_transport_native_ble.tilebus import *
 from iotile.core.hw.reports import IOTileReportParser
-from tests.devices_factory import build_report_device, build_tracing_device, get_report_device_string, \
+from test.devices_factory import build_report_device, build_tracing_device, get_report_device_string, \
     get_tracing_device_string
 
 

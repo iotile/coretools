@@ -1,5 +1,6 @@
 """Tests of various utilities used in IOTileDevice emulation."""
 
+from __future__ import print_function
 import pytest
 from iotile.core.exceptions import DataError, ArgumentError
 from iotile.emulate.virtual.emulated_tile import parse_size_name, ConfigDescriptor
@@ -82,7 +83,7 @@ def test_unsupported_type():
     """Make sure we throw en error if we have an unknown python type."""
 
     with pytest.raises(ArgumentError):
-        desc = ConfigDescriptor(0x8000, 'uint8_t', default=b'\0', python_type="unsupported")
+        ConfigDescriptor(0x8000, 'uint8_t', default=b'\0', python_type="unsupported")
 
 
 @pytest.mark.parametrize("type_name, default_value, latched_value, python_type, expected_exc", [

@@ -139,8 +139,7 @@ RPC for CoreTools be able to identify its name and match it with a Proxy Module.
 
 Create a file named ``demo_device.py`` in your current working directory with the following contents::
 
-    """Virtual IOTile device for CoreTools Walkthrough
-    """
+    """Virtual IOTile device for CoreTools Walkthrough"""
 
     from iotile.core.hw.virtual.virtualdevice import VirtualIOTileDevice, rpc
 
@@ -157,8 +156,7 @@ Create a file named ``demo_device.py`` in your current working directory with th
 
         @rpc(8, 0x0004, "", "H6sBBBB")
         def controller_status(self):
-            """Return the name of the controller as a 6 byte string
-            """
+            """Return the name of the controller as a 6 byte string"""
 
             status = (1 << 1) | (1 << 0)  # Report configured and running
             return [0xFFFF, self.name, 1, 0, 0, status]
@@ -183,7 +181,7 @@ So, let's try to interact with our virtual device::
     (HardwareManager) controller
     HardwareError: Could not find proxy object for tile
     Additional Information:
-    known_names: ['Simple', 'NO APP']
+    known_names: ['Simple', 'NO APP', 'Rptdev']
     name: 'Demo01'
     (HardwareManager) quit
     $
@@ -193,7 +191,7 @@ We told the ``iotile`` tool that we wanted to connect to an IOTile device that w
 command but we were told that CoreTools couldn't find a proxy module for it.  
 
 This makes sense because we haven't created the proxy module yet.  So, lets create a basic proxy module and try again.  Add the
-following to ``demo_proxy.py``::
+following to ``demo_proxy.py`` (make sure this file is within the ``python`` subfolder)::
 
     from iotile.core.hw.proxy.proxy import TileBusProxyObject
     from iotile.core.utilities.typedargs.annotate import return_type, context, param
@@ -201,13 +199,11 @@ following to ``demo_proxy.py``::
 
     @context("DemoProxy")
     class DemoProxyObject(TileBusProxyObject):
-        """A demo proxy object for the CoreTools walkthrough
-        """
+        """A demo proxy object for the CoreTools walkthrough"""
 
         @classmethod
         def ModuleName(cls):
-            """The 6 byte name by which CoreTools matches us with an IOTile Device
-            """
+            """The 6 byte name by which CoreTools matches us with an IOTile Device"""
 
             return 'Demo01'
 
@@ -239,7 +235,15 @@ your demo_device.py DemoVirtualDevice class::
         return [273]
 
 This defines an RPC with id ``0x8000`` that returns a single 32-bit integer (the ``L`` result format) with the fixed value 273.  Now we 
-need to add a function to our proxy object that calls this RPC.  
+need to add a function to our proxy object that calls this RPC.
+
+.. note::
+    The rpc decorator, as described in the doc source above, is how we pack and unpack data types
+    through ``struct`` under the hood. You'll see this later, but there are several ways to communicate
+    more information, as long as you fit in 20 byte payloads.
+
+    For example, you can pack something with ``10s``, and you pass in a length 10 string.
+
 
 Add the following to your ``demo_proxy.py`` ``DemoProxyObject`` class::
     
@@ -256,8 +260,8 @@ Now let's call our new RPC::
 
     $ iotile hw --port=virtual:./demo_device.py connect 1 controller
     (DemoProxy) <TAB><TAB>
-    back             get_temperature  quit             status           tile_status
-    config_manager   help             reset            tile_name        tile_version
+    back              config_manager    hardware_version  quit              status            tile_status
+    check_hardware    get_temperature   help              reset             tile_name         tile_version
     (DemoProxy) get_temperature
     273.0
     (DemoProxy) quit
@@ -318,8 +322,7 @@ Up until now, we've only received information from RPCs, so lets create one that
 call `get_temperature`.  We'll need to create a member variable to store the temperature and a new RPC `set_temperature` that sets its value.  Adjust
 ``demo_device.py`` to look like this::
 
-    """Virtual IOTile device for CoreTools Walkthrough
-    """
+    """Virtual IOTile device for CoreTools Walkthrough"""
 
     from iotile.core.hw.virtual.virtualdevice import VirtualIOTileDevice, rpc
 
@@ -337,8 +340,7 @@ call `get_temperature`.  We'll need to create a member variable to store the tem
 
         @rpc(8, 0x0004, "", "H6sBBBB")
         def controller_status(self):
-            """Return the name of the controller as a 6 byte string
-            """
+            """Return the name of the controller as a 6 byte string"""
 
             status = (1 << 1) | (1 << 0)  # Report configured and running
             return [0xFFFF, self.name, 1, 0, 0, status]
@@ -355,8 +357,7 @@ call `get_temperature`.  We'll need to create a member variable to store the tem
 
         @rpc(8, 0x8002, "L")
         def set_temperature(self, new_temp):
-            """Set the current temperature of the device in degrees kelvin
-            """
+            """Set the current temperature of the device in degrees kelvin"""
 
             self.temp = new_temp
             return []
@@ -371,13 +372,12 @@ call `get_temperature`.  We'll need to create a member variable to store the tem
 
             return [273, 280, 215, 315, 300]
 
-Now add a new annotated RPC wrapper to ``DemoProxyObject``::
+Now add a new annotated RPC wrapper to ``DemoProxyObject`` in your ``demo_proxy.py`` file::
 
     @param("new_temp", "integer")
     def set_temperature(self, new_temp):
-        args = struct.pack("<L", new_temp)
 
-        self.rpc(0x80, 0x02, args)
+        self.rpc(0x80, 0x02, new_temp, arg_format="L", result_format="")
 
 .. important::
     
@@ -386,8 +386,32 @@ Now add a new annotated RPC wrapper to ``DemoProxyObject``::
     ``new_temp`` that is an integer.  That's all we need to say and ``typedargs`` takes care of interpreting our command line input into a native
     python integer and passing that to ``set_temperature``.
 
-Note that we need to explicitly pack our arguments into a binary structure using struct.pack.  In this case we're packing new_temp into a little-endian
-32 bit integer.
+Alternatively, you can pack your arguments with the newer rpc method, ``rpc_v2``::
+
+    @param("new_temp", "integer")
+    def set_temperature(self, new_temp):
+
+        self.rpc_v2(0x8002, "L", "", new_temp)
+
+Note that here, the rpc_id is combined in to one argument, and you are required to pass two arguments ahead
+of your input: the ``arg_format`` (in this case, ``L`` ), and the ``resp_format``, which in this case is blank.
+If you provide multiple inputs you would append an argument for each format type, for example::
+
+    self.rpc_v2(0x8888, "LLL", "", new_temp1, new_temp2, new_temp3)
+
+Additionally, you could use ``@docannotate`` instead of ``@returns`` to tell ``typedargs`` how to parse input::
+
+    @docannotate
+    def set_temperature(self, new_temp):
+    """Sets the temperature of the virtual device.
+
+    Args:
+        new_temp (int): New temperature
+    """
+        args = struct.pack("<L", new_temp)
+
+        self.rpc(0x80, 0x02, args)
+
 
 Let's try out our ``set_temperature`` and ``get_temperature`` functions::
 
@@ -411,4 +435,4 @@ core principles of IOTile is that everything we do should be as reusable as poss
 virtual device and show how you can access them over MQTT from anywhere in the world or over Bluetooth Low Energy without doing any additional work.
 
 You may already be able to think of what you would want to do with a virtual device running on your computer that would let you run a python function
-from anywhere in the world.
+from anywhere in the world. 

@@ -5,12 +5,43 @@ import argparse
 import sys
 import logging
 import json
-import imp
-import os.path
-import inspect
-import pkg_resources
-from future.utils import itervalues
+from typedargs.doc_parser import ParsedDocstring
+from iotile.core.dev import ComponentRegistry
+from iotile.core.exceptions import ArgumentError
 from iotile.core.hw.virtual import VirtualIOTileDevice, VirtualIOTileInterface
+
+
+def one_line_desc(obj):
+    """Get a one line description of a class."""
+
+    logger = logging.getLogger(__name__)
+
+    try:
+        doc = ParsedDocstring(obj.__doc__)
+        return doc.short_desc
+    except:  #pylint:disable=bare-except;We don't want a misbehaving exception to break the program
+        logger.warn("Could not parse docstring for %s", obj, exc_info=True)
+        return ""
+
+
+def configure_logging(verbose):
+    root = logging.getLogger()
+
+    if verbose > 0:
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter('%(asctime)s.%(msecs)03d %(levelname).3s %(name)s %(message)s',
+                                      '%y-%m-%d %H:%M:%S')
+        handler.setFormatter(formatter)
+        loglevels = [logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG]
+
+        if verbose >= len(loglevels):
+            verbose = len(loglevels) - 1
+
+        level = loglevels[verbose]
+        root.setLevel(level)
+        root.addHandler(handler)
+    else:
+        root.addHandler(logging.NullHandler())
 
 
 def main(argv=None):
@@ -21,6 +52,7 @@ def main(argv=None):
 
     list_parser = argparse.ArgumentParser(add_help=False)
     list_parser.add_argument('-l', '--list', action='store_true', help="List all known installed interfaces and devices and then exit")
+    list_parser.add_argument('-v', '--verbose', action="count", default=0, help="Increase logging level (goes error, warn, info, debug)")
 
     parser = argparse.ArgumentParser(description="Serve acess to a virtual IOTile device using a virtual IOTile interface")
 
@@ -32,22 +64,28 @@ def main(argv=None):
     parser.add_argument('-s', '--state', help="Load a given state into the device before starting to serve it.  Only works with emulated devices.")
     parser.add_argument('-d', '--dump', help="Dump the device's state when we exit the program.  Only works with emulated devices.")
     parser.add_argument('-t', '--track', help="Track all changes to the device's state.  Only works with emulated devices.")
+    parser.add_argument('-v', '--verbose', action="count", default=0, help="Increase logging level (goes error, warn, info, debug)")
 
     args, _rest = list_parser.parse_known_args(argv)
 
     if args.list:
-        #List out known virtual interfaces
+        configure_logging(args.verbose)
+
+        reg = ComponentRegistry()
         print("Installed Virtual Interfaces:")
-        for entry in pkg_resources.iter_entry_points('iotile.virtual_interface'):
-            print('- {}'.format(entry.name))
+        for name, _iface in reg.load_extensions('iotile.virtual_interface', class_filter=VirtualIOTileInterface):
+            print('- {}'.format(name))
 
         print("\nInstalled Virtual Devices:")
-        for entry in pkg_resources.iter_entry_points('iotile.virtual_device'):
-            print('- {}'.format(entry.name))
+        for name, dev in reg.load_extensions('iotile.virtual_device', class_filter=VirtualIOTileDevice,
+                                             product_name="virtual_device"):
+            print('- {}: {}'.format(name, one_line_desc(dev)))
 
         return 0
 
     args = parser.parse_args(argv)
+
+    configure_logging(args.verbose)
 
     config = {}
     iface = None
@@ -82,12 +120,6 @@ def main(argv=None):
             print("Tracking all state changes to device")
             device.state_history.enable()
 
-        handler = logging.StreamHandler()
-        handler.setFormatter(logging.Formatter('%(asctime)s [AUDIT %(event_name)s] %(message)s'))
-
-        iface.audit_logger.addHandler(handler)
-        iface.audit_logger.setLevel(logging.INFO)
-
         iface.start(device)
         started = True
 
@@ -103,64 +135,18 @@ def main(argv=None):
     except KeyboardInterrupt:
         print("Break received, cleanly exiting...")
     finally:
-        if iface is not None and started:
-            iface.stop()
-
         if args.dump is not None and device is not None:
             print("Dumping final device state to %s" % args.dump)
             device.save_state(args.dump)
+
+        if iface is not None and started:
+            iface.stop()
 
         if args.track is not None and device is not None:
             print("Saving state history to file %s" % args.track)
             device.state_history.dump(args.track)
 
     return 0
-
-
-def import_device_script(script_path):
-    """Import a virtual device from a file rather than an installed module
-
-    script_path must point to a python file ending in .py that contains exactly one
-    VirtualIOTileDevice class definitions.  That class is loaded and executed as if it
-    were installed.
-
-    Args:
-        script_path (string): The path to the script to load
-
-    Returns:
-        VirtualIOTileDevice: A subclass of VirtualIOTileDevice that was loaded from script_path
-    """
-
-    search_dir, filename = os.path.split(script_path)
-    if search_dir == '':
-        search_dir = './'
-
-    if filename == '' or not os.path.exists(script_path):
-        print("Could not find script to load virtual device, path was %s" % script_path)
-        sys.exit(1)
-
-    module_name, ext = os.path.splitext(filename)
-    if ext != '.py':
-        print("Script did not end with .py")
-        sys.exit(1)
-
-    try:
-        file = None
-        file, pathname, desc = imp.find_module(module_name, [search_dir])
-        mod = imp.load_module(module_name, file, pathname, desc)
-    finally:
-        if file is not None:
-            file.close()
-
-    devs = [x for x in itervalues(mod.__dict__) if inspect.isclass(x) and issubclass(x, VirtualIOTileDevice) and x != VirtualIOTileDevice]
-    if len(devs) == 0:
-        print("No VirtualIOTileDevice subclasses were defined in script")
-        sys.exit(1)
-    elif len(devs) > 1:
-        print("More than one VirtualIOTileDevice subclass was defined in script: %s" % str(devs))
-        sys.exit(1)
-
-    return devs[0]
 
 
 def instantiate_device(virtual_dev, config):
@@ -181,16 +167,20 @@ def instantiate_device(virtual_dev, config):
         conf = config['device']
 
     #If we're given a path to a script, try to load and use that rather than search for an installed module
-    if virtual_dev.endswith('.py'):
-        dev = import_device_script(virtual_dev)
-        return dev(conf)
+    try:
+        reg = ComponentRegistry()
 
-    for entry in pkg_resources.iter_entry_points('iotile.virtual_device', name=virtual_dev):
-        dev = entry.load()
-        return dev(conf)
+        if virtual_dev.endswith('.py'):
+            _name, dev = reg.load_extension(virtual_dev, class_filter=VirtualIOTileDevice, unique=True)
+        else:
+            _name, dev = reg.load_extensions('iotile.virtual_device', name_filter=virtual_dev,
+                                             class_filter=VirtualIOTileDevice,
+                                             product_name="virtual_device", unique=True)
 
-    print("Could not find an installed virtual device with the given name: {}".format(virtual_dev))
-    sys.exit(1)
+        return dev(conf)
+    except ArgumentError as err:
+        print("ERROR: Could not load virtual device (%s): %s" % (virtual_dev, err.msg))
+        sys.exit(1)
 
 
 def instantiate_interface(virtual_iface, config):
@@ -214,9 +204,15 @@ def instantiate_interface(virtual_iface, config):
     if 'interface' in config:
         conf = config['interface']
 
-    for entry in pkg_resources.iter_entry_points('iotile.virtual_interface', name=virtual_iface):
-        interface = entry.load()
-        return interface(conf)
+    try:
+        reg = ComponentRegistry()
+        if virtual_iface.endswith('.py'):
+            _name, iface = reg.load_extension(virtual_iface, class_filter=VirtualIOTileInterface, unique=True)
+        else:
+            _name, iface = reg.load_extensions('iotile.virtual_interface', name_filter=virtual_iface,
+                                               class_filter=VirtualIOTileInterface, unique=True)
 
-    print("Could not find an installed virtual interface with the given name: {}".format(virtual_iface))
-    sys.exit(1)
+        return iface(conf)
+    except ArgumentError as err:
+        print("ERROR: Could not load virtual interface (%s): %s" % (virtual_iface, err.msg))
+        sys.exit(1)

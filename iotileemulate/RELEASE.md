@@ -4,6 +4,49 @@ All major changes in each released version of iotile-emulate are listed here.
 
 ## HEAD
 
+- Add support for hardware version RPC on the controller.  The default
+  implementation returns the hardware string 'pythontile'
+
+- Add support for loading and sgf file or string directly using a test_scenario
+  registered on ReferenceController.  The sgf file is directly loaded into 
+  persistent storage as well as the config_database.  An embedded app_tag is
+  also set.
+
+- Fix deadlock_check to work on multiple threads (not just the one that
+  `__init__` was called on.).  Issue #638.
+
+- Add support for notifying sensorgraph when a streaming interface is opened/
+  closed.
+
+- Add support into ReferenceController for setting app/os tags and versions.
+
+- Improve SerializableState to allow for marking the object types of lists,
+  properties and dicts to enable them to be properly serialized and
+  deserialized without needing to explicitly call `mark_complex_type`.
+
+## 0.2.0
+
+- Add support for sending RPCs from the sensorgraph task in the reference 
+  controller. The sensorgraph implementation should now be complete enough
+  to run unmodified sensorgraphs including realtime data streaming.
+
+- Add support for simulating the passage of time.  Time simulation is on by
+  default for devices that inherit from ReferenceDevice and can be sped up
+  by passing an `"accelerate_time": true` key or stopped by passing a 
+  `"simulate_time": false` key.
+
+- Cleanup and slightly refactor reset code.  Improve reset behavior to be more
+  synchronous.
+
+- Add support for asynchronous RPCs. Update the DemoDevice to have an async rpc
+  implementation on the peripheral tile to test the async rpc implementation.
+
+- Update base classes for EmulatedDevice and EmulatedTile to not be 
+  importable via `ComponentRegistry.load_extensions()` so that they are not
+  imported multiple times when trying to import their subclasses.
+
+## 0.0.1
+
 - Add support for EmulatedDevice and EmulatedTile classes.  These classes allow
   for the creation of virtual devices that emulate physical devices with support
   for state snapshotting to save/load device state and test scenarios to allow

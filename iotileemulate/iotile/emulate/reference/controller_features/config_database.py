@@ -2,6 +2,7 @@
 
 import base64
 import struct
+from iotile.core.exceptions import ArgumentError, DataError
 from iotile.core.hw.virtual import tile_rpc
 from iotile.sg import SlotIdentifier
 from ...virtual import SerializableState
@@ -40,7 +41,7 @@ class ConfigEntry(object):
 
         return {
             'target': str(self.target),
-            'data': base64.b64encode(self.data),
+            'data': base64.b64encode(self.data).decode('utf-8'),
             'var_id': self.var_id,
             'valid': self.valid
         }
@@ -76,7 +77,6 @@ class ConfigEntry(object):
         valid = state.get('valid')
 
         return ConfigEntry(target, var_id, data, valid)
-
 
 
 class ConfigDatabase(SerializableState):
@@ -224,6 +224,34 @@ class ConfigDatabase(SerializableState):
 
         return rpc_list
 
+    def add_direct(self, target, var_id, var_type, data):
+        """Directly add a config variable.
+
+        This method is meant to be called from emulation scenarios that
+        want to directly set config database entries from python.
+
+        Args:
+            target (SlotIdentifer): The target slot for this config variable.
+            var_id (int): The config variable ID
+            var_type (str): The config variable type
+            data (bytes or int or str): The data that will be encoded according
+                to var_type.
+        """
+
+        data = struct.pack("<H", var_id) + _convert_to_bytes(var_type, data)
+
+        if self.data_size - self.data_index < len(data):
+            raise DataError("Not enough space for data in new conig entry", needed_space=len(data), actual_space=(self.data_size - self.data_index))
+
+        new_entry = ConfigEntry(target, var_id, data)
+
+        for entry in self.entries:
+            if entry.target == new_entry.target and entry.var_id == new_entry.var_id:
+                entry.valid = False
+
+        self.entries.append(new_entry)
+        self.data_index += new_entry.data_space()
+
 
 class ConfigDatabaseMixin(object):
     """Persistent data of config variables.
@@ -345,3 +373,24 @@ class ConfigDatabaseMixin(object):
         invalid_entries = sum(1 for x in self.config_database.entries if not x.valid)
 
         return [max_size, used_size, invalid_size, used_entries, invalid_entries, max_entries, 0]
+
+
+def _convert_to_bytes(type_name, value):
+    """Convert a typed value to a binary array"""
+
+    int_types = {'uint8_t': 'B', 'int8_t': 'b', 'uint16_t': 'H', 'int16_t': 'h', 'uint32_t': 'L', 'int32_t': 'l'}
+
+    type_name = type_name.lower()
+
+    if type_name not in int_types and type_name not in ['string', 'binary']:
+        raise ArgumentError('Type must be a known integer type, integer type array, string', known_integers=int_types.keys(), actual_type=type_name)
+
+    if type_name == 'string':
+        #value should be passed as a string
+        bytevalue = bytes(value)
+    elif type_name == 'binary':
+        bytevalue = bytes(value)
+    else:
+        bytevalue = struct.pack("<%s" % int_types[type_name], value)
+
+    return bytevalue

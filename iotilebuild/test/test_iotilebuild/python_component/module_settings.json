@@ -18,7 +18,9 @@
 			{
 				"python/arm_proxy.py": "proxy_module",
 				"python/lib_armtypes": "type_package",
-				"python/arm_app.py": "app_module"
+				"python/arm_app.py:TestApp": "app_module",
+				"python/vtile.py": "virtual_tile",
+				"python/vdev.py": "virtual_device"
 			}
 		}
 	},

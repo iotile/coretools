@@ -51,7 +51,7 @@ def build_program(tile, elfname, chip, patch=True):
     ##Specify the linker script
     ###We can find a linker script in one of two places, either in a dependency or in an explicit 'linker' property
     ###First check for a linker script in our dependencies
-    ldscripts = list(itertools.chain(*[x.linker_scripts() for x in prog_env['DEPENDENCIES']]))
+    ldscripts = list(itertools.chain(*[x.find_products('linker_script') for x in prog_env['DEPENDENCIES']]))
 
     # Make sure we don't have multiple linker scripts coming in from dependencies
     if len(ldscripts) > 1:
@@ -138,7 +138,7 @@ def build_library(tile, libname, chip):
 
     #Create header files for all tilebus config variables and commands that are defined in ourselves
     #or in our dependencies
-    tilebus_defs += tile.tilebus_definitions()
+    tilebus_defs += tile.find_products('tilebus_definitions')
     compile_tilebus(tilebus_defs, library_env, header_only=True)
 
     SConscript(os.path.join(dirs['build'], 'SConscript'), exports='library_env')
@@ -229,9 +229,9 @@ def setup_dependencies(tile, env):
     env.Depends(env['OUTPUT_PATH'], dep_nodes)
 
     ## Add in all include directories, library directories and libraries from dependencies
-    dep_incs = list(itertools.chain(*[x.include_directories() for x in env['DEPENDENCIES']]))
+    dep_incs = list(itertools.chain(*[x.find_products('include_directories') for x in env['DEPENDENCIES']]))
     lib_dirs = list(itertools.chain(*[x.library_directories() for x in env['DEPENDENCIES']]))
-    tilebus_defs = list(itertools.chain(*[x.tilebus_definitions() for x in env['DEPENDENCIES']]))
+    tilebus_defs = list(itertools.chain(*[x.find_products('tilebus_definitions') for x in env['DEPENDENCIES']]))
 
     env['CPPPATH'] += map(lambda x: '#' + x, dep_incs)
     env['LIBPATH'] += lib_dirs
@@ -239,7 +239,7 @@ def setup_dependencies(tile, env):
     #We need to add libraries in reverse dependency order so that gcc resolves symbols among the libraries
     #correctly
     lib_order = toposort_dependencies(env)
-    libs = [(x.name, x.libraries()) for x in env['DEPENDENCIES']]
+    libs = [(x.name, [x[3:] for x in x.find_products('library') if x.startswith('lib')]) for x in env['DEPENDENCIES']]
 
     libs.sort(key=lambda x: lib_order[x[0]], reverse=True)
 

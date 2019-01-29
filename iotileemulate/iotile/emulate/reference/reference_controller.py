@@ -2,11 +2,15 @@
 
 from __future__ import print_function, absolute_import, unicode_literals
 import logging
+from future.utils import viewitems
 from iotile.core.hw.virtual import tile_rpc, TileNotFoundError
+from iotile.core.hw.reports import IOTileReading
 from iotile.core.exceptions import ArgumentError
 from iotile.sg.model import DeviceModel
-from ..virtual import EmulatedTile
-from ..constants import rpcs
+from iotile.sg.parser import SensorGraphFileParser
+from iotile.sg.optimizer import SensorGraphOptimizer
+from ..virtual import EmulatedTile, synchronized
+from ..constants import rpcs, Error
 
 from .controller_features import (RawSensorLogMixin, RemoteBridgeMixin,
                                   TileManagerMixin, ConfigDatabaseMixin, SensorGraphMixin,
@@ -67,6 +71,8 @@ class ReferenceController(RawSensorLogMixin, RemoteBridgeMixin,
         self.app_info = (0, "0.0")
         self.os_info = (0, "0.0")
 
+        self.register_scenario('load_sgf', self.load_sgf)
+
     def _clear_to_reset_condition(self, deferred=False):
         """Clear all subsystems of this controller to their reset states.
 
@@ -99,6 +105,8 @@ class ReferenceController(RawSensorLogMixin, RemoteBridgeMixin,
             for system in self._post_config_subsystems:
                 system.clear_to_reset(config_assignments)
 
+            self._logger.info("Finished clearing controller to reset condition")
+
         if deferred:
             self._device.deferred_task(_post_config_setup)
         else:
@@ -116,15 +124,16 @@ class ReferenceController(RawSensorLogMixin, RemoteBridgeMixin,
         peripheral tiles on reset for a clean boot.
         """
 
+        self._logger.info("Resetting controller")
+        self._device.reset_count += 1
+
         super(ReferenceController, self)._handle_reset()
 
         self._clear_to_reset_condition(deferred=True)
-
-        self._logger.info("Controller tile has finished resetting itself and will now reset each tile")
-        self._device.reset_peripheral_tiles()
+        self._device.deferred_task(self._device.reset_peripheral_tiles)
 
     def start(self, channel=None):
-        """Start this conrtoller tile.
+        """Start this controller tile.
 
         This resets the controller to its reset state.
 
@@ -192,16 +201,110 @@ class ReferenceController(RawSensorLogMixin, RemoteBridgeMixin,
     def reset(self):
         """Reset the device."""
 
-        self._device.reset_count += 1
         self._handle_reset()
 
         raise TileNotFoundError("Controller tile was reset via an RPC")
+
+    @tile_rpc(*rpcs.HARDWARE_VERSION)
+    def hardware_version(self):
+        """Get a hardware identification string."""
+
+        hardware_string = self.hardware_string
+
+        if not isinstance(hardware_string, bytes):
+            hardware_string = self.hardware_string.encode('utf-8')
+
+        if len(hardware_string) > 10:
+            self._logger.warn("Truncating hardware string that was longer than 10 bytes: %s", self.hardware_string)
+
+        if len(hardware_string) < 10:
+            hardware_string += b'\0'*(10 - len(hardware_string))
+
+        return [hardware_string]
 
     @tile_rpc(0x1008, "", "L8xLL")
     def controller_info(self):
         """Get the controller UUID, app tag and os tag."""
 
         return [self._device.iotile_id, _pack_version(*self.os_info), _pack_version(*self.app_info)]
+
+    @tile_rpc(*rpcs.SET_OS_APP_TAG)
+    def set_app_os_tag(self, os_tag, app_tag, update_os, update_app):
+        """Update the app and/or os tags."""
+
+        update_os = bool(update_os)
+        update_app = bool(update_app)
+
+        if update_os:
+            self.os_info = _unpack_version(os_tag)
+
+        if update_app:
+            self.app_info = _unpack_version(app_tag)
+
+        return [Error.NO_ERROR]
+
+    @synchronized
+    def load_sgf(self, sgf_data):
+        """Load, persist a sensor_graph file.
+
+        The data passed in `sgf_data` can either be a path or the already
+        loaded sgf lines as a string.  It is determined to be sgf lines if
+        there is a '\n' character in the data, otherwise it is interpreted as
+        a path.
+
+        Note that this scenario just loads the sensor_graph directly into the
+        persisted sensor_graph inside the device.  You will still need to
+        reset the device for the sensor_graph to enabled and run.
+
+        Args:
+            sgf_data (str): Either the path to an sgf file or its contents
+                as a string.
+        """
+
+        if '\n' not in sgf_data:
+            with open(sgf_data, "r") as infile:
+                sgf_data = infile.read()
+
+        model = DeviceModel()
+
+        parser = SensorGraphFileParser()
+        parser.parse_file(data=sgf_data)
+
+        parser.compile(model)
+        opt = SensorGraphOptimizer()
+        opt.optimize(parser.sensor_graph, model=model)
+
+        sensor_graph = parser.sensor_graph
+        self._logger.info("Loading sensor_graph with %d nodes, %d streamers and %d configs",
+                          len(sensor_graph.nodes), len(sensor_graph.streamers), len(sensor_graph.config_database))
+
+        # Directly load the sensor_graph into our persisted storage
+        self.sensor_graph.persisted_nodes = sensor_graph.dump_nodes()
+        self.sensor_graph.persisted_streamers = sensor_graph.dump_streamers()
+
+        self.sensor_graph.persisted_constants = []
+        for stream, value in sorted(viewitems(sensor_graph.constant_database), key=lambda x: x[0].encode()):
+            reading = IOTileReading(stream.encode(), 0, value)
+            self.sensor_graph.persisted_constants.append((stream, reading))
+
+        self.sensor_graph.persisted_exists = True
+
+        # Clear all config variables and load in those from this sgf file
+        self.config_database.clear()
+
+        for slot in sorted(sensor_graph.config_database, key=lambda x: x.encode()):
+            for conf_var, (conf_type, conf_val) in sorted(viewitems(sensor_graph.config_database[slot])):
+                self.config_database.add_direct(slot, conf_var, conf_type, conf_val)
+
+        # If we have an app tag and version set program them in
+        app_tag = sensor_graph.metadata_database.get('app_tag')
+        app_version = sensor_graph.metadata_database.get('app_version')
+
+        if app_tag is not None:
+            if app_version is None:
+                app_version = "0.0"
+
+            self.app_info = (app_tag, app_version)
 
 
 def _pack_version(tag, version):
@@ -224,3 +327,32 @@ def _pack_version(tag, version):
     version_number = (major << 6) | minor
     combined_tag = (version_number << 20) | tag
     return combined_tag
+
+
+def _unpack_version(tag_data):
+    """Parse a packed version info struct into tag and major.minor version.
+
+    The tag and version are parsed out according to 20 bits for tag and
+    6 bits each for major and minor.  The more interesting part is the
+    blacklisting performed for tags that are known to be untrustworthy.
+
+    In particular, the following applies to tags.
+
+    - tags < 1024 are reserved for development and have only locally defined
+      meaning.  They are not for use in production.
+    - tags in [1024, 2048) are production tags but were used inconsistently
+      in the early days of Arch and hence cannot be trusted to correspond with
+      an actual device model.
+    - tags >= 2048 are reserved for supported production device variants.
+    - the tag and version 0 (0.0) is reserved for an unknown wildcard that
+      does not convey any information except that the tag and version are
+      not known.
+    """
+
+    tag = tag_data & ((1 << 20) - 1)
+
+    version_data = tag_data >> 20
+    major = (version_data >> 6) & ((1 << 6) - 1)
+    minor = (version_data >> 0) & ((1 << 6) - 1)
+
+    return (tag, "{}.{}".format(major, minor))

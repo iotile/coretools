@@ -2,11 +2,14 @@
 
 import base64
 import logging
+import threading
+import time
+from monotonic import monotonic
 from future.utils import viewitems
 from past.builtins import basestring
-from iotile.core.exceptions import ArgumentError, DataError, InternalError
+from iotile.core.exceptions import ArgumentError, DataError
 from ..virtual import EmulatedDevice, EmulatedPeripheralTile
-from ..constants import rpcs
+from ..constants import rpcs, RunLevel, streams
 from .reference_controller import ReferenceController
 
 
@@ -22,6 +25,8 @@ class ReferenceDevice(EmulatedDevice):
                 iotile_id (int or hex string): The id of this device. This
                 defaults to 1 if not specified.
     """
+
+    __NO_EXTENSION__ = True
 
     STATE_NAME = "reference_device"
     STATE_VERSION = "0.1.0"
@@ -39,6 +44,34 @@ class ReferenceDevice(EmulatedDevice):
         self.add_tile(8, self.controller)
         self.reset_count = 0
         self._logger = logging.getLogger(__name__)
+        self._time_thread = threading.Thread(target=self._time_ticker)
+        self._simulating_time = args.get('simulate_time', True)
+        self._accelerating_time = args.get('accelerate_time', False)
+
+    def _time_ticker(self):
+        # Make sure the rpc queue is up and running before calling wait_idle()
+        # that needs the deadlock checker set up
+        self._rpc_queue.flush()
+        self._deadlock_check.__dict__.setdefault('is_rpc_thread', False)
+
+        start = monotonic()
+        counter = 0
+        while self._simulating_time:
+            self.deferred_task(self.controller.clock_manager.handle_tick)
+            self.wait_idle()
+
+            counter += 1
+            next_tick = start + counter
+            if not self._accelerating_time:
+                now = monotonic()
+
+                while now < next_tick:
+                    if not self._simulating_time:
+                        return
+
+                    step = min(next_tick - now, 0.1)
+                    time.sleep(step)
+                    now = monotonic()
 
     def start(self, channel=None):
         """Start this emulated device.
@@ -77,13 +110,55 @@ class ReferenceDevice(EmulatedDevice):
                 continue
 
             # Check and make sure that if the tile should start that it has started
-            if tile.run_level != 2:
+            if tile.run_level != RunLevel.SAFE_MODE:
                 tile.wait_started(timeout=2.0)
 
         self.wait_idle()
 
+        if self._simulating_time:
+            self._time_thread.start()
+
+    def stop(self):
+        """Stop this emulated device."""
+
+        self._simulating_time = False
+
+        if self._time_thread.is_alive():
+            self._time_thread.join()
+
+        super(ReferenceDevice, self).stop()
+
+    def open_streaming_interface(self):
+        """Called when someone opens a streaming interface to the device.
+
+        This method will automatically notify sensor_graph that there is a
+        streaming interface opened.
+
+        Returns:
+            list: A list of IOTileReport objects that should be sent out
+                the streaming interface.
+        """
+
+        super(ReferenceDevice, self).open_streaming_interface()
+
+        self.deferred_rpc(8, rpcs.SG_GRAPH_INPUT, 8, streams.COMM_TILE_OPEN)
+        return []
+
+    def close_streaming_interface(self):
+        """Called when someone closes the streaming interface to the device.
+
+        This method will automatically notify sensor_graph that there is a no
+        longer a streaming interface opened.
+        """
+
+        super(ReferenceDevice, self).close_streaming_interface()
+
+        self.deferred_rpc(8, rpcs.SG_GRAPH_INPUT, 8, streams.COMM_TILE_CLOSED)
+
     def reset_peripheral_tiles(self):
         """Reset all peripheral tiles (asynchronously)."""
+
+        self._logger.info("Resetting all peripheral tiles")
 
         for address in sorted(self._tiles):
             if address == 8:
@@ -111,7 +186,7 @@ class ReferenceDevice(EmulatedDevice):
             state['state_name'] = self.STATE_NAME
             state['state_version'] = self.STATE_VERSION
             state['reset_count'] = self.reset_count
-            state['received_script'] = base64.b64encode(self.script)
+            state['received_script'] = base64.b64encode(self.script).decode('utf-8')
 
             shared[0] = state
 
@@ -130,6 +205,7 @@ class ReferenceDevice(EmulatedDevice):
         consistent atomic restoration process.
 
         This method will block while the background restore happens.
+
         Args:
             state (dict): A previously dumped state produced by dump_state.
         """

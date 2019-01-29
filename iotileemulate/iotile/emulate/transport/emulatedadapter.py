@@ -22,7 +22,7 @@ class EmulatedDeviceAdapter(VirtualDeviceAdapter):
     Args:
         port (string): A port description that should be in the form of
             device_name1@<optional_config_json1;device_name2@optional_config_json2
-        devices (list of EmulatedDevice): Optional list of specif, precreated emulated
+        devices (list of EmulatedDevice): Optional list of specific, precreated emulated
             devices that should be added to the device adapter.
     """
 
@@ -110,3 +110,22 @@ class EmulatedDeviceAdapter(VirtualDeviceAdapter):
         """
 
         callback(conn_id, self.id, True, None)
+
+    def periodic_callback(self):
+        """Periodic callback task.
+
+        This task is called periodically when this device adapter is attached
+        to an iotile-gateway and called at specific points in time when it
+        is attached to an AdapterStream.
+
+        The primary task that we need to do for emulated devices is to call
+        wait_idle() to make sure that they finish any pending background work.
+
+        This is particularly useful for ensuring that reset RPCs happen
+        synchronously without needing a delay.
+        """
+
+        super(EmulatedDeviceAdapter, self).periodic_callback()
+
+        for dev in itervalues(self.devices):
+            dev.wait_idle()

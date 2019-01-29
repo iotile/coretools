@@ -2,19 +2,19 @@
 # A wrapper to make the IOTile component registry accessible in the iotile
 # tool.  Since the registry is used internally in the type system it cannot
 # itself make use of typedargs annotations
-from iotile.core.utilities.typedargs import annotated, param, return_type, context, iprint
+from iotile.core.utilities.typedargs import annotated, param, return_type, context
+from iotile.core.exceptions import ExternalError
+from .registry import ComponentRegistry
 
 _name_ = "Developer"
 
-#Outside accessible API for this package
-from .registry import ComponentRegistry
 
 @annotated
 def registry():
     return AnnotatedRegistry()
 
 @context()
-class AnnotatedRegistry:
+class AnnotatedRegistry(object):
     """
     AnnotatedRegistry
 
@@ -94,3 +94,26 @@ class AnnotatedRegistry:
     @return_type("string")
     def clear(self, key):
         self.reg.clear_config(key)
+
+    @annotated
+    def freeze(self):
+        """Freeze the current list of extensions to a single file.
+
+        This speeds up the extension loading process but does not check for
+        new extensions each time the program is run. You should only use this
+        method in situations where you know the extension list is static
+        and you need the speedup benefits.
+
+        You can undo this by calling unfreeze().
+        """
+
+        self.reg.freeze_extensions()
+
+    @annotated
+    def unfreeze(self):
+        """Remove any frozen extension list."""
+
+        try:
+            self.reg.unfreeze_extensions()
+        except ExternalError:
+            pass  # This means there was no frozen list of extensions

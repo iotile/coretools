@@ -2,6 +2,68 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## 3.26.2
+
+- Fix compatibility issue when searching for proxy plugins that should be
+  filtered by component name.
+
+## 3.26.1
+- Update rpc_v2 mechanism to support "V" as a valid packing mechanism
+
+## 3.26.0
+
+- Support freezing the current list of extensions into a single file that is
+  stored with the virtual environment, speeding up small program invocations
+  by removing the necessity to enumerate all installed packages.
+
+- Make log messages from virtual_device script less chatty by removing audit 
+  log messages by default.
+
+- Remove nuisance log warning when loading extensions by name (Issue #637) 
+
+- Fix problem loading `module_settings.json` files for components that had been
+  built before on python 3.  (Issue #636)
+
+- Adds support for complex python support wheels in ComponentRegistry.  
+  Submodules inside the support package are now imported correctly so that
+  relative imports among the modules work.
+
+## 3.25.0
+
+- Add support for a `__NO_EXTENSION__` flag in classes so that
+  ComponentRegistry.load_extensions will ignore them.
+
+- Add support for temporarily registering components without committing them to
+  the persistent key-value store.
+
+- Fix `iotile-updateinfo` to work without a -v flag.
+
+## 3.24.4
+
+- Consolidate entry point related code into ComponentRegistry with a single
+  implementation of extension finding and importing.  Remove now redundant
+  reimplementations of the same code.
+
+- Fix support for STILL_PENDING flag in WorkQueueThread
+
+- Update AsynchronousRPCResponse exception to not need an `__init__` argument.
+
+- Fix verbosity argument for using virtual_device logging flag.
+
+## 3.24.3
+
+- Fix UTCAssigner to properly handle anchor streams and add support for decoding
+  both RTC (y2k based) and epoch based timestamps.
+
+## 3.24.2
+
+- Add a better exception when the return value received from an RPC does not
+  match the format that we expect.  
+
+- Add a workaround for a controller firmware bug so that CommandNotFound 
+  exceptions are properly raised when an RPC does not exist on the controller
+  tile.
+
 ## 3.24.1
 
 - Add 'show_rpcs' command line option to the iotile-updateinfo script to allow

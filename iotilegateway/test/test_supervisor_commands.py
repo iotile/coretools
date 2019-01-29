@@ -1,8 +1,9 @@
 """Tests to make sure IOTileSupervisor and RPC dispatching work."""
 
-import pytest
 import struct
 import json
+import pytest
+from iotile.core.dev import ComponentRegistry
 from iotile.core.hw.virtual import RPCDispatcher, tile_rpc
 from iotile.core.hw.hwmanager import HardwareManager
 from iotile.core.hw.proxy.proxy import TileBusProxyObject
@@ -123,6 +124,9 @@ def linked_tile(rpc_agent, tmpdir):
 
     config_path = str(config_path_obj)
 
+    reg = ComponentRegistry()
+    reg.register_extension('iotile.proxy', 'test_proxy', BasicRPCDispatcherProxy)
+
     # This will create a HardwareManager pointed at a virtual tile based device
     # where the tiles that are added to the virtual device are found using the config
     # file specified after the @ symbol.
@@ -136,7 +140,7 @@ def linked_tile(rpc_agent, tmpdir):
     yield hw
 
     hw.disconnect()
-
+    reg.clear_extensions('iotile.proxy')
 
 def test_service_delegate_tile(linked_tile):
     """Make sure our service delegate tile works correctly."""
@@ -151,7 +155,6 @@ def test_service_delegate_tile(linked_tile):
     #    Additional Information:
     #     - known_names: ['Simple', 'NO APP']
     #     - name: 'bsctst'
-    HardwareManager.RegisterDevelopmentProxy(BasicRPCDispatcherProxy)
 
     # When we call get(address) the HardwareManager will ask the tile at that address,
     # in this case the ServiceDelegateTile what it's 6 character name is.  It will

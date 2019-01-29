@@ -1,0 +1,49 @@
+{
+    "file_format": "v2",
+    "module_name": "tile_1",
+
+    "targets": ["nrf52832"],
+    "module_version": "3.7.9",
+
+    "products":
+    {
+        "libcontroller_nrf52832.a": "library",
+        "link.ld": "linker_script",
+        "controller_nrf52832.elf": "firmware_image",
+        "python/proxy.py": "proxy_module",
+        "python/app.py": "app_module",
+        "python/buildstep.py:MyStep": "build_step",
+        "python/sensorgraph.py": "proxy_plugin",
+        "python/configmanager.py": "proxy_plugin",
+        "python/controllertest.py": "proxy_plugin",
+        "python/tilemanager.py": "proxy_plugin",
+        "python/remotebridge.py": "proxy_plugin",
+        "python/lib_controller_types": "type_package",
+        "tilebus_definitions":
+        [
+            ["test_interface", "test_interface.bus"],
+            ["tilebus", "tb_fabric.bus"],
+            ["tile_manager", "tile_manager.bus"],
+            ["tile_manager", "config_vars.bus"],
+            ["sensor_graph", "sensor_graph.bus"],
+            ["remote_bridge", "remote_bridge.bus"],
+            ["clock_manager", "clock_manager.bus"],
+            "version/version.bus"
+        ],
+        "include_directories":
+        [
+            "tilebus",
+            ["stream_manager", "include"],
+            ["clock_manager"],
+            ["external_components"],
+            ["state_manager"],
+            ["tile_manager"],
+            ["modules"],
+            ["sensor_graph"],
+            ["state_manager"],
+            ["remote_bridge"],
+            ["version"],
+            ["."]
+        ]
+    }
+}

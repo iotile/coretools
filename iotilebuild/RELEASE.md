@@ -2,9 +2,20 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
-## 2.6.18
+## HEAD
 
-- Reorder TRUB script build to apply the sensorgraph BEFORE applying the firmware updates
+- Add support for complex python support wheels where there is an actual 
+  python package present in `python/support`.  Makes sure that the 
+  python package contents are properly copied into the output support wheel.
+
+- Refactor to remove all references to `pkg_resources`.  Uses centralized 
+  entrypoint loading system from iotile.core instead.
+
+## 2.7.0
+
+- Add support for running pytest unit tests as part of the build process.
+- Refactor python support wheel building process to accommodate additional
+  python products and increase test coverage of the wheel generation process.
 
 ## 2.6.17
 
@@ -12,9 +23,10 @@ All major changes in each released version of IOTileBuild are listed here.
 
 ## 2.6.16
 
-- Update TRUB script autobuilder to add a 'use_safemode' option. If this option is set to True in a 
-build_update_script() call or an autobuild_trub_script call, then the firmware load records in the TRUB script will be
-sandwiched between SendRPCRecords enabling and then disabling safemode.
+- Update TRUB script autobuilder to add a 'use_safemode' option. If this option
+  is set to True in a build_update_script() call or an autobuild_trub_script
+  call, then the firmware load records in the TRUB script will be sandwiched
+  between SendRPCRecords enabling and then disabling safemode.
 
 ## 2.6.15
 

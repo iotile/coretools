@@ -8,22 +8,22 @@
 
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
-from builtins import str, input
-from future.utils import viewitems
 import sys
 import os
 import threading
 import traceback
 import argparse
 import logging
+from builtins import input
+from future.utils import viewitems
 
 from typedargs.shell import HierarchicalShell
 from typedargs import type_system
-from iotile.core.exceptions import IOTileException, APIError
+from iotile.core.exceptions import IOTileException
 from iotile.core.dev.registry import ComponentRegistry
 import iotile.core.hw.transport.cmdstream as cmdstream
 
-DESCRIPTION= \
+DESCRIPTION = \
 """Create an interactive shell that explores the IOTile API.
 
 This tool allows you to run commands that are defined in either CoreTools, or
@@ -270,3 +270,7 @@ def main(argv=None):
     if timeout_thread is not None:
         timeout_stop_event.set()
         timeout_thread.join()
+
+
+if __name__ == '__main__':
+    sys.exit(main())

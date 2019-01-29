@@ -15,7 +15,7 @@ from iotile.emulate.transport import EmulatedDeviceAdapter
 def reference():
     """Get a reference device with a controller and single peripheral tile."""
 
-    device = ReferenceDevice({})
+    device = ReferenceDevice({'simulate_time': False})
     peripheral = EmulatedPeripheralTile(10, b'abcdef', device)
     device.add_tile(10, peripheral)
 
@@ -28,7 +28,7 @@ def reference():
 def reference_hw():
     """Get a reference device and connected HardwareManager."""
 
-    device = ReferenceDevice({})
+    device = ReferenceDevice({'simulate_time': False})
     peripheral = EmulatedPeripheralTile(11, b'abcdef', device)
     peripheral.declare_config_variable("test 1", 0x8000, 'uint16_t')
     peripheral.declare_config_variable('test 2', 0x8001, 'uint32_t[5]')
@@ -46,7 +46,7 @@ def reference_hw():
 def test_basic_usage():
     """Make sure we can import and use the objects."""
 
-    with HardwareManager(port='emulated:reference_1_0') as hw:
+    with HardwareManager(port='emulated:reference_1_0@#eyJzaW11bGF0ZV90aW1lIjogZmFsc2V9') as hw:
         hw.connect(1)
         debug = hw.debug()
 
@@ -58,7 +58,7 @@ def test_peripheral_tiles():
     """Make sure the controller tile properly brings up the peripheral tiles in a controlled manner."""
 
     # Don't use the fixture since the purpose of this test is to make sure the fixture works
-    device = ReferenceDevice({})
+    device = ReferenceDevice({'simulate_time': False})
     peripheral = EmulatedPeripheralTile(10, b'abcdef', device)
     device.add_tile(10, peripheral)
 

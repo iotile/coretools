@@ -1,6 +1,4 @@
-import os
-from pkg_resources import resource_filename, Requirement
-from iotile.build.utilities import render_template
+from iotile.build.utilities import render_template, resource_path
 
 
 def generate_doxygen_file(output_path, iotile):
@@ -25,4 +23,5 @@ def generate_doxygen_file(output_path, iotile):
 
 def doxygen_source_path():
     """Return the absolute path to the doxygen template for dependency linking."""
-    return os.path.abspath(os.path.join(resource_filename(Requirement.parse("iotile-build"), "iotile/build/config"), 'templates', 'doxygen.txt.tpl'))
+
+    return resource_path('templates/doxygen.txt.tpl')

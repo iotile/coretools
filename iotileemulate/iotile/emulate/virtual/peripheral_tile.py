@@ -10,7 +10,7 @@ from ..constants import rpcs
 class EmulatedPeripheralTile(EmulatedTile):
     """Base class for all emulated non-controller tiles.
 
-    Non-controller (also called peripheral tiles) wait to start until they are
+    Non-controller (also called peripheral) tiles wait to start until they are
     signaled to do so from a controller tile.  They also expect configuration
     information to be streamed to them in the form of config variables by the
     controller before it calls the start_application RPC that causes the
@@ -26,6 +26,8 @@ class EmulatedPeripheralTile(EmulatedTile):
         device (TileBasedVirtualDevice): Device on which this tile is running.
             This parameter is not optional on EmulatedTiles.
     """
+
+    __NO_EXTENSION__ = True
 
     def __init__(self, address, name, device):
         EmulatedTile.__init__(self, address, name, device)

@@ -1,6 +1,7 @@
 """Configuration information for iotile-ext-cloud."""
 
 import getpass
+import sys
 
 from iotile.core.dev.registry import ComponentRegistry
 from iotile.cloud.cloud import IOTileCloud
@@ -42,10 +43,20 @@ def link_cloud(self, username=None, password=None, device_id=None):
     domain = self.get('cloud:server')
 
     if username is None:
-        username = input("Please enter your iotile.cloud username: ")
+        # Both python 2 and 3 require native strings to be passed into getpass
+        prompt_str = "Please enter your IOTile.cloud email: "
+        if sys.version_info.major < 3:
+            prompt_str = prompt_str.encode('utf-8')
+
+        username = input(prompt_str)
 
     if password is None:
-        password = getpass.getpass('Please enter the iotile.cloud password for %s: ' % username)
+        # Both python 2 and 3 require native strings to be passed into getpass
+        prompt_str = "Please enter your IOTile.cloud password: "
+        if sys.version_info.major < 3:
+            prompt_str = prompt_str.encode('utf-8')
+
+        password = getpass.getpass(prompt_str)
 
     cloud = Api(domain=domain)
     ok_resp = cloud.login(email=username, password=password)

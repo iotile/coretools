@@ -8,6 +8,7 @@
 # Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
+from __future__ import print_function
 import os.path
 import os
 import shutil
@@ -15,11 +16,12 @@ import subprocess
 import sys
 import pytest
 import distutils.core
+from zipfile import ZipFile
+from configparser import ConfigParser
 from distutils.spawn import find_executable
-from iotile.core.dev.registry import ComponentRegistry
+from iotile.core.dev import ComponentRegistry, IOTile
 from iotile.core.utilities.intelhex import IntelHex
 from iotile.core.exceptions import *
-
 
 
 def copy_folder(local_name, tmpdir):
@@ -32,6 +34,26 @@ def copy_folder(local_name, tmpdir):
     shutil.copytree(path, outpath)
 
     return outpath
+
+
+def list_wheel(wheel_path):
+    """List all files inside of a wheel."""
+
+    with ZipFile(wheel_path, mode="r") as wheel:
+        files = wheel.namelist()
+        return files
+
+
+def extract_entrypoints(wheel_path, file_name):
+    """Extract the entry points from a wheel."""
+
+    with ZipFile(wheel_path, mode="r") as wheel:
+        entry_points_file = wheel.read(file_name).decode('utf-8')
+
+    parser = ConfigParser()
+    parser.read_string(entry_points_file)
+
+    return {section: [" = ".join(x) for x in parser.items(section)] for section in parser.sections()}
 
 
 def test_iotiletool():
@@ -70,7 +92,7 @@ def test_build_nodepends(tmpdir):
 
     try:
         os.chdir(builddir)
-        err = subprocess.check_call(["iotile", "build"])
+        err = subprocess.call(["iotile", "build"])
         assert err == 0
     finally:
         os.chdir(olddir)
@@ -119,7 +141,7 @@ def test_build_wheel_compatible(tmpdir):
         w = open(wheel_to_copy, 'w')
         w.write("this was a triumph")
         w.close()
-        err = subprocess.check_call(["iotile", "build"])
+        err = subprocess.call(["iotile", "build"])
         assert err == 0
     finally:
         os.chdir(olddir)
@@ -163,7 +185,7 @@ def test_build_wheel_universal_valid(tmpdir):
         w = open(wheel_to_copy, 'w')
         w.write("this was a triumph")
         w.close()
-        err = subprocess.check_call(["iotile", "build"])
+        err = subprocess.call(["iotile", "build"])
         assert err == 0
 
     finally:
@@ -178,7 +200,7 @@ def test_build_with_python_depends(tmpdir):
 
     try:
         os.chdir(builddir)
-        err = subprocess.check_call(["iotile", "build"])
+        err = subprocess.call(["iotile", "build"])
         assert err == 0
     finally:
         os.chdir(olddir)
@@ -192,22 +214,58 @@ def test_build_arm(tmpdir):
 
     try:
         os.chdir(builddir)
-        err = subprocess.check_call(["iotile", "build"])
+        err = subprocess.call(["iotile", "build"])
         assert err == 0
     finally:
         os.chdir(olddir)
 
 
 def test_build_python(tmpdir):
-    """Make sure we can build a component with a full python distribution."""
+    """Make sure we can build a component with a full python distribution.
+
+    This unit test also extensively checks the contents of the python
+    support distribution wheel associated with the build to entry that
+    all files are appropriately included and the right entry points
+    are setup.
+    """
 
     olddir = os.getcwd()
     builddir = copy_folder('python_component', tmpdir)
+    tile = IOTile(builddir)
 
     try:
         os.chdir(builddir)
-        err = subprocess.check_call(["iotile", "build"])
+        err = subprocess.call(["iotile", "build"])
         assert err == 0
+
+        # Make sure the wheel got created correctly
+        assert tile.has_wheel
+        wheel_path = os.path.join(builddir, 'build', 'output', 'python', tile.support_wheel)
+
+        assert os.path.isfile(wheel_path)
+        files = list_wheel(wheel_path)
+
+        dist_files = [x for x in files if x.startswith("{}/".format(tile.support_distribution))]
+        assert sorted(dist_files) == [
+            "iotile_support_progtest_1/__init__.py",
+            "iotile_support_progtest_1/arm_app.py",
+            "iotile_support_progtest_1/arm_proxy.py",
+            "iotile_support_progtest_1/lib_armtypes/__init__.py",
+            "iotile_support_progtest_1/lib_armtypes/file1.py",
+            "iotile_support_progtest_1/vdev.py",
+            "iotile_support_progtest_1/vtile.py"
+        ]
+
+        entry_points = extract_entrypoints(wheel_path, "iotile_support_progtest_1-1.0.0.dist-info/entry_points.txt")
+
+        assert entry_points == {
+            'iotile.app': ['arm_app = iotile_support_progtest_1.arm_app:TestApp'],
+            'iotile.proxy': ['arm_proxy = iotile_support_progtest_1.arm_proxy'],
+            'iotile.type_package': ['lib_armtypes = iotile_support_progtest_1.lib_armtypes'],
+            'iotile.virtual_device': ['vdev = iotile_support_progtest_1.vdev'],
+            'iotile.virtual_tile': ['vtile = iotile_support_progtest_1.vtile']
+        }
+
     finally:
         os.chdir(olddir)
 
@@ -251,7 +309,7 @@ def test_build_prerelease(tmpdir):
 
     try:
         os.chdir(builddir)
-        err = subprocess.check_call(["iotile", "build"])
+        err = subprocess.call(["iotile", "build"])
         assert err == 0
     finally:
         os.chdir(olddir)
@@ -266,7 +324,7 @@ def test_unit_testing(tmpdir):
 
     try:
         os.chdir(builddir)
-        err = subprocess.check_call(["iotile", "build", "build/test"])
+        err = subprocess.call(["iotile", "build", "build/test"])
         assert err == 0
     finally:
         os.chdir(olddir)
@@ -280,18 +338,33 @@ def test_bootstrap_file(tmpdir):
     try:
         os.chdir(builddir)
 
-        print(os.listdir(os.path.join('build', 'output', builddir)))
-
         hexdata = IntelHex(os.path.join('build', 'output', 'test1.hex'))
         assert hexdata.segments() == [(0x10001014, 0x10001018)]
 
         assert not os.path.isfile(os.path.join('build', 'output', 'test2.hex'))
 
-        err = subprocess.check_call(["iotile", "build"])
+        err = subprocess.call(["iotile", "build"])
         assert err == 0
 
         hexdata = IntelHex(os.path.join('build', 'output', 'test_final.hex'))
         hexdata_dup = IntelHex(os.path.join('build', 'output', 'test_final_dup.hex'))
         assert hexdata.segments() == hexdata_dup.segments()
+    finally:
+        os.chdir(olddir)
+
+
+def test_pytest(tmpdir):
+    """Make sure we can run pytest unit tests."""
+
+    olddir = os.getcwd()
+    builddir = copy_folder('python_pytests_comp', tmpdir)
+
+    try:
+        os.chdir(builddir)
+
+        err = subprocess.call(["iotile", "build"])
+        assert err == 0
+
+        assert os.path.exists(os.path.join('build', 'test', 'output', 'pytest.log'))
     finally:
         os.chdir(olddir)

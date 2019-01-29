@@ -5,11 +5,12 @@ from __future__ import unicode_literals, absolute_import, print_function
 import struct
 import base64
 import logging
+from decorator import decorate
 from past.builtins import basestring
 from future.utils import viewitems, viewvalues
-from iotile.core.exceptions import ArgumentError, DataError
+from iotile.core.exceptions import ArgumentError, DataError, InternalError
 from iotile.core.hw.virtual import VirtualTile
-from iotile.core.hw.virtual import tile_rpc
+from iotile.core.hw.virtual import tile_rpc, TileNotFoundError
 from .emulated_device import EmulatedDevice
 from .emulation_mixin import EmulationMixin
 from ..constants import rpcs, Error
@@ -196,6 +197,9 @@ class EmulatedTile(EmulationMixin, VirtualTile):
         device (TileBasedVirtualDevice): Device on which this tile is running.
             This parameter is not optional on EmulatedTiles.
     """
+
+    __NO_EXTENSION__ = True
+
     hardware_type = 0
     """The hardware type is a single uint8_t that can be used to record the chip architecture used."""
 
@@ -210,6 +214,8 @@ class EmulatedTile(EmulationMixin, VirtualTile):
 
     app_started = None
     """Default implementation of tiles does not have a separate phase before application code runs."""
+
+    hardware_string = b'pythontile'
 
     def __init__(self, address, name, device):
         if not isinstance(device, EmulatedDevice):
@@ -289,7 +295,6 @@ class EmulatedTile(EmulationMixin, VirtualTile):
 
         return {desc.name: desc.latch() for desc in viewvalues(self._config_variables)}
 
-
     def dump_state(self):
         """Dump the current state of this emulated tile as a dictionary.
 
@@ -301,7 +306,7 @@ class EmulatedTile(EmulationMixin, VirtualTile):
         """
 
         return {
-            "config_variables": {x: base64.b64encode(y.current_value) for x, y in viewitems(self._config_variables)},
+            "config_variables": {x: base64.b64encode(y.current_value).decode('utf-8') for x, y in viewitems(self._config_variables)},
         }
 
     def restore_state(self, state):
@@ -338,6 +343,7 @@ class EmulatedTile(EmulationMixin, VirtualTile):
         """Reset this tile."""
 
         self._handle_reset()
+        raise TileNotFoundError("tile was reset via an RPC")
 
     @tile_rpc(*rpcs.LIST_CONFIG_VARIABLES)
     def list_config_variables(self, offset):
@@ -427,3 +433,25 @@ def parse_size_name(type_name):
     total_size = base_size*count
 
     return total_size, base_size, matched_type, variable
+
+
+def synchronized(func):
+    """Decorator that marks a function as running in the emulation thread.
+
+    This method can only be called on a method defined on an EmulatedDevice
+    subclass.  It checks if the method is being called in the RPC thread
+    and if so runs it directly, otherwise, it dispatches the method to the
+    RPC thread and blocks the current thread until it finishes.
+
+    If the tile has not yet started execution so there is no running
+    background rpc thread, then the method is executed directly as well on the
+    calling thread.
+    """
+
+    def _check_and_dispatch(func, self, *args, **kwargs):
+        if not isinstance(self, EmulatedTile):
+            raise InternalError("You may only use the synchronized method on an EmulatedTile method")
+
+        return self._device.synchronize_task(func, self, *args, **kwargs)
+
+    return decorate(func, _check_and_dispatch)

@@ -6,7 +6,6 @@
 # Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
-from pkg_resources import resource_filename, Requirement
 from typedargs.exceptions import ArgumentError
 from iotile.build.utilities import render_template
 
