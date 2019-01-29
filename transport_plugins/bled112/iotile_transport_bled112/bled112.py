@@ -593,6 +593,7 @@ class BLED112Adapter(DeviceAdapter):
                 'broadcast_toggle': broadcast_toggle,
                 'timestamp': timestamp,
                 'battery': battery / 32.0,
+                'last_seen': datetime.datetime.now(),
                 'advertising_version':2}
 
         self._trigger_callback('on_scan', self.id, info, self.ExpirationTime)
@@ -655,6 +656,7 @@ class BLED112Adapter(DeviceAdapter):
                     'low_voltage': bool(flags & (1 << 1)),
                     'user_connected': bool(flags & (1 << 2)),
                     'signal_strength': rssi,
+                    'last_seen': datetime.datetime.now(),
                     'advertising_version': 1}
 
             if self._active_scan:
