@@ -2,6 +2,10 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## 3.26.3
+
+- Enable rpc_v2 for TileBusProxyPlugins
+
 ## 3.26.2
 
 - Fix compatibility issue when searching for proxy plugins that should be

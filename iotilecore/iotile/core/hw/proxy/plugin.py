@@ -14,3 +14,6 @@ class TileBusProxyPlugin(object):
 
     def rpc(self, feature, cmd, *args, **kw):
         return self._proxy.rpc(feature, cmd, *args, **kw)
+
+    def rpc_v2(self, cmd, arg_format, result_format, *args, **kwargs):
+        return self._proxy.rpc_v2(cmd, arg_format, result_format, *args, **kwargs)

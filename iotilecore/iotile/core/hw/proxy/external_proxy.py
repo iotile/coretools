@@ -10,7 +10,7 @@ from .plugin import TileBusProxyPlugin
 
 
 def find_proxy_plugin(component, plugin_name):
-    """ Attempt to find a proxy plugin provided by a specifc component
+    """ Attempt to find a proxy plugin provided by a specific component
 
     Args:
         component (string): The name of the component that provides the plugin
