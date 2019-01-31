@@ -161,7 +161,7 @@ Save this script as ``example.py`` and let's run it::
     python example.py
     Tile Version: (1, 0, 0)
 
-Clearly, this code find creates and hardware manager and finds the version number. The manager is instantiated in the with-as statement. The following 3 lines connect, gain control, and find the version respectively. 
+Clearly, this code creates a hardware manager and finds the version number. The manager is instantiated in the with-as statement. The following 3 lines connect, gain control, and find the version respectively. 
 
 Note how every command in the script mapped to a single line in ``iotile`` and
 how the arguments you passed were the same.  There is always a 1:1 mapping like
