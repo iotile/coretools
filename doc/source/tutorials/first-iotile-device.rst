@@ -399,7 +399,7 @@ If you provide multiple inputs you would append an argument for each format type
 
     self.rpc_v2(0x8888, "LLL", "", new_temp1, new_temp2, new_temp3)
 
-Additionally, you could use ``@docannotate`` instead of ``@returns`` to tell ``typedargs`` how to parse input::
+Additionally, you could use ``@docannotate`` instead of ``@param`` to tell ``typedargs`` how to parse input::
 
     @docannotate
     def set_temperature(self, new_temp):
