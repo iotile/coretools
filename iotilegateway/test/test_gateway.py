@@ -43,7 +43,7 @@ def running_gateway():
         'adapters': [
             {
                 "name": "virtual",
-                "port": "realtime_test@#" + enc
+                "port": "realtime_test@#" + enc + ";simple"
             }
         ]
     }
@@ -66,8 +66,8 @@ def test_broadcast(running_gateway):
     hw, _gateway = running_gateway
 
     results = hw.scan()
-    assert len(results) == 1
-    assert results[0]['uuid'] == 10
+    assert len(results) == 2
+    assert sorted(x['uuid'] for x in results) == [1, 10]
 
     hw.enable_broadcasting()
     reports = hw.wait_broadcast_reports(2)
@@ -84,10 +84,6 @@ def test_streaming(running_gateway):
 
     hw, _gateway = running_gateway
 
-    results = hw.scan()
-    assert len(results) == 1
-    assert results[0]['uuid'] == 10
-
     hw.connect(10)
 
     try:
@@ -99,3 +95,12 @@ def test_streaming(running_gateway):
     assert len(reports) == 10
     for report in reports:
         assert not isinstance(report, BroadcastReport)
+
+
+def test_rpc(running_gateway):
+    """Test to make sure we can call an RPC through our ws connection."""
+
+    hw, _gateway = running_gateway
+
+    hw.connect(1)
+    hw.controller()

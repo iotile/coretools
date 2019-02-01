@@ -153,11 +153,11 @@ class WebSocketStream(CMDStream):
         self._broadcast_queue = Queue()
         return self._broadcast_queue
 
-    def _send_rpc(self, address, feature, cmd, payload, **kwargs):
+    def _send_rpc(self, address, rpc_id, payload, **kwargs):
         args = {}
         args['rpc_address'] = address
-        args['rpc_feature'] = feature
-        args['rpc_command'] = cmd
+        args['rpc_feature'] = rpc_id >> 8
+        args['rpc_command'] = rpc_id & 0xFF
         args['rpc_payload'] = str(payload)
 
         timeout = 3.0
