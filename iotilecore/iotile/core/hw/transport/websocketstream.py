@@ -158,7 +158,7 @@ class WebSocketStream(CMDStream):
         args['rpc_address'] = address
         args['rpc_feature'] = rpc_id >> 8
         args['rpc_command'] = rpc_id & 0xFF
-        args['rpc_payload'] = str(payload)
+        args['rpc_payload'] = bytes(payload)
 
         timeout = 3.0
         if 'timeout' in kwargs:
