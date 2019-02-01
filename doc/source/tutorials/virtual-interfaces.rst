@@ -58,7 +58,7 @@ we directly embedded the virtual device inside of a `HardwareManager` object.
 
 However, that's not the only way that a VirtualDevice can be used.  In a more
 general sense, `HardwareManager` loads plugins called `DeviceAdapters` that
-tell is how to find and communicate with IOTile Devices.  In past tutorials,
+tell us how to find and communicate with IOTile Devices.  In past tutorials,
 we've implicitly been using a `VirtualDeviceAdapter` plugin that lets
 HardwareManager talk directly to a VirtualDevice object running in the same
 process as the HardwareManager.
