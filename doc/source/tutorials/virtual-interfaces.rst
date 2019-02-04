@@ -152,7 +152,7 @@ Let's see what the realtime_test device does.
 .. autoclass:: RealtimeTestDevice
 
 Basically, this is just a configurable device that can simulate realtime
-streaming data.  Note that it takes a dictionary of parameters names `args`.
+streaming data.  Note that it takes a dictionary of parameters named `args`.
 When using the `virtual_device` script, you can set these parameters by passing
 a json config file using a `--config` flag on the command line.
 
