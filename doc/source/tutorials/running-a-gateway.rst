@@ -57,7 +57,7 @@ DeviceAdapters and GatewayAgents together.  This program is called
 **iotile-gateway** and is installed as a script when you `pip install` the
 iotile-gateway package in CoreTools.
 
-The heavy lifting is done by an asynchronous event loop managed the
+The heavy lifting is done by an asynchronous event loop managed by the
 **DeviceManager** class.
 
 .. py:module:: iotilegateway.device
