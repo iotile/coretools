@@ -19,8 +19,8 @@ data and receiving RPC commands, we can make a generic gateway program that
 translates requests from any supported protocol into any other supported
 protocol.
 
-This program, and the python objects behind it is called `iotile-gateway` and
-provided by the iotile-gateway package in CoreTools.
+This program, and the python objects behind it, is called `iotile-gateway` and
+is provided by the iotile-gateway package in CoreTools.
 
 Goals
 #####
