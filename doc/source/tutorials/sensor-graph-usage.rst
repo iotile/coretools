@@ -62,7 +62,7 @@ a `-d` parameter and then simulate the sensor graph as normal.  The simulator
 will connect to the device using the supplied information and run all RPCs 
 on the device.  
 
-For example, save the following sensor graph a `test.sgf`::
+For example, save the following sensor graph as `test.sgf`::
 
 	every 10 seconds
 	{

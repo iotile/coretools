@@ -84,7 +84,7 @@ usage is::
 
     trigger streamer <index>;
 
-where <index> the index of the streamer you want to trigger, i.e. the first
+where <index> is the index of the streamer you want to trigger, i.e. the first
 streamer defined is index 0, the second is index 1, etc.  Trigger statements
 are used to trigger manual streamer that don't try to automatically send
 data whenever it is available.
@@ -149,7 +149,7 @@ The second on block triggers when a comparison betwen the number of readings
 in a stream and a constant reference value is true.
 
 The third on block triggers when the specific named event happens.  Currently
-the major named events a `connect` and `disconnect` which are defined only
+the major named events are `connect` and `disconnect` which are defined only
 inside of a `when connected` block.
 
 The possible comparison operations are: `<, <=, ==, >, >=`.
@@ -160,7 +160,7 @@ The When Block
 ##############
 
 When blocks let you conditionally trigger statements to happen only when a
-user is connected to a device.  They can contains on blocks and every blocks,
+user is connected to a device.  They can contain on blocks and every blocks,
 which can in turn contain statements::
 
     when connected to <slot id>

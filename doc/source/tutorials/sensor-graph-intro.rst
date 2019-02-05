@@ -169,8 +169,8 @@ Let's start with a complete simple sensor graph that just calls an RPC every
         call 0x8000 on slot 1 => output 1;
     }
 
-Basically we're asking the device t call the RPC with id `0x8000` on the tile
-located in slot once every 10 minutes and to store the output in a stream named
+Basically we're asking the device to call the RPC with id `0x8000` on the tile
+located in slot 1 once every 10 minutes and to store the output in a stream named
 `output 1`.  Save this file as **simple.sgf** and then you can simulate it
 in the sensor graph simulator named `iotile-sgrun` that is installed by the
 `iotile-sensorgraph` package::
@@ -226,7 +226,7 @@ returns 15 rather than 0::
 
     **How to use semihosting will be covered in the next tutorial.**
 
-The syntax for mocking an RPC straightforward::
+The syntax for mocking an RPC is straightforward::
 
     -m "<slot id>:<rpc number> = <value>"
 
@@ -286,13 +286,13 @@ on block to turn off the AC as well!)
     value of the RPC so we didn't give it an explicit name.
 
     Internally, the sensor graph compiler automatically allocated an unused
-    stream for this value that we'll see in the next tutorial how this turns
-    into the actual rules that could be programmed into .
+    stream for this value and we'll see in the next tutorial how this turns
+    into the actual rules that could be programmed.
 
 Adding Realtime Data Outputs
 ############################
 
-Most IOTile devices don't have screens.  However, users can walk up them with
+Most IOTile devices don't have screens.  However, users can walk up to them with
 their phones and access their virtual screen over Bluetooth Low Energy.
 
 When a user is standing next to an IOTile device, they probably don't want to
@@ -304,7 +304,7 @@ block as in the example below::
 
     every 10 minutes
     {
-            call 0x8000 on slot 1 => unbuffered 1;
+        call 0x8000 on slot 1 => unbuffered 1;
     }
 
     when connected to controller
@@ -375,7 +375,7 @@ Selecting Data to Stream
 In the beginning of this tutorial, we laid out three jobs for a SensorGraph:
 
 1. Configuring tiles
-2. Wiring together RPCS into an application
+2. Wiring together RPCs into an application
 3. Selecting data to send remotely
 
 We've focused on step 2 so far.  Step 1 will be addressed in the next tutorial
@@ -390,13 +390,13 @@ two kinds of data produced by an IOTile device, there are also two kinds of
 streamers: realtime and historical.
 
 Realtime streamers report the latest value in a stream without worrying about
-robustness packaging it or retrying the transmission if its not successful
+robustness, packaging it, or retrying the transmission if its not successful
 because it's expected that they can just send an updated value when its
 available.
 
 Historical (or Robust) streamers take much more care in signing and optionally
 encrypting the data before sending it and keeping track of exactly which readings
-have been acknowledged as successful received by the cloud so that no data can
+have been acknowledged as successfully received by the cloud so that no data can
 be lost.  Historical data is resent until it is successfully received.
 
 The syntax for specifying streamers is straightforward.  You just specify
@@ -409,7 +409,7 @@ The manual keyword will be covered in the next tutorial but it gives the user
 more flexibility in when the streamer tries to send data.  By default streamers
 are "automatic", which means they try to send data whenever it is available.
 
-You choose whether it data is realtime or historical by specifying the
+You choose whether data is realtime or historical by specifying the
 keywords `realtime` or `signed` and finally you choose what data to send by
 specify a **Stream Selector**.  This can be just the name of a stream or it can
 be a wildcard like **all outputs**.
@@ -419,7 +419,7 @@ Here are a few examples::
     manual signed streamer on all outputs;
     realtime streamer on unbuffered 10;
 
-These two streamer say that we would like to report realtime data whenever it
+These two streamers say that we would like to report realtime data whenever it
 is available on the `unbuffered 10` stream and we would also like to send
 all `output` streams as historical data that will be triggered manually.
 
