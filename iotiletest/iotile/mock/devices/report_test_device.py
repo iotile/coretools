@@ -2,7 +2,11 @@
 """
 
 from builtins import range, str
-from past.builtins import basestring
+
+import sys
+if sys.version_info >= (3,0):
+    basestring = str
+
 from iotile.core.hw.virtual.virtualdevice import VirtualIOTileDevice, rpc
 from iotile.core.exceptions import ArgumentError
 from iotile.core.hw.reports import IndividualReadingReport, IOTileReading, SignedListReport
