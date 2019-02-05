@@ -159,7 +159,7 @@ complete sensor graph in a simulator so we can see how everything works.
 
 In this tutorial, we're going to write sensor graphs by example without diving
 too much into the mechanics behind it.  A later tutorial will go deeper into
-how everything works behinds the scenes.
+how everything works behind the scenes.
 
 Let's start with a complete simple sensor graph that just calls an RPC every
 10 minutes::
