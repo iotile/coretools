@@ -157,7 +157,7 @@ complete sensor graph in a simulator so we can see how everything works.
 
         pip install -U iotile-sensorgraph
 
-In this tutorial, we're going to write sensors graphs by example without diving
+In this tutorial, we're going to write sensor graphs by example without diving
 too much into the mechanics behind it.  A later tutorial will go deeper into
 how everything works behinds the scenes.
 
