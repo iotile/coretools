@@ -2,6 +2,11 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## 3.26.5
+
+- Remove past.builtins dependency
+
+
 ## 3.26.4
 
 - Fix regression sending an RPC over websockets v1 streams.

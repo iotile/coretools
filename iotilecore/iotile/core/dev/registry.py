@@ -10,8 +10,8 @@ import json
 from types import ModuleType
 from future.utils import itervalues
 
-if sys.version_info >= (3, 0, 0):
-    from past.builtins import basestring
+if sys.version_info >= (3, 0):
+    basestring = str
 
 import entrypoints
 
