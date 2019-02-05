@@ -117,7 +117,7 @@ overwritten when new data comes in.
 
 Only the user knows what data should be buffered vs unbuffered so part of
 designing a SensorGraph is specifying how to treat each data stream that
-is generated should be stored.
+is generated.
 
 Key Concepts
 ############
