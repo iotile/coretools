@@ -2,7 +2,9 @@
 """
 
 from builtins import range
-from past.builtins import basestring
+import sys
+if sys.version_info >= (3,0):
+    basestring = str
 import binascii
 from iotile.core.hw.virtual.virtualdevice import VirtualIOTileDevice, rpc
 

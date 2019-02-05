@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 0.11.1
+
+- Remove `past.builtins`
+
+
 ## 0.11.0
 
 - Remove `emulation_test` device since `iotile-emulate` includes built-in
