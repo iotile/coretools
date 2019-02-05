@@ -124,7 +124,7 @@ Key Concepts
 
 Tile Configuration
     A series of variable assignments that are performed on an IOTile module in
-    order to prepare it for operation.  These configurations can things like
+    order to prepare it for operation.  These configurations can do things like
     set what units it reports data in or selecting what sensor is plugged into
     a tile that can work with many different kinds of sensors.
 
