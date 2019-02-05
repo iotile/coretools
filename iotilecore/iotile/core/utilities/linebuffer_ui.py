@@ -39,8 +39,8 @@ from collections import namedtuple
 import time
 import sys
 from future.utils import viewvalues
-if sys.version_info >= (3, 0, 0):
-    from past.builtins import basestring
+if sys.version_info >= (3, 0):
+    basestring = str
 
 from iotile.core.exceptions import ExternalError
 

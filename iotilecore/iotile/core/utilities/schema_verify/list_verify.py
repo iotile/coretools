@@ -1,4 +1,6 @@
-from past.builtins import basestring
+import sys
+if sys.version_info >= (3, 0):
+    basestring = str
 from .verifier import Verifier
 from iotile.core.exceptions import ValidationError
 
