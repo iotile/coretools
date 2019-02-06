@@ -74,7 +74,7 @@ The result is an instance of the HardwareManager class, which is itself a **cont
 so processing of the command line continues.  The next portion of the command line
 is ``connect_direct 1``, which is a method defined in HardwareManager.  Since 1
 was a positional argument on the command line, it is passed as positional argument
-to ``connect_direct.
+to ``connect_direct``.
 
 .. py:module:: iotile.core.hw.hwmanager
 
@@ -82,7 +82,7 @@ to ``connect_direct.
     :members: connect_direct, controller
 
 ``connect_direct`` does not return a context so the context for executing commands
-remains the HardwareManager instance.  The next chunk of the command line is
+remains in the HardwareManager instance.  The next chunk of the command line is
 ``controller``, which is another method of HardwareManager so that method is called
 and it returns a TileBusProxyObject that is a context.  Finally the ``quit``
 command is built-in to the ``iotile`` tool and quits.
@@ -115,9 +115,9 @@ Type Conversions
 Since ``iotile`` commands call the same python functions that you would invoke
 directly from a python script, there needs to be some mapping between the strings
 that you pass on the command line and the native python types that the API functions
-accept as parameters.  This mapping and conversion is the done by the ``typedargs`` 
+accept as parameters.  This mapping and conversion is then done by the ``typedargs`` 
 package that is part of ``iotile-core``.  See :ref:`typedargs-reference` for more
-details.  It requires that functions that you would like to call from ``iotile``
+details.  It requires that functions you would like to call from ``iotile``
 be *annotated* with type information for their parameters and return value so
 that ``typedargs`` can appropriately convert the types to and from strings.
 
@@ -223,8 +223,8 @@ iotile.device_adapter
     mechanism such as USB, BLE, http, etc.  See :ref:`adapters`.
 
 iotile.virtual_interface
-    Classes the provide access to a virtual IOTile device (i.e. one that does not
-    actually exist as real hardware over some kind of transport mechanism.  You 
+    Classes that provide access to a virtual IOTile device (i.e. one that does not
+    actually exist as real hardware) over some kind of transport mechanism.  You 
     can think of virtual interfaces as the server portion of connecting to an
     IOTile device, whereas device adapters are the client portion.  For example,
     using a BLE virtual interface, you could turn a regular computer into an IOTile
@@ -232,7 +232,7 @@ iotile.virtual_interface
 
 iotile.report_format
     Classes that provide methods for IOTile devices to package and send data to
-    the cloud.  These are packet formats for packing, signing and potentially
+    the cloud.  These are packet formats for packing, signing, and potentially
     encrypting data from an IOTile device.  See :ref:`report_formats`.
 
 iotile.auth_provider
