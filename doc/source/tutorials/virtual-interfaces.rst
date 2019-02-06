@@ -194,6 +194,13 @@ Now, start running your virtual device using::
 
         pip install --upgrade iotile-test
 
+.. note::
+    To run a virtual device that hasn't been installed, simply replace the 
+    installed device name with the path to your virtual device. For example,
+    to run our "demo_streamer" device you might use::
+
+        (iotile) > virtual_device bled112 ./demo_streamer.py
+
 Now your computer is advertising itself as an IOTile Device over bluetooth.
 Either using a second computer or using a different terminal on the same
 computer, we're going to connect to the device over bluetooth::
