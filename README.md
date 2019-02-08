@@ -10,6 +10,7 @@
 - [Installing Support for IOTile Based Devices](#installing-support-for-iotile-based-devices)
 - [Continuous Deployment](#continuous-deployment)
 - [Manually Releasing](#manually-releasing)
+- [Contributing](#Contributing)
 - [License](#license)
 
 <!-- /MarkdownTOC -->
@@ -160,6 +161,11 @@ PYPI_USER
 PYPI_PASS
 SLACK_WEB_HOOK
 ```
+
+### Contributing
+
+If you are interesting in contributing to CoreTools, please see the [Contributing](CONTRIBUTING.md) guide!
+
 
 ### License
 
