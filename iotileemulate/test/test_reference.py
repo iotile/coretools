@@ -16,7 +16,7 @@ def reference():
     """Get a reference device with a controller and single peripheral tile."""
 
     device = ReferenceDevice({'simulate_time': False})
-    peripheral = EmulatedPeripheralTile(10, b'abcdef', device)
+    peripheral = EmulatedPeripheralTile(10, device)
     device.add_tile(10, peripheral)
 
     device.start()
@@ -29,7 +29,7 @@ def reference_hw():
     """Get a reference device and connected HardwareManager."""
 
     device = ReferenceDevice({'simulate_time': False})
-    peripheral = EmulatedPeripheralTile(11, b'abcdef', device)
+    peripheral = EmulatedPeripheralTile(11, device)
     peripheral.declare_config_variable("test 1", 0x8000, 'uint16_t')
     peripheral.declare_config_variable('test 2', 0x8001, 'uint32_t[5]')
 
@@ -59,7 +59,7 @@ def test_peripheral_tiles():
 
     # Don't use the fixture since the purpose of this test is to make sure the fixture works
     device = ReferenceDevice({'simulate_time': False})
-    peripheral = EmulatedPeripheralTile(10, b'abcdef', device)
+    peripheral = EmulatedPeripheralTile(10, device)
     device.add_tile(10, peripheral)
 
     device.start()
@@ -104,7 +104,7 @@ def test_config_variable_rpcs(reference):
     assert packed_size == (1 << 15) | (5*4)
 
     # Test setting (make sure to artificially force pre-app started state)
-    peripheral._app_started.clear()
+    peripheral.initialized.clear()
     err, = device.rpc(10, rpcs.SET_CONFIG_VARIABLE, 0x8000, 0, bytes(bytearray([5, 6])))
     assert err == 0
 
@@ -117,7 +117,7 @@ def test_config_variable_rpcs(reference):
     err, = device.rpc(10, rpcs.SET_CONFIG_VARIABLE, 0x8002, 0, bytes(bytearray([7, 8])))
     assert err == Error.INVALID_ARRAY_KEY
 
-    peripheral._app_started.set()
+    peripheral.initialized.set()
     err, = device.rpc(10, rpcs.SET_CONFIG_VARIABLE, 0x8000, 0, bytes(bytearray([5, 6])))
     assert err == Error.STATE_CHANGE_AT_INVALID_TIME
 
@@ -225,10 +225,10 @@ def test_tile_manager(reference_hw):
     # Work around inconsistency in output of iotile-support-lib-controller-3 on python 2 and 3
     if sys.version_info.major < 3:
         con_str = 'refcn1, version 1.0.0 at slot 0'
-        peri_str = 'abcdef, version 1.0.0 at slot 1'
+        peri_str = 'noname, version 1.0.0 at slot 1'
     else:
         con_str = "b'refcn1', version 1.0.0 at slot 0"
-        peri_str = "b'abcdef', version 1.0.0 at slot 1"
+        peri_str = "b'noname', version 1.0.0 at slot 1"
 
     hw, _device, _peripheral = reference_hw
 

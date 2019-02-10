@@ -12,23 +12,26 @@ to the correct state.
 """
 
 import struct
-from builtins import range
+import logging
 from iotile.core.hw.virtual import tile_rpc
 from iotile.core.hw.reports import IOTileReading
 from iotile.sg import SensorLog, DataStream, DataStreamSelector
 from iotile.sg.engine import InMemoryStorageEngine
 from iotile.sg.exceptions import StorageFullError, StreamEmptyError, UnresolvedIdentifierError
 from ...constants import rpcs, pack_error, Error, ControllerSubsystem, SensorLogError, streams
+from .controller_system import ControllerSubsystemBase
 
-
-class SensorLogSubsystem(object):
+class SensorLogSubsystem(ControllerSubsystemBase):
     """Container for raw sensor log state."""
 
-    def __init__(self, model):
+    def __init__(self, emulator, model):
+        super(SensorLogSubsystem, self).__init__(emulator)
+
         self.engine = InMemoryStorageEngine(model=model)
         self.storage = SensorLog(self.engine, model=model, id_assigner=lambda x, y: self.allocate_id())
         self.dump_walker = None
         self.next_id = 1
+        self._logger = logging.getLogger(__name__)
 
     def dump(self):
         """Serialize the state of this subsystem into a dict.
@@ -101,13 +104,18 @@ class SensorLogSubsystem(object):
     def clear_to_reset(self, config_vars):
         """Clear all volatile information across a reset."""
 
+        self._logger.info("Config vars in sensor log reset: %s", config_vars)
+        super(SensorLogSubsystem, self).clear_to_reset(config_vars)
+
         self.storage.destroy_all_walkers()
         self.dump_walker = None
 
         if config_vars.get('storage_fillstop', False):
+            self._logger.debug("Marking storage log fill/stop")
             self.storage.set_rollover('storage', False)
 
         if config_vars.get('streaming_fillstop', False):
+            self._logger.debug("Marking streaming log fill/stop")
             self.storage.set_rollover('streaming', False)
 
     def count(self):
@@ -265,8 +273,8 @@ class RawSensorLogMixin(object):
     """
 
 
-    def __init__(self, model):
-        self.sensor_log = SensorLogSubsystem(model)
+    def __init__(self, emulator, model):
+        self.sensor_log = SensorLogSubsystem(emulator, model)
         self._post_config_subsystems.append(self.sensor_log)
 
         # Declare all of our config variables

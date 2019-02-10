@@ -1,16 +1,12 @@
 """Base class for virtual tiles designed to emulate physical tiles."""
 
-from __future__ import unicode_literals, absolute_import, print_function
-
 import struct
 import base64
 import logging
-from decorator import decorate
-from past.builtins import basestring
-from future.utils import viewitems, viewvalues
 from iotile.core.exceptions import ArgumentError, DataError, InternalError
-from iotile.core.hw.virtual import VirtualTile
-from iotile.core.hw.virtual import tile_rpc, TileNotFoundError
+from iotile.core.hw.virtual import VirtualTile, tile_rpc, TileNotFoundError
+from iotile.core.hw.virtual.common_types import RPCDispatcher
+from ..internal import async_tile_rpc
 from .emulated_device import EmulatedDevice
 from .emulation_mixin import EmulationMixin
 from ..constants import rpcs, Error
@@ -71,7 +67,7 @@ class ConfigDescriptor(object):
         if default is None:
             return None
 
-        if isinstance(default, basestring) and not isinstance(default, bytes):
+        if isinstance(default, str):
             if self.special_type == 'string':
                 return default.encode('utf-8') + b'\0'
 
@@ -177,7 +173,7 @@ class ConfigDescriptor(object):
 
 
 #pylint:disable=abstract-method;This is an abstract base class
-class EmulatedTile(EmulationMixin, VirtualTile):
+class EmulatedTile(EmulationMixin, RPCDispatcher):
     """Base class for virtual tiles designed to emulate physical tiles.
 
     This class adds additional state and test scenario loading functionality
@@ -186,14 +182,11 @@ class EmulatedTile(EmulationMixin, VirtualTile):
 
     There is a small set of behavior that all tiles must implement which is
     implemented in this class including a base set of RPCs for setting
-    config variables and getting the tile's name (inherited from VirtualTile).
+    config variables and getting the tile's name.
 
     Args:
         address (int): The address of this tile in the VirtualIOTIleDevice
             that contains it
-        name (str): The 6 character name that should be returned when this
-            tile is asked for its status to allow matching it with a proxy
-            object.
         device (TileBasedVirtualDevice): Device on which this tile is running.
             This parameter is not optional on EmulatedTiles.
     """
@@ -216,17 +209,23 @@ class EmulatedTile(EmulationMixin, VirtualTile):
     """Default implementation of tiles does not have a separate phase before application code runs."""
 
     hardware_string = b'pythontile'
+    """A 10 bytes identifier for the hardware that the tile is running on."""
 
-    def __init__(self, address, name, device):
+    name = b'noname'
+    """A 6-byte identifier for the application firmware running on the tile."""
+
+    def __init__(self, address, device):
         if not isinstance(device, EmulatedDevice):
             raise ArgumentError("You can only add an EmulatedTile to an EmulatedDevice", device=device)
 
-        VirtualTile.__init__(self, address, name, device)
+        RPCDispatcher.__init__(self)
         EmulationMixin.__init__(self, address, device.state_history)
 
         self._config_variables = {}
         self._device = device
         self._logger = logging.getLogger(__name__)
+        self.address = address
+        self.initialized = device.emulator.create_event(register=True)
 
     def declare_config_variable(self, name, config_id, type_name, default=None, convert=None):  #pylint:disable=too-many-arguments;These are all necessary with sane defaults.
         """Declare a config variable that this emulated tile accepts.
@@ -263,7 +262,7 @@ class EmulatedTile(EmulationMixin, VirtualTile):
         config variables.
         """
 
-        for config in viewvalues(self._config_variables):
+        for config in self._config_variables.values():
             config.clear()
 
     def latch_config_variables(self):
@@ -293,7 +292,7 @@ class EmulatedTile(EmulationMixin, VirtualTile):
             for documentation on how that method works.
         """
 
-        return {desc.name: desc.latch() for desc in viewvalues(self._config_variables)}
+        return {desc.name: desc.latch() for desc in self._config_variables.values()}
 
     def dump_state(self):
         """Dump the current state of this emulated tile as a dictionary.
@@ -306,7 +305,7 @@ class EmulatedTile(EmulationMixin, VirtualTile):
         """
 
         return {
-            "config_variables": {x: base64.b64encode(y.current_value).decode('utf-8') for x, y in viewitems(self._config_variables)},
+            "config_variables": {x: base64.b64encode(y.current_value).decode('utf-8') for x, y in self._config_variables.items()},
         }
 
     def restore_state(self, state):
@@ -318,12 +317,20 @@ class EmulatedTile(EmulationMixin, VirtualTile):
 
         config_vars = state.get('config_variables', {})
 
-        for str_name, str_value in viewitems(config_vars):
+        for str_name, str_value in config_vars.items():
             name = int(str_name)
             value = base64.b64decode(str_value)
 
             if name in self._config_variables:
                 self._config_variables[name].current_value = value
+
+    def start(self, channel=None):
+        """Start any background workers on this tile."""
+        pass
+
+    def stop(self):
+        """Stop any background workers on this tile."""
+        pass
 
     def _handle_reset(self):
         """Hook to perform any required reset actions.
@@ -336,13 +343,41 @@ class EmulatedTile(EmulationMixin, VirtualTile):
         variables return to their reset states.
         """
 
+        self.initialized.clear()
         self.reset_config_variables()
 
-    @tile_rpc(*rpcs.RESET)
-    def reset(self):
-        """Reset this tile."""
+    async def _reset_vector(self):
+        """Background task that is started when the tile is started.
+
+        This method should be overriden by all tiles that have specific
+        background functionality.  It must set the `self.initialized` event
+        when it finishes initializing all of the tile's states.
+        """
+
+        self.initialized.set()
+
+    async def reset(self):
+        """Synchronously reset a tile.
+
+        This method must be called from the emulation loop and will
+        synchronously shut down all background tasks running this tile, clear
+        it to reset state and then restart the initialization background task.
+        """
+
+        await self._device.emulator.stop_tasks(self.address)
 
         self._handle_reset()
+
+        self._logger.info("Tile at address %d has reset itself.", self.address)
+
+        self._logger.info("Starting main task for tile at address %d", self.address)
+        self._device.emulator.add_task(self.address, self._reset_vector())
+
+    @async_tile_rpc(*rpcs.RESET)
+    async def reset_rpc(self):
+        """Reset this tile."""
+
+        await self.reset()
         raise TileNotFoundError("tile was reset via an RPC")
 
     @tile_rpc(*rpcs.LIST_CONFIG_VARIABLES)
@@ -375,7 +410,7 @@ class EmulatedTile(EmulationMixin, VirtualTile):
     def set_config_variable(self, config_id, offset, value):
         """Set a chunk of the current config value's value."""
 
-        if self.app_started is True:
+        if self.initialized.is_set():
             return [Error.STATE_CHANGE_AT_INVALID_TIME]
 
         config = self._config_variables.get(config_id)
@@ -394,6 +429,16 @@ class EmulatedTile(EmulationMixin, VirtualTile):
             return [b""]
 
         return [bytes(config.current_value[offset:offset + 20])]
+
+    @tile_rpc(*rpcs.TILE_STATUS)
+    def tile_status(self):
+        """Required status RPC that allows matching a proxy object with a tile."""
+
+        #TODO: Make this status real based on the tile's status
+
+        status = (1 << 1) | (1 << 0)  # Configured and running, not currently used but required for compat with physical tiles
+        return [0xFFFF, self.name, 1, 0, 0, status]
+
 
 
 TYPE_CODES = {'uint8_t': 'B', 'char': 'B', 'int8_t': 'b', 'uint16_t': 'H', 'int16_t': 'h', 'uint32_t': 'L', 'int32_t': 'l'}
@@ -433,25 +478,3 @@ def parse_size_name(type_name):
     total_size = base_size*count
 
     return total_size, base_size, matched_type, variable
-
-
-def synchronized(func):
-    """Decorator that marks a function as running in the emulation thread.
-
-    This method can only be called on a method defined on an EmulatedDevice
-    subclass.  It checks if the method is being called in the RPC thread
-    and if so runs it directly, otherwise, it dispatches the method to the
-    RPC thread and blocks the current thread until it finishes.
-
-    If the tile has not yet started execution so there is no running
-    background rpc thread, then the method is executed directly as well on the
-    calling thread.
-    """
-
-    def _check_and_dispatch(func, self, *args, **kwargs):
-        if not isinstance(self, EmulatedTile):
-            raise InternalError("You may only use the synchronized method on an EmulatedTile method")
-
-        return self._device.synchronize_task(func, self, *args, **kwargs)
-
-    return decorate(func, _check_and_dispatch)

@@ -70,12 +70,12 @@ TODO: figure out a good set of options for resuming a device when utc time
       is set.
 """
 
-from future.utils import viewitems
 from iotile.core.hw.virtual import tile_rpc
 from ...constants import rpcs, pack_error, Error, ControllerSubsystem, streams
+from .controller_system import ControllerSubsystemBase
 
 
-class ClockManagerSubsystem(object):
+class ClockManagerSubsystem(ControllerSubsystemBase):
     """Container state of the clock manager subsystem."""
 
     FAST_TICK = 0
@@ -95,7 +95,9 @@ class ClockManagerSubsystem(object):
         'user2': streams.USER_TICK_2
     }
 
-    def __init__(self, has_rtc=False):
+    def __init__(self, emulator, has_rtc=False):
+        super(ClockManagerSubsystem, self).__init__(emulator)
+
         self.uptime = 0
         self.time_offset = 0
         self.is_utc = False
@@ -116,6 +118,8 @@ class ClockManagerSubsystem(object):
         - is `has_rtc` is True, the utc_offset is preserved
         - otherwise the utc_offset is cleared to none
         """
+
+        super(ClockManagerSubsystem, self).clear_to_reset(config_vars)
 
         self.tick_counters = dict(fast=0, user1=0, user2=0, normal=0)
 
@@ -141,7 +145,7 @@ class ClockManagerSubsystem(object):
 
         self.uptime += 1
 
-        for name, interval in viewitems(self.ticks):
+        for name, interval in self.ticks.items():
             if interval == 0:
                 continue
 
@@ -228,8 +232,8 @@ class ClockManagerSubsystem(object):
 class ClockManagerMixin(object):
     """Mixin to add the clock manager subsystem into ReferenceController."""
 
-    def __init__(self, has_rtc):
-        self.clock_manager = ClockManagerSubsystem(has_rtc)
+    def __init__(self, emulator, has_rtc):
+        self.clock_manager = ClockManagerSubsystem(emulator, has_rtc)
 
         self.declare_config_variable('fast_tick', 0x2000, 'uint32_t', default=0)
         self.declare_config_variable('user_tick_1', 0x2002, 'uint32_t', default=0)

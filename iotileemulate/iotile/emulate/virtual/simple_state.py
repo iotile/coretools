@@ -1,7 +1,6 @@
 """Helper class for automatically dumping and restoring all member variables."""
 
 import inspect
-from future.utils import viewitems
 from iotile.core.exceptions import ArgumentError, DataError
 
 
@@ -17,6 +16,7 @@ class SerializableState(object):
 
     def __init__(self):
         self._complex_properties = {}
+        self._ignored_properties = set()
 
     def dump(self):
         """Serialize this state by iterating over all public properties using inspect.
@@ -50,6 +50,15 @@ class SerializableState(object):
                 value = self._complex_properties[name][1](value)
 
             setattr(self, name, value)
+
+    def mark_ignored(self, name):
+        """Make a property that should not be serialized/deserialized.
+
+        Args:
+            name (str): The name of the property to ignore.
+        """
+
+        self._ignored_properties.add(name)
 
     def mark_complex(self, name, serializer, deserializer):
         """Mark a property as complex with serializer and deserializer functions.
@@ -128,13 +137,13 @@ class SerializableState(object):
             if not isinstance(obj, dict):
                 raise DataError("Property %s marked as list was not a dict: %s" % (name, repr(obj)))
 
-            return {key: val.dump() for key, val in viewitems(obj)}
+            return {key: val.dump() for key, val in obj.items()}
 
         def _restore_map(obj):
             if obj is None:
                 return obj
 
-            return {key: type_object.Restore(val) for key, val in viewitems(obj)}
+            return {key: type_object.Restore(val) for key, val in obj.items()}
 
         self.mark_complex(name, _dump_map, _restore_map)
 
@@ -199,4 +208,4 @@ class SerializableState(object):
         """
 
         names = inspect.getmembers(self, predicate=lambda x: not inspect.ismethod(x))
-        return [x[0] for x in names if not x[0].startswith("_")]
+        return [x[0] for x in names if not x[0].startswith("_") and x[0] not in self._ignored_properties]

@@ -1,10 +1,11 @@
 """Mixin for device updating via signed scripts."""
 
 import base64
-from future.utils import viewitems
 from iotile.core.hw.virtual import tile_rpc
 from ...virtual import SerializableState
 from ...constants import RunLevel, TileState, rpcs
+from .controller_system import ControllerSubsystemBase
+
 
 class TileInfo(SerializableState):
     def __init__(self, hw_type, name, api_info, fw_info, exec_info, slot, unique_id, state=TileState.INVALID, address=None):
@@ -50,20 +51,42 @@ class TileInfo(SerializableState):
         return TileInfo(0, '\0'*6, (0, 0), (0, 0, 0), (0, 0, 0), 0, 0)
 
 
-class TileManagerState(SerializableState):
+class TileManagerState(SerializableState, ControllerSubsystemBase):
     """Serializeable state object for all tile_manager state."""
 
-    def __init__(self):
-        super(TileManagerState, self).__init__()
+    def __init__(self, emulator):
+        SerializableState.__init__(self)
+        ControllerSubsystemBase.__init__(self, emulator)
 
         self.registered_tiles = []
         self.safe_mode = False
         self.debug_mode = False
+        self.queue = emulator.create_queue(register=True)
 
+        self.mark_ignored('initialized')
+        self.mark_ignored('queue')
         self.mark_complex('registered_tiles', self._dump_registered_tiles, self._restore_registered_tiles)
 
-    def clear_to_reset(self, _config_vars):
+    async def _reset_vector(self):
+        self.initialized.set()
+
+        while True:
+            info, config_rpcs = await self.queue.get()
+
+            try:
+                for rpc in config_rpcs:
+                    await self._emulator.await_rpc(*rpc)
+
+                await self._emulator.await_rpc(info.address, rpcs.START_APPLICATION)
+
+                info.state = TileState.RUNNING
+            finally:
+                self.queue.task_done()
+
+    def clear_to_reset(self, config_vars):
         """Clear to the state immediately after a reset."""
+
+        super(TileManagerState, self).clear_to_reset(config_vars)
         self.registered_tiles = self.registered_tiles[:1]
         self.safe_mode = False
         self.debug_mode = False
@@ -104,8 +127,8 @@ class TileManagerMixin(object):
     """
 
 
-    def __init__(self):
-        self.tile_manager = TileManagerState()
+    def __init__(self, emulator):
+        self.tile_manager = TileManagerState(emulator)
 
         # Register the controller itself into our tile_info database
         info = TileInfo(self.hardware_type, self.name, self.api_version, self.firmware_version, self.executive_version, 0, 0, state=TileState.RUNNING)
@@ -135,19 +158,13 @@ class TileManagerMixin(object):
         if self.tile_manager.safe_mode:
             run_level = RunLevel.SAFE_MODE
             info.state = TileState.SAFE_MODE
+            config_rpcs = []
         else:
             run_level = RunLevel.START_ON_COMMAND
             info.state = TileState.BEING_CONFIGURED
-
-            # Stream any matching config variables to this tile
             config_rpcs = self.config_database.stream_matching(address, name)
-            for rpc in config_rpcs:
-                self._device.deferred_rpc(*rpc)
 
-            def _update_state(_response):
-                info.state = TileState.RUNNING
-
-            self._device.deferred_rpc(address, rpcs.START_APPLICATION, callback=_update_state)
+        self.tile_manager.queue.put_nowait((info, config_rpcs))
 
         return [address, run_level, debug]
 

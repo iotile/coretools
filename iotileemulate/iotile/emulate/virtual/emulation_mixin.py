@@ -1,9 +1,7 @@
 """Mixin class to add property change tracking to an emulated device."""
 
-from __future__ import unicode_literals, absolute_import, print_function
 import json
 from enum import IntEnum
-from future.utils import viewitems
 from iotile.core.exceptions import ArgumentError
 
 
@@ -180,7 +178,7 @@ def _clean_intenum(obj):
     """Remove all IntEnum classes from a map."""
 
     if isinstance(obj, dict):
-        for key, value in viewitems(obj):
+        for key, value in obj.items():
             if isinstance(value, IntEnum):
                 obj[key] = value.value
             elif isinstance(value, (dict, list)):

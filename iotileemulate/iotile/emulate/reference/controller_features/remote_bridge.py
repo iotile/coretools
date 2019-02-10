@@ -4,6 +4,7 @@ import base64
 from iotile.core.hw.virtual import tile_rpc
 from iotile.core.hw.update import UpdateScript
 from ...virtual import SerializableState
+from .controller_system import ControllerSubsystemBase
 
 
 # FIXME: Move this to constants section
@@ -17,7 +18,7 @@ class BRIDGE_STATUS(object):
     EXECUTING = 5
 
 
-class RemoteBridgeState(SerializableState):
+class RemoteBridgeState(SerializableState, ControllerSubsystemBase):
     """Serializeable state object for all remote bridge state.
 
     Note that the script_error property is just a convenience property
@@ -26,18 +27,22 @@ class RemoteBridgeState(SerializableState):
     when dump() or restore() is called.
     """
 
-    def __init__(self):
-        super(RemoteBridgeState, self).__init__()
+    def __init__(self, emulator):
+        ControllerSubsystemBase.__init__(self, emulator)
+        SerializableState.__init__(self)
 
         self.status = BRIDGE_STATUS.IDLE
         self.error = 0
         self.parsed_script = None
         self.script_error = None
 
+        self.mark_ignored('initialized')
         self.mark_complex('parsed_script', self._dump_script, self._restore_script)
 
-    def clear_to_reset(self, _config_vars):
+    def clear_to_reset(self, config_vars):
         """Clear the RemoteBridge subsystem to its reset state."""
+
+        super(RemoteBridgeState, self).clear_to_reset(config_vars)
         self.status = BRIDGE_STATUS.IDLE
         self.error = 0
 
@@ -64,8 +69,8 @@ class RemoteBridgeMixin(object):
     """
 
 
-    def __init__(self):
-        self.remote_bridge = RemoteBridgeState()
+    def __init__(self, emulator):
+        self.remote_bridge = RemoteBridgeState(emulator)
         self._post_config_subsystems.append(self.remote_bridge)
 
     @tile_rpc(0x2100, "", "L")
