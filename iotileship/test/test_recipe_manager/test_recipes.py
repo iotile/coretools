@@ -1,5 +1,6 @@
 import os
 import time
+import sys
 import pytest
 
 from iotile.ship.recipe import RecipeObject
@@ -87,6 +88,7 @@ def test_verify_device_step(resman):
     resman.get_recipe('test_verify_device_step')
 
 
+@pytest.mark.skipif(sys.version_info < (3, 5), reason="requires iotile-emulate")
 def test_hardware_manager_resource(resman):
     """Make sure we can create a shared hardware manager resource."""
 

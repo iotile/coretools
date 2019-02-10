@@ -2,12 +2,15 @@
 
 from __future__ import unicode_literals, print_function, absolute_import
 import subprocess
-import cmdln
 import sys
+import cmdln
 import components
 
 def get_tags():
     data = subprocess.check_output(['git', '--no-pager', 'tag'])
+
+    if not isinstance(data, str):
+        data = data.decode('utf-8')
 
     tags = data.split('\n')
     tags = [x for x in tags if len(x) > 0]
@@ -20,13 +23,15 @@ def get_released_versions(component):
     """
 
     releases = get_tags()
-
-    releases = sorted([(x[0], map(int, x[1].split('.'))) for x in releases], key=lambda x: x[1])[::-1]
+    releases = sorted([(x[0], [int(y) for y in x[1].split('.')]) for x in releases], key=lambda x: x[1])[::-1]
 
     return [(x[0], ".".join(map(str, x[1]))) for x in releases if x[0] == component]
 
 def get_changed_since_tag(tag, filter_dir):
     data = subprocess.check_output(['git', '--no-pager', 'diff', '--name-only', tag, '--', filter_dir])
+    if not isinstance(data, str):
+        data = data.decode('utf-8')
+
     return data.strip()
 
 class StatusProcessor(cmdln.Cmdln):
@@ -65,13 +70,13 @@ class StatusProcessor(cmdln.Cmdln):
         ${cmd_option_list}
         """
 
-        for comp_name, comp_parts in components.comp_names.iteritems():
+        for comp_name, comp in components.comp_names.items():
             releases = get_released_versions(comp_name)
             if len(releases) == 0:
                 print(comp_name + ' - ' + 'No tagged releases')
             else:
                 latest_tag = '-'.join(releases[0])
-                data = get_changed_since_tag(latest_tag, comp_parts[1])
+                data = get_changed_since_tag(latest_tag, comp.path)
                 if len(data) > 0:
                     print(comp_name + ' - ' + 'Changed files in component tree')
 
@@ -85,7 +90,7 @@ class StatusProcessor(cmdln.Cmdln):
         releases = get_released_versions(component)
         latest = releases[0]
 
-        filter_dir = components.comp_names[component][1]
+        filter_dir = components.comp_names[component].path
 
         latest_tag = '-'.join(latest)
         data = get_changed_since_tag(latest_tag, filter_dir)
