@@ -1,7 +1,5 @@
 """A list of changes to an emulated device for verification purposes."""
 
-from __future__ import unicode_literals, absolute_import, print_function
-
 import sys
 import threading
 from collections import namedtuple

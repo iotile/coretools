@@ -10,9 +10,9 @@ TODO:
 
 
 import logging
-from collections import OrderedDict
 from iotile.core.exceptions import InternalError
 from iotile.core.hw.reports import IndividualReadingReport
+from .controller_system import ControllerSubsystemBase
 
 
 class QueuedStreamer(object):
@@ -34,13 +34,16 @@ class QueuedStreamer(object):
             self.highest_ack = ack
 
 
-class BasicStreamingSubsystem(object):
+class BasicStreamingSubsystem(ControllerSubsystemBase):
     """Container for a very basic streaming subsystem."""
 
     MAX_REPORT_SIZE = 3*64*1024
 
-    def __init__(self, device, id_assigner):
-        self.in_progress_streamers = OrderedDict()
+    def __init__(self, emulator, device, id_assigner):
+        super(BasicStreamingSubsystem, self).__init__(emulator)
+
+        self._in_progress_streamers = set()
+        self._queue = emulator.create_queue(register=False)
         self._actively_streaming = False
         self._device = device
         self._logger = logging.getLogger(__name__)
@@ -50,37 +53,42 @@ class BasicStreamingSubsystem(object):
         self.get_timestamp = lambda: 0
         self.get_uptime = lambda: 0
 
+    async def _reset_vector(self):
+        #FIXME: Clear all queued streamers on a reset
+
+        self.initialized.set()
+
+        while True:
+            queued = await self._queue.get()
+
+            try:
+                success = False
+                while queued.remaining > 0:
+                    report, num_readings, highest_id = self._build_report(queued.streamer)
+                    queued.sent_count += num_readings
+
+                    if isinstance(report, IndividualReadingReport):
+                        queued.record_acknowledgement(highest_id)
+
+                    self._logger.debug("Streamer %d: starting with report %s", queued.streamer.index, report)
+                    success = await self._device.stream_sync(report)
+            except:  #pylint:disable=bare-except;This background worker should never die
+                self._logger.exception("Exception during streaming of streamer %s", queued.streamer)
+                success = False
+            finally:
+                if queued.callback is not None:
+                    queued.callback(queued.streamer.index, success, queued.highest_ack)
+
     def in_progress(self):
         """Get a set of in progress streamers."""
 
-        return set(self.in_progress_streamers)
+        return set(self._in_progress_streamers)
 
-    def clear_to_reset(self, _config_vars):
+    def clear_to_reset(self, config_vars):
         """Clear all volatile information across a reset."""
 
-        self.in_progress_streamers = {}
-
-    def _finish_streaming(self, queued, success):
-        """Notify that a report from a streamer has finished."""
-
-        self._logger.debug("Streamer %d: finished, result was %s, ack was %d", queued.streamer.index, success, queued.highest_ack)
-
-        if queued.streamer.index in self.in_progress_streamers:
-            del self.in_progress_streamers[queued.streamer.index]
-
-        if queued.callback is not None:
-            queued.callback(queued.streamer.index, success, queued.highest_ack)
-
-        if len(self.in_progress_streamers) == 0:
-            self._actively_streaming = False
-            return
-
-        # Otherwise chain the next streamer to start
-        next_index = next(iter(self.in_progress_streamers))
-        next_queued = self.in_progress_streamers[next_index]
-
-        self._logger.debug("Streamer %d: chained to begin when %d finished", next_index, queued.streamer.index)
-        self._device.deferred_task(self._begin_streaming, next_queued)
+        super(BasicStreamingSubsystem, self).clear_to_reset(config_vars)
+        self._in_progress_streamers = set()
 
     def _build_report(self, streamer):
         report_id = None
@@ -88,37 +96,6 @@ class BasicStreamingSubsystem(object):
             report_id = self._id_assigner()
 
         return streamer.build_report(self._device.iotile_id, self.MAX_REPORT_SIZE, device_uptime=self.get_uptime(), report_id=report_id)
-
-    def _begin_streaming(self, queued):
-        report, num_readings, highest_id = self._build_report(queued.streamer)
-
-        queued.sent_count += num_readings
-
-        if isinstance(report, IndividualReadingReport):
-            queued.record_acknowledgement(highest_id)
-
-        self._logger.debug("Streamer %d: starting with report %s", queued.streamer.index, report)
-
-        next_step = lambda sent: self._device.deferred_task(self._continue_streaming, queued, sent)
-        self._device.stream(report, callback=next_step)
-
-
-    def _continue_streaming(self, queued, success):
-        if queued.remaining == 0 or not success:
-            self._finish_streaming(queued, success)
-            return
-
-        # Otherwise we are streaming an individual report
-        report, num_readings, highest_id = self._build_report(queued.streamer)
-
-        queued.sent_count += num_readings
-
-        if isinstance(report, IndividualReadingReport):
-            queued.record_acknowledgement(highest_id)
-
-        self._logger.debug("Streamer %d: continuing with report %s", queued.streamer.index, report)
-
-        self._device.stream(report, callback=lambda sent: self._device.deferred_task(self._continue_streaming, queued, sent))
 
     def process_streamer(self, streamer, callback=None):
         """Start streaming a streamer.
@@ -131,17 +108,14 @@ class BasicStreamingSubsystem(object):
 
         index = streamer.index
 
-        if index in self.in_progress_streamers:
+        if index in self._in_progress_streamers:
             raise InternalError("You cannot add a streamer again until it has finished streaming.")
 
         queue_item = QueuedStreamer(streamer, callback)
-        self.in_progress_streamers[index] = queue_item
+        self._in_progress_streamers.add(index)
 
         self._logger.debug("Streamer %d: queued to send %d readings", index, queue_item.initial_count)
-
-        if not self._actively_streaming:
-            self._actively_streaming = True
-            self._device.deferred_task(self._begin_streaming, queue_item)
+        self._queue.put_nowait(queue_item)
 
 
 class StreamingSubsystemMixin(object):
@@ -158,9 +132,9 @@ class StreamingSubsystemMixin(object):
             complete simulation.  Defaults to True, which means basic.
     """
 
-    def __init__(self, basic=True):
+    def __init__(self, emulator, basic=True):
         if not basic:
             raise InternalError("Full stream manager support is not yet implemented")
 
-        self.stream_manager = BasicStreamingSubsystem(self._device, self.sensor_log.allocate_id)
+        self.stream_manager = BasicStreamingSubsystem(emulator, self._device, self.sensor_log.allocate_id)
         self._post_config_subsystems.append(self.stream_manager)

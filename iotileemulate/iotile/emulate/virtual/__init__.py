@@ -42,6 +42,7 @@ them, emulated devices are designed to act as standins for physical IOTile
 devices that do need to follow a very specific initialization process.
 
 The process is as follows:
+
 - First the controller tile for the device boots and initializes itself.
 - Each peripheral tile checks in with the controller tile and registers itself
     - this triggers the controller tile to stream any config variables that
@@ -97,7 +98,7 @@ finishes.
 
 from .emulated_device import EmulatedDevice
 from .peripheral_tile import EmulatedPeripheralTile
-from .emulated_tile import EmulatedTile, synchronized
+from .emulated_tile import EmulatedTile
 from .simple_state import SerializableState
 
-__all__ = ['EmulatedDevice', 'EmulatedTile', 'SerializableState', 'EmulatedPeripheralTile', 'synchronized']
+__all__ = ['EmulatedDevice', 'EmulatedTile', 'SerializableState', 'EmulatedPeripheralTile']

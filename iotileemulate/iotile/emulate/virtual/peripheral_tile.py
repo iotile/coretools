@@ -1,10 +1,8 @@
 """Base class for all emulated non-controller tiles."""
 
-import threading
-from iotile.core.exceptions import TimeoutExpiredError
 from iotile.core.hw.virtual import tile_rpc
 from .emulated_tile import EmulatedTile
-from ..constants import rpcs
+from ..constants import rpcs, RunLevel
 
 
 class EmulatedPeripheralTile(EmulatedTile):
@@ -20,58 +18,69 @@ class EmulatedPeripheralTile(EmulatedTile):
     Args:
         address (int): The address of this tile in the VirtualIOTIleDevice
             that contains it
-        name (str): The 6 character name that should be returned when this
-            tile is asked for its status to allow matching it with a proxy
-            object.
         device (TileBasedVirtualDevice): Device on which this tile is running.
             This parameter is not optional on EmulatedTiles.
     """
 
     __NO_EXTENSION__ = True
 
-    def __init__(self, address, name, device):
-        EmulatedTile.__init__(self, address, name, device)
+    def __init__(self, address, device):
+        EmulatedTile.__init__(self, address, device)
 
-        self._app_started = threading.Event()
+        self._registered = device.emulator.create_event()
+        self._start_received = device.emulator.create_event()
+        self._hosted_app_running = device.emulator.create_event()
+
         self.debug_mode = False
         self.run_level = None
 
-    @property
-    def app_started(self):
-        """Whether the tile's application has started running."""
+    async def _application_main(self):
+        """The placeholder for the main application loop.
 
-        return self._app_started.is_set()
+        This method should be overwritten by subclasses of
+        EmulatedPeripheralTile with their background main loop task.  This
+        coroutine is equivalent to the main() C function in a physical tile's
+        firmware.
 
-    def wait_started(self, timeout=None):
-        """Wait for the application to start running."""
+        This coroutine should loop forever.  It will not be restarted if it
+        returns unless reset() is called on the tile.
 
-        flag = self._app_started.wait(timeout=timeout)
-        if not flag:
-            raise TimeoutExpiredError("Timeout waiting for peripheral tile to set its app_started event", address=self.address, name=self.name, timeout=timeout)
-
-    def start(self, channel=None):
-        """Start this emulated tile.
-
-        For peripheral tiles, this triggers them to synchronously send an RPC
-        to the EmulatedDevice controller registering themselves.
-
-        Args:
-            channel (IOTilePushChannel): the channel with a stream and trace
-                routine for streaming and tracing data through a VirtualInterface
+        If you override this method, you **must set self.initialized()** once
+        you have initialized any required state, otherwise the emulation will
+        hang waiting for your tile to indicate that it has been initialized.
         """
 
-        super(EmulatedPeripheralTile, self).start(channel)
+        self.initialized.set()
 
-        # Register ourselves with the controller
-        resp = self._device.rpc(8, rpcs.REGISTER_TILE, *self._registration_tuple())
-        self._process_registration(resp)
+    async def _reset_vector(self):
+        """Main background task for the tile executive.
 
-    def _process_registration(self, resp):
-        address, run_level, debug = resp
+        The tile executive is in charge registering the tile with the
+        controller and then handing control over to the tile's application
+        firmware after proper configuration values have been received.
+        """
+
+        self._logger.info("Tile %s at address %d is starting from reset", self.name, self.address)
+
+        address, run_level, debug = await self._device.emulator.await_rpc(8, rpcs.REGISTER_TILE, *self._registration_tuple())
 
         self.debug_mode = bool(debug)
         self.run_level = run_level
         self._logger.info("Tile at address %d registered itself, received address=%d, runlevel=%d and debug=%d", self.address, address, run_level, debug)
+
+        self._registered.set()
+
+        # If we are in safe mode we do not run the main application
+        # loop.
+        if run_level == RunLevel.SAFE_MODE:
+            self.initialized.set()
+            return
+
+        if run_level == RunLevel.START_ON_COMMAND:
+            await self._start_received.wait()
+
+        self._hosted_app_running.set()
+        await self._application_main()
 
     def _registration_tuple(self):
         return (self.hardware_type, self.api_version[0], self.api_version[1], self.name,
@@ -87,13 +96,11 @@ class EmulatedPeripheralTile(EmulatedTile):
         needs to clear app_running.
         """
 
+        self._registered.clear()
+        self._start_received.clear()
+        self._hosted_app_running.clear()
+
         super(EmulatedPeripheralTile, self)._handle_reset()
-
-        #TODO: If we have background tasks running, we need to cleanly stop them here and wait until they have stopped
-        self._app_started.clear()
-        self._device.deferred_rpc(8, rpcs.REGISTER_TILE, *self._registration_tuple(), callback=self._process_registration)
-
-        self._logger.info("Tile at address %d has reset itself.", self.address)
 
     def dump_state(self):
         """Dump the current state of this emulated tile as a dictionary.
@@ -107,7 +114,7 @@ class EmulatedPeripheralTile(EmulatedTile):
         """
 
         state = super(EmulatedPeripheralTile, self).dump_state()
-        state['app_started'] = self.app_started
+        state['app_started'] = self._hosted_app_running.is_set()
         state['debug_mode'] = self.debug_mode
         state['run_level'] = self.run_level
 
@@ -125,22 +132,11 @@ class EmulatedPeripheralTile(EmulatedTile):
         self.debug_mode = state.get('debug_mode', False)
         self.run_level = state.get('run_level', None)
 
-        if state.get("app_started", False):
-            self._app_started.set()
-
-    def _handle_app_started(self):
-        """Hook to perform any required actions when start_application is received.
-
-        The normal thing that a tile subclass may need to do is called is
-        inspect its configuration variables and use them to set any internal
-        state variables as needed.
-        """
-
-        pass
+        if state.get('app_started', False):
+            self._hosted_app_running.set()
 
     @tile_rpc(*rpcs.START_APPLICATION)
     def start_application(self):
         """Latch any configuration variables and start the application."""
 
-        self._handle_app_started()
-        self._app_started.set()
+        self._start_received.set()

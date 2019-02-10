@@ -6,7 +6,6 @@ into the emulated devices.
 """
 
 import logging
-from future.utils import itervalues
 from iotile.core.hw.transport.virtualadapter import VirtualDeviceAdapter
 from ..virtual import EmulatedDevice
 
@@ -127,5 +126,5 @@ class EmulatedDeviceAdapter(VirtualDeviceAdapter):
 
         super(EmulatedDeviceAdapter, self).periodic_callback()
 
-        for dev in itervalues(self.devices):
+        for dev in self.devices.values():
             dev.wait_idle()

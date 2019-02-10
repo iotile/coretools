@@ -26,7 +26,7 @@ def format_rpc(data):
     if isinstance(resp, (bytes, bytearray)):
         resp_str = hexlify(resp)
     else:
-        resp = repr(resp)
+        resp_str = repr(resp)
 
     #FIXME: Check and print status as well
     return "%s called on address %d, payload=%s, response=%s" % (name, address, arg_str, resp_str)

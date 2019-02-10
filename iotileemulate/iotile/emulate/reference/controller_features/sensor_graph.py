@@ -55,16 +55,18 @@ TODO:
 
 import logging
 import struct
-from future.utils import viewitems, raise_
+import asyncio
+import inspect
+from collections import deque
 from iotile.core.hw.virtual import tile_rpc, RPCErrorCode
 from iotile.core.hw.reports import IOTileReading
-from iotile.core.exceptions import InternalError
 from iotile.sg import DataStream, SensorGraph
 from iotile.sg.sim.executor import RPCExecutor
 from iotile.sg.node_descriptor import parse_binary_descriptor, create_binary_descriptor
 from iotile.sg import streamer_descriptor
 from iotile.sg.exceptions import NodeConnectionError, ProcessingFunctionError, ResourceUsageError, UnresolvedIdentifierError, StreamEmptyError
 from ...constants import rpcs, pack_error, Error, ControllerSubsystem, SensorGraphError, SensorLogError
+from .controller_system import ControllerSubsystemBase
 
 def _pack_sgerror(short_code):
     """Pack a short error code with the sensorgraph subsystem."""
@@ -90,35 +92,31 @@ class EmulatedRPCExecutor(RPCExecutor):
         self.device = device
         self.logger = logging.getLogger(__name__)
 
-    def _call_rpc(self, address, rpc_id, payload):
-        self.logger.debug("Sending rpc from sensograph to %d:%04X", address, rpc_id)
+    async def rpc(self, address, rpc_id):
+        self.logger.debug("Sending rpc from sensorgraph to %d:%04X", address, rpc_id)
 
-        retval, exc_info = self.device._rpc_queue.direct_dispatch((address, rpc_id, payload), None)
-        if exc_info is not None:
-            raise_(*exc_info)
-
-        if retval == self.device._rpc_queue.STILL_PENDING:
-            raise InternalError("Asynchronous RPCs called from sensor graph are not yet supported: %d:%04X" % (address, rpc_id))
-
-        return retval
+        result, = await self.device.emulator.await_rpc(address, rpc_id, bytes(), resp_format="L")
+        return result
 
 
-class SensorGraphSubsystem(object):
+class SensorGraphSubsystem(ControllerSubsystemBase):
     """Container for sensor graph state.
 
     There is a distinction between which sensor-graph is saved into persisted
-    storage vs currently loaded and running.  This subsystem needs to be
-    created with a shared mutex with the sensor_log subsystem to make sure
-    all accesses are properly synchronized.
+    storage vs currently loaded and running.  The sensor-graph subsystem runs
+    a background task that receives inputs to process and processes them.
     """
 
-    def __init__(self, sensor_log_system, stream_manager, model, executor=None):
+    def __init__(self, sensor_log_system, stream_manager, model, emulator, executor=None):
+        super(SensorGraphSubsystem, self).__init__(emulator)
+
         self._logger = logging.getLogger(__name__)
 
         self._model = model
 
         self._sensor_log = sensor_log_system.storage
         self._allocate_id = sensor_log_system.allocate_id
+        self._inputs = emulator.create_queue(register=True)
 
         self._stream_manager = stream_manager
         self._rsl = sensor_log_system
@@ -139,7 +137,27 @@ class SensorGraphSubsystem(object):
         # Clock manager linkage
         self.get_timestamp = lambda: 0
 
-    def clear_to_reset(self, _config_vars):
+    async def _reset_vector(self):
+        """Background task to initialize this system in the event loop."""
+
+        self._logger.debug("sensor_graph subsystem task starting")
+
+        # If there is a persistent sgf loaded, send reset information.
+
+        self.initialized.set()
+
+        while True:
+            stream, reading = await self._inputs.get()
+
+            try:
+                await process_graph_input(self.graph, stream, reading, self._executor)
+                self.process_streamers()
+            except:  #pylint:disable=bare-except;This is a background task that should not die
+                self._logger.exception("Unhandled exception processing sensor_graph input (stream=%s), reading=%s", stream, reading)
+            finally:
+                self._inputs.task_done()
+
+    def clear_to_reset(self, config_vars):
         """Clear all volatile information across a reset.
 
         The reset behavior is that:
@@ -148,6 +166,8 @@ class SensorGraphSubsystem(object):
         - if there is a persisted graph found, reset readings are pushed
           into it.
         """
+
+        super(SensorGraphSubsystem, self).clear_to_reset(config_vars)
 
         self.graph.clear()
 
@@ -168,7 +188,7 @@ class SensorGraphSubsystem(object):
         self.enabled = True
 
         # Set up all streamers
-        for index, value in viewitems(self.streamer_acks):
+        for index, value in self.streamer_acks.items():
             self._seek_streamer(index, value)
 
         #FIXME: queue sending reset readings
@@ -176,19 +196,27 @@ class SensorGraphSubsystem(object):
     def process_input(self, encoded_stream, value):
         """Process or drop a graph input.
 
-        This must not be called directly from an RPC but always via a deferred
-        task.
+        This method asynchronously queued an item to be processed by the
+        sensorgraph worker task in _reset_vector.  It must be called from
+        inside the emulation loop and returns immediately before the input is
+        processed.
         """
 
         if not self.enabled:
             return
 
-        stream = DataStream.FromEncoded(encoded_stream)
+        if isinstance(encoded_stream, str):
+            stream = DataStream.FromString(encoded_stream)
+            encoded_stream = stream.encode()
+        elif isinstance(encoded_stream, DataStream):
+            stream = encoded_stream
+            encoded_stream = stream.encode()
+        else:
+            stream = DataStream.FromEncoded(encoded_stream)
+
         reading = IOTileReading(self.get_timestamp(), encoded_stream, value)
 
-        self.graph.process_input(stream, reading, self._executor)
-
-        self.process_streamers()
+        self._inputs.put_nowait((stream, reading))
 
     def _seek_streamer(self, index, value):
         """Complex logic for actually seeking a streamer to a reading_id.
@@ -405,8 +433,8 @@ class SensorGraphMixin(object):
             emulated device.
     """
 
-    def __init__(self, sensor_log, stream_manager, model):
-        self.sensor_graph = SensorGraphSubsystem(sensor_log, stream_manager, model, executor=EmulatedRPCExecutor(self._device))
+    def __init__(self, emulator, sensor_log, stream_manager, model):
+        self.sensor_graph = SensorGraphSubsystem(sensor_log, stream_manager, model, emulator, executor=EmulatedRPCExecutor(self._device))
         self._post_config_subsystems.append(self.sensor_graph)
 
     @tile_rpc(*rpcs.SG_COUNT_NODES)
@@ -433,7 +461,7 @@ class SensorGraphMixin(object):
     def sg_graph_input(self, value, stream_id):
         """"Present a graph input to the sensor_graph subsystem."""
 
-        self._device.deferred_task(self.sensor_graph.process_input, stream_id, value)
+        self.sensor_graph.process_input(stream_id, value)
         return [Error.NO_ERROR]
 
     @tile_rpc(*rpcs.SG_RESET_GRAPH)
@@ -497,3 +525,46 @@ class SensorGraphMixin(object):
             return [struct.pack("<L", _pack_sgerror(SensorGraphError.STREAMER_NOT_ALLOCATED))]
 
         return [struct.pack("<LLLLBBBx", *resp)]
+
+
+async def process_graph_input(graph, stream, value, rpc_executor):
+    """Process an input through this sensor graph.
+
+    The tick information in value should be correct and is transfered
+    to all results produced by nodes acting on this tick.  This coroutine
+    is an asyncio compatible version of SensorGraph.process_input()
+
+    Args:
+        stream (DataStream): The stream the input is part of
+        value (IOTileReading): The value to process
+        rpc_executor (RPCExecutor): An object capable of executing RPCs
+            in case we need to do that.
+    """
+
+    graph.sensor_log.push(stream, value)
+
+    # FIXME: This should be specified in our device model
+    if stream.important:
+        associated_output = stream.associated_stream()
+        graph.sensor_log.push(associated_output, value)
+
+    to_check = deque([x for x in graph.roots])
+
+    while len(to_check) > 0:
+        node = to_check.popleft()
+        if node.triggered():
+            try:
+                results = node.process(rpc_executor, graph.mark_streamer)
+                for result in results:
+                    if inspect.iscoroutine(result.value):
+                        result.value = await asyncio.ensure_future(result.value)
+
+                    result.raw_time = value.raw_time
+                    graph.sensor_log.push(node.stream, result)
+            except:
+                logging.getLogger(__name__).exception("Unhandled exception in graph node processing function for node %s", str(node))
+
+            # If we generated any outputs, notify our downstream nodes
+            # so that they are also checked to see if they should run.
+            if len(results) > 0:
+                to_check.extend(node.outputs)

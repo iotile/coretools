@@ -2,7 +2,16 @@
 
 All major changes in each released version of iotile-emulate are listed here.
 
-## HEAD
+## 0.3.0
+
+- Update emulation_demo device to have its own proxy module for the demo tile.
+
+- Increase documentation and review for accuracy after the asyncio port.
+
+- MAJOR REFACTOR: All internal logic is moved to asyncio and python 2
+  compatibility is dropped.  Previous callback code is converted to coroutines
+  and support for backgrounds tasks is added to all tiles and controller 
+  subsystems.
 
 - Add support for hardware version RPC on the controller.  The default
   implementation returns the hardware string 'pythontile'

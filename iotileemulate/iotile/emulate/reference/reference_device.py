@@ -2,14 +2,11 @@
 
 import base64
 import logging
-import threading
-import time
+import asyncio
 from monotonic import monotonic
-from future.utils import viewitems
-from past.builtins import basestring
 from iotile.core.exceptions import ArgumentError, DataError
 from ..virtual import EmulatedDevice, EmulatedPeripheralTile
-from ..constants import rpcs, RunLevel, streams
+from ..constants import rpcs, streams
 from .reference_controller import ReferenceController
 
 
@@ -35,7 +32,7 @@ class ReferenceDevice(EmulatedDevice):
         iotile_id = args.get('iotile_id', 1)
         controller_name = args.get('controller_name', 'refcn1')
 
-        if isinstance(iotile_id, basestring):
+        if isinstance(iotile_id, str):
             iotile_id = int(iotile_id, 16)
 
         super(ReferenceDevice, self).__init__(iotile_id, controller_name)
@@ -44,21 +41,15 @@ class ReferenceDevice(EmulatedDevice):
         self.add_tile(8, self.controller)
         self.reset_count = 0
         self._logger = logging.getLogger(__name__)
-        self._time_thread = threading.Thread(target=self._time_ticker)
         self._simulating_time = args.get('simulate_time', True)
         self._accelerating_time = args.get('accelerate_time', False)
 
-    def _time_ticker(self):
-        # Make sure the rpc queue is up and running before calling wait_idle()
-        # that needs the deadlock checker set up
-        self._rpc_queue.flush()
-        self._deadlock_check.__dict__.setdefault('is_rpc_thread', False)
-
+    async def _time_ticker(self):
         start = monotonic()
         counter = 0
         while self._simulating_time:
-            self.deferred_task(self.controller.clock_manager.handle_tick)
-            self.wait_idle()
+            self.controller.clock_manager.handle_tick()
+            await self.emulator.wait_idle()
 
             counter += 1
             next_tick = start + counter
@@ -70,15 +61,38 @@ class ReferenceDevice(EmulatedDevice):
                         return
 
                     step = min(next_tick - now, 0.1)
-                    time.sleep(step)
+                    await asyncio.sleep(step)
                     now = monotonic()
+
+        self._logger.debug("Time ticker task stopped due to _simulating_time flag cleared")
+
+    def iter_tiles(self, include_controller=True):
+        """Iterate over all tiles in this device in order.
+
+        The ordering is by tile address which places the controller tile
+        first in the list.
+
+        Args:
+            include_controller (bool): Include the controller tile in the
+                results.
+
+        Yields:
+            int, EmulatedTile: A tuple with the tile address and tile object.
+        """
+
+        for address, tile in sorted(self._tiles.items()):
+            if address == 8 and not include_controller:
+                continue
+
+            yield address, tile
 
     def start(self, channel=None):
         """Start this emulated device.
 
-        This triggers the controller to call start on all peripheral tiles in the device to make sure
-        they start after the controller does and then it waits on each one to make sure they have
-        finished initializing before returning.
+        This triggers the controller to call start on all peripheral tiles in
+        the device to make sure they start after the controller does and then
+        it waits on each one to make sure they have finished initializing
+        before returning.
 
         Args:
             channel (IOTilePushChannel): the channel with a stream and trace
@@ -87,45 +101,44 @@ class ReferenceDevice(EmulatedDevice):
 
         super(ReferenceDevice, self).start(channel)
 
-        self.controller.start(channel)
+        try:
+            self.controller.start(channel)
 
-        # Guarantee an initialization order so that our trace files are deterministic
-        for address, tile in sorted(viewitems(self._tiles)):
-            if address == 8:
-                continue
+            # Guarantee an initialization order so that our trace files are deterministic
+            for address, tile in sorted(self._tiles.items()):
+                if address == 8:
+                    continue
 
-            if not isinstance(tile, EmulatedPeripheralTile):
-                raise DataError("An emulated ReferenceDevice can only have a single controller and all other tiles must inherit from EmulatedPeripheralTile",
-                                address=address)
+                if not isinstance(tile, EmulatedPeripheralTile):
+                    raise DataError("An emulated ReferenceDevice can only have a single controller and all other tiles must inherit from EmulatedPeripheralTile",
+                                    address=address)
 
-            tile.start(channel)
+                tile.start(channel)
 
-        # This should have triggered all of the tiles to register themselves with the controller,
-        # causing it to queue up config variable and start_application rpcs back to them, make
-        # sure all such RPCs have been flushed.
-        self.wait_deferred_rpcs()
+            async def _launch_tiles():
+                await self.controller.reset()
+                await asyncio.wait_for(self.controller.initialized.wait(), 2.0)
 
-        for address, tile in viewitems(self._tiles):
-            if address == 8:
-                continue
+                # Note that we do not explicitly reset the tiles.
+                # The controller resets all tiles in its reset method.
+                for address, tile in sorted(self._tiles.items()):
+                    if address == 8:
+                        continue
 
-            # Check and make sure that if the tile should start that it has started
-            if tile.run_level != RunLevel.SAFE_MODE:
-                tile.wait_started(timeout=2.0)
+                    await asyncio.wait_for(tile.initialized.wait(), 2.0)
 
-        self.wait_idle()
+            self.emulator.run_task_external(_launch_tiles())
 
-        if self._simulating_time:
-            self._time_thread.start()
+            if self._simulating_time:
+                self.emulator.add_task(None, self._time_ticker())
+        except:
+            self.stop()
+            raise
 
     def stop(self):
         """Stop this emulated device."""
 
         self._simulating_time = False
-
-        if self._time_thread.is_alive():
-            self._time_thread.join()
-
         super(ReferenceDevice, self).stop()
 
     def open_streaming_interface(self):
@@ -141,7 +154,7 @@ class ReferenceDevice(EmulatedDevice):
 
         super(ReferenceDevice, self).open_streaming_interface()
 
-        self.deferred_rpc(8, rpcs.SG_GRAPH_INPUT, 8, streams.COMM_TILE_OPEN)
+        self.rpc(8, rpcs.SG_GRAPH_INPUT, 8, streams.COMM_TILE_OPEN)
         return []
 
     def close_streaming_interface(self):
@@ -153,19 +166,7 @@ class ReferenceDevice(EmulatedDevice):
 
         super(ReferenceDevice, self).close_streaming_interface()
 
-        self.deferred_rpc(8, rpcs.SG_GRAPH_INPUT, 8, streams.COMM_TILE_CLOSED)
-
-    def reset_peripheral_tiles(self):
-        """Reset all peripheral tiles (asynchronously)."""
-
-        self._logger.info("Resetting all peripheral tiles")
-
-        for address in sorted(self._tiles):
-            if address == 8:
-                continue
-
-            self._logger.info("Sending reset signal to tile at address %d", address)
-            self.deferred_rpc(address, rpcs.RESET)
+        self.rpc(8, rpcs.SG_GRAPH_INPUT, 8, streams.COMM_TILE_CLOSED)
 
     def dump_state(self):
         """Dump the current state of this emulated object as a dictionary.
@@ -178,7 +179,6 @@ class ReferenceDevice(EmulatedDevice):
             dict: The current state of the object that could be passed to load_state.
         """
 
-        shared = [None]
         # Dump the state of all of the tiles
         def _background_dump():
             state = super(ReferenceDevice, self).dump_state()
@@ -188,14 +188,9 @@ class ReferenceDevice(EmulatedDevice):
             state['reset_count'] = self.reset_count
             state['received_script'] = base64.b64encode(self.script).decode('utf-8')
 
-            shared[0] = state
+            return state
 
-        #TODO: Add proper support for returning values from a background deferred task
-        #      and replace this explicit shared variable.  Also allow waiting for a
-        #      a deferred task.
-        self.deferred_task(_background_dump)
-        self._rpc_queue.flush()
-        return shared[0]
+        return self.synchronize_task(_background_dump)
 
     def restore_state(self, state):
         """Restore the current state of this emulated device.
@@ -224,5 +219,4 @@ class ReferenceDevice(EmulatedDevice):
             self.reset_count = state.get('reset_count', 0)
             self.script = base64.b64decode(state.get('received_script'))
 
-        self.deferred_task(_background_restore)
-        self._rpc_queue.flush()
+        self.synchronize_task(_background_restore)

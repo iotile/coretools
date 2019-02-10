@@ -18,7 +18,7 @@ def sg_device():
     """Get a reference device and connected HardwareManager."""
 
     device = ReferenceDevice({'simulate_time': False})
-    peripheral = EmulatedPeripheralTile(11, b'abcdef', device)
+    peripheral = EmulatedPeripheralTile(11, device)
     peripheral.declare_config_variable("test 1", 0x8000, 'uint16_t')
     peripheral.declare_config_variable('test 2', 0x8001, 'uint32_t[5]')
 
@@ -40,7 +40,7 @@ def basic_sg():
     """A preprogrammed basic sensorgraph for testing."""
 
     device = ReferenceDevice({'simulate_time': False})
-    peripheral = EmulatedPeripheralTile(11, b'abcdef', device)
+    peripheral = EmulatedPeripheralTile(11, device)
     peripheral.declare_config_variable("test 1", 0x8000, 'uint16_t')
     peripheral.declare_config_variable('test 2', 0x8001, 'uint32_t[5]')
 

@@ -1,15 +1,14 @@
 """A reference implementation of the iotile controller that allows update verification."""
 
-from __future__ import print_function, absolute_import, unicode_literals
 import logging
-from future.utils import viewitems
+import asyncio
 from iotile.core.hw.virtual import tile_rpc, TileNotFoundError
 from iotile.core.hw.reports import IOTileReading
 from iotile.core.exceptions import ArgumentError
 from iotile.sg.model import DeviceModel
 from iotile.sg.parser import SensorGraphFileParser
 from iotile.sg.optimizer import SensorGraphOptimizer
-from ..virtual import EmulatedTile, synchronized
+from ..virtual import EmulatedTile
 from ..constants import rpcs, Error
 
 from .controller_features import (RawSensorLogMixin, RemoteBridgeMixin,
@@ -44,23 +43,26 @@ class ReferenceController(RawSensorLogMixin, RemoteBridgeMixin,
     STATE_VERSION = "0.1.0"
 
     def __init__(self, address, args, device=None):
-        name = args.get('name', 'refcn1')
+        self.name = args.get('name', 'refcn1')
         self._device = device
         self._logger = logging.getLogger(__name__)
         self._post_config_subsystems = []
 
+        if not isinstance(self.name, bytes):
+            self.name = self.name.encode('utf-8')
+
         model = DeviceModel()
 
-        EmulatedTile.__init__(self, address, name, device)
+        EmulatedTile.__init__(self, address, device)
 
         # Initialize all of the controller subsystems
-        ClockManagerMixin.__init__(self, has_rtc=False) #FIXME: Load the controller model info to get whether it has an RTC
+        ClockManagerMixin.__init__(self, device.emulator, has_rtc=False) #FIXME: Load the controller model info to get whether it has an RTC
         ConfigDatabaseMixin.__init__(self, 4096, 4096)  #FIXME: Load the controller model info to get its memory map
-        TileManagerMixin.__init__(self)
-        RemoteBridgeMixin.__init__(self)
-        RawSensorLogMixin.__init__(self, model)
-        StreamingSubsystemMixin.__init__(self, basic=True)
-        SensorGraphMixin.__init__(self, self.sensor_log, self.stream_manager, model=model)
+        TileManagerMixin.__init__(self, device.emulator)
+        RemoteBridgeMixin.__init__(self, device.emulator)
+        RawSensorLogMixin.__init__(self, device.emulator, model)
+        StreamingSubsystemMixin.__init__(self, device.emulator, basic=True)
+        SensorGraphMixin.__init__(self, device.emulator, self.sensor_log, self.stream_manager, model=model)
 
         # Establish required post-init linkages between subsystems
         self.clock_manager.graph_input = self.sensor_graph.process_input
@@ -73,45 +75,6 @@ class ReferenceController(RawSensorLogMixin, RemoteBridgeMixin,
 
         self.register_scenario('load_sgf', self.load_sgf)
 
-    def _clear_to_reset_condition(self, deferred=False):
-        """Clear all subsystems of this controller to their reset states.
-
-        The order of these calls is important to guarantee that everything
-        is in the correct state before resetting the next subsystem.
-
-        The behavior of this function is different depending on whether
-        deferred is True or False.  If it's true, this function will only
-        clear the config database and then queue all of the config streaming
-        rpcs to itself to load in all of our config variables.  Once these
-        have been sent, it will reset the rest of the controller subsystems.
-        """
-
-        # Load in all default values into our config variables before streaming
-        # updated data into them.
-        self.reset_config_variables()
-
-        # Send ourselves all of our config variable assignments
-        config_rpcs = self.config_database.stream_matching(8, self.name)
-        for rpc in config_rpcs:
-            if deferred:
-                self._device.deferred_rpc(*rpc)
-            else:
-                self._device.rpc(*rpc)
-
-        def _post_config_setup():
-            config_assignments = self.latch_config_variables()
-            self._logger.info("Latched config variables at reset for controller: %s", config_assignments)
-
-            for system in self._post_config_subsystems:
-                system.clear_to_reset(config_assignments)
-
-            self._logger.info("Finished clearing controller to reset condition")
-
-        if deferred:
-            self._device.deferred_task(_post_config_setup)
-        else:
-            _post_config_setup()
-
     def _handle_reset(self):
         """Reset this controller tile.
 
@@ -122,6 +85,18 @@ class ReferenceController(RawSensorLogMixin, RemoteBridgeMixin,
         It will then reset all of the peripheral tiles to emulate the behavior
         of a physical POD where the controller tile cuts power to all
         peripheral tiles on reset for a clean boot.
+
+        This will clear all subsystems of this controller to their reset
+        states.
+
+        The order of these calls is important to guarantee that everything is
+        in the correct state before resetting the next subsystem.
+
+        The behavior of this function is different depending on whether
+        deferred is True or False.  If it's true, this function will only
+        clear the config database and then queue all of the config streaming
+        rpcs to itself to load in all of our config variables.  Once these
+        have been sent, it will reset the rest of the controller subsystems.
         """
 
         self._logger.info("Resetting controller")
@@ -129,21 +104,44 @@ class ReferenceController(RawSensorLogMixin, RemoteBridgeMixin,
 
         super(ReferenceController, self)._handle_reset()
 
-        self._clear_to_reset_condition(deferred=True)
-        self._device.deferred_task(self._device.reset_peripheral_tiles)
+        # Load in all default values into our config variables before streaming
+        # updated data into them.
+        self.reset_config_variables()
 
-    def start(self, channel=None):
-        """Start this controller tile.
+    async def _reset_vector(self):
+        """Initialize the controller's subsystems inside the emulation thread."""
 
-        This resets the controller to its reset state.
+        # Send ourselves all of our config variable assignments
+        config_rpcs = self.config_database.stream_matching(8, self.name)
+        for rpc in config_rpcs:
+            await self._device.emulator.await_rpc(*rpc)
 
-        Args:
-            channel (IOTilePushChannel): the channel with a stream and trace
-                routine for streaming and tracing data through a VirtualInterface
-        """
+        config_assignments = self.latch_config_variables()
+        self._logger.info("Latched config variables at reset for controller: %s", config_assignments)
 
-        super(ReferenceController, self).start(channel)
-        self._clear_to_reset_condition(deferred=False)
+        for system in self._post_config_subsystems:
+            try:
+                system.clear_to_reset(config_assignments)
+                await asyncio.wait_for(system.initialize(), timeout=2.0)
+            except:
+                self._logger.exception("Error initializing %s", system)
+                raise
+
+        self._logger.info("Finished clearing controller to reset condition")
+
+        # Now reset all of the tiles
+        for address, _ in self._device.iter_tiles(include_controller=False):
+            self._logger.info("Sending reset signal to tile at address %d", address)
+
+            try:
+                await self._device.emulator.await_rpc(address, rpcs.RESET)
+            except TileNotFoundError:
+                pass
+            except:
+                self._logger.exception("Error sending reset signal to tile at address %d", address)
+                raise
+
+        self.initialized.set()
 
     def dump_state(self):
         """Dump the current state of this emulated object as a dictionary.
@@ -197,14 +195,6 @@ class ReferenceController(RawSensorLogMixin, RemoteBridgeMixin,
         self.config_database.restore(state.get('config_database', {}))
         self.sensor_log.restore(state.get('sensor_log', {}))
 
-    @tile_rpc(*rpcs.RESET)
-    def reset(self):
-        """Reset the device."""
-
-        self._handle_reset()
-
-        raise TileNotFoundError("Controller tile was reset via an RPC")
-
     @tile_rpc(*rpcs.HARDWARE_VERSION)
     def hardware_version(self):
         """Get a hardware identification string."""
@@ -243,7 +233,7 @@ class ReferenceController(RawSensorLogMixin, RemoteBridgeMixin,
 
         return [Error.NO_ERROR]
 
-    @synchronized
+    # FIXME: Move this to the background thread
     def load_sgf(self, sgf_data):
         """Load, persist a sensor_graph file.
 
@@ -283,7 +273,7 @@ class ReferenceController(RawSensorLogMixin, RemoteBridgeMixin,
         self.sensor_graph.persisted_streamers = sensor_graph.dump_streamers()
 
         self.sensor_graph.persisted_constants = []
-        for stream, value in sorted(viewitems(sensor_graph.constant_database), key=lambda x: x[0].encode()):
+        for stream, value in sorted(sensor_graph.constant_database.items(), key=lambda x: x[0].encode()):
             reading = IOTileReading(stream.encode(), 0, value)
             self.sensor_graph.persisted_constants.append((stream, reading))
 
@@ -293,7 +283,7 @@ class ReferenceController(RawSensorLogMixin, RemoteBridgeMixin,
         self.config_database.clear()
 
         for slot in sorted(sensor_graph.config_database, key=lambda x: x.encode()):
-            for conf_var, (conf_type, conf_val) in sorted(viewitems(sensor_graph.config_database[slot])):
+            for conf_var, (conf_type, conf_val) in sorted(sensor_graph.config_database[slot].items()):
                 self.config_database.add_direct(slot, conf_var, conf_type, conf_val)
 
         # If we have an app tag and version set program them in

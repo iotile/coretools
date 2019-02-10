@@ -16,8 +16,9 @@ setup(
     ],
     entry_points={'iotile.virtual_device': ['reference_1_0 = iotile.emulate.demo:DemoReferenceDevice',
                                             'emulation_demo = iotile.emulate.demo:DemoEmulatedDevice'],
+                  'iotile.proxy': ['emudmo = iotile.emulate.demo:DemoTileProxy'],
                   'iotile.device_adapter': ['emulated = iotile.emulate.transport:EmulatedDeviceAdapter'],
-                  'iotile.virtual_tile': ['refcon_1 = iotile.emulate.reference:ReferenceController']},
+                  'iotile.emulated_tile': ['refcon_1 = iotile.emulate.reference:ReferenceController']},
     author="Arch",
     author_email="info@arch-iot.com",
     url="https://github.com/iotile/coretools/iotilesensorgraph",
@@ -29,8 +30,6 @@ setup(
         "Operating System :: OS Independent",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 2",
-        "Programming Language :: Python :: 2.7",
         "Topic :: Software Development :: Libraries :: Python Modules"
         ],
     long_description="""\
