@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import pytest
 from iotile.core.hw import HardwareManager
@@ -29,6 +30,9 @@ def resman():
 @pytest.fixture
 def recipe_fixture(request, resman):
     """Create a fixture with a hardware manager connected to our reference dev."""
+
+    if sys.version_info < (3, 5):
+        pytest.skip("test requires iotile-emulate on python 3.5+")
 
     recipe = resman.get_recipe(request.param)
 

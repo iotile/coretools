@@ -1,5 +1,6 @@
 """Local fixtures for testing iotile-ext-cloud."""
 
+import sys
 import pytest
 from iotile.core.dev.registry import ComponentRegistry
 from iotile.cloud.cloud import IOTileCloud
@@ -102,6 +103,9 @@ def ota_cloud(mock_cloud_private_nossl):
 
 @pytest.fixture(scope="function")
 def simple_hw():
+
+    if sys.version_info < (3, 5):
+        pytest.skip('requires iotile-emulate on python 3.5+')
 
     simple_file = """{{
         "device":

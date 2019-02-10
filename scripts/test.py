@@ -8,18 +8,20 @@ import components
 
 
 def run_test(component, args):
-    distribution, subdir, python3_compat = components.comp_names[component]
+    comp = components.comp_names[component]
 
     currdir = os.getcwd()
 
     testcmd = ['pytest'] + list(args)
     output_status = 0
 
-    if sys.version_info.major >= 3 and not python3_compat:
+    if sys.version_info.major >= 3 and not comp.py3k_clean:
+        return None, ""
+    elif sys.version_info.major == 2 and not comp.py2k_clean:
         return None, ""
 
     try:
-        os.chdir(subdir)
+        os.chdir(comp.path)
 
         with open(os.devnull, "wb") as devnull:
                 output = subprocess.check_output(testcmd, stderr=subprocess.STDOUT)
@@ -63,7 +65,7 @@ class TestProcessor(cmdln.Cmdln):
             duration = end - start
 
             if status is None:
-                print("SKIPPED ON PYTHON 3")
+                print("SKIPPED ON UNSUPPORTED PYTHON INTERPRETER")
             elif status == 5:
                 print("NO TESTS RAN (%.1f seconds)" % duration)
             elif status != 0:
