@@ -66,7 +66,8 @@ class IOTile(object):
         "type_package",
         "proxy_plugin",
         "virtual_tile",
-        "virtual_device"
+        "emulated_tile",
+        "virtual_device",
     ])
     """The canonical list of all product types that contain python code.
 
@@ -97,6 +98,7 @@ class IOTile(object):
         "proxy_module": _DevOnlyProduct,
         "proxy_plugin": _DevOnlyProduct,
         "virtual_tile": _DevOnlyProduct,
+        "emulated_tile": _DevOnlyProduct,
         "virtual_device": _DevOnlyProduct,
         "firmware_image": _ReleaseOnlyProduct
     }

@@ -243,7 +243,7 @@ class RPCDispatcher(object):
             payload (bytes): A byte string of payload parameters up to 20 bytes
 
         Returns:
-            str: The response payload from the RPC
+            bytes: The response payload from the RPC
         """
         if rpc_id < 0 or rpc_id > 0xFFFF:
             raise RPCInvalidIDError("Invalid RPC ID: {}".format(rpc_id))

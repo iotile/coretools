@@ -2,10 +2,15 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## HEAD
+
+- Add support for `emulated_tile` product to be included in an IOTile Component.
+  This is necessary now that `iotile-emulate` no longer supported python 2 and
+  requires asyncio inside its emulated tiles.
+
 ## 3.26.5
 
 - Remove past.builtins dependency
-
 
 ## 3.26.4
 
