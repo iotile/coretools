@@ -19,8 +19,8 @@ data and receiving RPC commands, we can make a generic gateway program that
 translates requests from any supported protocol into any other supported
 protocol.
 
-This program, and the python objects behind it is called `iotile-gateway` and
-provided by the iotile-gateway package in CoreTools.
+This program, and the python objects behind it, is called `iotile-gateway` and
+is provided by the iotile-gateway package in CoreTools.
 
 Goals
 #####
@@ -57,7 +57,7 @@ DeviceAdapters and GatewayAgents together.  This program is called
 **iotile-gateway** and is installed as a script when you `pip install` the
 iotile-gateway package in CoreTools.
 
-The heavy lifting is done by an asynchronous event loop managed the
+The heavy lifting is done by an asynchronous event loop managed by the
 **DeviceManager** class.
 
 .. py:module:: iotilegateway.device

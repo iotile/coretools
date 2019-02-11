@@ -45,8 +45,8 @@ same stream that walk that stream at a different rate.  For example, say you
 have a stream named 'output 1' that has two nodes connected to it.  The first
 node processes readings one at a time every time they come in so its stream
 walker will always stay up to date with the latest reading.  The second node,
- though, could be configured to average its input every 60 readings, so its
- stream walker would accumulate 60 readings before the node fires.
+though, could be configured to average its input every 60 readings, so its
+stream walker would accumulate 60 readings before the node fires.
 
 The key point is that whenever a reading is pushed into a stream, it is as if
 a copy of the value is pushed to each stream walker
@@ -107,7 +107,7 @@ is produced (save the above example as `example.sgf`)::
 	(unbuffered 2 when value == 5) => unbuffered 1024 using copy_latest_a
 	(unbuffered 1024 when count == 1 && constant 1025 always) => unbuffered 1025 using call_rpc
 
-First node that we called the `iotile-sgcompile` program, passed it our
+First note that we called the `iotile-sgcompile` program, passed it our
 sensor graph file and asked for the output  in the 'node' format, which is the
 generated graph.
 
@@ -116,7 +116,7 @@ format::
 
 	(<input 1> trigger [&&, ||] [<input 2 trigger]) => <output> using <processor>
 
-Basically there are written as `(inputs) => output` where there can either be
+Basically they are written as `(inputs) => output` where there can either be
 one or two input streams and always a single output stream.  The processing
 function to use is also explicitly specified by name.
 
@@ -181,7 +181,7 @@ In prose this says::
 Different Kinds of Streams
 ##########################
 
-There are currently 6 different classes of streams.  Their own differences are
+There are currently 6 different classes of streams.  Their only differences are
 in how many past values are remembered and whether a count is kept
 of how many readings have been pushed to the stream.
 
@@ -238,7 +238,7 @@ most appropriate in most cases.
 Understanding the Optimizer
 ###########################
 
-Since SensorGraphs allow they user to very explicitly say what should happen
+Since SensorGraphs allow their user to very explicitly say what should happen
 as data comes into the device and what data is considered an output, the
 compiler can aggressively optimize the underlying graph as long as it
 guarantees that the behavior for each input is unchanged in so far as the

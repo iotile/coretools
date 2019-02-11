@@ -42,7 +42,7 @@ class RealtimeTestDevice(VirtualIOTileDevice):
 
                 broadcast (dict):
                     A map of strings with hex numbers to tuples of (interval, value)
-                     where interval is a float that expresses how often the stream should stream
+                    where interval is a float that expresses how often the stream should stream
                     in seconds and value is an integer that is sent as the value every interval
                     as a broadcast reading (BroadcastReport).  The stream id is the key of the
                     streams dict which should be a string encoding of a hex number including

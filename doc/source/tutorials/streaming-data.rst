@@ -118,7 +118,7 @@ The `IOTileReading` class is pretty simple.
 There are two major Report Formats that we are going to be using in this
 tutorial.  The first is the `IndividualReportFormat`.  Individual reports
 contain a single reading and are used by IOTile devices to communicate
-real time data to a connected user that should be stored persistently in the
+real time data to a connected user that should not be stored persistently in the
 cloud.
 
 .. important::

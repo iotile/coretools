@@ -87,7 +87,7 @@ So, let's create an empty Component to contain our proxy module::
 Now we need to add enough information to ``module_settings.json`` to identify this folder as an IOTile component and
 point out that ``demo_proxy.py`` should be treated as a proxy module.  We'll call our component ``demo_component`` and
 put it in the ``walkthrough`` namespace (called a domain).  These names can be anything but should be unique if you
-every want to share your component with anyone else.
+ever want to share your component with anyone else.
 
 Save the following to your ``module_settings.json`` file::
 
@@ -399,7 +399,7 @@ If you provide multiple inputs you would append an argument for each format type
 
     self.rpc_v2(0x8888, "LLL", "", new_temp1, new_temp2, new_temp3)
 
-Additionally, you could use ``@docannotate`` instead of ``@returns`` to tell ``typedargs`` how to parse input::
+Additionally, you could use ``@docannotate`` instead of ``@param`` to tell ``typedargs`` how to parse input::
 
     @docannotate
     def set_temperature(self, new_temp):
