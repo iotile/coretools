@@ -91,6 +91,13 @@ class BLED112Adapter(DeviceAdapter):
         self.connecting_count = 0
         self.maximum_connections = 0
 
+        self._scan_event_count = 0
+        self._v1_scan_count = 0
+        self._v1_scan_response_count = 0
+        self._v2_scan_count = 0
+        self._device_scan_counts = {}
+        self._last_reset_time = time.time()
+
         self._logger = logging.getLogger(__name__)
         self._logger.addHandler(logging.NullHandler())
 
@@ -123,6 +130,31 @@ class BLED112Adapter(DeviceAdapter):
                 found_devs.append(port.device)
 
         return found_devs
+
+    def get_scan_stats(self):
+        """Return the scan event statistics for this adapter
+
+        Returns:
+            int : total scan events
+            int : total v1 scan count
+            int : total v1 scan response count
+            int : total v2 scan count
+            dict : device-specific scan counts
+            float : seconds since last reset
+        """
+        time_spent = time.time()
+        return self._scan_event_count, self._v1_scan_count, self._v1_scan_response_count, \
+            self._v2_scan_count, self._device_scan_counts.copy(), \
+            (time_spent - self._last_reset_time)
+
+    def reset_scan_stats(self):
+        """Clears the scan event statistics and updates the last reset time"""
+        self._scan_event_count = 0
+        self._v1_scan_count = 0
+        self._v1_scan_response_count = 0
+        self._v2_scan_count = 0
+        self._device_scan_counts = {}
+        self._last_reset_time = time.time()
 
     def can_connect(self):
         """Check if this adapter can take another connection
@@ -537,6 +569,8 @@ class BLED112Adapter(DeviceAdapter):
         else:
             data = bytearray([])
 
+        self._scan_event_count += 1
+
         # If this is an advertisement packet, see if its an IOTile device
         # packet_type = 4 is scan_response, 0, 2 and 6 are advertisements
         if packet_type in (0, 2, 6):
@@ -544,12 +578,15 @@ class BLED112Adapter(DeviceAdapter):
                 return
 
             if data[22] == 0xFF and data[23] == 0xC0 and data[24] == 0x3:
+                self._v1_scan_count += 1
                 self._parse_v1_advertisement(rssi, string_address, data)
             elif data[3] == 27 and data[4] == 0x16 and data[5] == 0xdd and data[6] == 0xfd:
+                self._v2_scan_count += 1
                 self._parse_v2_advertisement(rssi, string_address, data)
             else:
                 pass # This just means the advertisement was from a non-IOTile device
         elif packet_type == 4:
+            self._v1_scan_response_count += 1
             self._parse_v1_scan_response(string_address, data)
 
     def _parse_v2_advertisement(self, rssi, sender, data):
@@ -581,6 +618,8 @@ class BLED112Adapter(DeviceAdapter):
         #   bit 5: Encryption key is user key
         #   bit 6: broadcast data is time synchronized to avoid leaking
         #   information about when it changes
+
+        self._device_scan_counts.setdefault(device_id, {'v1': 0, 'v2': 0})['v2'] += 1
 
         info = {'connection_string': sender,
                 'uuid': device_id,
@@ -626,7 +665,6 @@ class BLED112Adapter(DeviceAdapter):
         self._broadcast_state[key] = (device_time, stream, value, toggle, counter)
         return False
 
-
     def _parse_v1_advertisement(self, rssi, sender, advert):
         if len(advert) != 31:
             return
@@ -642,6 +680,8 @@ class BLED112Adapter(DeviceAdapter):
             manu_data = advert[21:]
 
             _length, _datatype, _manu_id, device_uuid, flags = unpack("<BBHLH", manu_data)
+
+            self._device_scan_counts.setdefault(device_uuid, {'v1': 0, 'v2': 0})['v1'] += 1
 
             # Flags for version 1 are:
             #   bit 0: whether we have pending data
