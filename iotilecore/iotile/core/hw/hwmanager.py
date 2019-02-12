@@ -221,10 +221,10 @@ class HardwareManager(object):
         device_id, os_info, app_info = tile.rpc(0x10, 0x08, result_format="L8xLL")
 
         os_tag = os_info  & ((1 << 20) - 1)
-        os_version_str = '%d.%d.%d'  % ((os_info >> 26) & ((1 << 6) - 1), (os_info >> 20) & ((1 << 6) - 1), 0)
+        os_version_str = '%d.%d.%d' % ((os_info >> 26) & ((1 << 6) - 1), (os_info >> 20) & ((1 << 6) - 1), 0)
 
         app_tag = app_info & ((1 << 20) - 1)
-        app_version_str = '%d.%d.%d'  % ((app_info >> 26) &  ((1 << 6) - 1), (app_info>>20) & ((1 << 6) - 1), 0)
+        app_version_str = '%d.%d.%d' % ((app_info >> 26) & ((1 << 6) - 1), (app_info >> 20) & ((1 << 6) - 1), 0)
 
         os_version = SemanticVersion.FromString(os_version_str)
         app_version = SemanticVersion.FromString(app_version_str)
@@ -393,6 +393,12 @@ class HardwareManager(object):
                 parameter has no effect.
         """
 
+        if self.transport == 'bled112':
+            reg = ComponentRegistry()
+            if reg.get_config('bled112:active-scan') == 'false':
+                self.logger.warning("Warning: active scan not set, you may not see results")
+                time.sleep(2)
+
         if whitelist is not None:
             whitelist = set(whitelist)
 
@@ -546,7 +552,6 @@ class HardwareManager(object):
         line_ui = LinebufferUI(_poll, _hash, _text, sortkey_func=_sort_order, title=_title)
         line_ui.run()
 
-
     @return_type("string")
     @param("encoding", "string", desc="The encoding to use to dump the trace, either 'hex' or 'raw'")
     def dump_trace(self, encoding):
@@ -684,8 +689,6 @@ class HardwareManager(object):
 
         return reports
 
-
-
     def iter_reports(self, blocking=False):
         """Iterate over reports that have been received.
 
@@ -758,7 +761,7 @@ class HardwareManager(object):
         """Scan for available devices and print a dictionary of information about them.
 
         If wait is specified as a floating point number in seconds, then the default wait times
-        configured inside of the stream or device adapter used to find IOTile devices is overriden
+        configured inside of the stream or device adapter used to find IOTile devices is overridden
         with the value specified.
 
         Args:
@@ -816,20 +819,20 @@ class HardwareManager(object):
         if conn_string is not None:
             conn_string = conn_string.strip()
 
-        #Check if we're supposed to use a specific device adapter
+        # Check if we're supposed to use a specific device adapter
         if force_adapter is not None:
             return AdapterCMDStream(force_adapter, port, conn_string, record=self._record)
 
-        #First check if this is the special none stream that creates a transport channel nowhere
+        # First check if this is the special none stream that creates a transport channel nowhere
         if self.transport == 'none':
             return CMDStream(port, conn_string, record=self._record)
 
-        #Next attempt to find a CMDStream that is registered for this transport type
+        # Next attempt to find a CMDStream that is registered for this transport type
         reg = ComponentRegistry()
         for _name, stream_factory in reg.load_extensions('iotile.cmdstream', name_filter=self.transport):
             return stream_factory(port, conn_string, record=self._record)
 
-        #Otherwise attempt to find a DeviceAdapter that we can turn into a CMDStream
+        # Otherwise attempt to find a DeviceAdapter that we can turn into a CMDStream
         for _name, adapter_factory in reg.load_extensions('iotile.device_adapter', name_filter=self.transport):
             return AdapterCMDStream(adapter_factory(port), port, conn_string, record=self._record)
 
