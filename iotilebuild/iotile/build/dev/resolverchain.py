@@ -181,7 +181,7 @@ class DependencyResolverChain(object):
     def _load_depsettings(self, deptile):
         settings_file = os.path.join(deptile.folder, 'dep_settings.json')
 
-        with open(settings_file, 'rb') as f:
+        with open(settings_file, 'r') as f:
             settings = json.load(f)
 
         return settings
