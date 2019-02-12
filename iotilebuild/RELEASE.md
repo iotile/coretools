@@ -2,7 +2,7 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
-## HEAD
+## 2.8.0
 
 - Add support for complex python support wheels where there is an actual 
   python package present in `python/support`.  Makes sure that the 
@@ -11,6 +11,9 @@ All major changes in each released version of IOTileBuild are listed here.
 - Refactor to remove all references to `pkg_resources`.  Uses centralized 
   entrypoint loading system from iotile.core instead.
 
+- Fix additional python 3 incompatibilities with `iotile build` that prevented
+  builds from running correctly on python 3.
+ 
 ## 2.7.0
 
 - Add support for running pytest unit tests as part of the build process.

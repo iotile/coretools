@@ -20,7 +20,7 @@ def create_release_settings_action(target, source, env):
     """Copy module_settings.json and add release and build information
     """
 
-    with open(str(source[0]), "rb") as fileobj:
+    with open(str(source[0]), "r") as fileobj:
         settings = json.load(fileobj)
 
     settings['release'] = True
