@@ -105,11 +105,13 @@ class HardwareManager(object):
         reg = ComponentRegistry()
         proxy_classes = reg.load_extensions('iotile.proxy', class_filter=TileBusProxyObject, product_name="proxy_module")
 
-        for _name, obj in proxy_classes:
-            if obj.__name__ in self._proxies:
+        for name, obj in proxy_classes:
+            proxy_key = obj.__name__ + ':' + name
+
+            if proxy_key in self._proxies:
                 continue
 
-            self._proxies[obj.__name__] = obj
+            self._proxies[proxy_key] = obj
 
             #Check if this object matches a specific shortened name so that we can
             #automatically match a hw module to a proxy without user intervention
