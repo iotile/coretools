@@ -8,6 +8,12 @@ All major changes in each released version of `iotile-core` are listed here.
   This is necessary now that `iotile-emulate` no longer supported python 2 and
   requires asyncio inside its emulated tiles.
 
+## 3.26.6
+
+- Change load_extensions so that when an exception on loading a module is
+  raised it got caught and warning is logged in order to avoid breaking
+  everything if there is an error importing an extension.
+
 ## 3.26.5
 
 - Remove past.builtins dependency
