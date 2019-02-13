@@ -91,7 +91,13 @@ def pack_rpc_payload(arg_format, args):
     """
 
     code = _create_respcode(arg_format, args)
-    return struct.pack(code, *args)
+
+    packed_result = struct.pack(code, *args)
+    unpacked_validation = struct.unpack(code, packed_result)
+    if tuple(args) != unpacked_validation:
+        raise RPCInvalidArgumentsError("Passed values would be truncated, please validate the size of your string",
+                                       code=code, args=args)
+    return packed_result
 
 
 def unpack_rpc_payload(resp_format, payload):
