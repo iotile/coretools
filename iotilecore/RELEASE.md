@@ -7,6 +7,7 @@ All major changes in each released version of `iotile-core` are listed here.
 - Add support for `emulated_tile` product to be included in an IOTile Component.
   This is necessary now that `iotile-emulate` no longer supported python 2 and
   requires asyncio inside its emulated tiles.
+- Fix bug with sharing extensions between ComponentRegistry objects
 
 ## 3.26.5
 

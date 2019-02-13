@@ -209,7 +209,7 @@ class ComponentRegistry(object):
         """Clear all previously registered extensions."""
 
         if group is None:
-            self._registered_extensions = {}
+            self._registered_extensions.clear()
             return
 
         if group in self._registered_extensions:
