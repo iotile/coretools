@@ -148,8 +148,11 @@ class TileBusProxyObject(object):
         """
         if args:
             packed_args = pack_rpc_payload(arg_format, list(args))
-        else:
+        elif arg_format == "":
             packed_args = b''
+        else:
+            raise IOTileException("Arg format expects arguments to be present", arg_format=arg_format, args=args)
+
         status, payload = self.stream.send_rpc(self.addr, cmd, packed_args, **kw)
         res_type = (0, True)
 
