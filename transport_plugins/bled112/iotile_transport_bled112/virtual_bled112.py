@@ -77,7 +77,7 @@ class BLED112VirtualInterface(VirtualIOTileInterface):
             else:
                 raise ExternalError("Could not find any BLED112 adapters connected to this computer")
 
-        self._serial_port = serial.Serial(port, 256000, timeout=0.01, rtscts=True)
+        self._serial_port = serial.Serial(port, 256000, timeout=0.01, rtscts=True, exclusive=True)
         self._stream = AsyncPacketBuffer(self._serial_port, header_length=4, length_function=packet_length)
         self._commands = Queue()
         self._command_task = BLED112CommandProcessor(self._stream, self._commands, stop_check_interval=0.01)

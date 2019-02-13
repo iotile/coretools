@@ -2,6 +2,10 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
+## HEAD
+
+- Ctrl+C breaks if you accidentally double book the bled112 dongle fix(#657)
+
 ## 1.8.0
 
 - Update virtual interface for compatibility with new iotile-core version that

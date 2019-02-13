@@ -100,8 +100,7 @@ class BLED112Adapter(DeviceAdapter):
 
         self._logger = logging.getLogger(__name__)
         self._logger.addHandler(logging.NullHandler())
-
-        self._serial_port = serial.Serial(port, 256000, timeout=0.01, rtscts=True)
+        self._serial_port = serial.Serial(port, 256000, timeout=0.01, rtscts=True, exclusive=True)
         self._stream = AsyncPacketBuffer(self._serial_port, header_length=4, length_function=packet_length)
         self._commands = Queue()
         self._command_task = BLED112CommandProcessor(self._stream, self._commands, stop_check_interval=stop_check_interval)
