@@ -8,6 +8,7 @@ All major changes in each released version of `iotile-core` are listed here.
   This is necessary now that `iotile-emulate` no longer supported python 2 and
   requires asyncio inside its emulated tiles.
 - Fix bug with sharing extensions between ComponentRegistry objects
+- Fix error with multiple proxies with the same class name(#644)
 
 ## 3.26.5
 

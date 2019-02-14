@@ -79,7 +79,8 @@ def tile_based():
         pytest.skip('Cannot pass device config because path has [@,;] in it')
 
     reg = ComponentRegistry()
-    reg.register_extension('iotile.proxy', 'vitual_tile', 'test/test_hw/virtual_tile.py')
+    reg.register_extension('iotile.proxy', 'virtual_tile', 'test/test_hw/virtual_tile.py')
+    reg.register_extension('iotile.proxy', 'simple_virtual_tile', 'test/test_hw/simple_virtual_tile.py')
 
     hw = HardwareManager('virtual:tile_based@%s' % conf_file)
     yield hw
@@ -221,6 +222,10 @@ def test_tilebased_device(tile_based):
     hw.connect(1)
     con = hw.controller()
     tile1 = hw.get(11)
+    simple_tile = hw.get(7)
+
+    assert tile1.tile_name() == 'test01'
+    assert simple_tile.tile_name() == 'test02'
 
     assert con.add(1, 2) == 3
     con.count()
@@ -239,7 +244,7 @@ def test_recording_rpcs(tmpdir):
         pytest.skip('Cannot pass device config because path has [@,;] in it')
 
     reg = ComponentRegistry()
-    reg.register_extension('iotile.proxy', 'vitual_tile', 'test/test_hw/virtual_tile.py')
+    reg.register_extension('iotile.proxy', 'virtual_tile', 'test/test_hw/virtual_tile.py')
 
     try:
         with HardwareManager('virtual:tile_based@%s' % conf_file, record=str(record_path)) as hw:
