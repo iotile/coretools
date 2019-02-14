@@ -224,6 +224,7 @@ def test_tilebased_device(tile_based):
     tile1 = hw.get(11)
     simple_tile = hw.get(7)
 
+    assert tile1.tile_name() == 'test01'
     assert simple_tile.tile_name() == 'test02'
 
     assert con.add(1, 2) == 3
