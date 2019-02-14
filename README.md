@@ -11,6 +11,7 @@
 - [Continuous Deployment](#continuous-deployment)
 - [Manually Releasing](#manually-releasing)
 - [Contributing](#Contributing)
+- [Code of Conduct](#Code of Conduct)
 - [License](#license)
 
 <!-- /MarkdownTOC -->
@@ -78,6 +79,14 @@ If you want to use the IOTile testing tools (necessary for testing CoreTools amo
 
 ```shell
 pip install iotile-test
+```
+
+## Installation (for development)
+
+You can install any given package if you have the repository cloned locally in the normal way.
+For example, to install a development (i.e. master / your branch tip) of iotile-core:
+```shell
+pip install -e coretools/iotilecore
 ```
 
 ### Working with Encrypted Device Data
@@ -166,6 +175,9 @@ SLACK_WEB_HOOK
 
 If you are interesting in contributing to CoreTools, please see the [Contributing](CONTRIBUTING.md) guide!
 
+### Code of Conduct
+
+Please familiarize yourself with our [Code of Conduct](CODE_OF_CONDUCT.md)
 
 ### License
 
