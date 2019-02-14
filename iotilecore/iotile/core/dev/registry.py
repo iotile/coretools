@@ -164,7 +164,11 @@ class ComponentRegistry(object):
             if name_filter is not None and name != name_filter:
                 continue
 
-            ext = entry.load()
+            try:
+                ext = entry.load()
+            except:  #pylint:disable=bare-except;
+                self._logger.warn("Unable to load %s from %s", entry.name, entry.distro)
+                continue
 
             found_extensions.extend((name, x) for x in self._filter_subclasses(ext, class_filter))
 
