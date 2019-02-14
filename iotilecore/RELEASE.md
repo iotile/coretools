@@ -10,6 +10,9 @@ All major changes in each released version of `iotile-core` are listed here.
 - Change load_extensions so that when an exception on loading a module is
   raised it got caught and warning is logged in order to avoid breaking
   everything if there is an error importing an extension.
+- Fix bug with sharing extensions between ComponentRegistry objects
+- Fix error with multiple proxies with the same class name(#644)
+
 
 ## 3.26.5
 
