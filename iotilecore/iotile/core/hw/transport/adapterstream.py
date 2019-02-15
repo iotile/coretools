@@ -11,6 +11,7 @@ import time
 from iotile.core.exceptions import HardwareError, ArgumentError
 from iotile.core.utilities.typedargs import iprint
 from iotile.core.hw.reports import BroadcastReport
+from threading import Lock
 
 
 class AdapterCMDStream(CMDStream):
@@ -36,6 +37,7 @@ class AdapterCMDStream(CMDStream):
         self._broadcast_reports = None
         self._traces = None
         self.connection_interrupted = False
+        self._scan_lock = Lock()
 
         self.adapter.add_callback('on_scan', self._on_scan)
         self.adapter.add_callback('on_report', self._on_report)
@@ -56,12 +58,17 @@ class AdapterCMDStream(CMDStream):
             info (dict): Information about the scanned device
             expiration_time (float): How long this device should stay around
         """
+        try:
+            if not self._scan_lock.acquire(False):
+                self._scan_lock.acquire(True)
 
-        device_id = info['uuid']
-        infocopy = deepcopy(info)
+            device_id = info['uuid']
+            infocopy = deepcopy(info)
 
-        infocopy['expiration_time'] = datetime.datetime.now() + datetime.timedelta(seconds=expiration_time)
-        self._scanned_devices[device_id] = infocopy
+            infocopy['expiration_time'] = datetime.datetime.now() + datetime.timedelta(seconds=expiration_time)
+            self._scanned_devices[device_id] = infocopy
+        finally:
+            self._scan_lock.release()
 
     def _on_disconnect(self, adapter_id, connection_id):
         """Callback when a device is disconnected unexpectedly.
@@ -103,18 +110,24 @@ class AdapterCMDStream(CMDStream):
         if wait_time is not None:
             time.sleep(wait_time)
 
-        to_remove = set()
+        try:
+            if not self._scan_lock.acquire(False):
+                self._scan_lock.acquire(True)
 
-        now = datetime.datetime.now()
+            to_remove = set()
 
-        for name, value in viewitems(self._scanned_devices):
-            if value['expiration_time'] < now:
-                to_remove.add(name)
+            now = datetime.datetime.now()
 
-        for name in to_remove:
-            del self._scanned_devices[name]
+            for name, value in viewitems(self._scanned_devices):
+                if value['expiration_time'] < now:
+                    to_remove.add(name)
 
-        return self._scanned_devices.values()
+            for name in to_remove:
+                del self._scanned_devices[name]
+
+            return self._scanned_devices.values()
+        finally:
+            self._scan_lock.release()
 
     def _connect(self, uuid_value, wait=None):
         # If we can't see the device, scan to try to find it
