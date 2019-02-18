@@ -2,7 +2,7 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
-## HEAD
+## 3.27.0
 
 - Add support for `emulated_tile` product to be included in an IOTile Component.
   This is necessary now that `iotile-emulate` no longer supported python 2 and
@@ -12,6 +12,8 @@ All major changes in each released version of `iotile-core` are listed here.
   everything if there is an error importing an extension.
 - Fix bug with sharing extensions between ComponentRegistry objects
 - Fix error with multiple proxies with the same class name(#644)
+- Fixup watch_broadcast notification for v1 (#673)
+- Fix RPC v2 not checking argument boundaries (#676)
 
 
 ## 3.26.5
