@@ -1,7 +1,6 @@
 """A websocket client that validates messages received and dispatches them."""
 
-from __future__ import unicode_literals
-from ws4py.client.threadedclient import WebSocketClient
+import websockets
 from future.utils import viewitems
 import threading
 import msgpack
@@ -26,8 +25,8 @@ FailureResponseSchema.add_required('reason', StringVerifier())
 ResponseSchema = OptionsVerifier(SuccessfulResponseSchema, FailureResponseSchema)
 
 
-class ValidatingWSClient(WebSocketClient):
-    """A threaded websocket client that validates messages received.
+class ValidatingWSClient:
+    """An asynchronous websocket client that validates messages received.
 
     Messages are assumed to be packed using msgpack in a binary format
     and are decoded and validated against message type schema.  Matching
@@ -35,12 +34,13 @@ class ValidatingWSClient(WebSocketClient):
     match no attached schema are logged and dropped.
     """
 
-    def __init__(self, url, logger_name=__name__):
+    def __init__(self, url, loop, logger_name=__name__):
         """Constructor.
 
         Args:
         url (string): The URL of the websocket server that we want
             to connect to.
+        loop: The asyncio event loop of the client owner
         logger_name (string): An optional name that errors are logged to
         """
 
