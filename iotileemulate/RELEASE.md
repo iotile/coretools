@@ -2,6 +2,10 @@
 
 All major changes in each released version of iotile-emulate are listed here.
 
+## HEAD
+
+- Support busy response for RPCs in iotile-emulate. Issue #619
+
 ## 0.4.3
 
 - Remove instances of builtins/__future__

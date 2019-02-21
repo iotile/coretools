@@ -137,6 +137,18 @@ class RPCQueue:
 
         self._rpc_task = self._loop.create_task(self._rpc_dispatch_task())
 
+    def is_pending_rpc(self, address):
+        """Check if there is a pending rpc on the tile
+
+        Args:
+            address (int): The address of the time
+
+        Returns:
+            bool: True if there is a rpc for the tile already in the queue
+        """
+
+        return address in self._pending_rpcs and self._pending_rpcs[address]
+
     async def stop(self):
         """Stop the rpc queue from inside the event loop."""
 

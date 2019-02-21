@@ -3,7 +3,7 @@
 import logging
 from iotile.core.exceptions import DataError
 from iotile.core.hw.virtual import VirtualIOTileDevice
-from iotile.core.hw.virtual.common_types import pack_rpc_payload, unpack_rpc_payload, AsynchronousRPCResponse
+from iotile.core.hw.virtual.common_types import pack_rpc_payload, unpack_rpc_payload, AsynchronousRPCResponse, BusyRPCResponse
 from .emulation_mixin import EmulationMixin
 from .state_log import EmulationStateLog
 from ..constants.rpcs import RPCDeclaration
@@ -45,6 +45,10 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
 
     def _dispatch_rpc(self, address, rpc_id, arg_payload):
         """Background work queue handler to dispatch RPCs."""
+
+        if self.emulator.is_tile_busy(address):
+            self._track_change('device.rpc_busy_response', (address, rpc_id, arg_payload, None, None), formatter=format_rpc)
+            raise BusyRPCResponse()
 
         try:
             # Send the RPC immediately and wait for the response
