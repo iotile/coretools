@@ -43,6 +43,7 @@ class ValidatingWSClient(WebSocketClient):
         logger_name (string): An optional name that errors are logged to
         """
 
+        print("SUPER SNEAKY WEBSOCKET CLIENT")
         super(ValidatingWSClient, self).__init__(url)
 
         self._connected = threading.Event()

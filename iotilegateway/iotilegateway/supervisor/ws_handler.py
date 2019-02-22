@@ -126,6 +126,7 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
         elif op == 'update_state':
             try:
                 self.manager.update_state(cmd['name'], cmd['new_status'])
+                print("updating state")
                 if not cmd['no_response']:
                     self.send_response(True, None)
             except ArgumentError as exc:
@@ -190,7 +191,7 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
             resp_object['payload'] = obj
 
         msg = self.pack(resp_object)
-        self.logger.debug("Sending response: %s", obj)
+        self.logger.debug("Sending response: %s", msg)
         try:
             self.write_message(msg, binary=True)
         except tornado.websocket.WebSocketClosedError:
@@ -209,7 +210,7 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
 
     def send_notification(self, name, change_type, change_info, directed_client=None):
         """Send an unsolicited notification to someone."""
-
+        print("Actually sending the ws notification")
         # If the notification is directed, make sure it is directed at us
         if directed_client is not None and self.client_id != directed_client:
             return
@@ -219,23 +220,29 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
             notif_object['payload'] = change_info
 
         msg = self.pack(notif_object)
-
+        print(msg)
         try:
             self.write_message(msg, binary=True)
         except tornado.websocket.WebSocketClosedError:
+            print("websocket closed, sorry")
             pass
 
     def open(self, *args):
         """Register that someone opened a connection."""
-
+        print("Adding manager monitor", args)
         self.stream.set_nodelay(True)
         self.manager.add_monitor(self.send_notification)
         self.logger.info('Client connected')
+        print("list of monitors::")
+        print(self.manager._monitors)
+        print("------")
 
     def on_close(self, *args):
         """Register that someone closed a connection."""
 
         self.manager.remove_monitor(self.send_notification)
+
+        print("removed monitor", self.agent_service)
 
         if self.agent_service is not None:
             try:
@@ -245,3 +252,7 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
                 self.logger.warn("Attempted to clear agent status but was not actually an agent for service: %s", self.agent_service)
 
         self.logger.info('Client disconnected')
+        print(self.manager.services)
+        print(self.manager.agents)
+        print(self.manager.in_flight_rpcs)
+        print(self.manager._monitors)

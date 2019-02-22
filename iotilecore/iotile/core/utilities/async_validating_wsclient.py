@@ -1,8 +1,9 @@
 """A websocket client that validates messages received and dispatches them."""
 
+import asyncio
 import websockets
+
 from future.utils import viewitems
-import threading
 import msgpack
 import datetime
 import logging
@@ -25,7 +26,7 @@ FailureResponseSchema.add_required('reason', StringVerifier())
 ResponseSchema = OptionsVerifier(SuccessfulResponseSchema, FailureResponseSchema)
 
 
-class ValidatingWSClient:
+class AsyncValidatingWSClient:
     """An asynchronous websocket client that validates messages received.
 
     Messages are assumed to be packed using msgpack in a binary format
@@ -40,35 +41,96 @@ class ValidatingWSClient:
         Args:
         url (string): The URL of the websocket server that we want
             to connect to.
-        loop: The asyncio event loop of the client owner
         logger_name (string): An optional name that errors are logged to
         """
-
-        super(ValidatingWSClient, self).__init__(url)
-
-        self._connected = threading.Event()
-        self._disconnection_finished = threading.Event()
-
-        self._command_lock = threading.Lock()
-
-        self.control_data = str(uuid.uuid4())
-        self._pong_received = threading.Event()
-
-        self._last_response = None
-        self._response_received = threading.Event()
-
-        self.disconnection_code = None
-        self.disconnection_reason = None
-        self.disconnection_callback = None
-
-        self.logger = logging.getLogger(logger_name)
-        self.logger.addHandler(logging.NullHandler())
-
+        self.con = None
+        self.url = url
+        self.loop = loop
+        self._logger = logging.getLogger(logger_name)
         self.validators = [(ResponseSchema, self._on_response_received)]
+        self.command_lock = asyncio.Lock(loop=self.loop)
+        self.response_queue = asyncio.Queue(1, loop=self.loop)
 
-    @property
-    def connected(self):
-        return self._connected.is_set()
+        asyncio.ensure_future(self.connection_object(), loop=self.loop)
+        asyncio.ensure_future(self.handle_message(), loop=self.loop)
+
+    async def connection_object(self):
+        """Async object that contains the websocket connection (and keeps it open for us)"""
+        self.con = await websockets.connect(self.url)
+
+    async def send_command(self, command, args, timeout=10.0):
+        """Send a command and synchronously wait for a single response.
+
+        Args:
+            command (string): The command name
+            args (dict): Optional arguments
+            timeout (float): The maximum time to wait for a response
+        """
+        while not self.con:
+            await asyncio.sleep(1)
+
+        msg = {x: y for x, y in viewitems(args)}
+        msg['type'] = 'command'
+        msg['operation'] = command
+        msg['no_response'] = False
+        packed = msgpack.packb(msg, use_bin_type=True)
+        async with self.command_lock:
+            await self.con.send(packed)
+            try:
+                results = await asyncio.wait_for(self.response_queue.get(), timeout=timeout, loop=self.loop)
+            except asyncio.TimeoutError:
+                results = {'success': False, 'reason': 'timeout'}
+            return results
+
+    async def handle_message(self):
+        """Listener for when a message is received from the ws server.
+
+        (This replaces the message_received callback from the threaded version)
+
+        The message must be encoded using message_pack
+        """
+
+        while not self.con:
+            await asyncio.sleep(1)
+
+        try:
+            while True:
+                message = await self.con.recv()
+                try:
+                    unpacked = self._unpack(message)
+                except Exception as exc:
+                    self._logger.error("Corrupt message received, parse exception = %s", str(exc))
+                    continue
+                # We need to delegate the callback to a processor to keep our callback exceptions
+                # Without blocking the websocket message handler with an await
+                # There may still be a deadlock lurking in here somewhere, but it should be fine...
+                asyncio.ensure_future(self.process_message(unpacked), loop=self.loop)
+        finally:
+            await self.con.close()
+
+    async def process_message(self, unpacked):
+        """Process a message asynchronously from the websocket message handler"""
+
+        handler_found = False
+        # We have to break instead of return to keep the coroutine alive
+        for validator, callback in self.validators:
+            # Look for the first callback that can handle this message
+            # if no one can handle it, log an error and discard the message.
+            try:
+                validator.verify(unpacked)
+            except ValidationError:
+                continue
+            try:
+                await callback(unpacked)
+                handler_found = True
+            except IOTileException as exc:
+                self._logger.error("Exception handling websocket message, exception = %s", str(exc))
+                break
+            except Exception as exc:
+                self._logger.error("Non-IOTile exception handling websocket message, exception = %s", str(exc))
+                break
+        if not handler_found:
+            self._logger.warn("No handler found for received message, message=%s", str(unpacked))
 
     def add_message_type(self, validator, callback):
         """Add a message type that should trigger a callback.
@@ -86,99 +148,15 @@ class ValidatingWSClient:
 
         self.validators.append((validator, callback))
 
-    def start(self, timeout=5.0):
-        """Synchronously connect to websocket server.
-
-        Args:
-            timeout (float): The maximum amount of time to wait for the
-                connection to be established. Defaults to 5 seconds
-        """
-
-        try:
-            self.connect()
-        except Exception as exc:
-            raise InternalError("Unable to connect to websockets host", reason=str(exc))
-
-        flag = self._connected.wait(timeout=timeout)
-        if not flag:
-            raise TimeoutExpiredError("Conection attempt to host timed out")
-
-    def stop(self, timeout=5.0):
-        """Synchronously disconnect from websocket server.
-
-        Args:
-            timeout (float): The maximum amount of time to wait for the
-                connection to be established. Defaults to 5 seconds
-        """
-
-        if not self.connected:
-            return
-
-        try:
-            self.close()
-        except Exception as exc:
-            raise InternalError("Unable to disconnect from websockets host", reason=str(exc))
-
-        flag = self._disconnection_finished.wait(timeout=timeout)
-        if not flag:
-            raise TimeoutExpiredError("Disconnection attempt from host timed out")
-        self._disconnection_finished.clear()
-
-    def send_message(self, obj):
-        """Send a packed message.
-
-        Args:
-            obj (dict): The message to be sent
-        """
-
-        packed = msgpack.packb(obj, use_bin_type=True)
-        print(packed)
-        self.send(packed, binary=True)
-
-    def send_command(self, command, args, timeout=10.0):
-        """Send a command and synchronously wait for a response.
-
-        Args:
-            command (string): The command name
-            args (dict): Optional arguments
-            timeout (float): The maximum time to wait for a response
-        """
-
-        msg = {x: y for x, y in viewitems(args)}
-        msg['type'] = 'command'
-        msg['operation'] = command
-        msg['no_response'] = False
-
-        with self._command_lock:
-            self._response_received.clear()
-            self.send_message(msg)
-
-            flag = self._response_received.wait(timeout=timeout)
-            if not flag:
-                raise TimeoutExpiredError("Timeout waiting for response")
-
-            self._response_received.clear()
-            return self._last_response
-
-    def send_ping(self, timeout=10.0):
+    async def send_ping(self, timeout=10.0):
         """Send a ping message to keep connection alive and to verify
-        if the server is still there."""
+        if the server is still there
+        """
 
-        self.ping(self.control_data)
+        await self.con.ping(self.control_data, timeout=timeout)
+        await self.con.pong()
 
-        flag = self._pong_received.wait(timeout=timeout)
-        if not flag:
-            raise TimeoutExpiredError("Timeout waiting for pong response")
-
-        self._pong_received.clear()
-
-    def ponged(self, pong):
-        """Pong message received after a ping was sent"""
-
-        if str(pong) == self.control_data:
-            self._pong_received.set()
-
-    def post_command(self, command, args):
+    async def post_command(self, command, args):
         """Post a command asynchronously and don't wait for a response.
 
         Args:
@@ -186,33 +164,15 @@ class ValidatingWSClient:
             args (dict): Optional arguments
         """
 
+        while not self.con:
+            await asyncio.sleep(1)
+
         msg = {x: y for x, y in viewitems(args)}
         msg['type'] = 'command'
         msg['operation'] = command
         msg['no_response'] = True
-
-        self.send_message(msg)
-
-    def opened(self):
-        """Callback called in another thread when a connection is opened."""
-
-        self._connected.set()
-
-    def closed(self, code, reason):
-        """Callback called in another thread when a connection is closed.
-
-        Args:
-            code (int): A code for the closure
-            reason (string): A reason for the closure
-        """
-
-        self.disconnection_code = code
-        self.disconnection_reason = reason
-        self._disconnection_finished.set()
-        self._connected.clear()
-
-        if self.disconnection_callback is not None:
-            self.disconnection_callback()
+        packed = msgpack.packb(msg, use_bin_type=True)
+        await self.con.send(packed)
 
     def _unpack(self, msg):
         """Unpack a binary msgpacked message."""
@@ -222,6 +182,7 @@ class ValidatingWSClient:
     @classmethod
     def decode_datetime(cls, obj):
         """Decode a msgpack'ed datetime."""
+
         if b'__datetime__' in obj:
             obj = datetime.datetime.strptime(obj[b'as_str'].decode(), "%Y%m%dT%H:%M:%S.%f")
         return obj
@@ -229,45 +190,12 @@ class ValidatingWSClient:
     @classmethod
     def encode_datetime(cls, obj):
         """Encode a msgpck'ed datetime."""
+
         if isinstance(obj, datetime.datetime):
             obj = {'__datetime__': True, 'as_str': obj.strftime("%Y%m%dT%H:%M:%S.%f").encode()}
         return obj
 
-    def received_message(self, message):
-        """Callback when a message is received.
+    async def _on_response_received(self, resp):
+        """Put messages of "response" type on to the asyncio.Queue object"""
 
-        The message must be encoded using message_mack
-
-        Args:
-            message (object): The message that was received
-        """
-
-        try:
-            unpacked = self._unpack(message.data)
-        except Exception as exc:
-            self.logger.error("Corrupt message received, parse exception = %s", str(exc))
-            return
-
-        # Look for the first callback that can handle this message
-        # if no one can handle it, log an error and discard the message.
-        for validator, callback in self.validators:
-            try:
-                validator.verify(unpacked)
-            except ValidationError:
-                continue
-
-            try:
-                callback(unpacked)
-                return
-            except IOTileException as exc:
-                self.logger.error("Exception handling websocket message, exception = %s", str(exc))
-                return
-            except Exception as exc:
-                self.logger.error("Non-IOTile exception handling websocket message, exception = %s", str(exc))
-                return
-
-        self.logger.warn("No handler found for received message, message=%s", str(unpacked))
-
-    def _on_response_received(self, resp):
-        self._last_response = resp
-        self._response_received.set()
+        await self.response_queue.put(resp)

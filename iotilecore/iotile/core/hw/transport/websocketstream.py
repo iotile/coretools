@@ -95,6 +95,8 @@ class WebSocketStream(CMDStream):
         # https://bugs.python.org/issue7980
         _throwaway = datetime.datetime.strptime('20110101', '%Y%m%d')
 
+        print("sneaky websocket stream threaded")
+
         self.client = WSIOTileClient(port, report_callback=self._report_callback)
         self.client.start()
         self.binary = self.client.binary

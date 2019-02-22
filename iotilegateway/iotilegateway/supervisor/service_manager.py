@@ -24,6 +24,8 @@ class ServiceManager:
         self.in_flight_rpcs = {}
         self._monitors = set()
 
+        print("initting services")
+
         for service in expected_services:
             self.add_service(service['short_name'], service['long_name'], preregistered=True)
 
@@ -53,12 +55,14 @@ class ServiceManager:
 
     def _notify_update(self, name, change_type, change_info=None, directed_client=None):
         """Notify updates on a service to anyone who cares."""
-
+        print("sending a notify update to all monitors")
         for monitor in self._monitors:
+            print(monitor)
             try:
                 monitor(name, change_type, change_info, directed_client=directed_client)
             except Exception:
                 # We can't allow any exceptions in a monitor routine to break the server.
+                print("we hit an exception here that was eaten earlier")
                 pass
 
     def update_state(self, short_name, state):
@@ -72,15 +76,20 @@ class ServiceManager:
             state (int): The new stae of the service
         """
 
+        print("IN SERVICE MANAGER UPDATE STATE")
+
         if short_name not in self.services:
+            print("service name is unknown")
             raise ArgumentError("Service name is unknown", short_name=short_name)
 
         if state not in states.KNOWN_STATES:
+            print("invalid service state")
             raise ArgumentError("Invalid service state", state=state)
 
         serv = self.services[short_name]['state']
 
         if serv.state == state:
+            print("service already in same state, don't update")
             return
 
         update = {}
@@ -89,7 +98,10 @@ class ServiceManager:
         update['new_status_string'] = states.KNOWN_STATES[state]
 
         serv.state = state
+        print("notifying of new state")
+        print(short_name,'state_change', update)
         self._notify_update(short_name, 'state_change', update)
+        print("done notifying")
 
     def add_service(self, short_name, long_name, preregistered=False):
         """Add a service to the list of tracked services.
@@ -257,9 +269,12 @@ class ServiceManager:
             client_id (str): A globally unique id for the client that
                 should receive commands for this service.
         """
-
+        print("attempting to set agent")
+        print(self.services)
         if short_name not in self.services:
             raise ArgumentError("Unknown service name", short_name=short_name)
+
+        print("agent sucessfully set")
 
         self.agents[short_name] = client_id
 
@@ -272,6 +287,7 @@ class ServiceManager:
             client_id (str): A globally unique id for the client that
                 should no longer receive commands for this service.
         """
+        print("clearing agent")
 
         if short_name not in self.services:
             raise ArgumentError("Unknown service name", short_name=short_name)
@@ -282,6 +298,8 @@ class ServiceManager:
         if client_id != self.agents[short_name]:
             raise ArgumentError("Client was not registered for service", short_name=short_name,
                                 client_id=client_id, current_client=self.agents[short_name])
+
+        print("agent cleared")
 
         del self.agents[short_name]
 
