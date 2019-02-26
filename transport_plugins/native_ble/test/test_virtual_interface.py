@@ -126,7 +126,7 @@ def test_rpc(connected_virtual_interface):
 def test_stream(connected_virtual_interface):
     """Test to stream reports after streaming interface has been opened."""
     # Get the device configuration from the configuration file.
-    with open(get_report_device_string().split('@')[-1], "rb") as conf_file:
+    with open(get_report_device_string().split('@')[-1], "r") as conf_file:
         config = json.load(conf_file)
         num_reports = int(config['device']['num_readings']) / int(config['device']['report_length'])
 
@@ -172,7 +172,7 @@ def test_stream(connected_virtual_interface):
 def test_tracing(connected_virtual_interface):
     """Test to send traces after the tracing interface has been opened."""
     # Get the device configuration from the configuration file.
-    with open(get_tracing_device_string().split('@')[-1], "rb") as conf_file:
+    with open(get_tracing_device_string().split('@')[-1], "r") as conf_file:
         config = json.load(conf_file)
         traces_sent = config['device']['ascii_data']
 

@@ -159,7 +159,7 @@ def hw_man(gateway, local_broker):
 def gateway(local_broker, args):
     """Create a gateway serving over a mock AWS IOT MQTT server."""
 
-    with open(os.path.join(os.path.dirname(__file__), 'gateway_config.json'), "rb") as infile:
+    with open(os.path.join(os.path.dirname(__file__), 'gateway_config.json'), "r") as infile:
         args = json.load(infile)
 
     gate = IOTileGateway(args)

@@ -2,6 +2,11 @@
 
 All major changes in each released version of iotile-transport-awsiot are listed here.
 
+## 1.0.0
+
+- Drop python2 support
+- Fix py3 compatibility
+
 ## 0.2.2
 
 - Clean code and improve compatibility with Python3

@@ -1,6 +1,4 @@
 """Information about known device types that we can control over jlink."""
-
-from __future__ import (unicode_literals, print_function, absolute_import)
 from collections import namedtuple
 
 RPCTriggerViaSWI = namedtuple('RPCTriggerViaSWI', ['register', 'bit'])

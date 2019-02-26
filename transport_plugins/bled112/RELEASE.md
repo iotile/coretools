@@ -2,9 +2,10 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
-## HEAD
+## 2.0.0
 
 - Ctrl+C breaks if you accidentally double book the bled112 dongle fix(#657)
+- Drop python2 support
 
 ## 1.8.0
 

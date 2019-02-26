@@ -10,8 +10,8 @@
 - [Installing Support for IOTile Based Devices](#installing-support-for-iotile-based-devices)
 - [Continuous Deployment](#continuous-deployment)
 - [Manually Releasing](#manually-releasing)
-- [Contributing](#Contributing)
-- [Code of Conduct](#Code of Conduct)
+- [Contributing](#contributing)
+- [Code of Conduct](#code-of-conduct)
 - [License](#license)
 
 <!-- /MarkdownTOC -->

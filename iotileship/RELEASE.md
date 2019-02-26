@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileShip are listed here.
 
+## 1.0.0
+
+- Drop python2 support
+
 ## 0.2.0
 
 - Refactor extension importing system to use new 
