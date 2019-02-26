@@ -291,7 +291,6 @@ class ServiceStatusClient(ValidatingWSClient):
             message (string): The user facing info message that will be stored
                 for the service and can be queried later.
         """
-
         await self.post_command('post_message', {'name': name, 'level': states.INFO_LEVEL, 'message': message})
 
     async def service_status(self, name):
@@ -346,7 +345,7 @@ class ServiceStatusClient(ValidatingWSClient):
                 return {'result': result}
             return {'result': 'success', 'response': data[1]}
 
-    async def register_service_async(self, short_name, long_name, allow_duplicate=True):
+    async def register_service(self, short_name, long_name, allow_duplicate=True):
         """Register a new service with the service manager.
 
         Args:

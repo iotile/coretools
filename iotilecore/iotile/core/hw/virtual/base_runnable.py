@@ -10,6 +10,8 @@ class BaseRunnable:
     def __init__(self):
         super(BaseRunnable, self).__init__()
 
+        print("USING BASE RUNNABLE")
+
         self._workers = []
         self._started = False
 

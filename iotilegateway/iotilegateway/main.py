@@ -7,6 +7,10 @@ from iotilegateway.gateway import IOTileGateway
 from tornado.options import define, parse_command_line, options
 from iotile.core.exceptions import ArgumentError
 
+import threading
+import asyncio
+from iotile.core.utilities.event_loop import EventLoop
+
 define('config', help="Config file for defining what adapters and agents to use")
 
 
@@ -26,6 +30,8 @@ def main():
             log.critical("Calling stop on gateway loop")
             gateway.stop_from_signal()
 
+    #forever = threading.Event()
+
     try:
         parse_command_line()
 
@@ -44,14 +50,32 @@ def main():
         except TypeError:
             raise ArgumentError("You must pass the path to a json config file", path=config_file)
 
-        signal.signal(signal.SIGINT, quit_signal_handler)
+        #signal.signal(signal.SIGINT, quit_signal_handler)
+
+        el = EventLoop()
+
+        el.start()
 
         gateway = IOTileGateway(args)
-        gateway.start()
-        gateway.wait()
+
+        el.add_task(gateway.run())
 
     except Exception:  # pylint: disable=W0703
         log.exception("Fatal error starting gateway")
+
+    print("after gateway main")
+
+    import time
+
+    try:
+        #forever.wait()
+        while (1):
+            for thread in threading.enumerate():
+                print(thread)
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("it's been forever")
+        el.stop_loop_clean()
 
 
 if __name__ == '__main__':

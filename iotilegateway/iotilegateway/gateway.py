@@ -1,9 +1,6 @@
 """An IOTile gateway-in-a-box that will connect to devices using device adapters and serve them using agents."""
 
 import logging
-import threading
-
-import asyncio
 
 import pkg_resources
 import tornado.ioloop
@@ -14,6 +11,7 @@ from iotile.core.exceptions import ArgumentError
 
 
 from iotile.core.utilities.event_loop import EventLoop
+
 
 def find_entry_point(group, name):
     """Find an entry point by name.
@@ -60,13 +58,16 @@ class IOTileGateway:
     """
 
     def __init__(self, config):
-        self.loop = EventLoop.get_loop()
+        print("hi")
+        self.el = EventLoop()
+        self.loop = None
         self.device_manager = None
         self.agents = []
         self.supervisor = None
 
         self._config = config
         self._logger = logging.getLogger(__name__)
+
 
         if 'agents' not in config:
             self._config['agents'] = []
@@ -75,12 +76,14 @@ class IOTileGateway:
             self._config['adapters'] = []
             self._logger.warn("No device adapters defined in arguments to iotile-gateway, this is likely not what you want")
 
+        self.loop = tornado.ioloop.IOLoop(make_current=True)
 
-
-    def run(self):
+    async def run(self):
         """Start the gateway and run it to completion in another thread."""
-
+        print('run gateway')
         self.device_manager = device.DeviceManager(self.loop)
+
+        print("h")
 
         # If we have an initialization error, stop trying to initialize more things and
         # just shut down cleanly
@@ -132,43 +135,49 @@ class IOTileGateway:
         if should_close:
             self.loop.add_callback(self._stop_loop)
         else:
+            print("notify")
             # Notify that we have now loaded all plugins and are starting operation (once the loop starts)
-            self.loop.add_callback(lambda: self.loaded.set())
+            #self.loop.add_callback(lambda: self.loaded.set())
 
             # Try to regularly update a supervisor about our status if a supervisor is running
             if self._try_initialize_supervisor():
+                print("supervisor successfully initialized")
                 callback = tornado.ioloop.PeriodicCallback(self._try_report_status, 60000)
                 callback.start()
 
-        self.loop.start()
+        #print("Starting tornado loop")
+        #self.loop.start()
 
         # The loop has been closed, finish and quit
-        self._logger.critical("Done stopping loop")
+        #self._logger.critical("Done stopping loop")
 
     def _try_initialize_supervisor(self):
         """Check for the existence of a supervisor"""
+        print("init supervisor")
         try:
             self.supervisor = ServiceStatusClient('ws://localhost:9400/services')
-            self.supervisor.register_service('gateway', 'Device Gateway')
-            self.supervisor.post_info('gateway', "Service started successfully")
-            self.supervisor.post_headline('gateway', states.INFO_LEVEL, 'Started successfully')
+            self.el.add_task(self.supervisor.register_service('gateway', 'Device Gateway'))
+            self.el.add_task(self.supervisor.post_info('gateway', "Service started successfully"))
+            self.el.add_task(self.supervisor.post_headline('gateway', states.INFO_LEVEL, 'Started successfully'))
             return True
-        except Exception:  # pylint: disable=W0703
+        except Exception as e:  # pylint: disable=W0703
+            print(e)
             self._logger.info("No supervisor present")
             return False
 
     def _try_report_status(self):
         """Periodic callback to report our gateway's status."""
-        self.supervisor.update_state('gateway', states.RUNNING)
-        self.supervisor.send_heartbeat('gateway')
+        print("reporting status")
+        self.el.add_task(self.supervisor.update_state('gateway', states.RUNNING))
+        self.el.add_task(self.supervisor.send_heartbeat('gateway'))
 
     def _stop_loop(self):
         """Cleanly stop the gateway and close down the IOLoop.
 
         This function must be called only by being added to our event loop using add_callback.
         """
-
-        self._logger.critical("Stopping gateway") 
+        print("in stop loop")
+        self._logger.critical("Stopping gateway")
         self._logger.info("Stopping gateway agents")
 
         for agent in self.agents:
@@ -199,12 +208,6 @@ class IOTileGateway:
         self.loop.stop()
         self._logger.critical('Stopping event loop and shutting down')
 
-    def stop(self):
-        """Stop the gateway manager and synchronously wait for it to stop."""
-
-        self.loop.add_callback(self._stop_loop)
-        self.wait()
-
     def wait(self):
         """Wait for this gateway to shut down.
 
@@ -220,5 +223,5 @@ class IOTileGateway:
 
     def stop_from_signal(self):
         """Stop the gateway from a signal handler, not waiting for it to stop."""
-
+        print("in stop signal")
         self.loop.add_callback_from_signal(self._stop_loop)

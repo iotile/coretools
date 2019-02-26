@@ -69,7 +69,6 @@ class ValidatingWSClient:
         """
         while not self.con:
             await asyncio.sleep(1)
-
         msg = {x: y for x, y in args.items()}
         msg['type'] = 'command'
         msg['operation'] = command
@@ -157,13 +156,15 @@ class ValidatingWSClient:
         await self.con.ping(self.control_data, timeout=timeout)
         await self.con.pong()
 
-    async def post_command(self, command, *args):
+    async def post_command(self, command, args):
         """Post a command asynchronously and don't wait for a response.
 
         Args:
             command (string): The command name
             args (dict): Optional arguments
         """
+        while not self.con:
+            await asyncio.sleep(1)
 
         msg = {x: y for x, y in args.items()}
         msg['type'] = 'command'

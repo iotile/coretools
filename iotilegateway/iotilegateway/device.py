@@ -44,7 +44,7 @@ class DeviceManager:
         self._logger.setLevel(logging.DEBUG)
         self._next_conn_id = 0
 
-        tornado.ioloop.PeriodicCallback(self.device_expiry_callback, 1000, self._loop).start()
+        tornado.ioloop.PeriodicCallback(self.device_expiry_callback, 1000).start()
 
     def add_adapter(self, man):
         adapter_id = len(self.adapters)
@@ -61,7 +61,7 @@ class DeviceManager:
         if man.get_config('probe_supported', False):
             man.probe_sync()
 
-        tornado.ioloop.PeriodicCallback(man.periodic_callback, 1000, self._loop).start()
+        tornado.ioloop.PeriodicCallback(man.periodic_callback, 1000).start()
 
     def stop(self):
         """Stop all adapters managed by the DeviceManager

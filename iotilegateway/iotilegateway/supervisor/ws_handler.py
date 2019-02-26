@@ -230,7 +230,7 @@ class ServiceWebSocketHandler(tornado.websocket.WebSocketHandler):
     def open(self, *args):
         """Register that someone opened a connection."""
         print("Adding manager monitor", args)
-        self.stream.set_nodelay(True)
+        #self.stream.set_nodelay(True)
         self.manager.add_monitor(self.send_notification)
         self.logger.info('Client connected')
         print("list of monitors::")
