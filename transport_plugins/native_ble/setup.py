@@ -8,8 +8,8 @@ setup(
     version=version.version,
     license="LGPLv3",
     install_requires=[
-        "iotile-core>=3.6.2",
-        "monotonic",
+        "iotile-core>=3.27.0",
+        "monotonic==1.5",
         "bable-interface>=1.2.0"
     ],
     entry_points={'iotile.device_adapter': ['ble = iotile_transport_native_ble.device_adapter:NativeBLEDeviceAdapter'],
@@ -24,8 +24,6 @@ setup(
         "Programming Language :: Python",
         "Programming Language :: Python :: 2",
         "Programming Language :: Python :: 2.7",
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
         "Development Status :: 3 - Alpha",
         "License :: OSI Approved :: GNU Library or Lesser General Public License (LGPL)",
         "Operating System :: Unix",  # FIXME: change as soon as bable-interface will be deployed on Windows and Mac

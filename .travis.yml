@@ -8,7 +8,6 @@ cache:
 sudo: false
 python:
 - '2.7'
-- '3.6'
 before_install:
 - pwd
 - cd ~
@@ -33,13 +32,6 @@ deploy:
       branch: master
       tags: true
       condition: $TRAVIS_PYTHON_VERSION = "2.7"
-  - skip_cleanup: true
-    provider: script
-    script: python scripts/release.py $TRAVIS_TAG
-    on:
-      branch: master
-      tags: true
-      condition: $TRAVIS_PYTHON_VERSION = "3.6"
 notifications:
   on_success: always
   on_failure: always

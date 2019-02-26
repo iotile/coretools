@@ -8,8 +8,8 @@ setup(
     version=version.version,
     license="LGPLv3",
     install_requires=[
-        "iotile-core>=3.6.2",
-        "AWSIoTPythonSDK>=1.0.0",
+        "iotile-core==3.27.0",
+        "AWSIoTPythonSDK==1.4.3",
         "monotonic"
     ],
 
