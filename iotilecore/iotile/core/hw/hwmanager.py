@@ -27,6 +27,8 @@ from iotile.core.utilities.gid import uuid_to_slug
 from .proxy import TileBusProxyObject
 from .app import IOTileApp
 
+import asyncio
+
 
 @context("HardwareManager")
 class HardwareManager:
@@ -81,9 +83,9 @@ class HardwareManager:
             self.port = arg
 
         self._record = record
-
+        print(adapter)
         self.stream = self._create_stream(adapter)
-
+        print(self.stream)
         self._stream_queue = None
         self._trace_queue = None
         self._broadcast_queue = None

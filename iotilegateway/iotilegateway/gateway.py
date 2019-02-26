@@ -2,6 +2,9 @@
 
 import logging
 import threading
+
+import asyncio
+
 import pkg_resources
 import tornado.ioloop
 from iotilegateway.supervisor import ServiceStatusClient
@@ -9,6 +12,8 @@ import iotilegateway.supervisor.states as states
 import iotilegateway.device as device
 from iotile.core.exceptions import ArgumentError
 
+
+from iotile.core.utilities.event_loop import EventLoop
 
 def find_entry_point(group, name):
     """Find an entry point by name.
@@ -25,7 +30,7 @@ def find_entry_point(group, name):
     raise ArgumentError("Could not find installed plugin by name and group", group=group, name=name)
 
 
-class IOTileGateway(threading.Thread):
+class IOTileGateway:
     """A gateway that finds IOTile devices using device adapters and serves them using agents.
 
     The gateway runs in separate thread in a tornado IOLoop and you can call the synchronous
@@ -55,11 +60,10 @@ class IOTileGateway(threading.Thread):
     """
 
     def __init__(self, config):
-        self.loop = None
+        self.loop = EventLoop.get_loop()
         self.device_manager = None
         self.agents = []
         self.supervisor = None
-        self.loaded = threading.Event()
 
         self._config = config
         self._logger = logging.getLogger(__name__)
@@ -71,12 +75,11 @@ class IOTileGateway(threading.Thread):
             self._config['adapters'] = []
             self._logger.warn("No device adapters defined in arguments to iotile-gateway, this is likely not what you want")
 
-        super(IOTileGateway, self).__init__()
+
 
     def run(self):
         """Start the gateway and run it to completion in another thread."""
 
-        self.loop = tornado.ioloop.IOLoop(make_current=True)  # To create a loop for each thread
         self.device_manager = device.DeviceManager(self.loop)
 
         # If we have an initialization error, stop trying to initialize more things and
@@ -165,7 +168,7 @@ class IOTileGateway(threading.Thread):
         This function must be called only by being added to our event loop using add_callback.
         """
 
-        self._logger.critical("Stopping gateway")
+        self._logger.critical("Stopping gateway") 
         self._logger.info("Stopping gateway agents")
 
         for agent in self.agents:

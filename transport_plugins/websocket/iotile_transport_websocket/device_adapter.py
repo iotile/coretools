@@ -12,6 +12,8 @@ from iotile.core.exceptions import ArgumentError, HardwareError
 from .connection_manager import ConnectionManager
 from .protocol import notifications, operations, responses
 
+import asyncio
+
 
 class WebSocketDeviceAdapter(DeviceAdapter):
     """ A device adapter allowing connections to devices over WebSockets
@@ -40,6 +42,8 @@ class WebSocketDeviceAdapter(DeviceAdapter):
         path = "ws://{0}/iotile/v2".format(port)
         self.client = ValidatingWSClient(path)
 
+        print("made wsclient")
+
         self.client.add_message_type(responses.Connect, self._on_connection_finished)
         self.client.add_message_type(responses.Disconnect, self._on_disconnection_finished)
         self.client.add_message_type(responses.Scan, self._on_probe_finished)
@@ -54,7 +58,7 @@ class WebSocketDeviceAdapter(DeviceAdapter):
         self.client.add_message_type(notifications.Progress, self._on_progress_notification)
         self.client.disconnection_callback = self._on_websocket_disconnect
 
-        self.client.start()
+        #self.client.start()
 
         # To manage multiple connections
         self.connections = ConnectionManager(self.id)
@@ -171,6 +175,8 @@ class WebSocketDeviceAdapter(DeviceAdapter):
 
         self._add_probe_callback(callback)
         self.last_probe = monotonic()
+
+        print(operations.SCAN)
 
         try:
             self.send_command_async(operations.SCAN)
@@ -642,7 +648,7 @@ class WebSocketDeviceAdapter(DeviceAdapter):
             'operation': operation
         }, **kwargs)
 
-        self.client.send_message(message)
+        self.client.post_command(message)
 
     def _on_websocket_disconnect(self):
         """Callback function called when we have been disconnected from the server (by error or not).

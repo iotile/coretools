@@ -1,18 +1,20 @@
 """A websocket client that replicates the state of the supervisor."""
 
-from threading import Lock, Event
 from copy import copy
 import logging
 from time import monotonic
 from iotile.core.hw.virtual import RPCInvalidArgumentsError, RPCInvalidReturnValueError
 from iotile.core.utilities.validating_wsclient import ValidatingWSClient
+from iotile.core.utilities.event_loop import EventLoop
 from iotile.core.exceptions import ArgumentError
 from . import command_formats
 from . import states
 
+import asyncio
+
 
 class ServiceStatusClient(ValidatingWSClient):
-    """A websocket client that syncs the state of all known services.
+    """A async websocket client that syncs the state of all known services.
 
     On creation it connects to the supervisor service and gets the
     current status of each known service.  Then it listens for
@@ -24,7 +26,7 @@ class ServiceStatusClient(ValidatingWSClient):
     Other clients can dispatch RPCs to this service if it registers
     as an RPC agent, and they are handled by forwarding them on to
     callbacks on the passed dispatcher object which should be a subclass
-    of RPCDispatcher.
+    of RPCQueue.
 
     You can automatically register as a service agent by passing the
     agent parameters.
@@ -42,17 +44,22 @@ class ServiceStatusClient(ValidatingWSClient):
     def __init__(self, url, dispatcher=None, agent=None, logger_name=__name__):
         super(ServiceStatusClient, self).__init__(url)
 
-        self._state_lock = Lock()
-        self._rpc_lock = Lock()
+        loop = EventLoop.get_loop()
+
+        self._state_lock = asyncio.Lock(loop=loop)
+        self._rpc_lock = asyncio.Lock()
         self._rpc_dispatcher = dispatcher
-        self._queued_rpcs = {}
+        self._queued_rpcs = []
 
         self._logger = logging.getLogger(logger_name)
         self.services = {}
         self._name_map = {}
         self._on_change_callback = None
 
+        self.q = asyncio.Queue(loop=loop)
+
         # Register callbacks for all of the status notifications
+
         self.add_message_type(command_formats.ServiceStatusChanged, self._on_status_change)
         self.add_message_type(command_formats.ServiceAdded, self._on_service_added)
         self.add_message_type(command_formats.HeartbeatReceived, self._on_heartbeat)
@@ -60,15 +67,18 @@ class ServiceStatusClient(ValidatingWSClient):
         self.add_message_type(command_formats.NewHeadline, self._on_headline)
         self.add_message_type(command_formats.RPCCommand, self._on_rpc_command)
         self.add_message_type(command_formats.RPCResponse, self._on_rpc_response)
-        self.start()
 
-        with self._state_lock:
-            self.services = self.sync_services()
+
+        asyncio.ensure_future(self.populate_name_map(), loop=loop)
+        if agent is not None:
+            asyncio.ensure_future(self.register_agent(agent), loop=loop)
+
+    async def populate_name_map(self):
+        """Populate the name map of services as reported by the supervisor"""
+        async with self._state_lock:
+            self.services = await self.sync_services()
             for i, name in enumerate(self.services.keys()):
                 self._name_map[i] = name
-
-        if agent is not None:
-            self.register_agent(agent)
 
     def notify_changes(self, callback):
         """Register to receive a callback when a service changes state.
@@ -80,7 +90,7 @@ class ServiceStatusClient(ValidatingWSClient):
 
         self._on_change_callback = callback
 
-    def local_service(self, name_or_id):
+    async def local_service(self, name_or_id):
         """Get the locally synced information for a service.
 
         Args:
@@ -92,22 +102,19 @@ class ServiceStatusClient(ValidatingWSClient):
                 at the time of the call.
         """
 
-        with self._state_lock:
+        async with self._state_lock:
             if isinstance(name_or_id, int):
                 if name_or_id not in self._name_map:
                     raise ArgumentError("Unknown ID used to look up service", id=name_or_id)
-
                 name = self._name_map[name_or_id]
             else:
                 name = name_or_id
-
             if name not in self.services:
                 raise ArgumentError("Unknown service name", name=name)
-
             service = self.services[name]
             return copy(service)
 
-    def local_services(self):
+    async def local_services(self):
         """Get a list of id, name pairs for all of the known synced services.
 
         Returns:
@@ -115,10 +122,11 @@ class ServiceStatusClient(ValidatingWSClient):
                 from low to high
         """
 
-        with self._state_lock:
+
+        async with self._state_lock:
             return sorted([(index, name) for index, name in self._name_map.items()], key=lambda element: element[0])
 
-    def sync_services(self):
+    async def sync_services(self):
         """Poll the current state of all services.
 
         Returns:
@@ -126,26 +134,23 @@ class ServiceStatusClient(ValidatingWSClient):
         """
 
         services = {}
-
-        servs = self.list_services()
+        servs = await self.list_services()
         for i, serv in enumerate(servs):
-            info = self.service_info(serv)
-            status = self.service_status(serv)
-            messages = self.get_messages(serv)
-            headline = self.get_headline(serv)
-
+            info = await self.service_info(serv)
+            status = await self.service_status(serv)
+            messages = await self.get_messages(serv)
+            headline = await self.get_headline(serv)
             services[serv] = states.ServiceState(info['short_name'], info['long_name'], info['preregistered'], i)
             services[serv].state = status['numeric_status']
 
             for message in messages:
                 services[serv].post_message(message.level, message.message, message.count, message.created)
-
             if headline is not None:
                 services[serv].set_headline(headline.level, headline.message, headline.created)
 
         return services
 
-    def get_messages(self, name):
+    async def get_messages(self, name):
         """Get stored messages for a service.
 
         Args:
@@ -155,10 +160,10 @@ class ServiceStatusClient(ValidatingWSClient):
             list(ServiceMessage): A list of the messages stored for this service
         """
 
-        resp = self.send_command('query_messages', {'name': name}, timeout=5.0)
+        resp = await self.send_command('query_messages', {'name': name}, timeout=5.0)
         return [states.ServiceMessage.FromDictionary(x) for x in resp['payload']]
 
-    def get_headline(self, name):
+    async def get_headline(self, name):
         """Get stored messages for a service.
 
         Args:
@@ -168,14 +173,14 @@ class ServiceStatusClient(ValidatingWSClient):
             ServiceMessage: the headline or None if no headline has been set
         """
 
-        resp = self.send_command('query_headline', {'name': name}, timeout=5.0)
+        resp = await self.send_command('query_headline', {'name': name}, timeout=5.0)
         if 'payload' not in resp:
             return None
 
         msg = resp['payload']
         return states.ServiceMessage.FromDictionary(msg)
 
-    def list_services(self):
+    async def list_services(self):
         """Get the current list of services from the server.
 
         Returns:
@@ -183,21 +188,21 @@ class ServiceStatusClient(ValidatingWSClient):
                 to the supervisor
         """
 
-        resp = self.send_command('list_services', {}, timeout=5.0)
+        resp = await self.send_command('list_services', {}, timeout=5.0)
         return resp['payload']['services']
 
-    def send_heartbeat(self, name):
+    async def send_heartbeat(self, name):
         """Send a heartbeat for a service.
 
         Args:
             name (string): The name of the service to send a heartbeat for
         """
 
-        resp = self.send_command('heartbeat', {'name': name}, timeout=5.0)
+        resp = await self.send_command('heartbeat', {'name': name}, timeout=5.0)
         if resp['success'] is not True:
             raise ArgumentError("Unknown service name", name=name)
 
-    def service_info(self, name):
+    async def service_info(self, name):
         """Pull descriptive info of a service by name.
 
         Information returned includes the service's user friendly
@@ -210,27 +215,24 @@ class ServiceStatusClient(ValidatingWSClient):
                 preregistered (bool): Whether the service was explicitly
                     called out as a preregistered service.
         """
-
-        resp = self.send_command('query_info', {'name': name}, timeout=5.0)
-
+        resp = await self.send_command('query_info', {'name': name}, timeout=5.0)
         if resp['success'] is not True:
             raise ArgumentError("Unknown service name", name=name)
 
         return resp['payload']
 
-    def update_state(self, name, state):
+    async def update_state(self, name, state):
         """Update the state for a service.
 
         Args:
             name (string): The name of the service
             state (int): The new state of the service
         """
-
-        resp = self.send_command('update_state', {'name': name, 'new_status': state}, timeout=5.0)
+        resp = await self.send_command('update_state', {'name': name, 'new_status': state}, timeout=5.0)
         if resp['success'] is not True:
             raise ArgumentError("Error updating service state", reason=resp['reason'])
 
-    def post_headline(self, name, level, message):
+    async def post_headline(self, name, level, message):
         """Asynchronously update the sticky headline for a service.
 
         Args:
@@ -241,12 +243,12 @@ class ServiceStatusClient(ValidatingWSClient):
         """
 
         now = monotonic()
-        self.post_command(
+        await self.post_command(
             'set_headline',
             {'name': name, 'level': level, 'message': message, 'created_time': now, 'now_time': now}
         )
 
-    def post_state(self, name, state):
+    async def post_state(self, name, state):
         """Asynchronously try to update the state for a service.
 
         If the update fails, nothing is reported because we don't wait for a
@@ -257,9 +259,9 @@ class ServiceStatusClient(ValidatingWSClient):
             state (int): The new state of the service
         """
 
-        self.post_command('update_state', {'name': name, 'new_status': state})
+        await self.post_command('update_state', {'name': name, 'new_status': state})
 
-    def post_error(self, name, message):
+    async def post_error(self, name, message):
         """Asynchronously post a user facing error message about a service.
 
         Args:
@@ -268,9 +270,9 @@ class ServiceStatusClient(ValidatingWSClient):
                 for the service and can be queried later.
         """
 
-        self.post_command('post_message', {'name': name, 'level': states.ERROR_LEVEL, 'message': message})
+        await self.post_command('post_message', {'name': name, 'level': states.ERROR_LEVEL, 'message': message})
 
-    def post_warning(self, name, message):
+    async def post_warning(self, name, message):
         """Asynchronously post a user facing warning message about a service.
 
         Args:
@@ -279,9 +281,9 @@ class ServiceStatusClient(ValidatingWSClient):
                 for the service and can be queried later.
         """
 
-        self.post_command('post_message', {'name': name, 'level': states.WARNING_LEVEL, 'message': message})
+        await self.post_command('post_message', {'name': name, 'level': states.WARNING_LEVEL, 'message': message})
 
-    def post_info(self, name, message):
+    async def post_info(self, name, message):
         """Asynchronously post a user facing info message about a service.
 
         Args:
@@ -290,23 +292,23 @@ class ServiceStatusClient(ValidatingWSClient):
                 for the service and can be queried later.
         """
 
-        self.post_command('post_message', {'name': name, 'level': states.INFO_LEVEL, 'message': message})
+        await self.post_command('post_message', {'name': name, 'level': states.INFO_LEVEL, 'message': message})
 
-    def service_status(self, name):
+    async def service_status(self, name):
         """Pull the current status of a service by name.
 
         Returns:
             dict: A dictionary of service status
         """
 
-        resp = self.send_command('query_status', {'name': name}, timeout=5.0)
+        resp = await self.send_command('query_status', {'name': name}, timeout=5.0)
 
         if resp['success'] is not True:
             raise ArgumentError("Unknown service name", name=name)
 
         return resp['payload']
 
-    def send_rpc(self, name, rpc_id, payload, timeout=1.0):
+    async def send_rpc(self, name, rpc_id, payload, timeout=1.0):
         """Send an RPC to a service and synchronously wait for the response.
 
         Args:
@@ -323,38 +325,28 @@ class ServiceStatusClient(ValidatingWSClient):
                 'response': the binary response object if the RPC was successful
         """
 
-        # We need to acquire the RPC lock so that we cannot get the response callback
-        # before we have queued the in progress
-        with self._rpc_lock:
-            resp = self.send_command(
+        async with self._rpc_lock:
+            resp = await self.send_command(
                 'send_rpc',
                 {'name': name, 'rpc_id': rpc_id, 'payload': payload, 'timeout': timeout}
             )
+
             result = resp['payload']['result']
 
             if result == 'service_not_found':
                 return {'result': 'service_not_found'}
 
-            rpc_tag = resp['payload']['rpc_tag']
-            event = Event()
-            self._queued_rpcs[rpc_tag] = [event, None, None]
-
-        signaled = event.wait(timeout=timeout)
-
-        with self._rpc_lock:
-            data = self._queued_rpcs[rpc_tag]
-            del self._queued_rpcs[rpc_tag]
-
-            if not signaled:
+            try:
+                data = await asyncio.wait_for(self.q.get(), timeout=timeout, loop=self.loop)
+            except asyncio.TimeoutError:
                 return {'result': 'timeout'}
 
-            result = data[1]
+            result = data[0]
             if result != 'success':
                 return {'result': result}
+            return {'result': 'success', 'response': data[1]}
 
-            return {'result': 'success', 'response': data[2]}
-
-    def register_service(self, short_name, long_name, allow_duplicate=True):
+    async def register_service_async(self, short_name, long_name, allow_duplicate=True):
         """Register a new service with the service manager.
 
         Args:
@@ -367,15 +359,16 @@ class ServiceStatusClient(ValidatingWSClient):
             ArgumentError: if the short_name is already taken
         """
 
-        resp = self.send_command('register_service', {'name': short_name, 'long_name': long_name})
+        async with self._state_lock:
+            resp = await self.send_command('register_service', {'name': short_name, 'long_name': long_name})
 
-        if resp['success'] is not True and not allow_duplicate:
-            raise ArgumentError("Service name already registered", short_name=short_name)
+            if resp['success'] is not True and not allow_duplicate:
+                raise ArgumentError("Service name already registered", short_name=short_name)
 
-    def register_agent(self, short_name):
+    async def register_agent(self, short_name):
         """Register to act as the RPC agent for this service.
 
-        After this cal succeeds, all requests to send RPCs to this service will be routed
+        After this call succeeds, all requests to send RPCs to this service will be routed
         through this agent.
 
         Args:
@@ -383,18 +376,18 @@ class ServiceStatusClient(ValidatingWSClient):
                 as an id
         """
 
-        resp = self.send_command('set_agent', {'name': short_name})
+        resp = await self.send_command('set_agent', {'name': short_name})
         if resp['success'] is not True:
             raise ArgumentError("Could not register as agent", short_name=short_name, reason=resp['reason'])
 
-    def _on_status_change(self, update):
+    async def _on_status_change(self, update):
         """Update a service that has its status updated."""
 
         info = update['payload']
         new_number = info['new_status']
         name = update['name']
 
-        with self._state_lock:
+        async with self._state_lock:
             if name not in self.services:
                 return
 
@@ -404,15 +397,15 @@ class ServiceStatusClient(ValidatingWSClient):
 
         # Notify about this service state change if anyone is listening
         if self._on_change_callback and is_changed:
-            self._on_change_callback(name, self.services[name].id, new_number, False, False)
+            await self._on_change_callback(name, self.services[name].id, new_number, False, False)
 
-    def _on_service_added(self, update):
+    async def _on_service_added(self, update):
         """Add a new service."""
 
         info = update['payload']
         name = info['short_name']
 
-        with self._state_lock:
+        async with self._state_lock:
             if name in self.services:
                 return
 
@@ -425,37 +418,34 @@ class ServiceStatusClient(ValidatingWSClient):
         if self._on_change_callback:
             self._on_change_callback(name, new_id, serv.state, True, False)
 
-    def _on_heartbeat(self, update):
+    async def _on_heartbeat(self, update):
         """Receive a new heartbeat for a service."""
 
         name = update['name']
-
-        with self._state_lock:
+        async with self._state_lock:
             if name not in self.services:
                 return
-
             self.services[name].heartbeat()
 
-    def _on_message(self, update):
+    async def _on_message(self, update):
         """Receive a message from a service."""
 
         name = update['name']
         message_obj = update['payload']
 
-        with self._state_lock:
+        async with self._state_lock:
             if name not in self.services:
                 return
-
             self.services[name].post_message(message_obj['level'], message_obj['message'])
 
-    def _on_headline(self, update):
+    async def _on_headline(self, update):
         """Receive a headline from a service."""
 
         name = update['name']
         message_obj = update['payload']
         new_headline = False
 
-        with self._state_lock:
+        async with self._state_lock:
             if name not in self.services:
                 return
 
@@ -468,22 +458,14 @@ class ServiceStatusClient(ValidatingWSClient):
         if self._on_change_callback and new_headline:
             self._on_change_callback(name, self.services[name].id, self.services[name].state, False, True)
 
-    def _on_rpc_response(self, resp):
+    async def _on_rpc_response(self, resp):
         """Receive an RPC response for a command that we previously sent."""
 
         payload = resp['payload']
-        uuid = payload['response_uuid']
+        data = [payload['result'], payload['payload']]
+        await self.q.put(data)
 
-        with self._rpc_lock:
-            if uuid not in self._queued_rpcs:
-                return
-
-            data = self._queued_rpcs[uuid]
-            data[1] = payload['result']
-            data[2] = payload['payload']
-            data[0].set()
-
-    def _on_rpc_command(self, cmd):
+    async def _on_rpc_command(self, cmd):
         """Received an RPC command that we should execute."""
 
         payload = cmd['payload']
@@ -493,17 +475,17 @@ class ServiceStatusClient(ValidatingWSClient):
 
         if self._rpc_dispatcher is None or not self._rpc_dispatcher.has_rpc(rpc_id):
             # Fixme: include proper things here
-            self.post_command('rpc_response', {'response_uuid': tag, 'result': 'rpc_not_found', 'response': b''})
+            await self.post_command('rpc_response', {'response_uuid': tag, 'result': 'rpc_not_found', 'response': b''})
             return
 
         try:
             response = self._rpc_dispatcher.call_rpc(rpc_id, args)
-            self.post_command('rpc_response', {'response_uuid': tag, 'result': 'success', 'response': response})
+            await self.post_command('rpc_response', {'response_uuid': tag, 'result': 'success', 'response': response})
             return
         except RPCInvalidArgumentsError:
-            self.post_command('rpc_response', {'response_uuid': tag, 'result': 'invalid_arguments', 'response': b''})
+            await self.post_command('rpc_response', {'response_uuid': tag, 'result': 'invalid_arguments', 'response': b''})
         except RPCInvalidReturnValueError:
-            self.post_command('rpc_response', {'response_uuid': tag, 'result': 'invalid_response', 'response': b''})
-        except Exception:
-            self.logger.exception("Exception handling RPC 0x%X", rpc_id)
-            self.post_command('rpc_response', {'response_uuid': tag, 'result': 'execution_exception', 'response': b''})
+            await self.post_command('rpc_response', {'response_uuid': tag, 'result': 'invalid_response', 'response': b''})
+        except Exception as exc: #pylint:disable=bare-exception
+            self.logger.exception("Exception handling RPC 0x%X : %s", rpc_id, str(exc))
+            await self.post_command('rpc_response', {'response_uuid': tag, 'result': 'execution_exception', 'response': b''})

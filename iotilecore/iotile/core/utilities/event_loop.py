@@ -29,11 +29,14 @@ class EventLoop:
             cls.loop = asyncio.new_event_loop()
             cls.thread = threading.Thread(target=cls._loop_thread_main, name="EventLoopThread", daemon=True)
             cls.thread.start()
-            cls.started = True
+            cls._started = True
 
 
     @classmethod
     def get_loop(cls):
+        if not cls.loop:
+            cls.start()
+
         return cls.loop
 
     @classmethod

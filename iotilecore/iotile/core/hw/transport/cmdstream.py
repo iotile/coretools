@@ -14,6 +14,7 @@ from time import monotonic
 from iotile.core.hw.exceptions import StreamOperationNotSupportedError, ModuleBusyError, ModuleNotFoundError
 from iotile.core.exceptions import HardwareError
 
+import asyncio
 
 class _RecordedRPC:
     """Internal helper class for saving recorded RPCs to csv files."""
@@ -107,6 +108,8 @@ class CMDStream:
             wait (float): Optional amount of time to force the device adapter to wait before
                 returning.
         """
+
+        print(self._scan)
 
         if not hasattr(self, '_scan'):
             raise StreamOperationNotSupportedError(command="scan")

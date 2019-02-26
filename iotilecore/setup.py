@@ -42,7 +42,8 @@ setup(
             'iotile-updateinfo = iotile.core.scripts.iotile_updateinfo_script:main'
         ],
         'iotile.cmdstream': [
-            'ws = iotile.core.hw.transport.websocketstream:WebSocketStream'
+            'ws = iotile.core.hw.transport.websocketstream:WebSocketStream',
+            'wsa = iotile.core.hw.transport.async_websocketstream:AsyncWebSocketStream'
         ],
         'iotile.device_adapter': [
             'virtual = iotile.core.hw.transport.virtualadapter:VirtualDeviceAdapter'
