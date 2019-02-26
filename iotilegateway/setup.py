@@ -22,10 +22,10 @@ setup(
     license="LGPLv3",
     install_requires=[
         "tornado>=4.5.0,<5.0.0",
-        "iotile-core>=3.0.1",
-        "monotonic",
-        "msgpack>=0.5.6",
-        "ws4py>=0.3.5"
+        "iotile-core>=4.0.0",
+        "monotonic~=1.5",
+        "msgpack>=0.6.1",
+        "ws4py>=0.5.1"
     ],
     entry_points={
         'console_scripts': [

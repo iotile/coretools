@@ -14,7 +14,7 @@ report_device_string = get_report_device_string()
 tracing_device_string = get_tracing_device_string()
 
 # Get traces sent from the config file
-with open(tracing_device_string.split('@')[-1], "rb") as conf_file:
+with open(tracing_device_string.split('@')[-1], "r") as conf_file:
     config = json.load(conf_file)
     traces_sent = config['device']['ascii_data']
 

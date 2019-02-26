@@ -8,8 +8,8 @@ setup(
     version=version.version,
     license="LGPLv3",
     install_requires=[
-        "iotile-core>=3.6.2",
-        "iotile_cloud>=0.8.11"
+        "iotile-core>=4.0.0",
+        "iotile_cloud>=0.9.9"
     ],
 
     entry_points={'iotile.config_function': ['link_cloud = iotile.cloud.config:link_cloud'],

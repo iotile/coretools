@@ -181,7 +181,7 @@ class VirtualDeviceAdapter(DeviceAdapter):
         elif config[0] == '#':
             # Allow passing base64 encoded json directly in the port string to ease testing.
             import base64
-            config_str = base64.b64decode(config[1:])
+            config_str = str(base64.b64decode(config[1:]), 'utf-8')
             config_dict = json.loads(config_str)
         else:
             try:

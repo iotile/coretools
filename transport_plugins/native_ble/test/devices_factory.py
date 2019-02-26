@@ -6,7 +6,7 @@ from iotile.mock.devices import ReportTestDevice, TracingTestDevice
 # ====== Report test device ======
 
 def build_report_device():
-    with open(os.path.join(os.path.dirname(__file__), 'report_device_config.json'), "rb") as conf_file:
+    with open(os.path.join(os.path.dirname(__file__), 'report_device_config.json'), "r") as conf_file:
         config = json.load(conf_file)
 
     return ReportTestDevice(config['device'])
@@ -21,7 +21,7 @@ def get_report_device_string():
 # ====== Tracing test device ======
 
 def build_tracing_device():
-    with open(os.path.join(os.path.dirname(__file__), 'tracing_device_config.json'), "rb") as conf_file:
+    with open(os.path.join(os.path.dirname(__file__), 'tracing_device_config.json'), "r") as conf_file:
         config = json.load(conf_file)
 
     return TracingTestDevice(config['device'])

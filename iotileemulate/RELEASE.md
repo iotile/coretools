@@ -2,6 +2,10 @@
 
 All major changes in each released version of iotile-emulate are listed here.
 
+## 0.4.0
+
+- Drop python2 support
+
 ## 0.3.1
 
 - Fix streaming controller subsystem to properly mark streamers as complete

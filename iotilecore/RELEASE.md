@@ -2,6 +2,10 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## 4.0.0
+
+- Drop python2 support
+
 ## 3.27.2
 
 - Fix support for `support_package` products in `IOTile` object and 

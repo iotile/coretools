@@ -2,10 +2,11 @@
 
 All major changes in each released version of the iotile-ext-cloud plugin are listed here.
 
-## HEAD
+## 1.0.0
 
 - Fix username/password prompting to work correctly on python 2 and 3 if not
   already specified in `iotile config link_cloud`.
+- Drop python2 support
 
 ## 0.6.0
 

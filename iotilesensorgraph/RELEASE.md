@@ -3,10 +3,11 @@
 All major changes in each released version of iotile-sensorgraph are listed
 here.
 
-## HEAD
+## 1.0.0
 
 - Add support for directly passing an sgf string to the parser.  This helps
   when compiling a sensorgraph programmatically.
+- Drop python2 support
 
 ## 0.8.1
 

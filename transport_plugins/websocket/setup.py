@@ -9,8 +9,8 @@ setup(
     version=version.version,
     license="LGPLv3",
     install_requires=[
-        "iotile-core>=3.22.0",
-        "msgpack>=0.5.5"
+        "iotile-core>=4.0.0",
+        "msgpack>=0.6.1"
     ],
 
     entry_points={
@@ -31,10 +31,10 @@ setup(
     keywords=["iotile", "arch", "embedded", "hardware", "firmware"],
     classifiers=[
         "Programming Language :: Python",
-        "Programming Language :: Python :: 2",
-        "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
         "Development Status :: 3 - Alpha",
         "License :: OSI Approved :: GNU Library or Lesser General Public License (LGPL)",
         "Operating System :: OS Independent",

@@ -3,6 +3,12 @@
 All major changes in each released version of the jlink transport plugin are
 listed here.
 
+
+
+## 1.0.0
+- Drop python2 support 
+- Enable python3 compatibility
+
 ## 0.3.2
 - Fix setup.py info documentation string
 - Add _open_streaming_interface function to the JLinkAdapter interface
