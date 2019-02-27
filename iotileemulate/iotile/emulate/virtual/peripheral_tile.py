@@ -62,7 +62,11 @@ class EmulatedPeripheralTile(EmulatedTile):
 
         self._logger.info("Tile %s at address %d is starting from reset", self.name, self.address)
 
-        address, run_level, debug = await self._device.emulator.await_rpc(8, rpcs.REGISTER_TILE, *self._registration_tuple())
+        try:
+            address, run_level, debug = await self._device.emulator.await_rpc(8, rpcs.REGISTER_TILE, *self._registration_tuple())
+        except:
+            self._logger.exception("Error registering tile: address=%d, name=%s", self.address, self.name)
+            raise
 
         self.debug_mode = bool(debug)
         self.run_level = run_level
