@@ -2,6 +2,11 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## 3.27.2
+
+- Fix support for `support_package` products in `IOTile` object and 
+  `ComponentRegistry`.
+
 ## 3.27.1
 
 - Fix watch_broadcasts regression for non-bled112 configs
