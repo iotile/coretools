@@ -623,7 +623,8 @@ def _ensure_package_loaded(path, component):
     package_base = packages[0]
     relative_path = os.path.normpath(os.path.relpath(path, start=package_base))
     if relative_path.startswith('..'):
-        raise ExternalError("Component had python product output of support_package", package=package_base, product=path)
+        raise ExternalError("Component had python product output of support_package", package=package_base, product=path,
+                            relative_path=relative_path)
 
     if not relative_path.endswith('.py'):
         raise ExternalError("Python product did not end with .py", path=path)

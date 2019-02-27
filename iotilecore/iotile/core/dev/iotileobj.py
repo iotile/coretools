@@ -100,7 +100,8 @@ class IOTile(object):
         "virtual_tile": _DevOnlyProduct,
         "emulated_tile": _DevOnlyProduct,
         "virtual_device": _DevOnlyProduct,
-        "firmware_image": _ReleaseOnlyProduct
+        "support_package": _DevOnlyProduct,
+        "firmware_image": _ReleaseOnlyProduct,
     }
     """Declarations for products that require special path processing."""
 
