@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 2.8.1
+
+- Add support for `emulated_tile` product to `iotile build`.
+
 ## 2.8.0
 
 - Add support for complex python support wheels where there is an actual 
