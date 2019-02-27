@@ -395,10 +395,10 @@ class HardwareManager(object):
                 parameter has no effect.
         """
 
+        title = "Watching Broadcast Reports (Ctrl-C to Stop)"
+        subtitle = ""
         if self.transport == 'bled112':
             reg = ConfigManager()
-            title = "Watching Broadcast Reports (Ctrl-C to Stop)"
-            subtitle = ""
             if not reg.get('bled112:active-scan'):
                 subtitle = "Active Scanning not active, you won't see v1 broadcasts"
 
