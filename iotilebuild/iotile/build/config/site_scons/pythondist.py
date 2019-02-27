@@ -21,6 +21,7 @@ ENTRY_POINT_MAP = {
     'build_step': 'iotile.recipe_action',
     'app_module': 'iotile.app',
     'proxy_module': 'iotile.proxy',
+    'emulated_tile': 'iotile.emulated_tile',
     'type_package': 'iotile.type_package',
     'proxy_plugin': 'iotile.proxy_plugin',
     'virtual_tile': 'iotile.virtual_tile',
