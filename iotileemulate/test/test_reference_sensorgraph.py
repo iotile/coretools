@@ -100,6 +100,22 @@ def streaming_sg():
 
 
 @pytest.fixture(scope="function")
+def empty_sg():
+    """An empty sensorgraph for testing."""
+
+    device = ReferenceDevice({'simulate_time': False})
+
+    adapter = EmulatedDeviceAdapter(None, devices=[device])
+
+    with HardwareManager(adapter=adapter) as hw:
+        hw.connect(1)
+
+        con = hw.get(8, basic=True)
+        sensor_graph = find_proxy_plugin('iotile_standard_library/lib_controller', 'SensorGraphPlugin')(con)
+        yield sensor_graph, hw, device
+
+
+@pytest.fixture(scope="function")
 def rpc_sg():
     """A basic sg for testing the rpc executor."""
 
@@ -226,6 +242,30 @@ def test_streaming(streaming_sg):
     for i, reading in enumerate(readings):
         assert reading.value == 5 + i
         assert reading.reading_id == 5 + i
+
+
+def test_streaming_multiple_times(empty_sg):
+    """Verify that we can send multiple reports from the same streamer.
+
+    Verifies Issue #700.
+    """
+
+    sg, hw, _device = empty_sg
+
+    sg.add_streamer('input 1', 'controller', True, 'individual', 'telegram')
+    sg.enable()
+
+    hw.enable_streaming()
+
+    sg.input('input 1', 1)
+    reports = hw.wait_reports(1, timeout=0.5)
+    assert len(reports) == 1
+    assert reports[0].visible_readings[0].value == 1
+
+    sg.input('input 1', 2)
+    reports = hw.wait_reports(1, timeout=0.5)
+    assert len(reports) == 1
+    assert reports[0].visible_readings[0].value == 2
 
 
 def test_rpc_engine(rpc_sg):

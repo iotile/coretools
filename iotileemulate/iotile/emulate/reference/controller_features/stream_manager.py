@@ -72,12 +72,19 @@ class BasicStreamingSubsystem(ControllerSubsystemBase):
 
                     self._logger.debug("Streamer %d: starting with report %s", queued.streamer.index, report)
                     success = await self._device.stream_sync(report)
+                    self._logger.debug("Streamer %d: finished with success=%s", queued.streamer.index, success)
             except:  #pylint:disable=bare-except;This background worker should never die
                 self._logger.exception("Exception during streaming of streamer %s", queued.streamer)
                 success = False
             finally:
+                self._in_progress_streamers.remove(queued.streamer.index)
+                self._logger.debug("Current in_progress is %s", self._in_progress_streamers)
+
                 if queued.callback is not None:
-                    queued.callback(queued.streamer.index, success, queued.highest_ack)
+                    try:
+                        queued.callback(queued.streamer.index, success, queued.highest_ack)
+                    except: #pylint:disable=bare-except;This background worker should never die
+                        self._logger.exception("Exception during completion callback of streamer %s", queued.streamer)
 
     def in_progress(self):
         """Get a set of in progress streamers."""

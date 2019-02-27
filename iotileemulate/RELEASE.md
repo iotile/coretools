@@ -2,6 +2,12 @@
 
 All major changes in each released version of iotile-emulate are listed here.
 
+## 0.3.1
+
+- Fix streaming controller subsystem to properly mark streamers as complete
+  so that streamers can send multiple reports.  Add test coverage to ensure that
+  this is working.
+
 ## 0.3.0
 
 - Update emulation_demo device to have its own proxy module for the demo tile.
