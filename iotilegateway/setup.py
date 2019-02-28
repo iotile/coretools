@@ -27,6 +27,7 @@ setup(
         "msgpack>=0.6.1",
         "ws4py>=0.5.1"
     ],
+    python_requires=">=3.5,<4",
     entry_points={
         'console_scripts': [
             'iotile-gateway = iotilegateway.main:main',
@@ -50,6 +51,10 @@ setup(
         "Development Status :: 5 - Production/Stable",
         "License :: OSI Approved :: GNU Library or Lesser General Public License (LGPL)",
         "Operating System :: OS Independent",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.5",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
         "Topic :: Software Development :: Libraries :: Python Modules"
         ],
     long_description="""\

@@ -12,7 +12,7 @@ setup(
         "iotile-core>=4.0.0",
         "msgpack>=0.6.1"
     ],
-
+    python_requires=">=3.5,<4",
     entry_points={
         'iotile.device_adapter': [
             'ws2 = iotile_transport_websocket.device_adapter:WebSocketDeviceAdapter'
