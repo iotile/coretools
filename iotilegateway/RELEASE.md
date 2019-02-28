@@ -2,7 +2,7 @@
 
 All major changes in each released version of IOTileGateway are listed here.
 
-## 2.0.0
+## 2.0.1
 
 - Fix recurring errors when iotile-supervisor not present while running iotile-gateway
 - Drop python2 support

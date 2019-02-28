@@ -2,7 +2,7 @@
 
 All major changes in each released version of iotile-emulate are listed here.
 
-## 0.4.0
+## 0.4.1
 
 - Drop python2 support
 

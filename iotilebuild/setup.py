@@ -39,6 +39,7 @@ setup(
         "pycparser>=2.17",
         "pyparsing~=2.2.0"
     ],
+    python_requires=">=3.5,<4",
     include_package_data=True,
     entry_points={'iotile.plugin': ['.build = iotile.build.plugin:setup_plugin'],
                   'iotile.build.default_depresolver': ['registry_resolver = iotile.build.dev.resolvers:DEFAULT_REGISTRY_RESOLVER'],
@@ -58,6 +59,10 @@ setup(
         "Development Status :: 5 - Production/Stable",
         "License :: OSI Approved :: GNU Library or Lesser General Public License (LGPL)",
         "Operating System :: OS Independent",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.5",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
         "Topic :: Software Development :: Libraries :: Python Modules"
         ],
     long_description="""\

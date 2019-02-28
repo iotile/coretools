@@ -29,6 +29,7 @@ setup(
         "toposort>=1.5",
         "iotile-core>=4.0.0"
     ],
+    python_requires=">=3.5,<4",
     entry_points={'iotile.sg_processor': ['copy_all_a = iotile.sg.processors:copy_all_a',
                                           'copy_latest_a = iotile.sg.processors:copy_latest_a',
                                           'copy_count_a = iotile.sg.processors:copy_count_a',

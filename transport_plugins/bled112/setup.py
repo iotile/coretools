@@ -12,7 +12,7 @@ setup(
         "iotile-core>=4.0.0",
         "pyserial>=3.4.0"
     ],
-
+    python_requires=">=3.5,<4",
     entry_points={'iotile.device_adapter': ['bled112 = iotile_transport_bled112.bled112:BLED112Adapter'],
                   'iotile.virtual_interface': ['bled112 = iotile_transport_bled112.virtual_bled112:BLED112VirtualInterface'],
                   'iotile.config_variables': ['bled112 = iotile_transport_bled112.config_variables:get_variables']},
@@ -26,6 +26,10 @@ setup(
         "Development Status :: 5 - Production/Stable",
         "License :: OSI Approved :: GNU Library or Lesser General Public License (LGPL)",
         "Operating System :: OS Independent",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.5",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
         "Topic :: Software Development :: Libraries :: Python Modules"
         ],
     long_description="""\

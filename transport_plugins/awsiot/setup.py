@@ -12,7 +12,7 @@ setup(
         "AWSIoTPythonSDK>=1.4.3",
         "monotonic~=1.5"
     ],
-
+    python_requires=">=3.5,<4",
     entry_points={'iotile.device_adapter': ['awsiot = iotile_transport_awsiot.device_adapter:AWSIOTDeviceAdapter'],
                   'iotile.virtual_interface': ['awsiot = iotile_transport_awsiot.virtual_interface:AWSIOTVirtualInterface'],
                   'iotile.gateway_agent': ['awsiot = iotile_transport_awsiot.gateway_agent:AWSIOTGatewayAgent']},
@@ -26,6 +26,10 @@ setup(
         "Development Status :: 5 - Production/Stable",
         "License :: OSI Approved :: GNU Library or Lesser General Public License (LGPL)",
         "Operating System :: OS Independent",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.5",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
         "Topic :: Software Development :: Libraries :: Python Modules"
         ],
     long_description="""\

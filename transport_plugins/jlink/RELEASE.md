@@ -5,7 +5,7 @@ listed here.
 
 
 
-## 1.0.0
+## 1.0.1
 - Drop python2 support 
 - Enable python3 compatibility
 

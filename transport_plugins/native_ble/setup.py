@@ -12,6 +12,7 @@ setup(
         "monotonic~=1.5",
         "bable-interface>=1.2.0"
     ],
+    python_requires=">=3.5,<4",
     entry_points={'iotile.device_adapter': ['ble = iotile_transport_native_ble.device_adapter:NativeBLEDeviceAdapter'],
                   'iotile.virtual_interface': ['ble = iotile_transport_native_ble.virtual_ble:NativeBLEVirtualInterface'],
                   'iotile.config_variables': ['ble = iotile_transport_native_ble.config_variables:get_variables']},

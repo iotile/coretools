@@ -13,6 +13,7 @@ setup(
         "iotile-core>=4.0.0",
         "iotile-sensorgraph>=0.8.1"
     ],
+    python_requires=">=3.5,<4",
     entry_points={'iotile.virtual_device': ['reference_1_0 = iotile.emulate.demo:DemoReferenceDevice',
                                             'emulation_demo = iotile.emulate.demo:DemoEmulatedDevice'],
                   'iotile.proxy': ['emudmo = iotile.emulate.demo:DemoTileProxy'],

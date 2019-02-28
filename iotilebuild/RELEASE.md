@@ -2,7 +2,7 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
-## 3.0.0
+## 3.0.1
 
 - Drop python2 support
 
