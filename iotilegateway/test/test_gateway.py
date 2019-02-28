@@ -51,7 +51,7 @@ def running_gateway():
     gateway = IOTileGateway(config)
 
     gateway.start()
-    gateway.loaded.wait(2.0)
+    gateway.loaded.wait(3.0)
 
     hw = HardwareManager(port="ws:127.0.0.1:%d/iotile/v1" % gateway.agents[0].port)
 

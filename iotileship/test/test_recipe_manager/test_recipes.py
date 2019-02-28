@@ -28,7 +28,7 @@ def test_basic_yaml(resman):
     start_time = time.time()
     recipe.run()
     run_time = time.time()-start_time
-    assert run_time <= 0.3
+    assert run_time <= 0.4
     assert run_time >= 0.1
 
 
@@ -40,7 +40,7 @@ def test_replace_yaml(resman):
     recipe.run(variables)
     run_time = time.time()-start_time
 
-    assert run_time <= 1.1
+    assert run_time <= 1.2
     assert run_time >= 0.9
 
 
