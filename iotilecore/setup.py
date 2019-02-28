@@ -82,6 +82,7 @@ setup(
     author_email="info@arch-iot.com",
     url="https://github.com/iotile/coretools/iotilecore",
     keywords=["iotile", "arch", "embedded", "hardware"],
+    python_requires=">=3.5, <4",
     classifiers=[
         "Programming Language :: Python",
         "Development Status :: 5 - Production/Stable",
