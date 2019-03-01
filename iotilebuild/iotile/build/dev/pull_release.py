@@ -2,6 +2,7 @@ from iotile.core.utilities.typedargs import context, annotated, param, return_ty
 from .resolverchain import DependencyResolverChain
 from iotile.core.dev.semver import SemanticVersionRange
 
+
 @param("name", "string", desc='The fully qualified name of the released component to pull')
 @param("version", "string", desc='The semantic version range to pull')
 @param("force", "bool", desc='If the component is already pulled, forcibly overwrite it')

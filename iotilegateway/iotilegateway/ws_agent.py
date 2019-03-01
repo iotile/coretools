@@ -19,7 +19,7 @@ def bind_unused_port():
     return sock, port
 
 
-class WebSocketGatewayAgent(object):
+class WebSocketGatewayAgent:
     """A gateway agent for connecting to an IOTile gateway over websockets
 
     Args:

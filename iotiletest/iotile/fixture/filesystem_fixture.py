@@ -2,21 +2,16 @@
 
 import pytest
 
-try:
-    import __builtin__ as builtins
-except ImportError:
-    import builtins
-
 from contextlib import contextmanager
 from io import StringIO
 
 
-class MockFileOpen(object):
+class MockFileOpen:
     def __init__(self):
         """Constructor."""
 
         self.files = {}
-        self._real_open = builtins.open
+        self._real_open = open
 
     @contextmanager
     def mock_open(self, filename, params):

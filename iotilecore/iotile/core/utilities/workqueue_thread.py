@@ -5,7 +5,6 @@ import logging
 import sys
 from collections import namedtuple, deque
 from queue import Queue
-from future.utils import raise_
 from iotile.core.exceptions import TimeoutExpiredError, DataError
 
 STOP_WORKER_ITEM = object()
@@ -53,7 +52,6 @@ class WorkQueueThread(threading.Thread):
     the callback by calling current_callback(), which will raise an
     exception if not called while an item is being dispatched.
     """
-
 
     def __init__(self, handler):
         super(WorkQueueThread, self).__init__()
@@ -139,9 +137,21 @@ class WorkQueueThread(threading.Thread):
         done.wait()
         exc_info, return_value = shared_data
         if exc_info is not None:
-            raise_(*exc_info)  #pylint:disable=not-an-iterable;We know it is iterable when done is not None
+            self.future_raise(*exc_info)
 
         return return_value
+
+    def future_raise(self, tp, value=None, tb=None):
+        """raise_ implementation from future.utils"""
+        if value is not None and isinstance(tp, Exception):
+            raise TypeError("instance exception may not have a separate value")
+        if value is not None:
+            exc = tp(value)
+        else:
+            exc = tp
+        if exc.__traceback__ is not tb:
+            raise exc.with_traceback(tb)
+        raise exc
 
     def flush(self):
         """Synchronously wait until this work item is processed.
@@ -241,7 +251,7 @@ class WorkQueueThread(threading.Thread):
             retval = None
 
             retval = self._routine(arg)
-        except:  #pylint:disable=bare-except;We need to capture the exception and feed it back to the caller
+        except:  # pylint:disable=bare-except;We need to capture the exception and feed it back to the caller
             exc_info = sys.exc_info()
         finally:
             self._current_callbacks.popleft()
@@ -262,7 +272,7 @@ class WorkQueueThread(threading.Thread):
                     for watcher in idle_watchers:
                         try:
                             watcher()
-                        except: #pylint:disable=bare-except;We can't let one idle watcher failure impact any other watcher
+                        except: # pylint:disable=bare-except;We can't let one idle watcher failure impact any other watcher
                             self._logger.exception("Error inside queue idle watcher")
 
                     idle_watchers = []
@@ -284,7 +294,7 @@ class WorkQueueThread(threading.Thread):
 
                 self.direct_dispatch(item.arg, item.callback)
 
-            except:  #pylint:disable=bare-except;We cannot let this background thread die until we are told to stop()
+            except:  # pylint:disable=bare-except;We cannot let this background thread die until we are told to stop()
                 self._logger.exception("Error inside background workqueue thread")
 
     def stop(self, timeout=None, force=False):

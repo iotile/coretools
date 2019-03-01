@@ -1,10 +1,9 @@
 """Scopes provide the vessel for storing key state data during code generation."""
 
-from builtins import str
 from iotile.sg.exceptions import UnresolvedIdentifierError, SensorGraphSemanticError
 
 
-class Scope(object):
+class Scope:
     """An environment used during code generation.
 
     Scopes contain all of the state information used

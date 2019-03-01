@@ -1,9 +1,8 @@
-from __future__ import (unicode_literals, print_function, absolute_import)
-from builtins import str
 from iotile.cloud.cloud import IOTileCloud
 from iotile.core.exceptions import ArgumentError
 
-class SyncCloudStep(object):
+
+class SyncCloudStep:
     """A Recipe Step used to synchronize the device with the POD
 
     Checks if the cloud settings are properly set.

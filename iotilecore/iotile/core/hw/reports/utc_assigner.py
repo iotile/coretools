@@ -16,7 +16,7 @@ to convert and an anchor point and uptimes are known for each point, this
 reconstruction process is exact.
 
 However, in the general case, an exact assignment is not possible and
-UTCAssigner uses various other methods to infer an appoximate UTC timestamp,
+UTCAssigner uses various other methods to infer an approximate UTC timestamp,
 returning confidence metrics along with the assigned value.
 """
 
@@ -26,7 +26,7 @@ from sortedcontainers import SortedKeyList
 from .signed_list_format import SignedListReport
 
 
-class _TimeAnchor(object):
+class _TimeAnchor:
     """Internal class for storing a utc reference point."""
 
     __slots__ = ('uptime', 'utc', 'reading_id', 'is_break')
@@ -41,7 +41,7 @@ class _TimeAnchor(object):
         return _TimeAnchor(self.reading_id, self.uptime, self.utc, self.is_break)
 
 
-class UTCAssignment(object):
+class UTCAssignment:
     _Y2KReference = datetime.datetime(2000, 1, 1)
 
     def __init__(self, reading_id, utc, found, exact, crossed_break):
@@ -55,10 +55,11 @@ class UTCAssignment(object):
         self.rtc_value = rtc_value | (1 << 31)
 
     def __str__(self):
-        return "%s (reading_id=%08X, exact=%s, crossed_break=%s)" % (self.utc, self.reading_id, self.exact, self.crossed_break)
+        return "%s (reading_id=%08X, exact=%s, crossed_break=%s)" % \
+               (self.utc, self.reading_id, self.exact, self.crossed_break)
 
 
-class UTCAssigner(object):
+class UTCAssigner:
     """Helper class to assign UTC timestamps to device readings."""
 
     _Y2KReference = datetime.datetime(2000, 1, 1)
@@ -84,7 +85,8 @@ class UTCAssigner(object):
             converter = self._known_converters.get(converter)
 
             if converter is None:
-                raise ArgumentError("Unknown anchor converter string: %s" % converter, known_converters=list(self._known_converters))
+                raise ArgumentError("Unknown anchor converter string: %s" % converter,
+                                    known_converters=list(self._known_converters))
 
         self._anchor_streams[stream_id] = converter
 

@@ -1,8 +1,7 @@
 """All possible states that a service can be in."""
 
-from __future__ import unicode_literals
 from iotile.core.exceptions import ArgumentError
-from monotonic import monotonic
+from time import monotonic
 from collections import deque
 from .command_formats import MessagePayload
 

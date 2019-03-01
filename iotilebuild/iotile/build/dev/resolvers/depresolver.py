@@ -1,8 +1,7 @@
 from iotile.core.exceptions import NotFoundError
 
-class DependencyResolver (object):
-    """An object that is capable of finding and installing a dependency
-    """
+class DependencyResolver:
+    """An object that is capable of finding and installing a dependency"""
 
     def resolve(self, depinfo, destdir):
         """Attempt to resolve this dependency using a subclass defined method
@@ -27,7 +26,6 @@ class DependencyResolver (object):
 
     def check(self, depinfo, deptile, depsettings):
         """Check if this dependency is the latest version in a subclass defined way
-
 
         Args:
             depinfo (dict): a dictionary returned by IOTile.dependencies describing the dependency

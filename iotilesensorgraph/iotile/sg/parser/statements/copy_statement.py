@@ -1,12 +1,9 @@
 """Copy stream statement."""
 
-from builtins import str
-from future.utils import python_2_unicode_compatible
 from .statement import SensorGraphStatement
 from ...stream import DataStream
 
 
-@python_2_unicode_compatible
 class CopyStatement(SensorGraphStatement):
     """Copy one stream into another
 
@@ -95,7 +92,7 @@ class CopyStatement(SensorGraphStatement):
             op = 'copy_count_a'
 
         if self.explicit_input:
-            #If root node is an input, create an intermediate node with an unbuffered node
+            # If root node is an input, create an intermediate node with an unbuffered node
             if self.explicit_input.input:
                 unbuffered_stream = alloc.allocate_stream(DataStream.UnbufferedType, attach=True)
                 sensor_graph.add_node(u"({} always) => {} using {}".format(self.explicit_input, unbuffered_stream, 'copy_latest_a'))

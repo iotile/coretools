@@ -28,10 +28,8 @@ setup(
         "ws4py>=0.5.1",
         "msgpack>=0.6.1",
         "python-dateutil>=2.8.0",
-        "future>=0.17.1",
-        "typedargs>=0.13.7",
+        "typedargs>=1.0.0",
         "sortedcontainers~=2.1",
-        "monotonic ~= 1.5",
         "entrypoints>=0.3.0"
     ],
     extras_require={

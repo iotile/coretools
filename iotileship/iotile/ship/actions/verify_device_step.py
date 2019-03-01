@@ -1,10 +1,9 @@
-from __future__ import (unicode_literals, print_function, absolute_import)
-from builtins import str
 import time
 from iotile.core.hw.hwmanager import HardwareManager
 from iotile.core.exceptions import ArgumentError
 
-class VerifyDeviceStep(object):
+
+class VerifyDeviceStep:
     """A Recipe Step used to verify that a device is setup as expected
 
     Args:

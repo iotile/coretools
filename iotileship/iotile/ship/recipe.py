@@ -1,4 +1,3 @@
-from __future__ import (unicode_literals, print_function, absolute_import)
 import time
 from collections import namedtuple
 from string import Template
@@ -7,8 +6,6 @@ import os
 import sys
 import zipfile
 import tempfile
-from future.utils import viewitems, viewvalues, raise_
-from past.builtins import basestring
 from iotile.core.exceptions import ArgumentError, ValidationError
 from .exceptions import RecipeFileInvalid, UnknownRecipeActionType, RecipeVariableNotPassed, UnknownRecipeResourceType, RecipeResourceManagementError
 from .recipe_format import RecipeSchema
@@ -20,7 +17,7 @@ RecipeStep = namedtuple("RecipeStep", ["factory", "args", "resources", "fixed_fi
 TEMPLATE_REGEX = r"((?<!\$)|(\$\$)+)\$({(?P<long_id>[a-zA-Z_]\w*)}|(?P<short_id>[a-zA-Z_]\w*))"
 
 
-class RecipeObject(object):
+class RecipeObject:
     """An object representing a fixed set of processing steps.
 
     RecipeObjects are used to create and run production operations
@@ -76,7 +73,7 @@ class RecipeObject(object):
             if len(files) > 0:
                 self.external_files = True
 
-        for decl in viewvalues(resources):
+        for decl in resources.values():
             self.free_variables |= _extract_variables(decl.args)
 
         default_names = set(self.defaults)
@@ -224,7 +221,20 @@ class RecipeObject(object):
 
             return RecipeObject(name, description, steps, resources, defaults, path)
         except RecipeFileInvalid as exc:
-            raise_(RecipeFileInvalid, RecipeFileInvalid(exc.msg, recipe=name, **exc.params), sys.exc_info()[2])
+            cls._future_raise(RecipeFileInvalid, RecipeFileInvalid(exc.msg, recipe=name, **exc.params),
+                              sys.exc_info()[2])
+
+    @classmethod
+    def _future_raise(cls, tp, value=None, tb=None):
+        if value is not None and isinstance(tp, Exception):
+            raise TypeError("instance exception may not have a separate value")
+        if value is not None:
+            exc = tp(value)
+        else:
+            exc = tp
+        if exc.__traceback__ is not tb:
+            raise exc.with_traceback(tb)
+        raise exc
 
     @classmethod
     def _parse_file_usage(cls, action_class, args):
@@ -327,7 +337,7 @@ class RecipeObject(object):
             used[local_name] = global_name
 
         # Make sure we only use, open and close declared resources
-        for name in (x for x in viewvalues(used) if x not in declarations):
+        for name in (x for x in used.values() if x not in declarations):
             raise RecipeFileInvalid("Action makes use of non-declared shared resource", name=name)
 
         for name in (x for x in opened if x not in declarations):
@@ -374,7 +384,7 @@ class RecipeObject(object):
         res_map = {}
         own_map = {}
 
-        for decl in viewvalues(self.resources):
+        for decl in self.resources.values():
             resource = overrides.get(decl.name)
 
             if resource is None:
@@ -396,7 +406,7 @@ class RecipeObject(object):
 
         # Make sure we clean up all resources that we can and don't error out at the
         # first one.
-        for name, res in viewitems(initialized_resources):
+        for name, res in initialized_resources.items():
             try:
                 if res.opened:
                     res.close()
@@ -483,8 +493,8 @@ def _complete_parameters(param, variables):
     if isinstance(param, list):
         return [_complete_parameters(x, variables) for x in param]
     elif isinstance(param, dict):
-        return {key: _complete_parameters(value, variables) for key, value in viewitems(param)}
-    elif isinstance(param, basestring):
+        return {key: _complete_parameters(value, variables) for key, value in param.items()}
+    elif isinstance(param, str):
         try:
             return Template(param).substitute(variables)
         except KeyError as exc:
@@ -501,8 +511,8 @@ def _extract_variables(param):
     if isinstance(param, list):
         variables.update(*[_extract_variables(x) for x in param])
     elif isinstance(param, dict):
-        variables.update(*[_extract_variables(x) for x in viewvalues(param)])
-    elif isinstance(param, basestring):
+        variables.update(*[_extract_variables(x) for x in param.values()])
+    elif isinstance(param, str):
         for match in re.finditer(TEMPLATE_REGEX, param):
             if match.group('short_id') is not None:
                 variables.add(match.group('short_id'))
@@ -522,7 +532,7 @@ def _run_step(step_obj, step_declaration, initialized_resources):
         initialized_resources[res_name].open()
 
     # Create a dictionary of all of the resources that are required for this step
-    used_resources = {local_name: initialized_resources[global_name] for local_name, global_name in viewitems(step_declaration.resources.used)}
+    used_resources = {local_name: initialized_resources[global_name] for local_name, global_name in step_declaration.resources.used.items()}
 
     # Allow steps with no resources to not need a resources keyword parameter
     if len(used_resources) > 0:

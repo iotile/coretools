@@ -1,6 +1,5 @@
 """Entrypoint for virtual-device script that can serve a Virtual iotile device."""
 
-from __future__ import unicode_literals, print_function, absolute_import
 import argparse
 import sys
 import logging
@@ -19,7 +18,7 @@ def one_line_desc(obj):
     try:
         doc = ParsedDocstring(obj.__doc__)
         return doc.short_desc
-    except:  #pylint:disable=bare-except;We don't want a misbehaving exception to break the program
+    except:  # pylint:disable=bare-except; We don't want a misbehaving exception to break the program
         logger.warn("Could not parse docstring for %s", obj, exc_info=True)
         return ""
 
@@ -166,7 +165,7 @@ def instantiate_device(virtual_dev, config):
     if 'device' in config:
         conf = config['device']
 
-    #If we're given a path to a script, try to load and use that rather than search for an installed module
+    # If we're given a path to a script, try to load and use that rather than search for an installed module
     try:
         reg = ComponentRegistry()
 

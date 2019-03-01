@@ -1,6 +1,5 @@
 """Functions for building a python support wheel."""
 
-from __future__ import print_function
 import os.path
 import os
 import sys
@@ -13,7 +12,6 @@ from docbuild import *
 from release import *
 from dependencies import find_dependency_wheels, _iter_dependencies
 from iotile.build.utilities import render_template
-from iotile.core.dev.iotileobj import IOTile
 from iotile.core.exceptions import *
 
 
@@ -88,7 +86,8 @@ def iter_python_modules(tile):
         for product in tile.find_products(product_type):
             entry_point = ENTRY_POINT_MAP.get(product_type)
             if entry_point is None:
-                raise BuildError("Found an unknown python product (%s) whose entrypoint could not be determined (%s)" % (product_type, product))
+                raise BuildError("Found an unknown python product (%s) whose entrypoint could not be determined (%s)" %
+                                 (product_type, product))
 
             if ':' in product:
                 module, _, obj_name = product.rpartition(':')
@@ -157,7 +156,7 @@ def build_python_distribution(tile):
 
         buildfiles.append(buildfile)
 
-    #Create setup.py file and then use that to build a python wheel and an sdist
+    # Create setup.py file and then use that to build a python wheel and an sdist
     env['TILE'] = tile
     support_sdist = "%s-%s.tar.gz" % (tile.support_distribution, tile.parsed_version.pep440_string())
     wheel_output = os.path.join('build', 'python', 'dist', tile.support_wheel)
@@ -171,7 +170,7 @@ def build_python_distribution(tile):
     env.Command([os.path.join(outdir, tile.support_wheel)], [wheel_output], Copy("$TARGET", "$SOURCE"))
     env.Command([os.path.join(outdir, support_sdist)], [sdist_output], Copy("$TARGET", "$SOURCE"))
 
-    #Also copy over all dependency wheels as well
+    # Also copy over all dependency wheels as well
     wheels = find_dependency_wheels(tile)
 
     if "python_universal" in tile.settings:
@@ -212,7 +211,8 @@ def generate_setup_py(target, source, env):
     data['name'] = tile.support_distribution
     data['package'] = tile.support_distribution
     data['version'] = tile.parsed_version.pep440_string()
-    data['deps'] = ["{0} {1}".format(x.support_distribution, x.parsed_version.pep440_compatibility_specifier()) for x in _iter_dependencies(tile) if x.has_wheel]
+    data['deps'] = ["{0} {1}".format(x.support_distribution, x.parsed_version.pep440_compatibility_specifier())
+                    for x in _iter_dependencies(tile) if x.has_wheel]
 
     # If there are some python packages needed, we add them to the list of dependencies required
     if tile.support_wheel_depends:

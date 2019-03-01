@@ -8,7 +8,7 @@ plugins or extensions that should not pollute your global site-packages.
 
 
 .. note::
-    On Windows you may need to install Python 2.7 since it does not come
+    On Windows you may need to install Python 3.5+ since it does not come
     preinstalled.  Any distribution should work but CoreTools is tested using
     the official `Python for Windows`_ distribution running under PowerShell.  
 
@@ -16,8 +16,7 @@ Installation Requirements
 -------------------------
 
 CoreTools is cross-platform and is tested on Mac OS, Linux and Windows.  It 
-currently requires Python 2.7 though work is underway to support both Python 2.7
-and Python 3.
+currently requires Python 3.5+.
 
 .. note::
     
@@ -26,7 +25,7 @@ and Python 3.
     CoreTools on a project by project basis::
 
         pip install virtualenv
-        virtualenv --python=python2.7 iotile
+        virtualenv --python=python3.5 iotile
 
         #On Mac/Linux
         source iotile/bin/activate

@@ -2,6 +2,10 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
+## 2.0.2
+
+- Remove past/future/monotonic, pylint cleanup
+
 ## 2.0.1
 
 - Ctrl+C breaks if you accidentally double book the bled112 dongle fix(#657)

@@ -1,6 +1,3 @@
-import sys
-if sys.version_info >= (3, 0):
-    basestring = str
 from .verifier import Verifier
 from iotile.core.exceptions import ValidationError
 
@@ -35,15 +32,19 @@ class ListVerifier(Verifier):
                 the reason for the lack of validation.
         """
 
-        if isinstance(obj, basestring):
+        if isinstance(obj, str):
             raise ValidationError("Object was not a list", reason="a string was passed instead of a list", object=obj)
 
         out_obj = []
         if self._min_length is not None and len(obj) < self._min_length:
-            raise ValidationError("List was too short", reason="list length %d was less than the minimum %d" % (len(obj), self._min_length), min_length=self._min_length, actual_length=len(obj))
+            raise ValidationError("List was too short",
+                                  reason="list length %d was less than the minimum %d" % (len(obj), self._min_length),
+                                  min_length=self._min_length, actual_length=len(obj))
 
         if self._max_length is not None and len(obj) > self._max_length:
-            raise ValidationError("List was too long", reason="list length %d was greater than the maximum %d" % (len(obj), self._max_length), min_length=self._max_length, actual_length=len(obj))
+            raise ValidationError("List was too long",
+                                  reason="list length %d was greater than the max %d" % (len(obj), self._max_length),
+                                  min_length=self._max_length, actual_length=len(obj))
 
         for val in obj:
             out_obj.append(self._verifier.verify(val))

@@ -3,14 +3,13 @@ import tornado.gen
 import binascii
 import struct
 from . import messages
-from monotonic import monotonic
+from time import monotonic
 from .mqtt_client import OrderedAWSIOTClient
 from .topic_validator import MQTTTopicValidator
 from iotile.core.exceptions import ExternalError, ArgumentError, ValidationError
-from future.utils import viewitems
 
 
-class AWSIOTGatewayAgent(object):
+class AWSIOTGatewayAgent:
     """An agent for serving access to devices over AWSIOT
 
     Args:
@@ -478,7 +477,7 @@ class AWSIOTGatewayAgent(object):
         """Periodic callback that checks for devices that haven't been used and disconnects them."""
 
         now = monotonic()
-        for uuid, data in viewitems(self._connections):
+        for uuid, data in self._connections.items():
             if (now - data['last_touch']) > self.client_timeout:
                 self._logger.info("Disconnect inactive client %s from device 0x%X", data['client'], uuid)
                 self._loop.add_callback(self._disconnect_from_device, uuid, data['key'], data['client'], unsolicited=True)
@@ -685,7 +684,7 @@ class AWSIOTGatewayAgent(object):
         devices = self._manager.scanned_devices
 
         converted_devs = []
-        for uuid, info in viewitems(devices):
+        for uuid, info in devices.items():
             slug = self._build_device_slug(uuid)
 
             message = {}
@@ -700,7 +699,7 @@ class AWSIOTGatewayAgent(object):
             message['connection_string'] = slug
             message['signal_strength'] = info['signal_strength']
 
-            converted_devs.append({x: y for x, y in viewitems(message)})
+            converted_devs.append({x: y for x, y in message.items()})
             message['type'] = 'notification'
             message['operation'] = 'advertisement'
 

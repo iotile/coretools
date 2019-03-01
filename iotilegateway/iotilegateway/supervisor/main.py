@@ -1,6 +1,5 @@
 """iotile-supervisor script main entry point."""
 
-from __future__ import unicode_literals
 import signal
 import logging
 import json

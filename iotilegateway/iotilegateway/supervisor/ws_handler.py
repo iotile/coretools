@@ -1,6 +1,5 @@
 """A websocket handler for managing running services."""
 
-from __future__ import unicode_literals
 import datetime
 import tornado.websocket
 import tornado.gen

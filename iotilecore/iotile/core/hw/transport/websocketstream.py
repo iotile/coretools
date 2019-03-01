@@ -1,16 +1,12 @@
-from __future__ import unicode_literals
-
 import threading
 from queue import Queue, Empty
 import datetime
-import time
 import msgpack
 import base64
 
 from ws4py.client.threadedclient import WebSocketClient
-from iotile.core.hw.exceptions import *
 from iotile.core.exceptions import *
-from iotile.core.hw.reports import IOTileReportParser, BroadcastReport, IOTileReading
+from iotile.core.hw.reports import IOTileReportParser, BroadcastReport
 from .cmdstream import CMDStream
 
 

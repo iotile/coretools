@@ -1,5 +1,4 @@
-"""Mock IOTile device class for testing other components interactions with IOTile devices
-"""
+"""Mock IOTile device class for testing other components interactions with IOTile devices"""
 
 import inspect
 from iotile.core.exceptions import InternalError, ArgumentError

@@ -1,7 +1,7 @@
-"""Virtual device that acts like a blank tile with just an executive installed
-"""
+"""Virtual device that acts like a blank tile with just an executive installed"""
 
 from iotile.core.hw.virtual.virtualdevice import VirtualIOTileDevice, rpc, RPCInvalidIDError, RPCNotFoundError, TileNotFoundError
+
 
 class NoAppVirtualDevice(VirtualIOTileDevice):
     """Virtual device that acts like a blank tile with just an executive loaded

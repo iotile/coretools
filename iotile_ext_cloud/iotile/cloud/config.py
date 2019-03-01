@@ -1,14 +1,13 @@
 """Configuration information for iotile-ext-cloud."""
 
 import getpass
-import sys
 
 from iotile.core.dev.registry import ComponentRegistry
 from iotile.cloud.cloud import IOTileCloud
 from iotile.core.utilities.typedargs import param
 from iotile.core.exceptions import ArgumentError
 from iotile_cloud.api.connection import Api
-from builtins import input
+
 
 @param("username", "string", desc="IOTile cloud username")
 @param("password", "string", desc="IOTile cloud password")
@@ -43,18 +42,12 @@ def link_cloud(self, username=None, password=None, device_id=None):
     domain = self.get('cloud:server')
 
     if username is None:
-        # Both python 2 and 3 require native strings to be passed into getpass
         prompt_str = "Please enter your IOTile.cloud email: "
-        if sys.version_info.major < 3:
-            prompt_str = prompt_str.encode('utf-8')
 
         username = input(prompt_str)
 
     if password is None:
-        # Both python 2 and 3 require native strings to be passed into getpass
         prompt_str = "Please enter your IOTile.cloud password: "
-        if sys.version_info.major < 3:
-            prompt_str = prompt_str.encode('utf-8')
 
         password = getpass.getpass(prompt_str)
 
@@ -76,8 +69,9 @@ def get_variables():
     """Get a dictionary of configuration variables."""
 
     prefix = "cloud"
-
-    conf_vars = []
-    conf_vars.append(["server", "string", "The domain name to talk to for iotile.cloud operations (including https:// prefix)", 'https://iotile.cloud'])
+    conf_vars = [["server",
+                  "string",
+                  "The domain name to talk to for iotile.cloud operations (including https:// prefix)",
+                  'https://iotile.cloud']]
 
     return prefix, conf_vars

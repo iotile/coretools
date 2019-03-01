@@ -1,13 +1,10 @@
 """Subtract input B from input A statement."""
 
-from __future__ import (unicode_literals, print_function, absolute_import)
-from future.utils import python_2_unicode_compatible
 from .statement import SensorGraphStatement
 from iotile.sg.exceptions import SensorGraphSemanticError
 from ...stream import DataStream
 
 
-@python_2_unicode_compatible
 class SubtractStatement(SensorGraphStatement):
     """Subtract the two input values
 

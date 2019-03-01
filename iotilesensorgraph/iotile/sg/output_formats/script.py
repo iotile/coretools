@@ -1,8 +1,6 @@
 """Creates a binary UpdateScript object containing the sensor graph and any config information."""
 
-from __future__ import unicode_literals, absolute_import, print_function
 import struct
-from future.utils import viewitems
 from iotile.sg.update import (AddNodeRecord, AddStreamerRecord, SetConfigRecord, SetConstantRecord,
                               SetGraphOnlineRecord, PersistGraphRecord, ClearDataRecord, ResetGraphRecord,
                               ClearConfigVariablesRecord)
@@ -38,7 +36,7 @@ def format_script(sensor_graph):
     for streamer in sensor_graph.streamers:
         records.append(AddStreamerRecord(streamer, address=8))
 
-    for stream, value in sorted(viewitems(sensor_graph.constant_database), key=lambda x: x[0].encode()):
+    for stream, value in sorted(sensor_graph.constant_database.items(), key=lambda x: x[0].encode()):
         records.append(SetConstantRecord(stream, value, address=8))
 
     records.append(PersistGraphRecord(address=8))

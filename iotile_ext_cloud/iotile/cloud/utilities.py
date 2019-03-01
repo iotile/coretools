@@ -2,7 +2,7 @@
 
 from iotile_cloud.utils.gid import IOTileDeviceSlug, IOTileFleetSlug
 from iotile.core.exceptions import ArgumentError
-from past.builtins import basestring
+
 
 def device_slug_to_id(slug):
     """Convert a d-- device slug to an integer.
@@ -17,7 +17,7 @@ def device_slug_to_id(slug):
         ArgumentError: if there is a malformed slug
     """
 
-    if not isinstance(slug, basestring):
+    if not isinstance(slug, str):
         raise ArgumentError("Invalid device slug that is not a string", slug=slug)
 
     try:
@@ -28,12 +28,12 @@ def device_slug_to_id(slug):
     return device_slug.get_id()
 
 
-def device_id_to_slug(id):
+def device_id_to_slug(did):
     """ Converts a device id into a correct device slug.
 
     Args:
-        id (long) : A device id
-        id (string) : A device slug in the form of XXXX, XXXX-XXXX-XXXX, d--XXXX, d--XXXX-XXXX-XXXX-XXXX
+        did (long) : A device id
+        did (string) : A device slug in the form of XXXX, XXXX-XXXX-XXXX, d--XXXX, d--XXXX-XXXX-XXXX-XXXX
     Returns:
         str: The device slug in the d--XXXX-XXXX-XXXX-XXXX format
     Raises:
@@ -41,19 +41,19 @@ def device_id_to_slug(id):
     """
 
     try:
-        device_slug = IOTileDeviceSlug(id, allow_64bits=False)
+        device_slug = IOTileDeviceSlug(did, allow_64bits=False)
     except ValueError:
-        raise ArgumentError("Unable to recognize {} as a device id".format(id))
+        raise ArgumentError("Unable to recognize {} as a device id".format(did))
 
     return str(device_slug)
 
 
-def fleet_id_to_slug(id):
+def fleet_id_to_slug(did):
     """ Converts a fleet id into a correct fleet slug.
 
     Args:
-        id (long) : A fleet id
-        id (string) : A device slug in the form of XXXX, XXXX-XXXX-XXXX, g--XXXX, g--XXXX-XXXX-XXXX
+        did (long) : A fleet id
+        did (string) : A device slug in the form of XXXX, XXXX-XXXX-XXXX, g--XXXX, g--XXXX-XXXX-XXXX
     Returns:
         str: The device slug in the g--XXXX-XXXX-XXX format
     Raises:
@@ -61,8 +61,8 @@ def fleet_id_to_slug(id):
     """
 
     try:
-        fleet_slug = IOTileFleetSlug(id)
+        fleet_slug = IOTileFleetSlug(did)
     except ValueError:
-        raise ArgumentError("Unable to recognize {} as a fleet id".format(id))
+        raise ArgumentError("Unable to recognize {} as a fleet id".format(did))
 
     return str(fleet_slug)

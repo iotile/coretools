@@ -1,13 +1,10 @@
 """Update script record for reflashing a tile with new firmware."""
 
-from __future__ import (print_function, absolute_import, unicode_literals)
 import struct
-from future.utils import python_2_unicode_compatible
 from iotile.core.exceptions import ArgumentError
 from ..record import UpdateRecord, MatchQuality
 
 
-@python_2_unicode_compatible
 class ReflashTileRecord(UpdateRecord):
     """Reflash a tile at a specific slot with new firmware.
 
@@ -41,7 +38,8 @@ class ReflashTileRecord(UpdateRecord):
             bytearary: The encoded contents.
         """
 
-        header = struct.pack("<LL8sBxxx", self.offset, len(self.raw_data), _create_target(slot=self.slot), self.hardware_type)
+        header = struct.pack("<LL8sBxxx", self.offset, len(self.raw_data),
+                             _create_target(slot=self.slot), self.hardware_type)
         return bytearray(header) + self.raw_data
 
     @classmethod
@@ -63,7 +61,7 @@ class ReflashTileRecord(UpdateRecord):
         """Check how well this record matches the given binary data.
 
         This function will only be called if the record matches the type code
-        given by calling MatchType() and this functon should check how well
+        given by calling MatchType() and this function should check how well
         this record matches and return a quality score between 0 and 100, with
         higher quality matches having higher scores.  The default value should
         be MatchQuality.GenericMatch which is 50.  If this record does not
@@ -114,17 +112,20 @@ class ReflashTileRecord(UpdateRecord):
         """
 
         if len(record_data) < ReflashTileRecord.RecordHeaderLength:
-            raise ArgumentError("Record was too short to contain a full reflash record header", length=len(record_data), header_length=ReflashTileRecord.RecordHeaderLength)
+            raise ArgumentError("Record was too short to contain a full reflash record header",
+                                length=len(record_data), header_length=ReflashTileRecord.RecordHeaderLength)
 
         offset, data_length, raw_target, hardware_type = struct.unpack_from("<LL8sB3x", record_data)
 
         bindata = record_data[ReflashTileRecord.RecordHeaderLength:]
         if len(bindata) != data_length:
-            raise ArgumentError("Embedded firmware length did not agree with actual length of embeded data", length=len(bindata), embedded_length=data_length)
+            raise ArgumentError("Embedded firmware length did not agree with actual length of embeded data",
+                                length=len(bindata), embedded_length=data_length)
 
         target = _parse_target(raw_target)
         if target['controller']:
-            raise ArgumentError("Invalid targetting information, you cannot reflash a controller with a ReflashTileRecord", target=target)
+            raise ArgumentError("Invalid targetting information, you "
+                                "cannot reflash a controller with a ReflashTileRecord", target=target)
 
         return ReflashTileRecord(target['slot'], bindata, offset, hardware_type)
 
@@ -132,19 +133,22 @@ class ReflashTileRecord(UpdateRecord):
         if not isinstance(other, ReflashTileRecord):
             return False
 
-        return self.slot == other.slot and self.raw_data == other.raw_data and self.offset == other.offset and self.hardware_type == other.hardware_type
+        return self.slot == other.slot and self.raw_data == other.raw_data and self.offset == other.offset \
+               and self.hardware_type == other.hardware_type
 
     def __str__(self):
-        return "Reflash slot %d with %d (0x%X) bytes starting at offset %d (0x%X) (hardware_type: %d)" % (self.slot, len(self.raw_data), len(self.raw_data), self.offset, self.offset, self.hardware_type)
+        return "Reflash slot %d with %d (0x%X) bytes starting at offset %d (0x%X) (hardware_type: %d)" \
+               % (self.slot, len(self.raw_data), len(self.raw_data), self.offset, self.offset, self.hardware_type)
 
 
 _MATCH_SLOT = 1
 _MATCH_CONTROLLER = 2
 
-def _create_target(slot):
-    """Create binary targetting information.
 
-    This function implements a subset of the targetting supported
+def _create_target(slot):
+    """Create binary targeting information.
+
+    This function implements a subset of the targeting supported
     by an embedded tileman_matchdata_t structure but this is the
     only subset that is widely used.
 
@@ -159,21 +163,21 @@ def _create_target(slot):
 
 
 def _parse_target(target):
-    """Parse a binary targetting information structure.
+    """Parse a binary targeting information structure.
 
     This function only supports extracting the slot number or controller from
-    the target and will raise an ArgumentError if more complicated targetting
+    the target and will raise an ArgumentError if more complicated targeting
     is desired.
 
     Args:
-        target (bytes): The binary targetting data blob.
+        target (bytes): The binary targeting data blob.
 
     Returns:
-        dict: The parsed targetting data
+        dict: The parsed targeting data
     """
 
     if len(target) != 8:
-        raise ArgumentError("Invalid targetting data length", expected=8, length=len(target))
+        raise ArgumentError("Invalid targeting data length", expected=8, length=len(target))
     slot, match_op = struct.unpack("<B6xB", target)
 
     if match_op == _MATCH_CONTROLLER:
@@ -181,4 +185,4 @@ def _parse_target(target):
     elif match_op == _MATCH_SLOT:
         return {'controller': False, 'slot': slot}
 
-    raise ArgumentError("Unsupported complex targetting specified", match_op=match_op)
+    raise ArgumentError("Unsupported complex targeting specified", match_op=match_op)

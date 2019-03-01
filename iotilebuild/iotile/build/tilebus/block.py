@@ -16,8 +16,7 @@ KNOWN_HARDWARE_TYPES = {
 
 
 class TBBlock(object):
-    """
-    The block in program memory describing a MoMo application module.  The MIB block
+    """The block in program memory describing a MoMo application module.  The MIB block
     contains information on the application module and a sparse matrix representation
     of a jump table containing all of the command ids and interfaces that the module
     knows how to respond to.
@@ -68,8 +67,7 @@ class TBBlock(object):
         return val >= 0 and val <= 255
 
     def set_api_version(self, major, minor):
-        """
-        Set the API version this module was designed for.
+        """Set the API version this module was designed for.
 
         Each module must declare the mib12 API version it was compiled with as a
         2 byte major.minor number.  This information is used by the pic12_executive
@@ -77,13 +75,13 @@ class TBBlock(object):
         """
 
         if not self._is_byte(major) or not self._is_byte(minor):
-            raise ArgumentError("Invalid API version number with component that does not fit in 1 byte", major=major, minor=minor)
+            raise ArgumentError("Invalid API version number with component that does not fit in 1 byte",
+                                major=major, minor=minor)
 
         self.api_version = (major, minor)
 
     def set_module_version(self, major, minor, patch):
-        """
-        Set the module version for this module.
+        """Set the module version for this module.
 
         Each module must declare a semantic version number in the form:
         major.minor.patch
@@ -92,13 +90,13 @@ class TBBlock(object):
         """
 
         if not (self._is_byte(major) and self._is_byte(minor) and self._is_byte(patch)):
-            raise ArgumentError("Invalid module version number with component that does not fit in 1 byte", major=major, minor=minor, patch=patch)
+            raise ArgumentError("Invalid module version number with component that does not fit in 1 byte",
+                                major=major, minor=minor, patch=patch)
 
         self.module_version = (major, minor, patch)
 
     def set_name(self, name):
-        """
-        Set the module name to a 6 byte string
+        """Set the module name to a 6 byte string
 
         If the string is too short it is appended with space characters.
         """
@@ -112,33 +110,33 @@ class TBBlock(object):
         self.name = name
 
     def add_command(self, cmd_id, handler):
-        """
-        Add a command to the TBBlock.
+        """Add a command to the TBBlock.
 
         The cmd_id must be a non-negative 2 byte number.
         handler should be the command handler
         """
 
         if cmd_id < 0 or cmd_id >= 2**16:
-            raise ArgumentError("Command ID in mib block is not a non-negative 2-byte number", cmd_id=cmd_id, handler=handler)
+            raise ArgumentError("Command ID in mib block is not a non-negative 2-byte number",
+                                cmd_id=cmd_id, handler=handler)
 
         if cmd_id in self.commands:
-            raise ArgumentError("Attempted to add the same command ID twice.", cmd_id=cmd_id, existing_handler=self.commands[cmd_id],
+            raise ArgumentError("Attempted to add the same command ID twice.", cmd_id=cmd_id,
+                                existing_handler=self.commands[cmd_id],
                                 new_handler=handler)
 
         self.commands[cmd_id] = handler
 
     def add_config(self, config_id, config_data):
-        """
-        Add a configuration variable to the MIB block
-        """
+        """Add a configuration variable to the MIB block"""
 
         if config_id < 0 or config_id >= 2**16:
-            raise ArgumentError("Config ID in mib block is not a non-negative 2-byte number", config_data=config_id, data=config_data)
+            raise ArgumentError("Config ID in mib block is not a non-negative 2-byte number",
+                                config_data=config_id, data=config_data)
 
         if config_id in self.configs:
-            raise ArgumentError("Attempted to add the same command ID twice.", config_data=config_id, old_data=self.configs[config_id],
-                                new_data=config_data)
+            raise ArgumentError("Attempted to add the same command ID twice.", config_data=config_id,
+                                old_data=self.configs[config_id], new_data=config_data)
 
         self.configs[config_id] = config_data
 

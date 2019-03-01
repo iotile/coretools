@@ -1,9 +1,9 @@
-"""A mock DependencyResolver object for testing iotile-build
-"""
+"""A mock DependencyResolver object for testing iotile-build"""
 
 from iotile.core.dev.iotileobj import IOTile
 
-class MockDependencyResolver(object):
+
+class MockDependencyResolver:
     def __init__(self, args):
         self.known_deps = {IOTile(x).unique_id: IOTile(x) for x in args}
 

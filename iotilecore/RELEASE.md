@@ -2,6 +2,10 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## 4.0.2
+
+- Remove past/future/monotonic, pylint cleanup
+
 ## 4.0.1
 
 - Actually drop python2 support

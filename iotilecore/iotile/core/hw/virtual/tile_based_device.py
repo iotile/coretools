@@ -3,8 +3,6 @@
 The device handles RPCs by dispatching them to tiles configured using a config dictionary.
 """
 
-from builtins import str
-from future.utils import itervalues
 from .virtualdevice import VirtualIOTileDevice
 from .virtualtile import VirtualTile
 
@@ -49,16 +47,16 @@ class TileBasedVirtualDevice(VirtualIOTileDevice):
 
         super(TileBasedVirtualDevice, self).start(channel)
 
-        for tile in itervalues(self._tiles):
+        for tile in self._tiles.values():
             tile.start(channel=channel)
 
     def stop(self):
         """Stop running this virtual device including any worker threads."""
 
-        for tile in itervalues(self._tiles):
+        for tile in self._tiles.values():
             tile.signal_stop()
 
-        for tile in itervalues(self._tiles):
+        for tile in self._tiles.values():
             tile.wait_stopped()
 
         super(TileBasedVirtualDevice, self).stop()

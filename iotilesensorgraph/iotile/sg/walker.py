@@ -1,13 +1,12 @@
 """Stream walkers are the basic data retrieval mechanism in sensor graph."""
 
-from builtins import range
 from iotile.core.exceptions import ArgumentError, InternalError
 from iotile.core.hw.reports import IOTileReading
 from iotile.sg.exceptions import StreamEmptyError, UnresolvedIdentifierError
 from iotile.sg.stream import DataStream, DataStreamSelector
 
 
-class StreamWalker(object):
+class StreamWalker:
     """An object that walks through the SensorLog and returns matching readings.
 
     Args:

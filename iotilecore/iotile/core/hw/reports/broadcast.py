@@ -27,11 +27,11 @@ class BroadcastReport(IOTileReport):
 
     This generic class supports a fixed encoding but does not yet support
     encryption/decryption or signing.  The encoding of this report is designed
-    to accomodate a range of use cases and not be a binary match for any
+    to accommodate a range of use cases and not be a binary match for any
     specific wire format that a BroadcastReport might be created from, such as
     part of a bluetooth advertisement packet.
 
-    The encoding is designed to accomodate 1 or more IOTileReadings with a fixed
+    The encoding is designed to accommodate 1 or more IOTileReadings with a fixed
     size header and a variable length authentication block after the readings.
     """
 
@@ -89,7 +89,8 @@ class BroadcastReport(IOTileReport):
         packed_readings = bytearray()
 
         for reading in readings:
-            packed_reading = struct.pack("<HHLLL", reading.stream, 0, reading.reading_id, reading.raw_time, reading.value)
+            packed_reading = struct.pack("<HHLLL", reading.stream, 0, reading.reading_id,
+                                         reading.raw_time, reading.value)
             packed_readings += bytearray(packed_reading)
 
         return BroadcastReport(bytearray(header) + packed_readings)

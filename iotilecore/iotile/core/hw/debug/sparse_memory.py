@@ -1,8 +1,5 @@
-"""A sparse memory map for debugging purposes
-"""
+"""A sparse memory map for debugging purposes"""
 
-from __future__ import unicode_literals
-from builtins import range
 from collections import namedtuple
 import binascii
 import string
@@ -13,7 +10,8 @@ MemorySegment = namedtuple('MemorySegment', ['start_address', 'end_address', 'le
 DisjointSegment = namedtuple('DisjointSegment', [])
 OverlappingSegment = namedtuple('OverlappingSegment', [])
 
-class SparseMemory(object):
+
+class SparseMemory:
     """A sparse memory map for debugging purposes
 
     You can add memory segments into the memory map
@@ -61,7 +59,8 @@ class SparseMemory(object):
             end_i, _end_seg = self._find_address(end_address)
 
             if start_seg is None or start_i != end_i:
-                raise ArgumentError("Slice would span invalid data in memory", start_address=start_address, end_address=end_address)
+                raise ArgumentError("Slice would span invalid data in memory",
+                                    start_address=start_address, end_address=end_address)
 
             block_offset = start_address - start_seg.start_address
             block_length = end_address - start_address + 1
@@ -94,7 +93,7 @@ class SparseMemory(object):
 
     @classmethod
     def _in_segment(cls, address, segment):
-        return address >= segment.start_address and address <= segment.end_address
+        return segment.start_address <= address <= segment.end_address
 
     def _find_address(self, address):
         for i, segment in enumerate(self._segments):
@@ -146,8 +145,7 @@ class SparseMemory(object):
         return "0x{:08x}: {}  {}".format(start_address, separated_hex, asciidata)
 
     def __str__(self):
-        """Convert to string as a 64 byte wide hex dump
-        """
+        """Convert to string as a 64 byte wide hex dump"""
 
         stringdata = ""
 

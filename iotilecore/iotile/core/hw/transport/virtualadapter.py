@@ -1,7 +1,6 @@
 import json
 import traceback
 import time
-from future.utils import itervalues, viewitems
 from iotile.core.exceptions import ArgumentError
 from iotile.core.dev import ComponentRegistry
 from iotile.core.hw.reports import BroadcastReport
@@ -10,9 +9,8 @@ from ..virtual import (RPCInvalidIDError, TileNotFoundError, RPCNotFoundError,
                        VirtualIOTileDevice, RPCErrorCode)
 
 
-class VirtualAdapterAsyncChannel(object):
-    """A channel for tracing and streaming data asynchronously from virtual devices
-    """
+class VirtualAdapterAsyncChannel:
+    """A channel for tracing and streaming data asynchronously from virtual devices"""
 
     def __init__(self, adapter, iotile_id):
         self.adapter = adapter
@@ -61,7 +59,7 @@ class VirtualAdapterAsyncChannel(object):
         """Find the connection corresponding to an iotile_id
         """
 
-        for conn_id, dev in viewitems(self.adapter.connections):
+        for conn_id, dev in self.adapter.connections.items():
             if dev.iotile_id == iotile_id:
                 return conn_id
 
@@ -157,7 +155,7 @@ class VirtualDeviceAdapter(DeviceAdapter):
         self.set_config('probe_required', True)
         self.set_config('probe_supported', True)
 
-    #pylint:disable=unused-argument;The name needs to remain without an _ for subclasses to override
+    # pylint:disable=unused-argument;The name needs to remain without an _ for subclasses to override
     @classmethod
     def _validate_device(cls, device):
         """Hook for subclases to ensure that only specific kinds of devices are loaded.
@@ -171,8 +169,7 @@ class VirtualDeviceAdapter(DeviceAdapter):
         return True
 
     def _load_device(self, name, config):
-        """Load a device either from a script or from an installed module
-        """
+        """Load a device either from a script or from an installed module"""
 
         if config is None:
             config_dict = {}
@@ -191,7 +188,8 @@ class VirtualDeviceAdapter(DeviceAdapter):
                 raise ArgumentError("Could not open config file", error=str(exc), path=config)
 
             if 'device' not in data:
-                raise ArgumentError("Invalid configuration file passed to VirtualDeviceAdapter", device_name=name, config_path=config, missing_key='device')
+                raise ArgumentError("Invalid configuration file passed to VirtualDeviceAdapter",
+                                    device_name=name, config_path=config, missing_key='device')
 
             config_dict = data['device']
 
@@ -202,7 +200,8 @@ class VirtualDeviceAdapter(DeviceAdapter):
             return device_factory(config_dict)
 
         seen_names = []
-        for device_name, device_factory in reg.load_extensions('iotile.virtual_device', class_filter=VirtualIOTileDevice,
+        for device_name, device_factory in reg.load_extensions('iotile.virtual_device',
+                                                               class_filter=VirtualIOTileDevice,
                                                                product_name="virtual_device"):
             if device_name == name:
                 return device_factory(config_dict)
@@ -239,7 +238,7 @@ class VirtualDeviceAdapter(DeviceAdapter):
                 callback(connection_id, self.id, False, "could not find device to connect to")
             return
 
-        if id_number in [x.iotile_id for x in itervalues(self.connections)]:
+        if id_number in [x.iotile_id for x in self.connections.values()]:
             if callback is not None:
                 callback(connection_id, self.id, False, "device was already connected to")
             return
@@ -256,7 +255,7 @@ class VirtualDeviceAdapter(DeviceAdapter):
         """Asynchronously disconnect from a connected device
 
         Args:
-            conn_id (int): A unique identifer that will refer to this connection
+            conn_id (int): A unique identifier that will refer to this connection
             callback (callback): A callback that will be called as
                 callback(conn_id, adapter_id, success, failure_reason)
         """
@@ -277,7 +276,7 @@ class VirtualDeviceAdapter(DeviceAdapter):
         """Open the RPC interface on a device
 
         Args:
-            conn_id (int): A unique identifer that will refer to this connection
+            conn_id (int): A unique identifier that will refer to this connection
             callback (callback): A callback that will be called as
                 callback(conn_id, adapter_id, success, failure_reason)
         """
@@ -297,7 +296,7 @@ class VirtualDeviceAdapter(DeviceAdapter):
         """Open the streaming interface on a device
 
         Args:
-            conn_id (int): A unique identifer that will refer to this connection
+            conn_id (int): A unique identifier that will refer to this connection
             callback (callback): A callback that will be called as
                 callback(conn_id, adapter_id, success, failure_reason)
         """
@@ -320,7 +319,7 @@ class VirtualDeviceAdapter(DeviceAdapter):
         """Open the tracing interface on a device
 
         Args:
-            conn_id (int): A unique identifer that will refer to this connection
+            conn_id (int): A unique identifier that will refer to this connection
             callback (callback): A callback that will be called as
                 callback(conn_id, adapter_id, success, failure_reason)
         """
@@ -344,7 +343,7 @@ class VirtualDeviceAdapter(DeviceAdapter):
         """Open the script interface on a device
 
         Args:
-            conn_id (int): A unique identifer that will refer to this connection
+            conn_id (int): A unique identifier that will refer to this connection
             callback (callback): A callback that will be called as
                 callback(conn_id, adapter_id, success, failure_reason)
         """
@@ -364,8 +363,8 @@ class VirtualDeviceAdapter(DeviceAdapter):
         """Asynchronously send an RPC to this IOTile device
 
         Args:
-            conn_id (int): A unique identifer that will refer to this connection
-            address (int): the addres of the tile that we wish to send the RPC to
+            conn_id (int): A unique identifier that will refer to this connection
+            address (int): the address of the tile that we wish to send the RPC to
             rpc_id (int): the 16-bit id of the RPC we want to call
             payload (bytearray): the payload of the command
             timeout (float): the number of seconds to wait for the RPC to execute
@@ -399,7 +398,7 @@ class VirtualDeviceAdapter(DeviceAdapter):
         except RPCErrorCode as exc:
             status |= exc.params['code'] & ((1 << 6) - 1)
         except Exception:
-            #Don't allow exceptions or we will deadlock
+            # Don't allow exceptions or we will deadlock
             status = 3
 
             print("*** EXCEPTION OCCURRED IN RPC ***")
@@ -413,7 +412,7 @@ class VirtualDeviceAdapter(DeviceAdapter):
         """Asynchronously send a a script to this IOTile device
 
         Args:
-            conn_id (int): A unique identifer that will refer to this connection
+            conn_id (int): A unique identifier that will refer to this connection
             data (bytes or bytearray): the script to send to the device
             progress_callback (callable): A function to be called with status on our progress, called as:
                 progress_callback(done_count, total_count)
@@ -452,11 +451,11 @@ class VirtualDeviceAdapter(DeviceAdapter):
 
     def periodic_callback(self):
         if self.last_scan is None or time.time() > (self.scan_interval + self.last_scan):
-            for dev in itervalues(self.devices):
+            for dev in self.devices.values():
                 self._send_scan_event(dev)
 
     def stop_sync(self):
-        for dev in itervalues(self.devices):
+        for dev in self.devices.values():
             dev.stop()
 
     def probe_async(self, callback):
@@ -469,7 +468,7 @@ class VirtualDeviceAdapter(DeviceAdapter):
                     failure_reason: None if success is True, otherwise a reason for why we could not probe
         """
 
-        for dev in itervalues(self.devices):
+        for dev in self.devices.values():
             self._send_scan_event(dev)
 
         callback(self.id, True, None)

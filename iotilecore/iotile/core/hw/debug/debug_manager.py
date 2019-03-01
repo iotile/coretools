@@ -12,14 +12,13 @@ from enum import IntEnum
 import subprocess
 import tempfile
 import json
-from future.utils import viewitems
 from typedargs.annotate import context, docannotate
 from iotile.core.exceptions import ArgumentError, ExternalError
 from iotile.core.utilities.console import ProgressBar
 
 
 @context("DebugManager")
-class DebugManager(object):
+class DebugManager:
     """Low level debug operations for development and recovery.
 
     Args:
@@ -141,7 +140,7 @@ class DebugManager(object):
         self.load_scenario(scenario)
 
     def load_scenario(self, scenario_data):
-        """Load the given test secnario onto an emulated device.
+        """Load the given test scenario onto an emulated device.
 
         This debug routine is only supported for emulated devices and will
         cause the connected device to load one of its preconfigured test
@@ -222,7 +221,8 @@ class DebugManager(object):
 
         format_handler = format_map.get(file_format)
         if format_handler is None:
-            raise ArgumentError("Unknown file format or file extension", file_format=file_format, known_formats=[x for x in format_map if format_map[x] is not None])
+            raise ArgumentError("Unknown file format or file extension", file_format=file_format,
+                                known_formats=[x for x in format_map if format_map[x] is not None])
 
         base_addresses, section_data = format_handler(in_path)
         for base_address, data in zip(base_addresses, section_data):
@@ -245,9 +245,7 @@ class DebugManager(object):
 
     @classmethod
     def _process_hex(cls, in_path):
-        """This function returns a list of base addresses and a list of the binary data
-        for each segment.
-        """
+        """This function returns a list of base addresses and a list of the binary data for each segment."""
 
         from iotile.core.utilities.intelhex import IntelHex
 
@@ -279,7 +277,7 @@ def _clean_intenum(obj):
     """Remove all IntEnum classes from a map."""
 
     if isinstance(obj, dict):
-        for key, value in viewitems(obj):
+        for key, value in obj.items():
             if isinstance(value, IntEnum):
                 obj[key] = value.value
             elif isinstance(value, (dict, list)):

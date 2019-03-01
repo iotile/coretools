@@ -26,7 +26,8 @@ class EnumVerifier(Verifier):
         """
 
         if obj not in self.options:
-            raise ValidationError("Object is not in list of enumerated options", reason='not in list of enumerated options', object=obj, options=self.options)
+            raise ValidationError("Object is not in list of enumerated options",
+                                  reason='not in list of enumerated options', object=obj, options=self.options)
 
         return obj
 

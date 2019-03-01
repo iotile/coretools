@@ -9,14 +9,10 @@ DataStreamSelector: An object that selects a specific stream or a
     class of streams.
 """
 
-# For python 2/3 compatibility using future module
-from builtins import str
-from future.utils import python_2_unicode_compatible, iteritems
 from iotile.core.exceptions import ArgumentError, InternalError
 
 
-@python_2_unicode_compatible
-class DataStream(object):
+class DataStream:
     """An immutable specifier of a specific data stream
 
     Args:
@@ -199,8 +195,7 @@ class DataStream(object):
         return not self == other
 
 
-@python_2_unicode_compatible
-class DataStreamSelector(object):
+class DataStreamSelector:
     """A specifier that matches DataStreams based on their types and ids.
 
     Args:
@@ -225,7 +220,7 @@ class DataStreamSelector(object):
         MatchUserAndBreaks: u''
     }
 
-    SpecifierNames = {y: x for x, y in iteritems(SpecifierStrings)}
+    SpecifierNames = {y: x for x, y in SpecifierStrings.items()}
 
     SpecifierEncodings = {
         MatchSystemOnly: (1 << 11),
@@ -234,7 +229,7 @@ class DataStreamSelector(object):
         MatchCombined: (1 << 11) | (1 << 15)
     }
 
-    SpecifierEncodingMap = {y: x for x, y in iteritems(SpecifierEncodings)}
+    SpecifierEncodingMap = {y: x for x, y in SpecifierEncodings.items()}
     MatchAllCode = (1 << 11) - 1
 
     def __init__(self, stream_type, stream_id, stream_specifier):
@@ -243,7 +238,8 @@ class DataStreamSelector(object):
         self.match_spec = stream_specifier
 
         if stream_specifier not in DataStreamSelector.ValidSpecifiers:
-            raise ArgumentError("Unknown stream selector specifier", specifier=stream_specifier, known_specifiers=DataStreamSelector.ValidSpecifiers)
+            raise ArgumentError("Unknown stream selector specifier", specifier=stream_specifier,
+                                known_specifiers=DataStreamSelector.ValidSpecifiers)
 
     @property
     def input(self):

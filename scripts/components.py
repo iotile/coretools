@@ -1,6 +1,7 @@
 # Final boolean is whether the package is python 3 clean
 
-class Component(object):
+
+class Component:
     def __init__(self, distro, path, compat="python3"):
         if compat not in ('universal', 'python2', 'python3'):
             raise ValueError("Unknown python compatibility: %s" % compat)

@@ -7,9 +7,10 @@ import sphinx
 from docutils.statemachine import ViewList
 from iotile.core.exceptions import ArgumentError
 
-#TODO: Modify this to not list whether the dependency is installed or not
+# TODO: Modify this to not list whether the dependency is installed or not
 
-class DependenciesDirective (Directive):
+
+class DependenciesDirective(Directive):
     """Directive for adding a list of all dependencies used by this component
 
     This directive parses the module_settings.json file for the component and

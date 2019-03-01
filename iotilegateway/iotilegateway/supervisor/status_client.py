@@ -1,12 +1,9 @@
 """A websocket client that replicates the state of the supervisor."""
 
-from __future__ import unicode_literals
 from threading import Lock, Event
 from copy import copy
-from future.utils import viewitems, viewkeys
 import logging
-from builtins import int
-from monotonic import monotonic
+from time import monotonic
 from iotile.core.hw.virtual import RPCInvalidArgumentsError, RPCInvalidReturnValueError
 from iotile.core.utilities.validating_wsclient import ValidatingWSClient
 from iotile.core.exceptions import ArgumentError
@@ -67,7 +64,7 @@ class ServiceStatusClient(ValidatingWSClient):
 
         with self._state_lock:
             self.services = self.sync_services()
-            for i, name in enumerate(viewkeys(self.services)):
+            for i, name in enumerate(self.services.keys()):
                 self._name_map[i] = name
 
         if agent is not None:
@@ -119,7 +116,7 @@ class ServiceStatusClient(ValidatingWSClient):
         """
 
         with self._state_lock:
-            return sorted([(index, name) for index, name in viewitems(self._name_map)], key=lambda element: element[0])
+            return sorted([(index, name) for index, name in self._name_map.items()], key=lambda element: element[0])
 
     def sync_services(self):
         """Poll the current state of all services.

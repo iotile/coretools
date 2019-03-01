@@ -1,11 +1,10 @@
-"""State machine for parsing IOTile reports coming in on a streaming basis
-"""
+"""State machine for parsing IOTile reports coming in on a streaming basis"""
 
 from iotile.core.exceptions import ArgumentError
 from iotile.core.dev import ComponentRegistry
 
 
-class IOTileReportParser(object):
+class IOTileReportParser:
     """Accumulates data from a stream and emits IOTileReports
 
     Every time new data is available on the stream, add_data should be called.
@@ -22,13 +21,13 @@ class IOTileReportParser(object):
             error occurs, further parsing of reports will be stopped.
     """
 
-    #States for parser state machine
+    # States for parser state machine
     WaitingForReportType = 1
     WaitingForReportHeader = 2
     WaitingForCompleteReport = 3
     ErrorState = 4
 
-    #Errors
+    # Errors
     ErrorFindingReportType = 1
     ErrorParsingReportHeader = 2
     ErrorParsingCompleteReport = 3
@@ -92,7 +91,8 @@ class IOTileReportParser(object):
 
         if self.state == self.WaitingForReportHeader and len(self.raw_data) >= self.current_header_size:
             try:
-                self.current_report_size = self.calculate_report_size(self.current_type, self.raw_data[:self.current_header_size])
+                self.current_report_size = self.calculate_report_size(self.current_type,
+                                                                      self.raw_data[:self.current_header_size])
                 self.state = self.WaitingForCompleteReport
                 further_processing = True
             except Exception as exc:
@@ -123,22 +123,19 @@ class IOTileReportParser(object):
         return further_processing
 
     def calculate_header_size(self, current_type):
-        """Determine the size of a report header given its report type
-        """
+        """Determine the size of a report header given its report type"""
 
         fmt = self.known_formats[current_type]
         return fmt.HeaderLength()
 
     def calculate_report_size(self, current_type, report_header):
-        """Determine the size of a report given its type and header
-        """
+        """Determine the size of a report given its type and header"""
 
         fmt = self.known_formats[current_type]
         return fmt.ReportLength(report_header)
 
     def parse_report(self, current_type, report_data):
-        """Parse a report into an IOTileReport subclass
-        """
+        """Parse a report into an IOTileReport subclass"""
 
         fmt = self.known_formats[current_type]
         return fmt(report_data)
@@ -161,8 +158,7 @@ class IOTileReportParser(object):
         return report
 
     def _handle_report(self, report):
-        """Try to emit a report and possibly keep a copy of it
-        """
+        """Try to emit a report and possibly keep a copy of it"""
 
         keep_report = True
 
@@ -174,8 +170,7 @@ class IOTileReportParser(object):
 
     @classmethod
     def _build_type_map(cls):
-        """Build a map of all of the known report format processors
-        """
+        """Build a map of all of the known report format processors"""
 
         return {report_format.ReportType: report_format for _, report_format in
                 ComponentRegistry().load_extensions('iotile.report_format')}

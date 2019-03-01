@@ -1,4 +1,4 @@
-from __future__ import unicode_literals
+
 
 def setup_plugin():
     u = 'build'
@@ -13,4 +13,4 @@ def setup_plugin():
     p = 'pull'
     pv = 'iotile.build.dev.pull_release,pull'
 
-    return [(u,v), (d,dv), (b, bv), (p,pv)]
+    return [(u, v), (d, dv), (b, bv), (p, pv)]

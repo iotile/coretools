@@ -1,9 +1,5 @@
-"""A Mock BLE device that will properly respond to RPCs, scripts and streaming over BLE
-"""
+"""A Mock BLE device that will properly respond to RPCs, scripts and streaming over BLE"""
 
-from __future__ import print_function, absolute_import
-from builtins import bytes
-from future.utils import viewitems, itervalues
 import struct
 import uuid
 import logging
@@ -11,22 +7,23 @@ from iotile.core.hw.reports import IOTileReading
 from iotile.core.exceptions import *
 from iotile.mock.mock_iotile import RPCInvalidIDError, RPCNotFoundError, TileNotFoundError
 
+
 class CouldNotFindHandleError(IOTileException):
-    """Raised when we could not find a BLE attribute handle
-    """
+    """Raised when we could not find a BLE attribute handle"""
     pass
+
 
 class UnsupportedReportFormat(IOTileException):
-    """Raised when we receive a report from a MockIOTileDevice that we don't understand
-    """
+    """Raised when we receive a report from a MockIOTileDevice that we don't understand"""
     pass
+
 
 class WriteToUnhandledCharacteristic(IOTileException):
-    """Raised when we receive a write to a characteristics that we do not yet implement
-    """
+    """Raised when we receive a write to a characteristics that we do not yet implement"""
     pass
 
-class MockBLEDevice(object):
+
+class MockBLEDevice:
     """A mock implementation of a BLE based IOTile device
 
     All actual IOTile functionality is delegated to a MockIOTileDevice
@@ -42,7 +39,7 @@ class MockBLEDevice(object):
     NonconnectableAdvertising = 0x02
     ScanResponsePacket = 0x04
 
-    #BLE UUIDs for known services and characteristics
+    # BLE UUIDs for known services and characteristics
     TBService = uuid.UUID('0ff60f63-132c-e611-ba53-f73f00200000')
     TBSendHeaderChar = uuid.UUID('fb349b5f-8000-0080-0010-000000000320')
     TBSendPayloadChar = uuid.UUID('fb349b5f-8000-0080-0010-000000000420')
@@ -97,7 +94,8 @@ class MockBLEDevice(object):
     def scan_response(self):
         header = struct.pack("<BBH", 19, 0xFF, self.ArchManuID)
         voltage = struct.pack("<H", int(self.voltage*256))
-        reading = struct.pack("<HLLL", self.broadcast_reading.stream, self.broadcast_reading.value, self.broadcast_reading.raw_time, 0)
+        reading = struct.pack("<HLLL", self.broadcast_reading.stream, self.broadcast_reading.value,
+                              self.broadcast_reading.raw_time, 0)
         name = struct.pack("<BB6s", 7, 0x09, b"IOTile")
         reserved = struct.pack("<BBB", 0, 0, 0)
 
@@ -131,8 +129,9 @@ class MockBLEDevice(object):
         char.append(val)
         self.handles[handle] = val
 
-        #Add in the value of this characteristic declaration
-        self.values[handle] = self._make_char_decl({'uuid': char_id, 'value_handle': handle+1, 'properties': int(can_notify) << 4})
+        # Add in the value of this characteristic declaration
+        self.values[handle] = self._make_char_decl({'uuid': char_id, 'value_handle': handle+1,
+                                                    'properties': int(can_notify) << 4})
 
         handle = self._next_handle
         self._next_handle += 1
@@ -166,8 +165,8 @@ class MockBLEDevice(object):
         return struct.pack("<BH%ds" % len(uuid_bytes), props, handle, uuid_bytes)
 
     def find_uuid(self, handle):
-        for serv_uuid, serv  in viewitems(self.services):
-            for char_uuid, handles in viewitems(serv):
+        for serv_uuid, serv  in self.services.items():
+            for char_uuid, handles in serv.items():
                 for iterhandle, handle_type in handles:
                     if iterhandle == handle:
                         return char_uuid, handle_type
@@ -175,8 +174,8 @@ class MockBLEDevice(object):
         raise ValueError("Could not find UUID for handle %d" % handle)
 
     def find_handle(self, uuid, desired_type='value'):
-        for _, serv  in viewitems(self.services):
-            for char_uuid, handles in viewitems(serv):
+        for _, serv  in self.services.items():
+            for char_uuid, handles in serv.items():
                 if char_uuid != uuid:
                     continue
 
@@ -191,15 +190,15 @@ class MockBLEDevice(object):
         return self.services.keys()
 
     def iter_handles(self, start, end):
-        for key, val in viewitems(self.handles):
-            if key >= start and key <= end:
+        for key, val in self.handles.items():
+            if start <= key <= end:
                 yield val
 
     def min_handle(self, service):
-        return min([min(x, key=lambda y: y[0]) for x in itervalues(self.services[service])])[0]
+        return min([min(x, key=lambda y: y[0]) for x in self.services[service].values()])[0]
 
     def max_handle(self, service):
-        return max([max(x, key=lambda y: y[0]) for x in itervalues(self.services[service])])[0]
+        return max([max(x, key=lambda y: y[0]) for x in self.services[service].values()])[0]
 
     def read_handle(self, handle):
         if handle in self.values:
@@ -227,13 +226,13 @@ class MockBLEDevice(object):
 
         char_id, handle_type = self.find_uuid(handle)
 
-        #Check if this attribute is managed internally and if so update its value
-        #If we are triggering IOTile actions by enabling notifications on specific characteristics,
-        #notify the underlying device
+        # Check if this attribute is managed internally and if so update its value
+        # If we are triggering IOTile actions by enabling notifications on specific characteristics,
+        # notify the underlying device
         if handle in self.values:
             self.values[handle] = value
 
-            #Check if we enabled notifications on both RPC responses
+            # Check if we enabled notifications on both RPC responses
             if char_id == self.TBReceiveHeaderChar or char_id == self.TBReceivePayloadChar:
                 if self.notifications_enabled(self.TBReceiveHeaderChar) and self.notifications_enabled(self.TBReceivePayloadChar):
                     self.logger.info("Opening RPC interface on mock device")

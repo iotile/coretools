@@ -1,12 +1,9 @@
-from __future__ import unicode_literals, absolute_import, print_function
 import struct
-from future.utils import python_2_unicode_compatible
 from iotile.core.hw.update.record import MatchQuality
 from iotile.core.hw.update.records import SendErrorCheckingRPCRecord
 from iotile.core.exceptions import ArgumentError
 
 
-@python_2_unicode_compatible
 class SetGraphOnlineRecord(SendErrorCheckingRPCRecord):
     """Enable/disable the currently loaded sensorgraph.
 

@@ -35,7 +35,8 @@ class RPCErrorCode(IOTileException):
     """Exception thrown from an RPC implementation to set the status code."""
 
     def __init__(self, status_code):
-        super(RPCErrorCode, self).__init__("RPC returned application defined status code %d" % status_code, code=status_code)
+        super(RPCErrorCode, self).__init__("RPC returned application defined status code %d" % status_code,
+                                           code=status_code)
 
 
 class AsynchronousRPCResponse(IOTileException):
@@ -71,7 +72,7 @@ def _create_respcode(code, resp):
     fixed_size = struct.calcsize("<" + code)
 
     if fixed_size + final_length > 20:
-        raise RPCInvalidReturnValueError("Variable length return value is too large for rpc response payload (20 bytes)",
+        raise RPCInvalidReturnValueError("Variable length return value is too large for rpc response payload (20bytes)",
                                          fixed_code=code, fixed_length=fixed_size, variable_length=final_length,
                                          variable_payload=binascii.hexlify(resp[-1]))
     return "<" + code + "%ds" % final_length
@@ -204,7 +205,7 @@ def tile_rpc(rpc_id, arg_format, resp_format=None):
     return rpc(None, rpc_id, arg_format, resp_format)
 
 
-class RPCDispatcher(object):
+class RPCDispatcher:
     """A simple dispatcher that can store and call RPCs."""
 
     def __init__(self, *args, **kwargs):

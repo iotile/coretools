@@ -1,11 +1,8 @@
-from __future__ import unicode_literals, absolute_import, print_function
-from future.utils import python_2_unicode_compatible
 from iotile.core.hw.update.record import MatchQuality
 from iotile.core.hw.update.records import SendErrorCheckingRPCRecord
 from iotile.sg.streamer_descriptor import parse_binary_descriptor, create_binary_descriptor
 
 
-@python_2_unicode_compatible
 class AddStreamerRecord(SendErrorCheckingRPCRecord):
     """Add a sensorgraph streamer to a device.
 

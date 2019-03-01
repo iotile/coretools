@@ -8,7 +8,8 @@ import os
 import platform
 from iotile.core.utilities.paths import settings_directory
 
-class JSONKVStore(object):
+
+class JSONKVStore:
     """A Key Value store based on flat json files with atomic write semantics
 
     This is intended as a drop in replacement for SQLiteKVStore.  Note that the
@@ -30,8 +31,8 @@ class JSONKVStore(object):
         if folder is None:
             folder = JSONKVStore.DefaultFolder
 
-        #If we are relative to a virtual environment, place the registry into that virtual env
-        #Support both virtualenv and pythnon 3 venv
+        # If we are relative to a virtual environment, place the registry into that virtual env
+        # Support both virtualenv and pythnon 3 venv
         if respect_venv and hasattr(sys, 'real_prefix'):
             folder = sys.prefix
         elif respect_venv and hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix:

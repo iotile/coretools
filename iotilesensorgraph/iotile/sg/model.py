@@ -7,11 +7,10 @@ construction and processing to make sure the graph could be supported
 by the desired device type.
 """
 
-from builtins import str
 from iotile.core.exceptions import ArgumentError
 
 
-class DeviceModel(object):
+class DeviceModel:
     """A model of a device's sensor graph processor used to constrain behavior."""
 
     def __init__(self):

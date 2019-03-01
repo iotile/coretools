@@ -1,11 +1,9 @@
-from __future__ import unicode_literals, absolute_import, print_function
 from collections import namedtuple
 import time
 import struct
 import threading
 import logging
 import binascii
-from past.builtins import basestring
 from queue import Empty
 from future.utils import viewitems, viewvalues
 from iotile.core.utilities.packed import unpack
@@ -615,7 +613,7 @@ class BLED112CommandProcessor(threading.Thread):
 
         try:
             #Allow passing either a binary address or a hex string
-            if isinstance(address, basestring) and len(address) > 6:
+            if isinstance(address, str) and len(address) > 6:
                 address = address.replace(':', '')
                 address = bytes(bytearray.fromhex(address)[::-1])
         except ValueError:

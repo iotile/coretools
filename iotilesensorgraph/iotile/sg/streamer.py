@@ -1,16 +1,14 @@
 """Configuration object describing a streamer."""
 
-from __future__ import unicode_literals, absolute_import, print_function
 from collections import namedtuple
-from future.utils import viewitems, python_2_unicode_compatible
 from iotile.core.hw.reports import IndividualReadingReport, BroadcastReport, SignedListReport
 from iotile.core.exceptions import ArgumentError, InternalError
 from iotile.sg.exceptions import StreamEmptyError
 
 StreamerReport = namedtuple("StreamerReport", ['report', 'num_readings', 'highest_id'])
 
-@python_2_unicode_compatible
-class DataStreamer(object):
+
+class DataStreamer:
     """In charge of streaming data remotely from a device via a communication tile.
 
     DataStreamers are created to listen for data from a stream, package it using some
@@ -35,9 +33,9 @@ class DataStreamer(object):
     """
 
     KnownTypes = {u'broadcast': 1, u'telegram': 1 << 1, u'synchronous': 1 << 2}
-    KnownTypeCodes = {y: x for x, y in viewitems(KnownTypes)}
+    KnownTypeCodes = {y: x for x, y in KnownTypes.items()}
     KnownFormats = {u'individual': 0, u'hashedlist': 1, u'signedlist_userkey': 2, u'signedlist_devicekey': 3}
-    KnownFormatCodes = {y: x for x, y in viewitems(KnownFormats)}
+    KnownFormatCodes = {y: x for x, y in KnownFormats.items()}
 
     def __init__(self, selector, dest_tile, report_format, automatic, report_type=u'telegram', with_other=None, sensor_log=None):
         report_format = str(report_format)

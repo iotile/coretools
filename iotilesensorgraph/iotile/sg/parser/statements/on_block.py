@@ -1,8 +1,6 @@
 """On blocks trigger functions when an event occurs on a stream."""
 
-from builtins import str
 from collections import namedtuple
-from future.utils import python_2_unicode_compatible
 from .statement import SensorGraphStatement
 from ..scopes import TriggerScope
 from ...node import InputTrigger, TrueTrigger
@@ -12,7 +10,6 @@ from iotile.core.exceptions import ArgumentError
 TriggerDefinition = namedtuple("TriggerDefinition", ['named_event', 'explicit_stream', 'explicit_trigger'])
 
 
-@python_2_unicode_compatible
 class OnBlock(SensorGraphStatement):
     """A block of statements that should run every time an event occurs
 

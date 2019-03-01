@@ -1,4 +1,4 @@
-from typedargs.annotate import context, docannotate
+from typedargs.annotate import context
 from .app import IOTileApp
 
 
@@ -8,7 +8,7 @@ class InfoApp(IOTileApp):
 
     @classmethod
     def AppName(cls):
-        """A unqiue name for this app so that it can be loaded by name.
+        """A unique name for this app so that it can be loaded by name.
 
         Returns:
             str: The unique name for this app module.

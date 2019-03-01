@@ -1,10 +1,10 @@
 """Check whether there are changes since the last released version of a component."""
 
-from __future__ import unicode_literals, print_function, absolute_import
 import subprocess
 import sys
 import cmdln
 import components
+
 
 def get_tags():
     data = subprocess.check_output(['git', '--no-pager', 'tag'])
@@ -18,6 +18,7 @@ def get_tags():
     releases = [(x.partition('-')[0], x.partition('-')[2]) for x in tags]
     return releases
 
+
 def get_released_versions(component):
     """Get all released versions of the given component ordered newest to oldest
     """
@@ -27,12 +28,14 @@ def get_released_versions(component):
 
     return [(x[0], ".".join(map(str, x[1]))) for x in releases if x[0] == component]
 
+
 def get_changed_since_tag(tag, filter_dir):
     data = subprocess.check_output(['git', '--no-pager', 'diff', '--name-only', tag, '--', filter_dir])
     if not isinstance(data, str):
         data = data.decode('utf-8')
 
     return data.strip()
+
 
 class StatusProcessor(cmdln.Cmdln):
     name = 'status'

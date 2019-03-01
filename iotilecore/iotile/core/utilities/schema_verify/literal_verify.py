@@ -27,7 +27,8 @@ class LiteralVerifier(Verifier):
         """
 
         if obj != self._literal:
-            raise ValidationError("Object is not equal to literal", reason='%s is not equal to %s' % (str(obj), str(self._literal)), object=obj)
+            raise ValidationError("Object is not equal to literal",
+                                  reason='%s is not equal to %s' % (str(obj), str(self._literal)), object=obj)
 
         return obj
 

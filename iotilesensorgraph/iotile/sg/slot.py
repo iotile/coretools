@@ -1,14 +1,10 @@
 """Slot identifier parsing of 'slot 1' into SlotIdentifier."""
 
-from __future__ import (unicode_literals, print_function, absolute_import)
-from builtins import str
 import struct
-from future.utils import python_2_unicode_compatible, viewitems
 from iotile.core.exceptions import ArgumentError
 
 
-@python_2_unicode_compatible
-class SlotIdentifier(object):
+class SlotIdentifier:
     """A slot identifier specifies the address of a tile on TileBus.
 
     Slots identifiers can be built from strings using FromString().
@@ -35,7 +31,7 @@ class SlotIdentifier(object):
         3: 'match_name'
     }
 
-    KNOWN_MATCH_NAMES = {y: x for x, y in viewitems(KNOWN_MATCH_CODES)}
+    KNOWN_MATCH_NAMES = {y: x for x, y in KNOWN_MATCH_CODES.items()}
 
     def __init__(self, slot=None, controller=False):
 
@@ -66,7 +62,7 @@ class SlotIdentifier(object):
         return 10 + self.slot
 
     def matches(self, address, name=None):
-        """Check if this slot identifer matches the given tile.
+        """Check if this slot identifier matches the given tile.
 
         Matching can happen either by address or by module name (not currently implemented).
 

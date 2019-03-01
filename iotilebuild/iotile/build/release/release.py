@@ -1,10 +1,9 @@
-"""Tools for automatically releasing built IOTile components
-"""
+"""Tools for automatically releasing built IOTile components"""
 
-from builtins import range
 from iotile.core.dev import IOTile, ComponentRegistry
 from iotile.core.utilities.typedargs import param
 from iotile.core.exceptions import ArgumentError, DataError, BuildError, IOTileException
+
 
 class ReleaseFailureError(BuildError):
     pass
@@ -42,63 +41,79 @@ def release(component=".", cloud=False):
     comp = IOTile(component)
     providers = _find_release_providers()
 
-    #If we were given a dev mode component that has been built, get its release mode version
+    # If we were given a dev mode component that has been built, get its release mode version
     if not comp.release and comp.release_date is not None:
         comp = IOTile(comp.output_folder)
 
     if not comp.release:
-        raise ArgumentError("Attempting to release a dev mode IOTile component that has not been built.", suggestion='Use iotile build to build the component before releasing', component=comp)
+        raise ArgumentError("Attempting to release a dev mode IOTile component that has not been built.",
+                            suggestion='Use iotile build to build the component before releasing', component=comp)
 
     if not comp.can_release:
-        raise ArgumentError("Attemping to release an IOTile component that does not specify release_steps and hence is not releasable", suggestion="Update module_settings.json to include release_steps", component=comp)
+        raise ArgumentError("Attemping to release an IOTile component that does not "
+                            "specify release_steps and hence is not releasable",
+                            suggestion="Update module_settings.json to include release_steps", component=comp)
 
     # A component can specify that it should only be releasable in a clean continuous integration/continuous deployment
     # server.  If that's the case then do not allow `iotile release` to work unless the cloud parameter is set to
     # indicate that we're in such a setting.
     if comp.settings.get('cloud_release', False) and not cloud:
-        raise ArgumentError("Attempting to release an IOTile component locally when it specifies that it can only be released using a clean CI/CD server", suggestion="Use iotile release --cloud if you are running in a CI/CD server")
+        raise ArgumentError("Attempting to release an IOTile component locally when it specifies that it "
+                            "can only be released using a clean CI/CD server",
+                            suggestion="Use iotile release --cloud if you are running in a CI/CD server")
 
     configured_provs = []
 
     for step in comp.release_steps:
         if step.provider not in providers:
-            raise DataError("Release step for component required unknown ReleaseProvider", provider=step.provider, known_providers=providers.keys())
+            raise DataError("Release step for component required unknown ReleaseProvider",
+                            provider=step.provider, known_providers=providers.keys())
 
         prov = providers[step.provider](comp, step.args)
         configured_provs.append(prov)
 
-    #Attempt to stage releases for each provider and then release them all, rolling back if there is an error
+    # Attempt to stage releases for each provider and then release them all, rolling back if there is an error
     for i, prov in enumerate(configured_provs):
         try:
             prov.stage()
         except IOTileException as exc:
             try:
-                #There was an error, roll back
+                # There was an error, roll back
                 for j in range(0, i):
                     configured_provs[j].unstage()
             except Exception as unstage_exc:
-                raise DirtyReleaseFailureError("Error staging release (COULD NOT ROLL BACK)", failed_step=i, original_exception=exc, operation='staging', failed_unstage=j, unstage_exception=unstage_exc)
+                raise DirtyReleaseFailureError("Error staging release (COULD NOT ROLL BACK)",
+                                               failed_step=i, original_exception=exc, operation='staging',
+                                               failed_unstage=j, unstage_exception=unstage_exc)
 
-            raise CleanReleaseFailureError("Error staging release (cleanly rolled back)", failed_step=i, original_exception=exc, operation='staging')
+            raise CleanReleaseFailureError("Error staging release (cleanly rolled back)",
+                                           failed_step=i, original_exception=exc, operation='staging')
         except Exception as exc:
-            raise DirtyReleaseFailureError("Error staging release due to unknown exception type (DID NOT ATTEMPT ROLL BACK)", failed_step=i, original_exception=exc, operation='staging')
+            raise DirtyReleaseFailureError("Error staging release due to unknown exception type "
+                                           "(DID NOT ATTEMPT ROLL BACK)",
+                                           failed_step=i, original_exception=exc, operation='staging')
 
-    #Stage was sucessful, attempt to release
+    # Stage was successful, attempt to release
     for i, prov in enumerate(configured_provs):
         try:
             prov.release()
         except IOTileException as exc:
             j = None
             try:
-                #There was an error, roll back
+                # There was an error, roll back
                 for j in range(0, i):
                     configured_provs[j].unrelease()
             except Exception as unstage_exc:
-                raise DirtyReleaseFailureError("Error performing release (COULD NOT ROLL BACK)", failed_step=i, original_exception=exc, operation='release', failed_unrelease=j, unrelease_exception=unstage_exc)
+                raise DirtyReleaseFailureError("Error performing release (COULD NOT ROLL BACK)",
+                                               failed_step=i, original_exception=exc, operation='release',
+                                               failed_unrelease=j, unrelease_exception=unstage_exc)
 
-            raise CleanReleaseFailureError("Error performing release (cleanly rolled back)", failed_step=i, original_exception=exc, operation='release')
+            raise CleanReleaseFailureError("Error performing release (cleanly rolled back)", failed_step=i,
+                                           original_exception=exc, operation='release')
         except Exception as exc:
-            raise DirtyReleaseFailureError("Error performing release due to unknown exception type (DID NOT ATTEMPT ROLL BACK)", failed_step=i, original_exception=exc, operation='release')
+            raise DirtyReleaseFailureError("Error performing release due to unknown exception type "
+                                           "(DID NOT ATTEMPT ROLL BACK)", failed_step=i,
+                                           original_exception=exc, operation='release')
 
 
 def _find_release_providers():

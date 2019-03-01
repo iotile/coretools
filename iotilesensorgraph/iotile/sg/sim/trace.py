@@ -6,7 +6,6 @@ are not directly visible to the external world and could change as
 a result of different levels of optimization.
 """
 
-from __future__ import (unicode_literals, absolute_import, print_function)
 import json
 from iotile.core.hw.reports import IOTileReading
 from typedargs.exceptions import ArgumentError

@@ -5,9 +5,8 @@
 #
 # Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
-'''This file contains necessary functionality to manage the Hardware'''
+"""This file contains necessary functionality to manage the hardware"""
 
-from builtins import range
 import time
 import binascii
 import logging
@@ -30,7 +29,7 @@ from .app import IOTileApp
 
 
 @context("HardwareManager")
-class HardwareManager(object):
+class HardwareManager:
     """
     A module for managing and interacting with IOTile Hardware
 
@@ -69,7 +68,8 @@ class HardwareManager(object):
                 conf = ConfigManager()
                 port = conf.get('core:default-port')
             except ArgumentError:
-                raise ArgumentError("No port given and no core:default-port config variable set", suggestion="Specify the port to use to connect to the IOTile devices")
+                raise ArgumentError("No port given and no core:default-port config variable set",
+                                    suggestion="Specify the port to use to connect to the IOTile devices")
         elif port is None:
             port = ""
 
@@ -113,15 +113,16 @@ class HardwareManager(object):
 
             self._proxies[proxy_key] = obj
 
-            #Check if this object matches a specific shortened name so that we can
-            #automatically match a hw module to a proxy without user intervention
+            # Check if this object matches a specific shortened name so that we can
+            # automatically match a hw module to a proxy without user intervention
             try:
                 short_name = obj.ModuleName()
                 if short_name in self._name_map:
                     self._name_map[short_name].append(obj)
                 else:
                     self._name_map[short_name] = [obj]
-            except Exception:  #pylint: disable=broad-except;We don't want this to die if someone loads a misbehaving plugin
+            except Exception:  # pylint: disable=broad-except;
+                # We don't want this to die if someone loads a misbehaving plugin
                 self.logger.exception("Error importing misbehaving proxy object %s, skipping.", obj)
 
     def _setup_apps(self):
@@ -141,10 +142,12 @@ class HardwareManager(object):
                     self._known_apps[tag].append((ver_range, quality, app))
 
                 if name in self._named_apps:
-                    self.logger.warning("Added an app module with an existing name, overriding previous app, name=%s", name)
+                    self.logger.warning("Added an app module with an existing name, overriding previous app, name=%s",
+                                        name)
 
                 self._named_apps[name] = app
-            except Exception:  #pylint: disable=broad-except;We don't want this to die if someone loads a misbehaving plugin
+            except Exception:  #pylint: disable=broad-except;
+                # We don't want this to die if someone loads a misbehaving plugin
                 self.logger.exception("Error importing misbehaving app module %s, skipping.", app)
 
     @param("address", "integer", "positive", desc="numerical address of module to get")
@@ -183,7 +186,8 @@ class HardwareManager(object):
         # Now create the appropriate proxy object based on the name and version of the tile
         tile_type = self.get_proxy(name)
         if tile_type is None:
-            raise HardwareError("Could not find proxy object for tile", name="'{}'".format(name), known_names=self._name_map.keys())
+            raise HardwareError("Could not find proxy object for tile", name="'{}'".format(name),
+                                known_names=self._name_map.keys())
 
         tile = tile_type(self.stream, address)
         tile._hwmanager = self
@@ -222,7 +226,7 @@ class HardwareManager(object):
         tile = self._create_proxy('TileBusProxyObject', 8)
         device_id, os_info, app_info = tile.rpc(0x10, 0x08, result_format="L8xLL")
 
-        os_tag = os_info  & ((1 << 20) - 1)
+        os_tag = os_info & ((1 << 20) - 1)
         os_version_str = '%d.%d.%d' % ((os_info >> 26) & ((1 << 6) - 1), (os_info >> 20) & ((1 << 6) - 1), 0)
 
         app_tag = app_info & ((1 << 20) - 1)
@@ -253,16 +257,15 @@ class HardwareManager(object):
                 app_class = best_match[1]
 
         if app_class is None:
-            raise HardwareError("Could not find matching application for device", app_tag=app_tag, explicit_app=name, installed_apps=[x for x in self._named_apps])
+            raise HardwareError("Could not find matching application for device", app_tag=app_tag, explicit_app=name,
+                                installed_apps=[x for x in self._named_apps])
 
         app = app_class(self, (app_tag, app_version), (os_tag, os_version), device_id)
         return app
 
     @param("uuid", "integer", desc="UUID of the device we would like to connect to")
     def controller(self, uuid=None):
-        """
-        Find an attached IOTile controller and attempt to connect to it.
-        """
+        """Find an attached IOTile controller and attempt to connect to it."""
 
         if uuid is not None:
             self.connect(uuid)
@@ -272,22 +275,19 @@ class HardwareManager(object):
     @param("device_uuid", "integer", desc="UUID of the device we would like to connect to")
     @param("wait", "float", desc="Time to wait for devices to show up before connecting")
     def connect(self, device_uuid, wait=None):
-        """Attempt to connect to a device by its UUID
-        """
+        """Attempt to connect to a device by its UUID"""
 
         self.stream.connect(device_uuid, wait=wait)
 
     @param("connection_string", "string", desc="opaque connection string indicating which device")
     def connect_direct(self, connection_string):
-        """Attempt to connect to a device using a connection string
-        """
+        """Attempt to connect to a device using a connection string"""
 
         self.stream.connect_direct(connection_string)
 
     @annotated
     def disconnect(self):
-        """Attempt to disconnect from a device
-        """
+        """Attempt to disconnect from a device"""
 
         self._trace_queue = None
         self._stream_queue = None
@@ -311,9 +311,7 @@ class HardwareManager(object):
 
     @return_type("bool")
     def heartbeat(self):
-        """
-        Check whether the underlying command stream is functional
-        """
+        """Check whether the underlying command stream is functional"""
 
         return self.stream.heartbeat()
 
@@ -477,7 +475,8 @@ class HardwareManager(object):
             fmt_uuid = "%08X" % item['uuid']
             fmt_uuid = fmt_uuid[:4] + '-' + fmt_uuid[4:]
 
-            return "{0: <15} signal: {1: <7d} connected: {2: <8}".format(fmt_uuid, item['signal_strength'], str(item.get('user_connected', 'unk')))
+            return "{0: <15} signal: {1: <7d} connected: {2: <8}".format(fmt_uuid, item['signal_strength'],
+                                                                         str(item.get('user_connected', 'unk')))
 
         def _sort_order(item):
             if sort == "signal":
@@ -566,7 +565,8 @@ class HardwareManager(object):
         """
 
         if encoding not in ['raw', 'hex']:
-            raise ValidationError("Unknown encoding type specified in dump trace", encoding=encoding, known_encodings=['hex', 'raw'])
+            raise ValidationError("Unknown encoding type specified in dump trace",
+                                  encoding=encoding, known_encodings=['hex', 'raw'])
 
         if self._trace_queue is None:
             return ""
@@ -626,7 +626,8 @@ class HardwareManager(object):
             now = time.time()
 
             if timeout is not None and ((now - start) > timeout):
-                raise TimeoutExpiredError("Timeout waiting for tracing data", expected_size=size, received_size=len(self._trace_data), timeout=timeout)
+                raise TimeoutExpiredError("Timeout waiting for tracing data", expected_size=size,
+                                          received_size=len(self._trace_data), timeout=timeout)
 
         progress_callback(size, size)
 
@@ -636,8 +637,7 @@ class HardwareManager(object):
         return data
 
     def _accumulate_trace(self):
-        """Copy tracing data from trace queue into _trace_data
-        """
+        """Copy tracing data from trace queue into _trace_data"""
 
         if self._trace_queue is None:
             return
@@ -688,7 +688,8 @@ class HardwareManager(object):
                 report = self._broadcast_queue.get(timeout=timeout)
                 reports.append(report)
             except Empty:
-                raise TimeoutExpiredError("Timeout waiting for a report", expected_number=num_reports, received_number=i, received_reports=reports)
+                raise TimeoutExpiredError("Timeout waiting for a report", expected_number=num_reports,
+                                          received_number=i, received_reports=reports)
 
         return reports
 
@@ -731,15 +732,14 @@ class HardwareManager(object):
                 report = self._stream_queue.get(timeout=timeout)
                 reports.append(report)
             except Empty:
-                raise TimeoutExpiredError("Timeout waiting for a report", expected_number=num_reports, received_number=i, received_reports=reports)
+                raise TimeoutExpiredError("Timeout waiting for a report", expected_number=num_reports,
+                                          received_number=i, received_reports=reports)
 
         return reports
 
     @annotated
     def reset(self):
-        """
-        Attempt to reset the underlying stream back to a known state
-        """
+        """Attempt to reset the underlying stream back to a known state"""
 
         self.stream.reset()
 
@@ -769,6 +769,9 @@ class HardwareManager(object):
 
         Args:
             wait (float): An optional override time to wait for results to accumulate before returning
+            sort (string): An optional key to sort by
+            reverse (bool): An optional key that will reverse the sort from ascending to descending
+            limit (integer): An optional limit to the number of devices to return
         """
 
         devices = self.stream.scan(wait=wait)
@@ -788,8 +791,7 @@ class HardwareManager(object):
         return devices
 
     def get_proxy(self, short_name):
-        """
-        Find a proxy type given its short name.
+        """Find a proxy type given its short name.
 
         If no proxy type is found, return None.
         """
@@ -839,4 +841,5 @@ class HardwareManager(object):
         for _name, adapter_factory in reg.load_extensions('iotile.device_adapter', name_filter=self.transport):
             return AdapterCMDStream(adapter_factory(port), port, conn_string, record=self._record)
 
-        raise HardwareError("Could not find transport object registered to handle passed transport type", transport=self.transport)
+        raise HardwareError("Could not find transport object registered to handle passed transport type",
+                            transport=self.transport)

@@ -2,7 +2,7 @@
 from iotile.core.exceptions import ArgumentError
 
 
-class ValidatingDispatcher(object):
+class ValidatingDispatcher:
     """An object that dispatches messages to handlers based on their schema."""
 
     def __init__(self):

@@ -3,10 +3,9 @@ import queue
 import logging
 from .timeout import TimeoutInterval
 from iotile.core.exceptions import ArgumentError
-from future.utils import viewitems
-from past.builtins import basestring
 
-class ConnectionAction(object):
+
+class ConnectionAction:
     """A generic action handled internally by ConnectionManager
 
     Args:
@@ -158,7 +157,7 @@ class ConnectionManager(threading.Thread):
         """
 
         key = conn_or_int_id
-        if isinstance(key, basestring):
+        if isinstance(key, str):
             table = self._int_connections
         elif isinstance(key, int):
             table = self._connections
@@ -189,7 +188,7 @@ class ConnectionManager(threading.Thread):
         """
 
         key = conn_or_int_id
-        if isinstance(key, basestring):
+        if isinstance(key, str):
             table = self._int_connections
         elif isinstance(key, int):
             table = self._connections
@@ -220,7 +219,7 @@ class ConnectionManager(threading.Thread):
         """
 
         key = conn_or_int_id
-        if isinstance(key, basestring):
+        if isinstance(key, str):
             table = self._int_connections
         elif isinstance(key, int):
             table = self._connections
@@ -245,7 +244,7 @@ class ConnectionManager(threading.Thread):
         """
 
         key = conn_or_int_id
-        if isinstance(key, basestring):
+        if isinstance(key, str):
             table = self._int_connections
         elif isinstance(key, int):
             table = self._connections
@@ -265,7 +264,7 @@ class ConnectionManager(threading.Thread):
         timeout.
         """
 
-        for conn_id, data in viewitems(self._connections):
+        for conn_id, data in self._connections.items():
             if 'timeout' in data and data['timeout'].expired:
                 if data['state'] == self.Connecting:
                     self.finish_connection(conn_id, False, 'Connection attempt timed out')

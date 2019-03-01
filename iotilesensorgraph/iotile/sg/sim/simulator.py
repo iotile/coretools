@@ -1,7 +1,7 @@
 """A SensorGraph simulator that can drive the sensor graph either in realtime or as fast as possible."""
 
 import time
-from monotonic import monotonic
+from time import monotonic
 from ..known_constants import system_tick, fast_tick, tick_1, tick_2, battery_voltage
 from .null_executor import NullRPCExecutor
 from .stop_conditions import TimeBasedStopCondition
@@ -10,7 +10,8 @@ from .stimulus import SimulationStimulus
 from iotile.core.exceptions import ArgumentError
 from iotile.core.hw.reports import IOTileReading
 
-class SensorGraphSimulator(object):
+
+class SensorGraphSimulator:
     """A simulator for sensor graphs.
 
     At its core the simulator just sends timed inputs to the sensor graph
