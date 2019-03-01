@@ -11,7 +11,7 @@ import struct
 from iotile.core.exceptions import InternalError, HardwareError
 
 
-class RPCExecutor(object):
+class RPCExecutor:
     """RPC Executors run RPCs on behalf of sensor graph."""
 
     def __init__(self):

@@ -51,15 +51,15 @@ def resource_path(relative_path=None, expect=None):
                             expect=expect)
 
     this_dir = os.path.dirname(__file__)
-    resource_path = os.path.join(this_dir, '..', 'config')
+    _resource_path = os.path.join(this_dir, '..', 'config')
 
     if relative_path is not None:
         path = os.path.normpath(relative_path)
-        resource_path = os.path.join(resource_path, path)
+        _resource_path = os.path.join(_resource_path, path)
 
-    if expect == 'file' and not os.path.isfile(resource_path):
-        raise DataError("Expected resource %s to be a file and it wasn't" % resource_path)
-    elif expect == 'folder' and not os.path.isdir(resource_path):
-        raise DataError("Expected resource %s to be a folder and it wasn't"% resource_path)
+    if expect == 'file' and not os.path.isfile(_resource_path):
+        raise DataError("Expected resource %s to be a file and it wasn't" % _resource_path)
+    elif expect == 'folder' and not os.path.isdir(_resource_path):
+        raise DataError("Expected resource %s to be a folder and it wasn't" % _resource_path)
 
-    return os.path.abspath(resource_path)
+    return os.path.abspath(_resource_path)

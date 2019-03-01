@@ -6,16 +6,13 @@ and create an output.  The output can then be linked to other nodes
 to create a graph structure (hence the name SensorGraph).
 """
 
-from builtins import str
-from future.utils import python_2_unicode_compatible
 from .exceptions import TooManyInputsError, TooManyOutputsError, ProcessingFunctionError
 from iotile.core.exceptions import ArgumentError
 from .walker import InvalidStreamWalker
 from copy import copy
 
 
-@python_2_unicode_compatible
-class InputTrigger(object):
+class InputTrigger:
     """A triggering condition for a graph node input.
 
     Node inputs can trigger either based on how many readings are
@@ -117,15 +114,14 @@ class InputTrigger(object):
         return u"when value {} {}".format(self.comp_string, self.reference)
 
 
-class FalseTrigger(object):
+class FalseTrigger:
     """Simple trigger that always returns False."""
 
     def triggered(self, walker):
         return False
 
 
-@python_2_unicode_compatible
-class TrueTrigger(object):
+class TrueTrigger:
     """Simple trigger that always returns True."""
 
     def triggered(self, walker):
@@ -147,8 +143,7 @@ class TrueTrigger(object):
         return u"{}".format(stream)
 
 
-@python_2_unicode_compatible
-class SGNode(object):
+class SGNode:
     """A node in a graph based processing structure.
 
     Each node has a function that it uses to consume inputs and

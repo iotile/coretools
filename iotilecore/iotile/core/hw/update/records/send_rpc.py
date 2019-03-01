@@ -1,17 +1,14 @@
 """Update records that send an RPC."""
 
-from __future__ import (print_function, absolute_import, unicode_literals)
 import struct
 from binascii import hexlify
 from collections import namedtuple
-from future.utils import python_2_unicode_compatible
 from iotile.core.exceptions import ArgumentError
 from ..record import UpdateRecord, MatchQuality
 
 RPCInfo = namedtuple("RPCInfo", ["command", "address", "response_size", "payload"])
 
 
-@python_2_unicode_compatible
 class SendRPCRecord(UpdateRecord):
     """Send an RPC without checking the response.
 
@@ -42,13 +39,14 @@ class SendRPCRecord(UpdateRecord):
         self.fixed_response_size = response_size
 
         if self.fixed_response_size is not None and self.fixed_response_size >= (1 << 7):
-            raise ArgumentError("RPC specifies a fixed response size greater than 1 << 7, which is the largest supported", size=response_size)
+            raise ArgumentError("RPC specifies a fixed response size greater "
+                                "than 1 << 7, which is the largest supported", size=response_size)
 
     def encode_contents(self):
         """Encode the contents of this update record without including a record header.
 
         Returns:
-            bytearary: The encoded contents.
+            bytearray: The encoded contents.
         """
 
         if self.variable_size:
@@ -78,7 +76,7 @@ class SendRPCRecord(UpdateRecord):
         """Check how well this record matches the given binary data.
 
         This function will only be called if the record matches the type code
-        given by calling MatchType() and this functon should check how well
+        given by calling MatchType() and this function should check how well
         this record matches and return a quality score between 0 and 100, with
         higher quality matches having higher scores.  The default value should
         be MatchQuality.GenericMatch which is 50.  If this record does not
@@ -154,10 +152,10 @@ class SendRPCRecord(UpdateRecord):
         if not isinstance(other, SendRPCRecord):
             return False
 
-        return self.rpc_id == other.rpc_id and self.address == other.address and self.payload == other.payload and self.fixed_response_size == other.fixed_response_size
+        return self.rpc_id == other.rpc_id and self.address == other.address and self.payload == other.payload \
+            and self.fixed_response_size == other.fixed_response_size
 
 
-@python_2_unicode_compatible
 class SendErrorCheckingRPCRecord(SendRPCRecord):
     """Send an RPC and check for errors in the response.
 
@@ -177,18 +175,21 @@ class SendErrorCheckingRPCRecord(SendRPCRecord):
 
     def __init__(self, address, rpc_id, payload=None, response_size=None):
         if response_size != 4:
-            raise ArgumentError("Error handling RPCs must have a fixed response size of 4 bytes", response_size=response_size)
+            raise ArgumentError("Error handling RPCs must have a fixed response size of 4 bytes",
+                                response_size=response_size)
 
         super(SendErrorCheckingRPCRecord, self).__init__(address, rpc_id, payload, response_size)
 
     def __str__(self):
-        return "Call RPC 0x%X on tile at %d with payload '%s' and check for errors" % (self.rpc_id, self.address, hexlify(self.payload))
+        return "Call RPC 0x%X on tile at %d with payload '%s' and check for errors" % \
+               (self.rpc_id, self.address, hexlify(self.payload))
 
     def __eq__(self, other):
         if not isinstance(other, SendErrorCheckingRPCRecord):
             return False
 
-        return self.rpc_id == other.rpc_id and self.address == other.address and self.payload == other.payload and self.fixed_response_size == other.fixed_response_size
+        return self.rpc_id == other.rpc_id and self.address == other.address and self.payload == other.payload \
+            and self.fixed_response_size == other.fixed_response_size
 
     @classmethod
     def parse_multiple_rpcs(cls, record_data):
@@ -199,7 +200,8 @@ class SendErrorCheckingRPCRecord(SendRPCRecord):
         while len(record_data) > 0:
             total_length, record_type = struct.unpack_from("<LB3x", record_data)
             if record_type != SendErrorCheckingRPCRecord.RecordType:
-                raise ArgumentError("Record set contains a record that is not an error checking RPC", record_type=record_type)
+                raise ArgumentError("Record set contains a record that is not an error checking RPC",
+                                    record_type=record_type)
 
             record_contents = record_data[8: total_length]
             parsed_rpc = cls._parse_rpc_info(record_contents)

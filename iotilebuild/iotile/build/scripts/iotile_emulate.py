@@ -11,11 +11,11 @@ import subprocess
 
 
 DESCRIPTION = \
-"""IOTile application emulator.
-
-This program can load and run iotile applications on a modified
-qemu emulator
-"""
+    """IOTile application emulator.
+    
+    This program can load and run iotile applications on a modified
+    qemu emulator
+    """
 
 
 def build_parser():
@@ -46,7 +46,9 @@ def main(raw_args=None):
         print("You must specify either a firmware image or attach a debugger with --gdb <PORT>")
         return 1
 
-    test_args = ['qemu-system-gnuarmeclipse', '-verbose', '-verbose', '-board', 'STM32F0-Discovery', '-nographic', '-monitor', 'null', '-serial', 'null', '--semihosting-config', 'enable=on,target=native', '-d', 'unimp,guest_errors']
+    test_args = ['qemu-system-gnuarmeclipse', '-verbose', '-verbose', '-board', 'STM32F0-Discovery',
+                 '-nographic', '-monitor', 'null', '-serial', 'null', '--semihosting-config',
+                 'enable=on,target=native', '-d', 'unimp,guest_errors']
 
     if args.firmware_image:
         test_args += ['-image', args.firmware_image]

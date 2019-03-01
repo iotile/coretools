@@ -1,11 +1,10 @@
-from __future__ import (unicode_literals, print_function, absolute_import)
-from builtins import str
 import shlex
 from subprocess import PIPE, STDOUT, Popen
 from iotile.ship.exceptions import RecipeActionMissingParameter
 from iotile.core.exceptions import ArgumentError
 
-class PipeSnippetStep(object):
+
+class PipeSnippetStep:
     """A Recipe Step used to pipe snippets into a context.
 
     Currently, this step doesn't store any information typed into

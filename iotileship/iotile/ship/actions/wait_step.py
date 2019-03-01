@@ -1,10 +1,8 @@
-from __future__ import (unicode_literals, print_function, absolute_import)
-from builtins import str
 import time
 from iotile.ship.exceptions import RecipeActionMissingParameter
 
 
-class WaitStep(object):
+class WaitStep:
     """A Recipe Step used to waits a certain amount of time
 
     WaitStep stops the recipe from running for a set number of seconds

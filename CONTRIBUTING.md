@@ -16,7 +16,8 @@ in a package follows the styleguide, CI checking using pylint will be turned on 
 - You should strive to include test coverage for new features you author. If you happen to be revising old code that 
 doesn't have tests, consider adding some! 
 
-- We must maintain compatibility with Python2.7 and Python3.6 on MacOS, Linux and Windows. 
+- We must maintain compatibility with Python3.5 on MacOS, Linux and Windows. We also test against 3.6 and 3.7, and should strive 
+to support them as well (there should be no compatibility issues, if possible)
 
 - Documentation for all public objects must be included in new features. Please use the [guideline](https://github.com/google/styleguide/blob/gh-pages/pyguide.md#38-comments-and-docstrings)
 

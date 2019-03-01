@@ -7,8 +7,7 @@ from .auth_provider import AuthProvider
 
 
 class BasicAuthProvider(AuthProvider):
-    """Basic default authentication provider that can only calculate sha256 hashes
-    """
+    """Basic default authentication provider that can only calculate sha256 hashes"""
 
     def sign_report(self, device_id, root, data, **kwargs):
         """Sign a buffer of report data on behalf of a device.
@@ -74,7 +73,6 @@ class BasicAuthProvider(AuthProvider):
 
         if root != AuthProvider.NoKey:
             raise NotFoundError('unsupported root key in BasicAuthProvider', root_key=root)
-
 
         result = bytearray(hashlib.sha256(data).digest())
 

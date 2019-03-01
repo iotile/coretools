@@ -6,16 +6,12 @@
 # Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
-from __future__ import (absolute_import, division,
-                        print_function, unicode_literals)
 import sys
 import os
 import threading
 import traceback
 import argparse
 import logging
-from builtins import input
-from future.utils import viewitems
 
 from typedargs.shell import HierarchicalShell
 from typedargs import type_system
@@ -24,20 +20,21 @@ from iotile.core.dev.registry import ComponentRegistry
 import iotile.core.hw.transport.cmdstream as cmdstream
 
 DESCRIPTION = \
-"""Create an interactive shell that explores the IOTile API.
+    """Create an interactive shell that explores the IOTile API.
+    
+    This tool allows you to run commands that are defined in either CoreTools, or
+    in a registered plugin.  You can do things like build IOTile firmware or
+    control an IOTile device.
+    
+    If you wish enable logging to debug something that is not working correctly,
+    you can do so by passing a combination of -v, -l, -e and -i flags as needed.
+    See iotile --help for more details.
+    
+    **NB, if you want to pass global arguments to enable logging you must do so
+    before the first command you pass otherwise the global arguments will be
+    interpreted as arguments to your commands.**
+    """
 
-This tool allows you to run commands that are defined in either CoreTools, or
-in a registered plugin.  You can do things like build IOTile firmware or
-control an IOTile device.
-
-If you wish enable logging to debug something that is not working correctly,
-you can do so by passing a combination of -v, -l, -e and -i flags as needed.
-See iotile --help for more details.
-
-**NB, if you want to pass global arguments to enable logging you must do so
-before the first command you pass otherwise the global arguments will be
-interpreted as arguments to your commands.**
-"""
 
 def timeout_thread_handler(timeout, stop_event):
     """A background thread to kill the process if it takes too long.
@@ -95,7 +92,8 @@ def parse_global_args(argv):
     root = logging.getLogger()
 
     if should_log:
-        formatter = logging.Formatter('%(asctime)s.%(msecs)03d %(levelname).3s %(name)s %(message)s', '%y-%m-%d %H:%M:%S')
+        formatter = logging.Formatter('%(asctime)s.%(msecs)03d %(levelname).3s %(name)s %(message)s',
+                                      '%y-%m-%d %H:%M:%S')
         if args.logfile:
             handler = logging.FileHandler(args.logfile)
         else:
@@ -137,8 +135,8 @@ def parse_global_args(argv):
 def setup_completion(shell):
     """Setup readline to tab complete in a cross platform way."""
 
-    #Handle special case of importing pyreadline on Windows
-    #See: http://stackoverflow.com/questions/6024952/readline-functionality-on-windows-with-python-2-7
+    # Handle special case of importing pyreadline on Windows
+    # See: http://stackoverflow.com/questions/6024952/readline-functionality-on-windows-with-python-2-7
     import glob
     try:
         import readline
@@ -153,8 +151,8 @@ def setup_completion(shell):
         return (glob.glob(os.path.expanduser(text)+'*')+[None])[state]
 
     readline.set_completer_delims(' \t\n;')
-    #Handle Mac OS X special libedit based readline
-    #See: http://stackoverflow.com/questions/7116038/python-tab-completion-mac-osx-10-7-lion
+    # Handle Mac OS X special libedit based readline
+    # See: http://stackoverflow.com/questions/7116038/python-tab-completion-mac-osx-10-7-lion
     if readline.__doc__ is not None and 'libedit' in readline.__doc__:
         readline.parse_and_bind("bind ^I rl_complete")
     else:
@@ -198,7 +196,7 @@ def main(argv=None):
 
     reg = ComponentRegistry()
     plugins = reg.list_plugins()
-    for key, val in viewitems(plugins):
+    for key, val in plugins.items():
         shell.root_add(key, val)
 
     finished = False
@@ -208,13 +206,13 @@ def main(argv=None):
             finished = shell.invoke(line)
     except IOTileException as exc:
         print(exc.format())
-        #if the command passed on the command line fails, then we should
-        #just exit rather than drop the user into a shell.
+        # if the command passed on the command line fails, then we should
+        # just exit rather than drop the user into a shell.
         cmdstream.do_final_close()
         return 1
     except Exception:  # pylint:disable=broad-except; We need to make sure we always call cmdstream.do_final_close()
-        #Catch all exceptions because otherwise we won't properly close cmdstreams
-        #since the program will be said to except 'abnormally'
+        # Catch all exceptions because otherwise we won't properly close cmdstreams
+        # since the program will be said to except 'abnormally'
         traceback.print_exc()
         cmdstream.do_final_close()
         return 1
@@ -227,7 +225,7 @@ def main(argv=None):
 
     setup_completion(shell)
 
-    #We ended the initial command with a context, start a shell
+    # We ended the initial command with a context, start a shell
     try:
         while True:
             try:
@@ -240,8 +238,8 @@ def main(argv=None):
                 print("")
                 continue
 
-            #Catch exception outside the loop so we stop invoking submethods if a parent
-            #fails because then the context and results would be unpredictable
+            # Catch exception outside the loop so we stop invoking submethods if a parent
+            # fails because then the context and results would be unpredictable
             try:
                 finished = shell.invoke_string(linebuf)
             except KeyboardInterrupt:
@@ -250,20 +248,21 @@ def main(argv=None):
                     break
             except IOTileException as exc:
                 print(exc.format())
-            except Exception:  #pylint:disable=broad-except; We want to make sure the iotile tool never crashes when in interactive shell mode
+            except Exception:  #pylint:disable=broad-except;
+                # We want to make sure the iotile tool never crashes when in interactive shell mode
                 traceback.print_exc()
 
             if shell.finished():
                 break
 
-    #Make sure to catch ^C and ^D so that we can cleanly dispose of subprocess resources if
-    #there are any.
+    # Make sure to catch ^C and ^D so that we can cleanly dispose of subprocess resources if
+    # there are any.
     except EOFError:
         print("")
     except KeyboardInterrupt:
         print("")
     finally:
-        #Make sure we close any open CMDStream communication channels so that we don't lockup at exit
+        # Make sure we close any open CMDStream communication channels so that we don't lockup at exit
         cmdstream.do_final_close()
 
     # Make sure we cleanly join our timeout thread before exiting

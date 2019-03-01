@@ -1,13 +1,11 @@
 """Time based stimulus class that can be applied to a simulation."""
 
-from __future__ import (unicode_literals, absolute_import, print_function)
-from builtins import str
 from pyparsing import Optional, Literal, ParseException, ParseSyntaxException
 from typedargs.exceptions import ArgumentError
 from .stop_conditions import time_interval, number
 import iotile.sg.parser.language as language
 
-class SimulationStimulus(object):
+class SimulationStimulus:
     """A simulation stimulus that injects a value at a given time.
 
     Args:

@@ -26,6 +26,7 @@ from iotile.core.utilities.typedargs import context, param, return_type, stringa
 MISSING = object()
 ConfigVariable = namedtuple("ConfigVariable", ['name', 'type', 'description', 'default'])
 
+
 @context("ConfigManager")
 class ConfigManager(object):
     """A class for managing typed configuration variables

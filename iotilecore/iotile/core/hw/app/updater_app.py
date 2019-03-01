@@ -1,7 +1,5 @@
 """An IOTileApp that can run an update script on a device."""
 
-from __future__ import unicode_literals, absolute_import, print_function
-from builtins import input
 import time
 import sys
 import logging
@@ -42,7 +40,7 @@ class DeviceUpdater(IOTileApp):
 
     @classmethod
     def AppName(cls):
-        """A unqiue name for this app so that it can be loaded by name.
+        """A unique name for this app so that it can be loaded by name.
 
         Returns:
             str: The unique name for this app module.
@@ -93,7 +91,8 @@ class DeviceUpdater(IOTileApp):
         script = UpdateScript.FromBinary(indata)
 
         print("Loaded script with %d actions from file %s" % (len(script.records), script_path))
-        print("Running script on device 0x%X with app info (%d %s) and os_info (%d %s)" % (self._device_id, self._app_tag, self._app_version, self._os_tag, self._os_version))
+        print("Running script on device 0x%X with app info (%d %s) and os_info (%d %s)" %
+              (self._device_id, self._app_tag, self._app_version, self._os_tag, self._os_version))
 
         if confirm:
             show_script = self._prompt_yesno("Do you want to see the script contents before programing (y/n)? ")
@@ -243,7 +242,8 @@ class DeviceUpdater(IOTileApp):
             except HardwareError:
                 error_count += 1
                 if error_count > 2:
-                    raise HardwareError("Too many errors waiting for script to finish execution", error=str(HardwareError))
+                    raise HardwareError("Too many errors waiting for script to finish execution",
+                                        error=str(HardwareError))
 
             if error != 0:
                 raise HardwareError("Error executing remote script", error_code=error)
@@ -266,7 +266,8 @@ class DeviceUpdater(IOTileApp):
                     if type_system.interactive:
                         sys.stdout.write('\n')
 
-                    raise HardwareError("Too many errors waiting for script to finish execution", error=str(HardwareError))
+                    raise HardwareError("Too many errors waiting for script to finish execution",
+                                        error=str(HardwareError))
 
             if error != 0:
                 if type_system.interactive:

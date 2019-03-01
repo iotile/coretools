@@ -1,7 +1,5 @@
 """A grammer for specifying sensor graph nodes."""
 
-from __future__ import (unicode_literals, absolute_import, print_function)
-from builtins import str
 import struct
 from pyparsing import Regex, Literal, Optional, oneOf, ParseException
 from typedargs.exceptions import ArgumentError

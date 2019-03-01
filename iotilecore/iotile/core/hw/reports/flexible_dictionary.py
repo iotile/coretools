@@ -25,11 +25,12 @@ class FlexibleDictionaryReport(IOTileReport):
     FORMAT_TAG = "v100"
 
     @classmethod
-    def FromReadings(cls, uuid, readings, events, report_id=IOTileReading.InvalidReadingID, selector=0xFFFF, streamer=0x100, sent_timestamp=0, received_time=None):
+    def FromReadings(cls, uuid, readings, events, report_id=IOTileReading.InvalidReadingID,
+                     selector=0xFFFF, streamer=0x100, sent_timestamp=0, received_time=None):
         """Create a flexible dictionary report from a list of readings and events.
 
         Args:
-            uuid (int): The uuid of the deviec that this report came from
+            uuid (int): The uuid of the device that this report came from
             readings (list of IOTileReading): A list of IOTileReading objects containing the data in the report
             events (list of IOTileEvent): A list of the events contained in the report.
             report_id (int): The id of the report.  If not provided it defaults to IOTileReading.InvalidReadingID.
@@ -40,7 +41,7 @@ class FlexibleDictionaryReport(IOTileReport):
                 a device, it would correspond with the query the device used to pick readings to go into the report.
             streamer (int): The streamer id that this reading was sent from.
             sent_timestamp (int): The device's uptime that sent this report.
-            received_time(datetime): The UTC time when this report was receievd from an IOTile device.  If it is being
+            received_time(datetime): The UTC time when this report was received from an IOTile device.  If it is being
                 created now, received_time defaults to datetime.utcnow().
 
         Returns:
@@ -87,7 +88,8 @@ class FlexibleDictionaryReport(IOTileReport):
         readings = [IOTileReading.FromDict(x) for x in report_dict.get('data', [])]
 
         if 'device' not in report_dict:
-            raise DataError("Invalid encoded FlexibleDictionaryReport that did not have a device key set with the device uuid")
+            raise DataError("Invalid encoded FlexibleDictionaryReport that did not "
+                            "have a device key set with the device uuid")
 
         self.origin = report_dict['device']
         self.report_id = report_dict.get("incremental_id", IOTileReading.InvalidReadingID)

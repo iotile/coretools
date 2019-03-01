@@ -7,7 +7,7 @@ TODO:
 """
 
 
-class PacketQueue(object):
+class PacketQueue:
     """A queue for reordering out-of-order messages
 
     Args:

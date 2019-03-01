@@ -1,12 +1,11 @@
 """Helper routines for processing data received from an IOTile device."""
 
 
-from __future__ import (unicode_literals, print_function, absolute_import)
 import struct
 from iotile.core.exceptions import HardwareError
 
 
-class ControlStructure(object):
+class ControlStructure:
     """A shared memory control structure allowing bidirectional communication with an IOTile device."""
 
     # The control structure in RAM is 16 bytes long

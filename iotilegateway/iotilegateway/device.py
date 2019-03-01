@@ -4,12 +4,11 @@ import datetime
 import tornado.ioloop
 import tornado.gen
 import uuid
-from future.utils import viewvalues, viewitems
 from iotile.core.hw.reports import BroadcastReport
 from iotile.core.exceptions import ArgumentError
 
 
-class DeviceManager(object):
+class DeviceManager:
     """An object to manage connections to IOTile devices over one or more specific DeviceAdapters.
 
     DeviceManagers aggregate all of the available devices across each DeviceAdapter and route
@@ -67,7 +66,7 @@ class DeviceManager(object):
     def stop(self):
         """Stop all adapters managed by the DeviceManager
         """
-        for _, adapter in viewitems(self.adapters):
+        for _, adapter in self.adapters.items():
             adapter.stop_sync()
 
     @property
@@ -80,12 +79,12 @@ class DeviceManager(object):
 
         devs = {}
 
-        for device_id, adapters in viewitems(self._scanned_devices):
+        for device_id, adapters in self._scanned_devices.items():
             dev = None
             max_signal = None
             best_adapter = None
 
-            for adapter_id, devinfo in viewitems(adapters):
+            for adapter_id, devinfo in adapters.items():
                 connstring = "{0}/{1}".format(adapter_id, devinfo['connection_string'])
                 if dev is None:
                     dev = copy.deepcopy(devinfo)
@@ -167,7 +166,7 @@ class DeviceManager(object):
             dict: A dictionary mapping UUIDs to device information dictionaries (self.scanned_devices)
         """
 
-        for adapter_id, manager in viewitems(self.adapters):
+        for adapter_id, manager in self.adapters.items():
             if manager.get_config('probe_supported', False):
                 yield tornado.gen.Task(manager.probe_async)
 
@@ -286,7 +285,7 @@ class DeviceManager(object):
         if device_uuid not in self.monitors:
             return
 
-        for listeners, monitor in viewvalues(self.monitors[device_uuid]):
+        for listeners, monitor in self.monitors[device_uuid].values():
             if event in listeners:
                 monitor(device_uuid, event, *args)
 
@@ -696,11 +695,11 @@ class DeviceManager(object):
         """
 
         expired = 0
-        for uuid, adapters in viewitems(self._scanned_devices):
+        for uuid, adapters in self._scanned_devices.items():
             to_remove = []
             now = datetime.datetime.now()
 
-            for adapter, dev in viewitems(adapters):
+            for adapter, dev in adapters.items():
                 if 'expires' not in dev:
                     continue
 

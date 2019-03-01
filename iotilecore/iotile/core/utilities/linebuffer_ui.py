@@ -22,7 +22,7 @@ LinebufferUI provides a nice way to do this.  It has the following prerequisites
    are being displayed. If you return a list from this function, it will be
    treated as multiple results. This means that your object type cannot be
    anything such that isinstance(object, list) is True otherwise it will be
-   misinterpretted as multiple objects.
+   misinterpreted as multiple objects.
 2. You must be able to calculate a single hashable value that determines for a result
    from your polling function, what line it corresponds to.  If you wish to exclude
    some results from your polling function, simply return None from this function and
@@ -37,10 +37,6 @@ that doesn't flicker or scroll.
 
 from collections import namedtuple
 import time
-import sys
-from future.utils import viewvalues
-if sys.version_info >= (3, 0):
-    basestring = str
 
 from iotile.core.exceptions import ExternalError
 
@@ -56,7 +52,7 @@ class LinebufferUI:
         self.draw_func = draw_func
         self.sortkey_func = sortkey_func
 
-        if isinstance(title, basestring):
+        if isinstance(title, str):
             self.title_func = lambda x: title
         else:
             self.title_func = title
@@ -68,7 +64,8 @@ class LinebufferUI:
         try:
             from asciimatics.screen import Screen
         except ImportError:
-            raise ExternalError("You must have asciimatics installed to use LinebufferUI", suggestion="pip install iotilecore[ui]")
+            raise ExternalError("You must have asciimatics installed to use LinebufferUI",
+                                suggestion="pip install iotilecore[ui]")
 
         Screen.wrapper(self._run_loop, arguments=[refresh_interval])
 
@@ -95,7 +92,7 @@ class LinebufferUI:
         try:
             while True:
                 self._update_items(screen)
-                items = sorted(viewvalues(self.items), key=lambda x: x.sort_key)
+                items = sorted(self.items.values(), key=lambda x: x.sort_key)
 
                 if self.title_func is not None:
                     lines = self.title_func(self.items)

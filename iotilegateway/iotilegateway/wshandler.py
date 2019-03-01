@@ -1,6 +1,5 @@
 import logging
 import datetime
-from future.utils import viewvalues
 import tornado.ioloop
 import tornado.websocket
 import tornado.gen
@@ -51,7 +50,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
         if cmdcode == 'scan':
             devs = self.manager.scanned_devices
-            self.send_response({'success': True, 'devices': [x for x in viewvalues(devs)]})
+            self.send_response({'success': True, 'devices': [x for x in devs.values()]})
         elif cmdcode == 'connect':
             resp = yield self.manager.connect(cmd['uuid'])
 

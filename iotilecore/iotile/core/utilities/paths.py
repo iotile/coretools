@@ -10,9 +10,9 @@
 import os.path
 import platform
 
+
 def settings_directory():
-    """
-    Find a per user settings directory that is appropriate for each
+    """Find a per user settings directory that is appropriate for each
     type of system that we are installed on.
     """
 

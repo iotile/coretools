@@ -1,7 +1,5 @@
 """Parser for reading sensor graph files."""
 
-from builtins import str
-
 import pyparsing
 
 from .language import get_language, get_statement
@@ -14,7 +12,7 @@ from iotile.core.exceptions import ArgumentError
 from iotile.sg.exceptions import SensorGraphSyntaxError, SensorGraphSemanticError
 
 
-class SensorGraphFileParser(object):
+class SensorGraphFileParser:
     """A parser that builds a sensor graph object from a text file specification."""
 
     def __init__(self):

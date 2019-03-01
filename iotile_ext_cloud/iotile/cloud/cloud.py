@@ -1,9 +1,6 @@
-"""Routines for interacting with IOTile cloud from the command line
-"""
+"""Routines for interacting with IOTile cloud from the command line"""
 
-from builtins import input
 from io import BytesIO
-import sys
 import getpass
 import datetime
 from dateutil.tz import tzutc
@@ -22,8 +19,9 @@ from .utilities import device_id_to_slug, fleet_id_to_slug
 
 Acknowledgement = namedtuple("Acknowledgement", ["index", "ack", "selector"])
 
+
 @context("IOTileCloud")
-class IOTileCloud(object):
+class IOTileCloud:
     """High level routines for interacting with IOTile cloud.
 
     Normally, you can create one of these objects with no arguments
@@ -67,24 +65,19 @@ class IOTileCloud(object):
                 if not ok_resp:
                     raise ExternalError("Could not login to %s as user %s" % (domain, username))
             else:
-                raise ExternalError("No stored iotile cloud authentication information", suggestion='Call iotile config link_cloud with your iotile cloud username and password')
+                raise ExternalError("No stored iotile cloud authentication information",
+                                    suggestion='Call iotile config link_cloud with your username and password')
 
         self.token = self.api.token
         self.token_type = self.api.token_type
 
     def _prompt_user_pass(self, username, domain):
         if username is None:
-            # Both python 2 and 3 require native strings to be passed into getpass
             prompt_str = "Please enter your IOTile.cloud email: "
-            if sys.version_info.major < 3:
-                prompt_str = prompt_str.encode('utf-8')
 
             username = input(prompt_str)
 
-        # Both python 2 and 3 require native strings to be passed into getpass
         prompt_str = "Please enter your IOTile.cloud password: "
-        if sys.version_info.major < 3:
-            prompt_str = prompt_str.encode('utf-8')
         password = getpass.getpass(prompt_str)
 
         return username, password
@@ -195,11 +188,13 @@ class IOTileCloud(object):
         try:
             sg = self.api.sg(new_sg).get()
         except RestHttpBaseException as exc:
-            raise ExternalError("Error calling method on iotile.cloud", exception=exc, response=exc.response.status_code)
+            raise ExternalError("Error calling method on iotile.cloud",
+                                exception=exc, response=exc.response.status_code)
 
         if app_tag is not None:
             if sg.get('app_tag', None) != app_tag:
-                raise ArgumentError("Cloud sensorgraph record does not match app tag", value=new_sg, cloud_sg_app_tag=sg.get('app_tag', None), app_tag_set=app_tag)
+                raise ArgumentError("Cloud sensorgraph record does not match app tag",
+                                    value=new_sg, cloud_sg_app_tag=sg.get('app_tag', None), app_tag_set=app_tag)
 
         slug = device_id_to_slug(device_id)
         patch = {'sg': new_sg}
@@ -208,9 +203,11 @@ class IOTileCloud(object):
             self.api.device(slug).patch(patch)
         except RestHttpBaseException as exc:
             if exc.response.status_code == 400:
-                raise ArgumentError("Error setting sensor graph, invalid value", value=new_sg, error_code=exc.response.status_code)
+                raise ArgumentError("Error setting sensor graph, invalid value",
+                                    value=new_sg, error_code=exc.response.status_code)
             else:
-                raise ExternalError("Error calling method on iotile.cloud", exception=exc, response=exc.response.status_code)
+                raise ExternalError("Error calling method on iotile.cloud",
+                                    exception=exc, response=exc.response.status_code)
 
     @param("device_id", "integer", desc="ID of the device that we want information about")
     @param("new_template", "string", desc="The new device template that we want to set")
@@ -224,16 +221,18 @@ class IOTileCloud(object):
             device_id (int): The id of the device that we want to change the device template for.
             new_template (string): Name of a valid device template that you wish to set the device to
             os_tag (int): Optional. If the os_tag passed into this function does not match the
-                os_tag of the device_tmplate in iotile.cloud, raise an error.
+                os_tag of the device_template in iotile.cloud, raise an error.
         """
         try:
             dt = self.api.dt(new_template).get()
         except RestHttpBaseException as exc:
-            raise ExternalError("Error calling method on iotile.cloud", exception=exc, response=exc.response.status_code)
+            raise ExternalError("Error calling method on iotile.cloud",
+                                exception=exc, response=exc.response.status_code)
 
         if os_tag is not None:
             if dt.get('os_tag', None) != os_tag:
-                raise ArgumentError("Cloud device template record does not match os tag", value=new_template, cloud_sg_os_tag=dt.get('os_tag', None), os_tag_set=os_tag)
+                raise ArgumentError("Cloud device template record does not match os tag",
+                                    value=new_template, cloud_sg_os_tag=dt.get('os_tag', None), os_tag_set=os_tag)
 
         slug = device_id_to_slug(device_id)
         patch = {'template': new_template}
@@ -242,9 +241,11 @@ class IOTileCloud(object):
             self.api.device(slug).patch(patch, staff=1)
         except RestHttpBaseException as exc:
             if exc.response.status_code == 400:
-                raise ArgumentError("Error setting device template, invalid value", value=new_template, error_code=exc.response.status_code)
+                raise ArgumentError("Error setting device template, invalid value",
+                                    value=new_template, error_code=exc.response.status_code)
             else:
-                raise ExternalError("Error calling method on iotile.cloud", exception=exc, response=exc.response.status_code)
+                raise ExternalError("Error calling method on iotile.cloud",
+                                    exception=exc, response=exc.response.status_code)
 
     @param("project_id", "string", desc="Optional ID of the project to download a list of devices from")
     @return_type("list(integer)")
@@ -281,7 +282,8 @@ class IOTileCloud(object):
             resp = self.api.device(slug).key.get(type=IOTileCloud.DEVICE_TOKEN_TYPE)
             token = resp['key']
         except RestHttpBaseException as exc:
-            raise ExternalError("Error calling method on iotile.cloud", exception=exc, response=exc.response.status_code)
+            raise ExternalError("Error calling method on iotile.cloud",
+                                exception=exc, response=exc.response.status_code)
 
         self.api.set_token(token, token_type=token_type)
         self.token = token
@@ -304,7 +306,8 @@ class IOTileCloud(object):
         try:
             self.api.device(slug).unclaim.post(payload)
         except RestHttpBaseException as exc:
-            raise ExternalError("Error calling method on iotile.cloud", exception=exc, response=exc.response.status_code)
+            raise ExternalError("Error calling method on iotile.cloud",
+                                exception=exc, response=exc.response.status_code)
 
     def upload_report(self, report):
         """Upload an IOTile report to the cloud.
@@ -337,7 +340,8 @@ class IOTileCloud(object):
         elif isinstance(report, FlexibleDictionaryReport):
             file_ext = ".mp"
         else:
-            raise ArgumentError("Unknown report format passed to upload_report", classname=report.__class__.__name__, report=report)
+            raise ArgumentError("Unknown report format passed to upload_report",
+                                classname=report.__class__.__name__, report=report)
 
         timestamp = '{}'.format(report.received_time.isoformat())
         payload = {'file': ("report" + file_ext, BytesIO(report.encode()))}
@@ -370,7 +374,8 @@ class IOTileCloud(object):
         try:
             data = self.api.streamer(slug).get()
         except RestHttpBaseException as exc:
-            raise ArgumentError("Could not get information for streamer", device_id=device_id, streamer_id=streamer, slug=slug, err=str(exc))
+            raise ArgumentError("Could not get information for streamer",
+                                device_id=device_id, streamer_id=streamer, slug=slug, err=str(exc))
 
         if 'last_id' not in data:
             raise ExternalError("Response fom the cloud did not have last_id set", response=data)
@@ -416,7 +421,8 @@ class IOTileCloud(object):
         """Attempt to refresh out cloud token with iotile.cloud."""
 
         if self.token_type != 'jwt':
-            raise DataError("Attempting to refresh a token that does not need to be refreshed", token_type=self.token_type)
+            raise DataError("Attempting to refresh a token that does not need to be refreshed",
+                            token_type=self.token_type)
 
         conf = ConfigManager()
         domain = conf.get('cloud:server')

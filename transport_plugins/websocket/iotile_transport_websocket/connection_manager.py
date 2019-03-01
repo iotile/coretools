@@ -1,14 +1,11 @@
 import threading
 import queue
 import logging
-from monotonic import monotonic
-from past.builtins import basestring
-from builtins import int
-from future.utils import iteritems
+from time import monotonic
 from iotile.core.exceptions import ArgumentError
 
 
-class ConnectionAction(object):
+class ConnectionAction:
     """A generic action handled internally by ConnectionManager
 
     Args:
@@ -174,7 +171,7 @@ class ConnectionManager(threading.Thread):
         """
 
         key = conn_or_int_id
-        if isinstance(key, basestring):
+        if isinstance(key, str):
             table = self._int_connections
         elif isinstance(key, int):
             table = self._connections
@@ -207,7 +204,7 @@ class ConnectionManager(threading.Thread):
         """
 
         key = conn_or_int_id
-        if isinstance(key, basestring):
+        if isinstance(key, str):
             table = self._int_connections
         elif isinstance(key, int):
             table = self._connections
@@ -237,7 +234,7 @@ class ConnectionManager(threading.Thread):
         """
 
         key = conn_or_int_id
-        if isinstance(key, basestring):
+        if isinstance(key, str):
             table = self._int_connections
         elif isinstance(key, int):
             table = self._connections
@@ -262,7 +259,7 @@ class ConnectionManager(threading.Thread):
         """
 
         key = conn_or_int_id
-        if isinstance(key, basestring):
+        if isinstance(key, str):
             table = self._int_connections
         elif isinstance(key, int):
             table = self._connections
@@ -284,7 +281,7 @@ class ConnectionManager(threading.Thread):
         Adds the corresponding finish action that fails the request due to a timeout.
         """
 
-        for conn_id, data in iteritems(self._connections):
+        for conn_id, data in iter(self._connections.items()):
             if 'action' in data and data['action'].expired:
                 if data['state'] == self.Connecting:
                     self.finish_connection(conn_id, False, 'Connection attempt timed out')

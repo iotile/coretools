@@ -7,8 +7,6 @@ import logging
 import msgpack
 import threading
 import time
-from builtins import bytes
-from future.utils import viewitems
 from iotile.core.hw.virtual.virtualdevice import RPCInvalidIDError, RPCNotFoundError, TileNotFoundError
 from iotile.core.hw.virtual.virtualinterface import VirtualIOTileInterface
 from iotile.core.exceptions import HardwareError
@@ -312,7 +310,7 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
             devices (dict): The scanned devices to send (uuid as key, multiple info as value)
         """
 
-        for uuid, info in viewitems(devices):
+        for uuid, info in devices.items():
             connection_string = self._uuid_to_connection_string(uuid)
             converted_device = {
                 'uuid': uuid,

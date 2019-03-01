@@ -6,13 +6,11 @@
 # Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
-from __future__ import print_function
-from future.utils import viewitems
 import os.path
 
+
 def build_summary_cmd(target, source, env):
-    """
-    Build a text file with the status results for all of the unit tests in sources.
+    """Build a text file with the status results for all of the unit tests in sources.
     sources should point to an array of strings corresponding to .status files.
     """
 
@@ -35,7 +33,7 @@ def build_summary_cmd(target, source, env):
     with open(str(target[0]), 'w') as f:
         f.write('Test Summary\n')
 
-        for targ, tests in viewitems(targets):
+        for targ, tests in targets.items():
             num_tests = len(tests)
             results = [test_passed(x[1]) for x in tests]
             tagged_tests = list(zip(tests, results))
@@ -58,9 +56,10 @@ def build_summary_cmd(target, source, env):
         for line in f.readlines():
             print(line.rstrip())
 
-    #Raise a build error if some tests failed
+    # Raise a build error if some tests failed
     if some_failed:
         return 1
+
 
 def test_passed(path):
     with open(path, 'r') as f:
@@ -72,7 +71,8 @@ def test_passed(path):
         elif result == 'FAILED':
             return False
         else:
-            raise ValueError('Invalid value in test status file %s, contents were %s' %(path, result))
+            raise ValueError('Invalid value in test status file %s, contents were %s' % (path, result))
+
 
 def parse_name(path):
     base = os.path.basename(path)
@@ -80,4 +80,4 @@ def parse_name(path):
 
     (name, target) = name.split('@', 1)
 
-    return (name, target, ext)
+    return name, target, ext

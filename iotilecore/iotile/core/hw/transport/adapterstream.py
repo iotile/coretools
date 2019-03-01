@@ -1,5 +1,4 @@
-"""An adapter class that takes a DeviceAdapter and produces a CMDStream compatible interface
-"""
+"""An adapter class that takes a DeviceAdapter and produces a CMDStream compatible interface"""
 
 from builtins import str
 from future.utils import viewitems
@@ -9,7 +8,6 @@ from .cmdstream import CMDStream
 import datetime
 import time
 from iotile.core.exceptions import HardwareError, ArgumentError
-from iotile.core.utilities.typedargs import iprint
 from iotile.core.hw.reports import BroadcastReport
 
 
@@ -21,7 +19,7 @@ class AdapterCMDStream(CMDStream):
     DeviceAdapter.
 
     Args:
-        adapter (DeviceAdapter): the DeviceAdatper that we should use to create this CMDStream
+        adapter (DeviceAdapter): the DeviceAdapter that we should use to create this CMDStream
         port (string): the name of the port that we should connect through
         connection_string (string): A DeviceAdapter specific string specifying a device that we
             should immediately connect to
@@ -133,7 +131,8 @@ class AdapterCMDStream(CMDStream):
         res = self.adapter.connect_sync(0, connection_string)
         if not res['success']:
             self.adapter.periodic_callback()
-            raise HardwareError("Could not connect to device", reason=res['failure_reason'], connection_string=connection_string)
+            raise HardwareError("Could not connect to device", reason=res['failure_reason'],
+                                connection_string=connection_string)
 
         try:
             res = self.adapter.open_interface_sync(0, 'rpc')
@@ -145,7 +144,8 @@ class AdapterCMDStream(CMDStream):
         if not res['success']:
             self.adapter.disconnect_sync(0)
             self.adapter.periodic_callback()
-            raise HardwareError("Could not open RPC interface on device", reason=res['failure_reason'], connection_string=connection_string)
+            raise HardwareError("Could not open RPC interface on device", reason=res['failure_reason'],
+                                connection_string=connection_string)
 
     def _disconnect(self):
 
@@ -169,7 +169,8 @@ class AdapterCMDStream(CMDStream):
                 if self._reports is not None:
                     res = self.adapter.open_interface_sync(0, 'streaming')
                     if not res['success']:
-                        raise HardwareError("Could not open streaming interface to device", reason=res['failure_reason'])
+                        raise HardwareError("Could not open streaming interface to device",
+                                            reason=res['failure_reason'])
 
                 # Reenable tracing interface if that was open before as well
                 if self._traces is not None:

@@ -2,7 +2,7 @@
 """
 
 
-class TopicSequencer(object):
+class TopicSequencer:
     """Keeps track of a packet sequence number for multiple topics
 
     This class allows you send sequentially numbered messages on each

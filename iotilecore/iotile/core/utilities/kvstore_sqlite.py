@@ -1,16 +1,16 @@
 # This file is copyright Arch Systems, Inc.
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
-#Sqlite3 textual key value store
+# Sqlite3 textual key value store
 from iotile.core.utilities.paths import settings_directory
 import sqlite3
 import os.path
 import sys
 import os
 
-class SQLiteKVStore(object):
-    """
-    A simple string - string persistent map backed by sqlite for concurrent access
+
+class SQLiteKVStore:
+    """A simple string - string persistent map backed by sqlite for concurrent access
 
     The KeyValueStore can be made to respect python virtual environments if desired
     """
@@ -21,8 +21,8 @@ class SQLiteKVStore(object):
         if folder is None:
             folder = SQLiteKVStore.DefaultFolder
 
-        #If we are relative to a virtual environment, place the registry into that virtual env
-        #Support both virtualenv and pythnon 3 venv
+        # If we are relative to a virtual environment, place the registry into that virtual env
+        # Support both virtualenv and pythnon 3 venv
         if respect_venv and hasattr(sys, 'real_prefix'):
             folder = sys.prefix
         elif respect_venv and hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix:
@@ -55,13 +55,13 @@ class SQLiteKVStore(object):
         vals = self.cursor.fetchall()
         return vals
 
-    def get(self, id):
+    def get(self, my_id):
         query = 'select value from KVStore where key is ?'
-        self.cursor.execute(query, (id,))
+        self.cursor.execute(query, (my_id,))
 
         val = self.cursor.fetchone()
         if val is None:
-            raise KeyError("id not in key-value store: %s" % str(id))
+            raise KeyError("id not in key-value store: %s" % str(my_id))
 
         return val[0]
 
@@ -70,9 +70,9 @@ class SQLiteKVStore(object):
         self.cursor.execute(query, (key,))
         self.connection.commit()
 
-    def try_get(self, id):
+    def try_get(self, my_id):
         try:
-            return self.get(id)
+            return self.get(my_id)
         except KeyError:
             return None
 

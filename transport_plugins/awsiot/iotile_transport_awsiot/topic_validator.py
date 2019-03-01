@@ -3,7 +3,7 @@ import binascii
 from iotile.core.exceptions import ValidationError
 
 
-class MQTTTopicValidator(object):
+class MQTTTopicValidator:
     """Canonical source of topic names for different actions.
 
     This class returns the correct topic names for connection

@@ -21,8 +21,7 @@ class FunctionDefinitionRecorder(c_ast.NodeVisitor):
 
 
 class ParsedCFile(object):
-    """
-    An object allowing one to explore the AST of a C file.  The file is
+    """An object allowing one to explore the AST of a C file.  The file is
     parsed using pycparser and various convenience routines are given to
     speed access to certain parts of the file.
     """
@@ -34,16 +33,14 @@ class ParsedCFile(object):
         self._parse_file()
 
     def _parse_file(self):
-        """
-        Preprocess and parse C file into an AST
-        """
+        """Preprocess and parse C file into an AST"""
 
-        #We need to set the CPU type to pull in the right register definitions
-        #only preprocess the file (-E) and get rid of gcc extensions that aren't
-        #supported in ISO C.
+        # We need to set the CPU type to pull in the right register definitions
+        # only preprocess the file (-E) and get rid of gcc extensions that aren't
+        # supported in ISO C.
         args = utilities.build_includes(self.arch.includes())
 
-        #args.append('-mcpu=%s' % self.arch.property('chip'))
+        # args.append('-mcpu=%s' % self.arch.property('chip'))
         args.append('-E')
         args.append('-D__attribute__(x)=')
         args.append('-D__extension__=')

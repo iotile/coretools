@@ -13,8 +13,7 @@ from typedargs.exceptions import ArgumentError, ValidationError, ConversionError
 
 
 class TimeoutExpiredError(IOTileException):
-    """
-    The method timed out, usually indicating that a communication failure
+    """The method timed out, usually indicating that a communication failure
     occurred, either with another process or with a hardware module.
     """
 
@@ -22,8 +21,7 @@ class TimeoutExpiredError(IOTileException):
 
 
 class DataError(IOTileException):
-    """
-    The method relied on data pass in by the user and the data was invalid.
+    """The method relied on data pass in by the user and the data was invalid.
 
     This could be because a file was the wrong type or because a data provider
     returned an unexpected result.  The parameters passed with this exception
@@ -32,18 +30,18 @@ class DataError(IOTileException):
 
     pass
 
+
 class InternalError(IOTileException):
-    """
-    The method could not be completed with the user input passed for
+    """The method could not be completed with the user input passed for
     an unexpected reason.  This does not signify a bug in the API
     method code.  More details should be passed in the arguments.
     """
 
     pass
 
+
 class APIError(IOTileException):
-    """
-    An internal API error occured during the execution of the method.
+    """An internal API error occured during the execution of the method.
     This should only be returned if the error was unforeseen and not
     caused in any way by user input.  If the problem is that a user
     input is invalid for the API call, ValidationError should be
@@ -55,9 +53,9 @@ class APIError(IOTileException):
 
     pass
 
+
 class BuildError(IOTileException):
-    """
-    There is an error with some part of the build system.  This does not
+    """There is an error with some part of the build system.  This does not
     mean that there is a compilation error but rather that a required part
     of the build process did not complete successfully.  This exception means
     that something is misconfigured.
@@ -67,17 +65,16 @@ class BuildError(IOTileException):
 
 
 class ExternalError(IOTileException):
-    """
-    The external environment is not properly configured for the IOTile API command that was called.
+    """The external environment is not properly configured for the IOTile API command that was called.
     This can be because a required program was not installed or accessible or because
     a required environment variable was not defined.
     """
 
     pass
 
+
 class HardwareError(IOTileException):
-    """
-    There was an issue communicating with or controlling an IOTile hardware module.  This
+    """There was an issue communicating with or controlling an IOTile hardware module.  This
     exception anchors a range of exceptions that refer to specific kinds of hardware issues.
 
     By catching this exception, you will catch any sort of hardware failure.  If you are

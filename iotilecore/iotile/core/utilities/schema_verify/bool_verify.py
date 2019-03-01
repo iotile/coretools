@@ -30,7 +30,8 @@ class BooleanVerifier(Verifier):
             raise ValidationError("Object is not a bool", reason='object is not a bool', object=obj)
 
         if self._require_value is not None and obj != self._require_value:
-            raise ValidationError("Boolean is not equal to specified literal", reason='boolean value %s should be %s' % (str(obj), str(self._require_value)))
+            raise ValidationError("Boolean is not equal to specified literal", reason='boolean value %s should be %s'
+                                                                                      % (str(obj), str(self._require_value)))
 
         return obj
 

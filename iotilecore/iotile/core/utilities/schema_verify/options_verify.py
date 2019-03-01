@@ -29,7 +29,8 @@ class OptionsVerifier(Verifier):
         """
 
         if len(self._options) == 0:
-            raise ValidationError("No options", reason='no options given in options verifier, matching not possible', object=obj)
+            raise ValidationError("No options", reason='no options given in options verifier, matching not possible',
+                                  object=obj)
 
         exceptions = {}
 
@@ -40,4 +41,6 @@ class OptionsVerifier(Verifier):
             except ValidationError as exc:
                 exceptions['option_%d' % (i+1)] = exc.params['reason']
 
-        raise ValidationError("Object did not match any of a set of options", reason="object did not match any given option (first failure = '%s')" % exceptions['option_1'], **exceptions)
+        raise ValidationError("Object did not match any of a set of options",
+                              reason="object did not match any given option (first failure = '%s')"
+                                     % exceptions['option_1'], **exceptions)

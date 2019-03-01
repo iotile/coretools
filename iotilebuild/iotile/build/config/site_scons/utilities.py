@@ -6,29 +6,29 @@
 # Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
-#utilities.py
+# utilities.py
 
-from future.utils import viewitems
-from past.builtins import basestring
 import os
 import os.path
 from iotile.build.build import build
 
 
 def build_includes(includes):
-    if isinstance(includes, basestring):
+    if isinstance(includes, str):
         includes = [includes]
 
     return ['-I"%s"' % x for x in includes]
 
+
 def build_libdirs(libdirs):
-    if isinstance(libdirs, basestring):
+    if isinstance(libdirs, str):
         libdirs = [libdirs]
 
     return ['-L"%s"' % x for x in libdirs]
 
+
 def build_staticlibs(libs, chip):
-    if isinstance(libs, basestring):
+    if isinstance(libs, str):
         libs = [libs]
 
     processed = []
@@ -45,19 +45,19 @@ def build_staticlibs(libs, chip):
 
     return ['-l%s' % x for x in processed]
 
-def join_path(path):
-    """
-    If given a string, return it, otherwise combine a list into a string
-    using os.path.join
-    """
 
-    if isinstance(path, basestring):
+def join_path(path):
+    """If given a string, return it, otherwise combine a list into a string using os.path.join"""
+
+    if isinstance(path, str):
         return path
 
     return os.path.join(*path)
 
+
 def build_defines(defines):
-    return ['-D"%s=%s"' % (x,str(y)) for x,y in viewitems(defines)]
+    return ['-D"%s=%s"' % (x,str(y)) for x,y in defines.items()]
+
 
 def get_family(modulefile):
     return build.ArchitectureGroup(modulefile)

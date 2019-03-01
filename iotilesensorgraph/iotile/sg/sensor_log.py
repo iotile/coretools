@@ -7,7 +7,6 @@ a hard cap on storage requirements.
 """
 
 import copy
-from future.utils import viewitems
 from iotile.sg.model import DeviceModel
 from iotile.core.exceptions import ArgumentError
 from iotile.core.hw.reports import IOTileReading
@@ -17,7 +16,7 @@ from .walker import VirtualStreamWalker, CounterStreamWalker, BufferedStreamWalk
 from .exceptions import StreamEmptyError, StorageFullError, UnresolvedIdentifierError
 
 
-class SensorLog(object):
+class SensorLog:
     """A storage engine holding multiple named FIFOs.
 
     Normally a SensorLog is used in ring-buffer mode which means that old
@@ -94,7 +93,7 @@ class SensorLog(object):
             u'engine': self._engine.dump(),
             u'rollover_storage': self._rollover_storage,
             u'rollover_streaming': self._rollover_streaming,
-            u'last_values': {str(stream): reading.asdict() for stream, reading in viewitems(self._last_values)},
+            u'last_values': {str(stream): reading.asdict() for stream, reading in self._last_values.items()},
             u'walkers': walkers
         }
 
@@ -124,13 +123,13 @@ class SensorLog(object):
 
         self._engine.restore(state.get(u'engine'))
         self._last_values = {DataStream.FromString(stream): IOTileReading.FromDict(reading) for
-                             stream, reading in viewitems(state.get(u"last_values", {}))}
+                             stream, reading in state.get(u"last_values", {}).items()}
 
         self._rollover_storage = state.get(u'rollover_storage', True)
         self._rollover_streaming = state.get(u'rollover_streaming', True)
 
         old_walkers = {DataStreamSelector.FromString(selector): dump for selector, dump in
-                       viewitems(state.get(u"walkers"))}
+                       state.get(u"walkers").items()}
 
         for walker in self._virtual_walkers:
             if walker.selector in old_walkers:

@@ -10,9 +10,9 @@ import sys
 from time import time
 from iotile.core.utilities.typedargs import type_system
 
+
 class ProgressBar:
-    """
-    A simple progress bar that updates itself in the console.
+    """A simple progress bar that updates itself in the console.
 
     If the program is being run in interactive mode, display the progress_bar
     otherwise do not display it
@@ -22,7 +22,6 @@ class ProgressBar:
         self.title = title
         self.prog = 0 
         self.count = count
-
 
     def start(self):
         self.velocity = 0
@@ -70,7 +69,7 @@ class ProgressBar:
             update_string += " "*(len(self.last_update) - len(update_string))
 
 
-        #Erase the last update and write this one
+        # Erase the last update and write this one
         sys.stdout.write(chr(8)*len(self.last_update))
         sys.stdout.write(update_string)
         sys.stdout.flush()

@@ -1,7 +1,5 @@
 """Canonical list of config variables defined by iotile-transport-native-ble."""
 
-from __future__ import unicode_literals, absolute_import, print_function
-
 
 def get_variables():
     prefix = "ble"

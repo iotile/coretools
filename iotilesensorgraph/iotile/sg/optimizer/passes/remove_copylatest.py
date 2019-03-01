@@ -12,7 +12,7 @@ from iotile.sg import DataStreamSelector
 import copy
 
 
-class RemoveCopyLatestPass(object):
+class RemoveCopyLatestPass:
     """Run the remove copy latest optimization pass.
 
     Args:

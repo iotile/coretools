@@ -7,10 +7,6 @@ from string import Template
 import json
 import os.path
 import sys
-from future.utils import viewitems, itervalues
-
-if sys.version_info >= (3, 0):
-    basestring = str
 
 from iotile.core.exceptions import DataError, ExternalError
 from .semver import SemanticVersion, SemanticVersionRange
@@ -89,8 +85,10 @@ class IOTile(object):
     """
 
     PATH_PRODUCTS = {
-        "include_directories": _ProductDeclaration(r"${release}/include/${product}", r"${release}/include/${product}", None),
-        "tilebus_definitions": _ProductDeclaration(r"${module}/firmware/src/${raw_product}", r"${release}/tilebus/${product}", os.path.basename),
+        "include_directories": _ProductDeclaration(r"${release}/include/${product}", r"${release}/include/${product}",
+                                                   None),
+        "tilebus_definitions": _ProductDeclaration(r"${module}/firmware/src/${raw_product}",
+                                                   r"${release}/tilebus/${product}", os.path.basename),
         "linker_script": _ProductDeclaration(r"${release}/linker/${product}", r"${release}/linker/${product}", None),
         "type_package": _DevOnlyProduct,
         "build_step": _DevOnlyProduct,
@@ -115,7 +113,8 @@ class IOTile(object):
             with open(modfile, "r") as infile:
                 settings = json.load(infile)
         except IOError:
-            raise ExternalError("Could not load module_settings.json file, make sure this directory is an IOTile component", path=self.folder)
+            raise ExternalError("Could not load module_settings.json file, "
+                                "make sure this directory is an IOTile component", path=self.folder)
 
         file_format = settings.get('file_format', IOTile.V1_FORMAT)
         if file_format == IOTile.V1_FORMAT:
@@ -140,12 +139,14 @@ class IOTile(object):
         if 'modules' not in settings or len(settings['modules']) == 0:
             raise DataError("No modules defined in module_settings.json file")
         elif len(settings['modules']) > 1:
-            raise DataError("Multiple modules defined in module_settings.json file", modules=[x for x in settings['modules']])
+            raise DataError("Multiple modules defined in module_settings.json file",
+                            modules=[x for x in settings['modules']])
         else:
             modname = list(settings['modules'])[0]
 
         if modname not in settings['modules']:
-            raise DataError("Module name does not correspond with an entry in the modules directory", name=modname, modules=[x for x in settings['modules']])
+            raise DataError("Module name does not correspond with an entry in the modules directory",
+                            name=modname, modules=[x for x in settings['modules']])
 
         release_info = self._load_release_info(settings)
         modsettings = settings['modules'][modname]
@@ -166,7 +167,8 @@ class IOTile(object):
 
         import dateutil.parser
         release_date = dateutil.parser.parse(settings['release_date'])
-        dependency_versions = {x: SemanticVersion.FromString(y) for x, y in viewitems(settings.get('dependency_versions', {}))}
+        dependency_versions = {x: SemanticVersion.FromString(y)
+                               for x, y in settings.get('dependency_versions', {}).items()}
 
         return ReleaseInfo(release_date, dependency_versions)
 
@@ -185,14 +187,14 @@ class IOTile(object):
         modname, modsettings, architectures, targets, release_info = info
         self.settings = modsettings
 
-        #Name is converted to all lowercase to canonicalize it
+        # Name is converted to all lowercase to canonicalize it
         prepend = ''
         if 'domain' in modsettings:
             prepend = modsettings['domain'].lower() + '/'
 
         key = prepend + modname.lower()
 
-        #Copy over some key properties that we want easy access to
+        # Copy over some key properties that we want easy access to
         self.name = key
         self.unique_id = key.replace('/', '_')
         self.short_name = modname
@@ -202,7 +204,7 @@ class IOTile(object):
         if "full_name" in self.settings:
             self.full_name = self.settings['full_name']
 
-        #FIXME: make sure this is a list
+        # FIXME: make sure this is a list
         self.authors = []
         if "authors" in self.settings:
             self.authors = self.settings['authors']
@@ -213,10 +215,10 @@ class IOTile(object):
 
         self.parsed_version = SemanticVersion.FromString(self.version)
 
-        #Load all of the build products that can be created by this IOTile
+        # Load all of the build products that can be created by this IOTile
         self.products = modsettings.get('products', {})
 
-        #Load in the release information telling us how to release this component
+        # Load in the release information telling us how to release this component
         release_steps = modsettings.get('release_steps', [])
         self.release_steps = []
         self.can_release = False
@@ -233,7 +235,7 @@ class IOTile(object):
 
         self.dependency_versions = {}
 
-        #If this is a release IOTile component, check for release information
+        # If this is a release IOTile component, check for release information
         if release_info is not None:
             self.release = True
             self.release_date = release_info.release_date
@@ -243,8 +245,8 @@ class IOTile(object):
             self.release = False
             self.output_folder = os.path.join(self.folder, 'build', 'output')
 
-            #If this tile is a development tile and it has been built at least one, add in a release date
-            #from the last time it was built
+            # If this tile is a development tile and it has been built at least one, add in a release date
+            # from the last time it was built
             if os.path.exists(os.path.join(self.output_folder, 'module_settings.json')):
                 release_settings = os.path.join(self.output_folder, 'module_settings.json')
 
@@ -256,20 +258,21 @@ class IOTile(object):
             else:
                 self.release_date = None
 
-        #Find all of the things that this module could possibly depend on
-        #Dependencies include those defined in the module itself as well as
-        #those defined in architectures that are present in the module_settings.json
-        #file.
+        # Find all of the things that this module could possibly depend on
+        # Dependencies include those defined in the module itself as well as
+        # those defined in architectures that are present in the module_settings.json
+        # file.
         self.dependencies = []
 
-        archs_with_deps = [viewitems(y['depends']) for _x, y in viewitems(architectures) if 'depends' in y]
+        archs_with_deps = [y['depends'].items() for _x, y in architectures.items() if 'depends' in y]
         if 'depends' in self.settings:
             if not isinstance(self.settings['depends'], dict):
-                raise DataError("module must have a depends key that is a dictionary", found=str(self.settings['depends']))
+                raise DataError("module must have a depends key that is a dictionary",
+                                found=str(self.settings['depends']))
 
-            archs_with_deps.append(viewitems(self.settings['depends']))
+            archs_with_deps.append(self.settings['depends'].items())
 
-        #Find all python package needed
+        # Find all python package needed
         self.support_wheel_depends = []
 
         if 'python_depends' in self.settings:
@@ -278,17 +281,17 @@ class IOTile(object):
                                 found=str(self.settings['python_depends']))
 
             for python_depend in self.settings['python_depends']:
-                if not isinstance(python_depend, basestring):
+                if not isinstance(python_depend, str):
                     raise DataError("module must have a python_depends key that is a list of strings",
                                     found=str(self.settings['python_depends']))
 
                 self.support_wheel_depends.append(python_depend)
 
-        #Also search through overlays to architectures that are defined in this module_settings.json file
-        #and see if those overlays contain dependencies.
-        for overlay_arch in itervalues(self.settings.get('overlays', {})):
+        # Also search through overlays to architectures that are defined in this module_settings.json file
+        # and see if those overlays contain dependencies.
+        for overlay_arch in self.settings.get('overlays', {}).values():
             if 'depends' in overlay_arch:
-                archs_with_deps.append(viewitems(overlay_arch['depends']))
+                archs_with_deps.append(overlay_arch['depends'].items())
 
         found_deps = set()
         for dep, _ in itertools.chain(*archs_with_deps):
@@ -346,7 +349,7 @@ class IOTile(object):
         those paths into a normal path string.
         """
 
-        if isinstance(product, basestring):
+        if isinstance(product, str):
             return product
 
         if isinstance(product, list):
@@ -364,14 +367,15 @@ class IOTile(object):
         else:
             base = Template(declaration.dev_path)
 
-        path_string = base.substitute(module=self.folder, release=self.output_folder, raw_product=product, product=processed)
+        path_string = base.substitute(module=self.folder, release=self.output_folder,
+                                      raw_product=product, product=processed)
         return os.path.normpath(path_string)
 
     def find_products(self, product_type):
         """Search for products of a given type.
 
         Search through the products declared by this IOTile component and
-        return only those matching the given type.  If the product is decribed
+        return only those matching the given type.  If the product is described
         by the path to a file, a complete normalized path will be returned.
         The path could be different depending on whether this IOTile component
         is in development or release mode.
@@ -383,7 +387,7 @@ class IOTile(object):
         all tilebus_definitions you would call
         ``filter_products('tilebus_definitions')``
 
-        By constast, other products are filtered product-by-product.  So there
+        By contrast, other products are filtered product-by-product.  So there
         is no way to filter and get **all libraries**.  Instead you pass the
         specific product names of the libraries that you want to
         ``filter_products`` and those specific libraries are returned.
@@ -408,7 +412,7 @@ class IOTile(object):
         if product_type in self.LIST_PRODUCTS:
             found_products = self.products.get(product_type, [])
         else:
-            found_products = [x[0] for x in viewitems(self.products)
+            found_products = [x[0] for x in self.products.items()
                               if x[1] == product_type and (not self.filter_prods or x[0] in self.desired_prods)]
 
         found_products = [self._ensure_product_string(x) for x in found_products]

@@ -1,13 +1,11 @@
 """Add a data streamer to the sensor graph."""
 
-from future.utils import python_2_unicode_compatible
 from .statement import SensorGraphStatement
 from iotile.sg.exceptions import SensorGraphSemanticError
 from iotile.sg import SlotIdentifier
 from iotile.sg.streamer import DataStreamer
 
 
-@python_2_unicode_compatible
 class StreamerStatement(SensorGraphStatement):
     """A streamer definition that adds an output to the sensor graph.
 

@@ -27,19 +27,23 @@ class EnvAuthProvider(AuthProvider):
         var_name = "USER_KEY_{0:08X}".format(device_id)
 
         if var_name not in os.environ:
-            raise NotFoundError("No user key could be found for devices", device_id=device_id, expected_variable_name=var_name)
+            raise NotFoundError("No user key could be found for devices", device_id=device_id,
+                                expected_variable_name=var_name)
 
         key_var = os.environ[var_name]
         if len(key_var) != 64:
-            raise NotFoundError("User key in variable is not the correct length, should be 64 hex characters", device_id=device_id, key_value=key_var)
+            raise NotFoundError("User key in variable is not the correct length, should be 64 hex characters",
+                                device_id=device_id, key_value=key_var)
 
         try:
             key = binascii.unhexlify(key_var)
         except ValueError:
-            raise NotFoundError("User key in variable could not be decoded from hex", device_id=device_id, key_value=key_var)
+            raise NotFoundError("User key in variable could not be decoded from hex", device_id=device_id,
+                                key_value=key_var)
 
         if len(key) != 32:
-            raise NotFoundError("User key in variable is not the correct length, should be 64 hex characters", device_id=device_id, key_value=key_var)
+            raise NotFoundError("User key in variable is not the correct length, should be 64 hex characters",
+                                device_id=device_id, key_value=key_var)
 
         return key
 
@@ -88,7 +92,7 @@ class EnvAuthProvider(AuthProvider):
 
         report_key = self._verify_derive_key(device_id, root, **kwargs)
 
-        #We sign the SHA256 hash of the message
+        # We sign the SHA256 hash of the message
         message_hash = hashlib.sha256(data).digest()
         hmac_calc = hmac.new(report_key, message_hash, hashlib.sha256)
         result = bytearray(hmac_calc.digest())

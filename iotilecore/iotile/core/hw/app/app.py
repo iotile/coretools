@@ -1,7 +1,7 @@
-"""Base class for all IOtile Apps."""
+"""Base class for all IOTile Apps."""
 
 
-class IOTileApp(object):
+class IOTileApp:
     """Base class for all IOTile Apps.
 
     An IOTile App is a class that represents all of the externally visible
@@ -48,7 +48,7 @@ class IOTileApp(object):
     def MatchInfo(cls):
         """Return a list of matching app tag and versions.
 
-        This method must be overriden by all subclasses to return
+        This method must be overridden by all subclasses to return
         their matching information if they want to support automatically
         matching with a device by app_tag.
 
@@ -65,7 +65,7 @@ class IOTileApp(object):
 
     @classmethod
     def AppName(cls):
-        """A unqiue name for this app so that it can be loaded by name.
+        """A unique name for this app so that it can be loaded by name.
 
         Returns:
             str: The unique name for this app module.

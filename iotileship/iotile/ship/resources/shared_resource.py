@@ -9,7 +9,7 @@ exits for the life of your recipe and call many steps that individually
 use that hardware_manager to perform actions on an IOTile device.
 """
 
-class SharedResource(object):
+class SharedResource:
     """Base class for all shared resources."""
 
     def __init__(self):

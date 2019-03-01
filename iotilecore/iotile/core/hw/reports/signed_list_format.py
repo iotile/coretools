@@ -1,12 +1,10 @@
-"""IOTileReport subclass for readings packaged as individual readings
-"""
+"""IOTileReport subclass for readings packaged as individual readings"""
 
-from builtins import range
 import datetime
 import struct
 from .report import IOTileReport, IOTileReading
 from iotile.core.utilities.packed import unpack
-from iotile.core.exceptions import ArgumentError, NotFoundError, ExternalError
+from iotile.core.exceptions import NotFoundError, ExternalError
 from iotile.core.hw.auth.auth_provider import AuthProvider
 from iotile.core.hw.auth.auth_chain import ChainedAuthProvider
 
@@ -35,8 +33,7 @@ class SignedListReport(IOTileReport):
 
     @classmethod
     def ReportLength(cls, header):
-        """Given a header of HeaderLength bytes, calculate the size of this report
-        """
+        """Given a header of HeaderLength bytes, calculate the size of this report"""
 
         first_word, = unpack("<L", header[:4])
 
@@ -44,7 +41,8 @@ class SignedListReport(IOTileReport):
         return length
 
     @classmethod
-    def FromReadings(cls, uuid, readings, root_key=AuthProvider.NoKey, signer=None, report_id=IOTileReading.InvalidReadingID, selector=0xFFFF, streamer=0, sent_timestamp=0):
+    def FromReadings(cls, uuid, readings, root_key=AuthProvider.NoKey, signer=None,
+                     report_id=IOTileReading.InvalidReadingID, selector=0xFFFF, streamer=0, sent_timestamp=0):
         """Generate an instance of the report format from a list of readings and a uuid.
 
         The signed list report is created using the passed readings and signed using the specified method
@@ -80,13 +78,15 @@ class SignedListReport(IOTileReport):
             lowest_id = min(unique_readings)
             highest_id = max(unique_readings)
 
-        header = struct.pack("<BBHLLLBBH", cls.ReportType, len_low, len_high, uuid, report_id, sent_timestamp, root_key, streamer, selector)
+        header = struct.pack("<BBHLLLBBH", cls.ReportType, len_low, len_high, uuid, report_id,
+                             sent_timestamp, root_key, streamer, selector)
         header = bytearray(header)
 
         packed_readings = bytearray()
 
         for reading in readings:
-            packed_reading = struct.pack("<HHLLL", reading.stream, 0, reading.reading_id, reading.raw_time, reading.value)
+            packed_reading = struct.pack("<HHLLL", reading.stream, 0, reading.reading_id,
+                                         reading.raw_time, reading.value)
             packed_readings += bytearray(packed_reading)
 
         footer_stats = struct.pack("<LL", lowest_id, highest_id)
@@ -99,18 +99,23 @@ class SignedListReport(IOTileReport):
             enc_data = packed_readings
 
             try:
-                result = signer.encrypt_report(uuid, root_key, enc_data, report_id=report_id, sent_timestamp=sent_timestamp)
+                result = signer.encrypt_report(uuid, root_key, enc_data, report_id=report_id,
+                                               sent_timestamp=sent_timestamp)
             except NotFoundError:
-                raise ExternalError("Could not encrypt report because no AuthProvider supported the requested encryption method for the requested device", device_id=uuid, root_key=root_key)
+                raise ExternalError("Could not encrypt report because no AuthProvider supported "
+                                    "the requested encryption method for the requested device",
+                                    device_id=uuid, root_key=root_key)
 
             signed_data = header + result['data'] + footer_stats
         else:
             signed_data = header + packed_readings + footer_stats
 
         try:
-            signature = signer.sign_report(uuid, root_key, signed_data, report_id=report_id, sent_timestamp=sent_timestamp)
+            signature = signer.sign_report(uuid, root_key, signed_data, report_id=report_id,
+                                           sent_timestamp=sent_timestamp)
         except NotFoundError:
-            raise ExternalError("Could not sign report because no AuthProvider supported the requested signature method for the requested device", device_id=uuid, root_key=root_key)
+            raise ExternalError("Could not sign report because no AuthProvider supported the requested "
+                                "signature method for the requested device", device_id=uuid, root_key=root_key)
 
         footer = struct.pack("16s", bytes(signature['signature'][:16]))
         footer = bytearray(footer)
@@ -122,7 +127,8 @@ class SignedListReport(IOTileReport):
         """Decode this report into a list of readings
         """
 
-        fmt, len_low, len_high, device_id, report_id, sent_timestamp, signature_flags, origin_streamer, streamer_selector = unpack("<BBHLLLBBH", self.raw_report[:20])
+        fmt, len_low, len_high, device_id, report_id, sent_timestamp, signature_flags, \
+        origin_streamer, streamer_selector = unpack("<BBHLLLBBH", self.raw_report[:20])
 
         assert fmt == 1
         length = (len_high << 8) | len_low
@@ -157,7 +163,8 @@ class SignedListReport(IOTileReport):
             self.encrypted = True
 
         try:
-            verification = signer.verify_report(device_id, signature_flags, signed_data, signature, report_id=report_id, sent_timestamp=sent_timestamp)
+            verification = signer.verify_report(device_id, signature_flags, signed_data, signature,
+                                                report_id=report_id, sent_timestamp=sent_timestamp)
             self.verified = verification['verified']
         except NotFoundError:
             self.verified = False
@@ -170,7 +177,8 @@ class SignedListReport(IOTileReport):
         # If the report is encrypted, try to decrypt it before parsing the readings
         if self.encrypted:
             try:
-                result = signer.decrypt_report(device_id, signature_flags, readings, report_id=report_id, sent_timestamp=sent_timestamp)
+                result = signer.decrypt_report(device_id, signature_flags, readings,
+                                               report_id=report_id, sent_timestamp=sent_timestamp)
                 readings = result['data']
             except NotFoundError:
                 return [], []

@@ -1,13 +1,11 @@
 """A placeholder for unknown record types when we parse an UpdateScript."""
 
-from __future__ import (print_function, absolute_import, unicode_literals)
 import struct
-from future.utils import python_2_unicode_compatible
 from ..record import UpdateRecord
 
 
-# pylint: disable=abstract-method, too-few-public-methods;The abstract methods should not be called, this is a placeholder class
-@python_2_unicode_compatible
+# pylint: disable=abstract-method, too-few-public-methods;
+# The abstract methods should not be called, this is a placeholder class
 class UnknownRecord(UpdateRecord):
     """Reflash a tile at a specific slot with new firmware.
 
@@ -17,7 +15,7 @@ class UnknownRecord(UpdateRecord):
     into the new firmware image before moving on to the next record.
 
     Args:
-        record_type (int): The unknwn record type that we are supposed to
+        record_type (int): The unknown record type that we are supposed to
             process.
         raw_data (bytearray): The raw record contents.
     """

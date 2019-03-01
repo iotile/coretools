@@ -8,8 +8,6 @@ If the contents of argN contains a , or begins or ends with whitespace
 it is utf-8 encoded and stored as hex of the form hex:xxxxx
 """
 
-from __future__ import unicode_literals
-from builtins import str
 from collections import namedtuple
 from binascii import hexlify, unhexlify
 from iotile.core.exceptions import DataError
@@ -17,7 +15,8 @@ from iotile.core.exceptions import DataError
 
 Command = namedtuple("Command", ["name", "args"])
 
-class CommandFile(object):
+
+class CommandFile:
     """A versioned and typed list of commands.
 
     Args:
@@ -26,7 +25,6 @@ class CommandFile(object):
         commands (list): A list of Command objects used to
             initialize the command file.
     """
-
 
     def __init__(self, filetype, version, commands=None):
         if commands is None:

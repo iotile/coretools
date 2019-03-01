@@ -3,7 +3,7 @@
 import base64
 import logging
 import asyncio
-from monotonic import monotonic
+from time import monotonic
 from iotile.core.exceptions import ArgumentError, DataError
 from ..virtual import EmulatedDevice, EmulatedPeripheralTile
 from ..constants import rpcs, streams

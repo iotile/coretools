@@ -4,22 +4,19 @@ This script allows you compile .bus files into a
 variety of output formats.
 """
 
-from __future__ import (unicode_literals, print_function, absolute_import)
-from builtins import str
 import sys
 import argparse
-from iotile.core.exceptions import ArgumentError, IOTileException
 from iotile.build.tilebus import TBDescriptor
 
 
 DESCRIPTION = \
-"""Standalone TileBus definition compiler.
-
-This program takes in one or more TileBus RPC and config variable definition
-files (.bus files), merges them together and then compiles them into an
-output format.  You can target a json based file for further processing or
-a set of embedded C files suitable for inclusion in a TileBus based device.
-"""
+    """Standalone TileBus definition compiler.
+    
+    This program takes in one or more TileBus RPC and config variable definition
+    files (.bus files), merges them together and then compiles them into an
+    output format.  You can target a json based file for further processing or
+    a set of embedded C files suitable for inclusion in a TileBus based device.
+    """
 
 
 def build_parser():
@@ -27,8 +24,11 @@ def build_parser():
 
     parser = argparse.ArgumentParser(description=DESCRIPTION, formatter_class=argparse.RawDescriptionHelpFormatter)
 
-    parser.add_argument('-o', '--output', help="The output file to save.  If multiple files are generated this is the output prefix for them all.")
-    parser.add_argument('-f', '--format', default="json", choices=['c_files', 'command_map_c', 'command_map_h', 'config_map_c', 'config_map_h', 'json'], type=str, help=u"the output format for the compiled result.")
+    parser.add_argument('-o', '--output', help="The output file to save.  If multiple files are generated "
+                                               "this is the output prefix for them all.")
+    parser.add_argument('-f', '--format', default="json", choices=['c_files', 'command_map_c', 'command_map_h',
+                                                                   'config_map_c', 'config_map_h', 'json'],
+                        type=str, help=u"the output format for the compiled result.")
     parser.add_argument('bus_definition', nargs="+", help="One or more tilebus definition files to compile")
 
     return parser
@@ -38,7 +38,7 @@ def main(raw_args=None):
     """Run the iotile-tbcompile script.
 
     Args:
-        raw_args (list): Optional list of commmand line arguments.  If not
+        raw_args (list): Optional list of command line arguments.  If not
             passed these are pulled from sys.argv.
     """
 
@@ -51,7 +51,8 @@ def main(raw_args=None):
     args = parser.parse_args(raw_args)
 
     if args.output is None and args.format in multifile_choices:
-        print("You must specify an output file with -o, --output when using a format that produces multiple files (-f %s)" % args.format)
+        print("You must specify an output file with -o, --output when "
+              "using a format that produces multiple files (-f %s)" % args.format)
         return 1
 
     desc = TBDescriptor(args.bus_definition)

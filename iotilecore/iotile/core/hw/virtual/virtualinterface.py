@@ -13,7 +13,7 @@ from . import audit
 from ..reports import IOTileReport
 
 
-class IOTilePushChannel(object):
+class IOTilePushChannel:
     """A channel that allows VirtualIOTileDevices to push data to clients
 
     This basic implementation just queues data in the VirtualIOTileInterface.
@@ -56,7 +56,7 @@ class IOTilePushChannel(object):
         self._interface._queue_traces((data, callback))
 
 
-class VirtualIOTileInterface(object):
+class VirtualIOTileInterface:
     """A virtual interface that presents an IOTile device to the world
 
     An example of a virtual interface is a bluetooth adapter configured with

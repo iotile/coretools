@@ -1,13 +1,12 @@
 """Remove nodes whose output is not used."""
 
-from __future__ import unicode_literals, absolute_import, print_function
 from iotile.core.exceptions import ArgumentError
 from iotile.sg.node import TrueTrigger, FalseTrigger, InputTrigger
 from iotile.sg import DataStreamSelector
 from iotile.sg.parser.stream_allocator import StreamAllocator
 
 
-class RemoveDeadCodePass(object):
+class RemoveDeadCodePass:
     """Remove nodes whose operation is discarded and has no side effects.
 
     An operation has no side effects if it is not a call_rpc operation

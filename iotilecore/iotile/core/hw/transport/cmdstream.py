@@ -10,11 +10,12 @@ import atexit
 import binascii
 from io import open
 from datetime import datetime
-from monotonic import monotonic
+from time import monotonic
 from iotile.core.hw.exceptions import StreamOperationNotSupportedError, ModuleBusyError, ModuleNotFoundError
 from iotile.core.exceptions import HardwareError
 
-class _RecordedRPC(object):
+
+class _RecordedRPC:
     """Internal helper class for saving recorded RPCs to csv files."""
 
     def __init__(self, connection, start, runtime, address, rpc_id, call, response=None, status=None, error=None):
@@ -46,19 +47,18 @@ class _RecordedRPC(object):
     def serialize(self):
         """Convert this recorded RPC into a string."""
 
-        return u"{},{: <26},{:2d},{:#06x},{:#04x},{:5.0f},{: <40},{: <40},{}".format(self.connection, self.start.isoformat(), self.address, self.rpc_id,
-                                                                                     self.status, self.runtime * 1000, self.call, self.response, self.error)
+        return u"{},{: <26},{:2d},{:#06x},{:#04x},{:5.0f},{: <40},{: <40},{}".\
+            format(self.connection, self.start.isoformat(), self.address, self.rpc_id,
+                   self.status, self.runtime * 1000, self.call, self.response, self.error)
 
 
 open_streams = set()
 
 
 def do_final_close():
-    """
-    Make sure that all streams are properly closed at shutdown
-    """
+    """Make sure that all streams are properly closed at shutdown"""
 
-    #Make a copy since stream.close will remove the stream from the master set
+    # Make a copy since stream.close will remove the stream from the master set
     streams = open_streams.copy()
     for stream in streams:
         stream.close()
@@ -67,9 +67,8 @@ def do_final_close():
 atexit.register(do_final_close)
 
 
-class CMDStream(object):
-    """
-    Any physical method that supports talking to an IOTile based device
+class CMDStream:
+    """Any physical method that supports talking to an IOTile based device
 
     All interactions with the IOTile device will be via one of the primitive operations defined in this
     class. Specific implementations may transfer the data in their own way and add additional layers
@@ -137,7 +136,7 @@ class CMDStream(object):
 
         Args:
             wait (float): Optional amount of time to force the device adapter to wait before
-                atttempting to connect.
+                attempting to connect.
         """
 
         if self.connected:
@@ -152,8 +151,7 @@ class CMDStream(object):
         self.connection_string = connection_string
 
     def disconnect(self):
-        """Disconnect from the device that we are currently connected to
-        """
+        """Disconnect from the device that we are currently connected to"""
         if not self.connected:
             raise HardwareError("Cannot disconnect when we are not connected")
 
@@ -180,7 +178,7 @@ class CMDStream(object):
 
             status, payload = self._send_rpc(address, rpc_id, call_payload, **kwargs)
         finally:
-            #If we are recording this, save off the call and response
+            # If we are recording this, save off the call and response
             if self.record is not None:
                 end_time = monotonic()
                 duration = end_time - start_time
@@ -196,7 +194,6 @@ class CMDStream(object):
             raise ModuleNotFoundError(address)
 
         return status, bytearray(payload)
-
 
     def enable_streaming(self):
         if not self.connected:
@@ -265,7 +262,7 @@ class CMDStream(object):
             if hasattr(self, '_close'):
                 self._close()
         finally:
-            #Make sure that no matter what happens we save this recording out
+            # Make sure that no matter what happens we save this recording out
             self._save_recording()
             self.opened = False
             open_streams.remove(self)
@@ -277,7 +274,8 @@ class CMDStream(object):
         with open(self.record, "w", encoding="utf-8") as outfile:
             outfile.write(u"# IOTile RPC Recording\n")
             outfile.write(u"# Format: 1.0\n\n")
-            outfile.write(u"Connection,Timestamp [utc isoformat],Address,RPC ID,Duration [ms],Status,Call,Response,Error\n")
+            outfile.write(u"Connection,Timestamp [utc isoformat],Address,RPC ID,"
+                          u"Duration [ms],Status,Call,Response,Error\n")
 
             for recording in self._recording:
                 outfile.write(recording.serialize())

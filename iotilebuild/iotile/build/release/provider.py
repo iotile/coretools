@@ -1,7 +1,7 @@
-"""Superclass for ReleaseProvider objects that allow releasing IOTile components
-"""
+"""Superclass for ReleaseProvider objects that allow releasing IOTile components"""
 
-class ReleaseProvider(object):
+
+class ReleaseProvider:
     """Base class for release providers that allow releasing IOTile components
 
     ReleaseProviders has just two methods: stage, unstage, release and unrelease (if supported)
@@ -35,25 +35,21 @@ class ReleaseProvider(object):
         self.args = args
 
     def stage(self):
-        """Stage this component for release
-        """
+        """Stage this component for release"""
 
         raise NotImplementedError("ReleaseProvider subclasses must override the stage method")
 
     def unstage(self):
-        """Unstage this component assuming that stage succeeded
-        """
+        """Unstage this component assuming that stage succeeded"""
 
         raise NotImplementedError("ReleaseProvider subclasses must override the unstage method")
 
     def release(self):
-        """Release this component assuming that stage succeeded
-        """
+        """Release this component assuming that stage succeeded"""
 
         raise NotImplementedError("ReleaseProvider subclasses must override the release method")
 
     def unrelease(self):
-        """Unrelease this component assuming that release succeeded
-        """
+        """Unrelease this component assuming that release succeeded"""
 
         raise NotImplementedError("ReleaseProvider subclasses must override the unrelease method")
