@@ -1,0 +1,84 @@
+# Python package
+# Create and test a Python package on multiple Python versions.
+# Add steps that analyze code, save the dist with the build record, publish to a PyPI-compatible index, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/python
+
+trigger:
+- master
+
+jobs:
+
+- job: 'Test_Windows'
+  pool:
+    vmImage: 'windows-2019'
+  strategy:
+    matrix:
+      Python35:
+        python.version: '3.5'
+      Python36:
+        python.version: '3.6'
+      Python37:
+        python.version: '3.7'
+    maxParallel: 3
+
+  steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '$(python.version)'
+      architecture: 'x64'
+
+  - script: mkdir c:\gcc
+    displayName: "make gcc dir"
+
+  - script: curl -L -o gcc-arm-none-eabi.zip https://developer.arm.com/-/media/Files/downloads/gnu-rm/7-2017q4/gcc-arm-none-eabi-7-2017-q4-major-win32.zip?revision=df1b65d3-7c8d-4e82-b114-e0b6ad7c2e6d?product=GNU%20Arm%20Embedded%20Toolchain,ZIP,,Windows,7-2017-q4-major
+    displayName: "Download gcc-arm"
+
+  - script: unzip -o gcc-arm-none-eabi.zip -d c:\gcc\
+    displayName: "unzip gcc"
+
+  - script: python -m pip install --upgrade pip && pip install -U setuptools
+    displayName: 'Install dependencies'
+
+  - script: |
+      set PATH=%PATH%;c:\gcc\bin
+      pip install six cmdln pytest
+      pip install pytest pytest-logging pytest-localserver requests-mock pycryptodome configparser iotile-support-lib-controller-3
+      pip install "tornado>=4.5.3,<5.0.0"
+      pip install -e ./iotilecore ./iotilebuild ./iotiletest ./iotilegateway ./iotilesensorgraph ./iotileship ./iotileemulate ./transport_plugins/bled112 ./transport_plugins/awsiot ./transport_plugins/jlink ./transport_plugins/websocket ./iotile_ext_cloud
+      python scripts/test.py test_all test
+    displayName: 'pytest'
+
+- job: 'Test_OSX'
+  pool:
+    vmImage: 'macOS-10.13'
+  strategy:
+    matrix:
+      Python35:
+        python.version: '3.5'
+      Python36:
+        python.version: '3.6'
+      Python37:
+        python.version: '3.7'
+    maxParallel: 3
+
+  steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '$(python.version)'
+      architecture: 'x64'
+
+  - script: python -m pip install --upgrade pip && pip install -U setuptools && pip install -r build_requirements.txt
+    displayName: 'Install dependencies'
+
+  - script: |
+      brew tap PX4/px4
+      brew install px4/px4/gcc-arm-none-eabi
+      which arm-none-eabi-gcc
+
+  - script: |
+      python -m pip install six cmdln pytest
+      python -m pip install pytest pytest-logging pytest-localserver requests-mock pycryptodome configparser iotile-support-lib-controller-3
+      pip install "tornado>=4.5.3,<5.0.0"
+      pip install -e ./iotilecore ./iotilebuild ./iotiletest ./iotilegateway ./iotilesensorgraph ./iotileship ./iotileemulate ./transport_plugins/bled112 ./transport_plugins/awsiot ./transport_plugins/jlink ./transport_plugins/websocket ./iotile_ext_cloud
+      python scripts/test.py test_all test
+    displayName: 'pytest'
