@@ -126,6 +126,14 @@ Let's mock RPC 0x8001 on slot 1 to return 50 rather than 42::
 Programming Into a Device
 #########################
 
+.. note:: 
+
+	Before programming a sensor graph to a device, your environment will
+	need its appropriate support package. In this example, we will need
+	the proxy image for the nrf52832::
+
+		pip install iotile-support-con-nrf52832-3
+
 Currently the best way to program a sensor graph into an actual device is to
 use a combination of the `iotile-sgcompile` and `iotile` tools.  Given your
 sensor graph, compile it with an output format of `snippet`.  This produces 
