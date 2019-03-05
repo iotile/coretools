@@ -10,6 +10,7 @@ from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 import sys
 import os
+import re
 import threading
 import traceback
 import argparse
@@ -66,6 +67,7 @@ def create_parser():
     parser.add_argument('-e', '--exclude', action="append", default=[], help="Exclude the specified loggers, including all others")
     parser.add_argument('-q', '--quit', action="store_true", help="Do not spawn a shell after executing any commands")
     parser.add_argument('-t', '--timeout', type=float, help="Do not allow this process to run for more than a specified number of seconds.")
+    parser.add_argument('-p', '--prompt', type=str, default="({context}) ", help="Set current shell prompt.")
     parser.add_argument('commands', nargs=argparse.REMAINDER, help="The command(s) to execute")
 
     return parser
@@ -231,7 +233,7 @@ def main(argv=None):
     try:
         while True:
             try:
-                linebuf = input("(%s) " % shell.context_name())
+                linebuf = input(re.sub(r"(?<!{){context}(?!})", shell.context_name(), args.prompt))
 
                 # Skip comments automatically
                 if len(linebuf) > 0 and linebuf[0] == '#':
