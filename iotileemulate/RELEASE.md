@@ -2,6 +2,11 @@
 
 All major changes in each released version of iotile-emulate are listed here.
 
+## HEAD
+
+- Make `EmulationLoop.finish_async_rpc` easier to use by automatically packing
+  rpc responses.  Issue #721.
+
 ## 0.4.1
 
 - Drop python2 support

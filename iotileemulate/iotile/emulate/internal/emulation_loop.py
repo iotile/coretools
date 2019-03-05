@@ -135,7 +135,7 @@ class EmulationLoop:
         self.verify_calling_thread(True, "Only the emulation thread is allowed to inspect the current rpc")
         return self._rpc_queue.get_current_rpc()
 
-    def finish_async_rpc(self, address, rpc_id, response):
+    def finish_async_rpc(self, address, rpc_id, *response):
         """Finish a previous asynchronous RPC.
 
         This method should be called by a peripheral tile that previously
@@ -151,12 +151,39 @@ class EmulationLoop:
         Args:
             address (int): The tile address the RPC was called on.
             rpc_id (int): The ID of the RPC that was called.
-            response (bytes): The bytes that should be returned to
-                the caller of the RPC.
+            *response: The response that should be returned to the caller.
+
+                This can either be a single bytes or bytearray object or a
+                str object containing the format code followed by the required
+                number of python objects that will then be packed using
+                pack_rpc_payload(format, args).
+
+                If you pass no additional response arguments then an
+                empty response will be given.
         """
 
         self.verify_calling_thread(True, "All asynchronous rpcs must be finished from within the emulation loop")
-        self._rpc_queue.finish_async_rpc(address, rpc_id, response)
+
+        if len(response) == 0:
+            response_bytes = b''
+        elif len(response) == 1:
+            response_bytes = response[0]
+
+            if not isinstance(response_bytes, (bytes, bytearray)):
+                raise ArgumentError("When passing a binary response to finish_async_rpc, you must "
+                                    "pass a bytes or bytearray object", response=response_bytes)
+        else:
+            resp_format = response[0]
+            resp_args = response[1:]
+
+            if not isinstance(resp_format, str):
+                raise ArgumentError("When passing a formatted response to finish_async_rpc, you must "
+                                    "pass a str object with the format code as the first parameter after "
+                                    "the rpc id.", resp_format=resp_format, additional_args=resp_args)
+
+            response_bytes = pack_rpc_payload(resp_format, resp_args)
+
+        self._rpc_queue.finish_async_rpc(address, rpc_id, response_bytes)
 
     def start(self):
         """Start the background emulation loop."""

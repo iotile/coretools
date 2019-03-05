@@ -1,7 +1,8 @@
 """Tests to ensure that our coroutine based emulation loop works."""
 
-import pytest
 import asyncio
+import struct
+import pytest
 from iotile.emulate.internal import EmulationLoop
 from iotile.core.hw.virtual.common_types import AsynchronousRPCResponse
 from iotile.core.exceptions import TimeoutExpiredError
@@ -42,6 +43,10 @@ def test_async_rpc():
             address, rpc_id = loop.get_current_rpc()
             asyncio.get_event_loop().call_soon(loop.finish_async_rpc, address, rpc_id, b'4444')
             raise AsynchronousRPCResponse()
+        elif rpc_id == 0x8003:
+            address, rpc_id = loop.get_current_rpc()
+            asyncio.get_event_loop().call_soon(loop.finish_async_rpc, address, rpc_id, "L", 0xabcdef00)
+            raise AsynchronousRPCResponse()
 
         return arg_payload
 
@@ -51,6 +56,7 @@ def test_async_rpc():
     try:
         assert loop.call_rpc_external(8, 0x8001, b'abcd') == b'abcd'
         assert loop.call_rpc_external(8, 0x8002, b'abcd') == b'4444'
+        assert loop.call_rpc_external(8, 0x8003, b'abcd') == struct.pack("<L", 0xabcdef00)
         loop.wait_idle()
 
     finally:
