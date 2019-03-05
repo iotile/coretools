@@ -55,13 +55,14 @@ class GenericResponse:
 
         exc_type, value, traceback = self._exception
 
+        print(exc_type)
+        print("%r" % value)
+        print(traceback)
+
         if value is not None and isinstance(exc_type, Exception):
             raise TypeError("instance exception may not have a separate value")
 
-        if value is not None:
-            exc = exc_type(value)
-        else:
-            exc = exc_type
+        exc = value
 
         if exc.__traceback__ is not traceback:
             raise exc.with_traceback(traceback)

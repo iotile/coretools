@@ -23,5 +23,6 @@ It includes:
 
 from .virtual import EmulatedDevice, EmulatedTile, EmulatedPeripheralTile
 from . import constants
+from .common import RPCRuntimeError
 
-__all__ = ['EmulatedTile', 'EmulatedDevice', 'EmulatedPeripheralTile', 'constants']
+__all__ = ['EmulatedTile', 'EmulatedDevice', 'EmulatedPeripheralTile', 'constants', 'RPCRuntimeError']

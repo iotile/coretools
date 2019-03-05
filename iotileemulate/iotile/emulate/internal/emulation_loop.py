@@ -11,6 +11,7 @@ from iotile.core.hw.virtual.common_types import unpack_rpc_payload, pack_rpc_pay
 from .response import CrossThreadResponse, AwaitableResponse
 from .rpc_queue import RPCQueue
 from ..constants.rpcs import RPCDeclaration
+from ..common import RPCRuntimeError
 
 if sys.version_info < (3, 5):
     raise ImportError("EmulationLoop is only supported on python 3.5 and above")
@@ -283,7 +284,10 @@ class EmulationLoop:
 
         self._loop.call_soon_threadsafe(self._rpc_queue.put_rpc, address, rpc_id, arg_payload, response)
 
-        return response.wait(timeout)
+        try:
+            return response.wait(timeout)
+        except RPCRuntimeError as err:
+            return err.binary_error
 
     async def await_rpc(self, address, rpc_id, *args, **kwargs):
         """Send an RPC from inside the EmulationLoop.
@@ -327,7 +331,10 @@ class EmulationLoop:
         response = AwaitableResponse()
         self._rpc_queue.put_rpc(address, rpc_id, arg_payload, response)
 
-        resp_payload = await response.wait(1.0)
+        try:
+            resp_payload = await response.wait(1.0)
+        except RPCRuntimeError as err:
+            resp_payload = err.binary_error
 
         if resp_format is None:
             return []
