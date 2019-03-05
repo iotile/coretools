@@ -54,8 +54,6 @@ def test_runtime_errors():
     loop = EmulationLoop(_rpc_executor)
     loop.start()
 
-
-
     try:
         assert loop.call_rpc_external(8, 0x8000, b'abcd') == struct.pack("<L", 0xabcd)
         assert loop.call_rpc_external(8, 0x8001, b'abcd') == struct.pack("<L", 0x1abcd)

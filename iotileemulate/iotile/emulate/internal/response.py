@@ -54,11 +54,6 @@ class GenericResponse:
             raise InternalError("No exception stored in call to _raise_exception")
 
         exc_type, value, traceback = self._exception
-
-        print(exc_type)
-        print("%r" % value)
-        print(traceback)
-
         if value is not None and isinstance(exc_type, Exception):
             raise TypeError("instance exception may not have a separate value")
 
