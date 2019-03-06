@@ -80,7 +80,8 @@ class DictionaryVerifier(Verifier):
             raise ValidationError("Invalid dictionary", reason="object is not a dictionary")
 
         if self._fixed_length is not None and len(obj) != self._fixed_length:
-            raise ValidationError("Dictionary did not have the correct length", expected_length=self._fixed_length, actual_length=self._fixed_length)
+            raise ValidationError("Dictionary did not have the correct length", expected_length=self._fixed_length,
+                                  actual_length=self._fixed_length)
 
         unmatched_keys = set(obj.keys())
         required_keys = set(self._required_keys.keys())
@@ -88,7 +89,8 @@ class DictionaryVerifier(Verifier):
         # First check and make sure that all required keys are included and verify them
         for key in required_keys:
             if key not in unmatched_keys:
-                raise ValidationError("Required key not found in dictionary", reason="required key %s not found" % key, key=key)
+                raise ValidationError("Required key not found in dictionary",
+                                      reason="required key %s not found" % key, key=key)
 
             out_obj[key] = self._required_keys[key].verify(obj[key])
             unmatched_keys.remove(key)
@@ -107,7 +109,8 @@ class DictionaryVerifier(Verifier):
         # If there are additional keys, they need to match at least one of the additional key rules
         if len(unmatched_keys) > 0:
             if len(self._additional_key_rules) == 0:
-                raise ValidationError("Extra key found in dictionary that does not allow extra keys", reason="extra keys found that were not expected", keys=unmatched_keys)
+                raise ValidationError("Extra key found in dictionary that does not allow extra keys",
+                                      reason="extra keys found that were not expected", keys=unmatched_keys)
 
             to_remove = set()
             for key in unmatched_keys:
@@ -120,6 +123,7 @@ class DictionaryVerifier(Verifier):
             unmatched_keys -= to_remove
 
             if len(unmatched_keys) > 0:
-                raise ValidationError("Extra key found in dictionary that did not match any extra key rule", reason="extra keys found that did not match any rule", keys=unmatched_keys)
+                raise ValidationError("Extra key found in dictionary that did not match any extra key rule",
+                                      reason="extra keys found that did not match any rule", keys=unmatched_keys)
 
         return out_obj

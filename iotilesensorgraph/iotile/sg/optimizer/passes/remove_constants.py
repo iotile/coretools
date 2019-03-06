@@ -4,7 +4,7 @@ import logging
 from iotile.sg import DataStream
 
 
-class RemoveConstantsPass(object):
+class RemoveConstantsPass:
     """Run the remove constants optimization pass.
 
     Sometimes we remove nodes that would otherwise have a constant

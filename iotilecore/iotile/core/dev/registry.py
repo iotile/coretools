@@ -8,10 +8,6 @@ import imp
 import inspect
 import json
 from types import ModuleType
-from future.utils import itervalues
-
-if sys.version_info >= (3, 0):
-    basestring = str
 
 import entrypoints
 
@@ -24,9 +20,9 @@ from .iotileobj import IOTile
 
 MISSING = object()
 
-class ComponentRegistry(object):
-    """
-    ComponentRegistry
+
+class ComponentRegistry:
+    """ComponentRegistry
 
     A mapping of all of the installed components on this system that can
     be used as build dependencies and where they are located.  Also used
@@ -150,13 +146,16 @@ class ComponentRegistry(object):
                     try:
                         entries = self.load_extension(product, name_filter=name_filter, class_filter=class_filter,
                                                       component=comp)
-                        if len(entries) == 0 and name_filter is None:  # Don't warn if we're filtering by name since most extensions won't match
-                            self._logger.warn("Found no valid extensions in product %s of component %s", product, comp.path)
+                        if len(entries) == 0 and name_filter is None:
+                            # Don't warn if we're filtering by name since most extensions won't match
+                            self._logger.warn("Found no valid extensions in product %s of component %s",
+                                              product, comp.path)
                             continue
 
                         found_extensions.extend(entries)
-                    except:  #pylint:disable=bare-except;We don't want a broken extension to take down the whole system
-                        self._logger.exception("Unable to load extension %s from local component %s at path %s", product_name, comp, product)
+                    except:  # pylint:disable=bare-except;We don't want a broken extension to take down the whole system
+                        self._logger.exception("Unable to load extension %s from local component %s at path %s",
+                                               product_name, comp, product)
 
         for entry in self._iter_entrypoint_group(group):
             name = entry.name
@@ -166,7 +165,7 @@ class ComponentRegistry(object):
 
             try:
                 ext = entry.load()
-            except:  #pylint:disable=bare-except;
+            except:  # pylint:disable=bare-except;
                 self._logger.warn("Unable to load %s from %s", entry.name, entry.distro)
                 continue
 
@@ -201,7 +200,7 @@ class ComponentRegistry(object):
                 will be treated as the extension object itself.
         """
 
-        if isinstance(extension, basestring):
+        if isinstance(extension, str):
             name, extension = self.load_extension(extension)[0]
 
         if group not in self._registered_extensions:
@@ -289,7 +288,8 @@ class ComponentRegistry(object):
             return found
 
         if len(found) > 1:
-            raise ArgumentError("Extension %s should have had exactly one instance of class %s, found %d" % (path, class_filter.__name__, len(found)), classes=found)
+            raise ArgumentError("Extension %s should have had exactly one instance of class %s, found %d"
+                                % (path, class_filter.__name__, len(found)), classes=found)
         elif len(found) == 0:
             raise ArgumentError("Extension %s had no instances of class %s" % (path, class_filter.__name__))
 
@@ -377,7 +377,8 @@ class ComponentRegistry(object):
             return [obj]
 
         if isinstance(obj, ModuleType):
-            return [x for x in itervalues(obj.__dict__) if inspect.isclass(x) and issubclass(x, class_filter) and x != class_filter]
+            return [x for x in obj.__dict__.values() if inspect.isclass(x)
+                    and issubclass(x, class_filter) and x != class_filter]
 
         if inspect.isclass(obj) and issubclass(obj, class_filter):
             return [obj]
@@ -568,8 +569,8 @@ def _registry_folder(folder=None):
     if folder is None:
         folder = settings_directory()
 
-        #If we are relative to a virtual environment, place the registry into that virtual env
-        #Support both virtualenv and pythnon 3 venv
+        # If we are relative to a virtual environment, place the registry into that virtual env
+        # Support both virtualenv and pythnon 3 venv
         if hasattr(sys, 'real_prefix'):
             folder = sys.prefix
         elif hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix:
@@ -623,15 +624,16 @@ def _ensure_package_loaded(path, component):
     package_base = packages[0]
     relative_path = os.path.normpath(os.path.relpath(path, start=package_base))
     if relative_path.startswith('..'):
-        raise ExternalError("Component had python product output of support_package", package=package_base, product=path,
-                            relative_path=relative_path)
+        raise ExternalError("Component had python product output of support_package",
+                            package=package_base, product=path, relative_path=relative_path)
 
     if not relative_path.endswith('.py'):
         raise ExternalError("Python product did not end with .py", path=path)
 
     relative_path = relative_path[:-3]
     if os.pathsep in relative_path:
-        raise ExternalError("Python support wheels with multiple subpackages not yet supported", relative_path=relative_path)
+        raise ExternalError("Python support wheels with multiple subpackages not yet supported",
+                            relative_path=relative_path)
 
     support_distro = component.support_distribution
     if support_distro not in sys.modules:
@@ -687,7 +689,7 @@ def _try_load_module(path, import_name=None):
         fileobj = None
         fileobj, pathname, description = imp.find_module(basename, [folder])
 
-        #Don't load modules twice
+        # Don't load modules twice
         if basename in sys.modules:
             mod = sys.modules[basename]
         else:
@@ -699,7 +701,7 @@ def _try_load_module(path, import_name=None):
 
             mod = mod.__dict__[obj_name]
 
-        return (basename, mod)
+        return basename, mod
     finally:
         if fileobj is not None:
             fileobj.close()

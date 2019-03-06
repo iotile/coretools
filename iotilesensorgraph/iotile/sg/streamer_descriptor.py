@@ -4,9 +4,7 @@ Binary streamer descriptors are the internal binary representation of
 a streamer stored in an IOTile device's embedded firmware.
 """
 
-from __future__ import (unicode_literals, absolute_import, print_function)
 import struct
-from builtins import str
 from typedargs.exceptions import ArgumentError
 from .slot import SlotIdentifier
 from .stream import DataStreamSelector

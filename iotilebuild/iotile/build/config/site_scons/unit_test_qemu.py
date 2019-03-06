@@ -1,8 +1,6 @@
-import shutil
 import subprocess
 import unit_test
 import os
-from future.utils import viewitems
 import arm
 from SCons.Environment import Environment
 from SCons.Script import Copy, Builder
@@ -71,12 +69,14 @@ class QEMUSemihostedUnitTest(unit_test.UnitTest):
 
         test_files = []
         for infile in self.files:
-            test_file = env.Command([os.path.join(target_dir, os.path.basename(infile))], [infile], action=Copy("$TARGET", "$SOURCE"))
+            test_file = env.Command([os.path.join(target_dir, os.path.basename(infile))], [infile],
+                                    action=Copy("$TARGET", "$SOURCE"))
             test_files.append(test_file)
 
         # Copy all headers into the unit test
-        for _basename, infile in viewitems(headers):
-            test_file = env.Command([os.path.join(target_dir, os.path.basename(infile))], [infile], action=Copy("$TARGET", "$SOURCE"))
+        for _basename, infile in headers.items():
+            test_file = env.Command([os.path.join(target_dir, os.path.basename(infile))], [infile],
+                                    action=Copy("$TARGET", "$SOURCE"))
             test_files.append(test_file)
 
         all_files = template_files + test_files
@@ -95,13 +95,18 @@ class QEMUSemihostedUnitTest(unit_test.UnitTest):
         # Retarget for unit tests, since qemu only supports the cortex-m0
         target = target.retarget()
         target.settings['cpu'] = 'cortex-m0plus'
-        target.settings['cflags'] = ["-mthumb", "-Wall", "-pedantic", "-Wextra", "-Wshadow", "-Os", "-g", "-fno-builtin", "-ffunction-sections", "-fdata-sections"]
+        target.settings['cflags'] = ["-mthumb", "-Wall", "-pedantic", "-Wextra", "-Wshadow", "-Os",
+                                     "-g", "-fno-builtin", "-ffunction-sections", "-fdata-sections"]
         target.settings['asflags'] = ["-Wall"]
-        target.settings['ldflags'] = ["-mthumb", "-Xlinker", "--gc-sections", "--specs=nano.specs", "-lc", "-lnosys", "-nostartfiles"]       
+        target.settings['ldflags'] = ["-mthumb", "-Xlinker", "--gc-sections", "--specs=nano.specs",
+                                      "-lc", "-lnosys", "-nostartfiles"]
         prog_env = arm.setup_environment(target)
 
         # Convert main.c.tpl into main.c
-        _main_c = prog_env.Command([os.path.join(build_dirs['objects'], 'main.c')], [os.path.join(build_dirs['objects'], os.path.basename(self.files[0])), os.path.join(build_dirs['objects'], 'main.c.tpl')], action=generate_main_c)
+        _main_c = prog_env.Command([os.path.join(build_dirs['objects'], 'main.c')],
+                                   [os.path.join(build_dirs['objects'],
+                                                 os.path.basename(self.files[0])),
+                                    os.path.join(build_dirs['objects'], 'main.c.tpl')], action=generate_main_c)
 
         prog_env['OUTPUT'] = output_name
         prog_env['BUILD_DIR'] = build_dirs['objects']
@@ -139,8 +144,9 @@ unit_test.known_types['qemu_semihost_unit'] = QEMUSemihostedUnitTest
 def run_qemu_command(target, source, env):
     """Run qemu on a unit test and capture the output."""
 
-    test_args = ['qemu-system-gnuarmeclipse', '-board', 'STM32F0-Discovery', '-nographic', '-monitor', 'null', '-serial', 'null', '--semihosting-config', 'enable=on,target=native', '-d', 'unimp,guest_errors', '-image']
-    test_args.append(str(source[0]))
+    test_args = ['qemu-system-gnuarmeclipse', '-board', 'STM32F0-Discovery', '-nographic', '-monitor', 'null',
+                 '-serial', 'null', '--semihosting-config', 'enable=on,target=native', '-d', 'unimp,guest_errors',
+                 '-image', str(source[0])]
 
     passed = True
 
@@ -183,7 +189,8 @@ def recursive_template_emitter(target, source, env):
 
     outdir = os.path.dirname(str(target[0]))
 
-    files, _dirs = render_recursive_template(env['RECURSIVE_TEMPLATE'], {}, outdir, preserve=["main.c.tpl"], dry_run=True)
+    files, _dirs = render_recursive_template(env['RECURSIVE_TEMPLATE'], {}, outdir,
+                                             preserve=["main.c.tpl"], dry_run=True)
     target.extend([os.path.join(outdir, x) for x in files])
 
     for outfile in files:

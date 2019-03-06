@@ -4,7 +4,7 @@ import sys
 import threading
 from collections import namedtuple
 import csv
-import monotonic
+from time import monotonic
 
 StateChange = namedtuple("StateChange", ['time', 'tile', 'property', 'value', 'string_value'])
 
@@ -44,7 +44,7 @@ class EmulationStateLog(object):
         if formatter is None:
             formatter = str
 
-        change = StateChange(monotonic.monotonic(), tile, property_name, value, formatter(value))
+        change = StateChange(monotonic(), tile, property_name, value, formatter(value))
 
         with self._lock:
             self.changes.append(change)

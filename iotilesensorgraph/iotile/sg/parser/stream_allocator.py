@@ -2,7 +2,7 @@ from ..stream import DataStream
 from iotile.core.exceptions import ArgumentError
 
 
-class StreamAllocator(object):
+class StreamAllocator:
     """Singleton object for allocating and managing streams.
 
     The StreamAllocator is in charge of allocating streams as needed

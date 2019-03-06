@@ -3,14 +3,13 @@
 All records must inherit from this base class and implement its required methods.
 """
 
-from __future__ import (print_function, absolute_import, unicode_literals)
 import struct
 from iotile.core.dev import ComponentRegistry
 from iotile.core.exceptions import ArgumentError, DataError
 
 
 # pylint: disable=too-few-public-methods;This is an enum class
-class MatchQuality(object):
+class MatchQuality:
     """Mnemonics for indicating different levels of record matching."""
 
     NoMatch = 0
@@ -29,7 +28,7 @@ class DeferMatching(Exception):
         self.partial_match = partial
 
 
-class UpdateRecord(object):
+class UpdateRecord:
     """The base class for all update actions inside of an update script."""
 
     HEADER_LENGTH = 8
@@ -56,7 +55,7 @@ class UpdateRecord(object):
         """Encode this record into binary, suitable for embedded into an update script.
 
         This function just adds the required record header and delegates all
-        work to the subclass implemention of encode_contents().
+        work to the subclass implementation of encode_contents().
 
         Returns:
             bytearary: The binary version of the record that could be parsed via
@@ -122,7 +121,7 @@ class UpdateRecord(object):
 
             You should use the constants defined in MatchQuality as much as
             possible.  The only exception to the 0 to 100 rules is if you
-            retern MatchQuality.DeferMatch which means that we are matching a
+            return MatchQuality.DeferMatch which means that we are matching a
             multi-record statement with a single logical UpdateRecord.
         """
 
@@ -170,16 +169,19 @@ class UpdateRecord(object):
         cls.LoadPlugins()
 
         if len(record_data) < UpdateRecord.HEADER_LENGTH:
-            raise ArgumentError("Record data is too short to contain a record header", length=len(record_data), header_length=UpdateRecord.HEADER_LENGTH)
+            raise ArgumentError("Record data is too short to contain a record header",
+                                length=len(record_data), header_length=UpdateRecord.HEADER_LENGTH)
 
         total_length, record_type = struct.unpack_from("<LB3x", record_data)
 
         if record_count == 1 and len(record_data) != total_length:
-            raise ArgumentError("Record data is corrupt, embedded length does not agree with actual length", length=len(record_data), embedded_length=total_length)
+            raise ArgumentError("Record data is corrupt, embedded length does not agree with actual length",
+                                length=len(record_data), embedded_length=total_length)
 
         record_classes = UpdateRecord.KNOWN_CLASSES.get(record_type, [])
         if len(record_classes) == 0:
-            raise DataError("No matching record type found for record", record_type=record_type, known_types=[x for x in UpdateRecord.KNOWN_CLASSES])
+            raise DataError("No matching record type found for record", record_type=record_type,
+                            known_types=[x for x in UpdateRecord.KNOWN_CLASSES])
 
         best_match = MatchQuality.NoMatch
         matching_class = None
@@ -202,7 +204,8 @@ class UpdateRecord(object):
             raise DeferMatching(matching_class, matching_class.FromBinary(match_data, record_count))
 
         if matching_class is None:
-            raise DataError("Record type found but no specific class reported a match", record_type=record_type, considered_classes=record_classes)
+            raise DataError("Record type found but no specific class reported a match",
+                            record_type=record_type, considered_classes=record_classes)
 
         return matching_class.FromBinary(match_data, record_count)
 

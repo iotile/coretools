@@ -1,8 +1,7 @@
-from __future__ import (unicode_literals, print_function, absolute_import)
-from builtins import str
 from iotile.ship.exceptions import RecipeActionMissingParameter
 
-class PromptStep(object):
+
+class PromptStep:
     """A Recipe Step used to prompt the user for input.
 
     Currently, this step doesn't store any information typed into

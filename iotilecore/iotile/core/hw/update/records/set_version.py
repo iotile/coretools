@@ -1,12 +1,9 @@
-from __future__ import unicode_literals, absolute_import, print_function
 import struct
-from future.utils import python_2_unicode_compatible
 from iotile.core.exceptions import ArgumentError
 from ..record import MatchQuality
 from .send_rpc import SendErrorCheckingRPCRecord
 
 
-@python_2_unicode_compatible
 class SetDeviceTagRecord(SendErrorCheckingRPCRecord):
     """Set the device's app or os tag and version.
 
@@ -47,7 +44,7 @@ class SetDeviceTagRecord(SendErrorCheckingRPCRecord):
         """Check how well this record matches the given binary data.
 
         This function will only be called if the record matches the type code
-        given by calling MatchType() and this functon should check how well
+        given by calling MatchType() and this function should check how well
         this record matches and return a quality score between 0 and 100, with
         higher quality matches having higher scores.  The default value should
         be MatchQuality.GenericMatch which is 50.  If this record does not
@@ -124,7 +121,8 @@ class SetDeviceTagRecord(SendErrorCheckingRPCRecord):
             elif update_os and update_app:
                 os_tag, os_version = _parse_info(os_info)
                 app_tag, app_version = _parse_info(app_info)
-                return SetDeviceTagRecord(app_tag=app_tag, app_version=app_version, os_tag=os_tag, os_version=os_version)
+                return SetDeviceTagRecord(app_tag=app_tag, app_version=app_version,
+                                          os_tag=os_tag, os_version=os_version)
             else:
                 raise ArgumentError("Neither update_os nor update_app is set True")
 
@@ -175,7 +173,8 @@ def _combine_info(tag, version):
         raise ArgumentError("Unable to convert version string into major and minor version numbers", version=version)
 
     if major < 0 or minor < 0 or major >= (1 << 6) or minor >= (1 << 6):
-        raise ArgumentError("Invalid version numbers that must be in the range [0, 63]", major=major, minor=minor, version_string=version)
+        raise ArgumentError("Invalid version numbers that must be in the range [0, 63]",
+                            major=major, minor=minor, version_string=version)
 
     version_number = (major << 6) | minor
     combined_tag = (version_number << 20) | tag

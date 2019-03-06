@@ -1,9 +1,7 @@
 """Command line script to compile a sensor graph."""
 
-from __future__ import print_function
 import sys
 import argparse
-from builtins import str
 from io import open
 from iotile.sg import DeviceModel
 from iotile.sg.parser import SensorGraphFileParser

@@ -2,7 +2,6 @@
 
 import sys
 import argparse
-from builtins import str
 from iotile.core.exceptions import ArgumentError, IOTileException
 from iotile.sg import DeviceModel, DataStreamSelector, SlotIdentifier
 from iotile.sg.sim import SensorGraphSimulator

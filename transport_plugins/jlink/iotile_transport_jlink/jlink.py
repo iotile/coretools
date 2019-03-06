@@ -3,10 +3,8 @@
 # This file is copyright Arch Systems, Inc.
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
-from __future__ import (unicode_literals, absolute_import, print_function)
 import logging
 import pylink
-from future.utils import viewkeys
 from typedargs.exceptions import ArgumentError
 from iotile.core.exceptions import HardwareError
 from iotile.core.hw.transport.adapter import DeviceAdapter
@@ -15,7 +13,7 @@ from .multiplexers import KNOWN_MULTIPLEX_FUNCS
 from .jlink_background import JLinkControlThread
 
 
-#pylint:disable=invalid-name;This is not a constant so its name is okay
+# pylint:disable=invalid-name;This is not a constant so its name is okay
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
@@ -74,7 +72,7 @@ class JLinkAdapter(DeviceAdapter):
                 if device_name in KNOWN_DEVICES:
                     self._default_device_info = KNOWN_DEVICES.get(device_name)
                 else:
-                    raise ArgumentError("Unknown device name or alias, please select from known_devices", device_name=device_name, known_devices=[x for x in viewkeys(DEVICE_ALIASES)])
+                    raise ArgumentError("Unknown device name or alias, please select from known_devices", device_name=device_name, known_devices=[x for x in DEVICE_ALIASES.keys()])
             elif name == 'serial':
                 self._jlink_serial = value
             elif name == 'mux':
@@ -82,7 +80,7 @@ class JLinkAdapter(DeviceAdapter):
                 if mux in KNOWN_MULTIPLEX_FUNCS:
                     self._mux_func = KNOWN_MULTIPLEX_FUNCS[mux]
                 else:
-                    raise ArgumentError("Unknown multiplexer, please select from known_multiplex_funcs", mux=mux, known_multiplex_funcs=[x for x in viewkeys(KNOWN_MULTIPLEX_FUNCS)])
+                    raise ArgumentError("Unknown multiplexer, please select from known_multiplex_funcs", mux=mux, known_multiplex_funcs=[x for x in KNOWN_MULTIPLEX_FUNCS.keys()])
 
     def _parse_conn_string(self, conn_string):
         """Parse a connection string passed from 'debug -c' or 'connect_direct'
@@ -100,7 +98,8 @@ class JLinkAdapter(DeviceAdapter):
             return disconnection_required
 
         if '@' in conn_string:
-            raise ArgumentError("Configuration files are not yet supported as part of a connection string argument", conn_string=conn_string)
+            raise ArgumentError("Configuration files are not yet supported as part of a connection string argument",
+                                conn_string=conn_string)
 
         pairs = conn_string.split(';')
         for pair in pairs:
@@ -120,7 +119,8 @@ class JLinkAdapter(DeviceAdapter):
                         self._device_info = device_info
                         disconnection_required = True
                 else:
-                    raise ArgumentError("Unknown device name or alias, please select from known_devices", device_name=value, known_devices=[x for x in viewkeys(DEVICE_ALIASES)])
+                    raise ArgumentError("Unknown device name or alias, please select from known_devices",
+                                        device_name=value, known_devices=[x for x in DEVICE_ALIASES.keys()])
             elif name == 'channel':
                 if self._mux_func is not None:
                     if self._channel != int(value):
@@ -141,7 +141,9 @@ class JLinkAdapter(DeviceAdapter):
                 self._mux_func(self._channel)
 
             if self._device_info is None:
-                raise ArgumentError("Missing device name or alias, specify using device=name in port string or -c device=name in connect_direct or debug command", known_devices=[x for x in viewkeys(DEVICE_ALIASES)])
+                raise ArgumentError("Missing device name or alias, specify using device=name in port string "
+                                    "or -c device=name in connect_direct or debug command",
+                                    known_devices=[x for x in DEVICE_ALIASES.keys()])
 
             try:
                 self.jlink = pylink.JLink()
@@ -151,7 +153,8 @@ class JLinkAdapter(DeviceAdapter):
                 self.jlink.set_little_endian()
             except pylink.errors.JLinkException as exc:
                 if exc.code == exc.VCC_FAILURE:
-                    raise HardwareError("No target power detected", code=exc.code, suggestion="Check jlink connection and power wiring")
+                    raise HardwareError("No target power detected", code=exc.code,
+                                        suggestion="Check jlink connection and power wiring")
 
                 raise
             except:

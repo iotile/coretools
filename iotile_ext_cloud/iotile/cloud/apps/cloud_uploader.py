@@ -3,12 +3,9 @@
 import logging
 import time
 import struct
-from builtins import range
-from future.utils import viewitems
 from iotile.core.exceptions import HardwareError, ArgumentError
 from iotile.core.hw import IOTileApp
 from iotile.core.hw.reports import SignedListReport
-from iotile.core.utilities.console import ProgressBar
 from iotile.cloud import IOTileCloud, device_id_to_slug
 from typedargs.annotate import docannotate, context
 
@@ -119,7 +116,7 @@ class CloudUploader(IOTileApp):
           of the streamer to trigger.
         - wait for all data to be received from the device.
 
-        The only differnce between this function and upload is that this function
+        The only difference between this function and upload is that this function
         will return the reports as a list, rather than uploading them directly
         to iotile.cloud.
 
@@ -133,7 +130,7 @@ class CloudUploader(IOTileApp):
             force (dict): If you want to forcibly set the acknowledgement for a given
                 streamer you can pass it in this dictionary.  The value passed will
                 be used instead of whatever was received from the cloud.  It can be
-                a number, which is interpeted as the value to acknowledge, or it can
+                a number, which is interpreted as the value to acknowledge, or it can
                 be a tuple with a number and boolean, which is interpreted as the
                 force parameter.
 
@@ -148,7 +145,7 @@ class CloudUploader(IOTileApp):
 
         streamer_acks = []
         if force is not None:
-            for index, value in viewitems(force):
+            for index, value in force.items():
                 force_ack = False
                 if isinstance(value, tuple):
                     value, force_ack = value
@@ -177,7 +174,7 @@ class CloudUploader(IOTileApp):
             self._ack_streamer(index, last_id, force=force)
 
         # Configure Downloader to not break up the report
-        self.set_report_size()  #Set to max report size
+        self.set_report_size()  # Set to max report size
         self._hw.enable_streaming()
 
         if trigger is not None:
@@ -189,7 +186,8 @@ class CloudUploader(IOTileApp):
         reports = [x for x in self._hw.iter_reports()]
         signed_reports = [x for x in reports if isinstance(x, SignedListReport)]
 
-        self.logger.info("Received %d signed reports, ignored %d realtime reports", len(signed_reports), len(reports) - len(signed_reports))
+        self.logger.info("Received %d signed reports, ignored %d realtime reports",
+                         len(signed_reports), len(reports) - len(signed_reports))
 
         return signed_reports
 

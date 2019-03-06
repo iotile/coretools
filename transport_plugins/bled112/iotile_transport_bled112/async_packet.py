@@ -3,11 +3,14 @@ from queue import Queue, Empty
 import logging
 from serial import SerialException
 
+
 class InternalTimeoutError(Exception):
     pass
 
+
 class DeviceNotConfiguredError(Exception):
     pass
+
 
 class AsyncPacketBuffer:
     def __init__(self, filelike, header_length, length_function):
@@ -35,16 +38,12 @@ class AsyncPacketBuffer:
         self._thread.join()
 
     def has_packet(self):
-        """
-        return True if there is a packet waiting in the queue.
-        """
+        """return True if there is a packet waiting in the queue."""
 
         return not self.queue.empty()
 
     def read_packet(self, timeout=3.0):
-        """
-        read one packet, timeout if one packet is not available in the timeout period
-        """
+        """read one packet, timeout if one packet is not available in the timeout period"""
 
         try:
             return self.queue.get(timeout=timeout)
@@ -80,7 +79,7 @@ def ReaderThread(filelike, read_queue, header_length, length_function, stop):
             if stop.is_set():
                 break
 
-            #We have a complete packet now, process it
+            # We have a complete packet now, process it
             packet = header + remaining
             read_queue.put(packet)
         except:

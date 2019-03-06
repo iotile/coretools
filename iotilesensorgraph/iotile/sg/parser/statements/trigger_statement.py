@@ -1,12 +1,9 @@
 """Copy stream statement."""
 
-from builtins import str
-from future.utils import python_2_unicode_compatible
 from .statement import SensorGraphStatement
 from ...stream import DataStream
 
 
-@python_2_unicode_compatible
 class TriggerStatement(SensorGraphStatement):
     """Trigger a streamer
 

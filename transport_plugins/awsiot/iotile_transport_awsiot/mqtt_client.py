@@ -9,7 +9,7 @@ from .packet_queue import PacketQueue
 from .topic_sequencer import TopicSequencer
 
 
-class OrderedAWSIOTClient(object):
+class OrderedAWSIOTClient:
     """An MQTT based channel to connect with an IOTile Device
 
     Args:

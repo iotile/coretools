@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## HEAD
+
+- Remove past/future/monotonic, pylint cleanup
+
 ## 3.0.1
 
 - Drop python2 support

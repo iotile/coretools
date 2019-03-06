@@ -1,7 +1,7 @@
-"""Basic virtual IOTile device class for testing other components interactions with IOTile devices
-"""
+"""Basic virtual IOTile device class for testing other components interactions with IOTile devices"""
 
 from iotile.core.hw.virtual.virtualdevice import VirtualIOTileDevice, rpc, RPCInvalidIDError, RPCNotFoundError, TileNotFoundError
+
 
 class SimpleVirtualDevice(VirtualIOTileDevice):
     """Mock IOTileDevice that allows capturing interactions and injecting faults

@@ -1,9 +1,7 @@
 """An UpdateScript record that sets a config variable."""
 
-from __future__ import unicode_literals, absolute_import, print_function
 import struct
 from binascii import hexlify
-from future.utils import python_2_unicode_compatible
 from iotile.core.exceptions import ArgumentError
 from iotile.core.hw.update.record import MatchQuality, UpdateRecord
 from iotile.core.hw.update.records import SendErrorCheckingRPCRecord
@@ -11,7 +9,6 @@ from iotile.sg import SlotIdentifier
 
 
 #pylint: disable=abstract-method;Method encode_contents is not overriden because we directly override encode
-@python_2_unicode_compatible
 class SetConfigRecord(UpdateRecord):
     """Set a config value on a specific tile.
 

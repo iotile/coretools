@@ -1,8 +1,6 @@
 """Reference device for testing the individual report format
 """
 
-from builtins import str
-from future.utils import viewitems
 from iotile.core.hw.virtual.virtualdevice import VirtualIOTileDevice
 from iotile.core.hw.reports import IndividualReadingReport, IOTileReading, BroadcastReport
 
@@ -68,18 +66,17 @@ class RealtimeTestDevice(VirtualIOTileDevice):
         if 'streams' in args:
             streams = args['streams']
 
-        for key, value in viewitems(streams):
+        for key, value in streams.items():
             stream = int(key, 0)
             interval, reading = value
 
             self.create_worker(self._create_stream, interval, stream, reading)
 
-        for key, value in viewitems(broadcast):
+        for key, value in broadcast.items():
             stream = int(key, 0)
             interval, reading = value
 
             self.create_worker(self._create_broadcast, interval, stream, reading)
-
 
         traces = [[1.0, 'Hello trace world.  ']]
 

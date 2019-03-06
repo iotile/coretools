@@ -1,10 +1,5 @@
-"""Basic virtual IOTile device class for testing tracing data from an IOTile device
-"""
+"""Basic virtual IOTile device class for testing tracing data from an IOTile device"""
 
-from builtins import range
-import sys
-if sys.version_info >= (3,0):
-    basestring = str
 import binascii
 from iotile.core.hw.virtual.virtualdevice import VirtualIOTileDevice, rpc
 
@@ -33,7 +28,7 @@ class TracingTestDevice(VirtualIOTileDevice):
     def __init__(self, args):
         iotile_id = args.get('iotile_id', 1)
 
-        if isinstance(iotile_id, basestring):
+        if isinstance(iotile_id, str):
             iotile_id = int(iotile_id, 16)
 
         super(TracingTestDevice, self).__init__(iotile_id, 'Simple')

@@ -1,7 +1,5 @@
-"""A thread that can be stopped
-"""
+"""A thread that can be stopped"""
 
-from builtins import range
 import threading
 import inspect
 import traceback
@@ -32,7 +30,6 @@ class StoppableWorkerThread(threading.Thread):
         self._stop_condition = threading.Event()
         self._running = threading.Event()
 
-
         # In order to keep the thread responsive, we default to checking for our
         # stop signal every 10 milliseconds.  If the execution timeout is less than
         # 10 ms, we use that, otherwise we round it to a multiple of 10 ms
@@ -52,7 +49,6 @@ class StoppableWorkerThread(threading.Thread):
 
         self._generator = inspect.isgeneratorfunction(routine)
 
-
         if self._worker_args is None:
             self._worker_args = []
 
@@ -65,8 +61,7 @@ class StoppableWorkerThread(threading.Thread):
 
     @property
     def generator(self):
-        """Whether this thread is running a generator function or not
-        """
+        """Whether this thread is running a generator function or not"""
 
         return self._generator
 

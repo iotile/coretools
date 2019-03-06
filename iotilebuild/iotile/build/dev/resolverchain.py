@@ -5,7 +5,8 @@ import shutil
 from iotile.core.exceptions import *
 from iotile.core.dev import IOTile, ComponentRegistry
 
-class DependencyResolverChain(object):
+
+class DependencyResolverChain:
     """A set of rules mapping dependencies to DependencyResolver instances
 
     DependencyResolverChains let you customize which dependencies are looked up
@@ -22,10 +23,10 @@ class DependencyResolverChain(object):
         logger = logging.getLogger('iotile.build.warnings')
         logger.addHandler(logging.NullHandler)
 
-        #FIXME: Load settings_file
+        # FIXME: Load settings_file
 
-        #Find all registered default builders and load them in priority order
-        #Each default resolver should be a 4-tuple with (priority, matching_regex, factory, default args)
+        # Find all registered default builders and load them in priority order
+        # Each default resolver should be a 4-tuple with (priority, matching_regex, factory, default args)
         reg = ComponentRegistry()
 
         for name, resolver_entry in reg.load_extensions('iotile.build.default_depresolver'):
@@ -44,7 +45,8 @@ class DependencyResolverChain(object):
             name = factory.__name__
 
             if name in self._known_resolvers:
-                raise ExternalError("The same dependency resolver class name is provided by more than one entry point", name=name)
+                raise ExternalError("The same dependency resolver class name is provided by more than one entry point",
+                                    name=name)
 
             self._known_resolvers[name] = factory
 
@@ -94,7 +96,8 @@ class DependencyResolverChain(object):
         destdir = os.path.join(destfolder, unique_id)
         if os.path.exists(destdir):
             if not force:
-                raise ExternalError("Output directory exists and force was not specified, aborting", output_directory=destdir)
+                raise ExternalError("Output directory exists and force was not specified, aborting",
+                                    output_directory=destdir)
 
             shutil.rmtree(destdir)
 
@@ -136,7 +139,7 @@ class DependencyResolverChain(object):
             if has_version:
                 deptile = IOTile(destdir)
 
-                #If the dependency is not up to date, don't do anything
+                # If the dependency is not up to date, don't do anything
                 depstatus = self._check_dep(depinfo, deptile, resolver)
                 if depstatus is False:
                     shutil.rmtree(destdir)
@@ -144,7 +147,7 @@ class DependencyResolverChain(object):
                 else:
                     continue
 
-            #Now try to resolve this dependency with the latest version
+            # Now try to resolve this dependency with the latest version
             result = resolver.resolve(depinfo, destdir)
             if not result['found'] and result.get('stop', False):
                 return 'not found'
@@ -199,8 +202,8 @@ class DependencyResolverChain(object):
         except IOError:
             return False
 
-        #If this dependency was initially resolved with a different resolver, then
-        #we cannot check if it is up to date
+        # If this dependency was initially resolved with a different resolver, then
+        # we cannot check if it is up to date
         if settings['resolver'] != resolver.__class__.__name__:
             return None
 

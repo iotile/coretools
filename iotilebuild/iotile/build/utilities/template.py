@@ -6,14 +6,12 @@
 # Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
-#template.py
-#Utilities for producing skeleton code for application modules, unit tests,
-#etc. using the Cheetah templating library.
+# template.py
+# Utilities for producing skeleton code for application modules, unit tests,
+# etc. using the Cheetah templating library.
 
 import os
 import shutil
-from future.utils import viewitems
-from past.builtins import basestring
 from jinja2 import Environment, PackageLoader, FileSystemLoader
 from typedargs.exceptions import ArgumentError
 from .bundled_data import resource_path
@@ -65,7 +63,7 @@ def render_template_inplace(template_path, info, dry_run=False, extra_filters=No
                       trim_blocks=True, lstrip_blocks=True)
 
     # Load any filters the user wants us to use
-    for name, func in viewitems(filters):
+    for name, func in filters.items():
         env.filters[name] = func
 
     template = env.get_template(template_name)
@@ -145,7 +143,7 @@ def render_recursive_template(template_folder, info, out_folder, preserve=None, 
             to be created to hold these files (not including out_folder).
     """
 
-    if isinstance(preserve, basestring):
+    if isinstance(preserve, str):
         raise ArgumentError("You must pass a list of strings to preserve, not a string", preserve=preserve)
 
     if preserve is None:
@@ -157,9 +155,11 @@ def render_recursive_template(template_folder, info, out_folder, preserve=None, 
     indir = os.path.join(template_dir, template_folder)
 
     if not os.path.exists(indir):
-        raise ArgumentError("Input template folder for recursive template not found", template_folder=template_folder, absolute_path=indir)
+        raise ArgumentError("Input template folder for recursive template not found",
+                            template_folder=template_folder, absolute_path=indir)
     elif not os.path.isdir(indir):
-        raise ArgumentError("Input template folder is not a directory", template_folder=template_folder, absolute_path=indir)
+        raise ArgumentError("Input template folder is not a directory",
+                            template_folder=template_folder, absolute_path=indir)
 
     create_dirs = []
     file_map = {}
@@ -188,7 +188,7 @@ def render_recursive_template(template_folder, info, out_folder, preserve=None, 
             if not os.path.isdir(out_path):
                 os.makedirs(out_path)
 
-        for out_rel, (in_path, in_abspath) in viewitems(file_map):
+        for out_rel, (in_path, in_abspath) in file_map.items():
             out_path = os.path.join(out_folder, out_rel)
             if in_path in preserve or not in_path.endswith(".tpl"):
                 shutil.copyfile(in_abspath, out_path)

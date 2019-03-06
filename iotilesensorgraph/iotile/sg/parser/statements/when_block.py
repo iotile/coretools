@@ -1,6 +1,5 @@
 """Blocks that execute when someone is connected."""
 
-from future.utils import python_2_unicode_compatible
 from .statement import SensorGraphStatement
 from ...known_constants import user_connected, user_disconnected
 from ...node import InputTrigger
@@ -8,7 +7,6 @@ from ...stream import DataStream
 from ..scopes import GatedClockScope
 
 
-@python_2_unicode_compatible
 class WhenBlock(SensorGraphStatement):
     """A block of statements that should run when someone is connected to the device.
 

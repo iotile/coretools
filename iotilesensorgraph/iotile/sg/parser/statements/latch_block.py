@@ -1,13 +1,11 @@
 """Blocks that gate child execution on a condition."""
 
-from future.utils import python_2_unicode_compatible
 from .statement import SensorGraphStatement
 from ...node import InputTrigger
 from ...stream import DataStream
 from ..scopes import GatedClockScope
 
 
-@python_2_unicode_compatible
 class LatchBlock(SensorGraphStatement):
     """A block of statements that should run when a latch is true.
 

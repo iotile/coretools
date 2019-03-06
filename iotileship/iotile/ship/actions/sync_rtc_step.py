@@ -1,9 +1,8 @@
-from __future__ import unicode_literals, print_function, absolute_import
-from builtins import str
 from iotile.core.exceptions import ArgumentError
 import pkg_resources
 
-class SyncRTCStep(object):
+
+class SyncRTCStep:
     """Attempt to set RTC to current UTC time.
 
     This function requires a shared hardware manager resource to be setup

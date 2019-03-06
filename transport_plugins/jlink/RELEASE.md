@@ -3,7 +3,9 @@
 All major changes in each released version of the jlink transport plugin are
 listed here.
 
+## 1.0.2
 
+- Remove past/future/monotonic, pylint cleanup
 
 ## 1.0.1
 - Drop python2 support 

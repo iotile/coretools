@@ -1,13 +1,10 @@
 """Update script record for reflashing a tile with new firmware."""
 
-from __future__ import (print_function, absolute_import, unicode_literals)
 import struct
-from future.utils import python_2_unicode_compatible
 from iotile.core.exceptions import ArgumentError
 from ..record import UpdateRecord, MatchQuality
 
 
-@python_2_unicode_compatible
 class ReflashControllerRecord(UpdateRecord):
     """Reflash an IOTile controller with updated firmware.
 
@@ -56,7 +53,7 @@ class ReflashControllerRecord(UpdateRecord):
         """Check how well this record matches the given binary data.
 
         This function will only be called if the record matches the type code
-        given by calling MatchType() and this functon should check how well
+        given by calling MatchType() and this function should check how well
         this record matches and return a quality score between 0 and 100, with
         higher quality matches having higher scores.  The default value should
         be MatchQuality.GenericMatch which is 50.  If this record does not
@@ -105,13 +102,15 @@ class ReflashControllerRecord(UpdateRecord):
         """
 
         if len(record_data) < ReflashControllerRecord.RecordHeaderLength:
-            raise ArgumentError("Record was too short to contain a full reflash record header", length=len(record_data), header_length=ReflashControllerRecord.RecordHeaderLength)
+            raise ArgumentError("Record was too short to contain a full reflash record header",
+                                length=len(record_data), header_length=ReflashControllerRecord.RecordHeaderLength)
 
         offset, data_length = struct.unpack_from("<LL", record_data)
 
         bindata = record_data[ReflashControllerRecord.RecordHeaderLength:]
         if len(bindata) != data_length:
-            raise ArgumentError("Embedded firmware length did not agree with actual length of embeded data", length=len(bindata), embedded_length=data_length)
+            raise ArgumentError("Embedded firmware length did not agree with actual length of embeded data",
+                                length=len(bindata), embedded_length=data_length)
 
         return ReflashControllerRecord(bindata, offset)
 
@@ -122,4 +121,6 @@ class ReflashControllerRecord(UpdateRecord):
         return self.raw_data == other.raw_data and self.offset == other.offset
 
     def __str__(self):
-        return "Reflash controller with %d (0x%X) bytes starting at offset %d (0x%X)" % (len(self.raw_data), len(self.raw_data), self.offset, self.offset)
+        return "Reflash controller with %d (0x%X) bytes starting at offset %d (0x%X)" % (len(self.raw_data),
+                                                                                         len(self.raw_data),
+                                                                                         self.offset, self.offset)

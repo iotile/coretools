@@ -1,7 +1,6 @@
 """Class for managing logs and state from various services."""
 
-from __future__ import unicode_literals
-from monotonic import monotonic
+from time import monotonic
 from collections import namedtuple
 import uuid
 from iotile.core.exceptions import ArgumentError
@@ -10,7 +9,7 @@ from . import states
 InFlightRPC = namedtuple('InFlightRPC', ['sender', 'service', 'sent_timestamp', 'timeout'])
 
 
-class ServiceManager(object):
+class ServiceManager:
     """A simple repository for handling the state of a running service and querying log messages from it.
 
     Args:
@@ -281,7 +280,8 @@ class ServiceManager(object):
             raise ArgumentError("No agent registered for service", short_name=short_name)
 
         if client_id != self.agents[short_name]:
-            raise ArgumentError("Client was not registered for service", short_name=short_name, client_id=client_id, current_client=self.agents[short_name])
+            raise ArgumentError("Client was not registered for service", short_name=short_name,
+                                client_id=client_id, current_client=self.agents[short_name])
 
         del self.agents[short_name]
 

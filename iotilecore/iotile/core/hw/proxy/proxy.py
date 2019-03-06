@@ -6,19 +6,17 @@
 # Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
-#MIB Proxy Objects
+# MIB Proxy Objects
 
-from builtins import range
 from iotile.core.hw.exceptions import *
 from iotile.core.utilities.typedargs import return_type, annotated, param, context
 from time import sleep
 import struct
 from iotile.core.exceptions import *
 from ..virtual import pack_rpc_payload, unpack_rpc_payload
-from builtins import str, int
 
 
-class TileBusProxyObject(object):
+class TileBusProxyObject:
     def __init__(self, stream, address):
         self.stream = stream
         self.addr = address
@@ -34,8 +32,7 @@ class TileBusProxyObject(object):
         return self._config_manager
 
     def rpc(self, feature, cmd, *args, **kw):
-        """
-        Send an RPC call to this module, interpret the return value
+        """Send an RPC call to this module, interpret the return value
         according to the result_type kw argument.  Unless raise keyword
         is passed with value False, raise an RPCException if the command
         is not successful.
@@ -76,7 +73,7 @@ class TileBusProxyObject(object):
         if "retries" not in kw:
             kw['retries'] = 10
 
-        #Sleep 100 ms and try again unless we've exhausted our retry attempts
+        # Sleep 100 ms and try again unless we've exhausted our retry attempts
         if kw["retries"] > 0:
             kw['retries'] -= 1
 
@@ -137,8 +134,7 @@ class TileBusProxyObject(object):
         return fmtd
 
     def rpc_v2(self, cmd, arg_format, result_format, *args, **kw):
-        """
-        Send an RPC call to this module, interpret the return value
+        """Send an RPC call to this module, interpret the return value
         according to the result_type kw argument.  Unless raise keyword
         is passed with value False, raise an RPCException if the command
         is not successful.
@@ -165,13 +161,12 @@ class TileBusProxyObject(object):
         if "retries" not in kw:
             kw['retries'] = 10
 
-        #Sleep 100 ms and try again unless we've exhausted our retry attempts
+        # Sleep 100 ms and try again unless we've exhausted our retry attempts
         if kw["retries"] > 0:
             kw['retries'] -= 1
 
             sleep(0.1)
             return self.rpc_v2(cmd, arg_format, result_format, *args, **kw)
-
 
     @return_type("string")
     def hardware_version(self):
@@ -184,12 +179,11 @@ class TileBusProxyObject(object):
         here.
 
         Returns:
-            str: The hardware vesrion read from the tile.
+            str: The hardware version read from the tile.
         """
         res = self.rpc(0x00, 0x02, result_type=(0, True))
 
-        #Result is a string but with zero appended to the end to make it a fixed 10 byte
-        #size
+        # Result is a string but with zero appended to the end to make it a fixed 10 byte size
         binary_version = res['buffer']
 
         ver = ""
@@ -227,9 +221,7 @@ class TileBusProxyObject(object):
 
     @return_type("basic_dict")
     def status(self):
-        """
-        Query the status of an IOTile including its name and version
-        """
+        """Query the status of an IOTile including its name and version"""
 
         hw_type, name, major, minor, patch, status = self.rpc(0x00, 0x04, result_format="H6sBBBB")
 
@@ -244,9 +236,7 @@ class TileBusProxyObject(object):
 
     @param("wait", "float", desc="Time to wait after reset for tile to boot up to a usable state")
     def reset(self, wait=1.0):
-        """
-        Immediately reset this tile.
-        """
+        """Immediately reset this tile."""
         try:
             self.rpc(0x00, 0x01)
         except ModuleNotFoundError:
@@ -268,16 +258,12 @@ class TileBusProxyObject(object):
 
     @return_type("map(string, bool)")
     def tile_status(self):
-        """
-        Get the current status of this tile
-
-        Returns a
-        """
+        """Get the current status of this tile"""
         stat = self.status()
 
         flags = stat['status']
 
-        #FIXME: This needs to stay in sync with lib_common: cdb_status.h
+        # FIXME: This needs to stay in sync with lib_common: cdb_status.h
         status = {}
         status['debug_mode'] = bool(flags & (1 << 3))
         status['configured'] = bool(flags & (1 << 1))
@@ -286,11 +272,8 @@ class TileBusProxyObject(object):
 
         return status
 
-
     def _parse_rpc_result(self, status, payload, num_ints, buff, command):
-        """
-        Parse the response of an RPC call into a dictionary with integer and buffer results
-        """
+        """Parse the response of an RPC call into a dictionary with integer and buffer results"""
 
         parsed = {'ints':[], 'buffer':"", 'error': 'No Error', 'is_error': False}
         parsed['status'] = status
@@ -309,13 +292,15 @@ class TileBusProxyObject(object):
         if self.addr == 8 and status == ((1 << 6) | 2):
             raise UnsupportedCommandError(address=self.addr, command=command)
 
-        #Otherwise, parse the results according to the type information given
+        # Otherwise, parse the results according to the type information given
         size = len(payload)
 
         if size < 2*num_ints:
-            raise RPCError('Return value too short to unpack', expected_minimum_size=2*num_ints, actual_size=size, status_code=status, payload=payload)
+            raise RPCError('Return value too short to unpack', expected_minimum_size=2*num_ints, actual_size=size,
+                           status_code=status, payload=payload)
         elif buff is False and size != 2*num_ints:
-            raise RPCError('Return value was not the correct size', expected_size=2*num_ints, actual_size=size, status_code=status, payload=payload)
+            raise RPCError('Return value was not the correct size', expected_size=2*num_ints, actual_size=size,
+                           status_code=status, payload=payload)
 
         for i in range(0, num_ints):
             low = (payload[2*i])
@@ -329,9 +314,8 @@ class TileBusProxyObject(object):
 
 
 @context("ConfigManager")
-class ConfigManager(object):
-    """
-    Manager Proxy for configuration variables on IOTiles
+class ConfigManager:
+    """Manager Proxy for configuration variables on IOTiles
 
     Handles querying what config variables are defined, setting and getting
     their values.  Note that config variables should not change when application
@@ -355,7 +339,7 @@ class ConfigManager(object):
     performed by the TileBus controller managing the IOTile Device.
 
     This ConfigManager is useful primarily for debugging, checking what values are actually
-    set on a tile and what varibles it supports.
+    set on a tile and what variables it supports.
     """
 
     def __init__(self, parent):
@@ -363,7 +347,7 @@ class ConfigManager(object):
 
     @return_type('list(integer)')
     def list_variables(self):
-        """ List all of the configuration variables defined by this tile
+        """List all of the configuration variables defined by this tile
 
         This function will tell you every configuration variable that this tile
         defines.  You can then query more information about a given variable
@@ -398,8 +382,8 @@ class ConfigManager(object):
         return ids
 
     @return_type("basic_dict")
-    @param("id", "integer", desc="Variable ID to describe")
-    def describe_variable(self, id):
+    @param("d_id", "integer", desc="Variable ID to describe")
+    def describe_variable(self, d_id):
         """Describe a configuration variable
 
         Queries metadata about a config variable directly from the tile where it
@@ -411,7 +395,7 @@ class ConfigManager(object):
         a .bus or .cdb file.
 
         Params:
-            id (int): The 16 bit id of the config variable that we are trying to
+            d_id (int): The 16 bit id of the config variable that we are trying to
                 get information about.
 
         Returns:
@@ -420,20 +404,20 @@ class ConfigManager(object):
                 is a fixed or variable size.
         """
 
-        resp = self._proxy.rpc(0, 11, id, result_type=(2, True))
+        resp = self._proxy.rpc(0, 11, d_id, result_type=(2, True))
 
         err = resp['ints'][0]
         if err != 0:
-            raise HardwareError("Error finding config variable by id", id=id, error_code=err)
+            raise HardwareError("Error finding config variable by id", id=d_id, error_code=err)
 
-        addr, id, flags = struct.unpack("<LHH", resp['buffer'])
+        addr, d_id, flags = struct.unpack("<LHH", resp['buffer'])
 
         maxsize = (flags & ~(1 << 15)) & 0xFFFF
         variable_size = bool(flags >> 15)
 
         info = {
             'address': addr,
-            'id': id,
+            'id': d_id,
             'max_size': maxsize,
             'variable_size': variable_size
         }
@@ -441,12 +425,12 @@ class ConfigManager(object):
         return info
 
     @return_type("bytes", "repr")
-    @param("id", "integer", desc="Variable ID to fetch")
-    def get_variable(self, id):
+    @param("d_id", "integer", desc="Variable ID to fetch")
+    def get_variable(self, d_id):
         """Get value stored in a config variable
 
         Params:
-            id (int): The 16 bit id of the config variable that we are trying to
+            did (int): The 16 bit id of the config variable that we are trying to
                 get the value of.
 
         Returns:
@@ -455,7 +439,7 @@ class ConfigManager(object):
         """
 
         offset = 0
-        resp = self._proxy.rpc(0, 13, id, offset, result_type=(0, True))
+        resp = self._proxy.rpc(0, 13, d_id, offset, result_type=(0, True))
         if len(resp['buffer']) == 0:
             return bytearray()
 
@@ -463,15 +447,15 @@ class ConfigManager(object):
 
         while len(resp['buffer']) > 0:
             offset = len(retval)
-            resp = self._proxy.rpc(0, 13, id, offset, result_type=(0, True))
+            resp = self._proxy.rpc(0, 13, d_id, offset, result_type=(0, True))
 
             retval += resp['buffer']
 
         return retval
 
-    @param("id", "integer", desc="Variable ID to set")
+    @param("d_id", "integer", desc="Variable ID to set")
     @param("value", "bytes", desc="hexadecimal byte value to set")
-    def set_variable(self, id, value):
+    def set_variable(self, d_id, value):
         """Set the value stored in a config variable
 
         This function wraps the underlying RPC that is used internally in
@@ -480,7 +464,7 @@ class ConfigManager(object):
 
         Since config variables are forbidden from changing while a tile is running,
         using this function directly is discouraged since it's unlikely you will
-        calling it before the tile excecutive passes controller to its application.
+        calling it before the tile executive passes controller to its application.
 
         It is included here mainly for completeness and for advanced use cases
         where you need to directly set a config variable.
@@ -490,7 +474,7 @@ class ConfigManager(object):
         tile every time the tile resets and registers itself with the controller.
 
         Params:
-            id (int): The 16 bit id of the config variable that we are trying to
+            d_id (int): The 16 bit id of the config variable that we are trying to
                 get the value of.
             value (bytearray): The data to store in the config variable
         """
@@ -500,6 +484,6 @@ class ConfigManager(object):
             if remaining > 16:
                 remaining = 16
 
-            resp = self._proxy.rpc(0, 12, id, offset, value[offset:offset+remaining], result_type=(1, False))
+            resp = self._proxy.rpc(0, 12, d_id, offset, value[offset:offset+remaining], result_type=(1, False))
             if resp['ints'][0] != 0:
-                raise HardwareError("Error setting config variable", id=id, error_code=resp['ints'][0])
+                raise HardwareError("Error setting config variable", id=d_id, error_code=resp['ints'][0])

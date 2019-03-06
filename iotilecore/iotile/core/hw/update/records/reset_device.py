@@ -1,12 +1,9 @@
 """Update records that send an RPC."""
 
-from __future__ import (print_function, absolute_import, unicode_literals)
-from future.utils import python_2_unicode_compatible
 from iotile.core.exceptions import ArgumentError
 from ..record import UpdateRecord, MatchQuality
 
 
-@python_2_unicode_compatible
 class ResetDeviceRecord(UpdateRecord):
     """Reset the device.
 
@@ -47,7 +44,7 @@ class ResetDeviceRecord(UpdateRecord):
         """Check how well this record matches the given binary data.
 
         This function will only be called if the record matches the type code
-        given by calling MatchType() and this functon should check how well
+        given by calling MatchType() and this function should check how well
         this record matches and return a quality score between 0 and 100, with
         higher quality matches having higher scores.  The default value should
         be MatchQuality.GenericMatch which is 50.  If this record does not

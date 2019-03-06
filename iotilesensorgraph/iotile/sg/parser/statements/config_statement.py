@@ -1,12 +1,10 @@
 """Set config statement that adds a config variable to the sensor graph."""
 
-from future.utils import python_2_unicode_compatible
 from .statement import SensorGraphStatement
 from iotile.sg import SlotIdentifier
 from iotile.sg.exceptions import SensorGraphSemanticError, UnresolvedIdentifierError
 
 
-@python_2_unicode_compatible
 class SetConfigStatement(SensorGraphStatement):
     """A config variable assignment.
 

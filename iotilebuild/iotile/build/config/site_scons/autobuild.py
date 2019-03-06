@@ -9,7 +9,6 @@
 # Automatic building of firmware and unit tests using the
 # scons based iotile build system
 
-from __future__ import print_function
 import os.path
 import os
 import sys
@@ -51,15 +50,17 @@ def require(builder_name):
     for _name, autobuild_func in reg.load_extensions('iotile.autobuild', name_filter=builder_name):
         return autobuild_func
 
-    raise BuildError('Cannot find required autobuilder, make sure the distribution providing it is installed', name=builder_name)
+    raise BuildError('Cannot find required autobuilder, make sure the distribution providing it is installed',
+                     name=builder_name)
+
 
 def autobuild_arm_library(libname):
     try:
-        #Build for all targets
+        # Build for all targets
         family = utilities.get_family('module_settings.json')
         family.for_all_targets(family.tile.short_name, lambda x: arm.build_library(family.tile, libname, x))
 
-        #Build all unit tests
+        # Build all unit tests
         unit_test.build_units(os.path.join('firmware','test'), family.targets(family.tile.short_name))
 
         Alias('release', os.path.join('build', 'output'))
@@ -80,7 +81,8 @@ def autobuild_python_test(path):
     """Add pytest unit tests to be built as part of build/test/output."""
 
     env = Environment(tools=[])
-    target = env.Command(['build/test/output/pytest.log'], [path], action=env.Action(run_pytest, "Running python unit tests"))
+    target = env.Command(['build/test/output/pytest.log'], [path],
+                         action=env.Action(run_pytest, "Running python unit tests"))
     env.AlwaysBuild(target)
 
 
@@ -88,7 +90,7 @@ def autobuild_onlycopy():
     """Autobuild a project that does not require building firmware, pcb or documentation
     """
     try:
-        #Build only release information
+        # Build only release information
         family = utilities.get_family('module_settings.json')
         autobuild_release(family)
 
@@ -98,9 +100,9 @@ def autobuild_onlycopy():
         print(e.format())
         Exit(1)
 
+
 def autobuild_docproject():
-    """Autobuild a project that only contains documentation
-    """
+    """Autobuild a project that only contains documentation"""
 
     try:
         #Build only release information
@@ -126,14 +128,15 @@ def autobuild_release(family=None):
     env = Environment(tools=[])
     env['TILE'] = family.tile
 
-    target = env.Command(['#build/output/module_settings.json'], ['#module_settings.json'], action=env.Action(create_release_settings_action, "Creating release manifest"))
+    target = env.Command(['#build/output/module_settings.json'], ['#module_settings.json'],
+                         action=env.Action(create_release_settings_action, "Creating release manifest"))
     env.AlwaysBuild(target)
 
     # Copy over release notes if they exist
     if os.path.exists('RELEASE.md'):
         env.Command(['build/output/RELEASE.md'], ['RELEASE.md'], Copy("$TARGET", "$SOURCE"))
 
-    #Now copy across the build products that are not copied automatically
+    # Now copy across the build products that are not copied automatically
     copy_include_dirs(family.tile)
     copy_tilebus_definitions(family.tile)
     copy_dependency_docs(family.tile)
@@ -173,9 +176,7 @@ def autobuild_arm_program(elfname, test_dir=os.path.join('firmware', 'test'), pa
         sys.exit(1)
 
 def autobuild_doxygen(tile):
-    """
-    Generate documentation for firmware in this module using doxygen
-    """
+    """Generate documentation for firmware in this module using doxygen"""
 
     iotile = IOTile('.')
 
@@ -186,7 +187,7 @@ def autobuild_doxygen(tile):
     env = Environment(ENV = os.environ)
     env['IOTILE'] = iotile
 
-    #There is no /dev/null on Windows
+    # There is no /dev/null on Windows
     if platform.system() == 'Windows':
         action = 'doxygen %s > NUL' % doxyfile
     else:
@@ -202,9 +203,7 @@ def autobuild_doxygen(tile):
 
 
 def autobuild_documentation(tile):
-    """
-    Generate documentation for this module using a combination of sphinx and breathe
-    """
+    """Generate documentation for this module using a combination of sphinx and breathe"""
 
     docdir = os.path.join('#doc')
     docfile = os.path.join(docdir, 'conf.py')
@@ -213,7 +212,7 @@ def autobuild_documentation(tile):
 
     env = Environment(ENV=os.environ)
 
-    #Only build doxygen documentation if we have C firmware to build from
+    # Only build doxygen documentation if we have C firmware to build from
     if os.path.exists('firmware'):
         autobuild_doxygen(tile)
         env.Depends(outfile, 'doxygen')
@@ -231,7 +230,8 @@ def autobuild_documentation(tile):
     env.Clean(outfile, outdir)
 
 
-def autobuild_trub_script(file_name, slot_assignments=None, os_info=None, sensor_graph=None, app_info=None, use_safeupdate=False):
+def autobuild_trub_script(file_name, slot_assignments=None, os_info=None, sensor_graph=None,
+                          app_info=None, use_safeupdate=False):
     """Build a trub script that loads given firmware into the given slots.
 
     slot_assignments should be a list of tuples in the following form:
@@ -239,7 +239,7 @@ def autobuild_trub_script(file_name, slot_assignments=None, os_info=None, sensor
 
     The output of this autobuild action will be a trub script in
     build/output/<file_name> that assigns the given firmware to each slot in
-    the order specified in the slot_assigments list.
+    the order specified in the slot_assignments list.
 
     Args:
         file_name (str): The name of the output file that we should create.
@@ -297,5 +297,7 @@ def autobuild_bootstrap_file(file_name, image_list):
         hex_path = arm.ensure_image_is_hex(image_path)
         processed_input_images.append(hex_path)
 
-    env.Command(build_output_name, processed_input_images, action=Action(arm.merge_hex_executables, "Merging %d hex files into $TARGET" % len(processed_input_images)))
+    env.Command(build_output_name, processed_input_images,
+                action=Action(arm.merge_hex_executables,
+                              "Merging %d hex files into $TARGET" % len(processed_input_images)))
     env.Command(full_output_name, build_output_name, Copy("$TARGET", "$SOURCE"))

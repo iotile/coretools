@@ -4,7 +4,7 @@
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
 
-class InMemoryKVStore(object):
+class InMemoryKVStore:
     """A Key Value store based on an in memory dict
 
     This is intended as a drop in replacement for SQLiteKVStore.  Note that this KV store

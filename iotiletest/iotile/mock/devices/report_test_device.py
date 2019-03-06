@@ -1,15 +1,9 @@
-"""Reference device for testing the individual report format
-"""
-
-from builtins import range, str
-
-import sys
-if sys.version_info >= (3,0):
-    basestring = str
+"""Reference device for testing the individual report format"""
 
 from iotile.core.hw.virtual.virtualdevice import VirtualIOTileDevice, rpc
 from iotile.core.exceptions import ArgumentError
 from iotile.core.hw.reports import IndividualReadingReport, IOTileReading, SignedListReport
+
 
 class ReportTestDevice(VirtualIOTileDevice):
     """Mock IOTileDevice that creates a sequence of reports upon connection
@@ -53,7 +47,7 @@ class ReportTestDevice(VirtualIOTileDevice):
     def __init__(self, args):
         iotile_id = args.get('iotile_id', 1)
 
-        if isinstance(iotile_id, basestring):
+        if isinstance(iotile_id, str):
             iotile_id = int(iotile_id, 16)
 
         generator = args.get('reading_generator', 'sequential')

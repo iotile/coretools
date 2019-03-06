@@ -1,13 +1,12 @@
 """An in memory storage engine for sensor graph."""
 
-from builtins import str, range
 from iotile.core.exceptions import ArgumentError
 from iotile.core.hw.reports import IOTileReading
 from iotile.sg import DataStream
 from iotile.sg.exceptions import StorageFullError, StreamEmptyError
 
 
-class InMemoryStorageEngine(object):
+class InMemoryStorageEngine:
     """A simple in memory storage engine for sensor graph.
 
     Args:

@@ -1,10 +1,8 @@
 """Time based event block for scheduling RPCs every X interval."""
 
-from future.utils import python_2_unicode_compatible
 from .statement import SensorGraphStatement
 from ..scopes import TriggerScope
 
-@python_2_unicode_compatible
 class EveryBlock(SensorGraphStatement):
     """A block of statements that should run every time interval
 

@@ -4,13 +4,11 @@ import pytest
 import time
 import os
 import json
-from monotonic import monotonic
+from time import monotonic
 import AWSIoTPythonSDK.MQTTLib
 from iotile.core.hw.hwmanager import HardwareManager
 from iotile.core.dev.registry import ComponentRegistry
 from iotilegateway.gateway import IOTileGateway
-from builtins import range
-from future.utils import viewitems
 
 Message = namedtuple('Message', ['topic', 'payload'])
 
@@ -112,7 +110,7 @@ class LocalBroker(object):
         if matched_topic in self.listeners:
             msg_obj = Message(topic, message)
 
-            for _, callback in viewitems(self.listeners[matched_topic]):
+            for _, callback in self.listeners[matched_topic].items():
                 callback(self.client, None, msg_obj)
 
         if LocalBroker.expected is not None and LocalBroker.sequence >= self.expected:

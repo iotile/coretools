@@ -1,15 +1,14 @@
 """A websocket client that validates messages received and dispatches them."""
 
-from __future__ import unicode_literals
 from ws4py.client.threadedclient import WebSocketClient
-from future.utils import viewitems
 import threading
 import msgpack
 import datetime
 import logging
 import uuid
 from iotile.core.exceptions import IOTileException, InternalError, ValidationError, TimeoutExpiredError
-from iotile.core.utilities.schema_verify import Verifier, DictionaryVerifier, StringVerifier, LiteralVerifier, OptionsVerifier
+from iotile.core.utilities.schema_verify import Verifier, DictionaryVerifier, \
+    StringVerifier, LiteralVerifier, OptionsVerifier
 
 # The prescribed schema of command response messages
 # Messages with this format are automatically processed inside the ValidatingWSClient
@@ -143,7 +142,7 @@ class ValidatingWSClient(WebSocketClient):
             timeout (float): The maximum time to wait for a response
         """
 
-        msg = {x: y for x, y in viewitems(args)}
+        msg = {x: y for x, y in args.items()}
         msg['type'] = 'command'
         msg['operation'] = command
         msg['no_response'] = False
@@ -185,7 +184,7 @@ class ValidatingWSClient(WebSocketClient):
             args (dict): Optional arguments
         """
 
-        msg = {x: y for x, y in viewitems(args)}
+        msg = {x: y for x, y in args.items()}
         msg['type'] = 'command'
         msg['operation'] = command
         msg['no_response'] = True

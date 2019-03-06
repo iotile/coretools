@@ -4,7 +4,7 @@ from toposort import toposort_flatten
 from .passes import RemoveCopyLatestPass, ConvertCountOneToAlways, ConvertCopyAllToCopyLatest, RemoveDeadCodePass, RemoveConstantsPass
 
 
-class SensorGraphOptimizer(object):
+class SensorGraphOptimizer:
     """An optimizer that runs optimization rules on a sensor graph.
 
     The optimizer keeps track of which rules are disallowed and not

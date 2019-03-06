@@ -9,7 +9,7 @@ class PyPIReleaseProvider(ReleaseProvider):
     This release provider will upload the python support wheel and sdist
     associated with this component to PyPI or another python package
     repository.  You must have associated credentials for the package
-    reposity set in the following environment variables:
+    repository set in the following environment variables:
 
     PYPI_USER: username
     PYPI_PASS: password
@@ -38,10 +38,11 @@ class PyPIReleaseProvider(ReleaseProvider):
         try:
             import twine
         except ImportError:
-            raise BuildError("You must install twine in order to release python packages", suggestion="pip install twine")
+            raise BuildError("You must install twine in order to release python packages",
+                             suggestion="pip install twine")
 
         if not self.component.has_wheel:
-            raise BuildError("You cannot release a component to a PYPI repository if it doesn't have any python packages")
+            raise BuildError("You can't release a component to a PYPI repository if it doesn't have python packages")
 
         # Make sure we have built distributions ready to upload
         wheel = self.component.support_wheel
@@ -51,7 +52,8 @@ class PyPIReleaseProvider(ReleaseProvider):
         sdist_path = os.path.realpath(os.path.abspath(os.path.join(self.component.output_folder, 'python', sdist)))
 
         if not os.path.isfile(wheel_path) or not os.path.isfile(sdist_path):
-            raise BuildError("Could not find built wheel or sdist matching current built version", sdist_path=sdist_path, wheel_path=wheel_path)
+            raise BuildError("Could not find built wheel or sdist matching current built version",
+                             sdist_path=sdist_path, wheel_path=wheel_path)
 
         self.dists = [sdist_path, wheel_path]
 
@@ -84,5 +86,5 @@ class PyPIReleaseProvider(ReleaseProvider):
             pypi_user = None
             pypi_pass = None
 
-        #Invoke upload this way since subprocess call of twine cli has cross platform issues
+        # Invoke upload this way since subprocess call of twine cli has cross platform issues
         upload(dists, repo, False, None, pypi_user, pypi_pass, None, None, '~/.pypirc', False, None, None, None)
