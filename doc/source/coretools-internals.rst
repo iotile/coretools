@@ -138,6 +138,10 @@ to specify how to display the information that they return, for example::
     def count_reports(self):
         ...
 
+.. note::
+
+    If you pass ``string`` or ``str`` as a type to the ``@param`` decorator,
+    you will always receive a unicode string.
 Adding Your Own Commands to the IOTile Tool
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
