@@ -1,10 +1,12 @@
 """Tests to ensure that our coroutine based emulation loop works."""
 
-import pytest
 import asyncio
+import struct
+import pytest
 from iotile.emulate.internal import EmulationLoop
+from iotile.emulate import RPCRuntimeError
 from iotile.core.hw.virtual.common_types import AsynchronousRPCResponse
-from iotile.core.exceptions import TimeoutExpiredError
+from iotile.core.exceptions import TimeoutExpiredError, InternalError
 
 
 def test_basic_eventloop():
@@ -31,6 +33,39 @@ def test_basic_eventloop():
         loop.stop()
 
 
+def test_runtime_errors():
+    """Make sure runtime errors work."""
+
+    def _rpc_executor(_address, rpc_id, arg_payload):
+        if rpc_id == 0x8000:
+            raise RPCRuntimeError(0xabcd)
+
+        if rpc_id == 0x8001:
+            raise RPCRuntimeError(0xabcd, subsystem=1)
+
+        if rpc_id == 0x8002:
+            raise RPCRuntimeError(0xabcd, size="H")
+
+        if rpc_id == 0x8003:
+            raise RPCRuntimeError(0xabcd, subsystem=1, size="H")
+
+        return arg_payload
+
+    loop = EmulationLoop(_rpc_executor)
+    loop.start()
+
+    try:
+        assert loop.call_rpc_external(8, 0x8000, b'abcd') == struct.pack("<L", 0xabcd)
+        assert loop.call_rpc_external(8, 0x8001, b'abcd') == struct.pack("<L", 0x1abcd)
+        assert loop.call_rpc_external(8, 0x8002, b'abcd') == struct.pack("<H", 0xabcd)
+
+        with pytest.raises(InternalError):
+            loop.call_rpc_external(8, 0x8003, b'')
+
+    finally:
+        loop.stop()
+
+
 def test_async_rpc():
     """Make sure we can send an asynchronous RPC."""
     loop = None
@@ -38,9 +73,15 @@ def test_async_rpc():
     def _rpc_executor(_address, rpc_id, arg_payload):
         if rpc_id == 0x8000:
             raise ValueError("Error")
-        elif rpc_id == 0x8002:
+
+        if rpc_id == 0x8002:
             address, rpc_id = loop.get_current_rpc()
             asyncio.get_event_loop().call_soon(loop.finish_async_rpc, address, rpc_id, b'4444')
+            raise AsynchronousRPCResponse()
+
+        if rpc_id == 0x8003:
+            address, rpc_id = loop.get_current_rpc()
+            asyncio.get_event_loop().call_soon(loop.finish_async_rpc, address, rpc_id, "L", 0xabcdef00)
             raise AsynchronousRPCResponse()
 
         return arg_payload
@@ -51,6 +92,7 @@ def test_async_rpc():
     try:
         assert loop.call_rpc_external(8, 0x8001, b'abcd') == b'abcd'
         assert loop.call_rpc_external(8, 0x8002, b'abcd') == b'4444'
+        assert loop.call_rpc_external(8, 0x8003, b'abcd') == struct.pack("<L", 0xabcdef00)
         loop.wait_idle()
 
     finally:
