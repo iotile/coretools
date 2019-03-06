@@ -1,11 +1,9 @@
 """Call RPC statement."""
 
-from future.utils import python_2_unicode_compatible
 from .statement import SensorGraphStatement
 from ...stream import DataStream
 
 
-@python_2_unicode_compatible
 class CallRPCStatement(SensorGraphStatement):
     """Call an RPC on a tile.
 

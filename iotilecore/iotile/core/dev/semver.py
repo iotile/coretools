@@ -1,11 +1,11 @@
-"""Classes for parsing and dealing with semantic versions and ranges of versions
-"""
+"""Classes for parsing and dealing with semantic versions and ranges of versions"""
 
 from functools import total_ordering
 from iotile.core.exceptions import DataError, ArgumentError
 
+
 @total_ordering
-class SemanticVersion(object):
+class SemanticVersion:
     """A simple class representing a version in X.Y.Z[-prerelease] format
 
     Only a known number of prerelease types are allowed and must be in the format:
@@ -52,8 +52,7 @@ class SemanticVersion(object):
         return SemanticVersion(*release)
 
     def dec_first_nonzero(self):
-        """
-        Create a new SemanticVersion with the first nonzero value decremented
+        """Create a new SemanticVersion with the first nonzero value decremented
 
         If the version is 0.0.2, then this will return 0.0.1. If this version
         is 0.2.0, then this version will return 0.1.0.
@@ -94,9 +93,9 @@ class SemanticVersion(object):
         if out[0] == 0 and out[1] == 0:
             return out
         elif out[0] == 0:
-            return (out[0], out[1], 0)
+            return out[0], out[1], 0
         else:
-            return (out[0], 0, 0)
+            return out[0], 0, 0
 
     def inc_release(self):
         """Create a new SemanticVersion with the patch level incremented
@@ -143,7 +142,7 @@ class SemanticVersion(object):
         except ValueError:
             raise DataError("Invalid Prerelease number in semantic version", prerelease_number=release_number)
 
-        return (release_type, release_number)
+        return release_type, release_number
 
     @classmethod
     def FromString(cls, version):
@@ -171,10 +170,10 @@ class SemanticVersion(object):
         """Return the X.Y.Z prefix for this version
         """
 
-        return (self.major, self.minor, self.patch)
+        return self.major, self.minor, self.patch
 
     def _ordering_tuple(self):
-        return (self.major, self.minor, self.patch, self.prerelease_order[self.release_type], self.prerelease_number)
+        return self.major, self.minor, self.patch, self.prerelease_order[self.release_type], self.prerelease_number
 
     def __str__(self):
         version = "{0}.{1}.{2}".format(self.major, self.minor, self.patch)
@@ -267,7 +266,7 @@ class SemanticVersion(object):
         return hash(self._ordering_tuple())
 
 
-class SemanticVersionRange(object):
+class SemanticVersionRange:
     """Class specifying a range of SemanticVersion objects
 
     Ranges can be used to filter a list of SemanticVersion objects into
@@ -318,13 +317,13 @@ class SemanticVersionRange(object):
             elif not upper_inc and version >= upper:
                 return False
 
-        #Prereleases have special matching requirements
+        # Prereleases have special matching requirements
         if version.is_prerelease:
-            #Prereleases cannot match ranges that are not defined as prereleases
+            # Prereleases cannot match ranges that are not defined as prereleases
             if (lower is None or not lower.is_prerelease) and (upper is None or not upper.is_prerelease):
                 return False
 
-            #Prereleases without the same major.minor.patch as a range end point cannot match
+            # Prereleases without the same major.minor.patch as a range end point cannot match
             if (lower is not None and version.release_tuple != lower.release_tuple) and \
                (upper is not None and version.release_tuple != upper.release_tuple):
                 return False
@@ -332,8 +331,7 @@ class SemanticVersionRange(object):
         return True
 
     def _check_insersection(self, version, ranges):
-        """Check that a version is inside all of a list of ranges
-        """
+        """Check that a version is inside all of a list of ranges"""
 
         for ver_range in ranges:
             if not self._check_ver_range(version, ver_range):
@@ -358,7 +356,7 @@ class SemanticVersionRange(object):
         return False
 
     def filter(self, versions, key=lambda x: x):
-        """Filter all of the versions in an interable that match this version range
+        """Filter all of the versions in an iterable that match this version range
 
         Args:
             versions (iterable): An iterable of SemanticVersion objects
@@ -395,14 +393,15 @@ class SemanticVersionRange(object):
         range_string = range_string.strip()
 
         if len(range_string) == 0:
-            raise ArgumentError("You must pass a finite string to SemanticVersionRange.FromString", range_string=range_string)
+            raise ArgumentError("You must pass a finite string to SemanticVersionRange.FromString",
+                                range_string=range_string)
 
-        #Check for *
+        # Check for *
         if len(range_string) == 1 and range_string[0] == '*':
             conj = (None, None, True, True)
             disjuncts = [[conj]]
 
-        #Check for ^X.Y.Z
+        # Check for ^X.Y.Z
         elif range_string[0] == '^':
             ver = range_string[1:]
 

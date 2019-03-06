@@ -1,5 +1,4 @@
-"""Basic virtual IOTile device class for testing other components interactions with IOTile devices
-"""
+"""Basic virtual IOTile device class for testing other components interactions with IOTile devices"""
 
 import random
 from iotile.core.hw.virtual.virtualdevice import VirtualIOTileDevice, rpc

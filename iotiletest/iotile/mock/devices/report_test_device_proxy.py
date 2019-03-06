@@ -1,9 +1,11 @@
 from iotile.core.hw.proxy.proxy import TileBusProxyObject
 from iotile.core.utilities.typedargs.annotate import annotated,param,return_type, context
 
+
 class StreamerResult(dict):
     def __init__(self):
         self.comm_status = 0
+
 
 @context("ReportTestDeviceProxy")
 class ReportTestDeviceProxy(TileBusProxyObject):

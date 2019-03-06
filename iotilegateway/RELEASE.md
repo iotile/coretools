@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileGateway are listed here.
 
+## 2.0.2
+
+- Remove past/future/monotonic, pylint cleanup
+
 ## 2.0.1
 
 - Fix recurring errors when iotile-supervisor not present while running iotile-gateway

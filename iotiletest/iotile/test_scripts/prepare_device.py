@@ -4,15 +4,12 @@ import sys
 import json
 import os.path
 import imp
-from builtins import range
-from builtins import input
 from iotile.core.exceptions import IOTileException
 from iotile.core.hw.hwmanager import HardwareManager
 
 
 def main():
-    """Run a script that puts an IOTile device into a known state
-    """
+    """Run a script that puts an IOTile device into a known state"""
 
     list_parser = argparse.ArgumentParser(add_help=False)
     list_parser.add_argument('-l', '--list', action='store_true', help="List all known device preparation scripts and then exit")

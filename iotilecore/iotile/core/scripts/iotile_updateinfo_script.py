@@ -1,6 +1,5 @@
 """A command line script to print the contents of an UpdateScript."""
 
-from __future__ import unicode_literals, absolute_import, print_function
 import sys
 import argparse
 import logging
@@ -8,14 +7,15 @@ from iotile.core.hw import UpdateScript
 from iotile.core.exceptions import ArgumentError, DataError
 
 DESCRIPTION = \
-"""Print information about an IOTile update script.
+    """Print information about an IOTile update script.
+    
+    This program takes in a binary UpdateScript object, parses it and prints out
+    information about it.  It is able to decode the script into the series of high
+    level operations that it contains including decoding multi-step operations
+    back into their high level logical equivalent such as 'Program SensorGraph'
+    rather than a series of 'Add Node' and 'Add Streamer' actions.
+    """
 
-This program takes in a binary UpdateScript object, parses it and prints out
-information about it.  It is able to decode the script into the series of high
-level operations that it contains including decoding multi-step operations
-back into their high level logical equivalent such as 'Program SensorGraph'
-rather than a series of 'Add Node' and 'Add Streamer' actions.
-"""
 
 def build_args():
     """Create command line parser."""

@@ -3,9 +3,8 @@
 
 import base64
 import logging
-import monotonic
+from time import monotonic
 import threading
-from builtins import range
 from iotile.core.hw.transport.adapter import DeviceAdapter
 from iotile.core.utilities.validating_wsclient import ValidatingWSClient
 from iotile.core.hw.reports.parser import IOTileReportParser
@@ -171,7 +170,7 @@ class WebSocketDeviceAdapter(DeviceAdapter):
         """
 
         self._add_probe_callback(callback)
-        self.last_probe = monotonic.monotonic()
+        self.last_probe = monotonic()
 
         try:
             self.send_command_async(operations.SCAN)
@@ -686,7 +685,7 @@ class WebSocketDeviceAdapter(DeviceAdapter):
     def periodic_callback(self):
         """Periodically help maintain adapter internal state."""
 
-        now = monotonic.monotonic()
+        now = monotonic()
 
         if len(self.probe_callbacks) > 0:
             # Currently probing: check if not timed out

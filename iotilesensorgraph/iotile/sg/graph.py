@@ -13,7 +13,7 @@ from .known_constants import config_fast_tick_secs, config_tick1_secs, config_ti
 from .exceptions import NodeConnectionError, ProcessingFunctionError, ResourceUsageError
 
 
-class SensorGraph(object):
+class SensorGraph:
     """A graph based data processing engine.
 
     Args:

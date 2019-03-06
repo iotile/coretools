@@ -24,8 +24,6 @@ setup(
     description="IOTile SensorGraph Management and Simulation Package",
     install_requires=[
         "pyparsing~=2.2.0",
-        "future>=0.17.1",
-        "monotonic~=1.5",
         "toposort>=1.5",
         "iotile-core>=4.0.0"
     ],

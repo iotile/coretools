@@ -29,4 +29,5 @@ def find_proxy_plugin(component, plugin_name):
         if plugin.__name__ == plugin_name:
             return plugin
 
-    raise DataError("Could not find proxy plugin module in registered components or installed distributions", component=component, name=plugin_name)
+    raise DataError("Could not find proxy plugin module in registered components or installed distributions",
+                    component=component, name=plugin_name)

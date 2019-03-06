@@ -94,7 +94,7 @@ class DemoEmulatedTile(EmulatedPeripheralTile):
             try:
                 if action == 'echo':
                     rpc_id, arg = args
-                    self._device.emulator.finish_async_rpc(self.address, rpc_id, pack_rpc_payload("L", (arg,)))
+                    self._device.emulator.finish_async_rpc(self.address, rpc_id, "L", arg)
                 elif action == 'trace':
                     byte_count = args
                     chunks = byte_count // 20

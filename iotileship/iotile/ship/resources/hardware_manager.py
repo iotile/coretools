@@ -1,6 +1,4 @@
-from __future__ import absolute_import, unicode_literals
 
-from builtins import int
 from iotile.core.utilities.schema_verify import DictionaryVerifier, OptionsVerifier, StringVerifier, IntVerifier
 from iotile.core.hw import HardwareManager
 from iotile.core.exceptions import HardwareError
@@ -11,6 +9,7 @@ RESOURCE_ARG_SCHEMA = DictionaryVerifier(desc="hardware_manager arguments")
 RESOURCE_ARG_SCHEMA.add_optional("port", StringVerifier("the port string to use to connect to devices"))
 RESOURCE_ARG_SCHEMA.add_optional("connect", OptionsVerifier(StringVerifier(), IntVerifier(), desc="the uuid of the device to connect to"))
 RESOURCE_ARG_SCHEMA.add_optional("connect_direct", OptionsVerifier(StringVerifier(), desc="the connection string of the device to connect to"))
+
 
 class HardwareManagerResource(SharedResource):
     """A shared HardwareManager instance.

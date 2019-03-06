@@ -8,7 +8,6 @@ The version must match the version encoded in version.py in the respective
 subdirectory for the component for the release to proceed.
 """
 
-from __future__ import unicode_literals, print_function, absolute_import
 import argparse
 import sys
 import os
@@ -18,6 +17,7 @@ import setuptools.sandbox
 from twine.commands.upload import upload
 from components import comp_names
 
+
 def build_parser():
     """Build argument parsers."""
 
@@ -26,9 +26,9 @@ def build_parser():
     parser.add_argument('component', help="The component to release as component-version")
     return parser
 
+
 def send_slack_message(message):
-    """Send a message to the slack channel #coretools
-    """
+    """Send a message to the slack channel #coretools"""
 
     if 'SLACK_WEB_HOOK' not in os.environ:
         raise EnvironmentError("Could not find SLACK_WEB_HOOK environment variable")
@@ -39,9 +39,9 @@ def send_slack_message(message):
     if r.status_code != 200:
         raise RuntimeError("Could not post message to slack channel")
 
+
 def get_release_component(comp):
-    """Split the argument passed on the command line into a component name and expected version
-    """
+    """Split the argument passed on the command line into a component name and expected version"""
 
     name, vers = comp.split("-")
 
@@ -74,8 +74,7 @@ def check_compatibility(name):
 
 
 def check_version(component, expected_version):
-    """Make sure the package version in setuptools matches what we expect it to be
-    """
+    """Make sure the package version in setuptools matches what we expect it to be"""
 
     comp = comp_names[component]
 
@@ -89,8 +88,7 @@ def check_version(component, expected_version):
 
 
 def build_component(component):
-    """Create an sdist and a wheel for the desired component
-    """
+    """Create an sdist and a wheel for the desired component"""
 
     comp = comp_names[component]
 
@@ -105,6 +103,7 @@ def build_component(component):
         setuptools.sandbox.run_setup('setup.py', args)
     finally:
         os.chdir(curr)
+
 
 def upload_component(component):
     """Upload a given component to pypi
@@ -131,7 +130,7 @@ def upload_component(component):
     else:
         args = ['twine', 'upload', '-u', pypi_user, '-p', pypi_pass, distpath]
 
-    #Invoke upload this way since subprocess call of twine cli has cross platform issues
+    # Invoke upload this way since subprocess call of twine cli has cross platform issues
     upload(dists, 'pypi', False, None, pypi_user, pypi_pass, None, None, '~/.pypirc', False, None, None, None)
 
 
@@ -165,6 +164,7 @@ def get_release_notes(component, version):
         sys.exit(1)
 
     return release_string
+
 
 def main():
     parser = build_parser()

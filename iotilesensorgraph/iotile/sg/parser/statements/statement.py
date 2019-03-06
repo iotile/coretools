@@ -5,7 +5,7 @@ from collections import namedtuple
 LocationInfo = namedtuple("LocationInfo", ['line', 'line_no', 'column'])
 
 
-class SensorGraphStatement(object):
+class SensorGraphStatement:
     """The base class for an AST of statements in a sensor graph file.
 
     Args:

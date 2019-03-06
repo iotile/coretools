@@ -8,7 +8,7 @@
 
 
 class TBHandler(object):
-    """A representaion of a handler function with type info.
+    """A representation of a handler function with type info.
 
     Args:
         symbol (str): The name of the symbol associated with this handler.

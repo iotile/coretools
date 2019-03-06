@@ -1,9 +1,7 @@
-from __future__ import (unicode_literals, print_function, absolute_import)
-from builtins import str
-from iotile.core.hw.hwmanager import HardwareManager
 from iotile.core.exceptions import ArgumentError
 
-class FlashBoardStep (object):
+
+class FlashBoardStep:
     """A Recipe Step used to flash firmware directly
     
     Currently only supports using jlink to flash. Used to bootstrap firmware

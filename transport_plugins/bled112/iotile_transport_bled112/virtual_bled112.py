@@ -8,7 +8,6 @@ TileBus commands.
 # This file is copyright Arch Systems, Inc.
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
-from __future__ import unicode_literals, absolute_import, print_function
 from queue import Queue
 import traceback
 import struct

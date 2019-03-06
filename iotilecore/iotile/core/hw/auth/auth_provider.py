@@ -13,7 +13,7 @@ from iotile.core.dev import ComponentRegistry
 from iotile.core.exceptions import NotFoundError, ArgumentError
 
 
-class AuthProvider(object):
+class AuthProvider:
     """Base class for all objects that provide a way to authenticate or protect data.
 
     There are three kinds of things that are encrypted or signed in an IOTileDevice:

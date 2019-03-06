@@ -1,4 +1,3 @@
-from builtins import int
 from .verifier import Verifier
 from iotile.core.exceptions import ValidationError
 
@@ -26,7 +25,8 @@ class IntVerifier(Verifier):
         """
 
         if not isinstance(obj, int):
-            raise ValidationError("Object is not a int", reason='object is not a int', object=obj, type=type(obj), int_type=int)
+            raise ValidationError("Object is not a int", reason='object is not a int', object=obj,
+                                  type=type(obj), int_type=int)
 
         return obj
 

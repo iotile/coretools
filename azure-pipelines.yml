@@ -44,7 +44,18 @@ jobs:
       pip install six cmdln pytest
       pip install pytest pytest-logging pytest-localserver requests-mock pycryptodome configparser iotile-support-lib-controller-3
       pip install "tornado>=4.5.3,<5.0.0"
-      pip install -e ./iotilecore ./iotilebuild ./iotiletest ./iotilegateway ./iotilesensorgraph ./iotileship ./iotileemulate ./transport_plugins/bled112 ./transport_plugins/awsiot ./transport_plugins/jlink ./transport_plugins/websocket ./iotile_ext_cloud
+      pip install -e ./iotilecore/
+      pip install -e ./iotilebuild/
+      pip install -e ./iotiletest/
+      pip install -e ./iotilegateway/
+      pip install -e ./iotilesensorgraph/
+      pip install -e ./iotileship/
+      pip install -e ./iotileemulate
+      pip install -e ./transport_plugins/bled112/
+      pip install -e ./transport_plugins/awsiot/
+      pip install -e ./transport_plugins/jlink/
+      pip install -e ./transport_plugins/websocket/
+      pip install -e ./iotile_ext_cloud/
       python scripts/test.py test_all test
     displayName: 'pytest'
 
@@ -74,11 +85,23 @@ jobs:
       brew tap PX4/px4
       brew install px4/px4/gcc-arm-none-eabi
       which arm-none-eabi-gcc
+    displayName: "Install GCC with brew"
 
   - script: |
       python -m pip install six cmdln pytest
       python -m pip install pytest pytest-logging pytest-localserver requests-mock pycryptodome configparser iotile-support-lib-controller-3
       pip install "tornado>=4.5.3,<5.0.0"
-      pip install -e ./iotilecore ./iotilebuild ./iotiletest ./iotilegateway ./iotilesensorgraph ./iotileship ./iotileemulate ./transport_plugins/bled112 ./transport_plugins/awsiot ./transport_plugins/jlink ./transport_plugins/websocket ./iotile_ext_cloud
+      pip install -e ./iotilecore/
+      pip install -e ./iotilebuild/
+      pip install -e ./iotiletest/
+      pip install -e ./iotilegateway/
+      pip install -e ./iotilesensorgraph/
+      pip install -e ./iotileship/
+      pip install -e ./iotileemulate
+      pip install -e ./transport_plugins/bled112/
+      pip install -e ./transport_plugins/awsiot/
+      pip install -e ./transport_plugins/jlink/
+      pip install -e ./transport_plugins/websocket/
+      pip install -e ./iotile_ext_cloud/
       python scripts/test.py test_all test
     displayName: 'pytest'

@@ -3,6 +3,10 @@
 All major changes in each released version of iotile-sensorgraph are listed
 here.
 
+## 1.0.2
+
+- Remove past/future/monotonic, pylint cleanup
+
 ## 1.0.1
 
 - Add support for directly passing an sgf string to the parser.  This helps

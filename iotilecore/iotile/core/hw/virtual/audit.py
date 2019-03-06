@@ -1,5 +1,4 @@
-"""A list of event codes that are logged to the audit log by virtual devices for verification purposes
-"""
+"""A list of event codes that are logged to the audit log by virtual devices for verification purposes"""
 
 from collections import namedtuple
 

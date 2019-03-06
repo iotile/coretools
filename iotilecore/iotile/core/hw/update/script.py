@@ -1,6 +1,5 @@
 """A list of update records that specify a script for updating a device."""
 
-from __future__ import (print_function, absolute_import, unicode_literals)
 import struct
 import hashlib
 import logging
@@ -14,7 +13,7 @@ from .records import UnknownRecord, SendRPCRecord, SendErrorCheckingRPCRecord
 ScriptHeader = namedtuple('ScriptHeader', ['header_length', 'authenticated', 'integrity_checked', 'encrypted'])
 
 
-class UpdateScript(object):
+class UpdateScript:
     """An update script that consists of a list of UpdateRecord objects.
 
     Args:
@@ -49,14 +48,16 @@ class UpdateScript(object):
         """
 
         if len(script_data) < UpdateScript.SCRIPT_HEADER_LENGTH:
-            raise ArgumentError("Script is too short to contain a script header", length=len(script_data), header_length=UpdateScript.SCRIPT_HEADER_LENGTH)
+            raise ArgumentError("Script is too short to contain a script header",
+                                length=len(script_data), header_length=UpdateScript.SCRIPT_HEADER_LENGTH)
 
         embedded_hash, magic, total_length = struct.unpack_from("<16sLL", script_data)
         if magic != UpdateScript.SCRIPT_MAGIC:
             raise ArgumentError("Script has invalid magic value", expected=UpdateScript.SCRIPT_MAGIC, found=magic)
 
         if total_length != len(script_data):
-            raise ArgumentError("Script length does not match embedded length", embedded_length=total_length, length=len(script_data))
+            raise ArgumentError("Script length does not match embedded length",
+                                embedded_length=total_length, length=len(script_data))
 
         hashed_data = script_data[16:]
 
@@ -65,7 +66,8 @@ class UpdateScript(object):
         hash_value = sha.digest()[:16]
 
         if not compare_digest(embedded_hash, hash_value):
-            raise ArgumentError("Script has invalid embedded hash", embedded_hash=hexlify(embedded_hash), calculated_hash=hexlify(hash_value))
+            raise ArgumentError("Script has invalid embedded hash", embedded_hash=hexlify(embedded_hash),
+                                calculated_hash=hexlify(hash_value))
 
         return ScriptHeader(UpdateScript.SCRIPT_HEADER_LENGTH, False, True, False)
 
@@ -115,14 +117,14 @@ class UpdateScript(object):
 
             curr += total_length
 
-
             try:
                 if show_rpcs and record_type == SendRPCRecord.MatchType():
                     cls.logger.debug("   {0}".format(hexlify(record_data)))
                     record = SendRPCRecord.FromBinary(record_data[UpdateRecord.HEADER_LENGTH:], record_count)
                 elif show_rpcs and record_type == SendErrorCheckingRPCRecord.MatchType():
                     cls.logger.debug("   {0}".format(hexlify(record_data)))
-                    record = SendErrorCheckingRPCRecord.FromBinary(record_data[UpdateRecord.HEADER_LENGTH:], record_count)
+                    record = SendErrorCheckingRPCRecord.FromBinary(record_data[UpdateRecord.HEADER_LENGTH:],
+                                                                   record_count)
                 else:
                     record = UpdateRecord.FromBinary(record_data, record_count)
 
@@ -143,7 +145,8 @@ class UpdateScript(object):
                 elif not allow_unknown:
                     raise
                 elif allow_unknown and record_count > 1:
-                    raise ArgumentError("A record matched an initial record subset but failed matching a subsequent addition without leaving a partial_match")
+                    raise ArgumentError("A record matched an initial record subset but failed"
+                                        " matching a subsequent addition without leaving a partial_match")
                 else:
                     record = UnknownRecord(record_type, record_data[UpdateRecord.HEADER_LENGTH:])
 

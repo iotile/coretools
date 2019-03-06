@@ -6,9 +6,8 @@
 # Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
-#unit_test.py
+# unit_test.py
 
-from __future__ import print_function
 import os.path
 import os
 from SCons.Environment import Environment
@@ -18,7 +17,8 @@ from iotile.core.exceptions import *
 
 known_types = {}
 
-class UnitTest (object):
+
+class UnitTest:
     def __init__(self, files, ignore_extra_attributes=False):
         self.files = files
         self.additional_intermediates = []
@@ -39,8 +39,7 @@ class UnitTest (object):
         self.status = "Unknown"
 
     def result_depends(self, filename):
-        """
-        Record that the result of this unit test depends on the file filename,
+        """Record that the result of this unit test depends on the file filename,
         which is assumed to be located in the unit test's generated folder,
         put there via copy_file, for example.
         """
@@ -59,8 +58,7 @@ class UnitTest (object):
         print(self.desc)
 
     def build_dirs(self, chip):
-        """
-        Return the appropriate build directories for this unit test.  The build hierarchy is:
+        """Return the appropriate build directories for this unit test.  The build hierarchy is:
         - test: build/test/<CHIP>/<TEST>
         - objects: build/test/<CHIP>/<TEST>/objects
         """
@@ -72,11 +70,10 @@ class UnitTest (object):
         finaldir = os.path.join('build', 'test', 'output')
         logdir = os.path.join(finaldir, 'logs')
 
-        return {'test':outdir, 'objects': testdir, 'logs': logdir}
+        return {'test': outdir, 'objects': testdir, 'logs': logdir}
 
     def get_path(self, obj, chip):
-        """
-        Get the canonical path for various build products of the unit test.  Currently understands:
+        """Get the canonical path for various build products of the unit test.  Currently understands:
         - rawlog: the raw output from the simulator run
         - log: the processed version of rawlog into a standard format
         """
@@ -99,11 +96,11 @@ class UnitTest (object):
             raise BuildError("Path to unknown build product asked for", unit_test=self.name, object=obj, arch=chip.name)
 
     def build_target(self, target, summary_env):
-        raise BuildError('The build_target method must be overriden by a UnitTest subclass', unit_test=self.name, type=str(self.__class__.__name__))
+        raise BuildError('The build_target method must be overriden by a UnitTest subclass',
+                         unit_test=self.name, type=str(self.__class__.__name__))
 
     def check_output(self, chip, log):
-        """
-        If unit tests have additional things to check about the unit test's output,
+        """If unit tests have additional things to check about the unit test's output,
         they should override this function and return False if the test fails these
         additional checks. They may also choose to open log for appending and log the
         reason for this failure.
@@ -119,8 +116,7 @@ class UnitTest (object):
                 f.write('FAILED')
 
     def build(self, module_targets, summary_env):
-        """
-        Build this unit test for the intersection of the targets that it is designed for
+        """Build this unit test for the intersection of the targets that it is designed for
         and the targets that the module it is targeted at is designed for.  If more architectures
         are specified in the module_targets than in a unit test, the unit test is assumed to
         apply if all of the architectures in the unit test are contained in the module_target.
@@ -141,13 +137,10 @@ class UnitTest (object):
             self.build_target(mod_target, summary_env)
 
     def _check_files(self):
-        """
-        All files should be c or assembly files (.c or .as) and should
-        exist.
-        """
+        """All files should be c or assembly files (.c or .as) and should exist."""
 
         for file in self.files:
-            valid = set(['.c', '.as', '.asm'])
+            valid = {'.c', '.as', '.asm'}
             ext = os.path.splitext(file)[1]
 
             if not os.path.exists(file):
@@ -158,8 +151,7 @@ class UnitTest (object):
         return True
 
     def _parse_targets(self, targets):
-        """
-        Parse the targets specified for this unit test into canonical format
+        """Parse the targets specified for this unit test into canonical format
         allowing subclasses to handle targets specified for them by overriding
         the _parse_target(self, target) method to return the canonical name
         for the target
@@ -180,8 +172,7 @@ class UnitTest (object):
         self.targets = canonical_targets
 
     def copy_file(self, src_file, dst_name):
-        """
-        Copy a specified file into the unit test object directory
+        """Copy a specified file into the unit test object directory
 
         Subclasses can use this routine to add files that are necessary
         for the unit test to run.  It is up to each unit test subclass
@@ -192,8 +183,7 @@ class UnitTest (object):
         self.copy_files.append((src_file, dst_name))
 
     def find_support_file(self, support_name, target):
-        """
-        Given the name of a support file, try to find it by looking in the
+        """Given the name of a support file, try to find it by looking in the
         same directory as the first unit test file and searching the following
         names, where target is a list of architectures like:
         arch1/arch2/arch3
@@ -220,8 +210,7 @@ class UnitTest (object):
         raise BuildError("could not find support file", filename=support_name, arch_prefixes=prefixes)
 
     def _extract_header(self, file):
-        """
-        Process the first commented block in the file and extract the assignments
+        """Process the first commented block in the file and extract the assignments
         from it, parsing out the name, targets, and description
         """
 
@@ -276,7 +265,8 @@ class UnitTest (object):
                         handler = getattr(self, handlern)
                         handler(val)
                     elif not self.ignore_extra_attributes:
-                        raise BuildError("Unknown attribute encountered with no handler", file=file, attribute=name, value=val, type=str(self.__class__))
+                        raise BuildError("Unknown attribute encountered with no handler",
+                                         file=file, attribute=name, value=val, type=str(self.__class__))
 
         # Make sure that all of the right information has been found
         required_attributes = ['name', 'type']
@@ -288,8 +278,7 @@ class UnitTest (object):
         return value
 
     def _parse_patches(self, value):
-        """
-        Parse a list of symbols that need to be patched in the test. Each specific architecture
+        """Parse a list of symbols that need to be patched in the test. Each specific architecture
         can choose to do what it wants with this list.
         """
 
@@ -299,8 +288,7 @@ class UnitTest (object):
         self.patch = mapper
 
     def add_intermediate(self, file, folder=None):
-        """
-        Add a file to the list of intermediate build products produced by this unit test.
+        """Add a file to the list of intermediate build products produced by this unit test.
         This is important for letting SCons know about the file so that it can clean it up
         properly.  If folder is specified, is should be one of the values returned by
         build_dirs() and it will be replaced with the appropriate build directory for the
@@ -351,9 +339,7 @@ def find_units(parent):
 
 
 def find_sources(src_dir, patterns=('*.c', '*.as', '*.asm')):
-    """
-    Given a source directory, recursively find all source and header files under that directory
-    """
+    """Given a source directory, recursively find all source and header files under that directory"""
 
     include_dirs = set()
     src = {}
@@ -390,5 +376,6 @@ def build_summary_name():
 
 
 def build_summary(env):
-    summary = env.Command([build_summary_name()], env['TESTS'], action=env.Action(test_summary.build_summary_cmd, "Creating test summary"))
+    summary = env.Command([build_summary_name()], env['TESTS'],
+                          action=env.Action(test_summary.build_summary_cmd, "Creating test summary"))
     env.AlwaysBuild(summary)

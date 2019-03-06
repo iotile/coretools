@@ -1,5 +1,4 @@
-"""IOTileReport subclass for readings packaged as individual readings
-"""
+"""IOTileReport subclass for readings packaged as individual readings"""
 
 import datetime
 import struct
@@ -32,8 +31,7 @@ class IndividualReadingReport(IOTileReport):
 
     @classmethod
     def ReportLength(cls, header):
-        """Given a header of HeaderLength bytes, calculate the size of this report
-        """
+        """Given a header of HeaderLength bytes, calculate the size of this report"""
 
         return 20
 
@@ -43,7 +41,8 @@ class IndividualReadingReport(IOTileReport):
         """
 
         if len(readings) != 1:
-            raise ArgumentError("IndividualReading reports must be created with exactly one reading", num_readings=len(readings))
+            raise ArgumentError("IndividualReading reports must be created with exactly one reading",
+                                num_readings=len(readings))
 
         reading = readings[0]
         data = struct.pack("<BBHLLLL", 0, 0, reading.stream, uuid, 0, reading.raw_time, reading.value)
@@ -56,7 +55,7 @@ class IndividualReadingReport(IOTileReport):
         fmt, _, stream, uuid, sent_timestamp, reading_timestamp, reading_value = unpack("<BBHLLLL", self.raw_report)
         assert fmt == 0
 
-        #Estimate the UTC time when this device was turned on
+        # Estimate the UTC time when this device was turned on
         time_base = self.received_time - datetime.timedelta(seconds=sent_timestamp)
 
         reading = IOTileReading(reading_timestamp, stream, reading_value, time_base=time_base)
@@ -66,10 +65,10 @@ class IndividualReadingReport(IOTileReport):
         return [reading], []
 
     def encode(self):
-        """Turn this report into a serialized bytearray that could be decoded with a call to decode
-        """
+        """Turn this report into a serialized bytearray that could be decoded with a call to decode"""
 
         reading = self.visible_readings[0]
-        data = struct.pack("<BBHLLLL", 0, 0, reading.stream, self.origin, self.sent_timestamp, reading.raw_time, reading.value)
+        data = struct.pack("<BBHLLLL", 0, 0, reading.stream, self.origin,
+                           self.sent_timestamp, reading.raw_time, reading.value)
 
         return bytearray(data)

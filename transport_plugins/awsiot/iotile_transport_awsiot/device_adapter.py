@@ -13,7 +13,7 @@ from .mqtt_client import OrderedAWSIOTClient
 from .topic_validator import MQTTTopicValidator
 from .connection_manager import ConnectionManager
 from . import messages
-from builtins import range
+
 
 class AWSIOTDeviceAdapter(DeviceAdapter):
     """A device adapter allowing connections to devices over AWS IoT

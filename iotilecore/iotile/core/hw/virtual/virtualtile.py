@@ -1,4 +1,4 @@
-"""A virtual tile that ensapsulates resuable behavior."""
+"""A virtual tile that encapsulates reusable behavior."""
 
 from iotile.core.exceptions import ArgumentError
 from iotile.core.dev import ComponentRegistry

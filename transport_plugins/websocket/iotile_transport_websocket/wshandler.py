@@ -8,8 +8,6 @@ import msgpack
 import tornado.gen
 import tornado.ioloop
 import tornado.websocket
-from future.utils import viewitems
-from builtins import bytes
 from .protocol import commands, operations
 
 
@@ -247,7 +245,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             devices (dict): The scanned devices to send (uuid as key, multiple info as value)
         """
 
-        for uuid, info in viewitems(devices):
+        for uuid, info in devices.items():
             connection_string = self._uuid_to_connection_string(uuid)
             converted_device = {
                 'uuid': uuid,

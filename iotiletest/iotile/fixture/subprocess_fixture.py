@@ -1,7 +1,8 @@
 import pytest
 import subprocess
 
-class MockSubprocess(object):
+
+class MockSubprocess:
     def __init__(self):
         """Constructor."""
 

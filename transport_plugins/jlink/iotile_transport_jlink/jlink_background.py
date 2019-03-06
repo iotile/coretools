@@ -1,19 +1,18 @@
 """A background thread for asynchronous operations on the jlink adapter."""
 
-from __future__ import (unicode_literals, print_function, absolute_import)
 import threading
 import logging
 import struct
 import time
 from collections import namedtuple
-from monotonic import monotonic
+from time import monotonic
 from iotile.core.exceptions import ArgumentError, HardwareError
 import iotile_transport_jlink.devices as devices
 from .structures import ControlStructure
 
 from queue import Queue
 
-#pylint:disable=invalid-name;This is not a constant so its name is okay
+# pylint:disable=invalid-name;This is not a constant so its name is okay
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 

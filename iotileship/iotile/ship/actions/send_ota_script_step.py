@@ -1,9 +1,8 @@
-from __future__ import unicode_literals, print_function, absolute_import
-from builtins import str
 from iotile.core.hw.update import UpdateScript
 from iotile.core.exceptions import ArgumentError
 
-class SendOTAScriptStep(object):
+
+class SendOTAScriptStep:
     """Send a TRUB OTA script to a device and execute it.
 
     This function requires a shared hardware manager resource to be setup

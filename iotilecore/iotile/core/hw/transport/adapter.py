@@ -4,7 +4,7 @@ from iotile.core.exceptions import ArgumentError
 MISSING = object()
 
 
-class DeviceAdapter(object):
+class DeviceAdapter:
     """Classes that encapsulate access to IOTile devices over a particular communication channel
 
     Subclasses of DeviceAdapter implement concrete access channels over which IOTile devices
@@ -77,8 +77,7 @@ class DeviceAdapter(object):
         self.config = {}
 
     def set_id(self, adapter_id):
-        """Set an ID that this adapter uses to identify itself when making callbacks
-        """
+        """Set an ID that this adapter uses to identify itself when making callbacks"""
 
         self.id = adapter_id
 
@@ -222,7 +221,7 @@ class DeviceAdapter(object):
                 a device using this DeviceAdapter.
         """
 
-        if interface not in set(["rpc", "script", "streaming", "tracing", "debug"]):
+        if interface not in {"rpc", "script", "streaming", "tracing", "debug"}:
             callback(conn_id, self.id, False, "invalid interface name in call to open_interface_async")
             return
 

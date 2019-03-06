@@ -1,5 +1,4 @@
-"""An ordered list of authentication providers that are checked in turn to attempt a crypto operation
-"""
+"""An ordered list of authentication providers that are checked in turn to attempt a crypto operation"""
 
 from iotile.core.exceptions import NotFoundError, ExternalError
 from iotile.core.dev import ComponentRegistry
@@ -23,7 +22,7 @@ class ChainedAuthProvider(AuthProvider):
     def __init__(self, args=None):
         super(ChainedAuthProvider, self).__init__(args)
 
-        #FIXME: Allow overwriting default providers via args
+        # FIXME: Allow overwriting default providers via args
         self._load_installed_providers()
 
         reg = ComponentRegistry()
@@ -31,7 +30,8 @@ class ChainedAuthProvider(AuthProvider):
         sub_providers = []
         for _, (priority, provider, provider_args) in reg.load_extensions('iotile.default_auth_providers'):
             if provider not in self._auth_factories:
-                raise ExternalError("Default authentication provider list references unknown auth provider", provider_name=provider, known_providers=self._auth_factories.keys())
+                raise ExternalError("Default authentication provider list references unknown auth provider",
+                                    provider_name=provider, known_providers=self._auth_factories.keys())
             configured = self._auth_factories[provider](provider_args)
             sub_providers.append((priority, configured))
 

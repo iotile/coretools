@@ -1,11 +1,10 @@
-"""Base class for data streamed from an IOTile device
-"""
+"""Base class for data streamed from an IOTile device"""
 
 import datetime
 from iotile.core.exceptions import NotFoundError
 
 
-class IOTileReading(object):
+class IOTileReading:
     """Base class for readings streamed from IOTile device.
 
     Each reading represents a single time/value pair sent from an IOTile Device.
@@ -21,7 +20,7 @@ class IOTileReading(object):
         raw_time (int): the number of seconds since the device turned on
             when the reading was taken
         time_base (datetime): An optional estimate of when the device was
-            last turned on so that we can calulate the actual time of the
+            last turned on so that we can calculate the actual time of the
             reading
         reading_time (datetime): An optional UTC time when this event was acquired.
             If combined with time_base, this value will take precedence and time_base
@@ -95,7 +94,7 @@ class IOTileReading(object):
             return "Stream {}: {} at uncorrected time {}".format(self.stream, self.value, self.raw_time)
 
 
-class IOTileEvent(object):
+class IOTileEvent:
     """Base class for all unstructured events.
 
     An event is a dictionary with a small summary section and an arbitrarily
@@ -104,7 +103,7 @@ class IOTileEvent(object):
 
     There are two different key/value stores in an IOTileEvent because there
     may be a very large amount of raw data that is summarized into a smaller
-    representationn.  It may be useful to know that separation so that we can
+    representation.  It may be useful to know that separation so that we can
     store the large data somewhere different from where we store the summary.
 
     Args:
@@ -112,7 +111,7 @@ class IOTileEvent(object):
             when the reading was taken.  This may be 0xFFFFFFFF if the raw
             time is not known.
         time_base (datetime): An optional estimate of when the device was
-            last turned on so that we can calulate the actual time of the
+            last turned on so that we can calculate the actual time of the
             reading.  If this is passed it is combined with raw_time to figure
             out the UTC time when the reading was taken.
         reading_time (datetime): An optional UTC time when this event was acquired.
@@ -182,7 +181,8 @@ class IOTileEvent(object):
             import dateutil.parser
             timestamp = dateutil.parser.parse(timestamp)
 
-        return IOTileEvent(obj.get('device_timestamp'), obj.get('stream'), obj.get('extra_data'), obj.get('data'), reading_id=obj.get('streamer_local_id'), reading_time=timestamp)
+        return IOTileEvent(obj.get('device_timestamp'), obj.get('stream'), obj.get('extra_data'),
+                           obj.get('data'), reading_id=obj.get('streamer_local_id'), reading_time=timestamp)
 
     def __str__(self):
         if self.reading_time is not None:
@@ -193,7 +193,7 @@ class IOTileEvent(object):
         return "Stream 0x{:04X}: Event at unknown time".format(self.stream)
 
 
-class IOTileReport(object):
+class IOTileReport:
     """Base class for data streamed from an IOTile device.
 
     All IOTileReports must derive from this class and must implement the following interface
@@ -208,7 +208,7 @@ class IOTileReport(object):
     - class method FromReadings(cls, uuid, readings)
         function that creates an instance of an IOTileReport subclass from a list of readings
         and a device uuid.
-    - propery ReportType:
+    - property ReportType:
         The one byte type code that defines this report type
     - instance method verify(self):
         function that verifies that a report is correctly received and, if possible, that
@@ -289,8 +289,7 @@ class IOTileReport(object):
             out.write(data)
 
     def serialize(self):
-        """Turn this report into a dictionary that encodes all information including received timestamp
-        """
+        """Turn this report into a dictionary that encodes all information including received timestamp"""
 
         info = {}
         info['received_time'] = self.received_time
@@ -315,4 +314,5 @@ class IOTileReport(object):
             enc = "encrypted"
         else:
             enc = "not encrypted"
-        return "IOTile Report (length: %d, visible readings: %d, visible events: %d, %s and %s)" % (len(self.raw_report), len(self.visible_readings), len(self.visible_events), verified, enc)
+        return "IOTile Report (length: %d, visible readings: %d, visible events: %d, %s and %s)" \
+               % (len(self.raw_report), len(self.visible_readings), len(self.visible_events), verified, enc)

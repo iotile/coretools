@@ -9,9 +9,7 @@ from .resolverchain import DependencyResolverChain
 
 @context("DependencyManager")
 class DependencyManager (object):
-    """Tools to manage IOTile dependencies and build infrastructure.
-
-    """
+    """Tools to manage IOTile dependencies and build infrastructure."""
 
     def __init__(self):
         pass
@@ -102,7 +100,7 @@ class DependencyManager (object):
 
             dep_stati[dep['name']] = 'installed'
 
-            #TODO: Check if the dependencies have the correct version
+            # TODO: Check if the dependencies have the correct version
 
         return dep_stati
 
@@ -135,14 +133,13 @@ class DependencyManager (object):
 
             dep_stati[dep['name']] = str(deptile.version)
 
-            #TODO: Check if the dependencies have the correct version
+            # TODO: Check if the dependencies have the correct version
 
         return dep_stati
 
     @param("path", "path", "exists", desc="Path to IOTile to check")
     def update_local(self, path='.'):
-        """Attempt to resolve all LOCAL dependencies in this IOTile by installing them into build/deps
-        """
+        """Attempt to resolve all LOCAL dependencies in this IOTile by installing them into build/deps"""
 
         tile = IOTile(path)
         if tile.release:
@@ -150,7 +147,7 @@ class DependencyManager (object):
 
         depdir = os.path.join(tile.folder, 'build', 'deps')
 
-        #FIXME: Read resolver_settings.json file
+        # FIXME: Read resolver_settings.json file
         resolver_chain = DependencyResolverChain()
         reg = ComponentRegistry()
 
@@ -171,8 +168,7 @@ class DependencyManager (object):
 
     @param("path", "path", "exists", desc="Path to IOTile to check")
     def update(self, path='.'):
-        """Attempt to resolve all dependencies in this IOTile by installing them into build/deps
-        """
+        """Attempt to resolve all dependencies in this IOTile by installing them into build/deps"""
 
         tile = IOTile(path)
         if tile.release:
@@ -180,7 +176,7 @@ class DependencyManager (object):
 
         depdir = os.path.join(tile.folder, 'build', 'deps')
 
-        #FIXME: Read resolver_settings.json file
+        # FIXME: Read resolver_settings.json file
         resolver_chain = DependencyResolverChain()
 
         for dep in tile.dependencies:
@@ -189,8 +185,7 @@ class DependencyManager (object):
 
     @param("path", "path", "exists", desc="Path to IOTile to check")
     def clean(self, path='.'):
-        """Remove all dependencies of this IOTile from build/deps
-        """
+        """Remove all dependencies of this IOTile from build/deps"""
 
         tile = IOTile(path)
         if tile.release:
@@ -221,24 +216,27 @@ class DependencyManager (object):
             try:
                 tile = IOTile(os.path.join(path, 'build', 'deps', dep['unique_id']))
 
-                #Check for version conflict between a directly included dependency and a dep used to build
-                #a dependency.
-                if tile.unique_id in seen_versions and seen_versions[tile.unique_id][0].coexistence_class != tile.parsed_version.coexistence_class:
-                    raise BuildError("Version conflict between direct dependency and component used to build one of our dependencies",
+                # Check for version conflict between a directly included dependency and a dep used to build
+                # a dependency.
+                if (tile.unique_id in seen_versions and
+                        seen_versions[tile.unique_id][0].coexistence_class != tile.parsed_version.coexistence_class):
+                    raise BuildError("Version conflict between direct dependency and component "
+                                     "used to build one of our dependencies",
                                      direct_dependency=tile.short_name, direct_version=str(tile.parsed_version),
                                      included_version=seen_versions[tile.unique_id][0],
                                      included_source=seen_versions[tile.unique_id][1])
                 elif tile.unique_id not in seen_versions:
                     seen_versions[tile.unique_id] = (tile.parsed_version, 'direct')
 
-                #Check for version conflicts between two included dependencies
+                # Check for version conflicts between two included dependencies
                 for inc_dep, inc_ver in viewitems(tile.dependency_versions):
-                    if inc_dep in seen_versions and seen_versions[inc_dep][0].coexistence_class != inc_ver.coexistence_class:
+                    if (inc_dep in seen_versions and
+                            seen_versions[inc_dep][0].coexistence_class != inc_ver.coexistence_class):
                         raise BuildError("Version conflict between component used to build two of our dependencies",
-                                     component_id=inc_dep,
-                                     dependency_one=tile.unique_id, version_one=str(inc_ver),
-                                     dependency_two=seen_versions[inc_dep][1],
-                                     version_two=seen_versions[inc_dep][0])
+                                         component_id=inc_dep,
+                                         dependency_one=tile.unique_id, version_one=str(inc_ver),
+                                         dependency_two=seen_versions[inc_dep][1],
+                                         version_two=seen_versions[inc_dep][0])
                     elif inc_dep not in seen_versions:
                         seen_versions[inc_dep] = (inc_ver, tile.unique_id)
             except (ArgumentError, ExternalError):

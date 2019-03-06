@@ -1,6 +1,4 @@
 """Command line script to load and run a sensor graph."""
-from __future__ import (unicode_literals, absolute_import, print_function)
-from builtins import input
 import os
 import sys
 import time
@@ -10,10 +8,9 @@ from iotile.core.exceptions import IOTileException
 from iotile.ship.recipe_manager import RecipeManager
 
 DESCRIPTION = \
-u"""Load and run an iotile recipe.
-
-
-"""
+    u"""Load and run an iotile recipe.
+    
+    """
 
 
 def build_args():

@@ -1,10 +1,7 @@
 """A class that can resolve product names back to their original location."""
-
-from __future__ import unicode_literals, print_function, absolute_import
 from collections import namedtuple
 import os
 import itertools
-from future.utils import viewitems, viewvalues
 from iotile.core.dev.iotileobj import IOTile
 from iotile.core.exceptions import ArgumentError, BuildError
 from .build import ArchitectureGroup
@@ -24,7 +21,7 @@ class ProductResolver(object):
             If not passed, this is assumed to be the current working directory.
     """
 
-    IGNORED_PRODUCTS = set(['include_directories'])
+    IGNORED_PRODUCTS = {'include_directories'}
     _singleton = None
 
     def __init__(self, folder="."):
@@ -43,8 +40,9 @@ class ProductResolver(object):
 
         self._product_filter = {}
 
-        for chip in itertools.chain(iter(self._family.targets(self._tile.short_name)), iter([self._family.platform_independent_target()])):
-            for key, prods in viewitems(chip.property('depends', {})):
+        for chip in itertools.chain(iter(self._family.targets(self._tile.short_name)),
+                                    iter([self._family.platform_independent_target()])):
+            for key, prods in chip.property('depends', {}).items():
                 name, _, _ = key.partition(',')
 
                 for prod in prods:
@@ -84,10 +82,10 @@ class ProductResolver(object):
         unique_id = tile.unique_id
         base_path = tile.output_folder
 
-        for prod_path, prod_type in viewitems(products):
+        for prod_path, prod_type in products.items():
             # We need to handle include_directories and tilebus_definitions
             # specially since those are stored reversed in module_settings.json
-            # for historical reasons.  Curently we don't support resolving
+            # for historical reasons.  Currently we don't support resolving
             # tilebus_definitions or include_directories in ProductResolver
             if prod_path == 'tilebus_definitions' or prod_path == 'include_directories':
                 continue
@@ -133,7 +131,7 @@ class ProductResolver(object):
 
         # If product_type is not return products of all types
         if product_type is None:
-            for prod_dict in viewvalues(self._product_map):
+            for prod_dict in self._product_map.values():
                 all_prods.extend([prod for prod in prod_dict.get(short_name, []) if include_hidden or not prod.hidden])
 
             return all_prods

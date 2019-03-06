@@ -1,6 +1,5 @@
 """An IOTile gateway-in-a-box that will connect to devices using device adapters and serve them using agents."""
 
-from __future__ import unicode_literals
 import logging
 import threading
 import tornado.ioloop

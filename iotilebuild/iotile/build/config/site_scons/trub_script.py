@@ -1,12 +1,9 @@
 """Routines for building trub scripts."""
 
-from __future__ import print_function, absolute_import
-
 import os
 from SCons.Script import Environment, Action
 from arm import ensure_image_is_hex
 from iotile.core.exceptions import BuildError
-from iotile.core.hw.update import UpdateScript
 from iotile.core.hw.update.records import ReflashTileRecord, ReflashControllerRecord, SetDeviceTagRecord, SendRPCRecord
 from iotile.build.build import ProductResolver
 from iotile.core.utilities.intelhex import IntelHex
@@ -14,7 +11,9 @@ from iotile.sg.compiler import compile_sgf
 from iotile.sg.output_formats.script import format_script
 from iotile.core.hw.update.script import UpdateScript
 
-def build_update_script(file_name, slot_assignments=None, os_info=None, sensor_graph=None, app_info=None, use_safeupdate=False):
+
+def build_update_script(file_name, slot_assignments=None, os_info=None, sensor_graph=None,
+                        app_info=None, use_safeupdate=False):
     """Build a trub script that loads given firmware into the given slots.
 
     slot_assignments should be a list of tuples in the following form:
@@ -22,7 +21,7 @@ def build_update_script(file_name, slot_assignments=None, os_info=None, sensor_g
 
     The output of this autobuild action will be a trub script in
     build/output/<file_name> that assigns the given firmware to each slot in
-    the order specified in the slot_assigments list.
+    the order specified in the slot_assignments list.
 
     Args:
         file_name (str): The name of the output file that we should create.
@@ -58,7 +57,8 @@ def build_update_script(file_name, slot_assignments=None, os_info=None, sensor_g
         files.append(sensor_graph)
         env['UPDATE_SENSORGRAPH'] = True
 
-    env.Command([os.path.join('build', 'output', file_name)], files, action=Action(_build_reflash_script_action, "Building TRUB script at $TARGET"))
+    env.Command([os.path.join('build', 'output', file_name)], files,
+                action=Action(_build_reflash_script_action, "Building TRUB script at $TARGET"))
 
 
 def _build_reflash_script_action(target, source, env):
@@ -74,12 +74,12 @@ def _build_reflash_script_action(target, source, env):
     records = []
 
     if env['USE_SAFEUPDATE']:
-        sgf_off = SendRPCRecord(8,0x2005,bytearray([0])) #Disable Sensorgraph
+        sgf_off = SendRPCRecord(8,0x2005,bytearray([0])) # Disable Sensorgraph
         records.append(sgf_off)
-        safemode_enable = SendRPCRecord(8,0x1006,bytearray([1])) #Enable Safemode
+        safemode_enable = SendRPCRecord(8,0x1006,bytearray([1])) # Enable Safemode
         records.append(safemode_enable)
 
-    #Update application firmwares
+    # Update application firmwares
     if env['SLOTS'] is not None:
         for (controller, slot_id), image_path in zip(env['SLOTS'], source):
             hex_data = IntelHex(image_path)
@@ -95,14 +95,14 @@ def _build_reflash_script_action(target, source, env):
 
             records.append(record)
 
-    #Update sensorgraph
+    # Update sensorgraph
     if env['UPDATE_SENSORGRAPH']:
         sensor_graph_file = source[-1]
         sensor_graph = compile_sgf(sensor_graph_file)
         output = format_script(sensor_graph)
         records += UpdateScript.FromBinary(output).records
 
-    #Update App and OS Tag
+    # Update App and OS Tag
     os_info = env['OS_INFO']
     app_info = env['APP_INFO']
     if os_info is not None:
@@ -113,7 +113,7 @@ def _build_reflash_script_action(target, source, env):
         records.append(SetDeviceTagRecord(app_tag=app_tag, app_version=app_version))
 
     if env['USE_SAFEUPDATE']:
-        safemode_disable = SendRPCRecord(8,0x1006,bytearray([0])) # Disable safemode
+        safemode_disable = SendRPCRecord(8,0x1006,bytearray([0]))  # Disable safemode
         records.append(safemode_disable)
         sgf_on = SendRPCRecord(8,0x2005,bytearray([1]))  # Enable Sensorgraph
         records.append(sgf_on)
@@ -126,7 +126,7 @@ def _build_reflash_script_action(target, source, env):
 
 def _parse_slot(slot):
     if slot == 'controller':
-        return (True, 0)
+        return True, 0
     elif not slot.startswith('slot '):
         raise BuildError("Invalid slot specifier that was not controller|slot X, where X is an integer", slot=slot)
 
@@ -135,4 +135,4 @@ def _parse_slot(slot):
     except ValueError:
         raise BuildError("Could not convert slot number to integer", slot=slot)
 
-    return (False, slot_number)
+    return False, slot_number

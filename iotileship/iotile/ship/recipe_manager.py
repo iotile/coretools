@@ -1,11 +1,10 @@
-from __future__ import (unicode_literals, print_function, absolute_import)
 import os
 from iotile.core.dev import ComponentRegistry
 from iotile.ship.recipe import RecipeObject
 from iotile.ship.exceptions import RecipeNotFoundError
 
 
-class RecipeManager(object):
+class RecipeManager:
     """A class that maintains a list of installed recipes and recipe actions.
 
     It allows fetching recipes by name and auotmatically building RecipeObjects

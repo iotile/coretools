@@ -2,6 +2,10 @@
 
 All major changes in each released version of the iotile-ext-cloud plugin are listed here.
 
+## 1.0.2
+
+- Remove past/future/monotonic, pylint cleanup
+
 ## 1.0.1
 
 - Fix username/password prompting to work correctly on python 2 and 3 if not

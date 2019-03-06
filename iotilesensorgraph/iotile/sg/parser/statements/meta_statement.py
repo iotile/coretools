@@ -1,12 +1,10 @@
 """A meta variable definition that is used for passing information along with a sensor graph."""
 
-from future.utils import python_2_unicode_compatible
 from iotile.sg.exceptions import SensorGraphSemanticError
 from .statement import SensorGraphStatement
 from ..scopes import RootScope
 
 
-@python_2_unicode_compatible
 class MetaStatement(SensorGraphStatement):
     """A metadata variable definition.
 

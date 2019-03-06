@@ -2,6 +2,10 @@
 
 All major changes in each released version of the websocket transport plugin are listed here.
 
+## 2.0.2
+
+- Remove past/future/monotonic, pylint cleanup
+
 ## 2.0.1
 
 - Remove debug logger level to lower the chattiness of the transport plugin

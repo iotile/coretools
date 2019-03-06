@@ -8,8 +8,8 @@ import inspect
 from copy import deepcopy
 from iotile.core.exceptions import ValidationError
 
-class Verifier(object):
-    """A base class for verifing that an object conforms to a schema
+class Verifier:
+    """A base class for verifying that an object conforms to a schema
 
     Subclasses should override the verify function to actually verify the
     object that is passed in.

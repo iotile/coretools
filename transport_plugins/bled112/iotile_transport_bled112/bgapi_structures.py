@@ -5,6 +5,7 @@ from iotile.core.utilities.packed import unpack
 
 CharacteristicProperties = namedtuple("CharacteristicProperties", ["broadcast", "read", "write_no_response", "write", "notify", "indicate", "write_authenticated", "extended"])
 
+
 def process_uuid(guiddata):
     guiddata = bytearray(guiddata)
 
@@ -14,7 +15,7 @@ def process_uuid(guiddata):
     if (not len(guiddata) == 2) and (not len(guiddata) == 16) and (not len(guiddata) == 4):
         raise ValueError("Invalid guid length, is not 2, 4 or 16. Data=%s" % (str(guiddata)))
 
-    #Byte order is LSB first for the entire guid
+    # Byte order is LSB first for the entire guid
     if len(guiddata) != 16:
         base_guid = uuid.UUID(hex="{FB349B5F8000-0080-0010-0000-00000000}").bytes_le
         base_guid = base_guid[:-len(guiddata)] + bytes(guiddata)
@@ -22,6 +23,7 @@ def process_uuid(guiddata):
         return uuid.UUID(bytes_le=base_guid)
 
     return uuid.UUID(bytes_le=bytes(guiddata))
+
 
 def process_gatt_service(services, event):
     """Process a BGAPI event containing a GATT service description and add it to a dictionary
@@ -39,6 +41,7 @@ def process_gatt_service(services, event):
     uuid = process_uuid(uuid)
     services[uuid] = {'uuid_raw': uuid, 'start_handle': start, 'end_handle': end}
 
+
 def process_read_handle(event):
     length = len(event.payload) - 5
     conn, att_handle, att_type, act_length, value = unpack("<BHBB%ds" % length, event.payload)
@@ -47,12 +50,14 @@ def process_read_handle(event):
 
     return att_type, bytearray(value)
 
+
 def process_attribute(attributes, event):
     length = len(event.payload) - 3
     handle, chrhandle, uuid = unpack("<BH%ds" % length, event.payload)
     uuid = process_uuid(uuid)
 
     attributes[chrhandle] = {'uuid': uuid}
+
 
 def parse_characteristic_declaration(value):
     length = len(value)
@@ -67,7 +72,7 @@ def parse_characteristic_declaration(value):
     propval, handle, uuid = unpack("<BH%ds" % uuid_len, value)
 
 
-    #Process the properties
+    # Process the properties
     properties = CharacteristicProperties(bool(propval & 0x1), bool(propval & 0x2), bool(propval & 0x4), bool(propval & 0x8),
                                           bool(propval & 0x10), bool(propval & 0x20), bool(propval & 0x40), bool(propval & 0x80))
 
@@ -79,9 +84,9 @@ def parse_characteristic_declaration(value):
 
     return char
 
+
 def handle_to_uuid(handle, services):
-    """Find the corresponding UUID for an attribute handle
-    """
+    """Find the corresponding UUID for an attribute handle"""
 
     for service in viewvalues(services):
         for char_uuid, char_def in viewitems(service['characteristics']):

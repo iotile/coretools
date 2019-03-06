@@ -4,7 +4,7 @@ from iotile.core.exceptions import InternalError
 from iotile.core.utilities.stoppable_thread import StoppableWorkerThread
 
 
-class BaseRunnable(object):
+class BaseRunnable:
     """A simple class that uses StoppableWorkerThreads for background tasks."""
 
     def __init__(self):

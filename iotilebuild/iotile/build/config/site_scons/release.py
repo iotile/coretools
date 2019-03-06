@@ -3,18 +3,15 @@
 
 from SCons.Script import *
 from SCons.Environment import Environment
-from future.utils import viewitems
-import sys
 import os.path
 import utilities
-import struct
 from iotile.build.build import ProductResolver
-from iotile.core.exceptions import BuildError
 from iotile.core.dev.iotileobj import IOTile
 import os
 import datetime
 import json
 import pygtrie
+
 
 def create_release_settings_action(target, source, env):
     """Copy module_settings.json and add release and build information
@@ -36,6 +33,7 @@ def create_release_settings_action(target, source, env):
     with open(str(target[0]), "w") as fileobj:
         json.dump(settings, fileobj, indent=4)
 
+
 def copy_tilebus_definitions(tile):
     destdir = os.path.join('build', 'output', 'tilebus')
 
@@ -46,6 +44,7 @@ def copy_tilebus_definitions(tile):
         infile = tbdef
         outfile = os.path.join(destdir, tbname)
         env.Command([outfile], [infile], Copy("$TARGET", "$SOURCE"))
+
 
 def copy_linker_scripts(tile):
     destdir = os.path.join('build', 'output', 'linker')
@@ -76,7 +75,7 @@ def copy_include_dirs(tile):
 
     env = Environment(tools=[])
 
-    #all include directories are relative to the firmware/src directory
+    # all include directories are relative to the firmware/src directory
     outputbase = os.path.join('build', 'output', 'include')
     inputbase = os.path.join('firmware', 'src')
     for inc in incdirs:
@@ -96,6 +95,7 @@ def copy_include_dirs(tile):
 
         seen_dirs.add(inc)
 
+
 def copy_extra_files(tile):
     """Copy all files listed in a copy_files and copy_products section.
 
@@ -113,12 +113,12 @@ def copy_extra_files(tile):
     env = Environment(tools=[])
     outputbase = os.path.join('build', 'output')
 
-    for src, dest in viewitems(tile.settings.get('copy_files', {})):
+    for src, dest in tile.settings.get('copy_files', {}).items():
         outputfile = os.path.join(outputbase, dest)
         env.Command([outputfile], [src], Copy("$TARGET", "$SOURCE"))
 
     resolver = ProductResolver.Create()
-    for src, dest in viewitems(tile.settings.get('copy_products', {})):
+    for src, dest in tile.settings.get('copy_products', {}).items():
         prod = resolver.find_unique(None, src)
         outputfile = os.path.join(outputbase, dest)
 
@@ -126,8 +126,7 @@ def copy_extra_files(tile):
 
 
 def copy_dependency_docs(tile):
-    """Copy all documentation from dependencies into build/output/doc folder
-    """
+    """Copy all documentation from dependencies into build/output/doc folder"""
 
     env = Environment(tools=[])
 
@@ -140,9 +139,9 @@ def copy_dependency_docs(tile):
         if os.path.exists(depdir):
             env.Command([outputdir], [depdir], Copy("$TARGET", "$SOURCE"))
 
+
 def copy_dependency_images(tile):
-    """Copy all documentation from dependencies into build/output/doc folder
-    """
+    """Copy all documentation from dependencies into build/output/doc folder"""
 
     env = Environment(tools=[])
 

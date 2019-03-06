@@ -11,8 +11,6 @@
 
 import os.path
 import struct
-from future.utils import viewitems
-from past.builtins import basestring, long
 from pyparsing import Regex, Literal, Optional, Group, oneOf, QuotedString, delimitedList, ParseException
 from iotile.core.exceptions import ArgumentError, DataError
 from .block import TBBlock
@@ -20,21 +18,21 @@ from .handler import TBHandler
 from ..utilities import resource_path
 
 
-#DSL for mib definitions
-#Format:
-#feature <i>
-#[j:] _symbol(n [ints], yes|no)
-#[j+1:] _symbol2(n [ints], yes|no)
-#The file should contain a list of statements beginning with a feature definition
-#and followed by 1 or more command definitions.  There may be up to 128 feature definitions
-#each or which may have up to 128 command definitions.  Whitespace is ignored.  Lines starting
-#with # are considered comments and ignored.
+# DSL for mib definitions
+# Format:
+# feature <i>
+# [j:] _symbol(n [ints], yes|no)
+# [j+1:] _symbol2(n [ints], yes|no)
+# The file should contain a list of statements beginning with a feature definition
+# and followed by 1 or more command definitions.  There may be up to 128 feature definitions
+# each or which may have up to 128 command definitions.  Whitespace is ignored.  Lines starting
+# with # are considered comments and ignored.
 symbol = Regex('[_a-zA-Z][_a-zA-Z0-9]*')
 filename = Regex('[_a-zA-Z][_a-zA-Z0-9]*\.mib')
 strval = Regex('"[_a-zA-Z0-9. ]+"')
-number = Regex('((0x[a-fA-F0-9]+)|[+-]?[0-9]+)').setParseAction(lambda s,l,t: [int(t[0], 0)]) | symbol
+number = Regex('((0x[a-fA-F0-9]+)|[+-]?[0-9]+)').setParseAction(lambda s, l, t: [int(t[0], 0)]) | symbol
 ints = number('num_ints') + Optional(Literal('ints') | Literal('int'))
-has_buffer = (Literal('yes') | Literal('no')).setParseAction(lambda s,l,t: [t[0] == 'yes'])
+has_buffer = (Literal('yes') | Literal('no')).setParseAction(lambda s, l, t: [t[0] == 'yes'])
 comma = Literal(',').suppress()
 quote = Literal('"').suppress()
 
@@ -53,19 +51,22 @@ assignment_def = symbol("variable") + "=" + (number('value') | strval('value')) 
 cmd_def = number("cmd_number") + colon + symbol("symbol") + left + ints + comma + has_buffer('has_buffer') + right + ";"
 include = Literal("#include") + quote + filename("filename") + quote
 
-reqconfig = number("confignum") + colon + Literal('required').suppress() - Literal('config').suppress() - valid_type('type') - symbol('configvar') - Optional(leftB - number('length') - rightB) - ';'
-optconfig = number("confignum") + colon + Literal('optional').suppress() - Literal('config').suppress() - valid_type('type') - symbol('configvar') - Optional(leftB - number('length') - rightB) - "=" \
-  - (number('value') | QuotedString(quoteChar='"', unquoteResults=True)('value') | (leftCB+Group(delimitedList(number))('value')+rightCB)) + ';'
+reqconfig = number("confignum") + colon + Literal('required').suppress() - Literal('config').suppress() - \
+            valid_type('type') - symbol('configvar') - Optional(leftB - number('length') - rightB) - ';'
+optconfig = number("confignum") + colon + Literal('optional').suppress() - Literal('config').suppress() - \
+            valid_type('type') - symbol('configvar') - Optional(leftB - number('length') - rightB) - "=" \
+            - (number('value') | QuotedString(quoteChar='"', unquoteResults=True)('value') |
+               (leftCB+Group(delimitedList(number))('value')+rightCB)) + ';'
 
 statement = include | cmd_def | comment | assignment_def | reqconfig | optconfig
 
-#Known Variable Type Lengths
+# Known Variable Type Lengths
 type_lengths = {'uint8_t': 1, 'char': 1, 'int8_t': 1, 'uint16_t': 2, 'int16_t':2, 'uint32_t': 4, 'int32_t': 4}
 type_codes = {'uint8_t': 'B', 'char': 'B', 'int8_t': 'b', 'uint16_t': 'H', 'int16_t': 'h', 'uint32_t': 'L', 'int32_t': 'l'}
 
+
 class TBDescriptor:
-    """
-    Class that parses a .mib file which contains a DSL specifying the valid MIB endpoints
+    """Class that parses a .mib file which contains a DSL specifying the valid MIB endpoints
     in a MIB12 module and can output an asm file containing the proper MIB command map
     for that architecture.
     """
@@ -78,14 +79,14 @@ class TBDescriptor:
 
         self.include_dirs = include_dirs + [resource_path(expect='folder')]
 
-        if isinstance(source, basestring):
+        if isinstance(source, str):
             source = [source]
 
-        for filename in source:
-            self._parse_file(filename)
+        for fn in source:
+            self._parse_file(fn)
 
-    def _parse_file(self, filename):
-        with open(filename, "r") as f:
+    def _parse_file(self, fn):
+        with open(fn, "r") as f:
             for line_no, raw_line in enumerate(f):
                 line = raw_line.lstrip().rstrip()
 
@@ -94,24 +95,25 @@ class TBDescriptor:
 
                 self._parse_line(line_no+1, line)
 
-    def _find_include_file(self, filename):
+    def _find_include_file(self, fn):
         for d in self.include_dirs:
-            path = os.path.join(d, filename)
+            path = os.path.join(d, fn)
             if os.path.isfile(path):
                 return path
 
-        raise ArgumentError("Could not find included mib file", filename=filename, search_dirs=self.include_dirs)
+        raise ArgumentError("Could not find included mib file", filename=fn, search_dirs=self.include_dirs)
 
-    def _add_cmd(self, num, symbol, num_ints, has_buffer):
-        handler = TBHandler(symbol=symbol)
+    def _add_cmd(self, num, symb, num_ints, has_buffer):
+        handler = TBHandler(symbol=symb)
 
         if num in self.commands:
-            raise DataError("Attempted to add the same command number twice", number=num, old_handler=self.commands[num], new_handler=handler)
+            raise DataError("Attempted to add the same command number twice", number=num,
+                            old_handler=self.commands[num], new_handler=handler)
 
         self.commands[num] = handler
 
     def _parse_cmd(self, match):
-        symbol = match['symbol']
+        symb = match['symbol']
 
         num = self._parse_number(match['cmd_number'])
         if num < 0 or num >= 2**16:
@@ -120,46 +122,46 @@ class TBDescriptor:
         has_buffer = match['has_buffer']
         num_ints = match['num_ints']
 
-        self._add_cmd(num, symbol, num_ints=num_ints, has_buffer=has_buffer)
+        self._add_cmd(num, symb, num_ints=num_ints, has_buffer=has_buffer)
 
     def _parse_include(self, match):
-        filename = match['filename']
+        fn = match['filename']
 
-        path = self._find_include_file(filename)
+        path = self._find_include_file(fn)
         self._parse_file(path)
 
-    def _parse_number(self, number):
-        if isinstance(number, int):
-            return number
+    def _parse_number(self, num):
+        if isinstance(num, int):
+            return num
 
-        if number in self.variables:
-            return self.variables[number]
+        if num in self.variables:
+            return self.variables[num]
 
-        raise DataError("Reference to undefined variable %s" % number)
+        raise DataError("Reference to undefined variable %s" % num)
 
     def _parse_assignment(self, match):
         var = match['variable']
         val = match['value']
-        if isinstance(val, basestring) and val[0] == '"':
+        if isinstance(val, str) and val[0] == '"':
             val = val[1:-1]
         else:
             val = self._parse_number(match['value'])
 
         self.variables[var] = val
 
-    def _value_length(self, value, type):
+    def _value_length(self, value, t):
         """Given an integer or list of them, convert it to an array of bytes."""
 
-        if isinstance(value, (int, long)):
-            fmt = '<%s' % (type_codes[type])
+        if isinstance(value, int):
+            fmt = '<%s' % (type_codes[t])
             output = struct.pack(fmt, value)
             return len(output)
-        elif isinstance(value, basestring):
-            return len(value) + 1 # Account for final 0
+        elif isinstance(value, str):
+            return len(value) + 1  # Account for final 0
 
         len_accum = 0
         for x in value:
-            len_accum += self._value_length(x, type)
+            len_accum += self._value_length(x, t)
 
         return len_accum
 
@@ -200,7 +202,6 @@ class TBDescriptor:
         if required:
             flags |= (1 << 6)
 
-
         config = {'name': varname, 'flags': flags, 'type': vartype, 'array': array, 'total_size': varsize,
                   'count': quantity, 'required': required, 'default_value': default_value, 'default_size': default_length}
 
@@ -209,12 +210,11 @@ class TBDescriptor:
 
         self.configs[varnum] = config
 
-
     def _parse_line(self, line_no, line):
         """Parse a line in a TileBus file
 
         Args:
-            lineno (int): The line number for printing useful error messages
+            line_no (int): The line number for printing useful error messages
             line (string): The line that we are trying to parse
         """
 
@@ -233,9 +233,7 @@ class TBDescriptor:
             self._parse_configvar(matched)
 
     def _validate_information(self):
-        """
-        Validate that all information has been filled in
-        """
+        """Validate that all information has been filled in"""
 
         needed_variables = ["ModuleName", "ModuleVersion", "APIVersion"]
 
@@ -243,16 +241,17 @@ class TBDescriptor:
             if var not in self.variables:
                 raise DataError("Needed variable was not defined in mib file.", variable=var)
 
-        #Make sure ModuleName is <= 6 characters
+        # Make sure ModuleName is <= 6 characters
         if len(self.variables["ModuleName"]) > 6:
-            raise DataError("ModuleName too long, must be 6 or fewer characters.", module_name=self.variables["ModuleName"])
+            raise DataError("ModuleName too long, must be 6 or fewer characters.",
+                            module_name=self.variables["ModuleName"])
 
-        if not isinstance(self.variables["ModuleVersion"], basestring):
-            raise ValueError("ModuleVersion ('%s') must be a string of the form X.Y.Z" % str(self.variables['ModuleVersion']))
+        if not isinstance(self.variables["ModuleVersion"], str):
+            raise ValueError("ModuleVersion ('%s') must be a string of the form X.Y.Z" %
+                             str(self.variables['ModuleVersion']))
 
-        if not isinstance(self.variables["APIVersion"], basestring):
+        if not isinstance(self.variables["APIVersion"], str):
             raise ValueError("APIVersion ('%s') must be a string of the form X.Y" % str(self.variables['APIVersion']))
-
 
         self.variables['ModuleVersion'] = self._convert_module_version(self.variables["ModuleVersion"])
         self.variables['APIVersion'] = self._convert_api_version(self.variables["APIVersion"])
@@ -265,7 +264,8 @@ class TBDescriptor:
 
         invalid = [x for x in vals if x < 0 or x > 255]
         if len(invalid) > 0:
-            raise DataError("Invalid version number larger than 1 byte", number=invalid[0], version_string=version_string)
+            raise DataError("Invalid version number larger than 1 byte",
+                            number=invalid[0], version_string=version_string)
 
         return vals
 
@@ -284,17 +284,15 @@ class TBDescriptor:
         return vals
 
     def get_block(self, config_only=False):
-        """
-        Create a TileBus Block based on the information in this descriptor
-        """
+        """Create a TileBus Block based on the information in this descriptor"""
 
         mib = TBBlock()
 
-        for id, config in viewitems(self.configs):
-            mib.add_config(id, config)
+        for cid, config in self.configs.items():
+            mib.add_config(cid, config)
 
         if not config_only:
-            for key, val in viewitems(self.commands):
+            for key, val in self.commands.items():
                 mib.add_command(key, val)
 
             if not self.valid:

@@ -1,6 +1,3 @@
-import sys
-if sys.version_info >= (3, 0):
-    basestring = str
 from .verifier import Verifier
 from iotile.core.exceptions import ValidationError
 
@@ -27,8 +24,9 @@ class StringVerifier(Verifier):
                 the reason for the lack of validation.
         """
 
-        if not isinstance(obj, basestring):
-            raise ValidationError("Object is not a string", reason='object is not a string', object=obj, type=type(obj), str_type=str)
+        if not isinstance(obj, str):
+            raise ValidationError("Object is not a string", reason='object is not a string',
+                                  object=obj, type=type(obj), str_type=str)
 
         return obj
 

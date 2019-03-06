@@ -1,14 +1,12 @@
 # This file is copyright Arch Systems, Inc.
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
-from __future__ import unicode_literals, absolute_import, print_function
 from queue import Queue
 import time
 import threading
 import logging
 import datetime
 import copy
-from future.utils import viewitems
 import serial
 import serial.tools.list_ports
 from iotile_transport_bled112 import bgapi_structures
@@ -173,7 +171,7 @@ class BLED112Adapter(DeviceAdapter):
         # Make a copy since this will change size as we disconnect
         con_copy = copy.copy(self._connections)
 
-        for _, context in viewitems(con_copy):
+        for _, context in con_copy.items():
             self.disconnect_sync(context['connection_id'])
 
         self._command_task.stop()
@@ -244,7 +242,7 @@ class BLED112Adapter(DeviceAdapter):
 
         found_handle = None
         # Find the handle by connection id
-        for handle, conn in viewitems(self._connections):
+        for handle, conn in self._connections.items():
             if conn['connection_id'] == conn_id:
                 found_handle = handle
 
@@ -277,7 +275,7 @@ class BLED112Adapter(DeviceAdapter):
 
         found_handle = None
         # Find the handle by connection id
-        for handle, conn in viewitems(self._connections):
+        for handle, conn in self._connections.items():
             if conn['connection_id'] == conn_id:
                 found_handle = handle
 
@@ -309,7 +307,7 @@ class BLED112Adapter(DeviceAdapter):
 
         found_handle = None
         # Find the handle by connection id
-        for handle, conn in viewitems(self._connections):
+        for handle, conn in self._connections.items():
             if conn['connection_id'] == conn_id:
                 found_handle = handle
 
@@ -815,7 +813,7 @@ class BLED112Adapter(DeviceAdapter):
         return success, return_value, context
 
     def _find_handle(self, conn_id):
-        for handle, data in viewitems(self._connections):
+        for handle, data in self._connections.items():
             if data['connection_id'] == conn_id:
                 return handle
 

@@ -1,6 +1,7 @@
 import time
 
-class TimeoutInterval(object):
+
+class TimeoutInterval:
     """A simple timer that tells you when an interval has expired
 
     You can check if the timeout is expired by using the expired

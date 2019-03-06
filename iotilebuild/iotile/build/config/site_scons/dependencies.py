@@ -1,7 +1,6 @@
 # This file is copyright Arch Systems, Inc.
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
-from future.utils import viewitems
 import os
 from iotile.core.exceptions import BuildError, ArgumentError
 from iotile.core.dev.iotileobj import IOTile
@@ -22,10 +21,10 @@ def load_dependencies(orig_tile, build_env):
     chip = build_env['ARCH']
     raw_arch_deps = chip.property('depends')
 
-    #Properly separate out the version information from the name of the dependency
-    #The raw keys come back as name,version
+    # Properly separate out the version information from the name of the dependency
+    # The raw keys come back as name,version
     arch_deps = {}
-    for key, value in viewitems(raw_arch_deps):
+    for key, value in raw_arch_deps.items():
         name, _, _ = key.partition(',')
         arch_deps[name] = value
 
@@ -33,8 +32,8 @@ def load_dependencies(orig_tile, build_env):
         try:
             tile = IOTile(os.path.join('build', 'deps', dep['unique_id']))
 
-            #Make sure we filter products using the view of module dependency products
-            #as seen in the target we are targeting.
+            # Make sure we filter products using the view of module dependency products
+            # as seen in the target we are targeting.
             if dep['name'] not in arch_deps:
                 tile.filter_products([])
             else:

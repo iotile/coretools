@@ -1,6 +1,5 @@
 """A simple command line program for sending an RPC to a service by name."""
 
-from __future__ import unicode_literals
 import argparse
 import logging
 import binascii
@@ -31,6 +30,7 @@ def pack_args(fmt, args):
 
     packed = struct.pack("<%s" % fmt, *int_args)
     return packed
+
 
 def main():
     parser = _build_parser()
