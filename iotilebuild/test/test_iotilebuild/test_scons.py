@@ -8,7 +8,6 @@
 # Modifications to this file from the original created at WellDone International
 # are copyright Arch Systems Inc.
 
-from __future__ import print_function
 import os.path
 import os
 import shutil

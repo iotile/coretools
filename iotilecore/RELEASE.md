@@ -2,6 +2,11 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+
+## 4.0.3
+
+- Remove remaining instances of builtins / __future__
+
 ## 4.0.2
 
 - Remove past/future/monotonic, pylint cleanup

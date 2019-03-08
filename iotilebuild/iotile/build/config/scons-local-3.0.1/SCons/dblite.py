@@ -1,6 +1,5 @@
 # dblite.py module contributed by Ralf W. Grosse-Kunstleve.
 # Extended for Unicode by Steven Knight.
-from __future__ import print_function
 
 import os
 import pickle

@@ -3,6 +3,10 @@
 All major changes in each released version of the jlink transport plugin are
 listed here.
 
+## 1.0.3
+
+- Remove missed builtins/__future__ calls
+
 ## 1.0.2
 
 - Remove past/future/monotonic, pylint cleanup

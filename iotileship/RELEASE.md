@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileShip are listed here.
 
+## 1.0.3
+
+- Remove remaining builtins/__future__
+
 ## 1.0.2
 
 - Remove past/future/monotonic, pylint cleanup

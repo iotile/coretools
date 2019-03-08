@@ -104,7 +104,7 @@ class MockDeviceAdapter(DeviceAdapter):
 
         device = self.connections[connection_id]
 
-        for i in xrange(0, len(data), 20):
+        for i in range(0, len(data), 20):
             device.push_script_chunk(data[i:i+20])
             progress_callback(min(i+20, len(data)), len(data))
 

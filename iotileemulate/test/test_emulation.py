@@ -1,6 +1,5 @@
 """Tests of various utilities used in IOTileDevice emulation."""
 
-from __future__ import print_function
 import pytest
 from iotile.core.exceptions import DataError, ArgumentError
 from iotile.emulate.virtual.emulated_tile import parse_size_name, ConfigDescriptor

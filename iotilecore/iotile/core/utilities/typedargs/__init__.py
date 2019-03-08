@@ -1,6 +1,5 @@
 """Glue package shim to keep imports working since typedargs was broken into new package."""
 
-from __future__ import unicode_literals
 from functools import reduce
 
 # Recreate all old imports

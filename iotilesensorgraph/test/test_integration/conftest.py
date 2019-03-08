@@ -1,5 +1,4 @@
 """Fixtures with different sensor graphs for testing."""
-from __future__ import (absolute_import, print_function, unicode_literals)
 import os.path
 import pytest
 from iotile.sg import DataStream, DeviceModel, DataStreamSelector, SlotIdentifier

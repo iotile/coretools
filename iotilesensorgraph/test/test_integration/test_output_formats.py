@@ -1,4 +1,3 @@
-from __future__ import print_function
 import os.path
 from iotile.sg.output_formats import format_script, format_snippet, format_config, format_ascii
 

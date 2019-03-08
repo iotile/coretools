@@ -1,4 +1,3 @@
-from builtins import range
 import pytest
 import threading
 import sys

@@ -1,6 +1,5 @@
 """Tests for DataStream objects."""
 
-from builtins import str
 import pytest
 from iotile.core.exceptions import InternalError
 from iotile.sg import DataStream, DataStreamSelector

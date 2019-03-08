@@ -1,6 +1,5 @@
 """Make sure that invalid recipe files are rejected """
 
-from __future__ import unicode_literals, absolute_import
 import os
 import pytest
 from iotile.ship import RecipeObject, RecipeFileInvalid, UnknownRecipeResourceType

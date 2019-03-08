@@ -1,7 +1,5 @@
 """An adapter class that takes a DeviceAdapter and produces a CMDStream compatible interface"""
 
-from builtins import str
-from future.utils import viewitems
 from copy import deepcopy
 import queue
 from .cmdstream import CMDStream
@@ -105,7 +103,7 @@ class AdapterCMDStream(CMDStream):
 
         now = datetime.datetime.now()
 
-        for name, value in viewitems(self._scanned_devices):
+        for name, value in self._scanned_devices.items():
             if value['expiration_time'] < now:
                 to_remove.add(name)
 
