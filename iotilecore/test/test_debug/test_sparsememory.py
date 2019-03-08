@@ -1,4 +1,3 @@
-from builtins import range
 import pytest
 from iotile.core.hw.debug import SparseMemory
 from iotile.core.exceptions import ArgumentError

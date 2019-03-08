@@ -8,7 +8,6 @@ selection method.
 
 """
 
-from __future__ import absolute_import
 
 #
 # Copyright (c) 2001 - 2017 The SCons Foundation

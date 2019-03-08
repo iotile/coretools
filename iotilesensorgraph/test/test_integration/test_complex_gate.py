@@ -1,6 +1,5 @@
 """Make sure the complex gate sensorgraph works correctly."""
 
-from __future__ import (absolute_import, unicode_literals, print_function)
 from iotile.sg.sim import SensorGraphSimulator
 from iotile.sg import DataStream
 

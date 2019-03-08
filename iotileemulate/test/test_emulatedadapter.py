@@ -1,6 +1,5 @@
 """Tests for the EmulatedDeviceAdapter class."""
 
-from __future__ import print_function
 import json
 from iotile.core.hw import HardwareManager
 

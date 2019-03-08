@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 import msgpack
 from datetime import datetime
 from iotile.core.hw.reports import FlexibleDictionaryReport

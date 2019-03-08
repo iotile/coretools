@@ -2,7 +2,6 @@
 
 import pytest
 import datetime
-from builtins import range
 from dateutil.tz import tzutc
 
 from iotile.core.exceptions import ArgumentError

@@ -1,4 +1,3 @@
-from builtins import str
 import pytest
 
 from iotile.sg.node_descriptor import parse_node_descriptor, parse_binary_descriptor

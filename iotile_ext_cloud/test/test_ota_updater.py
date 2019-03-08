@@ -1,5 +1,4 @@
 import pytest
-from builtins import range
 from iotile.core.dev.semver import SemanticVersion
 from iotile.cloud.apps import OtaUpdater
 

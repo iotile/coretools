@@ -146,7 +146,7 @@ class JLinkControlThread(threading.Thread):
         with each chunk of the script until it's finished.
         """
 
-        for i in xrange(0, len(script), 20):
+        for i in range(0, len(script), 20):
             chunk = script[i:i+20]
             self._send_rpc(device_info, control_info, 8, 0x2101, chunk, 0.001, 1.0)
             if progress_callback is not None:

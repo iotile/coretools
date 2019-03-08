@@ -2,8 +2,6 @@ import struct
 import copy
 import binascii
 import logging
-from future.utils import viewitems
-from builtins import range
 
 def make_id(cmdclass, cmd, event, response=False):
     return (int(event) << 17 | int(response) << 16) | (cmdclass << 8) | cmd
@@ -460,7 +458,7 @@ class MockBLED112(object):
 
         packets = []
 
-        for mac, dev in viewitems(self.devices):
+        for mac, dev in self.devices.items():
             packet = {}
             packet['type'] = bgapi_event(6, 0)
             packet['rssi'] = dev.rssi

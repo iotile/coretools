@@ -5,7 +5,6 @@ import threading
 import logging
 import binascii
 from queue import Empty
-from future.utils import viewitems, viewvalues
 from iotile.core.utilities.packed import unpack
 from iotile.core.exceptions import HardwareError
 from .tilebus import *
@@ -224,7 +223,7 @@ class BLED112CommandProcessor(threading.Thread):
             timeout (float): the maximum number of seconds to spend in any single task
         """
 
-        for service in viewvalues(services):
+        for service in services.values():
             success, result = self._enumerate_handles(conn, service['start_handle'],
                                                       service['end_handle'])
 
@@ -236,7 +235,7 @@ class BLED112CommandProcessor(threading.Thread):
             service['characteristics'] = {}
 
             last_char = None
-            for handle, attribute in viewitems(attributes):
+            for handle, attribute in attributes.items():
                 if attribute['uuid'].hex[-4:] == '0328':
                     success, result = self._read_handle(conn, handle, timeout)
                     if not success:

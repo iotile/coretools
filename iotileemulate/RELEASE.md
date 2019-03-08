@@ -2,6 +2,10 @@
 
 All major changes in each released version of iotile-emulate are listed here.
 
+## 0.4.3
+
+- Remove instances of builtins/__future__
+
 ## 0.4.2
 
 - Make `EmulationLoop.finish_async_rpc` easier to use by automatically packing

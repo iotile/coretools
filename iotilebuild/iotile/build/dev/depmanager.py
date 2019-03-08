@@ -1,5 +1,4 @@
 import os
-from future.utils import viewitems
 from typedargs import context, annotated, param, return_type, iprint, docannotate
 from iotile.core.dev.iotileobj import IOTile
 from iotile.core.dev.registry import ComponentRegistry
@@ -229,7 +228,7 @@ class DependencyManager (object):
                     seen_versions[tile.unique_id] = (tile.parsed_version, 'direct')
 
                 # Check for version conflicts between two included dependencies
-                for inc_dep, inc_ver in viewitems(tile.dependency_versions):
+                for inc_dep, inc_ver in tile.dependency_versions.items():
                     if (inc_dep in seen_versions and
                             seen_versions[inc_dep][0].coexistence_class != inc_ver.coexistence_class):
                         raise BuildError("Version conflict between component used to build two of our dependencies",

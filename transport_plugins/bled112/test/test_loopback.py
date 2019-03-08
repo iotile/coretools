@@ -3,7 +3,6 @@
 We will serve a virtual device over one bled112 and connect to it with the other bled112
 """
 
-from __future__ import unicode_literals, absolute_import, print_function
 import pytest
 import unittest
 import subprocess

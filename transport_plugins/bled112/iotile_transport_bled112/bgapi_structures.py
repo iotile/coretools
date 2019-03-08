@@ -1,5 +1,4 @@
 from collections import namedtuple
-from future.utils import viewitems, viewvalues
 import uuid
 from iotile.core.utilities.packed import unpack
 
@@ -88,8 +87,8 @@ def parse_characteristic_declaration(value):
 def handle_to_uuid(handle, services):
     """Find the corresponding UUID for an attribute handle"""
 
-    for service in viewvalues(services):
-        for char_uuid, char_def in viewitems(service['characteristics']):
+    for service in services.values():
+        for char_uuid, char_def in service['characteristics'].items():
             if char_def['handle'] == handle:
                 return char_uuid
 

@@ -3,6 +3,10 @@
 All major changes in each released version of iotile-sensorgraph are listed
 here.
 
+## 1.0.3
+
+- More builtins/__future__ removal that was missed
+
 ## 1.0.2
 
 - Remove past/future/monotonic, pylint cleanup

@@ -19,7 +19,6 @@ be able to depend on any other type of "thing."
 
 """
 
-from __future__ import print_function
 
 #
 # Copyright (c) 2001 - 2017 The SCons Foundation

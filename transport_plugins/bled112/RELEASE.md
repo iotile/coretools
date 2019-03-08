@@ -2,6 +2,10 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
+## 2.0.3
+
+- Remove missed builtins/__future__ calls
+
 ## 2.0.2
 
 - Remove past/future/monotonic, pylint cleanup

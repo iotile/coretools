@@ -4,7 +4,6 @@ This script allows you to load and run semihosted applications
 on a qemu based emulator.
 """
 
-from __future__ import (unicode_literals, print_function, absolute_import)
 import sys
 import argparse
 import subprocess
