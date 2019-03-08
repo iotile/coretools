@@ -184,7 +184,7 @@ def autobuild_doxygen(tile):
     doxyfile = os.path.join(doxydir, 'doxygen.txt')
 
     outfile = os.path.join(doxydir, '%s.timestamp' % tile.unique_id)
-    env = Environment(ENV = os.environ)
+    env = Environment(ENV=os.environ, tools=[])
     env['IOTILE'] = iotile
 
     # There is no /dev/null on Windows
@@ -210,7 +210,7 @@ def autobuild_documentation(tile):
     outdir = os.path.join('build', 'output', 'doc', tile.unique_id)
     outfile = os.path.join(outdir, '%s.timestamp' % tile.unique_id)
 
-    env = Environment(ENV=os.environ)
+    env = Environment(ENV=os.environ, tools=[])
 
     # Only build doxygen documentation if we have C firmware to build from
     if os.path.exists('firmware'):

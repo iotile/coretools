@@ -32,7 +32,9 @@ def build_program(tile, elfname, chip, patch=True):
 
     VariantDir(dirs['build'], os.path.join('firmware', 'src'), duplicate=0)
 
-    prog_env = setup_environment(chip)
+    args_file = os.path.join('.', dirs['build'], 'gcc_args.txt')
+    prog_env = setup_environment(chip, args_file=args_file)
+
     prog_env['OUTPUT'] = output_name
     prog_env['BUILD_DIR'] = dirs['build']
     prog_env['OUTPUT_PATH'] = os.path.join(dirs['build'], output_name)
@@ -84,8 +86,16 @@ def build_program(tile, elfname, chip, patch=True):
 
     compile_tilebus(tilebus_defs + [tbname], prog_env)
 
+    # Ensure that our argument file to gcc is created
+    args_node = prog_env.Command([args_file], [],
+                                 action=prog_env.Action(create_arg_file, "Creating GCC Arguments"))
+    prog_env.AlwaysBuild(args_node)
+
     # Compile an elf for the firmware image
     objs = SConscript(os.path.join(dirs['build'], 'SConscript'), exports='prog_env')
+    for obj in objs:
+        Depends(obj, args_file)
+
     outfile = prog_env.Program(os.path.join(dirs['build'], prog_env['OUTPUT']), objs)
 
     if patch:
@@ -147,7 +157,7 @@ def build_library(tile, libname, chip):
     library_env.InstallAs(os.path.join(dirs['output'], output_name), os.path.join(dirs['build'], output_name))
 
     # See if we should copy any files over to the output:
-    for src,dst in chip.property('copy_files', []):
+    for src, dst in chip.property('copy_files', []):
         srcpath = os.path.join(*src)
         destpath = os.path.join(dirs['output'], dst)
         library_env.InstallAs(destpath, srcpath)
@@ -155,8 +165,15 @@ def build_library(tile, libname, chip):
     return os.path.join(dirs['output'], output_name)
 
 
-def setup_environment(chip):
-    """Setup the SCons environment for compiling arm cortex code"""
+def setup_environment(chip, args_file=None):
+    """Setup the SCons environment for compiling arm cortex code.
+
+    This will return an env that has all of the correct settings and create a
+    command line arguments file for GCC that contains all of the required
+    flags. The use of a command line argument file passed with @./file_path is
+    important since there can be many flags that exceed the maximum allowed length
+    of a command line on Windows.
+    """
 
     config = ConfigManager()
 
@@ -168,15 +185,18 @@ def setup_environment(chip):
 
     env['INCPREFIX'] = '-I"'
     env['INCSUFFIX'] = '"'
+    env['CPPDEFPREFIX'] = ''
+    env['CPPDEFSUFFIX'] = ''
+
     env['CPPPATH'] = chip.includes()
     env['ARCH'] = chip
 
     # Setup Cross Compiler
-    env['CC']       = 'arm-none-eabi-gcc'
-    env['AS']       = 'arm-none-eabi-gcc'
-    env['LINK']     = 'arm-none-eabi-gcc'
-    env['AR']       = 'arm-none-eabi-ar'
-    env['RANLIB']   = 'arm-none-eabi-ranlib'
+    env['CC'] = 'arm-none-eabi-gcc'
+    env['AS'] = 'arm-none-eabi-gcc'
+    env['LINK'] = 'arm-none-eabi-gcc'
+    env['AR'] = 'arm-none-eabi-ar'
+    env['RANLIB'] = 'arm-none-eabi-ranlib'
 
     # AS command line is by default setup for call as directly so we need
     # to modify it to call via *-gcc to allow for preprocessing
@@ -197,7 +217,10 @@ def setup_environment(chip):
 
     # Add in compile tile definitions
     defines = utilities.build_defines(chip.property('defines', {}))
-    env['CCFLAGS'].append(defines)
+    env['CPPDEFINES'] = defines
+
+    if args_file is not None:
+        env['CCCOM'] = "$CC $CCFLAGS $CPPFLAGS @{} -c -o $TARGET $SOURCES".format(args_file)
 
     # Setup Target Architecture
     env['CCFLAGS'].append('-mcpu=%s' % chip.property('cpu'))
@@ -342,6 +365,30 @@ def checksum_creation_action(target, source, env):
             checkhex = checkhex[:-1]
 
         f.write("--defsym=__image_checksum=%s\n" % checkhex)
+
+
+def create_arg_file(target, source, env):
+    """Create an argument file containing -I and -D arguments to gcc.
+
+    This file will be passed to gcc using @<path>.
+    """
+
+    output_name = str(target[0])
+
+    with open(output_name, "w") as outfile:
+        for define in env.get('CPPDEFINES', []):
+            outfile.write(define + '\n')
+
+        include_folders = target[0].RDirs(tuple(env.get('CPPPATH', [])))
+        include_folders.append('.')
+
+        for include_folder in include_folders:
+            include_folder = str(include_folder)
+
+            if not include_folder.startswith('build'):
+                include_folder = os.path.join('firmware', 'src', include_folder)
+
+            outfile.write('"-I{}"\n'.format(include_folder.replace('\\', '\\\\')))
 
 
 def merge_hex_executables(target, source, env):

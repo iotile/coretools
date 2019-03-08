@@ -2,6 +2,17 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 3.0.4
+
+- Change gcc calling routine to use command files (@path_to_args_file) rather
+  than passing all arguments on the command line.  This lead to very long
+  command lines that broke on windows because of the built-in command line
+  limit.
+
+- Clean up instances where we created an Scons Environment without specifying
+  tools=[].  This causes a warning on Windows if Visual Studio is not installed
+  because it assumes you wanted to use Visual Studio's compiler by default.
+
 ## 3.0.3
 
 - Remove more builtins/__future__ imports
