@@ -134,7 +134,7 @@ class QEMUSemihostedUnitTest(unit_test.UnitTest):
     def _run_test(self, logpath, statuspath, test_elf):
         """Run a test elf under qemu."""
 
-        env = Environment()
+        env = Environment(tools=[])
         env.Command([logpath, statuspath], [test_elf], action=env.Action(run_qemu_command, "Running Test"))
 
 
