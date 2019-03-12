@@ -219,6 +219,20 @@ def test_build_arm(tmpdir):
         os.chdir(olddir)
 
 
+def test_build_arm_defines(tmpdir):
+    """Make sure we can build a component that overrides a depends key."""
+
+    olddir = os.getcwd()
+    builddir = copy_folder('arm_def_component', tmpdir)
+
+    try:
+        os.chdir(builddir)
+        err = subprocess.call(["iotile", "build"])
+        assert err == 0
+    finally:
+        os.chdir(olddir)
+
+
 def test_build_python(tmpdir):
     """Make sure we can build a component with a full python distribution.
 

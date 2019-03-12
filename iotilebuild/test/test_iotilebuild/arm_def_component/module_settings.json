@@ -1,0 +1,58 @@
+{
+	"module_name": "libprogram",
+	
+	"module_targets": 
+	{
+		"progtest": ["arm/override"]
+	},
+
+	"modules":
+	{
+		"progtest":
+		{
+			"version": "1.0.0",
+			
+			"depends": {},
+			"linker": "firmware/linker/linker.ld",
+
+			"products": 
+			{
+				"progtest_arm.elf": "firmware_image",
+				"python/arm_proxy.py": "proxy_module",
+				"python/lib_armtypes": "type_package",
+				"include_directories": [
+					".",
+					"cdb"
+				],
+
+				"tilebus_definitions": [
+					["cdb", "progtest.cdb"]
+				]
+			}
+		}
+	},
+
+	"architectures":
+	{
+		"arm":
+		{
+			"cflags": ["-mthumb", "-Wall", "-Wshadow", "-Os", "-g", "-fno-builtin", "-ffunction-sections", "-fdata-sections"],
+			"asflags": ["-Wall"],
+			"ldflags": ["-mthumb", "-Xlinker", "--gc-sections", "--specs=nano.specs", "-lc", "-lnosys", "-nostartfiles"],
+			"cpu": "cortex-m0plus",
+			"chip": "lpc824",
+			"defines":
+			{
+				"kTestDefine": "(64*1024)"
+			}
+		},
+
+		"override":
+		{
+			"defines":
+			{
+				"kTestDefine": null
+			}
+		}
+	}
+}

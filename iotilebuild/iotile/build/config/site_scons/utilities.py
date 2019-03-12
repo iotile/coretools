@@ -56,7 +56,14 @@ def join_path(path):
 
 
 def build_defines(defines):
-    return ['-D"%s=%s"' % (x,str(y)) for x,y in defines.items()]
+    """Build a list of `-D` directives to pass to the compiler.
+
+    This will drop any definitions whose value is None so that
+    you can get rid of a define from another architecture by
+    setting its value to null in the `module_settings.json`.
+    """
+
+    return ['-D"%s=%s"' % (x, str(y)) for x, y in defines.items() if y is not None]
 
 
 def get_family(modulefile):
