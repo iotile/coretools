@@ -2,6 +2,13 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 3.0.5
+
+- Add support for completely undefining a symbol previously included in an
+  architecture's `defines` key in a subsequent architecture.  Now if a "defines"
+  key has the value None (null in json), it will be ignored and not passed 
+  as a -D flag to the compiler.  (Issue #730)
+
 ## 3.0.4
 
 - Change gcc calling routine to use command files (@path_to_args_file) rather

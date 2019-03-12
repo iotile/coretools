@@ -1,0 +1,15 @@
+ModuleName = "progts";
+ModuleVersion = "1.0.0";
+APIVersion = "1.2";
+
+0x8000: test_rpc_handler(0, no);
+0x5000: test_rpc_handler2(0, no);
+
+# Config Variables
+
+0x7000: optional config uint8_t     opt1[15] = {1, 2, 3, 4, 5};
+0x7001: optional config char        opt2[10] = "hello";
+0x7002: optional config uint16_t    opt3 = 0;
+
+0x8000: required config uint8_t     req1;
+0x8001: required config uint32_t    req2[2];
