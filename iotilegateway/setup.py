@@ -24,7 +24,8 @@ setup(
         "tornado>=4.5.0,<5.0.0",
         "iotile-core>=4.0.0",
         "msgpack>=0.6.1",
-        "ws4py>=0.5.1"
+        "ws4py>=0.5.1",
+        "websockets"
     ],
     python_requires=">=3.5,<4",
     entry_points={

@@ -2,6 +2,10 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## 4.0.4
+
+- Create async version of the ValidatingWSClient
+- Create an EventLoop utility for managing asynchronous loops
 
 ## 4.0.3
 

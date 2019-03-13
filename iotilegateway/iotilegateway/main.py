@@ -35,7 +35,7 @@ def main():
             return 1
 
         try:
-            with open(config_file, "rb") as conf:
+            with open(config_file, "r") as conf:
                 args = json.load(conf)
         except IOError as exc:
             raise ArgumentError("Could not open required config file", path=config_file, error=str(exc))

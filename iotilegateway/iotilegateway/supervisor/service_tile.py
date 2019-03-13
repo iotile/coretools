@@ -65,6 +65,7 @@ class ServiceDelegateTile(VirtualTile):
         # run time of RPCs that could be long running.  The caller of the RPC
         # through the tile will know what an appropriate timeout is for the
         # RPC that they are trying to call.
+
         resp = self._client.send_rpc(self._service, rpc_id, payload, timeout=120.0)
         result = resp['result']
 

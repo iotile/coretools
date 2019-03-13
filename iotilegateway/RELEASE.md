@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileGateway are listed here.
 
+## 2.1.0
+
+- Create an asyncio ServiceStatusClient
+
 ## 2.0.2
 
 - Remove past/future/monotonic, pylint cleanup
