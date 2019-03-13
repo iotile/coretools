@@ -97,3 +97,38 @@ class EventLoop:
         """Method by which modules can add tasks to the event loop"""
         cls.loop.call_soon_threadsafe(cls.loop.create_task, cor)
         print("task added")
+
+    @classmethod
+    def add_callback(cls, callback, *args):
+        callback(*args)
+
+
+class PeriodicCallback:
+
+    def __init__(self, callback, callback_time):
+        self.el = EventLoop()
+
+        self.callback = callback
+        self.callback_time = callback_time
+
+        self.active = False
+
+        self.cancel = asyncio.Event()
+
+        self.el.add_task(self.run())
+
+    def start(self):
+        self.active = True
+
+    def stop(self):
+        self.active = False
+
+    def is_running(self):
+        return self.active
+
+    async def run(self):
+
+        while not self.cancel.is_set():
+            if self.active:
+                self.callback
+            await asyncio.sleep(self.callback_time)

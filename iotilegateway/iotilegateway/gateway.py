@@ -3,14 +3,13 @@
 import logging
 
 import pkg_resources
-import tornado.ioloop
 from iotilegateway.supervisor import ServiceStatusClient
 import iotilegateway.supervisor.states as states
 import iotilegateway.device as device
 from iotile.core.exceptions import ArgumentError
 
 
-from iotile.core.utilities.event_loop import EventLoop
+from iotile.core.utilities.event_loop import EventLoop, PeriodicCallback
 
 
 def find_entry_point(group, name):
@@ -35,7 +34,7 @@ class IOTileGateway:
     wait function to wait for it to quit.  It will loop forever unless you stop it by calling
     the stop() or stop_from_signal() methods.  These functions add a task to the gateway's
     event loop and implicitly call wait to synchronously wait until the gateway loop actually
-    stops.
+    stops.  
 
     IOTileGateway should be thought of as a turn-key gateway object that translates requests
     for IOTile Device access received from one or more GatewayAgents into commands sent to
@@ -59,8 +58,7 @@ class IOTileGateway:
 
     def __init__(self, config):
         print("hi")
-        self.el = EventLoop()
-        self.loop = None
+        self.loop = EventLoop()
         self.device_manager = None
         self.agents = []
         self.supervisor = None
@@ -76,7 +74,7 @@ class IOTileGateway:
             self._config['adapters'] = []
             self._logger.warn("No device adapters defined in arguments to iotile-gateway, this is likely not what you want")
 
-        self.loop = tornado.ioloop.IOLoop(make_current=True)
+        #self.loop = tornado.ioloop.IOLoop(make_current=True)
 
     async def run(self):
         """Start the gateway and run it to completion in another thread."""
@@ -93,7 +91,8 @@ class IOTileGateway:
         # the devices in this gateway
         for agent_info in self._config['agents']:
             if 'name' not in agent_info:
-                self._logger.error("Invalid agent information in gateway config, info=%s, missing_key=%s", str(agent_info), 'name')
+                self._logger.error("Invalid agent information in gateway config, info=%s, missing_key=%s", 
+                                   str(agent_info), 'name')
                 should_close = True
                 break
 
@@ -119,6 +118,9 @@ class IOTileGateway:
                     should_close = True
                     break
 
+                print("im making a really long line \
+                      that i want to print")
+
                 adapter_name = adapter_info['name']
                 port_string = adapter_info.get('port', None)
 
@@ -142,7 +144,7 @@ class IOTileGateway:
             # Try to regularly update a supervisor about our status if a supervisor is running
             if self._try_initialize_supervisor():
                 print("supervisor successfully initialized")
-                callback = tornado.ioloop.PeriodicCallback(self._try_report_status, 60000)
+                callback = PeriodicCallback(self._try_report_status, 60000)
                 callback.start()
 
         #print("Starting tornado loop")
@@ -156,9 +158,9 @@ class IOTileGateway:
         print("init supervisor")
         try:
             self.supervisor = ServiceStatusClient('ws://localhost:9400/services')
-            self.el.add_task(self.supervisor.register_service('gateway', 'Device Gateway'))
-            self.el.add_task(self.supervisor.post_info('gateway', "Service started successfully"))
-            self.el.add_task(self.supervisor.post_headline('gateway', states.INFO_LEVEL, 'Started successfully'))
+            self.loop.add_task(self.supervisor.register_service('gateway', 'Device Gateway'))
+            self.loop.add_task(self.supervisor.post_info('gateway', "Service started successfully"))
+            self.loop.add_task(self.supervisor.post_headline('gateway', states.INFO_LEVEL, 'Started successfully'))
             return True
         except Exception as e:  # pylint: disable=W0703
             print(e)
@@ -168,8 +170,8 @@ class IOTileGateway:
     def _try_report_status(self):
         """Periodic callback to report our gateway's status."""
         print("reporting status")
-        self.el.add_task(self.supervisor.update_state('gateway', states.RUNNING))
-        self.el.add_task(self.supervisor.send_heartbeat('gateway'))
+        self.loop.add_task(self.supervisor.update_state('gateway', states.RUNNING))
+        self.loop.add_task(self.supervisor.send_heartbeat('gateway'))
 
     def _stop_loop(self):
         """Cleanly stop the gateway and close down the IOLoop.

@@ -1,12 +1,14 @@
 import logging
 import copy
 import datetime
-import tornado.ioloop
 import tornado.gen
 import uuid
 from iotile.core.hw.reports import BroadcastReport
 from iotile.core.exceptions import ArgumentError
 
+from iotile.core.utilities.event_loop import PeriodicCallback
+
+import asyncio
 
 class DeviceManager:
     """An object to manage connections to IOTile devices over one or more specific DeviceAdapters.
@@ -23,7 +25,7 @@ class DeviceManager:
     has a better route to a given device.
 
     Args:
-        loop (tornado.ioloop.IOLoop): A tornado IOLoop object that this DeviceManager will run
+        loop (EventLoop): An EventLoop object that this DeviceManager will run
             itself in.  It is up to the caller to make sure the loop is started and run.  The
             DeviceManager will run forever until the loop is stopped.
     """
@@ -44,9 +46,11 @@ class DeviceManager:
         self._logger.setLevel(logging.DEBUG)
         self._next_conn_id = 0
 
-        tornado.ioloop.PeriodicCallback(self.device_expiry_callback, 1000).start()
+        PeriodicCallback(self.device_expiry_callback, 1000).start()
 
     def add_adapter(self, man):
+        print("ADDING ADAPTER")
+        print(man)
         adapter_id = len(self.adapters)
         self.adapters[adapter_id] = man
         man.set_id(adapter_id)
@@ -61,11 +65,10 @@ class DeviceManager:
         if man.get_config('probe_supported', False):
             man.probe_sync()
 
-        tornado.ioloop.PeriodicCallback(man.periodic_callback, 1000).start()
+        PeriodicCallback(man.periodic_callback, 1000).start()
 
     def stop(self):
-        """Stop all adapters managed by the DeviceManager
-        """
+        """Stop all adapters managed by the DeviceManager"""
         for _, adapter in self.adapters.items():
             adapter.stop_sync()
 
@@ -159,7 +162,12 @@ class DeviceManager:
 
         raise tornado.gen.Return(result)
 
+    """In Python 2, only use raise gen.Return(value) to return a normal value, not to raise an exception. 
+    It is exactly the equivalent of return value in a coroutine in Python 3.
+    """
+
     @tornado.gen.coroutine
+    #@asyncio.coroutine
     def probe_async(self):
         """Coroutine to probe all adapters which can, to update the scanned devices.
         Returns:

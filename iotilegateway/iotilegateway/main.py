@@ -72,7 +72,7 @@ def main():
         while (1):
             for thread in threading.enumerate():
                 print(thread)
-            time.sleep(1)
+            time.sleep(10)
     except KeyboardInterrupt:
         print("it's been forever")
         el.stop_loop_clean()
