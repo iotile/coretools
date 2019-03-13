@@ -42,7 +42,8 @@ jobs:
   - script: |
       set PATH=%PATH%;c:\gcc\bin
       pip install six cmdln pytest
-      pip install pytest pytest-logging pytest-localserver requests-mock pycryptodome configparser iotile-support-lib-controller-3
+      pip install pytest pytest-logging pytest-localserver
+      pip install requests-mock pycryptodome configparser iotile-support-lib-controller-3
       pip install "tornado>=4.5.3,<5.0.0"
       pip install -e ./iotilecore/
       pip install -e ./iotilebuild/
