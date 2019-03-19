@@ -12,7 +12,7 @@ All major changes in each released version of `iotile-core` are listed here.
   which part produces a more exact UTC timestamp, choosing the best one
   automatically.
 
-- Update `IOTileReading` to do a better job of assigning itself a debug utc
+- Update `IOTileReading` to do a better job of assigning itself a debug UTC
   time when it is created with an RTC timestamp value that can be directly
   converted to UTC without assumptions.
 
