@@ -93,7 +93,7 @@ class SensorGraph:
 
             # Constant walkers begin life initialized to 0 so they always read correctly
             if walker.selector.inexhaustible:
-                walker.reading = IOTileReading(walker.selector.as_stream(), 0xFFFFFFFF, 0)
+                walker.reading = IOTileReading(0xFFFFFFFF, walker.selector.as_stream(), 0)
 
             node.connect_input(i, walker, trigger)
 
@@ -239,7 +239,7 @@ class SensorGraph:
         """
 
         for stream, value in self.constant_database.items():
-            self.sensor_log.push(stream, IOTileReading(stream.encode(), 0, value))
+            self.sensor_log.push(stream, IOTileReading(0, stream.encode(), value))
 
     def get_config(self, slot, config_id):
         """Get a config variable assignment previously set on this sensor graph.
