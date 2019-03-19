@@ -31,6 +31,7 @@ class IOTileReading:
         value (int): The raw reading value
     """
 
+    _Y2KReference = datetime.datetime(2000, 1, 1)
     InvalidReadingID = 0
 
     def __init__(self, raw_time, stream, value, time_base=None, reading_id=None, reading_time=None):
@@ -44,8 +45,22 @@ class IOTileReading:
         self.reading_id = reading_id
 
         self.reading_time = reading_time
-        if self.reading_time is None and time_base is not None and raw_time != IOTileEvent.InvalidRawTime:
-            self.reading_time = time_base + datetime.timedelta(seconds=raw_time)
+
+        if self.reading_time is None:
+            self.reading_time = self._try_assign_utc_time(self.raw_time, time_base)
+
+    def _try_assign_utc_time(self, raw_time, time_base):
+        """Try to assign a UTC time to this reading."""
+
+        # Check if the raw time is encoded UTC since y2k or just uptime
+        if raw_time != IOTileEvent.InvalidRawTime and (raw_time & (1 << 31)):
+            y2k_offset = self.raw_time ^ (1 << 31)
+            return self._Y2KReference + datetime.timedelta(seconds=y2k_offset)
+
+        if time_base is not None:
+            return time_base + datetime.timedelta(seconds=raw_time)
+
+        return None
 
     def asdict(self):
         """Encode the data in this reading into a dictionary.
@@ -89,9 +104,9 @@ class IOTileReading:
 
     def __str__(self):
         if self.reading_time is not None:
-            return "Stream {}: {} at {}".format(self.stream, self.value, self.reading_time)
+            return "Stream 0x{:04X} (id 0x{:08X}): 0x{:08X} at {}".format(self.stream, self.reading_id, self.value, self.reading_time)
         else:
-            return "Stream {}: {} at uncorrected time {}".format(self.stream, self.value, self.raw_time)
+            return "Stream 0x{:04X} (id 0x{:08X}): 0x{:08X} at uncorrected time {}".format(self.stream, self.reading_id, self.value, self.raw_time)
 
 
 class IOTileEvent:
