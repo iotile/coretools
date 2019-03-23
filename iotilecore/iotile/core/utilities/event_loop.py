@@ -414,6 +414,16 @@ class BackgroundEventLoop:
         self.start()
         return asyncio.Event(loop=self.loop)
 
+    def create_queue(self):
+        """Attach a Queue to the background loop.
+
+        Returns:
+            asyncio.Queue
+        """
+
+        self.start()
+        return asyncio.Queue(loop=self.loop)
+
 
 def _create_task_threadsafe(cor, loop):
     asyncio_loop = loop.get_loop()
