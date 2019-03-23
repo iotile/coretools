@@ -159,7 +159,7 @@ class BackgroundTask:
 
         try:
             await asyncio.wait_for(finished, timeout=self._stop_timeout)
-        except asyncio.TimeoutError:
+        except asyncio.TimeoutError as err:
             # See discussion here: https://github.com/python/asyncio/issues/253#issuecomment-120138132
             # This prevents a nuisance log error message, finished is guaranteed
             # to be cancelled but not awaited when wait_for() has a timeout.
@@ -168,7 +168,9 @@ class BackgroundTask:
             except asyncio.CancelledError:
                 pass
 
-            raise
+            # See https://mail.python.org/pipermail/python-3000/2008-May/013740.html
+            # for why we need to explictly name the error here
+            raise err
         finally:
             self.stopped = True
 
