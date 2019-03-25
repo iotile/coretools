@@ -12,7 +12,7 @@ import uuid
 from iotile.core.exceptions import IOTileException, InternalError, ValidationError, TimeoutExpiredError
 from iotile.core.utilities.schema_verify import Verifier, DictionaryVerifier, \
     StringVerifier, LiteralVerifier, OptionsVerifier
-from iotile.core.utilities.event_loop import EventLoop
+from iotile.core.utilities import EventLoop
 
 # The prescribed schema of command response messages
 # Messages with this format are automatically processed inside the ValidatingWSClient
@@ -32,10 +32,19 @@ ResponseSchema = OptionsVerifier(SuccessfulResponseSchema, FailureResponseSchema
 class AsyncValidatingWSClient:
     """An asynchronous websocket client that validates messages received.
 
-    Messages are assumed to be packed using msgpack in a binary format
-    and are decoded and validated against message type schema.  Matching
-    messages are dispatched to the appropriate handler and messages that
-    match no attached schema are logged and dropped.
+    This client is designed to allow the easy construction of client/server
+    protocols where the client can send commands to the server that
+    receive responses and the server can push events to the client at
+    any time.
+
+    The schema of all messages exchanged are validated according to
+    SchemaVerifiers to ensure they are correct before passing on to
+    the underlying handlers.
+
+    Messages are packed using msgpack in a binary format and are decoded and
+    validated automatically.  Matching messages are dispatched to the
+    appropriate handler and messages that match no attached schema are logged
+    and dropped.
     """
 
     def __init__(self, url, logger_name=__name__):

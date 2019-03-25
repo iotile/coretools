@@ -14,7 +14,7 @@ from ..async_tools import EventLoop
 class _ConnectionContext:
     def __init__(self, server, con):
         self.server = server
-        self.con = con
+        self.connection = con
         self.operations = set()
         self.user_data = None
 
