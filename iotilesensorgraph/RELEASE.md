@@ -3,6 +3,11 @@
 All major changes in each released version of iotile-sensorgraph are listed
 here.
 
+## 1.0.4
+
+- Fix latent bug in usage of IOTileReading that flipped the timestamp and stream
+  names.
+
 ## 1.0.3
 
 - More builtins/__future__ removal that was missed

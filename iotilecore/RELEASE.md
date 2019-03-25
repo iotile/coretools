@@ -2,6 +2,24 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## 4.1.0
+
+- Update UTCAssigner with more test coverage and add fix_report() method that
+  will fix all readings inside of a SignedListReport with memoization to 
+  speed up the fixing process. 
+
+- Update UTCAssigner logic to check both directions from a reading to find out
+  which part produces a more exact UTC timestamp, choosing the best one
+  automatically.
+
+- Update `IOTileReading` to do a better job of assigning itself a debug UTC
+  time when it is created with an RTC timestamp value that can be directly
+  converted to UTC without assumptions.
+
+## 4.0.4
+
+- Create async version of the ValidatingWSClient
+- Create an EventLoop utility for managing asynchronous loops
 
 ## 4.0.3
 

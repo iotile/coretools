@@ -4,8 +4,6 @@ import logging
 import threading
 import pkg_resources
 import tornado.ioloop
-from iotilegateway.supervisor import ServiceStatusClient
-import iotilegateway.supervisor.states as states
 import iotilegateway.device as device
 from iotile.core.exceptions import ArgumentError
 
@@ -58,7 +56,6 @@ class IOTileGateway(threading.Thread):
         self.loop = None
         self.device_manager = None
         self.agents = []
-        self.supervisor = None
         self.loaded = threading.Event()
 
         self._config = config
@@ -66,10 +63,12 @@ class IOTileGateway(threading.Thread):
 
         if 'agents' not in config:
             self._config['agents'] = []
-            self._logger.warn("No agents defined in arguments to iotile-gateway, this is likely not what you want")
+            self._logger.warning("No agents defined in arguments to iotile-gateway, "
+                              "this is likely not what you want")
         elif 'adapters' not in config:
             self._config['adapters'] = []
-            self._logger.warn("No device adapters defined in arguments to iotile-gateway, this is likely not what you want")
+            self._logger.warning("No device adapters defined in arguments to iotile-gateway, "
+                                 "this is likely not what you want")
 
         super(IOTileGateway, self).__init__()
 
@@ -87,7 +86,8 @@ class IOTileGateway(threading.Thread):
         # the devices in this gateway
         for agent_info in self._config['agents']:
             if 'name' not in agent_info:
-                self._logger.error("Invalid agent information in gateway config, info=%s, missing_key=%s", str(agent_info), 'name')
+                self._logger.error("Invalid agent information in gateway config, info=%s, missing_key=%s",
+                                   str(agent_info), 'name')
                 should_close = True
                 break
 
@@ -109,7 +109,8 @@ class IOTileGateway(threading.Thread):
         if not should_close:
             for adapter_info in self._config['adapters']:
                 if 'name' not in adapter_info:
-                    self._logger.error("Invalid adapter information in gateway config, info=%s, missing_key=%s", str(adapter_info), 'name')
+                    self._logger.error("Invalid adapter information in gateway config, info=%s, missing_key=%s",
+                                       str(adapter_info), 'name')
                     should_close = True
                     break
 
@@ -132,32 +133,10 @@ class IOTileGateway(threading.Thread):
             # Notify that we have now loaded all plugins and are starting operation (once the loop starts)
             self.loop.add_callback(lambda: self.loaded.set())
 
-            # Try to regularly update a supervisor about our status if a supervisor is running
-            if self._try_initialize_supervisor():
-                callback = tornado.ioloop.PeriodicCallback(self._try_report_status, 60000)
-                callback.start()
-
         self.loop.start()
 
         # The loop has been closed, finish and quit
         self._logger.critical("Done stopping loop")
-
-    def _try_initialize_supervisor(self):
-        """Check for the existence of a supervisor"""
-        try:
-            self.supervisor = ServiceStatusClient('ws://localhost:9400/services')
-            self.supervisor.register_service('gateway', 'Device Gateway')
-            self.supervisor.post_info('gateway', "Service started successfully")
-            self.supervisor.post_headline('gateway', states.INFO_LEVEL, 'Started successfully')
-            return True
-        except Exception:  # pylint: disable=W0703
-            self._logger.info("No supervisor present")
-            return False
-
-    def _try_report_status(self):
-        """Periodic callback to report our gateway's status."""
-        self.supervisor.update_state('gateway', states.RUNNING)
-        self.supervisor.send_heartbeat('gateway')
 
     def _stop_loop(self):
         """Cleanly stop the gateway and close down the IOLoop.
@@ -180,18 +159,6 @@ class IOTileGateway(threading.Thread):
             self.device_manager.stop()
         except Exception:  # pylint: disable=W0703
             self._logger.exception("Error stopping device adapters")
-
-        if self.supervisor:
-            try:
-                self.supervisor.update_state('gateway', states.STOPPED)
-                self.supervisor.post_headline('gateway', states.INFO_LEVEL, 'Stoppped by supervisor')
-            except Exception:  # pylint: disable=W0703
-                self._logger.exception("Error updating service status to stopped")
-
-            try:
-                self.supervisor.stop()
-            except Exception:  # pylint: disable=W0703
-                self._logger.exception("Error stopping IOLoop")
 
         self.loop.stop()
         self._logger.critical('Stopping event loop and shutting down')
