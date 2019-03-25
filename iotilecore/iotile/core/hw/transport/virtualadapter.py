@@ -4,6 +4,7 @@ import time
 from iotile.core.exceptions import ArgumentError
 from iotile.core.dev import ComponentRegistry
 from iotile.core.hw.reports import BroadcastReport
+from iotile.core.hw.virtual.common_types import BusyRPCResponse
 from .adapter import DeviceAdapter
 from ..virtual import (RPCInvalidIDError, TileNotFoundError, RPCNotFoundError,
                        VirtualIOTileDevice, RPCErrorCode)
@@ -391,6 +392,8 @@ class VirtualDeviceAdapter(DeviceAdapter):
             response = dev.call_rpc(address, rpc_id, bytes(payload))
             if len(response) > 0:
                 status |= (1 << 7)
+        except BusyRPCResponse:
+            status = 0x0
         except (RPCInvalidIDError, RPCNotFoundError):
             status = 2
         except TileNotFoundError:

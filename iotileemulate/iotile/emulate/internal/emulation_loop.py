@@ -393,6 +393,17 @@ class EmulationLoop:
 
         self._loop.call_soon_threadsafe(self._add_task, tile_address, coroutine)
 
+    def is_tile_busy(self, address):
+        """Check that tile has no pending rpcs
+
+        Args:
+            address (int): The address of the time
+
+        Returns:
+            bool: True if there is a rpc for the tile already in the queue
+        """
+        return self._rpc_queue.is_pending_rpc(address)
+
     def _loop_thread_main(self):
         try:
             self._thread_check.is_rpc_thread = True

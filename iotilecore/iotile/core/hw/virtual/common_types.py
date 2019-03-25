@@ -46,6 +46,13 @@ class AsynchronousRPCResponse(IOTileException):
         super(AsynchronousRPCResponse, self).__init__("RPC handler elected to return asynchronously")
 
 
+class BusyRPCResponse(IOTileException):
+    """Exception thrown from an RPC implementation when a tile is busy handling asynchronous request"""
+
+    def __init__(self):
+        super(BusyRPCResponse, self).__init__("The tile is busy")
+
+
 def _create_argcode(code, arg_bytes):
     if not code.endswith('V'):
         return "<" + code
