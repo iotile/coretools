@@ -71,7 +71,7 @@ class OperationManager:
 
     _LEAF = object()
 
-    def __init__(self, loop=event_loop.EventLoop):
+    def __init__(self, loop=event_loop.SharedLoop):
         if not isinstance(loop, event_loop.BackgroundEventLoop):
             raise ArgumentError("loop must be a BackgroundEventLoop, was {}".format(loop))
 

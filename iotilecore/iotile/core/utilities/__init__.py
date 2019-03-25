@@ -2,6 +2,6 @@
 
 from .validating_dispatcher import ValidatingDispatcher
 from .workqueue_thread import WorkQueueThread
-from .async_tools import EventLoop, BackgroundEventLoop
+from .async_tools import SharedLoop, BackgroundEventLoop
 
-__all__ = ['ValidatingDispatcher', 'WorkQueueThread', 'BackgroundEventLoop', 'EventLoop']
+__all__ = ['ValidatingDispatcher', 'WorkQueueThread', 'BackgroundEventLoop', 'SharedLoop']

@@ -12,7 +12,7 @@ import uuid
 from iotile.core.exceptions import IOTileException, InternalError, ValidationError, TimeoutExpiredError
 from iotile.core.utilities.schema_verify import Verifier, DictionaryVerifier, \
     StringVerifier, LiteralVerifier, OptionsVerifier
-from iotile.core.utilities import EventLoop
+from iotile.core.utilities import SharedLoop
 
 # The prescribed schema of command response messages
 # Messages with this format are automatically processed inside the ValidatingWSClient
@@ -57,7 +57,7 @@ class AsyncValidatingWSClient:
         """
         self.con = None
         self.url = url
-        self.loop = EventLoop.get_loop()
+        self.loop = SharedLoop.get_loop()
         self._logger = logging.getLogger(logger_name)
         self.validators = [(ResponseSchema, self._on_response_received)]
         self.command_lock = asyncio.Lock(loop=self.loop)

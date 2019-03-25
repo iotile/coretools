@@ -100,4 +100,3 @@ def test_event_sending(client_server):
 
     loop.run_coroutine(client.send_command('send_event', 'event2', Verifier()))
     assert shared[0] == 10
-

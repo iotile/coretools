@@ -3,7 +3,7 @@ import uuid
 import asyncio
 import websockets
 from iotile.core.exceptions import ExternalError, ValidationError
-from ..async_tools import OperationManager, EventLoop
+from ..async_tools import OperationManager, SharedLoop
 from ..schema_verify import Verifier
 from .packing import pack, unpack
 from .messages import VALID_SERVER_MESSAGE
@@ -32,7 +32,7 @@ class AsyncValidatingWSClient:
             log messages.
     """
 
-    def __init__(self, url, loop=EventLoop, logger_name=__name__):
+    def __init__(self, url, loop=SharedLoop, logger_name=__name__):
         self.url = url
 
         self._con = None

@@ -9,7 +9,7 @@ from iotile.core.exceptions import ValidationError
 from .messages import VALID_CLIENT_MESSAGE
 from .packing import pack, unpack
 from .errors import ServerCommandError
-from ..async_tools import EventLoop
+from ..async_tools import SharedLoop
 
 class _ConnectionContext:
     def __init__(self, server, con):
@@ -44,7 +44,7 @@ class AsyncValidatingWSServer:
 
     OPERATIONS_MAX_PRUNE = 10
 
-    def __init__(self, host, port=None, loop=EventLoop):
+    def __init__(self, host, port=None, loop=SharedLoop):
         self.task = None
         self.host = host
         self.port = port
