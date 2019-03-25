@@ -2,7 +2,7 @@
 
 import asyncio
 import pytest
-from iotile.core.utilities.event_loop import BackgroundEventLoop
+from iotile.core.utilities import BackgroundEventLoop
 from iotile.core.exceptions import TimeoutExpiredError
 
 

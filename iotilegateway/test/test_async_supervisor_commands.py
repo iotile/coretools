@@ -11,7 +11,7 @@ from iotilegateway.supervisor import IOTileSupervisor, AsyncServiceStatusClient
 
 import asyncio
 
-from iotile.core.utilities.event_loop import EventLoop
+from iotile.core.utilities import SharedLoop
 
 
 class BasicRPCDispatcher(RPCDispatcher):
@@ -170,7 +170,7 @@ def test_service_delegate_tile(linked_tile):
     # file we created in the linked_tile fixture.  The HardwareManager will then
     # look up in its dictionary of known proxies for one whose ModuleName() exactly
     # matches and return that object.
-    asyncio.run_coroutine_threadsafe(asyncio.sleep(1.5), loop=EventLoop.get_loop()).result()
+    asyncio.run_coroutine_threadsafe(asyncio.sleep(1.5), loop=SharedLoop.get_loop()).result()
 
     proxy = hw.get(11)
 
@@ -183,7 +183,7 @@ def test_send_rpc_unknown(supervisor):
 
     _visor, client1, _client2 = supervisor
 
-    resp = asyncio.run_coroutine_threadsafe(client1.send_rpc('service_1', 0x8000, b""), loop=EventLoop.get_loop())
+    resp = asyncio.run_coroutine_threadsafe(client1.send_rpc('service_1', 0x8000, b""), loop=SharedLoop.get_loop())
     resp = resp.result()
     assert resp['result'] == 'service_not_found'
 
@@ -194,7 +194,7 @@ def test_register_agent(supervisor):
     visor, client1, _client2 = supervisor
 
     assert len(visor.service_manager.agents) == 0
-    asyncio.run_coroutine_threadsafe(client1.register_agent('service_1'), loop=EventLoop.get_loop()).result()
+    asyncio.run_coroutine_threadsafe(client1.register_agent('service_1'), loop=SharedLoop.get_loop()).result()
 
     assert len(visor.service_manager.agents) == 1
     assert 'service_1' in visor.service_manager.agents
@@ -205,8 +205,8 @@ def test_send_rpc_not_found(supervisor):
 
     _visor, client1, client2 = supervisor
 
-    asyncio.run_coroutine_threadsafe(client1.register_agent('service_1'), loop=EventLoop.get_loop()).result()
-    resp = asyncio.run_coroutine_threadsafe(client2.send_rpc('service_1', 0x8000, b""), loop=EventLoop.get_loop())
+    asyncio.run_coroutine_threadsafe(client1.register_agent('service_1'), loop=SharedLoop.get_loop()).result()
+    resp = asyncio.run_coroutine_threadsafe(client2.send_rpc('service_1', 0x8000, b""), loop=SharedLoop.get_loop())
     resp = resp.result()
     assert resp['result'] == 'rpc_not_found'
 
@@ -216,9 +216,9 @@ def test_send_rpc_success(rpc_agent):
 
     _visor, client1, client2 = rpc_agent
 
-    asyncio.run_coroutine_threadsafe(asyncio.sleep(1.5), loop=EventLoop.get_loop()).result()
+    asyncio.run_coroutine_threadsafe(asyncio.sleep(1.5), loop=SharedLoop.get_loop()).result()
 
-    resp = asyncio.run_coroutine_threadsafe(client2.send_rpc('service_1', 0x8000, b'\x00'*8), loop=EventLoop.get_loop())
+    resp = asyncio.run_coroutine_threadsafe(client2.send_rpc('service_1', 0x8000, b'\x00'*8), loop=SharedLoop.get_loop())
     resp = resp.result()
     assert resp['result'] == 'success'
     assert resp['response'] == b'\x00'*4
@@ -231,9 +231,9 @@ def test_send_rpc_execution(rpc_agent):
 
     args = struct.pack("<LL", 1, 2)
 
-    asyncio.run_coroutine_threadsafe(asyncio.sleep(1.5), loop=EventLoop.get_loop()).result()
+    asyncio.run_coroutine_threadsafe(asyncio.sleep(1.5), loop=SharedLoop.get_loop()).result()
 
-    resp = asyncio.run_coroutine_threadsafe(client2.send_rpc('service_1', 0x8000, args), loop=EventLoop.get_loop())
+    resp = asyncio.run_coroutine_threadsafe(client2.send_rpc('service_1', 0x8000, args), loop=SharedLoop.get_loop())
     resp = resp.result()
     assert resp['result'] == 'success'
 
@@ -248,9 +248,9 @@ def test_send_rpc_invalid_args(rpc_agent):
 
     args = struct.pack("<LLL", 1, 2, 3)
 
-    asyncio.run_coroutine_threadsafe(asyncio.sleep(1.5), loop=EventLoop.get_loop()).result()
+    asyncio.run_coroutine_threadsafe(asyncio.sleep(1.5), loop=SharedLoop.get_loop()).result()
 
-    resp = asyncio.run_coroutine_threadsafe(client2.send_rpc('service_1', 0x8000, args), loop=EventLoop.get_loop())
+    resp = asyncio.run_coroutine_threadsafe(client2.send_rpc('service_1', 0x8000, args), loop=SharedLoop.get_loop())
     resp = resp.result()
     assert resp['result'] == 'invalid_arguments'
 
@@ -260,9 +260,9 @@ def test_send_rpc_exception(rpc_agent):
 
     _visor, client1, client2 = rpc_agent
 
-    asyncio.run_coroutine_threadsafe(asyncio.sleep(1.5), loop=EventLoop.get_loop()).result()
+    asyncio.run_coroutine_threadsafe(asyncio.sleep(1.5), loop=SharedLoop.get_loop()).result()
 
-    resp = asyncio.run_coroutine_threadsafe(client2.send_rpc('service_1', 0x8001, b''), loop=EventLoop.get_loop())
+    resp = asyncio.run_coroutine_threadsafe(client2.send_rpc('service_1', 0x8001, b''), loop=SharedLoop.get_loop())
     resp = resp.result()
     assert resp['result'] == 'execution_exception'
 
@@ -272,8 +272,8 @@ def test_send_rpc_invalid_response(rpc_agent):
 
     _visor, client1, client2 = rpc_agent
 
-    asyncio.run_coroutine_threadsafe(asyncio.sleep(1.5), loop=EventLoop.get_loop()).result()
+    asyncio.run_coroutine_threadsafe(asyncio.sleep(1.5), loop=SharedLoop.get_loop()).result()
 
-    resp = asyncio.run_coroutine_threadsafe(client2.send_rpc('service_1', 0x8002, b''), loop=EventLoop.get_loop())
+    resp = asyncio.run_coroutine_threadsafe(client2.send_rpc('service_1', 0x8002, b''), loop=SharedLoop.get_loop())
     resp = resp.result()
     assert resp['result'] == 'invalid_response'
