@@ -1,14 +1,14 @@
 """A global background asyncio event loop for CoreTools.
 
 This class is the base primitive used by all of CoreTools to interact with the
-asyncio framework.  There should be a single EventLoop per process using
+asyncio framework.  There should be a single SharedLoop per process using
 CoreTools in an asynchronous fashion.
 
 Various subsystems add tasks to this background event loop which runs until
-the process shuts down or until you explicitly stop it using EventLoop.stop().
+the process shuts down or until you explicitly stop it using SharedLoop.stop().
 
 The primary mode of interaction with the event loop is by scheduling long
-running tasks using EventLoop.add_task().  You get a BackgroundTask object
+running tasks using SharedLoop.add_task().  You get a BackgroundTask object
 back that you can stop at any time from any thread using BackgroundTask.stop().
 
 If you have complex tasks that must be stopped in a specific order, you can
@@ -22,6 +22,7 @@ import logging
 import threading
 from iotile.core.exceptions import TimeoutExpiredError, ArgumentError, InternalError
 
+
 class BackgroundTask:
     """A background coroutine task running in a BackgroundEventLoop.
 
@@ -29,7 +30,7 @@ class BackgroundTask:
     subtasks.  A subtask is just a regular task but the parent task is in
     charge of stopping it when required.  This distinction allows you to
     create hierarchies of tasks that can be cleanly stopped in a known
-    order when the EventLoop is stopped.
+    order when the BackgroundEventLoop is stopped.
 
     Tasks can also be given names that will be logged for debugging purposes.
 
@@ -54,7 +55,7 @@ class BackgroundTask:
             the event loop.  If finalizer is a coroutine it is awaited.
         loop (BackgroundEventLoop): The background event loop this task
             should run in.  If not specified, it defaults to the global
-            EventLoop instance.
+            SharedLoop instance.
         stop_timeout (float): The maximum amount of time to wait for this
             task to stop when stop() is called in seconds.  None indicates
             an unlimited amount of time.  Default is 1 second.
@@ -69,7 +70,7 @@ class BackgroundTask:
         self.stopped = False
 
         if loop is None:
-            loop = EventLoop
+            loop = SharedLoop
 
         if not isinstance(loop, BackgroundEventLoop):
             raise ArgumentError("A BackgroundTask must be created with a BackgroundEventLoop, loop={}".format(loop))
@@ -135,7 +136,9 @@ class BackgroundTask:
         This method should only be called once.
 
         After this method returns, the task is finished and no more subtasks
-        can be added.
+        can be added.  If this task is being tracked inside of the
+        BackgroundEventLoop that it is part of, it will automatically be
+        removed from the event loop's list of tasks.
         """
 
         if self.stopped:
@@ -174,6 +177,10 @@ class BackgroundTask:
         finally:
             self.stopped = True
 
+            if self in self._loop.tasks:
+                self._loop.tasks.remove(self)
+
+
     def stop_threadsafe(self):
         """Stop this task from another thread and wait for it to finish.
 
@@ -204,7 +211,7 @@ class BackgroundEventLoop:
     requires a loop to present so it is cheap to create a BackgroundEventLoop
     and not use it in any way.
 
-    There is also a global instance of BackgroundEventLoop called EventLoop
+    There is also a global instance of BackgroundEventLoop called SharedLoop
     that can be used when you just want to add tasks to a single shared loop.
     Creating your own BackgroundEventLoop should not be generally done unless
     you are unit testing.
@@ -245,14 +252,14 @@ class BackgroundEventLoop:
             return
 
         if self.inside_loop():
-            raise InternalError("EventLoop.stop() called from inside event loop; "
+            raise InternalError("BackgroundEventLoop.stop() called from inside event loop; "
                                 "would have deadlocked.")
 
         try:
             self.run_coroutine(self._stop_internal())
             self.thread.join()
         except:
-            self._logger.exception("Error stopping EventLoop")
+            self._logger.exception("Error stopping BackgroundEventLoop")
             raise
         finally:
             self.thread = None
@@ -279,7 +286,7 @@ class BackgroundEventLoop:
 
         This can be used to decide whether we need to use a threadsafe method
         to interact with the loop or whether we can just interact with it
-        directly. It is used inside EventLoop to check for situations that
+        directly. It is used inside BackgroundEventLoop to check for situations that
         would deadlock and raise an Exception instead.
 
         Returns:
@@ -334,7 +341,7 @@ class BackgroundEventLoop:
         awaitable.  If it is an awaitable it will be awaited.
 
         If parent is not None, it must be a BackgroundTask object previously
-        created by a call to EventLoop.add_task() and this task will be
+        created by a call to BackgroundEventLoop.add_task() and this task will be
         registered as a subtask of that task.  It is that task's job then to
         cancel this task or otherwise stop it when it is stopped.
 
@@ -400,11 +407,39 @@ class BackgroundEventLoop:
         self.start()
 
         if self.inside_loop():
-            raise InternalError("EventLoop.run_coroutine called from inside event loop, "
+            raise InternalError("BackgroundEventLoop.run_coroutine called from inside event loop, "
                                 "would have deadlocked.")
 
         future = asyncio.run_coroutine_threadsafe(cor, loop=self.loop)
         return future.result()
+
+    def log_coroutine(self, cor):
+        """Run a coroutine logging any exception raised.
+
+        This routine will not block until the coroutine is finished
+        nor will it return any result.  It will just log if any
+        exception is raised by the coroutine during operation.
+
+        It is safe to call from both inside and outside the event loop.
+
+        There is no guarantee on how soon the coroutine will be scheduled.
+
+        Args:
+            cor (coroutine): The coroutine that we wish to run in the
+                background and wait until it finishes.
+        """
+
+        self.start()
+
+        def _run_and_log():
+            self._logger.debug("Starting ignored background task %s", cor)
+            task = self.loop.create_task(cor)
+            task.add_done_callback(lambda x: _log_future_exception(x, self._logger))
+
+        if self.inside_loop():
+            _run_and_log()
+        else:
+            self.loop.call_soon_threadsafe(_run_and_log)
 
     def create_event(self):
         """Attach an Event to the background loop.
@@ -415,6 +450,16 @@ class BackgroundEventLoop:
 
         self.start()
         return asyncio.Event(loop=self.loop)
+
+    def create_future(self):
+        """Attach a Future to the background loop.
+
+        Returns:
+            asyncio.Future
+        """
+
+        self.start()
+        return asyncio.Future(loop=self.loop)
 
     def create_queue(self):
         """Attach a Queue to the background loop.
@@ -440,5 +485,17 @@ def _create_task_threadsafe(cor, loop):
     return future.result()
 
 
+def _log_future_exception(future, logger):
+    """Log any exception raised by future."""
+
+    if not future.done():
+        return
+
+    try:
+        future.result()
+    except:  #pylint:disable=bare-except;This is a background logging helper
+        logger.warning("Exception in ignored future: %s", future, exc_info=True)
+
+
 # Create a single global event loop that anyone can add tasks to.
-EventLoop = BackgroundEventLoop()  # pylint:disable=invalid-name;This is for backwards compatibility.
+SharedLoop = BackgroundEventLoop()  # pylint:disable=invalid-name;This is for backwards compatibility.
