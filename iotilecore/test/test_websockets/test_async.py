@@ -1,6 +1,7 @@
 """Test ValidateWSCient against ValidatingWSServer."""
 
 import pytest
+import threading
 from iotile.core.exceptions import ExternalError
 from iotile.core.utilities.async_tools import BackgroundEventLoop
 from iotile.core.utilities.websockets import AsyncValidatingWSClient, AsyncValidatingWSServer
@@ -79,8 +80,9 @@ def test_event_sending(client_server):
 
     shared = [0]
     async def _send_event(payload, context):
-        server = context['server']
-        con = context['connection']
+        server = context.server
+        con = context.connection
+
         await server.send_event(con, payload, 5)
 
     def event_callback(payload):
@@ -98,3 +100,4 @@ def test_event_sending(client_server):
 
     loop.run_coroutine(client.send_command('send_event', 'event2', Verifier()))
     assert shared[0] == 10
+

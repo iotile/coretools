@@ -1,6 +1,7 @@
-import pytest
 import threading
 import sys
+import time
+import pytest
 
 if sys.version[0] == '2':
     import Queue as queue
@@ -80,9 +81,10 @@ def test_failed_stop():
     """Make sure that we can always kill a thread if it doesn't respond to stop()
     """
 
+    event = threading.Event()
     def thread_func():
-        while True:
-            pass
+        while not event.is_set():
+            time.sleep(0.01)
 
     thread = StoppableWorkerThread(thread_func, timeout=0.001)
     thread.start()
@@ -91,15 +93,21 @@ def test_failed_stop():
     with pytest.raises(TimeoutExpiredError):
         thread.stop(timeout=0.01)
 
-def test_failed_stop_force():
-    """Make sure that we can always kill a thread if it doesn't respond to stop()
-    """
+    event.set()
+    thread.wait_stopped()
 
+def test_failed_stop_force():
+    """Make sure that we can always kill a thread if it doesn't respond to stop()."""
+
+    event = threading.Event()
     def thread_func():
-        while True:
-            pass
+        while not event.is_set():
+            time.sleep(0.01)
 
     thread = StoppableWorkerThread(thread_func, timeout=0.001)
     thread.start()
 
     thread.stop(timeout=0.01, force=True)
+
+    event.set()
+    thread.wait_stopped()
