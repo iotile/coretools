@@ -13,7 +13,7 @@ from iotile.core.exceptions import ArgumentError
 
 import asyncio
 
-from iotile.core.utilities.event_loop import EventLoop
+from iotile.core.utilities import SharedLoop
 
 
 @pytest.fixture(scope="function")
@@ -61,7 +61,7 @@ def test_list_services(supervisor):
     print("test list services")
     _visor, client = supervisor
 
-    servs = asyncio.run_coroutine_threadsafe(client.list_services(), loop=EventLoop.get_loop()).result()
+    servs = asyncio.run_coroutine_threadsafe(client.list_services(), loop=SharedLoop.get_loop()).result()
     print("THE SERVES are", servs)
 
     assert len(servs) == 2
@@ -74,12 +74,12 @@ def test_query_service(supervisor):
 
     _visor, client = supervisor
 
-    status = asyncio.run_coroutine_threadsafe(client.service_status('service2'), loop=EventLoop.get_loop()).result()
+    status = asyncio.run_coroutine_threadsafe(client.service_status('service2'), loop=SharedLoop.get_loop()).result()
 
     assert status['numeric_status'] == states.UNKNOWN
 
     with pytest.raises(ArgumentError):
-        asyncio.run_coroutine_threadsafe(client.service_status('service3'), loop=EventLoop.get_loop()).result()
+        asyncio.run_coroutine_threadsafe(client.service_status('service3'), loop=SharedLoop.get_loop()).result()
 
 
 def test_register_service(supervisor):
@@ -87,9 +87,9 @@ def test_register_service(supervisor):
 
     _visor, client = supervisor
     asyncio.run_coroutine_threadsafe(client.register_service('service3', 'A nice service'),
-                                     loop=EventLoop.get_loop()).result()
+                                     loop=SharedLoop.get_loop()).result()
 
-    servs = asyncio.run_coroutine_threadsafe(client.list_services(), loop=EventLoop.get_loop()).result()
+    servs = asyncio.run_coroutine_threadsafe(client.list_services(), loop=SharedLoop.get_loop()).result()
     assert len(servs) == 3
     assert 'service3' in servs
 
@@ -99,10 +99,10 @@ def test_service_syncing(supervisor):
 
     _visor, client = supervisor
     asyncio.run_coroutine_threadsafe(client.register_service('service3', 'A nice service'),
-                                     loop=EventLoop.get_loop()).result()
+                                     loop=SharedLoop.get_loop()).result()
 
     # Make sure the update got synced
-    asyncio.run_coroutine_threadsafe(client.service_info('service3'), loop=EventLoop.get_loop()).result()
+    asyncio.run_coroutine_threadsafe(client.service_info('service3'), loop=SharedLoop.get_loop()).result()
 
     assert len(client.services) == 3
     assert 'service3' in client.services
@@ -114,8 +114,8 @@ def test_service_syncing(supervisor):
 
     # Update the state of a service and make sure it gets synced
     asyncio.run_coroutine_threadsafe(client.update_state('service3', states.RUNNING),
-                                     loop=EventLoop.get_loop()).result()
-    asyncio.run_coroutine_threadsafe(client.service_info('service3'), loop=EventLoop.get_loop()).result()
+                                     loop=SharedLoop.get_loop()).result()
+    asyncio.run_coroutine_threadsafe(client.service_info('service3'), loop=SharedLoop.get_loop()).result()
 
     assert client.services['service3'].state == states.RUNNING
     assert client.services['service3'].string_state == states.KNOWN_STATES[states.RUNNING]
@@ -125,13 +125,13 @@ def test_service_info(supervisor):
     """Make sure we can register a new service."""
 
     _visor, client = supervisor
-    status = asyncio.run_coroutine_threadsafe(client.service_info('service2'), loop=EventLoop.get_loop()).result()
+    status = asyncio.run_coroutine_threadsafe(client.service_info('service2'), loop=SharedLoop.get_loop()).result()
     assert status['long_name'] == 'Service 2'
     assert status['preregistered'] is True
 
     asyncio.run_coroutine_threadsafe(client.register_service('service3', 'A nice service'),
-                                     loop=EventLoop.get_loop()).result()
-    status = asyncio.run_coroutine_threadsafe(client.service_info('service3'), loop=EventLoop.get_loop()).result()
+                                     loop=SharedLoop.get_loop()).result()
+    status = asyncio.run_coroutine_threadsafe(client.service_info('service3'), loop=SharedLoop.get_loop()).result()
     assert status['long_name'] == 'A nice service'
     assert status['preregistered'] is False
 
@@ -141,20 +141,20 @@ def test_service_heartbeat(supervisor):
 
     _visor, client = supervisor
 
-    status = asyncio.run_coroutine_threadsafe(client.service_info('service1'), loop=EventLoop.get_loop()).result()
+    status = asyncio.run_coroutine_threadsafe(client.service_info('service1'), loop=SharedLoop.get_loop()).result()
 
     # Need to wait until the services are populated for the dict to have updated keys
     # Would be better to find an awaitable that actually monitors this dict key
-    asyncio.run_coroutine_threadsafe( asyncio.sleep(0.5), loop=EventLoop.get_loop()).result()
+    asyncio.run_coroutine_threadsafe( asyncio.sleep(0.5), loop=SharedLoop.get_loop()).result()
 
     assert client.services['service1'].num_heartbeats == 0
 
-    asyncio.run_coroutine_threadsafe(client.send_heartbeat('service1'), loop=EventLoop.get_loop()).result()
-    asyncio.run_coroutine_threadsafe(client.service_info('service1'), loop=EventLoop.get_loop()).result()
+    asyncio.run_coroutine_threadsafe(client.send_heartbeat('service1'), loop=SharedLoop.get_loop()).result()
+    asyncio.run_coroutine_threadsafe(client.service_info('service1'), loop=SharedLoop.get_loop()).result()
     assert client.services['service1'].num_heartbeats == 1
 
-    asyncio.run_coroutine_threadsafe(client.send_heartbeat('service1'), loop=EventLoop.get_loop()).result()
-    asyncio.run_coroutine_threadsafe(client.service_info('service1'), loop=EventLoop.get_loop()).result()
+    asyncio.run_coroutine_threadsafe(client.send_heartbeat('service1'), loop=SharedLoop.get_loop()).result()
+    asyncio.run_coroutine_threadsafe(client.service_info('service1'), loop=SharedLoop.get_loop()).result()
     assert client.services['service1'].num_heartbeats == 2
 
 
@@ -162,18 +162,18 @@ def test_query_messages(supervisor):
     """Make sure we can set, sync and query messages from the supervisor."""
 
     _visor, client = supervisor
-    msgs = asyncio.run_coroutine_threadsafe(client.get_messages('service1'), loop=EventLoop.get_loop()).result()
+    msgs = asyncio.run_coroutine_threadsafe(client.get_messages('service1'), loop=SharedLoop.get_loop()).result()
     assert len(msgs) == 0
 
-    asyncio.run_coroutine_threadsafe(asyncio.sleep(0.5), loop=EventLoop.get_loop()).result()
-    asyncio.run_coroutine_threadsafe(client.post_error('service1', 'test 1'), loop=EventLoop.get_loop()).result()
-    asyncio.run_coroutine_threadsafe(client.post_error('service1', 'test 1'), loop=EventLoop.get_loop()).result()
-    asyncio.run_coroutine_threadsafe(client.post_error('service1', 'test 2'), loop=EventLoop.get_loop()).result()
-    asyncio.run_coroutine_threadsafe(client.post_error('service1', 'test 3'), loop=EventLoop.get_loop()).result()
-    asyncio.run_coroutine_threadsafe(client.post_error('service1', 'test 2'), loop=EventLoop.get_loop()).result()
+    asyncio.run_coroutine_threadsafe(asyncio.sleep(0.5), loop=SharedLoop.get_loop()).result()
+    asyncio.run_coroutine_threadsafe(client.post_error('service1', 'test 1'), loop=SharedLoop.get_loop()).result()
+    asyncio.run_coroutine_threadsafe(client.post_error('service1', 'test 1'), loop=SharedLoop.get_loop()).result()
+    asyncio.run_coroutine_threadsafe(client.post_error('service1', 'test 2'), loop=SharedLoop.get_loop()).result()
+    asyncio.run_coroutine_threadsafe(client.post_error('service1', 'test 3'), loop=SharedLoop.get_loop()).result()
+    asyncio.run_coroutine_threadsafe(client.post_error('service1', 'test 2'), loop=SharedLoop.get_loop()).result()
 
-    asyncio.run_coroutine_threadsafe(asyncio.sleep(0.5), loop=EventLoop.get_loop()).result()
-    msgs = asyncio.run_coroutine_threadsafe(client.get_messages('service1'), loop=EventLoop.get_loop()).result()
+    asyncio.run_coroutine_threadsafe(asyncio.sleep(0.5), loop=SharedLoop.get_loop()).result()
+    msgs = asyncio.run_coroutine_threadsafe(client.get_messages('service1'), loop=SharedLoop.get_loop()).result()
 
     for msg in msgs:
         print(msg.count, ": ", msg.message)
@@ -188,8 +188,8 @@ def test_query_messages(supervisor):
     assert msgs[3].message == 'test 2'
 
     # Now make sure the messages got properly synced locally as well
-    asyncio.run_coroutine_threadsafe(asyncio.sleep(0.5), loop=EventLoop.get_loop()).result()
-    local = asyncio.run_coroutine_threadsafe(client.local_service('service1'), loop=EventLoop.get_loop()).result()
+    asyncio.run_coroutine_threadsafe(asyncio.sleep(0.5), loop=SharedLoop.get_loop()).result()
+    local = asyncio.run_coroutine_threadsafe(client.local_service('service1'), loop=SharedLoop.get_loop()).result()
     msgs = local.messages
 
     assert len(msgs) == 4
@@ -208,28 +208,28 @@ def test_service_headline(supervisor):
 
     _visor, client = supervisor
 
-    msg = asyncio.run_coroutine_threadsafe(client.get_headline('service1'), loop=EventLoop.get_loop()).result()
+    msg = asyncio.run_coroutine_threadsafe(client.get_headline('service1'), loop=SharedLoop.get_loop()).result()
     assert msg is None
 
     asyncio.run_coroutine_threadsafe(client.post_headline('service1', states.ERROR_LEVEL, 'test message'),
-                                     loop=EventLoop.get_loop()).result()
-    msg = asyncio.run_coroutine_threadsafe(client.get_headline('service1'), loop=EventLoop.get_loop()).result()
+                                     loop=SharedLoop.get_loop()).result()
+    msg = asyncio.run_coroutine_threadsafe(client.get_headline('service1'), loop=SharedLoop.get_loop()).result()
 
     assert msg.level == states.ERROR_LEVEL
     assert msg.message == 'test message'
     assert msg.count == 1
 
-    local = asyncio.run_coroutine_threadsafe(client.local_service('service1'), loop=EventLoop.get_loop()).result()
+    local = asyncio.run_coroutine_threadsafe(client.local_service('service1'), loop=SharedLoop.get_loop()).result()
     assert local.headline is not None
     assert local.headline.message == 'test message'
 
     # Make sure we can change the headline
     asyncio.run_coroutine_threadsafe(client.post_headline('service1', states.INFO_LEVEL, 'info message'),
-                                     loop=EventLoop.get_loop()).result()
-    msg = asyncio.run_coroutine_threadsafe(client.get_headline('service1'), loop=EventLoop.get_loop()).result()
+                                     loop=SharedLoop.get_loop()).result()
+    msg = asyncio.run_coroutine_threadsafe(client.get_headline('service1'), loop=SharedLoop.get_loop()).result()
     assert msg.level == states.INFO_LEVEL
     assert msg.message == 'info message'
 
-    local = asyncio.run_coroutine_threadsafe(client.local_service('service1'), loop=EventLoop.get_loop()).result()
+    local = asyncio.run_coroutine_threadsafe(client.local_service('service1'), loop=SharedLoop.get_loop()).result()
     assert local.headline is not None
     assert local.headline.message == 'info message'
