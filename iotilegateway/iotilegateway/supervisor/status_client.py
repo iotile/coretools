@@ -8,7 +8,7 @@ import asyncio
 
 from iotile.core.hw.virtual import RPCInvalidArgumentsError, RPCInvalidReturnValueError
 from iotile.core.utilities.validating_wsclient import ValidatingWSClient, AsyncValidatingWSClient
-from iotile.core.utilities.event_loop import SharedLoop
+from iotile.core.utilities import SharedLoop
 from iotile.core.exceptions import ArgumentError
 from . import command_formats
 from . import states
