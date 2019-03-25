@@ -8,7 +8,7 @@ import asyncio
 
 from iotile.core.hw.virtual import RPCInvalidArgumentsError, RPCInvalidReturnValueError
 from iotile.core.utilities.validating_wsclient import ValidatingWSClient, AsyncValidatingWSClient
-from iotile.core.utilities.event_loop import EventLoop
+from iotile.core.utilities.event_loop import SharedLoop
 from iotile.core.exceptions import ArgumentError
 from . import command_formats
 from . import states
@@ -45,7 +45,7 @@ class AsyncServiceStatusClient(AsyncValidatingWSClient):
     def __init__(self, url, dispatcher=None, agent=None, logger_name=__name__):
         super(AsyncServiceStatusClient, self).__init__(url)
 
-        loop = EventLoop.get_loop()
+        loop = SharedLoop.get_loop()
 
         self._state_lock = asyncio.Lock(loop=loop)
         self._rpc_lock = asyncio.Lock()
