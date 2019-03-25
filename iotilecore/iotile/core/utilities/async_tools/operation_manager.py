@@ -6,7 +6,7 @@ many operations running in parallel and multiple operations can be triggered
 by the same message.  Messages are just dictionaries and the matching can
 be according to any keys in the messages.
 
-The Operationmanager sclass is designed to provide a friendly API on which to
+The Operationmanager class is designed to provide a friendly API on which to
 build complex, asynchronous network or hardware operations.
 
 The prototypical use case is dealing with messages received from bluetooth low
