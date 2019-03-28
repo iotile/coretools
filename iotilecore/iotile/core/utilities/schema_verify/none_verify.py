@@ -9,10 +9,6 @@ class NoneVerifier(Verifier):
         desc (string): A description of the verifier
     """
 
-    def __init__(self, desc=None):
-        super(NoneVerifier, self).__init__(desc)
-        self._literal = literal
-
     def verify(self, obj):
         """Verify that the object conforms to this verifier's schema
 
