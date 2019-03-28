@@ -11,6 +11,16 @@
 import iotile.core.exceptions
 
 
+class DeviceAdapterError(iotile.core.exceptions.HardwareError):
+    def __init__(self, conn_id, operation, reason):
+        super(DeviceAdapterError, self).__init__("Operation {} on conn {} failed because {}".
+                                                 format(conn_id, operation, reason),
+                                                 reason=reason, operation=operation,
+                                                 conn_id=conn_id)
+
+        self.reason = reason
+
+
 class RPCError(iotile.core.exceptions.HardwareError):
     pass
 

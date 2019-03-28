@@ -302,12 +302,18 @@ def test_rsl_reset_config(reference_hw):
 
     hw, _device, _peripheral = reference_hw
 
+    import logging
+    logger = logging.getLogger(__name__)
+
     con = hw.get(8, basic=True)
     sensor_graph = find_proxy_plugin('iotile_standard_library/lib_controller', 'SensorGraphPlugin')(con)
     config = find_proxy_plugin('iotile_standard_library/lib_controller', 'ConfigDatabasePlugin')(con)
 
     config.set_variable('controller', 0x2004, 'uint8_t', 1)
+
+    logger.info("Sending Reset 1")
     con.reset(wait=0)
+    logger.info("Done with Reset 1")
 
     with pytest.raises(HardwareError):
         sensor_graph.push_many('buffered 1', 15, 20000)
@@ -318,6 +324,7 @@ def test_rsl_reset_config(reference_hw):
     }
 
     config.set_variable('controller', 0x2005, 'uint8_t', 1)
+    logger.info("Sending Reset 2")
     con.reset(wait=0)
 
     with pytest.raises(HardwareError):

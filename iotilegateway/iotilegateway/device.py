@@ -6,6 +6,7 @@ import tornado.gen
 import uuid
 from iotile.core.hw.reports import BroadcastReport
 from iotile.core.exceptions import ArgumentError
+from iotile.core.hw.transport.adapter import AbstractDeviceAdapter, SynchronousLegacyWrapper
 
 
 class DeviceManager:
@@ -47,6 +48,9 @@ class DeviceManager:
         tornado.ioloop.PeriodicCallback(self.device_expiry_callback, 1000, self._loop).start()
 
     def add_adapter(self, man):
+        if isinstance(man, AbstractDeviceAdapter):
+            man = SynchronousLegacyWrapper(man)
+
         adapter_id = len(self.adapters)
         self.adapters[adapter_id] = man
         man.set_id(adapter_id)

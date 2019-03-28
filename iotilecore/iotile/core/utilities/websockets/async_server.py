@@ -50,7 +50,7 @@ class AsyncValidatingWSServer:
         self.port = port
 
         self._commands = {}
-        self._server = None
+        self._server_task = None
         self._loop = loop
         self._logger = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ class AsyncValidatingWSServer:
         logger.setLevel(logging.ERROR)
         logger.addHandler(logging.NullHandler())
 
-    async def prepare_conn(self, _con):
+    async def _prepare_conn(self, _con):
         """Called when a new connection is established.
 
         This method is designed to allow subclasses to store, per connection
@@ -75,13 +75,18 @@ class AsyncValidatingWSServer:
 
         return None
 
-    async def teardown_conn(self):
+    async def _teardown_conn(self, context):
         """Called when a connection is finalized.
 
-        This is the partner call to prepare_conn() and is intended to give
+        This is the partner call to _prepare_conn() and is intended to give
         subclasses the ability to cleanly release any resources that were
         allocated along with this connection, outside of
         AsyncValidatingWSServer.
+
+        Args:
+            context (_ConnectionContext): An object with all of the
+                associated data about the connection including any
+                user data returned by _prepare_conn().
         """
 
         pass
@@ -129,11 +134,46 @@ class AsyncValidatingWSServer:
         server's resources.
         """
 
-        self._server = await websockets.serve(self._manage_connection, self.host,
-                                              self.port)
+        if self._server_task is not None:
+            self._logger.debug("AsyncValidatingWSServer.start() called twice, ignoring")
+            return
+
+        started_signal = self._loop.create_future()
+        self._server_task = self._loop.add_task(self._run_server_task(started_signal))
+
+        await started_signal
 
         if self.port is None:
-            self.port = self._server.sockets[0].getsockname()[1]
+            self.port = started_signal.result()
+
+    async def _run_server_task(self, started_signal):
+        """Create a BackgroundTask to manage the server.
+
+        This allows subclasess to attach their server related tasks as
+        subtasks that are properly cleaned up when this parent task is
+        stopped and not require them all to overload start() and stop()
+        to perform this action.
+        """
+
+        try:
+            server = await websockets.serve(self._manage_connection, self.host, self.port)
+            port = server.sockets[0].getsockname()[1]
+            started_signal.set_result(port)
+        except Exception as err:
+            self._logger.exception("Error starting server on host %s, port %s", self.host, self.port)
+            started_signal.set_exception(err)
+            return
+
+        try:
+            while True:
+                await asyncio.sleep(1)
+        except asyncio.CancelledError:
+            self._logger.info("Stopping server due to stop() command")
+        finally:
+            server.close()
+            await server.wait_closed()
+
+        self._logger.debug("Server stopped, exiting task")
 
     async def stop(self):
         """Stop the websocket server.
@@ -143,9 +183,9 @@ class AsyncValidatingWSServer:
         shutdown, they will be cleanly closed.
         """
 
-        if self._server is not None:
-            self._server.close()
-            await self._server.wait_closed()
+        if self._server_task is not None:
+            await self._server_task.stop()
+            self._server_task = None
 
     async def send_event(self, con, name, payload):
         """Send an event to a client connection.
@@ -172,7 +212,7 @@ class AsyncValidatingWSServer:
 
         try:
             try:
-                context.user_data = await self.prepare_conn(con)
+                context.user_data = await self._prepare_conn(con)
             except:
                 self._logger.exception("Error preparing connection")
                 raise
@@ -196,18 +236,24 @@ class AsyncValidatingWSServer:
             await _cancel_operations(context.operations)
 
             try:
-                await self.teardown_conn()
+                await self._teardown_conn(context)
             except:  #pylint:disable=bare-except;This is a background worker
                 self._logger.exception("Error tearing down connecion")
 
     async def _dispatch_message(self, con, message, context):
+        cmd = message.get('operation')
+        cmd_uuid = message.get('uuid')
+
         try:
             response = await self._try_call_command(message, context)
         except ServerCommandError as err:
-            response = _error_response(err.reason, message.get('uuid'))
+            response = _error_response(err.reason, cmd_uuid)
+        except NotImplementedError:
+            self._logger.error("Command %s was not implemented", cmd)
+            response = _error_response("Command %s was not implemented" % cmd, cmd_uuid)
         except Exception as err:  #pylint:disable=broad-except;We can't let a failing command take down the server
-            self._logger.exception("Exception executing handler for command %s", message.get('operation'))
-            response = _error_response(str(err), message.get('uuid'))
+            self._logger.exception("Exception executing handler for command %s", cmd)
+            response = _error_response(str(err), cmd_uuid)
 
         encoded_resp = pack(response)
         self._logger.debug("Sending response: %s", response)

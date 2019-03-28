@@ -45,6 +45,7 @@ class VirtualIOTileDevice(BaseRunnable):
         self._interface_status['trace'] = False
         self._interface_status['script'] = False
         self._interface_status['rpc'] = False
+        self._interface_status['debug'] = False
 
         # For this device to push streams or tracing data through a VirtualInterface, it
         # needs access to that interface's push channel
@@ -233,6 +234,26 @@ class VirtualIOTileDevice(BaseRunnable):
 
         self._tiles[address] = tile
 
+    def open_interface(self, name):
+        """Open an interface on the device by name.
+
+        Args:
+            name (str): The name of the interface to open.
+        """
+
+        open_func = getattr(self, "open_{}_interface".format(name))
+        return open_func()
+
+    def close_interface(self, name):
+        """Close an interface on the device by name.
+
+        Args:
+            name (str): The name of the interface to close.
+        """
+
+        close_func = getattr(self, "close_{}_interface".format(name))
+        close_func()
+
     def open_rpc_interface(self):
         """Called when someone opens an RPC interface to the device."""
 
@@ -252,6 +273,16 @@ class VirtualIOTileDevice(BaseRunnable):
         """Called when someone closes a script interface on this device."""
 
         self._interface_status['script'] = False
+
+    def open_debug_interface(self):
+        """Called when someone opens a script interface on this device."""
+
+        self._interface_status['debug'] = True
+
+    def close_debug_interface(self):
+        """Called when someone closes a script interface on this device."""
+
+        self._interface_status['debug'] = False
 
     def open_streaming_interface(self):
         """Called when someone opens a streaming interface to the device.
