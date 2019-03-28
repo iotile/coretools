@@ -7,6 +7,7 @@ import datetime
 import time
 from iotile.core.exceptions import HardwareError, ArgumentError
 from iotile.core.hw.reports import BroadcastReport
+from .adapter import AbstractDeviceAdapter, SynchronousLegacyWrapper
 
 
 class AdapterCMDStream(CMDStream):
@@ -26,12 +27,16 @@ class AdapterCMDStream(CMDStream):
     """
 
     def __init__(self, adapter, port, connection_string, record=None):
-        self.adapter = adapter
         self._scanned_devices = {}
         self._reports = None
         self._broadcast_reports = None
         self._traces = None
         self.connection_interrupted = False
+
+        if isinstance(adapter, AbstractDeviceAdapter):
+            adapter = SynchronousLegacyWrapper(adapter)
+
+        self.adapter = adapter
 
         self.adapter.add_callback('on_scan', self._on_scan)
         self.adapter.add_callback('on_report', self._on_report)
@@ -89,7 +94,11 @@ class AdapterCMDStream(CMDStream):
         # If we need to probe for devices rather than letting them just bubble up, start the probe
         # and then use our min_scan_time to wait for them to arrive via the normal _on_scan event
         if self.probe_required:
-            self.adapter.probe_sync()
+            res = self.adapter.probe_sync()
+            if not res['success']:
+                raise HardwareError("Could not probe for devices",
+                                    reason=res.get('failure_reason'))
+
             wait_time = self.min_scan
 
         # If an explicit wait is specified that overrides everything else
@@ -189,8 +198,6 @@ class AdapterCMDStream(CMDStream):
 
         result = self.adapter.send_rpc_sync(0, address, rpc_id, payload, timeout)
         success = result['success']
-        status = result['status']
-        payload = result['payload']
 
         # Sometimes RPCs can cause the device to go offline, so try to reconnect to it.
         # For example, the RPC could cause the device to reset itself.
@@ -201,6 +208,9 @@ class AdapterCMDStream(CMDStream):
 
         if not success:
             raise HardwareError("Could not send RPC", reason=result['failure_reason'])
+
+        status = result['status']
+        payload = result['payload']
 
         return status, payload
 
