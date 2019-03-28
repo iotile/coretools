@@ -166,7 +166,7 @@ class ComponentRegistry:
             try:
                 ext = entry.load()
             except:  # pylint:disable=bare-except;
-                self._logger.warn("Unable to load %s from %s", entry.name, entry.distro)
+                self._logger.warn("Unable to load %s from %s", entry.name, entry.distro, exc_info=True)
                 continue
 
             found_extensions.extend((name, x) for x in self._filter_subclasses(ext, class_filter))
