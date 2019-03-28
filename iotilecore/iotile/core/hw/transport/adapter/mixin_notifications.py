@@ -11,8 +11,10 @@ class BasicNotificationMixin:
 
     This mixin class implements the required abstract methods in
     :class:`AbstractDeviceAdapter` related to adding, adjusting and removing
-    monitors as well as providing a private method: ``_notify_callback``
-    that can trigger those monitors.
+        monitors as well as providing a method :meth:`notify_event` that can
+        trigger those monitors.  For situations where you can't await a
+        coroutine, there is also a wrapper :meth:`fire_event` that defers the
+        notification to a later time inside the BackgroundEventLoop.
 
     Note that there are not locks inside any of the monitor registraton or
     adjustment procedures so they are only safe to call from within the
