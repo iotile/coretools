@@ -85,6 +85,32 @@ def _create_respcode(code, resp):
     return "<" + code + "%ds" % final_length
 
 
+def pack_rpc_response(response=None, exception=None):
+    """Convert a response payload or exception to a status code and payload.
+
+    This function will convert an Exception raised by an RPC implementation
+    to the corresponding status code.
+    """
+
+    if response is None:
+        response = bytes()
+
+    if exception is None:
+        status = (1 << 6)
+        if len(response) > 0:
+            status |= (1 << 7)
+    elif isinstance(exception, (RPCInvalidIDError, RPCNotFoundError)):
+        status = 2
+    elif isinstance(exception, TileNotFoundError):
+        status = 0xFF
+    elif isinstance(exception, RPCErrorCode):
+        status = (1 << 6) | (exception.params['code'] & ((1 << 6) - 1))
+    else:
+        status = 3
+
+    return status, response
+
+
 def pack_rpc_payload(arg_format, args):
     """Pack an RPC payload according to arg_format.
 

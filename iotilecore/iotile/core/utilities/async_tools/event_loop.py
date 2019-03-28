@@ -96,6 +96,30 @@ class BackgroundTask:
 
         return str(self.task)
 
+    def create_subtask(self, cor, name=None, stop_timeout=1.0):
+        """Create and add a subtask from a coroutine.
+
+        This function will create a BackgroundTask and then
+        call self.add_subtask() on it.
+
+        Args:
+            cor (coroutine): The coroutine that should be wrapped
+                in a background task.
+            name (str): An optional name for the task.
+            stop_timeout (float): The maximum time to wait for this
+                subtask to die after stopping it.
+
+        Returns:
+            Backgroundtask: The created subtask.
+        """
+
+        if self.stopped:
+            raise InternalError("Cannot add a subtask to a parent that is already stopped")
+
+        subtask = BackgroundTask(cor, name, loop=self._loop, stop_timeout=stop_timeout)
+        self.add_subtask(subtask)
+        return subtask
+
     def add_subtask(self, subtask):
         """Link a subtask to this parent task.
 
@@ -403,6 +427,24 @@ class BackgroundEventLoop:
             object: Whatever the coroutine cor returns.
         """
 
+        future = self.launch_coroutine(cor)
+        return future.result()
+
+    def launch_coroutine(self, cor):
+        """Start a coroutine task and return a Future with the pending result.
+
+        This method may only be called outside of the event loop. Attempting
+        to call it from inside the event loop would deadlock and will raise
+        InternalError instead.
+
+        Args:
+            cor (coroutine): The coroutine that we wish to run in the
+                background and wait until it finishes.
+
+        Returns:
+            concurrent.futures.Future: A future representing the coroutine.
+        """
+
         # Ensure the loop exists and is started
         self.start()
 
@@ -410,8 +452,7 @@ class BackgroundEventLoop:
             raise InternalError("BackgroundEventLoop.run_coroutine called from inside event loop, "
                                 "would have deadlocked.")
 
-        future = asyncio.run_coroutine_threadsafe(cor, loop=self.loop)
-        return future.result()
+        return asyncio.run_coroutine_threadsafe(cor, loop=self.loop)
 
     def log_coroutine(self, cor):
         """Run a coroutine logging any exception raised.
@@ -432,7 +473,6 @@ class BackgroundEventLoop:
         self.start()
 
         def _run_and_log():
-            self._logger.debug("Starting ignored background task %s", cor)
             task = self.loop.create_task(cor)
             task.add_done_callback(lambda x: _log_future_exception(x, self._logger))
 
@@ -450,6 +490,17 @@ class BackgroundEventLoop:
 
         self.start()
         return asyncio.Event(loop=self.loop)
+
+    def create_lock(self):
+        """Attach a Lock to the background loop.
+
+        Returns:
+            asyncio.Lock
+        """
+
+        self.start()
+        return asyncio.Lock(loop=self.loop)
+
 
     def create_future(self):
         """Attach a Future to the background loop.

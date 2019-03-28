@@ -32,6 +32,8 @@ class AsyncValidatingWSClient:
             log messages.
     """
 
+    DISCONNECT_EVENT = "__internal_ws_disconnect_event"
+
     def __init__(self, url, loop=SharedLoop, logger_name=__name__):
         self.url = url
 
@@ -151,6 +153,8 @@ class AsyncValidatingWSClient:
         except asyncio.CancelledError:
             self._logger.info("Closing connection to server due to stop()")
         finally:
+            self._manager.process_message(dict(type='event', name=self.DISCONNECT_EVENT, payload=None))
+
             task.cancel_subtasks()
             await self._con.close()
 
