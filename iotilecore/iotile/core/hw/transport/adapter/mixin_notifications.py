@@ -31,6 +31,10 @@ class BasicNotificationMixin:
         method that can turn a connection_string into a connection id or None
         if there is not an active connection to that device.
 
+        If you also include the standard :class:`PerConnectionDataMixin` mixin
+        in your adatper then your adapter will have a compliant implementation
+        of ``_get_conn_id()`` and nothing else is needed.
+
     Args:
         loop (BackgroundEventLoop): The loop we should use to perform
             notifications.
@@ -191,6 +195,19 @@ class BasicNotificationMixin:
         return immediately.  It is useful for situations where you cannot
         await notify_event but keep in mind that it prevents back-pressure
         when you are notifying too fast so should be used sparingly.
+
+        Note that calling this method will push the notification to a
+        background task so it can be difficult to reason about when it will
+        precisely occur.  For that reason, :meth:`notify_event` should be
+        preferred when possible since that method guarantees that all
+        callbacks will be called synchronously before it finishes.
+
+        Args:
+            conn_string (str): The connection string for the device that the
+                event is associated with.
+            name (str): The name of the event. Must be in SUPPORTED_EVENTS.
+            event (object): The event object.  The type of this object will
+                depend on what is being notified.
         """
 
         self._loop.log_coroutine(self.notify_event(conn_string, name, event))
