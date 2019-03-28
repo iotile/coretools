@@ -1,3 +1,9 @@
+"""Legacy DeviceAdapter base class that has been superceded.
+
+New DeviceAdapters should inherit directly from :class:`AbstractDeviceAdapter` or
+use the reference implementation in :class:`StandardDeviceAdapter`.
+"""
+
 import threading
 from iotile.core.exceptions import ArgumentError
 

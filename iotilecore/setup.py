@@ -45,7 +45,7 @@ setup(
             'ws = iotile.core.hw.transport.websocketstream:WebSocketStream'
         ],
         'iotile.device_adapter': [
-            'virtual = iotile.core.hw.transport.virtualadapter:VirtualDeviceAdapter'
+            'virtual = iotile.core.hw.transport.virtualadapter:AsyncVirtualDeviceAdapter'
         ],
         'iotile.report_format': [
             'individual = iotile.core.hw.reports:IndividualReadingReport',

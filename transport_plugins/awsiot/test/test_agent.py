@@ -98,7 +98,7 @@ def test_script(gateway, hw_man, local_broker):
 
     assert prog_count > 0
 
-    dev = gateway.device_manager.adapters[0].devices[3]
+    dev = gateway.device_manager.adapters[0]._adapter.devices[3]
     assert dev.script == script
 
 
@@ -129,7 +129,7 @@ def test_script_chunking(gateway, hw_man, local_broker):
 
     assert prog_count > 0
 
-    dev = gateway.device_manager.adapters[0].devices[3]
+    dev = gateway.device_manager.adapters[0]._adapter.devices[3]
     assert dev.script == script
 
 
@@ -143,7 +143,7 @@ def test_script_progress_throttling(gateway, hw_man, local_broker):
     gateway.agents[0].throttle_progress = 10.0
     hw_man.stream._send_highspeed(script, lambda x, y: progs.append((x, y)))
 
-    dev = gateway.device_manager.adapters[0].devices[3]
+    dev = gateway.device_manager.adapters[0]._adapter.devices[3]
     assert dev.script == script
 
     # This should happen faster than our throttling period so we should
