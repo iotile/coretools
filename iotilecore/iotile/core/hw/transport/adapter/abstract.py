@@ -25,7 +25,7 @@ DeviceAdapter.
 
 Previous DeviceAdapter implementations used multithreading and callback based
 interfaces that worked but proved difficult to implement, raising the barrier
-to creating new DeviceAdapters to support additional communications protocols.
+to creating new DeviceAdapters to support additional communication protocols.
 """
 
 import abc
