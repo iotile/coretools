@@ -110,6 +110,9 @@ class SynchronousLegacyWrapper:
 
         self._adapter.register_monitor([None], events, callback)
 
+    def can_connect(self):
+        return self._adapter.can_connect()
+
     def periodic_callback(self):
         """Periodic callback to allow adapter to process events.
 
@@ -138,6 +141,12 @@ class SynchronousLegacyWrapper:
         future = self._loop.launch_coroutine(self._adapter.connect(conn_id, connection_string))
         return self._format_future(future)
 
+    def connect_async(self, conn_id, connection_string, callback):
+        """Asynchronously connect to a device."""
+
+        future = self._loop.launch_coroutine(self._adapter.connect(conn_id, connection_string))
+        future.add_done_callback(lambda x: self._callback_future(conn_id, x, callback))
+
     def disconnect_sync(self, conn_id):
         """Synchronously disconnect from a connected device
 
@@ -152,6 +161,12 @@ class SynchronousLegacyWrapper:
 
         future = self._loop.launch_coroutine(self._adapter.disconnect(conn_id))
         return self._format_future(future)
+
+    def disconnect_async(self, conn_id, callback):
+        """Asynchronously disconnect from a device."""
+
+        future = self._loop.launch_coroutine(self._adapter.disconnect(conn_id))
+        future.add_done_callback(lambda x: self._callback_future(conn_id, x, callback))
 
     def open_interface_sync(self, conn_id, interface, connection_string=None):
         """Asynchronously open an interface to this IOTile device
@@ -172,6 +187,12 @@ class SynchronousLegacyWrapper:
         future = self._loop.launch_coroutine(self._adapter.open_interface(conn_id, interface, connection_string))
         return self._format_future(future)
 
+    def open_interface_async(self, conn_id, interface, callback, connection_string=None):
+        """Asynchronously connect to a device."""
+
+        future = self._loop.launch_coroutine(self._adapter.open_interface(conn_id, interface))
+        future.add_done_callback(lambda x: self._callback_future(conn_id, x, callback))
+
     def probe_sync(self):
         """Synchronously probe for devices on this adapter."""
 
@@ -184,6 +205,12 @@ class SynchronousLegacyWrapper:
                 self._logger.exception("Error probing")
 
         return self._format_future(future)
+
+    def probe_async(self, callback):
+        """Asynchronously connect to a device."""
+
+        future = self._loop.launch_coroutine(self._adapter.probe())
+        future.add_done_callback(lambda x: self._callback_future(None, x, callback))
 
     def send_rpc_sync(self, conn_id, address, rpc_id, payload, timeout):
         """Synchronously send an RPC to this IOTile device
@@ -219,6 +246,22 @@ class SynchronousLegacyWrapper:
             'status': rpc_status,
             'payload': rpc_response
         }
+
+    def send_rpc_async(self, conn_id, address, rpc_id, payload, timeout, callback):
+        """Asynchronously send an RPC to this IOTile device."""
+
+        future = self._loop.launch_coroutine(self._adapter.send_rpc(conn_id, address, rpc_id, payload, timeout))
+
+        def format_response(future):
+            payload = None
+            exception = future.exception()
+            if exception is None:
+                payload = future.result()
+
+            rpc_status, rpc_response = pack_rpc_response(payload, exception)
+            callback(conn_id, self.id, True, None, rpc_status, rpc_response)
+
+        future.add_done_callback(format_response)
 
     def debug_sync(self, conn_id, cmd_name, cmd_args, progress_callback):
         """Asynchronously complete a named debug command.
@@ -264,6 +307,12 @@ class SynchronousLegacyWrapper:
         future = self._loop.launch_coroutine(self._adapter.send_script(conn_id, data, progress_callback))
         return self._format_future(future)
 
+    def send_script_async(self, conn_id, data, progress_callback, callback):
+        """Asynchronously send a script to the device."""
+
+        future = self._loop.launch_coroutine(self._adapter.send_script(conn_id, data, progress_callback))
+        future.add_done_callback(lambda x: self._callback_future(conn_id, x, callback))
+
     def _format_exception(self, exception):
         if isinstance(exception, DeviceAdapterError):
             reason = exception.reason
@@ -287,3 +336,11 @@ class SynchronousLegacyWrapper:
             'success': True,
             'failure_reason': None
         }
+
+    def _callback_future(self, conn_id, future, callback):
+        info = self._format_future(future)
+
+        if conn_id is not None:
+            callback(conn_id, self.id, info.get('success'), info.get('failure_reason'))
+        else:
+            callback(self.id, info.get('success'), info.get('failure_reason'))

@@ -208,6 +208,11 @@ class AsyncVirtualDeviceAdapter(StandardDeviceAdapter):
 
         raise ArgumentError("Could not find virtual_device by name", name=name, known_names=seen_names)
 
+    def can_connect(self):
+        """Return whether this device adapter can accept another connection."""
+
+        return True
+
     async def connect(self, conn_id, connection_string):
         """Asynchronously connect to a device
 
