@@ -1,10 +1,10 @@
 import json
-import traceback
-import time
+import logging
 from iotile.core.exceptions import ArgumentError
 from iotile.core.dev import ComponentRegistry
 from iotile.core.hw.reports import BroadcastReport
-from .adapter import DeviceAdapter
+from .adapter import StandardDeviceAdapter
+from ..exceptions import DeviceAdapterError
 from ..virtual import (RPCInvalidIDError, TileNotFoundError, RPCNotFoundError,
                        VirtualIOTileDevice, RPCErrorCode)
 
@@ -15,6 +15,7 @@ class VirtualAdapterAsyncChannel:
     def __init__(self, adapter, iotile_id):
         self.adapter = adapter
         self.iotile_id = iotile_id
+        self.conn_string = str(iotile_id)
 
     def stream(self, report, callback=None):
         """Queue data for streaming
@@ -27,13 +28,15 @@ class VirtualAdapterAsyncChannel:
                 callback will be called with False
         """
 
-        conn_id = self._find_connection(self.iotile_id)
+        conn_id = self._find_connection(self.conn_string)
 
-        if conn_id is not None or isinstance(report, BroadcastReport):
-            self.adapter._trigger_callback('on_report', conn_id, report)
+        if isinstance(report, BroadcastReport):
+            self.adapter.fire_event(self.conn_string, 'broadcast', report)
+        elif conn_id is not None:
+            self.adapter.fire_event(self.conn_string, 'report', report)
 
         if callback is not None:
-            callback(conn_id is not None)
+            callback(isinstance(report, BroadcastReport) or (conn_id is not None))
 
     def trace(self, data, callback=None):
         """Queue data for tracing
@@ -47,27 +50,23 @@ class VirtualAdapterAsyncChannel:
                 callback will be called with False.
         """
 
-        conn_id = self._find_connection(self.iotile_id)
+        conn_id = self._find_connection(self.conn_string)
 
         if conn_id is not None:
-            self.adapter._trigger_callback('on_trace', conn_id, data)
+            self.adapter.fire_event(self.conn_string, 'trace', data)
 
         if callback is not None:
             callback(conn_id is not None)
 
-    def _find_connection(self, iotile_id):
+    def _find_connection(self, conn_string):
         """Find the connection corresponding to an iotile_id
         """
 
-        for conn_id, dev in self.adapter.connections.items():
-            if dev.iotile_id == iotile_id:
-                return conn_id
-
-        return None
+        return self.adapter._get_conn_id(conn_string)
 
 
-class VirtualDeviceAdapter(DeviceAdapter):
-    """Callback based adapter that gives access to one or more virtual devices
+class AsyncVirtualDeviceAdapter(StandardDeviceAdapter):
+    """Device adapter that gives access to one or more virtual devices
 
     The adapter is created and serves access to the virtual_devices that are
     found by name in the entry_point group iotile.virtual_device.
@@ -112,16 +111,12 @@ class VirtualDeviceAdapter(DeviceAdapter):
     ExpirationTime = 600000
 
     def __init__(self, port=None, devices=None):
-        super(VirtualDeviceAdapter, self).__init__()
+        super(AsyncVirtualDeviceAdapter, self).__init__(name=__name__)
 
         loaded_devs = {}
 
         if devices is None:
             devices = []
-
-        # This needs to be initialized before any VirtualAdapterAsyncChannels are
-        # created because those could reference it
-        self.connections = {}
 
         if port is not None:
             devs = port.split(';')
@@ -137,7 +132,6 @@ class VirtualDeviceAdapter(DeviceAdapter):
                 if not self._validate_device(loaded_dev):
                     raise ArgumentError("Device type cannot be loaded on this adapter", name=name)
 
-                loaded_dev.start(VirtualAdapterAsyncChannel(self, loaded_dev.iotile_id))
                 loaded_devs[loaded_dev.iotile_id] = loaded_dev
 
         # Allow explicitly passing created VirtualDevice subclasses
@@ -145,15 +139,19 @@ class VirtualDeviceAdapter(DeviceAdapter):
             if not self._validate_device(dev):
                 raise ArgumentError("Device type cannot be loaded on this adapter", name=name)
 
-            dev.start(VirtualAdapterAsyncChannel(self, dev.iotile_id))
             loaded_devs[dev.iotile_id] = dev
 
         self.devices = loaded_devs
         self.scan_interval = self.get_config('scan_interval', 1.0)
         self.last_scan = None
+        self._logger = logging.getLogger(__name__)
 
         self.set_config('probe_required', True)
         self.set_config('probe_supported', True)
+
+    async def start(self):
+        for dev in self.devices.values():
+            dev.start(VirtualAdapterAsyncChannel(self, dev.iotile_id))
 
     # pylint:disable=unused-argument;The name needs to remain without an _ for subclasses to override
     @classmethod
@@ -210,22 +208,11 @@ class VirtualDeviceAdapter(DeviceAdapter):
 
         raise ArgumentError("Could not find virtual_device by name", name=name, known_names=seen_names)
 
-    def can_connect(self):
-        """Can this adapter have another simultaneous connection
-
-        There is no limit on the number of simultaneous virtual connections
-
-        Returns:
-            bool: whether another connection is allowed
-        """
-
-        return True
-
-    def connect_async(self, connection_id, connection_string, callback):
+    async def connect(self, conn_id, connection_string):
         """Asynchronously connect to a device
 
         Args:
-            connection_id (int): A unique identifer that will refer to this connection
+            conn_id (int): A unique identifer that will refer to this connection
             connection_string (string): A DeviceAdapter specific string that can be used to connect to
                 a device using this DeviceAdapter.
             callback (callable): A function that will be called when the connection attempt finishes as
@@ -234,24 +221,18 @@ class VirtualDeviceAdapter(DeviceAdapter):
 
         id_number = int(connection_string)
         if id_number not in self.devices:
-            if callback is not None:
-                callback(connection_id, self.id, False, "could not find device to connect to")
-            return
+            raise DeviceAdapterError(conn_id, 'connect', 'device not found')
 
-        if id_number in [x.iotile_id for x in self.connections.values()]:
-            if callback is not None:
-                callback(connection_id, self.id, False, "device was already connected to")
-            return
+        if self._get_conn_id(connection_string) is not None:
+            raise DeviceAdapterError(conn_id, 'connect', 'device already connected')
 
         dev = self.devices[id_number]
         dev.connected = True
 
-        self.connections[connection_id] = dev
+        self._setup_connection(conn_id, connection_string)
+        self._track_property(conn_id, 'device', dev)
 
-        if callback is not None:
-            callback(connection_id, self.id, True, "")
-
-    def disconnect_async(self, conn_id, callback):
+    async def disconnect(self, conn_id):
         """Asynchronously disconnect from a connected device
 
         Args:
@@ -260,106 +241,35 @@ class VirtualDeviceAdapter(DeviceAdapter):
                 callback(conn_id, adapter_id, success, failure_reason)
         """
 
-        if conn_id not in self.connections:
-            if callback is not None:
-                callback(conn_id, self.id, False, "device had no active connection")
-            return
+        self._ensure_connection(conn_id, True)
 
-        dev = self.connections[conn_id]
+        dev = self._get_property(conn_id, 'device')
         dev.connected = False
-        del self.connections[conn_id]
 
-        if callback is not None:
-            callback(conn_id, self.id, True, "")
+        self._teardown_connection(conn_id)
 
-    def _open_rpc_interface(self, conn_id, callback):
-        """Open the RPC interface on a device
+    async def open_interface(self, conn_id, interface, connection_string=None):
+        self._ensure_connection(conn_id, True)
 
-        Args:
-            conn_id (int): A unique identifier that will refer to this connection
-            callback (callback): A callback that will be called as
-                callback(conn_id, adapter_id, success, failure_reason)
-        """
+        dev = self._get_property(conn_id, 'device')
+        conn_string = self._get_property(conn_id, 'connection_string')
 
-        if conn_id not in self.connections:
-            if callback is not None:
-                callback(conn_id, self.id, False, "device had no active connection")
-            return
+        result = dev.open_interface(interface)
 
-        dev = self.connections[conn_id]
-        dev.open_rpc_interface()
+        if interface == 'streaming' and result is not None:
+            for report in result:
+                await self.notify_event(conn_string, 'report', report)
+        elif interface == 'tracing' and result is not None:
+            for trace in result:
+                await self.notify_event(conn_string, 'trace', trace)
 
-        if callback is not None:
-            callback(conn_id, self.id, True, "")
+    async def close_interface(self, conn_id, interface):
+        self._ensure_connection(conn_id, True)
 
-    def _open_streaming_interface(self, conn_id, callback):
-        """Open the streaming interface on a device
+        dev = self._get_property(conn_id, 'device')
+        dev.close_interface(interface)
 
-        Args:
-            conn_id (int): A unique identifier that will refer to this connection
-            callback (callback): A callback that will be called as
-                callback(conn_id, adapter_id, success, failure_reason)
-        """
-
-        if conn_id not in self.connections:
-            if callback is not None:
-                callback(conn_id, self.id, False, "device had no active connection")
-            return
-
-        dev = self.connections[conn_id]
-        reports = dev.open_streaming_interface()
-
-        if callback is not None:
-            callback(conn_id, self.id, True, "")
-
-        for report in reports:
-            self._trigger_callback('on_report', conn_id, report)
-
-    def _open_tracing_interface(self, conn_id, callback):
-        """Open the tracing interface on a device
-
-        Args:
-            conn_id (int): A unique identifier that will refer to this connection
-            callback (callback): A callback that will be called as
-                callback(conn_id, adapter_id, success, failure_reason)
-        """
-
-        if conn_id not in self.connections:
-            if callback is not None:
-                callback(conn_id, self.id, False, "device had no active connection")
-
-            return
-
-        dev = self.connections[conn_id]
-        traces = dev.open_tracing_interface()
-
-        if callback is not None:
-            callback(conn_id, self.id, True, "")
-
-        for trace in traces:
-            self._trigger_callback('on_trace', conn_id, trace)
-
-    def _open_script_interface(self, conn_id, callback):
-        """Open the script interface on a device
-
-        Args:
-            conn_id (int): A unique identifier that will refer to this connection
-            callback (callback): A callback that will be called as
-                callback(conn_id, adapter_id, success, failure_reason)
-        """
-
-        if conn_id not in self.connections:
-            if callback is not None:
-                callback(conn_id, self.id, False, "device had no active connection")
-            return
-
-        dev = self.connections[conn_id]
-        dev.open_script_interface()
-
-        if callback is not None:
-            callback(conn_id, self.id, True, "")
-
-    def send_rpc_async(self, conn_id, address, rpc_id, payload, timeout, callback):
+    async def send_rpc(self, conn_id, address, rpc_id, payload, timeout):
         """Asynchronously send an RPC to this IOTile device
 
         Args:
@@ -368,47 +278,21 @@ class VirtualDeviceAdapter(DeviceAdapter):
             rpc_id (int): the 16-bit id of the RPC we want to call
             payload (bytearray): the payload of the command
             timeout (float): the number of seconds to wait for the RPC to execute
-            callback (callable): A callback for when we have finished the RPC.  The callback will be called as"
-                callback(connection_id, adapter_id, success, failure_reason, status, payload)
-                'connection_id': the connection id
-                'adapter_id': this adapter's id
-                'success': a bool indicating whether we received a response to our attempted RPC
-                'failure_reason': a string with the reason for the failure if success == False
-                'status': the one byte status code returned for the RPC if success == True else None
-                'payload': a bytearray with the payload returned by RPC if success == True else None
         """
 
-        if conn_id not in self.connections:
-            if callback is not None:
-                callback(conn_id, self.id, False, 'Device is not in connected state', None, None)
-            return
+        self._ensure_connection(conn_id, True)
+        dev = self._get_property(conn_id, 'device')
 
-        dev = self.connections[conn_id]
-
-        status = (1 << 6)
         try:
-            response = bytes()
-            response = dev.call_rpc(address, rpc_id, bytes(payload))
-            if len(response) > 0:
-                status |= (1 << 7)
-        except (RPCInvalidIDError, RPCNotFoundError):
-            status = 2
-        except TileNotFoundError:
-            status = 0xFF
-        except RPCErrorCode as exc:
-            status |= exc.params['code'] & ((1 << 6) - 1)
+            return dev.call_rpc(address, rpc_id, bytes(payload))
+        except (RPCInvalidIDError, RPCNotFoundError, TileNotFoundError, RPCErrorCode):
+            raise
         except Exception:
-            # Don't allow exceptions or we will deadlock
-            status = 3
+            self._logger.exception("Exception inside rpc %d:0x%04X, payload=%s",
+                                   address, rpc_id, payload)
+            raise
 
-            print("*** EXCEPTION OCCURRED IN RPC ***")
-            traceback.print_exc()
-            print("*** END EXCEPTION ***")
-
-        response = bytearray(response)
-        callback(conn_id, self.id, True, "", status, response)
-
-    def send_script_async(self, conn_id, data, progress_callback, callback):
+    async def send_script(self, conn_id, data, progress_callback):
         """Asynchronously send a a script to this IOTile device
 
         Args:
@@ -416,59 +300,37 @@ class VirtualDeviceAdapter(DeviceAdapter):
             data (bytes or bytearray): the script to send to the device
             progress_callback (callable): A function to be called with status on our progress, called as:
                 progress_callback(done_count, total_count)
-            callback (callable): A callback for when we have finished sending the script.  The callback will be called as"
-                callback(connection_id, adapter_id, success, failure_reason)
-                'connection_id': the connection id
-                'adapter_id': this adapter's id
-                'success': a bool indicating whether we received a response to our attempted RPC
-                'failure_reason': a string with the reason for the failure if success == False
         """
 
-        if conn_id not in self.connections:
-            if callback is not None:
-                callback(conn_id, self.id, False, 'Device is not in connected state')
-            return
+        self._ensure_connection(conn_id, True)
+        dev = self._get_property(conn_id, 'device')
 
         # Simulate some progress callbacks (0, 50%, 100%)
         progress_callback(0, len(data))
-        dev = self.connections[conn_id]
-        dev.script = data
         progress_callback(len(data)//2, len(data))
         progress_callback(len(data), len(data))
 
-        callback(conn_id, self.id, True, None)
+        dev.script = data
 
-    def _send_scan_event(self, device):
-        """Send a scan event from a device
-        """
+    async def _send_scan_event(self, device):
+        """Send a scan event from a device."""
 
+        conn_string = str(device.iotile_id)
         info = {
-            'connection_string': str(device.iotile_id),
+            'connection_string': conn_string,
             'uuid': device.iotile_id,
-            'signal_strength': 100
+            'signal_strength': 100,
+            'validity_period': self.ExpirationTime
         }
-        self._trigger_callback('on_scan', self.id, info, self.ExpirationTime)
 
-    def periodic_callback(self):
-        if self.last_scan is None or time.time() > (self.scan_interval + self.last_scan):
-            for dev in self.devices.values():
-                self._send_scan_event(dev)
+        await self.notify_event(conn_string, 'device_seen', info)
 
-    def stop_sync(self):
+    async def stop(self):
         for dev in self.devices.values():
             dev.stop()
 
-    def probe_async(self, callback):
-        """Send advertisements for all connected virtual devices.
-
-        Args:
-            callback (callable): A callback for when the probe operation has completed.
-                callback should have signature callback(adapter_id, success, failure_reason) where:
-                    success: bool
-                    failure_reason: None if success is True, otherwise a reason for why we could not probe
-        """
+    async def probe(self):
+        """Send advertisements for all connected virtual devices."""
 
         for dev in self.devices.values():
-            self._send_scan_event(dev)
-
-        callback(self.id, True, None)
+            await self._send_scan_event(dev)
