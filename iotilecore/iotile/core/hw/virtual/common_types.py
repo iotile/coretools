@@ -101,6 +101,8 @@ def pack_rpc_response(response=None, exception=None):
             status |= (1 << 7)
     elif isinstance(exception, (RPCInvalidIDError, RPCNotFoundError)):
         status = 2
+    elif isinstance(exception, BusyRPCResponse):
+        status = 0
     elif isinstance(exception, TileNotFoundError):
         status = 0xFF
     elif isinstance(exception, RPCErrorCode):
