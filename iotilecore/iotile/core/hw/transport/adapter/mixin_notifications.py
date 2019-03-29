@@ -43,8 +43,9 @@ class BasicNotificationMixin:
     """
 
     SUPPORTED_EVENTS = frozenset(['report', 'connection', 'trace', 'disconnection',
-                                  'device_seen', 'broadcast'])
+                                  'device_seen', 'broadcast', 'progress'])
     SUPPORTED_ADJUSTMENTS = frozenset(['add', 'remove'])
+    PROGRESS_OPERATIONS = frozenset(['debug', 'script'])
 
     def __init__(self, loop):
         self._loop = loop
@@ -149,7 +150,7 @@ class BasicNotificationMixin:
         else:
             self._adjust_monitor_internal(*action)
 
-    async def notify_event(self, conn_string, name, event):
+    async def _notify_event_internal(self, conn_string, name, event):
         """Notify that an event has occured.
 
         This method will send a notification and ensure that all callbacks
@@ -157,6 +158,11 @@ class BasicNotificationMixin:
         particular, if the callbacks are awaitable, this method will await
         them before returning.  The order in which the callbacks are called
         is undefined.
+
+        This is a low level method that is not intended to be called directly.
+        You should use the high level public notify_* methods for each of the
+        types of events to ensure consistency in how the event objects are
+        created.
 
         Args:
             conn_string (str): The connection string for the device that the
@@ -190,8 +196,35 @@ class BasicNotificationMixin:
             self._deferred_adjustments = []
             self._currently_notifying = False
 
-    def fire_event(self, conn_string, name, event):
-        """Fire an event without waiting.
+    def notify_event(self, conn_string, name, event):
+        """Notify an event.
+
+        This will move the notification to the background event loop and
+        return immediately.  It is useful for situations where you cannot
+        await notify_event but keep in mind that it prevents back-pressure
+        when you are notifying too fast so should be used sparingly.
+
+        Note that calling this method will push the notification to a
+        background task so it can be difficult to reason about when it will
+        precisely occur.  For that reason, :meth:`notify_event` should be
+        preferred when possible since that method guarantees that all
+        callbacks will be called synchronously before it finishes.
+
+        Args:
+            conn_string (str): The connection string for the device that the
+                event is associated with.
+            name (str): The name of the event. Must be in SUPPORTED_EVENTS.
+            event (object): The event object.  The type of this object will
+                depend on what is being notified.
+
+        Returns:
+            awaitable: An awaitable object that can be used to wait for all callbacks.
+        """
+
+        return self._loop.launch_coroutine(self._notify_event_internal(conn_string, name, event))
+
+    def notify_event_nowait(self, conn_string, name, event):
+        """Notify an event.
 
         This will move the notification to the background event loop and
         return immediately.  It is useful for situations where you cannot
@@ -212,7 +245,42 @@ class BasicNotificationMixin:
                 depend on what is being notified.
         """
 
-        self._loop.log_coroutine(self.notify_event(conn_string, name, event))
+        return self._loop.log_coroutine(self._notify_event_internal(conn_string, name, event))
+
+    #pylint:disable=too-many-arguments;The final wait argument has a sane default
+    def notify_progress(self, conn_string, operation, finished, total, wait=True):
+        """Send a progress event.
+
+        Progress events can be sent for ``debug`` and ``script`` operations and
+        notify the caller about the progress of these potentially long-running
+        operations.  They have two integer properties that specify what fraction
+        of the operation has been completed.
+
+        Args:
+            conn_string (str): The device that is sending the event.
+            operations (str): The operation that is in progress: debug or script
+            finished (int): The number of "steps" that have finished.
+            total (int): The total number of steps to perform.
+            wait (bool): Whether to return an awaitable that we can use to
+                block until the notification has made it to all callbacks.
+
+        Returns:
+            awaitable or None: An awaitable if wait=True.
+
+            If wait is False, the notification is run in the background with
+            no way to check its progress and None is returned.
+        """
+
+        if operation not in self.PROGRESS_OPERATIONS:
+            raise ArgumentError("Invalid operation for progress event: {}".format(operation))
+
+        event = dict(operation=operation, finished=finished, total=total)
+
+        if wait:
+            return self.notify_event(conn_string, 'progress', event)
+
+        self.notify_event_nowait(conn_string, 'progress', event)
+        return None
 
 
 def _find_monitor(monitors, handle):
