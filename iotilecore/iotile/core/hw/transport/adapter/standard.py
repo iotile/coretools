@@ -162,7 +162,7 @@ class StandardDeviceAdapter(PerConnectionDataMixin,
                                  'not supported')
 
     async def close_interface(self, conn_id, interface):
-        """Open an interface to this IOTile device.
+        """Close an interface on this IOTile device.
 
         See :meth:`AbstractDeviceAdapter.close_interface`.
         """

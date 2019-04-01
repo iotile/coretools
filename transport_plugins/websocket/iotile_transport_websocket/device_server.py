@@ -109,23 +109,41 @@ class WebSocketDeviceServer(StandardDeviceServer):
         await super(WebSocketDeviceServer, self).stop()
 
     async def probe_message(self, _message, context):
+        """Handle a probe message.
+
+        See :meth:`AbstractDeviceAdapter.probe`.
+        """
         client_id = context.user_data
 
         await self.probe(client_id)
 
     async def connect_message(self, message, context):
+        """Handle a connect message.
+
+        See :meth:`AbstractDeviceAdapter.connect`.
+        """
         conn_string = message.get('connection_string')
         client_id = context.user_data
 
         await self.connect(client_id, conn_string)
 
     async def disconnect_message(self, message, context):
+        """Handle a disconnect message.
+
+        See :meth:`AbstractDeviceAdapter.disconnect`.
+        """
+
         conn_string = message.get('connection_string')
         client_id = context.user_data
 
         await self.disconnect(client_id, conn_string)
 
     async def open_interface_message(self, message, context):
+        """Handle an open_interface message.
+
+        See :meth:`AbstractDeviceAdapter.open_interface`.
+        """
+
         conn_string = message.get('connection_string')
         interface = message.get('interface')
         client_id = context.user_data
@@ -133,6 +151,11 @@ class WebSocketDeviceServer(StandardDeviceServer):
         await self.open_interface(client_id, conn_string, interface)
 
     async def close_interface_message(self, message, context):
+        """Handle a close_interface message.
+
+        See :meth:`AbstractDeviceAdapter.close_interface`.
+        """
+
         conn_string = message.get('connection_string')
         interface = message.get('interface')
         client_id = context.user_data
@@ -140,6 +163,11 @@ class WebSocketDeviceServer(StandardDeviceServer):
         await self.close_interface(client_id, conn_string, interface)
 
     async def send_rpc_message(self, message, context):
+        """Handle a send_rpc message.
+
+        See :meth:`AbstractDeviceAdapter.send_rpc`.
+        """
+
         conn_string = message.get('connection_string')
         rpc_id = message.get('rpc_id')
         address = message.get('address')
@@ -169,6 +197,11 @@ class WebSocketDeviceServer(StandardDeviceServer):
         }
 
     async def send_script_message(self, message, context):
+        """Handle a send_script message.
+
+        See :meth:`AbstractDeviceAdapter.send_script`.
+        """
+
         script = message.get('script')
         conn_string = message.get('connection_string')
         client_id = context.user_data
@@ -179,6 +212,11 @@ class WebSocketDeviceServer(StandardDeviceServer):
         await self.send_script(client_id, conn_string, script)
 
     async def debug_command_message(self, message, context):
+        """Handle a debug message.
+
+        See :meth:`AbstractDeviceAdapter.debug`.
+        """
+
         conn_string = message.get('connection_string')
         command = message.get('command')
         args = message.get('args')
@@ -192,9 +230,16 @@ class WebSocketDeviceServer(StandardDeviceServer):
 
         This method is called by StandardDeviceServer when it has an event that
         should be sent to a client.
+
+        Args:
+            client_id (str): The client that we should send this event to
+            event_tuple (tuple): The conn_string, event_name and event
+                object passed from the call to notify_event.
+            user_data (object): The user data passed in the call to
+                :meth:`setup_client`.
         """
 
-        #FIXME: Support sending disconnection events
+        #TODO: Support sending disconnection events
 
         conn_string, event_name, event = event_tuple
 

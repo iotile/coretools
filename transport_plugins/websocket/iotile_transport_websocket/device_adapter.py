@@ -10,16 +10,17 @@ from iotile.core.utilities import SharedLoop
 from iotile.core.hw.virtual import unpack_rpc_response
 from iotile.core.hw.reports import IOTileReportParser
 from iotile.core.hw.exceptions import DeviceAdapterError
-from iotile.core.exceptions import ArgumentError, ExternalError
+from iotile.core.exceptions import ExternalError
 from .protocol import OPERATIONS, NOTIFICATIONS, COMMANDS
 from .generic import AsyncValidatingWSClient
 
 
 class WebSocketDeviceAdapter(StandardDeviceAdapter):
-    """ A device adapter allowing connections to devices over WebSockets
+    """ A device adapter allowing connections to devices over WebSockets.
 
     Args:
-        port (string): A url for the WebSocket server in form of server:port
+        port (string): A target for the WebSocket client to connect to in form of
+            server:port.  For example, "localhost:5120".
         loop (BackgroundEventLoop): Loop for running our websocket client.
     """
 
@@ -40,7 +41,7 @@ class WebSocketDeviceAdapter(StandardDeviceAdapter):
         self._report_parser = IOTileReportParser()
 
         # WebSocket client
-        path = "ws://{0}/iotile/v2".format(port)
+        path = "ws://{0}/iotile/v3".format(port)
         self.client = AsyncValidatingWSClient(path, loop=loop)
 
         self.client.register_event(OPERATIONS.NOTIFY_DEVICE_FOUND, self._on_device_found,
@@ -55,15 +56,35 @@ class WebSocketDeviceAdapter(StandardDeviceAdapter):
                                    self._on_websocket_disconnect, NoneVerifier())
 
     async def start(self):
+        """Start the device adapter.
+
+        See :meth:`AbstractDeviceAdapter.start`.
+        """
+
         await self.client.start()
 
     async def stop(self):
+        """Stop the device adapter.
+
+        See :meth:`AbstractDeviceAdapter.stop`.
+        """
+
         await self.client.stop()
 
     async def probe(self):
+        """Probe for devices connected to this adapter.
+
+        See :meth:`AbstractDeviceAdapter.probe`.
+        """
+
         await self._send_command(OPERATIONS.PROBE, None, COMMANDS.ProbeResponse)
 
     async def connect(self, conn_id, connection_string):
+        """Connect to a device.
+
+        See :meth:`AbstractDeviceAdapter.connect`.
+        """
+
         self._ensure_connection(conn_id, False)
 
         msg = dict(connection_string=connection_string)
@@ -72,6 +93,11 @@ class WebSocketDeviceAdapter(StandardDeviceAdapter):
         self._setup_connection(conn_id, connection_string)
 
     async def disconnect(self, conn_id):
+        """Disconnect from a connected device.
+
+        See :meth:`AbstractDeviceAdapter.disconnect`.
+        """
+
         self._ensure_connection(conn_id, True)
 
         msg = dict(connection_string=self._get_property(conn_id, "connection_string"))
@@ -82,6 +108,11 @@ class WebSocketDeviceAdapter(StandardDeviceAdapter):
             self._teardown_connection(conn_id)
 
     async def open_interface(self, conn_id, interface):
+        """Open an interface on an IOTile device.
+
+        See :meth:`AbstractDeviceAdapter.open_interface`.
+        """
+
         self._ensure_connection(conn_id, True)
         connection_string = self._get_property(conn_id, "connection_string")
 
@@ -89,6 +120,11 @@ class WebSocketDeviceAdapter(StandardDeviceAdapter):
         await self._send_command(OPERATIONS.OPEN_INTERFACE, msg, COMMANDS.OpenInterfaceResponse)
 
     async def close_interface(self, conn_id, interface):
+        """Close an interface on this IOTile device.
+
+        See :meth:`AbstractDeviceAdapter.close_interface`.
+        """
+
         self._ensure_connection(conn_id, True)
         connection_string = self._get_property(conn_id, "connection_string")
 
@@ -96,6 +132,11 @@ class WebSocketDeviceAdapter(StandardDeviceAdapter):
         await self._send_command(OPERATIONS.CLOSE_INTERFACE, msg, COMMANDS.CloseInterfaceResponse)
 
     async def send_rpc(self, conn_id, address, rpc_id, payload, timeout):
+        """Send an RPC to a device.
+
+        See :meth:`AbstractDeviceAdapter.send_rpc`.
+        """
+
         self._ensure_connection(conn_id, True)
         connection_string = self._get_property(conn_id, "connection_string")
 
