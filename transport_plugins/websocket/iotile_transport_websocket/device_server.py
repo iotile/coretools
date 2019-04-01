@@ -1,6 +1,7 @@
 """Generic implementation of serving access to a device over websockets."""
 
 import logging
+import base64
 import websockets
 from iotile.core.utilities import SharedLoop
 from iotile.core.hw.transport.server import StandardDeviceServer
@@ -11,7 +12,7 @@ from .protocol import COMMANDS, OPERATIONS
 
 _MISSING = object()
 
-class WebsocketsDeviceServer(StandardDeviceServer):
+class WebSocketDeviceServer(StandardDeviceServer):
     """A device server for connections to multiple devices over websockets.
 
     This class connects to an AbstractDeviceAdapter and serves it over
@@ -105,7 +106,7 @@ class WebsocketsDeviceServer(StandardDeviceServer):
         await self.server.stop()
 
         # Cleanup any resources we had on the adapter
-        await super(WebsocketsDeviceServer, self).stop()
+        await super(WebSocketDeviceServer, self).stop()
 
     async def probe_message(self, _message, context):
         client_id = context.user_data
@@ -146,10 +147,13 @@ class WebsocketsDeviceServer(StandardDeviceServer):
         payload = message.get('payload')
         client_id = context.user_data
 
+        self._logger.debug("Calling RPC %d:0x%04X with payload %s on %s",
+                           address, rpc_id, payload, conn_string)
+
         response = bytes()
         err = None
         try:
-            response = await self.send_rpc(client_id, conn_string, rpc_id, address, payload, timeout=timeout)
+            response = await self.send_rpc(client_id, conn_string, address, rpc_id, payload, timeout=timeout)
         except VALID_RPC_EXCEPTIONS as internal_err:
             err = internal_err
         except (DeviceAdapterError, DeviceServerError):
@@ -161,7 +165,7 @@ class WebsocketsDeviceServer(StandardDeviceServer):
         status, response = pack_rpc_response(response, err)
         return {
             'status': status,
-            'payload': response
+            'payload': base64.b64encode(response)
         }
 
     async def send_script_message(self, message, context):
@@ -195,15 +199,17 @@ class WebsocketsDeviceServer(StandardDeviceServer):
         conn_string, event_name, event = event_tuple
 
         if event_name == 'report':
-            msg_payload = dict(connection_string=conn_string, payload=event.encode(),
-                               received_time=event.received_time)
+            report = event.serialize()
+            report['encoded_report'] = base64.b64encode(report['encoded_report'])
+            msg_payload = dict(connection_string=conn_string, serialized_report=report)
             msg_name = OPERATIONS.NOTIFY_REPORT
         elif event_name == 'trace':
-            msg_payload = dict(connection_string=conn_string, payload=event)
+            encoded_payload = base64.b64encode(event)
+            msg_payload = dict(connection_string=conn_string, payload=encoded_payload)
             msg_name = OPERATIONS.NOTIFY_TRACE
         elif event_name == 'progress':
             msg_payload = dict(connection_string=conn_string, operation=event.get('operation'),
-                               done_count=event.get('finished', total_count=event.get('total')))
+                               done_count=event.get('finished'), total_count=event.get('total'))
             msg_name = OPERATIONS.NOTIFY_PROGRESS
         elif event_name == 'device_seen':
             msg_payload = event

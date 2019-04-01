@@ -10,7 +10,7 @@ from iotile.core.hw.transport import VirtualDeviceAdapter
 from iotile.core.hw.virtual.virtualdevice import RPCInvalidIDError, RPCNotFoundError, TileNotFoundError
 from iotile.core.hw.virtual.virtualinterface import VirtualIOTileInterface
 from iotile.core.exceptions import HardwareError
-from .device_server import WebsocketsDeviceServer
+from .device_server import WebSocketDeviceServer
 
 _MISSING = object()
 
@@ -46,10 +46,10 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
         self._adapter = None
 
         args = {
-            'host': 'localhost',
+            'host': '127.0.0.1',
             'port': None
         }
-        self._server = WebsocketsDeviceServer(None, args, loop=loop)
+        self._server = WebSocketDeviceServer(None, args, loop=loop)
 
     def start(self, device):
         """Start serving access to this VirtualIOTileDevice
@@ -58,9 +58,10 @@ class WebSocketVirtualInterface(VirtualIOTileInterface):
             device (VirtualIOTileDevice): The device we will be providing access to
         """
 
-        adapter = VirtualDeviceAdapter(devices=[device])
+        adapter = VirtualDeviceAdapter(devices=[device], loop=self._loop)
         self._loop.run_coroutine(adapter.start())
 
+        self.device = device
         self._adapter = adapter
         self._server.adapter = adapter
 

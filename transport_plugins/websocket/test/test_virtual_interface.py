@@ -4,8 +4,8 @@ Also test that our WebSocketDeviceAdapter works well with the HardwareManager.
 """
 
 import json
-import pytest
 import queue
+import pytest
 from devices_factory import build_report_device, build_tracing_device, get_tracing_device_string
 
 
@@ -51,10 +51,10 @@ def test_traces(hw, virtual_interface):
     hw.connect(0x11)
 
     _, interface = virtual_interface
-    assert interface.tracing_enabled is False
+    assert interface.device.trace_iface_open is False
 
     hw.enable_tracing()
-    assert interface.tracing_enabled is True
+    assert interface.device.trace_iface_open is True
 
     raw_received_traces = hw.wait_trace(len(traces_sent), timeout=5.0)
 
@@ -67,10 +67,10 @@ def test_reports(hw, virtual_interface):
 
     _, interface = virtual_interface
     assert hw.count_reports() == 0
-    assert interface.streaming_enabled is False
+    assert interface.device.stream_iface_open is False
 
     hw.enable_streaming()
-    assert interface.streaming_enabled is True
+    assert interface.device.stream_iface_open is True
 
     reports = hw.wait_reports(3, timeout=5.0)
     assert len(reports) == 3

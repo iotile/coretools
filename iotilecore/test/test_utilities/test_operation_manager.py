@@ -30,14 +30,14 @@ def test_basic_await(op_man):
         assert len(list(man.waiters())) == 2
 
         message = dict(name="test", hello=5, value=1)
-        man.process_message(message)
+        await man.process_message(message)
 
         message1 = await future1
         assert message1 == message
         assert len(list(man.waiters())) == 1
 
         message = dict(name="test", hello=4, value=1)
-        man.process_message(message)
+        await man.process_message(message)
 
         message2 = await future2
         assert message2 == message
@@ -70,7 +70,7 @@ def test_object_messages(op_man):
         future1 = man.wait_for(name="test", value=1, timeout=1.0)
 
         msg = _Message()
-        man.process_message(msg)
+        await man.process_message(msg)
 
         received = await future1
         assert msg is received
@@ -81,7 +81,7 @@ def test_object_messages(op_man):
 def test_persistent_callbacks(op_man):
     """Make sure we can register callbacks as well as futures."""
 
-    _loop, man = op_man
+    loop, man = op_man
 
     shared = [0]
 
@@ -92,16 +92,16 @@ def test_persistent_callbacks(op_man):
 
     assert shared[0] == 0
 
-    man.process_message(dict(name="msg", value=2))
+    loop.run_coroutine(man.process_message(dict(name="msg", value=2)))
     assert shared[0] == 0
 
-    man.process_message(dict(name="msg", value=1))
+    loop.run_coroutine(man.process_message(dict(name="msg", value=1)))
     assert shared[0] == 1
 
-    man.process_message(dict(name="msg", value=1))
+    loop.run_coroutine(man.process_message(dict(name="msg", value=1)))
     assert shared[0] == 2
 
     man.remove_waiter(handle)
 
-    man.process_message(dict(name="msg", value=1))
+    loop.run_coroutine(man.process_message(dict(name="msg", value=1)))
     assert shared[0] == 2

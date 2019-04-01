@@ -1,5 +1,6 @@
 import logging
 import uuid
+import inspect
 import asyncio
 import websockets
 from iotile.core.exceptions import ExternalError, ValidationError
@@ -148,12 +149,12 @@ class AsyncValidatingWSClient:
                     self._logger.warning("Dropping invalid message from server: %s", unpacked)
                     continue
 
-                if not self._manager.process_message(unpacked):
+                if not await self._manager.process_message(unpacked):
                     self._logger.warning("No handler found for received message, message=%s", unpacked)
         except asyncio.CancelledError:
             self._logger.info("Closing connection to server due to stop()")
         finally:
-            self._manager.process_message(dict(type='event', name=self.DISCONNECT_EVENT, payload=None))
+            await self._manager.process_message(dict(type='event', name=self.DISCONNECT_EVENT, payload=None))
 
             task.cancel_subtasks()
             await self._con.close()
@@ -178,7 +179,7 @@ class AsyncValidatingWSClient:
                 validate a received message uniquely
         """
 
-        def _validate_and_call(message):
+        async def _validate_and_call(message):
             payload = message.get('payload')
 
             try:
@@ -189,7 +190,9 @@ class AsyncValidatingWSClient:
                 return
 
             try:
-                callback(payload)
+                result = callback(payload)
+                if inspect.isawaitable(result):
+                    await result
             except:  #pylint:disable=bare-except;This is a background logging routine
                 self._logger.error("Error calling callback for event %s, payload=%s",
                                    name, payload, exc_info=True)

@@ -1,86 +1,74 @@
 import pytest
-import threading
-import tornado.ioloop
-from tornado import netutil
-import socket
-from iotilegateway.gateway import IOTileGateway
+import logging
 from iotile.core.hw.hwmanager import HardwareManager
+from iotile.core.hw.transport.adapter import SynchronousLegacyWrapper
+from iotile.core.hw.transport import VirtualDeviceAdapter
+from iotile.core.utilities import BackgroundEventLoop
 from iotile_transport_websocket.virtual_websocket import WebSocketVirtualInterface
 from iotile_transport_websocket.device_adapter import WebSocketDeviceAdapter
+from iotile_transport_websocket.device_server import WebSocketDeviceServer
 
+logger = logging.getLogger(__name__)
 
-def get_unused_port():
-    """Get an available port on localhost.
+@pytest.fixture(scope="function")
+def loop():
+    """Get a fresh BackgroundEventLoop."""
 
-    Adapted from tornado source code.
-    Returns:
-        port (int): An unused port
-    """
+    event_loop = BackgroundEventLoop()
+    event_loop.start()
 
-    sock = netutil.bind_sockets(None, '127.0.0.1', family=socket.AF_INET, reuse_port=False)[0]
-    port = sock.getsockname()[1]
-    return port
+    yield event_loop
 
-
-class WebSocketVirtualInterfaceTestFixture(threading.Thread):
-
-    def __init__(self, interface_config, device):
-        super(WebSocketVirtualInterfaceTestFixture, self).__init__()
-
-        self.device = device
-
-        self.interface = WebSocketVirtualInterface(interface_config)
-
-        self.loop = tornado.ioloop.IOLoop.instance()
-        self.loaded = threading.Event()
-
-    def run(self):
-        self.interface.start(self.device)
-
-        tornado.ioloop.PeriodicCallback(self.interface.process, 1000, self.loop).start()
-
-        self.loop.add_callback(self.loaded.set)
-
-        self.loop.start()
-
-        # Once loop is stopped
-        self.interface.stop()
-
-    def stop(self):
-        """Stop the supervisor and synchronously wait for it to stop."""
-
-        self.loop.add_callback(self.loop.stop)
-
-        self.join(timeout=10.0)
-        if self.is_alive():
-            raise RuntimeError("Can't stop Virtual Interface thread...")
+    event_loop.stop()
 
 
 @pytest.fixture(scope="function")
-def virtual_interface(request):
-    port = get_unused_port()
+def virtual_interface(request, loop):
     config = {
-        'port': port
+        'port': None
     }
 
     device = request.param
 
-    virtual_interface_fixture = WebSocketVirtualInterfaceTestFixture(config, device)
-    virtual_interface_fixture.start()
+    logger.info("Parametrizing virtual interface with %s", device)
 
-    signaled = virtual_interface_fixture.loaded.wait(2.0)
-    if not signaled:
-        raise ValueError("Could not start virtual interface service")
+    interface = WebSocketVirtualInterface(config, loop=loop)
+    interface.start(device)
 
-    yield port, virtual_interface_fixture.interface
+    yield interface.port, interface
 
-    virtual_interface_fixture.stop()
+    interface.stop()
+
+@pytest.fixture(scope="function")
+def server(request, loop):
+    devices = request.param
+
+    if not isinstance(devices, tuple):
+        devices = (devices,)
+
+    logger.info("Parametrizing server with devices: %s", devices)
+
+    adapter = VirtualDeviceAdapter(devices=devices, loop=loop)
+    loop.run_coroutine(adapter.start())
+
+    args = {
+        'host': '127.0.0.1',
+        'port': None
+    }
+    server = WebSocketDeviceServer(adapter, args, loop=loop)
+    loop.run_coroutine(server.start())
+
+    yield server.port, adapter
+
+    loop.run_coroutine(server.stop())
+    loop.run_coroutine(adapter.stop())
 
 
 @pytest.fixture(scope="function")
 def hw(virtual_interface):
     port, _ = virtual_interface
 
+    logger.info("Creating HardwareManager at port %d", port)
     hw = HardwareManager(port="ws2:127.0.0.1:{}".format(port))
 
     yield hw
@@ -89,84 +77,27 @@ def hw(virtual_interface):
 
 
 @pytest.fixture(scope="function")
-def gateway(request):
-    port = get_unused_port()
-    adapters_config = request.param
-    config = {
-        "agents": [
-            {"name": "websockets2", "args": {"port": port}}
-        ],
-        "adapters": [adapters_config]
-    }
+def device_adapter(server, loop):
+    port, _adpater = server
 
-    gateway = IOTileGateway(config)
-    gateway.start()
+    adapter = WebSocketDeviceAdapter(port="127.0.0.1:{}".format(port), loop=loop)
+    wrapper = SynchronousLegacyWrapper(adapter, loop=loop)
+    yield wrapper
 
-    signaled = gateway.loaded.wait(2.0)
-    if not signaled:
-        raise ValueError("Could not start gateway")
-
-    yield port, gateway.device_manager
-
-    gateway.stop()
+    wrapper.stop_sync()
 
 
 @pytest.fixture(scope="function")
-def device_adapter(gateway, request):
-    port, manager = gateway
-    kwargs = request.param if hasattr(request, 'param') else {}
+def multiple_device_adapter(server, loop):
+    port, _adapter = server
 
-    adapter = WebSocketDeviceAdapter(port="127.0.0.1:{}".format(port), **kwargs)
+    adapter1 = WebSocketDeviceAdapter(port="127.0.0.1:{}".format(port), loop=loop)
+    adapter2 = WebSocketDeviceAdapter(port="127.0.0.1:{}".format(port), loop=loop)
 
-    tornado.ioloop.PeriodicCallback(adapter.periodic_callback, 1000, manager._loop).start()
+    wrapper1 = SynchronousLegacyWrapper(adapter1, loop=loop)
+    wrapper2 = SynchronousLegacyWrapper(adapter2, loop=loop)
 
-    yield adapter
+    yield wrapper1, wrapper2
 
-    adapter.stop_sync()
-
-
-@pytest.fixture(scope="function")
-def multiple_gateways(gateway, request):
-    autoprobe_interval = request.param.get('autoprobe_interval') if hasattr(request, 'param') else None
-
-    port1, manager_gateway1 = gateway
-    port2 = get_unused_port()
-
-    config = {
-        "agents": [
-            {"name": "websockets2", "args": {"port": port2}}
-        ],
-        "adapters": [
-            {"name": "ws2", "port": "127.0.0.1:{}".format(port1)}
-        ]
-    }
-
-    if autoprobe_interval is not None:
-        config['adapters'][0]['autoprobe_interval'] = autoprobe_interval
-
-    gateway2 = IOTileGateway(config)
-    gateway2.start()
-
-    signaled = gateway2.loaded.wait(2.0)
-    if not signaled:
-        raise ValueError("Could not start gateway")
-
-    yield port1, manager_gateway1, port2, gateway2.device_manager
-
-    gateway2.stop()
-
-
-@pytest.fixture(scope="function")
-def multiple_device_adapter(multiple_gateways):
-    _, _, port2, manager2 = multiple_gateways
-
-    adapter1 = WebSocketDeviceAdapter(port="127.0.0.1:{}".format(port2))
-    adapter2 = WebSocketDeviceAdapter(port="127.0.0.1:{}".format(port2))
-
-    tornado.ioloop.PeriodicCallback(adapter1.periodic_callback, 1000, manager2._loop).start()
-    tornado.ioloop.PeriodicCallback(adapter2.periodic_callback, 1000, manager2._loop).start()
-
-    yield adapter1, adapter2
-
-    adapter1.stop_sync()
-    adapter2.stop_sync()
+    wrapper1.stop_sync()
+    wrapper2.stop_sync()

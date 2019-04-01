@@ -8,10 +8,15 @@ from iotile.core.utilities.schema_verify import BytesVerifier, DictionaryVerifie
 ScanEvent = Verifier()
 
 # Report
+SerializedReport = DictionaryVerifier()
+SerializedReport.add_required('encoded_report', BytesVerifier(encoding="base64"))
+SerializedReport.add_required('received_time', Verifier())
+SerializedReport.add_required('report_format', IntVerifier())
+SerializedReport.add_required('origin', IntVerifier())
+
 ReportEvent = DictionaryVerifier()
 ReportEvent.add_required('connection_string', StringVerifier())
-ReportEvent.add_required('payload', BytesVerifier(encoding="base64"))
-ReportEvent.add_required('received_time', Verifier())
+ReportEvent.add_required('serialized_report', SerializedReport)
 
 # Trace
 TraceEvent = DictionaryVerifier()

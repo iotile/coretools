@@ -7,23 +7,22 @@ import json
 import pytest
 import struct
 import threading
-from devices_factory import get_report_device_string, get_tracing_device_string
+from devices_factory import build_report_device, build_tracing_device, get_tracing_device_string
 
-
-report_device_string = get_report_device_string()
-tracing_device_string = get_tracing_device_string()
 
 # Get traces sent from the config file
-with open(tracing_device_string.split('@')[-1], "r") as conf_file:
+with open(get_tracing_device_string().split('@')[-1], "r") as conf_file:
     config = json.load(conf_file)
     traces_sent = config['device']['ascii_data']
 
 
-@pytest.mark.parametrize('gateway', [{"name": "virtual", "port": report_device_string}], indirect=True)
+
+@pytest.mark.parametrize('server', [build_report_device()], indirect=True)
 def test_probe(device_adapter):
     scanned_devices = []
 
     def on_scan_callback(adapter, device, expiration_time):
+        print("Called")
         scanned_devices.append(device)
 
     device_adapter.add_callback('on_scan', on_scan_callback)
@@ -38,7 +37,7 @@ def test_probe(device_adapter):
     assert report_device['connection_string'] == str(report_device['uuid'])
 
 
-@pytest.mark.parametrize('gateway', [{"name": "virtual", "port": ';'.join([report_device_string, tracing_device_string])}], indirect=True)
+@pytest.mark.parametrize('server', [(build_report_device(), build_tracing_device())], indirect=True)
 def test_device_adapter_connection(device_adapter):
     # Connect to the first device
     result = device_adapter.connect_sync(0, str(0x10))
@@ -69,7 +68,8 @@ def test_device_adapter_connection(device_adapter):
     assert result['success'] is True
 
 
-@pytest.mark.parametrize('gateway', [{"name": "virtual", "port": report_device_string}], indirect=True)
+@pytest.mark.skip(reason="Autoprobing is temporarily disabled")
+@pytest.mark.parametrize('server', [build_report_device()], indirect=True)
 @pytest.mark.parametrize('device_adapter', [{"autoprobe_interval": 0.1}], indirect=True)
 def test_autoprobe(device_adapter):
     scanned_devices = []
@@ -91,7 +91,7 @@ def test_autoprobe(device_adapter):
     assert report_device['connection_string'] == str(report_device['uuid'])
 
 
-@pytest.mark.parametrize('gateway', [{"name": "virtual", "port": tracing_device_string}], indirect=True)
+@pytest.mark.parametrize('server', [build_tracing_device()], indirect=True)
 def test_traces(device_adapter):
     result = {'traces': bytes()}
     traces_complete = threading.Event()
@@ -113,7 +113,7 @@ def test_traces(device_adapter):
     assert result['traces'] == traces_sent.encode('utf-8')
 
 
-@pytest.mark.parametrize('gateway', [{"name": "virtual", "port": report_device_string}], indirect=True)
+@pytest.mark.parametrize('server', [build_report_device()], indirect=True)
 def test_reports(device_adapter):
     reports = []
     reports_complete = threading.Event()
@@ -135,7 +135,7 @@ def test_reports(device_adapter):
     assert len(reports) == 3
 
 
-@pytest.mark.parametrize('gateway', [{"name": "virtual", "port": report_device_string}], indirect=True)
+@pytest.mark.parametrize('server', [build_report_device()], indirect=True)
 def test_send_rpc(device_adapter):
     device_adapter.connect_sync(0, str(0x10))
     device_adapter.open_interface_sync(0, 'rpc')
@@ -152,7 +152,7 @@ def test_send_rpc(device_adapter):
     assert len(result['payload']) > 0
 
 
-@pytest.mark.parametrize('gateway', [{"name": "virtual", "port": report_device_string}], indirect=True)
+@pytest.mark.parametrize('server', [build_report_device()], indirect=True)
 def test_send_script(device_adapter):
     progress = {'done': 0, 'total': None}
     script_complete = threading.Event()
