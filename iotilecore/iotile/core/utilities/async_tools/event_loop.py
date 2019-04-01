@@ -427,30 +427,41 @@ class BackgroundEventLoop:
             object: Whatever the coroutine cor returns.
         """
 
+        self.start()
+
+        if self.inside_loop():
+            raise InternalError("BackgroundEventLoop.run_coroutine called from inside event loop, "
+                                "would have deadlocked.")
+
         future = self.launch_coroutine(cor)
         return future.result()
 
     def launch_coroutine(self, cor):
-        """Start a coroutine task and return a Future with the pending result.
+        """Start a coroutine task and return a blockable/awaitable object.
 
-        This method may only be called outside of the event loop. Attempting
-        to call it from inside the event loop would deadlock and will raise
-        InternalError instead.
+        If this method is called from inside the event loop, it will return an
+        awaitable object.  If it is called from outside the event loop it will
+        return an concurrent Future object that can block the calling thread
+        until the operation is finished.
 
         Args:
             cor (coroutine): The coroutine that we wish to run in the
                 background and wait until it finishes.
 
         Returns:
-            concurrent.futures.Future: A future representing the coroutine.
+            Future or asyncio.Task: A future representing the coroutine.
+
+            If this method is called from within the background loop
+            then an awaitable asyncio.Tasks is returned.  Otherwise,
+            a concurrent Future object is returned that you can call
+            ``result()`` on to block the calling thread.
         """
 
         # Ensure the loop exists and is started
         self.start()
 
         if self.inside_loop():
-            raise InternalError("BackgroundEventLoop.run_coroutine called from inside event loop, "
-                                "would have deadlocked.")
+            return asyncio.ensure_future(cor, loop=self.loop)
 
         return asyncio.run_coroutine_threadsafe(cor, loop=self.loop)
 
