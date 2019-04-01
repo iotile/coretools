@@ -15,7 +15,7 @@ setup(
     python_requires=">=3.5,<4",
     entry_points={
         'iotile.device_adapter': [
-            'ws = iotile_transport_websocket.device_adapter:WebSocketDeviceAdapter'
+            'ws2 = iotile_transport_websocket.device_adapter:WebSocketDeviceAdapter'
         ],
         'iotile.virtual_interface': [
             'websocket = iotile_transport_websocket.virtual_websocket:WebSocketVirtualInterface'

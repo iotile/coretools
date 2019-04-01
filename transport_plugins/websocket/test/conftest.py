@@ -69,7 +69,7 @@ def hw(virtual_interface):
     port, _ = virtual_interface
 
     logger.info("Creating HardwareManager at port %d", port)
-    hw = HardwareManager(port="ws:127.0.0.1:{}".format(port))
+    hw = HardwareManager(port="ws2:127.0.0.1:{}".format(port))
 
     yield hw
 
