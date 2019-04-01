@@ -33,6 +33,8 @@ def test_register_monitors(adapter_loop):
     assert len(pairs) == 1
     assert pairs[0] == (None, 'device_seen', handle)
 
-    loop.run_coroutine(adapter.notify_event('abc', 'device_seen', {}))
+    # Returns a Future since it was called outside of event loop
+    future = adapter.notify_event('abc', 'device_seen', {})
+    future.result()
 
     assert len(events) == 1

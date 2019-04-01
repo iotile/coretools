@@ -6,12 +6,12 @@ into the emulated devices.
 """
 
 import logging
-from iotile.core.hw.transport.virtualadapter import AsyncVirtualDeviceAdapter
+from iotile.core.hw.transport import VirtualDeviceAdapter
 from iotile.core.hw.exceptions import DeviceAdapterError
 from ..virtual import EmulatedDevice
 
 
-class EmulatedDeviceAdapter(AsyncVirtualDeviceAdapter):
+class EmulatedDeviceAdapter(VirtualDeviceAdapter):
     """DeviceAdapter for connecting to EmulatedDevices.
 
     This adapter is used the exact same way as VirtualDeviceAdapter, except
@@ -57,20 +57,16 @@ class EmulatedDeviceAdapter(AsyncVirtualDeviceAdapter):
             for dev in self.devices.values():
                 dev.wait_idle()
 
-    async def debug(self, conn_id, name, cmd_args, progress_callback):
+    async def debug(self, conn_id, name, cmd_args):
         """Asynchronously complete a named debug command.
 
         The command name and arguments are passed to the underlying device adapter
-        and interpreted there.  If the command is long running, progress_callback
-        may be used to provide status updates.  Callback is called when the command
-        has finished.
+        and interpreted there.
 
         Args:
             conn_id (int): A unique identifer that will refer to this connection
             name (string): the name of the debug command we want to invoke
             cmd_args (dict): any arguments that we want to send with this command.
-            progress_callback (callable): A function to be called with status on our progress, called as:
-                progress_callback(done_count, total_count)
         """
 
 

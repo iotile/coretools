@@ -186,7 +186,7 @@ class StandardDeviceAdapter(PerConnectionDataMixin,
 
         raise DeviceAdapterError(conn_id, 'send rpc', 'not supported')
 
-    async def debug(self, conn_id, name, cmd_args, progress_callback):
+    async def debug(self, conn_id, name, cmd_args):
         """Send a debug command to a device.
 
         See :meth:`AbstractDeviceAdapter.debug`.
@@ -194,7 +194,7 @@ class StandardDeviceAdapter(PerConnectionDataMixin,
 
         raise DeviceAdapterError(conn_id, 'debug', 'not supported')
 
-    async def send_script(self, conn_id, data, progress_callback):
+    async def send_script(self, conn_id, data):
         """Send a a script to a device.
 
         See :meth:`AbstractDeviceAdapter.send_script`.
