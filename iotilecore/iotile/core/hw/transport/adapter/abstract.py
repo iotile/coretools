@@ -506,7 +506,7 @@ class AbstractDeviceAdapter(abc.ABC):
             RPCErrorCode: The RPC implementation wishes to fail with a
                 non-zero status code.
             RPCInvalidIDError: The rpc_id is too large to fit in 16-bits.
-            TileBusSerror: The tile was busy and could not respond to the RPC.
+            TileBusyError: The tile was busy and could not respond to the RPC.
             Exception: The rpc raised an exception during processing.
             DeviceAdapterError: If there is a hardware or communication issue
                 invoking the RPC.
