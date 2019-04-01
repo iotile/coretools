@@ -1,6 +1,6 @@
 """The classes of messages supported by this websocket impementation."""
 
-from ..schema_verify import Verifier, DictionaryVerifier, StringVerifier, LiteralVerifier, OptionsVerifier
+from iotile.core.utilities.schema_verify import Verifier, DictionaryVerifier, StringVerifier, LiteralVerifier, OptionsVerifier
 
 # The prescribed schema of command response messages
 # Messages with this format are automatically processed inside the ValidatingWSClient
