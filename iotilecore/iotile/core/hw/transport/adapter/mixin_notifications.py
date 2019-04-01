@@ -199,16 +199,16 @@ class BasicNotificationMixin:
     def notify_event(self, conn_string, name, event):
         """Notify an event.
 
-        This will move the notification to the background event loop and
-        return immediately.  It is useful for situations where you cannot
-        await notify_event but keep in mind that it prevents back-pressure
-        when you are notifying too fast so should be used sparingly.
+        This method will launch a coroutine that runs all callbacks (and
+        awaits all coroutines) attached to the given event that was just
+        raised.  Internally it uses
+        :meth:`BackgroundEventLoop.launch_coroutine` which retains an
+        awaitable object when called from within an event loop and a
+        concurrent Future object when called outside of the event loop.
 
-        Note that calling this method will push the notification to a
-        background task so it can be difficult to reason about when it will
-        precisely occur.  For that reason, :meth:`notify_event` should be
-        preferred when possible since that method guarantees that all
-        callbacks will be called synchronously before it finishes.
+        Calling this method from outside of the BackgroundEventLoop is
+        considered experimental and not stable behavior that can be depended
+        on.
 
         Args:
             conn_string (str): The connection string for the device that the
