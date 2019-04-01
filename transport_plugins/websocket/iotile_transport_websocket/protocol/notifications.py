@@ -1,7 +1,7 @@
 """List of notifications handled by the WebSocket plugin."""
 
-from iotile.core.utilities.schema_verify import BytesVerifier, DictionaryVerifier, Verifier, IntVerifier,\
-    LiteralVerifier, StringVerifier
+from iotile.core.utilities.schema_verify import BytesVerifier, DictionaryVerifier, Verifier, BooleanVerifier, IntVerifier,\
+    StringVerifier
 
 
 # Device found while scanning
@@ -17,6 +17,11 @@ SerializedReport.add_required('origin', IntVerifier())
 ReportEvent = DictionaryVerifier()
 ReportEvent.add_required('connection_string', StringVerifier())
 ReportEvent.add_required('serialized_report', SerializedReport)
+
+DisconnectionEvent = DictionaryVerifier()
+DisconnectionEvent.add_required('connection_string', StringVerifier())
+DisconnectionEvent.add_required('reason', StringVerifier())
+DisconnectionEvent.add_required('expected', BooleanVerifier())
 
 # Trace
 TraceEvent = DictionaryVerifier()

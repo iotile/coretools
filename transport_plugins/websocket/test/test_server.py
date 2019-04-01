@@ -22,7 +22,6 @@ def test_probe(device_adapter):
     scanned_devices = []
 
     def on_scan_callback(adapter, device, expiration_time):
-        print("Called")
         scanned_devices.append(device)
 
     device_adapter.add_callback('on_scan', on_scan_callback)
