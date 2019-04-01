@@ -26,6 +26,89 @@ DeviceAdapter.
 Previous DeviceAdapter implementations used multithreading and callback based
 interfaces that worked but proved difficult to implement, raising the barrier
 to creating new DeviceAdapters to support additional communication protocols.
+
+
+Events
+======
+
+Communication with a device through an AbstractDeviceAdapter is bidrectional
+in that commands can flow from the user to the device and events can flow
+back from the devie to the user without being the direct result of a command.
+
+The way to receive events is to register an event monitor using
+:meth:`AbstractDeviceAdapter.register_monitor`.  There are different kinds of
+events that you can receive and your monitor includes filters based on the
+event name and the source device.
+
+Every event notification contains a tuple with three things: the connection
+string of the device that sent the event, the name of the event and an event
+object whose contents vary depending on the event name.  The supported events
+are:
+
+    report
+        A report has been received from the device.
+
+        The event object will be a subclass of
+        :class:`iotile.core.hw.reports.IOTileReport`.
+        This event is used to send reports from a device to the user via the
+        streaming interface.  It can only be received if the streaming
+        interface is open.
+
+    connection
+        Someone has connected to a device.
+
+        The event object for this event will be ``None`` since there is not
+        additional information available.
+
+    trace
+        Tracing data has been received from a device.
+
+        The event object will be a ``bytes`` object containing a blob of
+        tracing data.  Since tracing data may be fragmented as it travels from
+        the device to you, there is no guarantee that you will receive it in
+        the same atomic chunk sizes that the device sent.  In particular,
+        trace data may be temporarily buffered inside some device adapters for
+        performance reasons.
+
+    device_seen
+        A scan event has been received for a device.
+
+        The event object will be a dictionary with certain mandatory keys and
+        perhaps some additional keys whose meaning is determined by the device
+        adapter itself.
+
+    disconnection
+        Someone has disconnected from a device.
+
+        The event object will be a dictionary with at least a single key
+        ``reason`` set that will be a string that describes why the disconnect
+        occurred.  There will additionally be an ``expected`` key, which will
+        be a boolean and set to True if the disconnetion event is expected
+        because it was the result of a call to the
+        :meth:`AbstractDeviceAdapter.disconnect`` method.
+
+    broadcast
+        A broadcast report has been received from a device.
+
+        The event object will be a subclass of
+        :class:`iotile.core.hw.reports.BroadcastReport`
+
+    progress
+        A progress update has been received from a device.
+
+        Progress events help update the user on the sate of a long-running
+        task.  This may be received either from a debug operation or a sending
+        a script.
+
+        The event object will be a dict with three keys set:
+
+            operation
+                The string name of the operation in progress: either ``script`` or
+                ``debug``
+            finished
+                An integer specifying how many operation steps have finished.
+            total
+                An integer specifying how many total operation steps there are.
 """
 
 import abc
@@ -50,14 +133,15 @@ class AbstractDeviceAdapter(abc.ABC):
         """Return whether this device adapter can accept another connection.
 
         Depending on the underlying hardware and transport protocols in use, a
-        given DeviceAdapter may be able to maintain more than one simultaneous
-        connection to a device.  In simple cases, this method is not necessary
-        because a user can just try to connect to a device and have it fail if
-        the adapter cannot accomodate another connection.  However, in more
-        complicated scenarios where there are multiple DeviceAdapters that
-        could be used to connect to a device, it is useful to be able to
-        filter them and find the best adapter that has a free connection
-        slot available.
+        given DeviceAdapter may be able to maintain simultaneous connections
+        to more than one device at a time.  In simple cases, this method is
+        not necessary because a user can just try to connect to a device and
+        have it fail if the adapter cannot accomodate another connection.
+
+        However, in more complicated scenarios where there are multiple
+        DeviceAdapters that could be used to connect to a device, it is useful
+        to be able to filter them and find the best adapter that has a free
+        connection slot available.
 
         Returns:
             bool: Whether one additional connection is possible
@@ -126,6 +210,10 @@ class AbstractDeviceAdapter(abc.ABC):
                 Someone has disconnected from a device.
             broadcast
                 A broadcast report has been received from a device.
+            progress
+                A progress update has been received from a device
+                performing a long-running task.  This may be received
+                either from a debug operation or a sending a script.
 
         The ``devices`` are a set of connection_string objects containing
         which devices you want to install this filter on.  All events are tied
@@ -183,7 +271,7 @@ class AbstractDeviceAdapter(abc.ABC):
 
         If you remove a device or event that was not previously registered, no
         error is raised.  Similarly, if you add an event that was already
-        registerd, no error is raised.  The ``adjust_monitor`` method is
+        registered, no error is raised.  The ``adjust_monitor`` method is
         idempotent.
 
         Args:
@@ -206,7 +294,6 @@ class AbstractDeviceAdapter(abc.ABC):
         Args:
             handle (object): The handle to a previously registered monitor.
         """
-
 
     @abc.abstractmethod
     async def probe(self):
@@ -419,18 +506,19 @@ class AbstractDeviceAdapter(abc.ABC):
             RPCErrorCode: The RPC implementation wishes to fail with a
                 non-zero status code.
             RPCInvalidIDError: The rpc_id is too large to fit in 16-bits.
+            TileBusyError: The tile was busy and could not respond to the RPC.
             Exception: The rpc raised an exception during processing.
             DeviceAdapterError: If there is a hardware or communication issue
                 invoking the RPC.
         """
 
     @abc.abstractmethod
-    async def debug(self, conn_id, name, cmd_args, progress_callback):
+    async def debug(self, conn_id, name, cmd_args):
         """Send a debug command to a device.
 
         The command name and arguments are passed to the underlying device
         adapter and interpreted there.  If the command is long running,
-        progress_callback may be used to provide status updates.
+        you may receive progress events (if you have a registered event monitor).
 
         Most DeviceAdapter classes do not support this command or the debug
         interface since it typically requires a special hardware connection to
@@ -441,14 +529,10 @@ class AbstractDeviceAdapter(abc.ABC):
             conn_id (int): A unique identifier that will refer to this connection
             name (str): The name of the debug command we want to invoke
             cmd_args (dict): Any arguments that we want to send with this command.
-            progress_callback (callable): A function to be called with status on our
-                progress, called as: ``progress_callback(done_count, total_count)``.
-                This may be a coroutine, in which case it will be awaited each time
-                it is called.
         """
 
     @abc.abstractmethod
-    async def send_script(self, conn_id, data, progress_callback):
+    async def send_script(self, conn_id, data):
         """Send a a script to a device.
 
         Scripts are like binary files transferred to a device.  They are
@@ -457,14 +541,11 @@ class AbstractDeviceAdapter(abc.ABC):
         The device must have previously been connected to and you must have
         opened the script interface.  This method will robustly transfer a binary
         script blob to the device via its script interface and may inform you
-        of its progress using ``progress_callback``.
+        of its progress using progress events.
 
         Args:
-            conn_id (int): A unique identifier that will refer to this connection
-            data (bytes): the script to send to the device
-            progress_callback (callable): A function to be called with status on our progress,
-                called as: progress_callback(done_count, total_count).  If this is
-                a coroutine, it will be awaited after each call.
+            conn_id (int): A unique identifier specifying the connection
+            data (bytes): The script to send to the device
         """
 
     @abc.abstractmethod

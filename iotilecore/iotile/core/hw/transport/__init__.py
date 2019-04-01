@@ -7,5 +7,9 @@
 # are copyright Arch Systems Inc.
 
 from .cmdstream import CMDStream
+from .adapter import AbstractDeviceAdapter, StandardDeviceAdapter
+from .server import AbstractDeviceServer, StandardDeviceServer
+from .virtualadapter import VirtualDeviceAdapter
 
-__all__ = ['CMDStream']
+__all__ = ['CMDStream', 'AbstractDeviceAdapter', 'AbstractDeviceServer',
+           'StandardDeviceAdapter', 'StandardDeviceServer', 'VirtualDeviceAdapter']

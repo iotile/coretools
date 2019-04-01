@@ -4,6 +4,7 @@ from iotile.core.exceptions import ArgumentError
 from iotile.core.dev import ComponentRegistry
 from iotile.core.hw.reports import BroadcastReport
 from iotile.core.hw.virtual.common_types import BusyRPCResponse
+from iotile.core.utilities import SharedLoop
 from .adapter import DeviceAdapter
 from .adapter import StandardDeviceAdapter
 from ..exceptions import DeviceAdapterError
@@ -33,9 +34,9 @@ class VirtualAdapterAsyncChannel:
         conn_id = self._find_connection(self.conn_string)
 
         if isinstance(report, BroadcastReport):
-            self.adapter.fire_event(self.conn_string, 'broadcast', report)
+            self.adapter.notify_event_nowait(self.conn_string, 'broadcast', report)
         elif conn_id is not None:
-            self.adapter.fire_event(self.conn_string, 'report', report)
+            self.adapter.notify_event_nowait(self.conn_string, 'report', report)
 
         if callback is not None:
             callback(isinstance(report, BroadcastReport) or (conn_id is not None))
@@ -55,7 +56,7 @@ class VirtualAdapterAsyncChannel:
         conn_id = self._find_connection(self.conn_string)
 
         if conn_id is not None:
-            self.adapter.fire_event(self.conn_string, 'trace', data)
+            self.adapter.notify_event_nowait(self.conn_string, 'trace', data)
 
         if callback is not None:
             callback(conn_id is not None)
@@ -67,7 +68,7 @@ class VirtualAdapterAsyncChannel:
         return self.adapter._get_conn_id(conn_string)
 
 
-class AsyncVirtualDeviceAdapter(StandardDeviceAdapter):
+class VirtualDeviceAdapter(StandardDeviceAdapter):
     """Device adapter that gives access to one or more virtual devices
 
     The adapter is created and serves access to the virtual_devices that are
@@ -112,8 +113,8 @@ class AsyncVirtualDeviceAdapter(StandardDeviceAdapter):
     # Make devices expire after a long time only
     ExpirationTime = 600000
 
-    def __init__(self, port=None, devices=None):
-        super(AsyncVirtualDeviceAdapter, self).__init__(name=__name__)
+    def __init__(self, port=None, devices=None, loop=SharedLoop):
+        super(VirtualDeviceAdapter, self).__init__(name=__name__, loop=loop)
 
         loaded_devs = {}
 
@@ -299,23 +300,22 @@ class AsyncVirtualDeviceAdapter(StandardDeviceAdapter):
                                    address, rpc_id, payload)
             raise
 
-    async def send_script(self, conn_id, data, progress_callback):
+    async def send_script(self, conn_id, data):
         """Asynchronously send a a script to this IOTile device
 
         Args:
             conn_id (int): A unique identifier that will refer to this connection
             data (bytes or bytearray): the script to send to the device
-            progress_callback (callable): A function to be called with status on our progress, called as:
-                progress_callback(done_count, total_count)
         """
 
         self._ensure_connection(conn_id, True)
         dev = self._get_property(conn_id, 'device')
+        conn_string = self._get_property(conn_id, 'connection_string')
 
         # Simulate some progress callbacks (0, 50%, 100%)
-        progress_callback(0, len(data))
-        progress_callback(len(data)//2, len(data))
-        progress_callback(len(data), len(data))
+        await self.notify_progress(conn_string, 'script', 0, len(data))
+        await self.notify_progress(conn_string, 'script', len(data) // 2, len(data))
+        await self.notify_progress(conn_string, 'script', len(data), len(data))
 
         dev.script = data
 
