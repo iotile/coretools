@@ -4,7 +4,7 @@ import pytest
 import threading
 from iotile.core.exceptions import ExternalError
 from iotile.core.utilities.async_tools import BackgroundEventLoop
-from iotile.core.utilities.websockets import AsyncValidatingWSClient, AsyncValidatingWSServer
+from iotile_transport_websocket.generic import AsyncValidatingWSClient, AsyncValidatingWSServer
 from iotile.core.utilities.schema_verify import Verifier, StringVerifier, IntVerifier
 
 @pytest.fixture(scope="function")

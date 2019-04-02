@@ -1,7 +1,6 @@
 from setuptools import setup, find_packages
 
 import version
-# TODO: use 'ws' instead of 'ws2'
 
 setup(
     name="iotile-transport-websocket",
@@ -11,6 +10,8 @@ setup(
     install_requires=[
         "iotile-core>=4.0.0,<5",
         "msgpack>=0.6.1,<1"
+        "msgpack>=0.6.1",
+        "websockets~=7.0"
     ],
     python_requires=">=3.5,<4",
     entry_points={

@@ -23,6 +23,7 @@ def simple_hw():
     yield hw
 
     hw.disconnect()
+    hw.close()
 
 
 @pytest.fixture
@@ -31,6 +32,7 @@ def report_hw():
     yield hw
 
     hw.disconnect()
+    hw.close()
 
 
 @pytest.fixture
@@ -44,6 +46,7 @@ def conf_report_hw():
     yield hw
 
     hw.disconnect()
+    hw.close()
 
 
 @pytest.fixture
@@ -59,6 +62,8 @@ def realtime_hw():
     if hw.stream.connected:
         hw.disconnect()
 
+    hw.close()
+
 @pytest.fixture
 def realtime_scan_hw():
     conf_file = os.path.join(os.path.dirname(__file__), 'fast_realtime_test.json')
@@ -70,6 +75,7 @@ def realtime_scan_hw():
     yield hw
 
     hw.disconnect()
+    hw.close()
 
 @pytest.fixture
 def tile_based():
@@ -87,6 +93,7 @@ def tile_based():
 
     reg.clear_extensions()
     hw.disconnect()
+    hw.close()
 
 @pytest.fixture
 def tracer_hw():
@@ -99,6 +106,7 @@ def tracer_hw():
     yield hw
 
     hw.disconnect()
+    hw.close()
 
 
 @pytest.fixture
@@ -112,6 +120,8 @@ def conf2_report_hw():
     yield hw
 
     hw.disconnect()
+    hw.close()
+
 
 def test_basic(simple_hw):
     simple_hw.connect_direct('1')
