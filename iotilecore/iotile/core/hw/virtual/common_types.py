@@ -53,6 +53,8 @@ class BusyRPCResponse(IOTileException):
         super(BusyRPCResponse, self).__init__("The tile is busy")
 
 
+VALID_RPC_EXCEPTIONS = (BusyRPCResponse, TileNotFoundError, RPCErrorCode, RPCInvalidIDError, RPCNotFoundError)
+
 def _create_argcode(code, arg_bytes):
     if not code.endswith('V'):
         return "<" + code
@@ -111,6 +113,27 @@ def pack_rpc_response(response=None, exception=None):
         status = 3
 
     return status, response
+
+def unpack_rpc_response(status, response=None, rpc_id=0, address=0):
+    """Unpack an RPC status back in to payload or exception."""
+
+    status_code = status & ((1 << 6) - 1)
+
+    if status == 0:
+        raise BusyRPCResponse()
+    elif status == 2:
+        raise RPCNotFoundError("rpc %d:%04X not found" % (address, rpc_id))
+    elif status == 3:
+        raise RPCErrorCode(status_code)
+    elif status == 0xFF:
+        raise TileNotFoundError("tile %d not found" % address)
+    elif status_code != 0:
+        raise RPCErrorCode(status_code)
+
+    if response is None:
+        response = b''
+
+    return response
 
 
 def pack_rpc_payload(arg_format, args):

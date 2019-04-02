@@ -31,6 +31,7 @@ messages they are waiting for to continue their operation.
 """
 
 import asyncio
+import inspect
 import logging
 from collections import deque
 from iotile.core.exceptions import ArgumentError
@@ -258,7 +259,7 @@ class OperationManager:
 
         return asyncio.wait_for(future, timeout=timeout)
 
-    def process_message(self, message):
+    async def process_message(self, message):
         """Process a message to see if it wakes any waiters.
 
         This will check waiters registered to see if they match the given
@@ -284,7 +285,9 @@ class OperationManager:
                     waiter.set_result(message)
                 else:
                     try:
-                        waiter(message)
+                        result = waiter(message)
+                        if inspect.isawaitable(result):
+                            await result
                     except:  #pylint:disable=bare-except;We can't let a user callback break this routine
                         self._logger.warning("Error calling every_match callback, callback=%s, message=%s",
                                              waiter, message, exc_info=True)

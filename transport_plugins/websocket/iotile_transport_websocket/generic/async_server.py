@@ -9,7 +9,8 @@ from iotile.core.exceptions import ValidationError
 from .messages import VALID_CLIENT_MESSAGE
 from .packing import pack, unpack
 from .errors import ServerCommandError
-from ..async_tools import SharedLoop
+from iotile.core.utilities.async_tools import SharedLoop
+
 
 class _ConnectionContext:
     def __init__(self, server, con):
@@ -58,7 +59,7 @@ class AsyncValidatingWSServer:
         logger.setLevel(logging.ERROR)
         logger.addHandler(logging.NullHandler())
 
-    async def _prepare_conn(self, _con):
+    async def prepare_conn(self, _con):
         """Called when a new connection is established.
 
         This method is designed to allow subclasses to store, per connection
@@ -75,10 +76,10 @@ class AsyncValidatingWSServer:
 
         return None
 
-    async def _teardown_conn(self, context):
+    async def teardown_conn(self, context):
         """Called when a connection is finalized.
 
-        This is the partner call to _prepare_conn() and is intended to give
+        This is the partner call to prepare_conn() and is intended to give
         subclasses the ability to cleanly release any resources that were
         allocated along with this connection, outside of
         AsyncValidatingWSServer.
@@ -86,7 +87,7 @@ class AsyncValidatingWSServer:
         Args:
             context (_ConnectionContext): An object with all of the
                 associated data about the connection including any
-                user data returned by _prepare_conn().
+                user data returned by prepare_conn().
         """
 
         pass
@@ -212,7 +213,7 @@ class AsyncValidatingWSServer:
 
         try:
             try:
-                context.user_data = await self._prepare_conn(con)
+                context.user_data = await self.prepare_conn(con)
             except:
                 self._logger.exception("Error preparing connection")
                 raise
@@ -236,7 +237,7 @@ class AsyncValidatingWSServer:
             await _cancel_operations(context.operations)
 
             try:
-                await self._teardown_conn(context)
+                await self.teardown_conn(context)
             except:  #pylint:disable=bare-except;This is a background worker
                 self._logger.exception("Error tearing down connecion")
 
@@ -253,7 +254,13 @@ class AsyncValidatingWSServer:
             response = _error_response("Command %s was not implemented" % cmd, cmd_uuid)
         except Exception as err:  #pylint:disable=broad-except;We can't let a failing command take down the server
             self._logger.exception("Exception executing handler for command %s", cmd)
-            response = _error_response(str(err), cmd_uuid)
+
+            if hasattr(err, 'reason'):
+                reason = err.reason  #pylint:disable=no-member;We are explicitly checking for the member's existence
+            else:
+                reason = str(err)
+
+            response = _error_response(reason, cmd_uuid)
 
         encoded_resp = pack(response)
         self._logger.debug("Sending response: %s", response)

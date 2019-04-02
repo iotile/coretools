@@ -1,47 +1,67 @@
-"""List of commands handled by the WebSocket plugin."""
+"""List of known command and response payloads."""
 
-from iotile.core.utilities.schema_verify import BytesVerifier, DictionaryVerifier, Verifier, \
-    EnumVerifier, FloatVerifier, IntVerifier, LiteralVerifier, StringVerifier
-from . import operations
+from iotile.core.utilities.schema_verify import BytesVerifier, DictionaryVerifier, \
+    EnumVerifier, FloatVerifier, IntVerifier, StringVerifier, NoneVerifier, Verifier, \
+    OptionsVerifier
 
-Basic = DictionaryVerifier()
-Basic.add_required('type', LiteralVerifier('command'))
-Basic.add_required('connection_string', StringVerifier())
+# Connect Command
+ConnectCommand = DictionaryVerifier()
+ConnectCommand.add_required('connection_string', StringVerifier())
 
-# Connect
-Connect = Basic.clone()
-Connect.add_required('operation', LiteralVerifier(operations.CONNECT))
+ConnectResponse = NoneVerifier()
 
-# Close interface
-CloseInterface = Basic.clone()
-CloseInterface.add_required('operation', LiteralVerifier(operations.CLOSE_INTERFACE))
-CloseInterface.add_required('interface', EnumVerifier(['rpc', 'streaming', 'tracing', 'script', 'debug']))
+# Disconnect Command
+DisconnectCommand = DictionaryVerifier()
+DisconnectCommand.add_required('connection_string', StringVerifier())
 
-# Disconnect
-Disconnect = Basic.clone()
-Disconnect.add_required('operation', LiteralVerifier(operations.DISCONNECT))
+DisconnectResponse = NoneVerifier()
 
-# Open interface
-OpenInterface = Basic.clone()
-OpenInterface.add_required('operation', LiteralVerifier(operations.OPEN_INTERFACE))
-OpenInterface.add_required('interface', EnumVerifier(['rpc', 'streaming', 'tracing', 'script', 'debug']))
 
-# Scan
-Scan = DictionaryVerifier()
-Scan.add_required('type', LiteralVerifier('command'))
-Scan.add_required('operation', LiteralVerifier(operations.SCAN))
+_InterfaceEnum = EnumVerifier(['rpc', 'streaming', 'tracing', 'script', 'debug'])
+
+# OpenInterface Command
+
+OpenInterfaceCommand = DictionaryVerifier()
+OpenInterfaceCommand.add_required('interface', _InterfaceEnum)
+OpenInterfaceCommand.add_required('connection_string', StringVerifier())
+
+OpenInterfaceResponse = NoneVerifier()
+# CloseInterface Command
+
+CloseInterfaceCommand = DictionaryVerifier()
+CloseInterfaceCommand.add_required('interface', _InterfaceEnum)
+CloseInterfaceCommand.add_required('connection_string', StringVerifier())
+
+CloseInterfaceResponse = NoneVerifier()
+
+# Probe
+ProbeCommand = DictionaryVerifier()
+ProbeResponse = NoneVerifier()
 
 # Send RPC
-SendRPC = Basic.clone()
-SendRPC.add_required('operation', LiteralVerifier(operations.SEND_RPC))
-SendRPC.add_required('address', IntVerifier())
-SendRPC.add_required('rpc_id', IntVerifier())
-SendRPC.add_required('timeout', FloatVerifier())
-SendRPC.add_required('payload', BytesVerifier(encoding="base64"))
+SendRPCCommand = DictionaryVerifier()
+SendRPCCommand.add_required('connection_string', StringVerifier())
+SendRPCCommand.add_required('address', IntVerifier())
+SendRPCCommand.add_required('rpc_id', IntVerifier())
+SendRPCCommand.add_required('timeout', FloatVerifier())
+SendRPCCommand.add_required('payload', BytesVerifier(encoding="base64"))
+
+SendRPCResponse = DictionaryVerifier()
+SendRPCResponse.add_required('status', IntVerifier())
+SendRPCResponse.add_required('payload', BytesVerifier(encoding="base64"))
 
 # Send script
-SendScript = Basic.clone()
-SendScript.add_required('operation', LiteralVerifier(operations.SEND_SCRIPT))
-SendScript.add_required('fragment_count', IntVerifier())
-SendScript.add_required('fragment_index', IntVerifier())
-SendScript.add_required('script', BytesVerifier(encoding="base64"))
+SendScriptCommand = DictionaryVerifier()
+SendScriptCommand.add_required('connection_string', StringVerifier())
+SendScriptCommand.add_required('fragment_count', IntVerifier())
+SendScriptCommand.add_required('fragment_index', IntVerifier())
+SendScriptCommand.add_required('script', BytesVerifier(encoding="base64"))
+
+SendScriptResponse = NoneVerifier()
+
+SendDebugCommand = DictionaryVerifier()
+SendScriptCommand.add_required('connection_string', StringVerifier())
+SendDebugCommand.add_required('command', StringVerifier())
+SendDebugCommand.add_required('args', Verifier())
+
+SendDebugResponse = Verifier()

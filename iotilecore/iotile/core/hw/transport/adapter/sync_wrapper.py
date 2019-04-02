@@ -246,7 +246,7 @@ class SynchronousLegacyWrapper(DeviceAdapter):
         elif isinstance(exception, asyncio.TimeoutError):
             reason = "operation timed out"
         else:
-            self._logger.error("Unknown exception during AbstractDeviceAdapter operation")
+            self._logger.error("Unknown exception during AbstractDeviceAdapter operation: %s", exception)
             reason = "Unknown exception {}".format(exception)
 
         return {
