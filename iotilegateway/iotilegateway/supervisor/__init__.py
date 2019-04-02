@@ -1,4 +1,4 @@
-from .status_client import ServiceStatusClient, AsyncServiceStatusClient
-from .supervisor import IOTileSupervisor
+from .client import SupervisorClient, AsyncSupervisorClient
+from .server import IOTileSupervisor
 
-__all__ = ['ServiceStatusClient', 'AsyncServiceStatusClient', 'IOTileSupervisor']
+__all__ = ['SupervisorClient', 'AsyncSupervisorClient', 'IOTileSupervisor']

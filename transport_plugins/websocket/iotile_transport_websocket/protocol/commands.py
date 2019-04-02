@@ -35,7 +35,7 @@ CloseInterfaceCommand.add_required('connection_string', StringVerifier())
 CloseInterfaceResponse = NoneVerifier()
 
 # Probe
-ProbeCommand = DictionaryVerifier()
+ProbeCommand = NoneVerifier()
 ProbeResponse = NoneVerifier()
 
 # Send RPC
