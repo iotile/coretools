@@ -138,6 +138,8 @@ class ReportTestDevice(VirtualIOTileDevice):
                 the streaming interface.
         """
 
+        super(ReportTestDevice, self).open_streaming_interface()
+
         readings = self.generator()
 
         reports = []

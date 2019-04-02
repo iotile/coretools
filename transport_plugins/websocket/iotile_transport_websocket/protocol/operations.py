@@ -1,15 +1,24 @@
-"""List of operations handled by the WebSocket plugin."""
+"""List of defined commands and events."""
 
+# Commands
 CONNECT = 'connect'
 CLOSE_INTERFACE = 'close_interface'
-DISCONNECT = 'disconnect'
-NOTIFY_DEVICE_FOUND = 'notify_device_found'
-NOTIFY_PROGRESS = 'notify_progress'
-NOTIFY_REPORT = 'notify_report'
-NOTIFY_TRACE = 'notify_trace'
 OPEN_INTERFACE = 'open_interface'
-SCAN = 'probe'
+PROBE = 'probe'
 SEND_RPC = 'send_rpc'
 SEND_SCRIPT = 'send_script'
+DEBUG = 'debug_command'
+DISCONNECT = 'disconnect'
 
-UNKNOWN = '<unknown>'
+COMMANDS = frozenset([CONNECT, CLOSE_INTERFACE, OPEN_INTERFACE, PROBE, SEND_RPC,
+                      SEND_SCRIPT, DISCONNECT, DEBUG])
+
+# Events
+NOTIFY_DEVICE_FOUND = 'device_found'
+NOTIFY_PROGRESS = 'progress'
+NOTIFY_REPORT = 'report'
+NOTIFY_TRACE = 'trace'
+NOTIFY_DISCONNECT = 'unexpected_disconnect'
+
+EVENTS = frozenset([NOTIFY_DEVICE_FOUND, NOTIFY_PROGRESS, NOTIFY_REPORT,
+                    NOTIFY_TRACE, NOTIFY_DISCONNECT])
