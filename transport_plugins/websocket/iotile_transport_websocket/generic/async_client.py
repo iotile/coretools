@@ -138,9 +138,7 @@ class AsyncValidatingWSClient:
         response_future = self._manager.wait_for(type="response", uuid=cmd_uuid,
                                                  timeout=timeout)
 
-        self._logger.info("Starting to send command %s", msg)
         await self._con.send(packed)
-        self._logger.info("Finished sending command %s", msg)
 
         response = await response_future
 
@@ -175,8 +173,6 @@ class AsyncValidatingWSClient:
                 except Exception:  #pylint:disable=broad-except;This is a background worker
                     self._logger.exception("Corrupt message received")
                     continue
-
-                self._logger.debug("Received message %s", unpacked)
 
                 if not VALID_SERVER_MESSAGE.matches(unpacked):
                     self._logger.warning("Dropping invalid message from server: %s", unpacked)

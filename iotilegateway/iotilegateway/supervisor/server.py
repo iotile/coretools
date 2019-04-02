@@ -1,3 +1,4 @@
+"""Websocket server for iotile supervisor."""
 import uuid
 import logging
 import functools
@@ -9,6 +10,30 @@ from .protocol import MESSAGES, OPERATIONS
 
 
 class IOTileSupervisor:
+    """A log and rpc broker for daemon tasks.
+
+    This class runs a websocket server that allows tasks to connect to it
+    using :class:`SupervisorClient` and :class:`AsyncSupervisorClient`. The
+    classes can be used to post log messages and status information about the
+    task to the supervisor, which is automatically distributed and synced to
+    all other clients so the latest information about all tasks is locally
+    known to all tasks.
+
+    You can also register to receive RPCs in your task which other tasks can
+    call.  This supervisor server acts as the broker that forwards RPCs from
+    one task to another.
+
+    Args:
+        config (dict): A dictionary of configuration options.
+            Currently supported options are 'port' and 'host',
+            which default to 9400 and '127.0.0.1'.  If you pass
+            None for 'port' a random port will be used and available
+            on self.port after ``start`` has returned.
+        loop (BackgroundEventLoop): The background event loop that
+            should be used to run the server.  Defaults to the global
+            shared loop.
+    """
+
     def __init__(self, config, *, loop=SharedLoop):
 
         expected_services = config.get('expected_services', [])
@@ -59,13 +84,19 @@ class IOTileSupervisor:
         self._logger = logging.getLogger(__name__)
 
     async def start(self):
+        """Start the supervisor server."""
+
         await self.server.start()
         self.port = self.server.port
 
     async def stop(self):
+        """Stop the supervisor server."""
+
         await self.server.stop()
 
     async def prepare_conn(self, conn):
+        """Setup a new connection from a client."""
+
         client_id = str(uuid.uuid4())
         monitor = functools.partial(self.send_event, client_id)
 
@@ -77,6 +108,8 @@ class IOTileSupervisor:
         return client_id
 
     async def teardown_conn(self, context):
+        """Teardown a connection from a client."""
+
         client_id = context.user_data
 
         self._logger.info("Tearing down client connection: %s", client_id)
@@ -86,6 +119,8 @@ class IOTileSupervisor:
             del self.clients[client_id]
 
     async def send_event(self, client_id, service_name, event_name, event_info, directed_client=None):
+        """Send an event to a client."""
+
         if directed_client is not None and directed_client != client_id:
             return
 
@@ -139,6 +174,8 @@ class IOTileSupervisor:
         await self.service_manager.add_service(**msg)
 
     async def set_agent(self, msg, context):
+        """Mark a client as the RPC agent for a service."""
+
         service = msg.get('name')
         client = context.user_data
 
