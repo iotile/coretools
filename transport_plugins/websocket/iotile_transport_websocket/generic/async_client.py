@@ -43,11 +43,33 @@ class AsyncValidatingWSClient:
         self._logger = logging.getLogger(logger_name)
         self._loop = loop
         self._event_validators = {}
+        self._allowed_exceptions = {}
         self._manager = OperationManager(loop=loop)
 
         logger = logging.getLogger('websockets')
         logger.setLevel(logging.ERROR)
         logger.addHandler(logging.NullHandler())
+
+    def allow_exception(self, exc_class):
+        """Allow raising this class of exceptions from commands.
+
+        When a command fails on the server side due to an exception, by
+        default it is turned into a string and raised on the client side as an
+        ExternalError.  The original class name is sent but ignored.  If you
+        would like to instead raise an instance of the same exception on the
+        client side, you can pass the exception class object to this method
+        and instances of that exception will be reraised.
+
+        The caveat is that the exception must be creatable with a single
+        string parameter and it should have a ``msg`` property.
+
+        Args:
+            exc_class (class): A class object with the exception that
+                we should allow to pass from server to client.
+        """
+
+        name = exc_class.__name__
+        self._allowed_exceptions[name] = exc_class
 
     async def start(self, name="websocket_client"):
         """Connect to the websocket server.
@@ -106,9 +128,6 @@ class AsyncValidatingWSClient:
         if self._con is None:
             raise ExternalError("No websock connection established")
 
-        if args is None:
-            args = {}
-
         cmd_uuid = str(uuid.uuid4())
         msg = dict(type='command', operation=command, uuid=cmd_uuid,
                    payload=args)
@@ -124,13 +143,23 @@ class AsyncValidatingWSClient:
         response = await response_future
 
         if response.get('success') is False:
-            raise ExternalError("Command {} failed".format(command),
-                                reason=response.get('reason'))
+            self._raise_error(command, response)
 
         if validator is None:
             return response.get('payload')
 
         return validator.verify(response.get('payload'))
+
+    def _raise_error(self, command, response):
+        exc_name = response.get('exception_class')
+        reason = response.get('reason')
+
+        exc_class = self._allowed_exceptions.get(exc_name)
+        if exc_class is not None:
+            raise exc_class(reason)
+
+        raise ExternalError("Command {} failed".format(command),
+                            reason=response.get('reason'))
 
     async def _manage_connection(self, task):
         """Internal coroutine for managing the client connection."""
@@ -149,7 +178,10 @@ class AsyncValidatingWSClient:
                     self._logger.warning("Dropping invalid message from server: %s", unpacked)
                     continue
 
-                if not await self._manager.process_message(unpacked):
+                # Don't block until all callbacks have finished since once of
+                # those callbacks may call self.send_command, which would deadlock
+                # since it couldn't get the response until it had already finished.
+                if not await self._manager.process_message(unpacked, wait=False):
                     self._logger.warning("No handler found for received message, message=%s", unpacked)
         except asyncio.CancelledError:
             self._logger.info("Closing connection to server due to stop()")

@@ -1,15 +1,10 @@
 # This file is copyright Arch Systems, Inc.
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
-import base64
 import logging
-import time
 from iotile.core.utilities import SharedLoop
-from .generic import ServerCommandError
 from iotile.core.hw.transport import VirtualDeviceAdapter
-from iotile.core.hw.virtual.virtualdevice import RPCInvalidIDError, RPCNotFoundError, TileNotFoundError
 from iotile.core.hw.virtual.virtualinterface import VirtualIOTileInterface
-from iotile.core.exceptions import HardwareError
 from .device_server import WebSocketDeviceServer
 
 _MISSING = object()

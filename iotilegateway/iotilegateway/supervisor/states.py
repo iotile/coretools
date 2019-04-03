@@ -1,9 +1,8 @@
 """All possible states that a service can be in."""
 
-from iotile.core.exceptions import ArgumentError
 from time import monotonic
 from collections import deque
-from .command_formats import MessagePayload
+from iotile.core.exceptions import ArgumentError
 
 # Service states
 NOT_STARTED = 0
@@ -72,8 +71,6 @@ class ServiceMessage(object):
         Returns:
             ServiceMessage: the converted message
         """
-
-        MessagePayload.verify(msg_dict)
 
         level = msg_dict.get('level')
         msg = msg_dict.get('message')
@@ -187,6 +184,9 @@ class ServiceState(object):
             timestamp (float): An optional monotonic value in seconds for when the message was created
             now_reference (float): If timestamp is not relative to monotonic() as called from this
                 module then this should be now() as seen by whoever created the timestamp.
+
+        Returns:
+            ServiceMessage: The posted message
         """
 
         if len(self.messages) > 0 and self.messages[-1].message == message:
@@ -196,6 +196,8 @@ class ServiceState(object):
             msg_object.count = count
             self.messages.append(msg_object)
             self._last_message_id += 1
+
+        return self.messages[-1]
 
     def set_headline(self, level, message, timestamp=None, now_reference=None):
         """Set the persistent headline message for this service.

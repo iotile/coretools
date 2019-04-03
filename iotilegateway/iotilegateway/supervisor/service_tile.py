@@ -2,7 +2,7 @@
 
 from iotile.core.exceptions import InternalError
 from iotile.core.hw.virtual import VirtualTile, RPCNotFoundError, RPCInvalidArgumentsError, RPCInvalidReturnValueError, TileNotFoundError
-from iotilegateway.supervisor import ServiceStatusClient
+from iotilegateway.supervisor import SupervisorClient
 
 
 class ServiceDelegateTile(VirtualTile):
@@ -27,7 +27,7 @@ class ServiceDelegateTile(VirtualTile):
         super(ServiceDelegateTile, self).__init__(address, name)
 
         self._service = service
-        self._client = ServiceStatusClient(url)
+        self._client = SupervisorClient(url)
 
     def has_rpc(self, rpc_id):
         """Check if an RPC is defined.

@@ -26,6 +26,7 @@ setup(
         "msgpack>=0.6.1,<1",
         "ws4py>=0.5.1,<1",
         "websockets>=7,<8"
+        "iotile-transport-websocket>=2.0.2"
     ],
     python_requires=">=3.5,<4",
     entry_points={

@@ -257,12 +257,20 @@ class AsyncValidatingWSServer:
 
             if hasattr(err, 'reason'):
                 reason = err.reason  #pylint:disable=no-member;We are explicitly checking for the member's existence
+            elif hasattr(err, 'msg'):
+                reason = err.msg  #pylint:disable=no-member;We are explicitly checking for the member's existence
             else:
                 reason = str(err)
 
-            response = _error_response(reason, cmd_uuid)
+            response = _error_response(reason, cmd_uuid, exc=type(err).__name__)
 
-        encoded_resp = pack(response)
+        try:
+            encoded_resp = pack(response)
+        except:
+            self._logger.exception("Unable to pack response message: %s", response)
+            response = _error_response("Unable to pack response message", cmd_uuid)
+            encoded_resp = pack(response)
+
         self._logger.debug("Sending response: %s", response)
 
         try:
@@ -275,7 +283,7 @@ class AsyncValidatingWSServer:
         uuid = message.get('uuid')
         payload = message.get('payload')
 
-        self._logger.debug("Received command %s, uuid=%s", name, uuid)
+        self._logger.debug("Received command %s", message)
 
         handler_info = self._commands.get(name)
         if handler_info is None:
@@ -292,8 +300,9 @@ class AsyncValidatingWSServer:
         return dict(type="response", uuid=uuid, success=True, payload=payload)
 
 
-def _error_response(reason, uuid):
-    return dict(type="response", uuid=uuid, success=False, reason=reason)
+def _error_response(reason, uuid, exc=None):
+    return dict(type="response", uuid=uuid, success=False,
+                reason=reason, exception_class=exc)
 
 
 def _prune_finished(operations):
