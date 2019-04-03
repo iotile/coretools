@@ -4,7 +4,7 @@ import argparse
 import logging
 import binascii
 import struct
-from .status_client import ServiceStatusClient
+from .client import SupervisorClient
 
 
 def _build_parser():
@@ -20,7 +20,7 @@ def _build_parser():
 
     verbosity = parser.add_mutually_exclusive_group()
     verbosity.add_argument('-q', '--quiet', action='store_true', help="Do not report any status and information")
-    verbosity.add_argument('-v', '--verbose', action='count', help="Report extra debug information (pass twice for binary dumps of input records)")
+    verbosity.add_argument('-v', '--verbose', action='count', default=0, help="Report extra debug information (pass twice for binary dumps of input records)")
 
     return parser
 
@@ -49,7 +49,7 @@ def main():
     logger = logging.getLogger(__name__)
 
     try:
-        client = ServiceStatusClient(args.supervisor)
+        client = SupervisorClient(args.supervisor)
     except Exception:
         logger.exception("Could not create status client to connect to supervisor")
         return 1
