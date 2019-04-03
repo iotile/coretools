@@ -260,6 +260,24 @@ class AbstractDeviceAdapter(abc.ABC):
         """
 
     @abc.abstractmethod
+    def unique_conn_id(self):
+        """Generate a new unique connection id.
+
+        This method allows DeviceAdapters to tell their clients what they
+        should pick for a connection id to ensure that it does not conflict
+        with any current connection.  This can be imlemented as a simple
+        incrementing counter, so clients must not mix calling unique_conn_id
+        with setting their own connection ids.
+
+        This method is very important when there could be multiple users
+        connected to the same AbstractDeviceAdapter and they need to ensure
+        that they don't accidentally pick the same connection id.
+
+        Returns:
+            int: A new, unique integer suitable for use as a conn_id.
+        """
+
+    @abc.abstractmethod
     def adjust_monitor(self, handle, action, devices, events):
         """Adjust a previously registered callback.
 

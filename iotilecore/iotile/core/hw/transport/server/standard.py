@@ -56,11 +56,14 @@ class StandardDeviceServer(AbstractDeviceServer):
       association of all operations with a single client.
 
     - All methods that previously took a `connection_id` now take a
-      `connection_id`.  This is because we cannot guarantee that multiple
-      clients would not choose the same connection_id and confuse the
-      device adapter.  StandardDeviceServer handles assigning unique connection
-      ids to all connections internally.  The connection ids are never exposed
-      externally to the clients.
+      `connection_string`.  This is because we cannot guarantee that multiple
+      clients would not choose the same connection_id and confuse the device
+      adapter.  StandardDeviceServer handles assigning unique connection ids
+      to all connections internally.  The connection ids are never exposed
+      externally to the clients.  In case multiple device servers are attached
+      to the same AbstractDeviceAdapter, they will generate connection ids by
+      asking the abstract device adapter for a new unique connection id to
+      ensure that they don't collide.
 
     .. important:
 
@@ -82,7 +85,6 @@ class StandardDeviceServer(AbstractDeviceServer):
         self.adapter = adapter
         self._clients = {}
         self._loop = loop
-        self._next_conn_id = 0
         self._logger = logging.getLogger(__name__)
 
     #pylint:disable=unused-argument;This method is designed to be overridden
@@ -252,8 +254,7 @@ class StandardDeviceServer(AbstractDeviceServer):
             DeviceServerError: There is an issue with your client_id.
             DeviceAdapterError: The adapter had an issue connecting.
         """
-        conn_id = self._next_conn_id
-        self._next_conn_id += 1
+        conn_id = self.adapter.unique_conn_id()
 
         self._client_info(client_id)
 
