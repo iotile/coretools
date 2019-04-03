@@ -259,7 +259,7 @@ class OperationManager:
 
         return asyncio.wait_for(future, timeout=timeout)
 
-    async def process_message(self, message):
+    async def process_message(self, message, wait=True):
         """Process a message to see if it wakes any waiters.
 
         This will check waiters registered to see if they match the given
@@ -268,6 +268,18 @@ class OperationManager:
 
         This method returns False if the message matched no waiters so it was
         ignored.
+
+        Normally you want to use wait=True (the default behavior) to guarantee
+        that all callbacks have finished before this method returns.  However,
+        sometimes that can cause a deadlock if those callbacks would
+        themselves invoke behavior that requires whatever is waiting for this
+        method to be alive.  In that case you can pass wait=False to ensure
+        that the caller of this method does not block.
+
+        Args:
+            message (dict or object): The message that we should process
+            wait (bool): Whether to block until all callbacks have finished
+                or to return once the callbacks have been launched.
 
         Returns:
             bool: True if at least one waiter matched, otherwise False.
@@ -285,9 +297,7 @@ class OperationManager:
                     waiter.set_result(message)
                 else:
                     try:
-                        result = waiter(message)
-                        if inspect.isawaitable(result):
-                            await result
+                        await _wait_or_launch(self._loop, waiter, message, wait)
                     except:  #pylint:disable=bare-except;We can't let a user callback break this routine
                         self._logger.warning("Error calling every_match callback, callback=%s, message=%s",
                                              waiter, message, exc_info=True)
@@ -319,3 +329,12 @@ def _get_key(obj, key, default=_MISSING):
         return getattr(obj, key)
 
     return default
+
+
+async def _wait_or_launch(loop, coroutine_func, message, wait):
+    result = coroutine_func(message)
+    if inspect.isawaitable(result):
+        if wait:
+            await result
+        else:
+            loop.launch_coroutine(result)

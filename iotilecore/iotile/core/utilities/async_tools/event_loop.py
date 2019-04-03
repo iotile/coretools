@@ -16,6 +16,7 @@ register then as subtasks and their parent task is in charge of stopping
 them cleanly in the correct order.
 """
 
+import time
 import asyncio
 import inspect
 import logging
@@ -261,6 +262,40 @@ class BackgroundEventLoop:
             self.loop = asyncio.new_event_loop()
             self.thread = threading.Thread(target=self._loop_thread_main, name="EventLoopThread", daemon=True)
             self.thread.start()
+
+    def wait_for_interrupt(self, check_interval=1.0, max_time=None):
+        """Run the event loop until we receive a ctrl-c interrupt or max_time passes.
+
+        This method will wake up every 1 second by default to check for any
+        interrupt signals or if the maximum runtime has expired.  This can be
+        set lower for testing purpose to reduce latency but in production
+        settings, this can cause increased CPU usage so 1 second is an
+        appropriate value.
+
+        Args:
+            check_interval (float): How often to wake up and check for
+                a SIGTERM. Defaults to 1s.  Setting this faster is useful
+                for unit testing.  Cannot be < 0.01 s.
+            max_time (float): Stop the event loop after max_time seconds.
+                This is useful for testing purposes.  Defaults to None,
+                which means run forever until interrupt.
+        """
+
+        self.start()
+
+        wait = max(check_interval, 0.01)
+        accum = 0
+
+        try:
+            while max_time is None or accum < max_time:
+                try:
+                    time.sleep(wait)
+                except IOError:
+                    pass  # IOError comes when this call is interrupted in a signal handler
+
+                accum += wait
+        except KeyboardInterrupt:
+            self.stop()
 
     def stop(self):
         """Synchronously stop the background loop from outside.

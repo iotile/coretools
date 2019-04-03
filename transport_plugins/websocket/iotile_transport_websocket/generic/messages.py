@@ -1,6 +1,6 @@
 """The classes of messages supported by this websocket impementation."""
 
-from iotile.core.utilities.schema_verify import Verifier, DictionaryVerifier, StringVerifier, LiteralVerifier, OptionsVerifier
+from iotile.core.utilities.schema_verify import Verifier, NoneVerifier, DictionaryVerifier, StringVerifier, LiteralVerifier, OptionsVerifier
 
 # The prescribed schema of command response messages
 # Messages with this format are automatically processed inside the ValidatingWSClient
@@ -21,6 +21,7 @@ FAILURE_RESPONSE.add_required('type', LiteralVerifier('response'))
 FAILURE_RESPONSE.add_required('uuid', StringVerifier())
 FAILURE_RESPONSE.add_required('success', LiteralVerifier(False))
 FAILURE_RESPONSE.add_required('reason', StringVerifier())
+FAILURE_RESPONSE.add_required('exception_class', OptionsVerifier(StringVerifier(), NoneVerifier()))
 
 RESPONSE = OptionsVerifier(SUCCESSFUL_RESPONSE, FAILURE_RESPONSE)
 
