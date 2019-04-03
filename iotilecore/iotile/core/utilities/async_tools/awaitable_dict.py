@@ -103,7 +103,7 @@ class AwaitableDict:
         When this method returns the key is automatically removed unless
         you pass ``autoremove=False``.
 
-        This method is no a coroutine and does not block.
+        This method is not a coroutine and does not block.
 
         Args:
             name (str): The name of the key to wait on.

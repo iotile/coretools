@@ -266,8 +266,11 @@ class BackgroundEventLoop:
     def wait_for_interrupt(self, check_interval=1.0, max_time=None):
         """Run the event loop until we receive a ctrl-c interrupt or max_time passes.
 
-        This method will wake up every .1 seconds by default to check for
-        any interrupt signals or if the maximum runtime has expired.
+        This method will wake up every 1 second by default to check for any
+        interrupt signals or if the maximum runtime has expired.  This can be
+        set lower for testing purpose to reduce latency but in production
+        settings, this can cause increased CPU usage so 1 second is an
+        appropriate value.
 
         Args:
             check_interval (float): How often to wake up and check for
