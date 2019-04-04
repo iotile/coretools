@@ -255,11 +255,19 @@ class BackgroundEventLoop:
     that can be used when you just want to add tasks to a single shared loop.
     Creating your own BackgroundEventLoop should not be generally done unless
     you are unit testing.
+
+    A background event loop cannot be restarted once it stops.  Once the shutdown
+    process is started by calling ``stop()``, no more tasks can be added to the
+    loop and attempts to add them will raise an InternalError.
+
+    This prevents people from accidentally adding more tasks while the loop is
+    shutting down.
     """
 
     def __init__(self):
         self.loop = None
         self.thread = None
+        self.stopping = False
         self.tasks = set()
 
         self._logger = logging.getLogger(__name__)
@@ -271,6 +279,9 @@ class BackgroundEventLoop:
         This method is safe to call multiple times.  If the loop is already
         running, it will not do anything.
         """
+
+        if self.stopping:
+            raise InternalError("Cannot perform action while loop is stopping.")
 
         if not self.loop:
             self._logger.debug("Starting event loop")
@@ -310,7 +321,7 @@ class BackgroundEventLoop:
 
                 accum += wait
         except KeyboardInterrupt:
-            self.stop()
+            pass
 
     def stop(self):
         """Synchronously stop the background loop from outside.
@@ -371,6 +382,8 @@ class BackgroundEventLoop:
 
     async def _stop_internal(self):
         """Cleanly stop the event loop after shutting down all tasks."""
+
+        self.stopping = True
 
         awaitables = [task.stop() for task in self.tasks]
 
