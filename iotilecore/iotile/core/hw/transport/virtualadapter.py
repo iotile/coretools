@@ -235,6 +235,10 @@ class VirtualDeviceAdapter(StandardDeviceAdapter):
             raise DeviceAdapterError(conn_id, 'connect', 'device already connected')
 
         dev = self.devices[id_number]
+
+        if dev.connected:
+            raise DeviceAdapterError(conn_id, 'connect', 'device already connected')
+
         dev.connected = True
 
         self._setup_connection(conn_id, connection_string)

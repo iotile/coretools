@@ -259,6 +259,11 @@ class WebSocketDeviceServer(StandardDeviceServer):
         elif event_name == 'device_seen':
             msg_payload = event
             msg_name = OPERATIONS.NOTIFY_DEVICE_FOUND
+        elif event_name == 'broadcast':
+            report = event.serialize()
+            report['encoded_report'] = base64.b64encode(report['encoded_report'])
+            msg_payload = dict(connection_string=conn_string, serialized_report=report)
+            msg_name = OPERATIONS.NOTIFY_BROADCAST
         else:
             self._logger.debug("Not forwarding unknown event over websockets: %s", event_tuple)
             return

@@ -1,15 +1,27 @@
 """Integration tests of the IOTileGateway class."""
 
-import pytest
 import base64
 import json
+import pytest
+from iotile.core.utilities import BackgroundEventLoop
 from iotile.core.hw.reports import BroadcastReport
-from iotilegateway import IOTileGateway
 from iotile.core.hw import HardwareManager
+from iotilegateway import IOTileGateway
 
 
 @pytest.fixture(scope="function")
-def running_gateway():
+def loop():
+    """A fresh background event loop."""
+
+    loop = BackgroundEventLoop()
+
+    loop.start()
+    yield loop
+    loop.stop()
+
+
+@pytest.fixture(scope="function")
+def running_gateway(loop):
     """A basic gateway with some virtual devices."""
 
     realtime_config = {
@@ -30,12 +42,12 @@ def running_gateway():
     enc = base64.b64encode(json.dumps(realtime_config).encode('utf-8')).decode('utf-8')
 
     config = {
-        'agents': [
+        'servers': [
             {
                 "name": "websockets",
                 "args":
                 {
-                    "port": "unused"
+                    "port": None
                 }
             }
         ],
@@ -48,16 +60,16 @@ def running_gateway():
         ]
     }
 
-    gateway = IOTileGateway(config)
+    gateway = IOTileGateway(config, loop=loop)
 
-    gateway.start()
-    gateway.loaded.wait(3.0)
+    loop.run_coroutine(gateway.start())
 
-    hw = HardwareManager(port="ws:127.0.0.1:%d/iotile/v1" % gateway.agents[0].port)
+    port = gateway.servers[0].port
+    hw = HardwareManager(port="ws:127.0.0.1:%d/iotile/v1" % port)
 
     yield hw, gateway
 
-    gateway.stop()
+    loop.run_coroutine(gateway.stop())
 
 
 def test_broadcast(running_gateway):

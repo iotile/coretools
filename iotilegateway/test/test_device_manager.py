@@ -1,111 +1,80 @@
-import unittest
-import pytest
-import os.path
-import os
-import struct
 import logging
-import sys
-from iotile.mock.mock_iotile import MockIOTileDevice
-from iotile.mock.mock_adapter import MockDeviceAdapter
-from iotile.core.hw.reports.individual_format import IndividualReadingReport
-from iotile.core.hw.reports.report import IOTileReading
-from iotilegateway.device import DeviceManager
-import threading
-from tornado.ioloop import IOLoop
-import tornado.gen
-import tornado.testing
+import pytest
+from iotilegateway.device import AggregatingDeviceAdapter
+from iotile.core.hw.transport import VirtualDeviceAdapter
+from iotile.core.hw.exceptions import DeviceAdapterError
+from iotile.core.utilities import BackgroundEventLoop
+from iotile.mock.devices import RealtimeTestDevice
 
-class TestDeviceManager(tornado.testing.AsyncTestCase):
-    def setUp(self):
-        super(TestDeviceManager, self).setUp()
+def gen_realtime_device(iotile_id):
+    return RealtimeTestDevice(dict(iotile_id=iotile_id))
 
-        self.dev = MockIOTileDevice(1, 'TestCN')
-        self.dev.reports = [IndividualReadingReport.FromReadings(100, [IOTileReading(0, 1, 2)])]
-        self.adapter = MockDeviceAdapter()
-        self.adapter.add_device('test', self.dev)
 
-        self.manager = DeviceManager(self.io_loop)
-        self.manager.add_adapter(self.adapter)
-        self.manager.register_monitor(1, ['report'], self.on_report)
-        self.reports = []
-        self.reports_received = threading.Event()
+@pytest.fixture(scope="function")
+def loop():
+    """A fresh background event loop."""
 
-    def tearDown(self):
-        super(TestDeviceManager, self).tearDown()
+    loop = BackgroundEventLoop()
 
-    def on_report(self, dev_uuid, event_name, report):
-        """Callback triggered when a report is received from a device on a device adapter
-        """
+    loop.start()
+    yield loop
+    loop.stop()
 
-        self.reports.append(report)
-        self.reports_received.set()
 
-    @tornado.testing.gen_test
-    def test_connect_direct(self):
-        """Make sure we can directly connect to a device
-        """
+@pytest.fixture(scope="function")
+def adapter(loop):
+    """An aggregating device adapter with 2 virtual adapters."""
 
-        res = yield self.manager.connect_direct('0/test')
-        assert res['success'] is True
+    dev1 = gen_realtime_device(1)
+    dev2 = gen_realtime_device(2)
+    dev3 = gen_realtime_device(3)
+    dev4 = gen_realtime_device(4)
 
-    @tornado.testing.gen_test
-    def test_send_rpc(self):
-        res = yield self.manager.connect_direct('0/test')
-        assert res['success'] is True
+    adapter1 = VirtualDeviceAdapter(devices=[dev1, dev2], loop=loop)
+    adapter2 = VirtualDeviceAdapter(devices=[dev3, dev4], loop=loop)
 
-        conn_id = res['connection_id']
+    combined = AggregatingDeviceAdapter(adapters=[adapter1, adapter2], loop=loop)
 
-        res = yield self.manager.send_rpc(conn_id, 8, 0, 4, b'', 1.0)
-        assert len(res['payload']) == 6
-        assert res['payload'] == b'TestCN'
+    loop.run_coroutine(combined.start())
+    yield combined, [adapter1, adapter2], [dev1, dev2, dev3, dev4]
+    loop.run_coroutine(combined.stop())
 
-    def test_monitors(self):
-        mon_id = self.manager.register_monitor(10, ['report'], lambda x,y: x)
-        self.manager.adjust_monitor(mon_id, add_events=['connection'], remove_events=['report'])
-        self.manager.remove_monitor(mon_id)
 
-    def test_scan(self):
-        devs = self.manager.scanned_devices
-        assert len(devs) == 0
+def test_basic(loop, adapter):
+    """Make sure combined adapter works at a basic level."""
 
-        self.adapter.advertise()
+    adapter, _sub, _devs = adapter
 
-        #Let the ioloop process the advertisements
-        try:
-            self.wait(timeout=0.1)
-        except:
-            pass
+    loop.run_coroutine(adapter.probe())
+    assert len(adapter.visible_devices()) == 4
 
-        devs = self.manager.scanned_devices
-        assert len(devs) == 1
-        assert 1 in devs
+    devs = set(adapter.visible_devices())
+    assert devs == set(['device/1', 'device/2', 'device/3', 'device/4'])
 
-    @tornado.testing.gen_test
-    def test_connect(self):
-        """Make sure we can directly to a device by uuid
-        """
 
-        self.adapter.advertise()
+def test_connect_disconnect(loop, adapter):
+    """Make sure we can connect and disconnect from both adapters."""
 
-        yield tornado.gen.sleep(0.1)
+    adapter, _sub, _devs = adapter
 
-        print(self.manager.scanned_devices)
+    loop.run_coroutine(adapter.probe())
 
-        res = yield self.manager.connect(1)
-        print(res)
+    loop.run_coroutine(adapter.connect(1, 'device/1'))
+    loop.run_coroutine(adapter.connect(2, 'device/2'))
+    loop.run_coroutine(adapter.connect(3, 'device/3'))
+    loop.run_coroutine(adapter.connect(4, 'device/4'))
 
-        assert res['success'] is True
+    # Make sure connection attempts to connected devices fail.
+    with pytest.raises(DeviceAdapterError):
+        loop.run_coroutine(adapter.connect(1, 'device/1'))
 
-    @tornado.testing.gen_test
-    def test_reports(self):
-        self.adapter.advertise()
-        yield tornado.gen.sleep(0.1)
+    with pytest.raises(DeviceAdapterError):
+        loop.run_coroutine(adapter.connect(1, 'adapter/0/1'))
 
-        res = yield self.manager.connect(1)
-        conn_id = res['connection_id']
+    loop.run_coroutine(adapter.disconnect(1))
 
-        yield self.manager.open_interface(conn_id, 'streaming')
-        yield tornado.gen.sleep(0.1)
+    # Test forcing a connection through a given adapter
+    with pytest.raises(DeviceAdapterError):
+        loop.run_coroutine(adapter.connect(1, 'adapter/1/1'))
 
-        assert len(self.reports) == 1
-        print(self.reports[0])
+    loop.run_coroutine(adapter.connect(1, 'adapter/0/1'))
