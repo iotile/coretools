@@ -18,6 +18,7 @@ ReportEvent = DictionaryVerifier()
 ReportEvent.add_required('connection_string', StringVerifier())
 ReportEvent.add_required('serialized_report', SerializedReport)
 
+
 DisconnectionEvent = DictionaryVerifier()
 DisconnectionEvent.add_required('connection_string', StringVerifier())
 DisconnectionEvent.add_required('reason', StringVerifier())

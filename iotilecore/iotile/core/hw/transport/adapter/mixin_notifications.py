@@ -49,8 +49,7 @@ class BasicNotificationMixin:
 
     def __init__(self, loop):
         self._loop = loop
-        self._monitors = {
-        }
+        self._monitors = {}
         self._callbacks = {}
 
         self._currently_notifying = False

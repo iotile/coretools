@@ -50,6 +50,8 @@ class WebSocketDeviceAdapter(StandardDeviceAdapter):
                                    NOTIFICATIONS.TraceEvent)
         self.client.register_event(OPERATIONS.NOTIFY_REPORT, self._on_report_notification,
                                    NOTIFICATIONS.ReportEvent)
+        self.client.register_event(OPERATIONS.NOTIFY_BROADCAST, self._on_broadcast_notification,
+                                   NOTIFICATIONS.ReportEvent)
         self.client.register_event(OPERATIONS.NOTIFY_PROGRESS, self._on_progress_notification,
                                    NOTIFICATIONS.ProgressEvent)
         self.client.register_event(AsyncValidatingWSClient.DISCONNECT_EVENT,
@@ -184,6 +186,18 @@ class WebSocketDeviceAdapter(StandardDeviceAdapter):
         report = self._report_parser.deserialize_report(event.get('serialized_report'))
 
         self.notify_event(conn_string, 'report', report)
+
+    async def _on_broadcast_notification(self, event):
+        """Callback function called when a broadcast event is received.
+
+        Args:
+            event (dict): The broadcast event
+        """
+
+        conn_string = event.get('connection_string')
+        report = self._report_parser.deserialize_report(event.get('serialized_report'))
+
+        self.notify_event(conn_string, 'broadcast', report)
 
     async def _on_trace_notification(self, trace_event):
         """Callback function called when a trace chunk is received.

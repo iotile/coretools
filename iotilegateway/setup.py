@@ -21,11 +21,8 @@ setup(
     version=version.version,
     license="LGPLv3",
     install_requires=[
-        "tornado>=4.5.0,<5.0.0",
         "iotile-core>=4.0.0,<5",
         "msgpack>=0.6.1,<1",
-        "ws4py>=0.5.1,<1",
-        "websockets>=7,<8"
         "iotile-transport-websocket>=2.0.2"
     ],
     python_requires=">=3.5,<4",
@@ -34,9 +31,6 @@ setup(
             'iotile-gateway = iotilegateway.main:main',
             'iotile-supervisor = iotilegateway.supervisor.main:main',
             'iotile-send-rpc = iotilegateway.supervisor.send_rpc:main'
-        ],
-        'iotile.gateway_agent': [
-            'websockets = iotilegateway.ws_agent:WebSocketGatewayAgent'
         ],
         'iotile.virtual_tile': [
             'service_delegate = iotilegateway.supervisor.service_tile:ServiceDelegateTile'
