@@ -90,6 +90,7 @@ class StandardDeviceAdapter(PerConnectionDataMixin,
         AbstractDeviceAdapter.__init__(self)
 
         self._logger = logging.getLogger(name)
+        self._next_conn_id = 0
         self._config = {}
 
     def get_config(self, name, default=_MISSING):
@@ -123,6 +124,17 @@ class StandardDeviceAdapter(PerConnectionDataMixin,
         """
 
         return len(self._connections) < self.get_config('max_connections', self.MAX_CONNECTIONS)
+
+    def unique_conn_id(self):
+        """Return a new, unique connection id.
+
+        See :meth:`AbstractDeviceAdapter.unique_conn_id`.
+        """
+
+        conn_id = self._next_conn_id
+        self._next_conn_id += 1
+
+        return conn_id
 
     async def start(self):
         """Start the device adapter.

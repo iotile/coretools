@@ -1,42 +1,26 @@
 """An IOTile gateway-in-a-box that will connect to devices using device adapters and serve them using agents."""
 
 import logging
-import threading
-import pkg_resources
-import tornado.ioloop
-import iotilegateway.device as device
+from iotile.core.dev import ComponentRegistry
 from iotile.core.exceptions import ArgumentError
+from iotile.core.utilities import SharedLoop
+from .device import AggregatingDeviceAdapter
 
 
-def find_entry_point(group, name):
-    """Find an entry point by name.
+class IOTileGateway:
+    """A gateway that finds IOTile devices using device adapters and serves them using device servers.
 
-    Args:
-        group (string): The entry point group like iotile.gateway_agent
-        name (string): The name of the entry point to find
-    """
+    The gateway runs in separate thread inside of a BackgroundEventLoop and
+    you can call the synchronous wait function to wait for it to quit.  It
+    will loop forever unless you stop it by calling the stop() or
+    stop_from_signal() methods.
 
-    for entry in pkg_resources.iter_entry_points(group, name):
-        item = entry.load()
-        return item
-
-    raise ArgumentError("Could not find installed plugin by name and group", group=group, name=name)
-
-
-class IOTileGateway(threading.Thread):
-    """A gateway that finds IOTile devices using device adapters and serves them using agents.
-
-    The gateway runs in separate thread in a tornado IOLoop and you can call the synchronous
-    wait function to wait for it to quit.  It will loop forever unless you stop it by calling
-    the stop() or stop_from_signal() methods.  These functions add a task to the gateway's
-    event loop and implicitly call wait to synchronously wait until the gateway loop actually
-    stops.
-
-    IOTileGateway should be thought of as a turn-key gateway object that translates requests
-    for IOTile Device access received from one or more GatewayAgents into commands sent to
-    one or more DeviceAdapters.  It is a multi-device, multi-user, multi-protocol system that
-    can have many connections in flight at the same time, limited only by the available resources
-    on the computer that hosts it.
+    IOTileGateway should be thought of as a turn-key gateway object that
+    translates requests for IOTile Device access received from one or more
+    AbstractDeviceServer into commands sent to one or more
+    AbstractDeviceAdapters.  It is a multi-device, multi-user, multi-protocol
+    system that can have many connections in flight at the same time, limited
+    only by the available resources on the computer that hosts it.
 
     The arguments dictionary to IOTileGateway class has the same format as the json parameters
     passed to the iotile-gateway script that is just a thin wrapper around this class.
@@ -44,145 +28,101 @@ class IOTileGateway(threading.Thread):
     Args:
         config (dict): The configuration of the gateway.  There should be two keys set:
 
-            agents (list):
-                a list of dictionaries with the name of the agent and any arguments that
-                should be passed to create it.
+            servers (list):
+                a list of dictionaries with the name of the device server and
+                any arguments that should be passed to create it.
+
             adapters (list):
                 a list of dictionaries with the device adapters to add into the gateway
                 and any arguments that should be use to create each one.
     """
 
-    def __init__(self, config):
-        self.loop = None
-        self.device_manager = None
-        self.agents = []
-        self.loaded = threading.Event()
-
+    def __init__(self, config, loop=SharedLoop):
+        self._loop = loop
         self._config = config
         self._logger = logging.getLogger(__name__)
 
-        if 'agents' not in config:
-            self._config['agents'] = []
-            self._logger.warning("No agents defined in arguments to iotile-gateway, "
-                              "this is likely not what you want")
-        elif 'adapters' not in config:
-            self._config['adapters'] = []
-            self._logger.warning("No device adapters defined in arguments to iotile-gateway, "
-                                 "this is likely not what you want")
+        self.adapters = _load_adapters(self._config.get('adapters', []), self._loop, self._logger)
+        self.device_manager = AggregatingDeviceAdapter(adapters=self.adapters, loop=self._loop)
+        self.servers = _load_servers(self._config.get('servers', []), self._loop, self._logger, self.device_manager)
 
-        super(IOTileGateway, self).__init__()
+    async def start(self):
+        """Start the gateway."""
 
-    def run(self):
-        """Start the gateway and run it to completion in another thread."""
+        self._logger.info("Starting all device adapters")
+        await self.device_manager.start()
 
-        self.loop = tornado.ioloop.IOLoop(make_current=True)  # To create a loop for each thread
-        self.device_manager = device.DeviceManager(self.loop)
+        self._logger.info("Starting all servers")
+        for server in self.servers:
+            await server.start()
 
-        # If we have an initialization error, stop trying to initialize more things and
-        # just shut down cleanly
-        should_close = False
-
-        # Load in all of the gateway agents that are supposed to provide access to
-        # the devices in this gateway
-        for agent_info in self._config['agents']:
-            if 'name' not in agent_info:
-                self._logger.error("Invalid agent information in gateway config, info=%s, missing_key=%s",
-                                   str(agent_info), 'name')
-                should_close = True
-                break
-
-            agent_name = agent_info['name']
-            agent_args = agent_info.get('args', {})
-
-            self._logger.info("Loading agent by name '%s'", agent_name)
-            agent_class = find_entry_point('iotile.gateway_agent', agent_name)
-            try:
-                agent = agent_class(agent_args, self.device_manager, self.loop)
-                agent.start()
-                self.agents.append(agent)
-            except Exception:  # pylint: disable=W0703
-                self._logger.exception("Could not load gateway agent %s, quitting", agent_name)
-                should_close = True
-                break
-
-        # Load in all of the device adapters that provide access to actual devices
-        if not should_close:
-            for adapter_info in self._config['adapters']:
-                if 'name' not in adapter_info:
-                    self._logger.error("Invalid adapter information in gateway config, info=%s, missing_key=%s",
-                                       str(adapter_info), 'name')
-                    should_close = True
-                    break
-
-                adapter_name = adapter_info['name']
-                port_string = adapter_info.get('port', None)
-
-                self._logger.info("Loading device adapter by name '%s' and port '%s'", adapter_name, port_string)
-
-                try:
-                    adapter_class = find_entry_point('iotile.device_adapter', adapter_name)
-                    adapter = adapter_class(port_string)
-                    self.device_manager.add_adapter(adapter)
-                except Exception:  # pylint: disable=W0703
-                    self._logger.exception("Could not load device adapter %s, quitting", adapter_name)
-                    should_close = True
-
-        if should_close:
-            self.loop.add_callback(self._stop_loop)
-        else:
-            # Notify that we have now loaded all plugins and are starting operation (once the loop starts)
-            self.loop.add_callback(lambda: self.loaded.set())
-
-        self.loop.start()
-
-        # The loop has been closed, finish and quit
-        self._logger.critical("Done stopping loop")
-
-    def _stop_loop(self):
-        """Cleanly stop the gateway and close down the IOLoop.
-
-        This function must be called only by being added to our event loop using add_callback.
-        """
-
-        self._logger.critical("Stopping gateway")
-        self._logger.info("Stopping gateway agents")
-
-        for agent in self.agents:
-            try:
-                agent.stop()
-            except Exception:  # pylint: disable=W0703
-                self._logger.exception("Error stopping gateway agent")
-
-        self._logger.critical('Stopping device adapters')
-
-        try:
-            self.device_manager.stop()
-        except Exception:  # pylint: disable=W0703
-            self._logger.exception("Error stopping device adapters")
-
-        self.loop.stop()
-        self._logger.critical('Stopping event loop and shutting down')
-
-    def stop(self):
+    async def stop(self):
         """Stop the gateway manager and synchronously wait for it to stop."""
 
-        self.loop.add_callback(self._stop_loop)
-        self.wait()
+        self._logger.info("Stopping all servers")
+        for server in self.servers:
+            await server.stop()
 
-    def wait(self):
-        """Wait for this gateway to shut down.
+        self._logger.info("Stopping all device adapters")
+        await self.device_manager.stop()
 
-        We need this special function because waiting inside
-        join will cause signals to not get handled.
-        """
 
-        while self.is_alive():
-            try:
-                self.join(timeout=0.1)
-            except IOError:
-                pass  # IOError comes when this call is interrupted in a signal handler
+def _load_servers(configs, loop, logger, adapter):
+    if len(configs) == 0:
+        logger.warning("No servers defined in arguments to iotile-gateway, "
+                       "this is likely not what you want")
 
-    def stop_from_signal(self):
-        """Stop the gateway from a signal handler, not waiting for it to stop."""
+    reg = ComponentRegistry()
+    servers = []
 
-        self.loop.add_callback_from_signal(self._stop_loop)
+    for agent_info in configs:
+        if 'name' not in agent_info:
+            logger.error("Invalid server information in gateway config, info=%s, missing_key=%s",
+                         str(agent_info), 'name')
+
+            raise ArgumentError("No server name given in config dict: %s" % agent_info)
+
+        agent_name = agent_info['name']
+        agent_args = agent_info.get('args', {})
+
+        logger.info("Loading server by name '%s'", agent_name)
+        _, agent_class = reg.load_extensions('iotile.device_server', name_filter=agent_name, unique=True)
+
+        try:
+            agent = agent_class(adapter, agent_args, loop=loop)
+            servers.append(agent)
+        except Exception:  # pylint: disable=W0703
+            logger.exception("Could not load device server %s, quitting", agent_name)
+            raise
+
+    return servers
+
+
+def _load_adapters(configs, loop, logger):
+    if len(configs) == 0:
+        logger.warning("No adapters defined in arguments to iotile-gateway, "
+                       "this is likely not what you want")
+
+    reg = ComponentRegistry()
+    adapters = []
+
+    for adapter_info in configs:
+        if 'name' not in adapter_info:
+            logger.error("Invalid adapter information in gateway config, info=%s, missing_key=%s",
+                         str(adapter_info), 'name')
+            raise ArgumentError("No adapter name given in config dict: %s" % adapter_info)
+
+        adapter_name = adapter_info['name']
+        port_string = adapter_info.get('port', None)
+
+        logger.info("Loading device adapter by name '%s' and port '%s'", adapter_name, port_string)
+
+        try:
+            _, adapter_class = reg.load_extensions('iotile.device_adapter', name_filter=adapter_name, unique=True)
+            adapter = adapter_class(port_string, loop=loop)
+            adapters.append(adapter)
+        except Exception:  # pylint: disable=W0703
+            logger.exception("Could not load device adapter %s", adapter_name)
+            raise
+
+    return adapters
