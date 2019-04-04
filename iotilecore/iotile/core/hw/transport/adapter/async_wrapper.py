@@ -91,12 +91,10 @@ class AsynchronousModernWrapper(StandardDeviceAdapter):
         See :meth:`AbstractDeviceAdapter.stop`.
         """
 
-        self._logger.debug("Stopping async wrapper %s (before check)", self._adapter.__class__.__name__)
 
         if self._task.stopped:
             return
 
-        self._logger.debug("Stopping async wrapper %s", self._adapter.__class__.__name__)
         for task in self._task.subtasks:
             await task.stop()
 
