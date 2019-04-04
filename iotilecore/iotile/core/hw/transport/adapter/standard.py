@@ -90,7 +90,7 @@ class StandardDeviceAdapter(PerConnectionDataMixin,
         AbstractDeviceAdapter.__init__(self)
 
         self._logger = logging.getLogger(name)
-        self._next_connn_id = 0
+        self._next_conn_id = 0
         self._config = {}
 
     def get_config(self, name, default=_MISSING):
@@ -131,8 +131,8 @@ class StandardDeviceAdapter(PerConnectionDataMixin,
         See :meth:`AbstractDeviceAdapter.unique_conn_id`.
         """
 
-        conn_id = self._next_connn_id
-        self._next_connn_id += 1
+        conn_id = self._next_conn_id
+        self._next_conn_id += 1
 
         return conn_id
 
