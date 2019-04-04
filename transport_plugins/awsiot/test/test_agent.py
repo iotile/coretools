@@ -1,7 +1,11 @@
+import pytest
 import queue
 
 from iotile_transport_awsiot.mqtt_client import OrderedAWSIOTClient
 import time
+
+pytestmark = pytest.mark.skip("This distribution needs to be updated to work with asyncio gateway")
+
 
 def test_gateway(gateway, local_broker, args):
     """Make sure we can connect to the gateway by sending packets over the mqtt message broker."""
