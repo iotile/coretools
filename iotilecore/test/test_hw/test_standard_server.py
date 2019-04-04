@@ -166,6 +166,30 @@ def test_send_script(server):
     assert all(x[1][1] == 'progress' for x in events)
 
 
+def test_debug(server):
+    """Make sure we can send debug commands."""
+
+    loop, events, server, _ = server
+
+    client1 = server.setup_client()
+
+    with pytest.raises(DeviceServerError):
+        loop.run_coroutine(server.send_script(client1, '1', bytes(100)))
+
+    loop.run_coroutine(server.connect(client1, '1'))
+    result = loop.run_coroutine(server.debug(client1, '1', 'inspect_property',
+                                             dict(properties=['connected'])))
+
+    assert len(result) == 1
+    assert result.get('connected') is True
+
+    assert len(events) == 1
+    assert all(x[1][1] == 'progress' for x in events)
+
+    with pytest.raises(DeviceAdapterError):
+        loop.run_coroutine(server.debug(client1, '1', 'random_command', {}))
+
+
 def test_all_interfaces(server):
     """Make sure we can open and close all interfaces."""
 

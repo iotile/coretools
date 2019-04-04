@@ -244,6 +244,22 @@ def test_tilebased_device(tile_based):
     tile1.count()
 
 
+def test_debug(realtime_scan_hw):
+    """Make sure we can send debug commands."""
+
+    hw = realtime_scan_hw
+
+    hw.connect('1')
+    debug_man = hw.debug()
+    result = debug_man.send_command('inspect_property', dict(properties=['connected']))
+
+    assert len(result) == 1
+    assert result.get('connected') is True
+
+    with pytest.raises(HardwareError):
+        debug_man.send_command('random_command', dict())
+
+
 def test_recording_rpcs(tmpdir):
     """Make sure we can record RPCs."""
 
