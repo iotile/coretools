@@ -269,6 +269,7 @@ class WebSocketDeviceServer(StandardDeviceServer):
             return
 
         try:
+            self._logger.debug("Sending event %s: %s", msg_name, msg_payload)
             await self.server.send_event(user_data, msg_name, msg_payload)
         except websockets.exceptions.ConnectionClosed:
             self._logger.debug("Could not send notification because connection was closed for client %s", client_id)

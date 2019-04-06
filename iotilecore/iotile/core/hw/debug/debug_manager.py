@@ -30,6 +30,16 @@ class DebugManager:
     def __init__(self, stream):
         self._stream = stream
 
+    def send_command(self, name, cmd_args):
+        """Send an arbitrary debug command.
+
+        Args:
+            name (str): The name of the debug command to send.
+            cmd_args (dict): Any required arguments for the command.
+        """
+
+        return self._stream.debug_command(name, cmd_args)
+
     @docannotate
     def dump_ram(self, out_path, pause=False):
         """Dump all RAM to a binary file.

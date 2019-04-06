@@ -36,7 +36,17 @@ class BackgroundTask:
     Tasks can also be given names that will be logged for debugging purposes.
 
     This class should never be created directly but will be returned
-    by BackgroundEventLoop.add_task()
+    by BackgroundEventLoop.add_task().
+
+    Generally, you always want to start a task with a coroutine that it
+    runs.  However, there are cases where you just want a "parent" task
+    as a placeholder that can group various subtasks that do have coroutines.
+
+    In that case, you can pass ``cor`` as None to say that there is no
+    underlying asnycio task backing this task.  In that case, you **should**
+    pass ``finalizer`` as something other than None.  You can create a task
+    that has no coroutine and no finalizer, which is basically just a
+    placeholder that does nothing.
 
     Args:
         cor (coroutine or asyncio.Task): An asyncio Task or the coroutine
@@ -85,6 +95,8 @@ class BackgroundTask:
             self.task = _create_task_threadsafe(cor(), self._loop)
         elif isinstance(cor, asyncio.Task):
             self.task = cor
+        elif cor is None:
+            self.task = None
         else:
             raise ArgumentError("Unknown object passed to Background task: {}".format(cor))
 
@@ -179,10 +191,14 @@ class BackgroundTask:
             except:  #pylint:disable=bare-except;We need to make sure we always wait for the task
                 self._logger.exception("Error running finalizer for task %s",
                                        self.name)
-        else:
+        elif self.task is not None:
             self.task.cancel()
 
-        tasks = [self.task] + [x.task for x in self.subtasks]
+        tasks = []
+        if self.task is not None:
+            tasks.append(self.task)
+
+        tasks.extend(x.task for x in self.subtasks)
         finished = asyncio.gather(*tasks, return_exceptions=True)
 
         try:
@@ -204,7 +220,6 @@ class BackgroundTask:
 
             if self in self._loop.tasks:
                 self._loop.tasks.remove(self)
-
 
     def stop_threadsafe(self):
         """Stop this task from another thread and wait for it to finish.
@@ -240,11 +255,19 @@ class BackgroundEventLoop:
     that can be used when you just want to add tasks to a single shared loop.
     Creating your own BackgroundEventLoop should not be generally done unless
     you are unit testing.
+
+    A background event loop cannot be restarted once it stops.  Once the shutdown
+    process is started by calling ``stop()``, no more tasks can be added to the
+    loop and attempts to add them will raise an InternalError.
+
+    This prevents people from accidentally adding more tasks while the loop is
+    shutting down.
     """
 
     def __init__(self):
         self.loop = None
         self.thread = None
+        self.stopping = False
         self.tasks = set()
 
         self._logger = logging.getLogger(__name__)
@@ -256,6 +279,9 @@ class BackgroundEventLoop:
         This method is safe to call multiple times.  If the loop is already
         running, it will not do anything.
         """
+
+        if self.stopping:
+            raise InternalError("Cannot perform action while loop is stopping.")
 
         if not self.loop:
             self._logger.debug("Starting event loop")
@@ -295,7 +321,7 @@ class BackgroundEventLoop:
 
                 accum += wait
         except KeyboardInterrupt:
-            self.stop()
+            pass
 
     def stop(self):
         """Synchronously stop the background loop from outside.
@@ -356,6 +382,8 @@ class BackgroundEventLoop:
 
     async def _stop_internal(self):
         """Cleanly stop the event loop after shutting down all tasks."""
+
+        self.stopping = True
 
         awaitables = [task.stop() for task in self.tasks]
 

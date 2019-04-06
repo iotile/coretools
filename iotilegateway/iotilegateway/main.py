@@ -101,7 +101,7 @@ def main(argv=None, loop=SharedLoop, max_time=None):
         if should_raise:
             raise exc
 
-        logger.exception("Fatal error running supervisor")
+        logger.exception("Fatal error running gateway")
         return 1
 
     return 0
