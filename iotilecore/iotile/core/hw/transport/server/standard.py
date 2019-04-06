@@ -217,6 +217,7 @@ class StandardDeviceServer(AbstractDeviceServer):
 
         for conn_string, conn_id in conns.items():
             try:
+                self._logger.debug("Disconnecting client %d from conn %s at teardown", client_id, conn_string)
                 await self.adapter.disconnect(conn_id)
             except:  #pylint:disable=bare-except; This is a finalization method that should not raise unexpectedly
                 self._logger.exception("Error disconnecting device during teardown_client: conn_string=%s", conn_string)
