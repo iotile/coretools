@@ -12,9 +12,7 @@ formatted connection string if you don't want the automatic behavior.
 
 TODO:
 - [ ] Periodically expire devices from visible_devices
-- [ ] Set configs like probe_required, probe_supported
 - [ ] Add threadsafe mutex around visible_devices
-
 """
 
 import logging
@@ -23,7 +21,7 @@ from time import monotonic
 import functools
 from iotile.core.exceptions import ArgumentError, InternalError
 from iotile.core.utilities import SharedLoop
-from iotile.core.hw.transport.adapter import AbstractDeviceAdapter, BasicNotificationMixin, PerConnectionDataMixin
+from iotile.core.hw.transport.adapter import AbstractDeviceAdapter, BasicNotificationMixin, PerConnectionDataMixin, DeviceAdapter, AsynchronousModernWrapper
 from iotile.core.hw.exceptions import DeviceAdapterError
 
 
@@ -82,6 +80,10 @@ class AggregatingDeviceAdapter(BasicNotificationMixin,
 
         if self._started:
             raise InternalError("New adapters cannot be added after start() is called")
+
+        if isinstance(adapter, DeviceAdapter):
+            self._logger.warning("Wrapping legacy device adapter %s in async wrapper", adapter)
+            adapter = AsynchronousModernWrapper(adapter, loop=self._loop)
 
         self.adapters.append(adapter)
 

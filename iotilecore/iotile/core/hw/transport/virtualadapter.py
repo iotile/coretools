@@ -323,6 +323,45 @@ class VirtualDeviceAdapter(StandardDeviceAdapter):
 
         dev.script = data
 
+    async def debug(self, conn_id, name, cmd_args):
+        """Send a debug command to a device.
+
+        This method responds to a single command 'inspect_property' that takes
+        the name of a propery on the device and returns its value.  The
+        ``cmd_args`` dict should have a single key: 'properties' that is a
+        list of strings with the property names that should be returned.
+
+        Those properties are all queried and their result returned.
+
+        The result is a dict that maps property name to value.  There is a
+        progress event generated for every property whose purpose is primarily
+        to allow for testing the progress system of a device server.
+
+        See :meth:`AbstractDeviceAdapter.debug`.
+        """
+
+        self._ensure_connection(conn_id, True)
+        dev = self._get_property(conn_id, 'device')
+        conn_string = self._get_property(conn_id, 'connection_string')
+
+        if name != 'inspect_property':
+            raise DeviceAdapterError(conn_id, 'debug', 'operation {} not supported'.format(name))
+
+        properties = cmd_args.get('properties', [])
+
+        result = {}
+
+        for i, prop in enumerate(properties):
+            if not hasattr(dev, prop):
+                raise DeviceAdapterError(conn_id, 'debug', 'property {} did not exist'.format(prop))
+
+            value = getattr(dev, prop)
+            result[prop] = value
+
+            await self.notify_progress(conn_string, 'debug', i + 1, len(properties))
+
+        return result
+
     async def _send_scan_event(self, device):
         """Send a scan event from a device."""
 
