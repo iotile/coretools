@@ -83,3 +83,9 @@ class HardwareError(IOTileException):
     """
 
     pass
+
+
+class LoopStoppingError(IOTileException):
+    """A task was added to the event loop while it was stopping."""
+
+    pass

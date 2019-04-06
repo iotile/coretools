@@ -4,7 +4,7 @@ import json
 import os.path
 from iotile.core.hw.hwmanager import HardwareManager
 from iotile.core.dev.registry import ComponentRegistry
-from iotile.core.hw.exceptions import UnsupportedCommandError
+from iotile.core.hw.exceptions import RPCNotFoundError
 from typedargs.exceptions import KeyValueException
 from iotile.core.hw.virtual import VirtualTile, RPCInvalidArgumentsError
 
@@ -71,9 +71,9 @@ def test_invalid_rpc_args_length(registry, p):
 
 
 def test_invalid_rpc_args(registry, p):
-    with pytest.raises(KeyValueException) as e:
+    with pytest.raises(RPCInvalidArgumentsError) as e:
         p.test_invalid_args_missing_rpc_v2()
-    assert e.type == KeyValueException
+    assert e.type == RPCInvalidArgumentsError
 
     with pytest.raises(struct.error) as e:
         p.test_invalid_args_missing_rpc_v1()
@@ -81,10 +81,10 @@ def test_invalid_rpc_args(registry, p):
 
 
 def test_rpc_does_not_exist(registry, p):
-    with pytest.raises(UnsupportedCommandError) as e:
+    with pytest.raises(RPCNotFoundError) as e:
         p.test_rpc_does_not_exist_v1()
-    assert e.type == UnsupportedCommandError
+    assert e.type == RPCNotFoundError
 
-    with pytest.raises(UnsupportedCommandError) as e:
+    with pytest.raises(RPCNotFoundError) as e:
         p.test_rpc_does_not_exist_v2()
-    assert e.type == UnsupportedCommandError
+    assert e.type == RPCNotFoundError

@@ -14,11 +14,10 @@ from queue import Empty
 from typedargs.annotate import annotated, param, return_type, finalizer, docannotate, context
 
 from iotile.core.dev.semver import SemanticVersion
-from iotile.core.hw.transport import CMDStream
 from iotile.core.hw.exceptions import UnknownModuleTypeError
 from iotile.core.exceptions import ArgumentError, HardwareError, ValidationError, TimeoutExpiredError, ExternalError
 from iotile.core.dev.registry import ComponentRegistry
-from iotile.core.hw.transport.adapterstream import AdapterCMDStream
+from iotile.core.hw.transport.adapterstream import AdapterStream
 from iotile.core.dev.config import ConfigManager
 from iotile.core.hw.debug import DebugManager
 from iotile.core.utilities.linebuffer_ui import LinebufferUI
@@ -306,7 +305,10 @@ class HardwareManager:
         an exception.
         """
 
-        self.stream.enable_debug(connection_string)
+        if connection_string is not None:
+            self.stream.connect_direct(connection_string)
+
+        self.stream.enable_debug()
         return DebugManager(self.stream)
 
     @return_type("bool")
@@ -816,30 +818,19 @@ class HardwareManager:
     def _create_stream(self, force_adapter=None):
         conn_string = None
         port = self.port
-        if port is not None and "," in port:
-            port, conn_string = port.split(',')
 
         if port is not None:
             port = port.strip()
-        if conn_string is not None:
-            conn_string = conn_string.strip()
 
         # Check if we're supposed to use a specific device adapter
         if force_adapter is not None:
-            return AdapterCMDStream(force_adapter, port, conn_string, record=self._record)
+            return AdapterStream(force_adapter, record=self._record)
 
-        # First check if this is the special none stream that creates a transport channel nowhere
-        if self.transport == 'none':
-            return CMDStream(port, conn_string, record=self._record)
-
-        # Next attempt to find a CMDStream that is registered for this transport type
+        # Attempt to find a DeviceAdapter that can handle this transport type
         reg = ComponentRegistry()
-        for _name, stream_factory in reg.load_extensions('iotile.cmdstream', name_filter=self.transport):
-            return stream_factory(port, conn_string, record=self._record)
 
-        # Otherwise attempt to find a DeviceAdapter that we can turn into a CMDStream
-        for _name, adapter_factory in reg.load_extensions('iotile.device_adapter', name_filter=self.transport):
-            return AdapterCMDStream(adapter_factory(port), port, conn_string, record=self._record)
+        for _, adapter_factory in reg.load_extensions('iotile.device_adapter', name_filter=self.transport):
+            return AdapterStream(adapter_factory(port), record=self._record)
 
         raise HardwareError("Could not find transport object registered to handle passed transport type",
                             transport=self.transport)

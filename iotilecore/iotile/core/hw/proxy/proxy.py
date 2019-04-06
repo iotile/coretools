@@ -7,12 +7,11 @@
 # are copyright Arch Systems Inc.
 
 # MIB Proxy Objects
-
-from iotile.core.hw.exceptions import *
-from iotile.core.utilities.typedargs import return_type, annotated, param, context
 from time import sleep
 import struct
-from iotile.core.exceptions import *
+from iotile.core.hw.exceptions import RPCInvalidReturnValueError, BusyRPCResponse, RPCError, RPCInvalidArgumentsError, TileNotFoundError
+from iotile.core.exceptions import HardwareError
+from iotile.core.utilities.typedargs import return_type, annotated, param, context
 from ..virtual import pack_rpc_payload, unpack_rpc_payload
 
 
@@ -45,9 +44,31 @@ class TileBusProxyObject:
         elif not args:
             packed_args = b''
         else:
-            packed_args = self._format_args(args)
+            packed_args = _format_args(args)
 
-        status, payload = self.stream.send_rpc(self.addr, rpc_id, packed_args, **kw)
+        passed_kw = dict()
+        if 'timeout' in kw:
+            passed_kw['timeout'] = kw['timeout']
+
+        try:
+            should_retry = False
+            payload = self.stream.send_rpc(self.addr, rpc_id, packed_args, **passed_kw)
+        except BusyRPCResponse:
+            if "retries" not in kw:
+                kw['retries'] = 10
+
+            # Sleep 100 ms and try again unless we've exhausted our retry attempts
+            if kw["retries"] == 0:
+                raise BusyRPCResponse("Could not complete RPC %d:%04X after 10 attempts due to busy tile" %
+                                      (self.addr, rpc_id))
+
+            should_retry = True
+
+        # If the tile was busy, automatically retry up to 10 times
+        if should_retry:
+            kw['retries'] -= 1
+            sleep(0.1)
+            return self.rpc(feature, cmd, *args, **kw)
 
         unpack_flag = False
         if "result_type" in kw:
@@ -58,80 +79,14 @@ class TileBusProxyObject:
         else:
             res_type = (0, False)
 
-        try:
-            res = self._parse_rpc_result(status, payload, *res_type, command=rpc_id)
-            if unpack_flag:
-                try:
-                    return unpack_rpc_payload("%s" % kw["result_format"], res['buffer'])
-                except struct.error as err:
-                    raise InvalidReturnValueError(self.addr, rpc_id, kw['result_format'], res['buffer'], status=status)
+        res = _parse_rpc_result(payload, *res_type)
+        if unpack_flag:
+            try:
+                return unpack_rpc_payload("%s" % kw["result_format"], res['buffer'])
+            except struct.error:
+                raise RPCInvalidReturnValueError(self.addr, rpc_id, kw['result_format'], res['buffer'])
 
-            return res
-        except ModuleBusyError:
-            pass
-
-        if "retries" not in kw:
-            kw['retries'] = 10
-
-        # Sleep 100 ms and try again unless we've exhausted our retry attempts
-        if kw["retries"] > 0:
-            kw['retries'] -= 1
-
-            sleep(0.1)
-            return self.rpc(feature, cmd, *args, **kw)
-
-    def _convert_int(self, arg):
-        out = bytearray(2)
-
-        out[0] = arg & 0xFF
-        out[1] = (arg & 0xFF00) >> 8
-
-        converted = out[0] | (out[1] << 8)
-
-        if converted != arg:
-            raise ValueError("Integer argument was too large to fit in an rpc 16 bit int: %d" % arg)
-
-        return out
-
-    def _pack_arg(self, arg):
-        if isinstance(arg, int):
-            return self._convert_int(arg), False
-        elif isinstance(arg, bytearray):
-            return arg, True
-        elif isinstance(arg, str):  # for python 3 compatibility, encode all newstr from future module
-            return bytearray(arg.encode('utf-8')), True
-        elif isinstance(arg, bytes):
-            return bytearray(arg), True
-
-        raise ValueError("Unknown argument type could not be converted for rpc call.")
-
-    def _format_args(self, args):
-        fmtd = bytearray()
-
-        num_ints = 0
-        num_bufs = 0
-
-        for arg in args:
-            a, is_buf = self._pack_arg(arg)
-            fmtd += a
-
-            if is_buf:
-                num_bufs += 1
-                buff_len = len(a)
-
-            if not is_buf:
-                if num_bufs != 0:
-                    raise ValueError("Invalid rpc parameters, integer came after buffer.")
-
-                num_ints += 1
-
-        if num_bufs > 1:
-            raise ValueError("You must pass at most 1 buffer. num_bufs=%d" % num_bufs)
-
-        if len(fmtd) > 20:
-            raise ValueError("Arguments are greater then the maximum mib packet size, size was %d" % len(fmtd))
-
-        return fmtd
+        return res
 
     def rpc_v2(self, cmd, arg_format, result_format, *args, **kw):
         """Send an RPC call to this module, interpret the return value
@@ -147,26 +102,33 @@ class TileBusProxyObject:
         elif arg_format == "":
             packed_args = b''
         else:
-            raise IOTileException("Arg format expects arguments to be present", arg_format=arg_format, args=args)
+            raise RPCInvalidArgumentsError("Arg format expects arguments to be present", arg_format=arg_format, args=args)
 
-        status, payload = self.stream.send_rpc(self.addr, cmd, packed_args, **kw)
-        res_type = (0, True)
+        passed_kw = dict()
+        if 'timeout' in kw:
+            passed_kw['timeout'] = kw['timeout']
 
         try:
-            res = self._parse_rpc_result(status, payload, *res_type, command=cmd)
-            return unpack_rpc_payload("%s" % result_format, res['buffer'])
-        except ModuleBusyError:
-            pass
+            should_retry = False
+            payload = self.stream.send_rpc(self.addr, cmd, packed_args, **passed_kw)
+        except BusyRPCResponse:
+            if "retries" not in kw:
+                kw['retries'] = 10
 
-        if "retries" not in kw:
-            kw['retries'] = 10
+            # Sleep 100 ms and try again unless we've exhausted our retry attempts
+            if kw["retries"] == 0:
+                raise BusyRPCResponse("Could not complete RPC %d:%04X after 10 attempts due to busy tile" %
+                                      (self.addr, cmd))
 
-        # Sleep 100 ms and try again unless we've exhausted our retry attempts
-        if kw["retries"] > 0:
+            should_retry = True
+
+        # If the tile was busy, automatically retry up to 10 times
+        if should_retry:
             kw['retries'] -= 1
-
             sleep(0.1)
             return self.rpc_v2(cmd, arg_format, result_format, *args, **kw)
+
+        return unpack_rpc_payload("%s" % result_format, payload)
 
     @return_type("string")
     def hardware_version(self):
@@ -239,7 +201,7 @@ class TileBusProxyObject:
         """Immediately reset this tile."""
         try:
             self.rpc(0x00, 0x01)
-        except ModuleNotFoundError:
+        except TileNotFoundError:
             pass
 
         sleep(wait)
@@ -271,46 +233,6 @@ class TileBusProxyObject:
         status['trapped'] = bool(flags & (1 << 2))
 
         return status
-
-    def _parse_rpc_result(self, status, payload, num_ints, buff, command):
-        """Parse the response of an RPC call into a dictionary with integer and buffer results"""
-
-        parsed = {'ints':[], 'buffer':"", 'error': 'No Error', 'is_error': False}
-        parsed['status'] = status
-        parsed['return_value'] = status & 0b00111111
-
-        # Check for protocol defined errors
-        if not status & (1<<6):
-            if status == 2:
-                raise UnsupportedCommandError(address=self.addr, command=command)
-
-            raise RPCError("Unknown status code received from RPC call", address=self.addr, status_code=status)
-
-        # This second check below is a workaround for a lib_controller bug introduced
-        # 9/27/2017 that causes the app_defined status bit to be set for all status
-        # codes that come from a controller.
-        if self.addr == 8 and status == ((1 << 6) | 2):
-            raise UnsupportedCommandError(address=self.addr, command=command)
-
-        # Otherwise, parse the results according to the type information given
-        size = len(payload)
-
-        if size < 2*num_ints:
-            raise RPCError('Return value too short to unpack', expected_minimum_size=2*num_ints, actual_size=size,
-                           status_code=status, payload=payload)
-        elif buff is False and size != 2*num_ints:
-            raise RPCError('Return value was not the correct size', expected_size=2*num_ints, actual_size=size,
-                           status_code=status, payload=payload)
-
-        for i in range(0, num_ints):
-            low = (payload[2*i])
-            high = (payload[2*i + 1])
-            parsed['ints'].append((high << 8) | low)
-
-        if buff:
-            parsed['buffer'] = payload[2*num_ints:]
-
-        return parsed
 
 
 @context("ConfigManager")
@@ -487,3 +409,85 @@ class ConfigManager:
             resp = self._proxy.rpc(0, 12, d_id, offset, value[offset:offset+remaining], result_type=(1, False))
             if resp['ints'][0] != 0:
                 raise HardwareError("Error setting config variable", id=d_id, error_code=resp['ints'][0])
+
+
+def _parse_rpc_result(payload, num_ints, buff):
+    """Parse the response of an RPC call into a dictionary with integer and buffer results"""
+
+    parsed = {'ints':[], 'buffer':"", 'error': 'No Error',
+              'is_error': False, 'return_value': 0}
+
+    # Otherwise, parse the results according to the type information given
+    size = len(payload)
+
+    if size < 2*num_ints:
+        raise RPCError('Return value too short to unpack', expected_minimum_size=2*num_ints, actual_size=size,
+                       payload=payload)
+
+    if buff is False and size != 2*num_ints:
+        raise RPCError('Return value was not the correct size', expected_size=2*num_ints, actual_size=size,
+                       payload=payload)
+
+    for i in range(0, num_ints):
+        low = (payload[2*i])
+        high = (payload[2*i + 1])
+        parsed['ints'].append((high << 8) | low)
+
+    if buff:
+        parsed['buffer'] = bytearray(payload[2*num_ints:])
+
+    return parsed
+
+
+def _convert_int(arg):
+    out = bytearray(2)
+
+    out[0] = arg & 0xFF
+    out[1] = (arg & 0xFF00) >> 8
+
+    converted = out[0] | (out[1] << 8)
+
+    if converted != arg:
+        raise ValueError("Integer argument was too large to fit in an rpc 16 bit int: %d" % arg)
+
+    return out
+
+
+def _pack_arg(arg):
+    if isinstance(arg, int):
+        return _convert_int(arg), False
+    elif isinstance(arg, bytearray):
+        return arg, True
+    elif isinstance(arg, str):  # for python 3 compatibility, encode all newstr from future module
+        return bytearray(arg.encode('utf-8')), True
+    elif isinstance(arg, bytes):
+        return bytearray(arg), True
+
+    raise ValueError("Unknown argument type could not be converted for rpc call.")
+
+
+def _format_args(args):
+    fmtd = bytearray()
+
+    num_ints = 0
+    num_bufs = 0
+
+    for arg in args:
+        a, is_buf = _pack_arg(arg)
+        fmtd += a
+
+        if is_buf:
+            num_bufs += 1
+        else:
+            if num_bufs != 0:
+                raise ValueError("Invalid rpc parameters, integer came after buffer.")
+
+            num_ints += 1
+
+    if num_bufs > 1:
+        raise ValueError("You must pass at most 1 buffer. num_bufs=%d" % num_bufs)
+
+    if len(fmtd) > 20:
+        raise ValueError("Arguments are greater then the maximum mib packet size, size was %d" % len(fmtd))
+
+    return fmtd

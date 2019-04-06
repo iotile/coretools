@@ -220,7 +220,7 @@ class BasicNotificationMixin:
             awaitable: An awaitable object that can be used to wait for all callbacks.
         """
 
-        return self._loop.launch_coroutine(self._notify_event_internal(conn_string, name, event))
+        return self._loop.launch_coroutine(self._notify_event_internal, conn_string, name, event)
 
     def notify_event_nowait(self, conn_string, name, event):
         """Notify an event.
@@ -244,7 +244,11 @@ class BasicNotificationMixin:
                 depend on what is being notified.
         """
 
-        return self._loop.log_coroutine(self._notify_event_internal(conn_string, name, event))
+        if self._loop.stopping:
+            self._logger.debug("Ignoring notification %s from %s because loop is shutting down", name, conn_string)
+            return
+
+        self._loop.log_coroutine(self._notify_event_internal, conn_string, name, event)
 
     #pylint:disable=too-many-arguments;The final wait argument has a sane default
     def notify_progress(self, conn_string, operation, finished, total, wait=True):

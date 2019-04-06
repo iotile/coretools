@@ -1,7 +1,7 @@
 import pytest
 import logging
 from iotile.core.hw.hwmanager import HardwareManager
-from iotile.core.hw.transport.adapter import SynchronousLegacyWrapper
+from iotile.core.hw.transport.adapter.sync_wrapper import SynchronousLegacyWrapper
 from iotile.core.hw.transport import VirtualDeviceAdapter
 from iotile.core.utilities import BackgroundEventLoop
 from iotile_transport_websocket.virtual_websocket import WebSocketVirtualInterface

@@ -39,7 +39,7 @@ class AsynchronousModernWrapper(StandardDeviceAdapter):
         self._logger = logging.getLogger(__name__)
         self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)
         self._task = loop.add_task(None, name="LegacyAdapter (%s)" % adapter.__class__.__name__,
-                                   finalizer=lambda _x: self.stop, stop_timeout=5.0)
+                                   finalizer=self.stop, stop_timeout=5.0)
 
     def set_config(self, name, value):
         """Set a config value for this adapter by name
@@ -83,14 +83,15 @@ class AsynchronousModernWrapper(StandardDeviceAdapter):
         self._adapter.add_callback('on_scan', functools.partial(_on_scan, self._loop, self))
         self._adapter.add_callback('on_report', functools.partial(_on_report, self._loop, self))
         self._adapter.add_callback('on_trace', functools.partial(_on_trace, self._loop, self))
-        #self._adapter.add_callback('on_disconnect', functools.partial(_on_disconnect, self._loop, self))
+        self._adapter.add_callback('on_disconnect', functools.partial(_on_disconnect, self._loop, self))
 
-    async def stop(self):
+    async def stop(self, _task=None):
         """Stop the device adapter.
 
         See :meth:`AbstractDeviceAdapter.stop`.
         """
 
+        self._logger.info("Stopping adapter wrapper")
 
         if self._task.stopped:
             return
@@ -142,7 +143,7 @@ class AsynchronousModernWrapper(StandardDeviceAdapter):
 
         resp = await self._execute(self._adapter.disconnect_sync, conn_id)
         _raise_error(conn_id, 'disconnect', resp)
-        self._teardown_connection(conn_id)
+        self._teardown_connection(conn_id, force=True)
 
     async def open_interface(self, conn_id, interface):
         """Open an interface on an IOTile device.
@@ -243,10 +244,23 @@ def _on_trace(_loop, adapter, conn_id, trace):
 
     conn_string = adapter._get_property(conn_id, 'connection_string')
     if conn_string is None:
-        adapter._logger.debug("Dropping trace daata with unknown conn_id=%s", conn_id)
+        adapter._logger.debug("Dropping trace data with unknown conn_id=%s", conn_id)
         return
 
     adapter.notify_event_nowait(conn_string, 'trace', trace)
+
+
+def _on_disconnect(_loop, adapter, _adapter_id, conn_id):
+    """Callback when tracing data is received."""
+
+    conn_string = adapter._get_property(conn_id, 'connection_string')
+    if conn_string is None:
+        adapter._logger.debug("Dropping disconnect notification with unknown conn_id=%s", conn_id)
+        return
+
+    adapter._teardown_connection(conn_id, force=True)
+    event = dict(reason='no reason passed from legacy adapter', expected=False)
+    adapter.notify_event_nowait(conn_string, 'disconnection', event)
 
 
 def _on_progress(adapter, operation, conn_id, done, total):
