@@ -118,7 +118,6 @@ class RPCInvalidIDError(RPCError):
     """The RPC ID given is an invalid type or size to specify an RPC."""
 
 
-
 class TileNotFoundError(RPCError):
     """An RPC was sent to a tile that does not exist.
 
