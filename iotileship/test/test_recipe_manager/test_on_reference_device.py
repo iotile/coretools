@@ -41,7 +41,7 @@ def recipe_fixture(request, resman):
     try:
         recipe.run(None, {'hardware': MockHardwareManResource(hw, 1)})
 
-        yield recipe, hw, hw.stream.adapter._adapter.devices[1]
+        yield recipe, hw, hw.stream.adapter.devices[1]
     finally:
         hw.close()
 

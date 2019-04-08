@@ -5,7 +5,6 @@ from iotile.core.dev import ComponentRegistry
 from iotile.core.hw.reports import BroadcastReport
 from iotile.core.hw.virtual.common_types import BusyRPCResponse
 from iotile.core.utilities import SharedLoop
-from .adapter import DeviceAdapter
 from .adapter import StandardDeviceAdapter
 from ..exceptions import DeviceAdapterError
 from ..virtual import (RPCInvalidIDError, TileNotFoundError, RPCNotFoundError,

@@ -95,6 +95,7 @@ def tile_based():
     hw.disconnect()
     hw.close()
 
+
 @pytest.fixture
 def tracer_hw():
     conf_file = os.path.join(os.path.dirname(__file__), 'fast_realtime_trace.json')
