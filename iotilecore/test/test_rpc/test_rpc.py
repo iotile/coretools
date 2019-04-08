@@ -66,8 +66,8 @@ def test_invalid_rpc_args_length(registry, p):
         p.test_invalid_arg_length_rpc_v2()
     assert e.type == RPCInvalidArgumentsError
 
-    # This doesn't fail because we don't validate arg length on rpc_v1
-    p.test_invalid_arg_length_rpc_v1()
+    with pytest.raises(RPCInvalidArgumentsError):
+        p.test_invalid_arg_length_rpc_v1()
 
 
 def test_invalid_rpc_args(registry, p):
@@ -75,9 +75,9 @@ def test_invalid_rpc_args(registry, p):
         p.test_invalid_args_missing_rpc_v2()
     assert e.type == RPCInvalidArgumentsError
 
-    with pytest.raises(struct.error) as e:
+    with pytest.raises(RPCInvalidArgumentsError) as e:
         p.test_invalid_args_missing_rpc_v1()
-    assert e.type == struct.error
+    assert e.type == RPCInvalidArgumentsError
 
 
 def test_rpc_does_not_exist(registry, p):

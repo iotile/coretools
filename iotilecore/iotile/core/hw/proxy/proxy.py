@@ -10,7 +10,7 @@
 from time import sleep
 import struct
 from iotile.core.hw.exceptions import RPCInvalidReturnValueError, BusyRPCResponse, RPCError, RPCInvalidArgumentsError, TileNotFoundError
-from iotile.core.exceptions import HardwareError
+from iotile.core.exceptions import HardwareError, ArgumentError
 from iotile.core.utilities.typedargs import return_type, annotated, param, context
 from ..virtual import pack_rpc_payload, unpack_rpc_payload
 
@@ -39,54 +39,22 @@ class TileBusProxyObject:
 
         rpc_id = (feature << 8 | cmd)
 
-        if 'arg_format' in kw:
-            packed_args = struct.pack("<{}".format(kw['arg_format']), *args)
-        elif not args:
-            packed_args = b''
-        else:
-            packed_args = _format_args(args)
+        result_format = _create_resp_format(kw.get('result_type'), kw.get('result_format'))
+        arg_format = kw.get('arg_format')
+        if arg_format is None:
+            arg_format = _create_arg_format(args)
 
-        passed_kw = dict()
+        passed_kw = {}
         if 'timeout' in kw:
             passed_kw['timeout'] = kw['timeout']
 
-        try:
-            should_retry = False
-            payload = self.stream.send_rpc(self.addr, rpc_id, packed_args, **passed_kw)
-        except BusyRPCResponse:
-            if "retries" not in kw:
-                kw['retries'] = 10
+        response = self.rpc_v2(rpc_id, arg_format, result_format, *args, **passed_kw)
 
-            # Sleep 100 ms and try again unless we've exhausted our retry attempts
-            if kw["retries"] == 0:
-                raise BusyRPCResponse("Could not complete RPC %d:%04X after 10 attempts due to busy tile" %
-                                      (self.addr, rpc_id))
+        old_return = kw.get('result_type')
+        if old_return is not None:
+            return _create_old_return_value(response, *old_return)
 
-            should_retry = True
-
-        # If the tile was busy, automatically retry up to 10 times
-        if should_retry:
-            kw['retries'] -= 1
-            sleep(0.1)
-            return self.rpc(feature, cmd, *args, **kw)
-
-        unpack_flag = False
-        if "result_type" in kw:
-            res_type = kw['result_type']
-        elif "result_format" in kw:
-            unpack_flag = True
-            res_type = (0, True)
-        else:
-            res_type = (0, False)
-
-        res = _parse_rpc_result(payload, *res_type)
-        if unpack_flag:
-            try:
-                return unpack_rpc_payload("%s" % kw["result_format"], res['buffer'])
-            except struct.error:
-                raise RPCInvalidReturnValueError(self.addr, rpc_id, kw['result_format'], res['buffer'])
-
-        return res
+        return response
 
     def rpc_v2(self, cmd, arg_format, result_format, *args, **kw):
         """Send an RPC call to this module, interpret the return value
@@ -95,7 +63,7 @@ class TileBusProxyObject:
         is not successful.
 
         v2 enforces the use of arg_format and result_format
-        v2 combines the feature+cmd chunks in to a single 4-byte chunk
+        v2 combines the feature+cmd chunks in to a single 2-byte chunk
         """
         if args:
             packed_args = pack_rpc_payload(arg_format, list(args))
@@ -128,7 +96,7 @@ class TileBusProxyObject:
             sleep(0.1)
             return self.rpc_v2(cmd, arg_format, result_format, *args, **kw)
 
-        return unpack_rpc_payload("%s" % result_format, payload)
+        return unpack_rpc_payload(result_format, payload)
 
     @return_type("string")
     def hardware_version(self):
@@ -411,83 +379,61 @@ class ConfigManager:
                 raise HardwareError("Error setting config variable", id=d_id, error_code=resp['ints'][0])
 
 
-def _parse_rpc_result(payload, num_ints, buff):
+def _create_old_return_value(payload, num_ints, buff):
     """Parse the response of an RPC call into a dictionary with integer and buffer results"""
 
-    parsed = {'ints':[], 'buffer':"", 'error': 'No Error',
+    parsed = {'ints': payload[:num_ints], 'buffer': None, 'error': 'No Error',
               'is_error': False, 'return_value': 0}
 
-    # Otherwise, parse the results according to the type information given
-    size = len(payload)
-
-    if size < 2*num_ints:
-        raise RPCError('Return value too short to unpack', expected_minimum_size=2*num_ints, actual_size=size,
-                       payload=payload)
-
-    if buff is False and size != 2*num_ints:
-        raise RPCError('Return value was not the correct size', expected_size=2*num_ints, actual_size=size,
-                       payload=payload)
-
-    for i in range(0, num_ints):
-        low = (payload[2*i])
-        high = (payload[2*i + 1])
-        parsed['ints'].append((high << 8) | low)
-
     if buff:
-        parsed['buffer'] = bytearray(payload[2*num_ints:])
+        parsed['buffer'] = bytearray(payload[-1])
 
     return parsed
 
 
-def _convert_int(arg):
-    out = bytearray(2)
+def _create_resp_format(result_type, result_format):
+    if result_type is not None and result_format is not None:
+        raise ArgumentError("Both result_type and result_format specified",
+                            result_format=result_format, result_type=result_type)
 
-    out[0] = arg & 0xFF
-    out[1] = (arg & 0xFF00) >> 8
+    if result_format is not None:
+        return result_format
 
-    converted = out[0] | (out[1] << 8)
+    if result_type is None:
+        return ""
 
-    if converted != arg:
-        raise ValueError("Integer argument was too large to fit in an rpc 16 bit int: %d" % arg)
+    try:
+        int_count, has_buffer = result_type
+    except ValueError as err:
+        raise ArgumentError("Invalid value for result_type, must be tuple(int_count, has_buffer)",
+                            result_type=result_type) from err
 
-    return out
+    if has_buffer is False and int_count == 0:
+        return ""
 
+    if has_buffer is False:
+        return "%dH" % int_count
 
-def _pack_arg(arg):
-    if isinstance(arg, int):
-        return _convert_int(arg), False
-    elif isinstance(arg, bytearray):
-        return arg, True
-    elif isinstance(arg, str):  # for python 3 compatibility, encode all newstr from future module
-        return bytearray(arg.encode('utf-8')), True
-    elif isinstance(arg, bytes):
-        return bytearray(arg), True
-
-    raise ValueError("Unknown argument type could not be converted for rpc call.")
+    return "%dHV" % int_count
 
 
-def _format_args(args):
-    fmtd = bytearray()
+def _create_arg_format(args):
+    if len(args) == 0:
+        return ""
 
-    num_ints = 0
-    num_bufs = 0
+    int_count = len(args)
+    has_buffer = False
 
-    for arg in args:
-        a, is_buf = _pack_arg(arg)
-        fmtd += a
+    if isinstance(args[-1], (bytes, bytearray)):
+        int_count = int_count - 1
+        has_buffer = True
 
-        if is_buf:
-            num_bufs += 1
-        else:
-            if num_bufs != 0:
-                raise ValueError("Invalid rpc parameters, integer came after buffer.")
+    arg_code = ""
 
-            num_ints += 1
+    if int_count > 0:
+        arg_code += "%dH" % int_count
 
-    if num_bufs > 1:
-        raise ValueError("You must pass at most 1 buffer. num_bufs=%d" % num_bufs)
+    if has_buffer:
+        arg_code += "V"
 
-    if len(fmtd) > 20:
-        raise ValueError("Arguments are greater then the maximum mib packet size, size was %d" % len(fmtd))
-
-    return fmtd
+    return arg_code
