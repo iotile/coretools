@@ -54,8 +54,11 @@ class PerConnectionDataMixin:
         self._connections[conn_id] = dict(connection_string=conn_string)
         self._reverse_connections[conn_string] = conn_id
 
-    def _teardown_connection(self, conn_id):
+    def _teardown_connection(self, conn_id, force=False):
         if conn_id not in self._connections:
+            if force:
+                return
+
             raise DeviceAdapterError(conn_id, 'none', 'connection id torndown without being setup')
 
         conn_string = self._connections[conn_id]['connection_string']

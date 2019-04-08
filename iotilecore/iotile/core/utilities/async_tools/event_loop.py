@@ -21,7 +21,8 @@ import asyncio
 import inspect
 import logging
 import threading
-from iotile.core.exceptions import TimeoutExpiredError, ArgumentError, InternalError
+import atexit
+from iotile.core.exceptions import TimeoutExpiredError, ArgumentError, InternalError, LoopStoppingError
 
 
 class BackgroundTask:
@@ -281,7 +282,7 @@ class BackgroundEventLoop:
         """
 
         if self.stopping:
-            raise InternalError("Cannot perform action while loop is stopping.")
+            raise LoopStoppingError("Cannot perform action while loop is stopping.")
 
         if not self.loop:
             self._logger.debug("Starting event loop")
@@ -383,6 +384,10 @@ class BackgroundEventLoop:
     async def _stop_internal(self):
         """Cleanly stop the event loop after shutting down all tasks."""
 
+        # Make sure we only try to stop once
+        if self.stopping is True:
+            return
+
         self.stopping = True
 
         awaitables = [task.stop() for task in self.tasks]
@@ -459,6 +464,9 @@ class BackgroundEventLoop:
             BackgroundTask: The BackgroundTask representing this task.
         """
 
+        if self.stopping:
+            raise LoopStoppingError("Cannot add task because loop is stopping")
+
         # Ensure the loop exists and is started
         self.start()
 
@@ -475,7 +483,7 @@ class BackgroundEventLoop:
 
         return task
 
-    def run_coroutine(self, cor):
+    def run_coroutine(self, cor, *args, **kwargs):
         """Run a coroutine to completion and return its result.
 
         This method may only be called outside of the event loop.
@@ -490,7 +498,12 @@ class BackgroundEventLoop:
             object: Whatever the coroutine cor returns.
         """
 
+        if self.stopping:
+            raise LoopStoppingError("Could not launch coroutine because loop is shutting down: %s" % cor)
+
         self.start()
+
+        cor = _instaniate_coroutine(cor, args, kwargs)
 
         if self.inside_loop():
             raise InternalError("BackgroundEventLoop.run_coroutine called from inside event loop, "
@@ -499,7 +512,7 @@ class BackgroundEventLoop:
         future = self.launch_coroutine(cor)
         return future.result()
 
-    def launch_coroutine(self, cor):
+    def launch_coroutine(self, cor, *args, **kwargs):
         """Start a coroutine task and return a blockable/awaitable object.
 
         If this method is called from inside the event loop, it will return an
@@ -520,15 +533,20 @@ class BackgroundEventLoop:
             ``result()`` on to block the calling thread.
         """
 
+        if self.stopping:
+            raise LoopStoppingError("Could not launch coroutine because loop is shutting down: %s" % cor)
+
         # Ensure the loop exists and is started
         self.start()
+
+        cor = _instaniate_coroutine(cor, args, kwargs)
 
         if self.inside_loop():
             return asyncio.ensure_future(cor, loop=self.loop)
 
         return asyncio.run_coroutine_threadsafe(cor, loop=self.loop)
 
-    def log_coroutine(self, cor):
+    def log_coroutine(self, cor, *args, **kwargs):
         """Run a coroutine logging any exception raised.
 
         This routine will not block until the coroutine is finished
@@ -544,7 +562,12 @@ class BackgroundEventLoop:
                 background and wait until it finishes.
         """
 
+        if self.stopping:
+            raise LoopStoppingError("Could not launch coroutine because loop is shutting down: %s" % cor)
+
         self.start()
+
+        cor = _instaniate_coroutine(cor, args, kwargs)
 
         def _run_and_log():
             task = self.loop.create_task(cor)
@@ -610,6 +633,15 @@ def _create_task_threadsafe(cor, loop):
     return future.result()
 
 
+def _instaniate_coroutine(cor, args, kwargs):
+    if inspect.iscoroutinefunction(cor):
+        cor = cor(*args, **kwargs)
+    elif len(args) > 0 or len(kwargs) > 0:
+        raise ArgumentError("You cannot pass arguments if coroutine is already created", args=args, kwargs=kwargs)
+
+    return cor
+
+
 def _log_future_exception(future, logger):
     """Log any exception raised by future."""
 
@@ -624,3 +656,18 @@ def _log_future_exception(future, logger):
 
 # Create a single global event loop that anyone can add tasks to.
 SharedLoop = BackgroundEventLoop()  # pylint:disable=invalid-name;This is for backwards compatibility.
+
+# Ensure that the concurrent atexit handler is registered before our atexit handler.
+#
+# If we register a task that uses the concurrent API to run things on executor
+# threads, those threads need to be still running when we stop the event loop
+# atexit in case they are used during the shutdown process.
+#
+# The order of atexit handlers is the opposite of the order in which they are
+# registered, so ensure the thread handler gets registered first.
+#
+# See: https://github.com/python/cpython/blob/master/Lib/concurrent/futures/thread.py#L33
+
+#pylint:disable=wrong-import-position,wrong-import-order,unused-import;See above comment
+import concurrent.futures.thread
+atexit.register(SharedLoop.stop)

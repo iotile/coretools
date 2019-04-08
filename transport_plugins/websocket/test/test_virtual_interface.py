@@ -92,7 +92,7 @@ def test_send_script(hw, virtual_interface):
     script = bytes(b'ab')*100
     progs = queue.Queue()
 
-    hw.stream._send_highspeed(script, lambda x, y: progs.put((x, y)))
+    hw.stream.send_highspeed(script, lambda x, y: progs.put((x, y)))
 
     last_done = -1
     last_total = None

@@ -13,7 +13,7 @@ Test includes a device with two tiles (see device.py):
 
 import pytest
 import os
-from iotile.core.hw.exceptions import ModuleBusyError
+from iotile.core.hw.exceptions import BusyRPCResponse
 from iotile.core.hw.hwmanager import HardwareManager
 from iotile.core.dev.registry import ComponentRegistry
 
@@ -60,7 +60,7 @@ def test_sync_request_during_async(register_proxies, hw):
     assert proxy1.sync_rpc() == b'sync rpc tile01'
 
     # Step 3
-    with pytest.raises(ModuleBusyError):
+    with pytest.raises(BusyRPCResponse):
         proxy2.sync_rpc()
 
     # Step 4
@@ -68,5 +68,3 @@ def test_sync_request_during_async(register_proxies, hw):
 
     # Step 5
     assert proxy2.sync_rpc() == b'sync rpc tile02'
-
-
