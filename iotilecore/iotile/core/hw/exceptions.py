@@ -69,26 +69,44 @@ class DeviceServerError(iotile.core.exceptions.HardwareError):
 
 
 class RPCError(iotile.core.exceptions.HardwareError):
-    pass
+    """Base class for all RPC related errors.
+
+    Instances of this class should not be raised directly but it
+    just provides a standard base for checking against the specific
+    kinds of errors that can happen while running an RPC.
+    """
 
 
 class RPCNotFoundError(RPCError):
-    """Exception thrown when an RPC is not found."""
-    pass
+    """The RPC id was not found on the tile.
+
+    This exception always indicates that the tile itself was responding
+    correctly and was able to handle RPCs.  It just did not find an RPC
+    matching the RPC id that was specified.
+    """
 
 
 class RPCInvalidArgumentsError(RPCError):
-    """Exception thrown when an RPC with a fixed parameter format has invalid arguments."""
-    pass
+    """An RPC with a fixed parameter format was given invalid arguments."""
 
 
 class RPCInvalidReturnValueError(RPCError):
-    """Exception thrown when the return value of an RPC does not conform to its known format."""
+    """The return value of an RPC does not conform to its known format.
+
+    When the RPC is implemented in python in a virtual tile, this may also be
+    thrown if invalid python objects are returned that cannot be packed for
+    transport.
+    """
 
     def __init__(self, address, rpc_id, format_code, response, **kwargs):
-        super(RPCInvalidReturnValueError, self).__init__("Invalid return value from Tile %d, RPC 0x%04x, "
+        if response is None:
+            resp_len = 0
+        else:
+            resp_len = len(response)
+
+        super(RPCInvalidReturnValueError, self).__init__("Invalid return value from Tile %s, RPC 0x%04x, "
                                                          "expected format %s, got %d bytes"
-                                                         % (address, rpc_id, format_code, len(response)), **kwargs)
+                                                         % (address, rpc_id, format_code, resp_len), **kwargs)
 
         self.address = address
         self.rpc_id = rpc_id
@@ -97,17 +115,32 @@ class RPCInvalidReturnValueError(RPCError):
 
 
 class RPCInvalidIDError(RPCError):
-    """Exception thrown when an RPC is created with an invalid RPC id."""
-    pass
+    """The RPC ID given is an invalid type or size to specify an RPC."""
+
 
 
 class TileNotFoundError(RPCError):
-    """Exception thrown when an RPC is sent to a tile that does not exist."""
-    pass
+    """An RPC was sent to a tile that does not exist.
+
+    This is distinct from :class:`RPCNotFoundError`, which means that the
+    destination address was correct and that tile responded positively that
+    the RPC could not be found.  This error means that no response was
+    received from the tile at all.
+    """
 
 
 class RPCErrorCode(RPCError):
-    """Exception thrown from an RPC implementation to set the status code."""
+    """The RPC chose to return an implementation defined error code.
+
+    Use of this exception is discouraged since RPCs implementations should
+    return their error codes inside the response payload along with any data
+    that they may want to return.  However there are certain cases where RPC
+    implementation need a way to indicate an error while returning no response
+    and raising this RPCErrorCode exception is the way to do it.
+
+    Args:
+        status_code (int): The error code that should be raised to the caller.
+    """
 
     def __init__(self, status_code):
         super(RPCErrorCode, self).__init__("RPC returned application defined status code %d" % status_code,
@@ -128,7 +161,15 @@ class AsynchronousRPCResponse(RPCError):
 
 
 class BusyRPCResponse(RPCError):
-    """Exception thrown from an RPC implementation when a tile is busy handling asynchronous request"""
+    """The Tile was busy and could not handle an RPC right now.
+
+    This exception is rarely exposed diretly to a user.  Internally, it can be
+    the case that an RPC cannot be executed at a specific moment because a
+    long-running asynchronous RPC is in progress.  In that case, the
+    :meth:`TileBusProxyObject.rpc` method automatically retries the RPC later.
+    If multiple attempts to retry the RPC fail, this exception will ultimately
+    be raised to the user.
+    """
 
     def __init__(self, msg="Tile tile is busy"):
         super(BusyRPCResponse, self).__init__(msg)
@@ -138,4 +179,10 @@ VALID_RPC_EXCEPTIONS = (BusyRPCResponse, TileNotFoundError, RPCErrorCode, RPCInv
 
 
 class UnknownModuleTypeError(iotile.core.exceptions.TypeSystemError):
-    pass
+    """A suitable proxy could not be found for a given tile.
+
+    This means that the name returned by the tile's get_info RPC was not found
+    in our local database of known tile names so a suitable proxy class could
+    not be instantiated.  Typically this means that you need to find and
+    install the support package for the tile that you wish to use.
+    """

@@ -6,6 +6,7 @@ from time import monotonic, sleep
 from datetime import datetime
 import binascii
 import logging
+import threading
 from iotile.core.exceptions import HardwareError, ArgumentError
 from iotile.core.utilities import SharedLoop
 from .adapter import AbstractDeviceAdapter, AsynchronousModernWrapper, DeviceAdapter
@@ -15,36 +16,42 @@ from ..virtual import VALID_RPC_EXCEPTIONS, unpack_rpc_response, pack_rpc_respon
 class _RecordedRPC:
     """Internal helper class for saving recorded RPCs to csv files."""
 
-    def __init__(self, connection, start, runtime, address, rpc_id, call, response=None, status=None, error=None):
+    def __init__(self, connection, address, rpc_id, call):
         if isinstance(connection, bytes):
             connection = connection.decode('utf-8')
 
         self.connection = connection
-        self.start = start
-        self.runtime = runtime
         self.address = address
         self.rpc_id = rpc_id
         self.call = binascii.hexlify(call).decode('utf-8')
 
-        self.response = u""
-        if response is not None:
-            self.response = binascii.hexlify(response).decode('utf-8')
+        self.status = -1
+        self.start_stamp = None
 
-        if status is None:
-            status = -1
+        self.response = ""
+        self.error = ""
 
+        self.runtime = 0
+        self._start_time = 0
+
+    def start(self):
+        """Mark the beginning of a recorded RPC."""
+
+        self._start_time = monotonic()
+        self.start_stamp = datetime.utcnow()
+
+    def finish(self, status, response):
+        """Mark the end of a recorded RPC."""
+
+        self.response = binascii.hexlify(response).decode('utf-8')
         self.status = status
-
-        if error is None:
-            error = u""
-
-        self.error = error
+        self.runtime = monotonic() - self._start_time
 
     def serialize(self):
         """Convert this recorded RPC into a string."""
 
-        return u"{},{: <26},{:2d},{:#06x},{:#04x},{:5.0f},{: <40},{: <40},{}".\
-            format(self.connection, self.start.isoformat(), self.address, self.rpc_id,
+        return "{},{: <26},{:2d},{:#06x},{:#04x},{:5.0f},{: <40},{: <40},{}".\
+            format(self.connection, self.start_stamp.isoformat(), self.address, self.rpc_id,
                    self.status, self.runtime * 1000, self.call, self.response, self.error)
 
 
@@ -53,9 +60,16 @@ class AdapterStream:
 
     DeviceAdapters have a more generic interface that is not restricted to
     exclusive use in an online fashion by a single user at a time.  This class
-    implements a simpler interface on top of an AbstractDeviceAdapter that is easier to
-    use from programs that only talk to a single device at a time or only have a single
-    user interacting at a time.
+    implements a simpler interface on top of an AbstractDeviceAdapter that is
+    easier to use from programs that only talk to a single device at a time or
+    only have a single user interacting at a time.
+
+    AdapterStream is the internal implementation that powers :class:`HardwareManager`
+    and has a very similar interface.  In constrast to a DeviceAdapter which is
+    command and even driven and stores very little data for a given device, AdapterStream
+    contains queues that buffer reports, traces and broadcasts received from devices
+    in order to make it more convenient to process them.  It also contains a generic
+    RPC logging mechanism to produce a record of what RPCs were sent to a device.
 
     Args:
         adapter (AbstractDeviceAdapter): the DeviceAdapter that we should use
@@ -65,6 +79,7 @@ class AdapterStream:
 
     def __init__(self, adapter, record=None, loop=SharedLoop):
         self._scanned_devices = {}
+        self._scan_lock = threading.Lock()
         self._reports = None
         self._broadcast_reports = None
         self._traces = None
@@ -93,9 +108,7 @@ class AdapterStream:
         self.adapter.register_monitor([None], ['report', 'trace', 'broadcast', 'disconnection', 'device_seen', 'progress'],
                                       self._on_notification)
 
-        self.start_time = monotonic()
-        self.min_scan = self.adapter.get_config('minimum_scan_time', 0.0)
-        self.probe_required = self.adapter.get_config('probe_required', False)
+        self._start_time = monotonic()
 
     def scan(self, wait=None):
         """Return the devices that have been found for this device adapter.
@@ -108,17 +121,20 @@ class AdapterStream:
         - If we are told an explicit wait time that overrides everything and we wait that long
         """
 
+        min_scan = self.adapter.get_config('minimum_scan_time', 0.0)
+        probe_required = self.adapter.get_config('probe_required', False)
+
         # Figure out how long and if we need to wait before returning our scan results
         wait_time = None
-        elapsed = monotonic() - self.start_time
-        if elapsed < self.min_scan:
-            wait_time = self.min_scan - elapsed
+        elapsed = monotonic() - self._start_time
+        if elapsed < min_scan:
+            wait_time = min_scan - elapsed
 
         # If we need to probe for devices rather than letting them just bubble up, start the probe
         # and then use our min_scan_time to wait for them to arrive via the normal _on_scan event
-        if self.probe_required:
+        if probe_required:
             self._loop.run_coroutine(self.adapter.probe())
-            wait_time = self.min_scan
+            wait_time = min_scan
 
         # If an explicit wait is specified that overrides everything else
         if wait is not None:
@@ -131,14 +147,17 @@ class AdapterStream:
 
         now = monotonic()
 
-        for name, value in self._scanned_devices.items():
-            if value['expiration_time'] < now:
-                to_remove.add(name)
+        with self._scan_lock:
+            for name, value in self._scanned_devices.items():
+                if value['expiration_time'] < now:
+                    to_remove.add(name)
 
-        for name in to_remove:
-            del self._scanned_devices[name]
+            for name in to_remove:
+                del self._scanned_devices[name]
 
-        return sorted(self._scanned_devices.values(), key=lambda x: x['uuid'])
+            devices = sorted(self._scanned_devices.values(), key=lambda x: x['uuid'])
+
+        return devices
 
     def connect(self, uuid_value, wait=None):
         """Connect to a specific device by its uuid
@@ -159,14 +178,33 @@ class AdapterStream:
         if uuid_value not in self._scanned_devices:
             self.scan(wait=wait)
 
-        if uuid_value not in self._scanned_devices:
-            raise HardwareError("Could not find device to connect to by UUID", uuid=uuid_value)
+        with self._scan_lock:
+            if uuid_value not in self._scanned_devices:
+                raise HardwareError("Could not find device to connect to by UUID", uuid=uuid_value)
 
-        connstring = self._scanned_devices[uuid_value]['connection_string']
+            connstring = self._scanned_devices[uuid_value]['connection_string']
+
         self.connect_direct(connstring)
 
-    def connect_direct(self, connection_string, force=False):
-        """Directly connect to a device using its stream specific connection string."""
+    def connect_direct(self, connection_string, no_rpc=False, force=False):
+        """Directly connect to a device using its stream specific connection string.
+
+        Normally, all connections to a deviec include opening the RPC
+        interface to send RPCs.  However, there are certain, very specific,
+        circumstances when you would not want to or be able to open the RPC
+        interface (such as when you are using the debug interface on a bare
+        MCU that has not been programmed yet).  In those cases you can pass
+        no_rpc=True to not attempt to open the RPC interface.  If you do not
+        open the RPC interface at connection time, there is no public
+        interface to open it later, so you must disconnect and reconnect to
+        the device in order to open the interface.
+
+        Args:
+            connection_string (str): The connection string that identifies the desired device.
+            no_rpc (bool): Do not open the RPC interface on the device (default=False).
+            force (bool): Whether to force another connection even if we think we are currently
+                connected.  This is for internal use and not designed to be set externally.
+        """
 
         if not force and self.connected:
             raise HardwareError("Cannot connect when we are already connected to '%s'" % self.connection_string)
@@ -174,7 +212,10 @@ class AdapterStream:
         self._loop.run_coroutine(self.adapter.connect(0, connection_string))
 
         try:
-            self._loop.run_coroutine(self.adapter.open_interface(0, 'rpc'))
+            if no_rpc:
+                self._logger.info("Not opening RPC interface on device %s", self.connection_string)
+            else:
+                self._loop.run_coroutine(self.adapter.open_interface(0, 'rpc'))
         except HardwareError as exc:
             self._logger.exception("Error opening RPC interface on device %s", connection_string)
             self._loop.run_coroutine(self.adapter.disconnect(0))
@@ -224,6 +265,28 @@ class AdapterStream:
             raise HardwareError("Device disconnected unexpectedly and we could not reconnect", reconnect_error=exc) from exc
 
     def send_rpc(self, address, rpc_id, call_payload, timeout=3.0):
+        """Send an rpc to our connected device.
+
+        The device must already be connected and the rpc interface open.  This
+        method will synchronously send an RPC and wait for the response.  Any
+        RPC errors will be raised as exceptions and if there were no errors, the
+        RPC's response payload will be returned as a binary bytearray.
+
+        See :meth:`AbstractDeviceAdapter.send_rpc` for documentation of the possible
+        exceptions that can be raised here.
+
+        Args:
+            address (int): The tile address containin the RPC
+            rpc_id (int): The ID of the RPC that we wish to call.
+            call_payload (bytes): The payload containing encoded arguments for the
+                RPC.
+            timeout (float): The maximum number of seconds to wait for the RPC to
+                finish.  Defaults to 3s.
+
+        Returns:
+            bytearray: The RPC's response payload.
+        """
+
         if not self.connected:
             raise HardwareError("Cannot send an RPC if we are not in a connected state")
 
@@ -232,13 +295,14 @@ class AdapterStream:
 
         status = -1
         payload = b''
+        recording = None
 
         if self.connection_interrupted:
             self._try_reconnect()
 
         if self._record is not None:
-            start_time = monotonic()
-            start_stamp = datetime.utcnow()
+            recording = _RecordedRPC(self.connection_string, address, rpc_id, call_payload)
+            recording.start()
 
         try:
             payload = self._loop.run_coroutine(self.adapter.send_rpc(0, address, rpc_id, call_payload, timeout))
@@ -247,12 +311,7 @@ class AdapterStream:
             status, payload = pack_rpc_response(payload, exc)
 
         if self._record is not None:
-            end_time = monotonic()
-            duration = end_time - start_time
-
-            recording = _RecordedRPC(self.connection_string, start_stamp, duration, address, rpc_id,
-                                     call_payload, payload, status)
-
+            recording.finish(status, payload)
             self._recording.append(recording)
 
         if self.connection_interrupted:
@@ -261,6 +320,19 @@ class AdapterStream:
         return unpack_rpc_response(status, payload, rpc_id, address)
 
     def send_highspeed(self, data, progress_callback):
+        """Send a script to a device at highspeed, reporting progress.
+
+        This method takes a binary blog and downloads it to the device as fast
+        as possible, calling the passed progress_callback periodically with
+        updates on how far it has gotten.
+
+        Args:
+            data (bytes): The binary blob that should be sent to the device at highspeed.
+            progress_callback (callable): A function that will be called periodically to
+                report progress.  The signature must be callback(done_count, total_count)
+                where done_count and total_count will be passed as integers.
+        """
+
         if not self.connected:
             raise HardwareError("Cannot send a script if we are not in a connected state")
 
@@ -277,10 +349,28 @@ class AdapterStream:
             self._on_progress = None
 
     def enable_streaming(self):
+        """Open the streaming interface and accumute reports in a queue.
+
+        This method is safe to call multiple times in a single device
+        connection. There is no way to check if the streaming interface is
+        opened or to close it once it is opened (apart from disconnecting from
+        the device).
+
+        The first time this method is called, it will open the streaming
+        interface and return a queue that will be filled asynchronously with
+        reports as they are received.  Subsequent calls will just empty the
+        queue and return the same queue without interacting with the device at
+        all.
+
+        Returns:
+            queue.Queue: A queue that will be filled with reports from the device.
+        """
+
         if not self.connected:
             raise HardwareError("Cannot enable streaming if we are not in a connected state")
 
         if self._reports is not None:
+            _clear_queue(self._reports)
             return self._reports
 
         self._reports = queue.Queue()
@@ -288,20 +378,82 @@ class AdapterStream:
 
         return self._reports
 
+    def enable_tracing(self):
+        """Open the tracing interface and accumulate traces in a queue.
+
+        This method is safe to call multiple times in a single device
+        connection. There is no way to check if the tracing interface is
+        opened or to close it once it is opened (apart from disconnecting from
+        the device).
+
+        The first time this method is called, it will open the tracing
+        interface and return a queue that will be filled asynchronously with
+        reports as they are received.  Subsequent calls will just empty the
+        queue and return the same queue without interacting with the device at
+        all.
+
+        Returns:
+            queue.Queue: A queue that will be filled with trace data from the device.
+
+            The trace data will be in disjoint bytes objects in the queue
+        """
+
+        if not self.connected:
+            raise HardwareError("Cannot enable tracing if we are not in a connected state")
+
+        if self._traces is not None:
+            _clear_queue(self._traces)
+            return self._traces
+
+        self._traces = queue.Queue()
+        self._loop.run_coroutine(self.adapter.open_interface(0, 'tracing'))
+
+        return self._traces
+
     def enable_broadcasting(self):
+        """Begin accumulating broadcast reports received from all devices.
+
+        This method will allocate a queue to receive broadcast reports that
+        will be filled asynchronously as broadcast reports are received.
+
+        Returns:
+            queue.Queue: A queue that will be filled with braodcast reports.
+        """
+
         if self._broadcast_reports is not None:
+            _clear_queue(self._broadcast_reports)
             return self._broadcast_reports
 
         self._broadcast_reports = queue.Queue()
         return self._broadcast_reports
 
     def enable_debug(self):
+        """Open the debug interface on the connected device."""
+
         if not self.connected:
-            raise HardwareError("Cannot enable streaming if we are not in a connected state")
+            raise HardwareError("Cannot enable debug if we are not in a connected state")
 
         self._loop.run_coroutine(self.adapter.open_interface(0, 'debug'))
 
     def debug_command(self, cmd, args=None, progress_callback=None):
+        """Send a debug command to the connected device.
+
+        This generic method will send a named debug command with the given
+        arguments to the connected device.  Debug commands are typically used
+        for things like forcible reflashing of firmware or other, debug-style,
+        operations.  Not all transport protocols support debug commands and
+        the supported operations vary depeneding on the transport protocol.
+
+        Args:
+            cmd (str): The name of the debug command to send.
+            args (dict): Any arguments required by the given debug command
+            progress_callback (callable): A function that will be called periodically to
+                report progress.  The signature must be callback(done_count, total_count)
+                where done_count and total_count will be passed as integers.
+
+        Returns:
+            object: The return value of the debug command, if there is one.
+        """
 
         if args is None:
             args = {}
@@ -312,17 +464,21 @@ class AdapterStream:
         finally:
             self._on_progress = None
 
-    def enable_tracing(self):
-        if not self.connected:
-            raise HardwareError("Cannot enable tracing if we are not in a connected state")
+    def close(self):
+        """Close this adapter stream.
 
-        if self._traces is not None:
-            return self._traces
+        This method may only be called once in the lifetime of an
+        AdapterStream and it will shutdown the underlying device adapter,
+        disconnect all devices and stop all background activity.
 
-        self._traces = queue.Queue()
-        self._loop.run_coroutine(self.adapter.open_interface(0, 'tracing'))
+        If this stream is configured to save a record of all RPCs, the RPCs
+        will be logged to a file at this point.
+        """
 
-        return self._traces
+        try:
+            self._loop.run_coroutine(self.adapter.stop())
+        finally:
+            self._save_recording()
 
     def _on_notification(self, conn_string, _conn_id, name, event):
         if name not in ('device_seen', 'broadcast') and conn_string != self.connection_string:
@@ -371,7 +527,9 @@ class AdapterStream:
         infocopy = deepcopy(info)
 
         infocopy['expiration_time'] = monotonic() + expiration_time
-        self._scanned_devices[device_id] = infocopy
+
+        with self._scan_lock:
+            self._scanned_devices[device_id] = infocopy
 
     def _on_disconnect(self):
         """Callback when a device is disconnected unexpectedly.
@@ -383,10 +541,6 @@ class AdapterStream:
 
         self._logger.info("Connection to device %s was interrupted", self.connection_string)
         self.connection_interrupted = True
-
-    def close(self):
-        self._loop.run_coroutine(self.adapter.stop())
-        self._save_recording()
 
     def _save_recording(self):
         if not self._record:
@@ -403,3 +557,14 @@ class AdapterStream:
                 outfile.write('\n')
 
         self._record = None
+
+
+def _clear_queue(to_clear):
+    """Clear all items from a queue safely."""
+
+    while not to_clear.empty():
+        try:
+            to_clear.get(False)
+            to_clear.task_done()
+        except queue.Empty:
+            continue

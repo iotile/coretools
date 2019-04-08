@@ -41,25 +41,16 @@ class HardwareManager:
     name of the connection method optionally followed by a colon and any extra information
     possibly needed to connect using that method.
 
-    Currently implemented ports are: (eventually auto-detect this)
-        none
+    Currently implemented ports are:
         bled112
         jlink
         jlink:mux=ftdi
         virtual:...(e.g. simple)
-
-    Currently implemented devices are: (eventually auto-detect this too)
-        nrf52
-        lpc824
-
-        if using the mux then append ;channel=[7..0] to the device
-        (e.g.  --device="nrf52;channel=0")
-
     """
 
     logger = logging.getLogger(__name__)
 
-    @param("port", "string", desc="transport method to use in the format transport[:port[,connection_string]]")
+    @param("port", "string", desc="transport method to use in the format transport[:port]")
     @param("record", "path", desc="Optional file to record all RPC calls and responses made on this HardwareManager")
     def __init__(self, port=None, record=None, adapter=None):
         if port is None and adapter is None:
@@ -79,9 +70,8 @@ class HardwareManager:
         if arg != "":
             self.port = arg
 
-        self._record = record
 
-        self.stream = self._create_stream(adapter)
+        self.stream = self._create_stream(adapter, record=record)
 
         self._stream_queue = None
         self._trace_queue = None
@@ -286,7 +276,7 @@ class HardwareManager:
 
     @annotated
     def disconnect(self):
-        """Attempt to disconnect from a device"""
+        """Attempt to disconnect from a device."""
 
         self._trace_queue = None
         self._stream_queue = None
@@ -297,25 +287,25 @@ class HardwareManager:
     def debug(self, connection_string=None):
         """Prepare the device for debugging if supported.
 
-        Some transport mechanisms support a low level debug channel
-        that permits recovery and test operations such as erasing
-        and forcibly reprogramming a device or dumping memory.
+        Some transport mechanisms support a low level debug channel that
+        permits recovery and test operations such as erasing and forcibly
+        reprogramming a device or dumping memory.
 
-        No debug operations are supported, this function will raise
-        an exception.
+        If no debug operations are supported, this function will raise an
+        exception.
+
+        If you pass a connection_string to this method to force a connection
+        to a device directly, it will be opened without the RPC interface
+        being opened.  If you need to subsequently send RPCs after performing
+        the debug actions, you will need to disconnect from the device and
+        reconnect normally (using ``connect`` or ``connect_direct``) first.
         """
 
         if connection_string is not None:
-            self.stream.connect_direct(connection_string)
+            self.stream.connect_direct(connection_string, no_rpc=True)
 
         self.stream.enable_debug()
         return DebugManager(self.stream)
-
-    @return_type("bool")
-    def heartbeat(self):
-        """Check whether the underlying command stream is functional"""
-
-        return self.stream.heartbeat()
 
     @annotated
     def enable_broadcasting(self):
@@ -337,9 +327,6 @@ class HardwareManager:
         duration of this HardwareManager object.
         """
 
-        if self._broadcast_queue is not None:
-            return
-
         self._broadcast_queue = self.stream.enable_broadcasting()
 
     @annotated
@@ -358,23 +345,18 @@ class HardwareManager:
         by disconnecting from the device and then reconnecting to it.
         """
 
-        if self._stream_queue is not None:
-            return
-
         self._stream_queue = self.stream.enable_streaming()
 
     @annotated
     def enable_tracing(self):
-        """Enable tracing of realtime debug information over this interface"""
-
-        if self._trace_queue is not None:
-            return
+        """Enable tracing of realtime debug information over this interface."""
 
         self._trace_queue = self.stream.enable_tracing()
 
     @return_type("integer")
     def count_reports(self):
         """Return the current size of the reports queue"""
+
         if self._stream_queue is None:
             return 0
 
@@ -739,12 +721,6 @@ class HardwareManager:
 
         return reports
 
-    @annotated
-    def reset(self):
-        """Attempt to reset the underlying stream back to a known state"""
-
-        self.stream.reset()
-
     def __enter__(self):
         return self
 
@@ -754,7 +730,13 @@ class HardwareManager:
 
     @finalizer
     def close(self):
-        """Close the current AdapterStream"""
+        """Stop and close this HardwareManager.
+
+        This method will stop all background device activity and prevent any
+        further usage of this HardwareManager object.  If RPCs are being
+        recorded, this will also save the recording to a file.
+        """
+
         self.stream.close()
 
     @return_type("list(basic_dict)")
@@ -765,9 +747,9 @@ class HardwareManager:
     def scan(self, wait=None, sort=None, reverse=False, limit=None):
         """Scan for available devices and print a dictionary of information about them.
 
-        If wait is specified as a floating point number in seconds, then the default wait times
-        configured inside of the stream or device adapter used to find IOTile devices is overridden
-        with the value specified.
+        If wait is specified as a floating point number in seconds, then the
+        default wait times configured inside of the stream or device adapter
+        used to find IOTile devices is overridden with the value specified.
 
         Args:
             wait (float): An optional override time to wait for results to accumulate before returning
@@ -810,12 +792,12 @@ class HardwareManager:
         """
 
         if proxy not in self._proxies:
-            raise UnknownModuleTypeError("unknown proxy module specified", module_type=proxy, known_types=self._proxies.keys())
+            raise UnknownModuleTypeError("unknown proxy module specified", module_type=proxy, known_types=list(self._proxies))
 
         proxy_class = self._proxies[proxy]
         return proxy_class(self.stream, address)
 
-    def _create_stream(self, force_adapter=None):
+    def _create_stream(self, force_adapter=None, record=None):
         conn_string = None
         port = self.port
 
@@ -824,13 +806,13 @@ class HardwareManager:
 
         # Check if we're supposed to use a specific device adapter
         if force_adapter is not None:
-            return AdapterStream(force_adapter, record=self._record)
+            return AdapterStream(force_adapter, record=record)
 
         # Attempt to find a DeviceAdapter that can handle this transport type
         reg = ComponentRegistry()
 
         for _, adapter_factory in reg.load_extensions('iotile.device_adapter', name_filter=self.transport):
-            return AdapterStream(adapter_factory(port), record=self._record)
+            return AdapterStream(adapter_factory(port), record=record)
 
         raise HardwareError("Could not find transport object registered to handle passed transport type",
                             transport=self.transport)

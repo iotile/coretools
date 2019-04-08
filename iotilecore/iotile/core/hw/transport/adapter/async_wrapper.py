@@ -251,7 +251,7 @@ def _on_trace(_loop, adapter, conn_id, trace):
 
 
 def _on_disconnect(_loop, adapter, _adapter_id, conn_id):
-    """Callback when tracing data is received."""
+    """Callback when a device disconnects unexpectedly."""
 
     conn_string = adapter._get_property(conn_id, 'connection_string')
     if conn_string is None:
