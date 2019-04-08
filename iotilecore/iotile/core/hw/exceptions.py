@@ -162,7 +162,7 @@ class AsynchronousRPCResponse(RPCError):
 class BusyRPCResponse(RPCError):
     """The Tile was busy and could not handle an RPC right now.
 
-    This exception is rarely exposed diretly to a user.  Internally, it can be
+    This exception is rarely exposed directly to a user.  Internally, it can be
     the case that an RPC cannot be executed at a specific moment because a
     long-running asynchronous RPC is in progress.  In that case, the
     :meth:`TileBusProxyObject.rpc` method automatically retries the RPC later.

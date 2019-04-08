@@ -189,7 +189,7 @@ class AdapterStream:
     def connect_direct(self, connection_string, no_rpc=False, force=False):
         """Directly connect to a device using its stream specific connection string.
 
-        Normally, all connections to a deviec include opening the RPC
+        Normally, all connections to a device include opening the RPC
         interface to send RPCs.  However, there are certain, very specific,
         circumstances when you would not want to or be able to open the RPC
         interface (such as when you are using the debug interface on a bare
@@ -322,7 +322,7 @@ class AdapterStream:
     def send_highspeed(self, data, progress_callback):
         """Send a script to a device at highspeed, reporting progress.
 
-        This method takes a binary blog and downloads it to the device as fast
+        This method takes a binary blob and downloads it to the device as fast
         as possible, calling the passed progress_callback periodically with
         updates on how far it has gotten.
 
