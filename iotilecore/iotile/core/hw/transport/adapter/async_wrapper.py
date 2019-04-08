@@ -131,9 +131,16 @@ class AsynchronousModernWrapper(StandardDeviceAdapter):
         See :meth:`AbstractDeviceAdapter.connect`.
         """
 
-        resp = await self._execute(self._adapter.connect_sync, conn_id, connection_string)
-        _raise_error(conn_id, 'connect', resp)
-        self._setup_connection(conn_id, connection_string)
+        self._logger.info("Inside connect, conn_id=%d, conn_string=%s", conn_id, connection_string)
+
+        try:
+            self._setup_connection(conn_id, connection_string)
+
+            resp = await self._execute(self._adapter.connect_sync, conn_id, connection_string)
+            _raise_error(conn_id, 'connect', resp)
+        except:
+            self._teardown_connection(conn_id, force=True)
+            raise
 
     async def disconnect(self, conn_id):
         """Disconnect from a connected device.
