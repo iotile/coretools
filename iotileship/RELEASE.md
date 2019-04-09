@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileShip are listed here.
 
+## 1.0.4
+
+- Change open mode from 'rb' to 'r'. 
+
 ## 1.0.3
 
 - Remove remaining builtins/__future__

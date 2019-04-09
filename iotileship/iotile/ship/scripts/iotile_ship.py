@@ -38,7 +38,7 @@ def load_variables(defines, config_file):
     """
 
     if config_file is not None:
-        with open(config_file, "rb") as conf_file:
+        with open(config_file, "r") as conf_file:
             variables = yaml.load(conf_file)
     else:
         variables = {}

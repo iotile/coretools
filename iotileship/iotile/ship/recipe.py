@@ -351,7 +351,7 @@ class RecipeObject:
     @classmethod
     def _process_yaml(cls, yamlfile):
         import yaml
-        with open(yamlfile, 'rb') as infile:
+        with open(yamlfile, 'r') as infile:
             info = yaml.load(infile)
             return info
 
