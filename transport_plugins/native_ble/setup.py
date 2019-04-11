@@ -8,8 +8,8 @@ setup(
     version=version.version,
     license="LGPLv3",
     install_requires=[
-        "iotile-core>=4.0.0",
-        "bable-interface>=1.2.0"
+        "iotile-core>=4.0.0,<5",
+        "bable-interface>=1.2.0,<2"
     ],
     python_requires=">=3.5,<4",
     entry_points={'iotile.device_adapter': ['ble = iotile_transport_native_ble.device_adapter:NativeBLEDeviceAdapter'],

@@ -25,15 +25,15 @@ setup(
     version=version.version,
     license="LGPLv3",
     install_requires=[
-        "ws4py>=0.5.1",
-        "msgpack>=0.6.1",
-        "python-dateutil>=2.8.0",
-        "typedargs>=1.0.0",
+        "ws4py>=0.5.1,<1",
+        "msgpack>=0.6.1,<1",
+        "python-dateutil>=2.8.0,<3",
+        "typedargs>=1.0.0,<2",
         "sortedcontainers~=2.1",
-        "entrypoints>=0.3.0"
+        "entrypoints>=0.3.0,<1"
     ],
     extras_require={
-        'ui': ["asciimatics>=1.10.0"]
+        'ui': ["asciimatics>=1.10.0,<2"]
     },
     entry_points={
         'console_scripts': [

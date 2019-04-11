@@ -2,6 +2,10 @@
 
 All major changes in each released version of iotile-transport-awsiot are listed here.
 
+## 1.0.3
+
+- Implement proper dependency major version limits.
+
 ## 1.0.2
 
 - Remove past/future/monotonic, pylint cleanup

@@ -8,8 +8,8 @@ setup(
     version=version.version,
     license="LGPLv3",
     install_requires=[
-        "iotile-core>=4.0.0",
-        "AWSIoTPythonSDK>=1.4.3"
+        "iotile-core>=4.0.0,<5",
+        "AWSIoTPythonSDK>=1.4.3,<2"
     ],
     python_requires=">=3.5,<4",
     entry_points={'iotile.device_adapter': ['awsiot = iotile_transport_awsiot.device_adapter:AWSIOTDeviceAdapter'],

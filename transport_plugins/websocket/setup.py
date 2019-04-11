@@ -9,8 +9,8 @@ setup(
     version=version.version,
     license="LGPLv3",
     install_requires=[
-        "iotile-core>=4.0.0",
-        "msgpack>=0.6.1"
+        "iotile-core>=4.0.0,<5",
+        "msgpack>=0.6.1,<1"
     ],
     python_requires=">=3.5,<4",
     entry_points={

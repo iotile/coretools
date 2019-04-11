@@ -22,10 +22,10 @@ setup(
     license="LGPLv3",
     install_requires=[
         "tornado>=4.5.0,<5.0.0",
-        "iotile-core>=4.0.0",
-        "msgpack>=0.6.1",
-        "ws4py>=0.5.1",
-        "websockets"
+        "iotile-core>=4.0.0,<5",
+        "msgpack>=0.6.1,<1",
+        "ws4py>=0.5.1,<1",
+        "websockets>=7,<8"
     ],
     python_requires=">=3.5,<4",
     entry_points={
