@@ -2,6 +2,10 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## 4.1.1
+
+- Implement proper dependency major version limits.
+
 ## 4.1.0
 
 - Update UTCAssigner with more test coverage and add fix_report() method that

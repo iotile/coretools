@@ -2,9 +2,11 @@
 
 All major changes in each released version of iotile-emulate are listed here.
 
-## HEAD
+## 0.4.4
 
 - Support busy response for RPCs in iotile-emulate. Issue #619
+- Implement proper dependency major version limits. Since this package is still pre-1.0, we 
+  still allow more breaking changes (in accordance with SemVer)
 
 ## 0.4.3
 

@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 3.0.6
+
+- Implement proper dependency major version limits.
+
 ## 3.0.5
 
 - Add support for completely undefining a symbol previously included in an

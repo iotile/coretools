@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileGateway are listed here.
 
+## 2.1.1
+
+- Implement proper dependency major version limits.
+
 ## 2.1.0
 
 - Create an asyncio ServiceStatusClient

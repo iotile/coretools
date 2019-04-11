@@ -9,8 +9,8 @@ setup(
     version=version.version,
     license="LGPLv3",
     install_requires=[
-        "iotile-core>=4.0.0",
-        "pyserial>=3.4.0"
+        "iotile-core>=4.0.0,<5",
+        "pyserial>=3.4.0,<4"
     ],
     python_requires=">=3.5,<4",
     entry_points={'iotile.device_adapter': ['bled112 = iotile_transport_bled112.bled112:BLED112Adapter'],
