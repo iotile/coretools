@@ -34,6 +34,7 @@ class JLinkControlThread(threading.Thread):
     DUMP_ALL_RAM = 5
     PROGRAM_FLASH = 6
     SEND_SCRIPT = 7
+    DEBUG_READ_RAM = 8
 
     KNOWN_COMMANDS = {
         STOP: None,
