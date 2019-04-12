@@ -2,6 +2,14 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## HEAD
+
+- Refactor transport plugin system to use `asyncio` and add shim around legacy
+  DeviceAdapter interface.
+- Add support for background event loops using `asyncio` and migrate CMDStream
+  to use background event loop.
+- Move all websockets code to `iotile-transport-websocket`.
+
 ## 4.1.1
 
 - Implement proper dependency major version limits.

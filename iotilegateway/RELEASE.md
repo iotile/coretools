@@ -2,6 +2,13 @@
 
 All major changes in each released version of IOTileGateway are listed here.
 
+## HEAD
+
+- Remove tornado dependency and rely on `asyncio` instead.
+- Significant refactor of all code to port to `asyncio`.  
+- Remove custom `DeviceManager` and replace with a AggregatingDeviceAdapter
+  based on the new `AbstractDeviceAdapter`.
+
 ## 2.1.1
 
 - Implement proper dependency major version limits.
