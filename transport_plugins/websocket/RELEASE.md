@@ -6,6 +6,7 @@ All major changes in each released version of the websocket transport plugin are
 
 - Completely refactor to be based on `asyncio` and the `websockets` package
   instead of ws4py and an older package as well as tornado.
+- Completely remove legacy VirtualInterface that has been supplanted by DeviceServer.
 
 ## 2.0.3
 

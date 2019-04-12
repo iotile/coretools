@@ -9,6 +9,9 @@ All major changes in each released version of `iotile-core` are listed here.
 - Add support for background event loops using `asyncio` and migrate CMDStream
   to use background event loop.
 - Move all websockets code to `iotile-transport-websocket`.
+- Completely remove `VirtualIOTileInterface` and replace with `AbstractDeviceServer`.
+  `virtual_device` script has been updated to use `AbstractDeviceServer` directly instead
+  of requiring it to be wrapped inside a `VirtualIOTileInterface` shim.
 
 ## 4.1.1
 

@@ -93,6 +93,12 @@ class VirtualIOTileDevice(BaseRunnable):
 
         return len(self.reports) > 0
 
+    def interface_open(self, name):
+        if name not in self._interface_status:
+            raise ArgumentError("Unkown interface name: %s" % name)
+
+        return self._interface_status[name]
+
     def start(self, channel):
         """Start running this virtual device including any necessary worker threads.
 

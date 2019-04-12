@@ -6,6 +6,7 @@ import logging
 import functools
 from queue import Empty
 from iotile.core.utilities.packed import unpack
+from iotile.core.utilities.async_tools import OperationManager, SharedLoop
 from iotile.core.exceptions import HardwareError
 from .tilebus import *
 from .bgapi_structures import process_gatt_service, process_attribute, process_read_handle, process_notification
@@ -15,25 +16,32 @@ from .async_packet import InternalTimeoutError, DeviceNotConfiguredError
 BGAPIPacket = namedtuple("BGAPIPacket", ["is_event", "command_class", "command", "payload"])
 
 
-class BLED112CommandProcessor(threading.Thread):
-    def __init__(self, stream, commands, stop_check_interval=0.01):
-        super(BLED112CommandProcessor, self).__init__()
+class AsyncBLED112CommandProcessor(threading.Thread):
+    def __init__(self, stream, commands, stop_check_interval=0.01, loop=SharedLoop):
+        super(AsyncBLED112CommandProcessor, self).__init__()
 
         self._stream = stream
         self._commands = commands
-        self._stop_event = threading.Event()
         self._logger = logging.getLogger(__name__)
         self._logger.addHandler(logging.NullHandler())
-        self.event_handler = None
         self._current_context = None
         self._current_callback = None
-        self._stop_event_check_interval = stop_check_interval
+        self._event_check_interval = stop_check_interval
+
+        self._loop = loop
+        self._asyncio_cmd_lock = loop.create_lock()
+        self.operations = OperationManager(loop=loop)
 
     def run(self):
-        while not self._stop_event.is_set():
+        while True:
             try:
                 self._process_events()
-                cmdargs, callback, _, context = self._commands.get(timeout=self._stop_event_check_interval)
+                event = self._commands.get(timeout=self._event_check_interval)
+                if event is None:
+                    self._logger.info("Shutting down bled112 thread due to stop command")
+                    return
+
+                cmdargs, callback, _, context = event
                 cmd = cmdargs[0]
 
                 if len(cmdargs) > 0:
@@ -74,9 +82,7 @@ class BLED112CommandProcessor(threading.Thread):
                 raise
 
     def _set_scan_parameters(self, interval=2100, window=2100, active=False):
-        """
-        Set the scan interval and window in units of ms and set whether active scanning is performed
-        """
+        """Set the scan parameters like interval and window in units of ms."""
 
         active_num = 0
         if bool(active):
@@ -97,8 +103,7 @@ class BLED112CommandProcessor(threading.Thread):
         return True, None
 
     def _query_systemstate(self):
-        """Query the maximum number of connections supported by this adapter
-        """
+        """Query the maximum number of connections supported by this adapter."""
 
         def status_filter_func(event):
             if event.command_class == 3 and event.command == 0:
@@ -124,8 +129,7 @@ class BLED112CommandProcessor(threading.Thread):
         return True, {'max_connections': maxconn, 'active_connections': conns}
 
     def _start_scan(self, active):
-        """Begin scanning forever
-        """
+        """Begin scanning forever."""
 
         success, retval = self._set_scan_parameters(active=active)
         if not success:
@@ -142,8 +146,7 @@ class BLED112CommandProcessor(threading.Thread):
         return True, None
 
     def _stop_scan(self):
-        """Stop scanning for BLE devices
-        """
+        """Stop scanning for BLE devices."""
 
         try:
             response = self._send_command(6, 4, [])
@@ -161,7 +164,7 @@ class BLED112CommandProcessor(threading.Thread):
         return True, None
 
     def _probe_services(self, handle):
-        """Probe for all primary services and characteristics in those services
+        """Probe for all primary services and characteristics in those services.
 
         Args:
             handle (int): the connection handle to probe
@@ -205,7 +208,7 @@ class BLED112CommandProcessor(threading.Thread):
         end_event = end_events[0]
         _, result, _ = unpack("<BHH", end_event.payload)
         if result != 0:
-            self._logger.warn("Error enumerating GATT table, protocol error code = %d (0x%X)" % (result, result))
+            self._logger.warning("Error enumerating GATT table, protocol error code = %d (0x%X)" % (result, result))
             return False, None
 
         services = {}
@@ -215,7 +218,7 @@ class BLED112CommandProcessor(threading.Thread):
         return True, {'services': services}
 
     def _probe_characteristics(self, conn, services, timeout=5.0):
-        """Probe gatt services for all associated characteristics in a BLE device
+        """Probe gatt services for all associated characteristics in a BLE device.
 
         Args:
             conn (int): the connection handle to probe
@@ -262,8 +265,7 @@ class BLED112CommandProcessor(threading.Thread):
         return True, {'services': services}
 
     def _enable_rpcs(self, conn, services, timeout=1.0):
-        """Prepare this device to receive RPCs
-        """
+        """Prepare this device to receive RPCs."""
 
         #FIXME: Check for characteristic existence in a try/catch and return failure if not found
 
@@ -288,8 +290,7 @@ class BLED112CommandProcessor(threading.Thread):
         return success, result
 
     def _disable_rpcs(self, conn, services, timeout=1.0):
-        """Prevent this device from receiving more RPCs
-        """
+        """Prevent this device from receiving more RPCs."""
 
         success, result = self._set_notification(conn, services[TileBusService]['characteristics'][TileBusReceiveHeaderCharacteristic], False, timeout)
         if not success:
@@ -371,7 +372,7 @@ class BLED112CommandProcessor(threading.Thread):
         return True, {'type': handle_type, 'data': handle_data}
 
     def _write_handle(self, conn, handle, ack, value, timeout=1.0):
-        """Write to a BLE device characteristic by its handle
+        """Write to a BLE device characteristic by its handle.
 
         Args:
             conn (int): The connection handle for the device we should read from
@@ -511,7 +512,7 @@ class BLED112CommandProcessor(threading.Thread):
         return True, {'status': status, 'length': length, 'payload': resp_payload, 'disconnected': False}
 
     def _set_advertising_data(self, packet_type, data):
-        """Set the advertising data for advertisements sent out by this bled112
+        """Set the advertising data for advertisements sent out by this bled112.
 
         Args:
             packet_type (int): 0 for advertisement, 1 for scan response
@@ -528,7 +529,7 @@ class BLED112CommandProcessor(threading.Thread):
         return True, None
 
     def _set_mode(self, discover_mode, connect_mode):
-        """Set the mode of the BLED112, used to enable and disable advertising
+        """Set the mode of the BLED112, used to enable and disable advertising.
 
         To enable advertising, use 4, 2.
         To disable advertising use 0, 0.
@@ -548,7 +549,7 @@ class BLED112CommandProcessor(threading.Thread):
         return True, None
 
     def _send_notification(self, handle, value):
-        """Send a notification to all connected clients on a characteristic
+        """Send a notification to all connected clients on a characteristic.
 
         Args:
             handle (int): The handle we wish to notify on
@@ -568,7 +569,7 @@ class BLED112CommandProcessor(threading.Thread):
         return True, None
 
     def _set_notification(self, conn, char, enabled, timeout=1.0):
-        """Enable/disable notifications on a GATT characteristic
+        """Enable/disable notifications on a GATT characteristic.
 
         Args:
             conn (int): The connection handle for the device we should interact with
@@ -602,8 +603,7 @@ class BLED112CommandProcessor(threading.Thread):
         return self._write_handle(conn, char['client_configuration']['handle'], True, valarray, timeout)
 
     def _connect(self, address):
-        """Connect to a device given its uuid
-        """
+        """Connect to a device given its uuid."""
 
         latency = 0
         conn_interval_min = 6
@@ -655,8 +655,7 @@ class BLED112CommandProcessor(threading.Thread):
         return True, connection
 
     def _disconnect(self, handle):
-        """Disconnect from a device that we have previously connected to
-        """
+        """Disconnect from a device that we have previously connected to."""
 
         payload = struct.pack('<B', handle)
         response = self._send_command(3, 0, payload)
@@ -683,9 +682,7 @@ class BLED112CommandProcessor(threading.Thread):
         return True, {'handle': handle}
 
     def _send_command(self, cmd_class, command, payload, timeout=3.0):
-        """
-        Send a BGAPI packet to the dongle and return the response
-        """
+        """Send a BGAPI packet to the dongle and return the response."""
 
         if len(payload) > 60:
             return ValueError("Attempting to send a BGAPI packet with length > 60 is not allowed", actual_length=len(payload), command=command, command_class=cmd_class)
@@ -703,10 +700,11 @@ class BLED112CommandProcessor(threading.Thread):
         response = self._receive_packet(timeout)
         return response
 
+    def event_handler(self, event_packet):
+        self._loop.run_coroutine(self.operations.process_message, event_packet, wait=False)
+
     def _receive_packet(self, timeout=3.0):
-        """
-        Receive a response packet to a command
-        """
+        """Receive a response packet to a command."""
 
         while True:
             response_data = self._stream.read_packet(timeout=timeout)
@@ -721,31 +719,60 @@ class BLED112CommandProcessor(threading.Thread):
             return response
 
     def stop(self):
-        self._stop_event.set()
+        """Stop this background command processor."""
+
+        self._commands.put(None)
         self.join()
-
-    def sync_command(self, cmd):
-        done_event = threading.Event()
-        results = []
-
-        def done_callback(result):
-            results.append(result)
-            done_event.set()
-
-        self._commands.put((cmd, done_callback, True, None))
-
-        done_event.wait()
-
-        success = results[0]['result']
-        retval = results[0]['return_value']
-        if not success:
-            raise HardwareError("Error executing synchronous command", command=cmd, return_value=retval)
-
-        return retval
 
     def async_command(self, cmd, callback, context):
         self._commands.put((cmd, callback, False, context))
 
+    async def future_command(self, cmd):
+        """Run command as a coroutine and return a future.
+
+        Args:
+            loop (BackgroundEventLoop): The loop that we should attach
+                the future too.
+            cmd (list): The command and arguments that we wish to call.
+
+        Returns:
+            asyncio.Future: An awaitable future with the result of the operation.
+        """
+
+        if self._asyncio_cmd_lock is None:
+            raise HardwareError("Cannot use future_command because no event loop attached")
+
+        async with self._asyncio_cmd_lock:
+            return await self._future_command_unlocked(cmd)
+
+    def _future_command_unlocked(self, cmd):
+        """Run command as a coroutine and return a future.
+
+        Args:
+            loop (BackgroundEventLoop): The loop that we should attach
+                the future too.
+            cmd (list): The command and arguments that we wish to call.
+
+        Returns:
+            asyncio.Future: An awaitable future with the result of the operation.
+        """
+
+        future = self._loop.create_future()
+        asyncio_loop = self._loop.get_loop()
+
+        def _done_callback(result):
+            retval = result['return_value']
+
+            if not result['result']:
+                future.set_exception(HardwareError("Error executing synchronous command",
+                                                   command=cmd, return_value=retval))
+            else:
+                future.set_result(retval)
+
+        callback = functools.partial(asyncio_loop.call_soon_threadsafe, _done_callback)
+        self._commands.put((cmd, callback, True, None))
+
+        return future
 
     def _process_events(self, return_filter=None, max_events=0):
         to_return = []
@@ -772,7 +799,7 @@ class BLED112CommandProcessor(threading.Thread):
         return to_return
 
     def _wait_process_events(self, total_time, return_filter, end_filter):
-        """Synchronously process events until a specific event is found or we timeout
+        """Synchronously process events until a specific event is found or we timeout.
 
         Args:
             total_time (float): The aproximate maximum number of seconds we should wait for the end event

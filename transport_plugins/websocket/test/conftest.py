@@ -4,7 +4,6 @@ from iotile.core.hw.hwmanager import HardwareManager
 from iotile.core.hw.transport.adapter.sync_wrapper import SynchronousLegacyWrapper
 from iotile.core.hw.transport import VirtualDeviceAdapter
 from iotile.core.utilities import BackgroundEventLoop
-from iotile_transport_websocket.virtual_websocket import WebSocketVirtualInterface
 from iotile_transport_websocket.device_adapter import WebSocketDeviceAdapter
 from iotile_transport_websocket.device_server import WebSocketDeviceServer
 
@@ -21,23 +20,6 @@ def loop():
 
     event_loop.stop()
 
-
-@pytest.fixture(scope="function")
-def virtual_interface(request, loop):
-    config = {
-        'port': None
-    }
-
-    device = request.param
-
-    logger.info("Parametrizing virtual interface with %s", device)
-
-    interface = WebSocketVirtualInterface(config, loop=loop)
-    interface.start(device)
-
-    yield interface.port, interface
-
-    interface.stop()
 
 @pytest.fixture(scope="function")
 def server(request, loop):
@@ -65,8 +47,8 @@ def server(request, loop):
 
 
 @pytest.fixture(scope="function")
-def hw(virtual_interface):
-    port, _ = virtual_interface
+def hw(server):
+    port, _ = server
 
     logger.info("Creating HardwareManager at port %d", port)
     hw = HardwareManager(port="ws:127.0.0.1:{}".format(port))

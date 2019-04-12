@@ -18,7 +18,7 @@ from iotile.core.hw.transport.adapter import DeviceAdapter
 from .bled112_cmd import BLED112CommandProcessor
 from .tilebus import TileBusService, TileBusStreamingCharacteristic, TileBusTracingCharacteristic, TileBusHighSpeedCharacteristic
 from .async_packet import AsyncPacketBuffer
-
+from .utilities import open_bled112
 
 def packet_length(header):
     """Find the BGAPI packet length given its header"""
@@ -58,13 +58,6 @@ class BLED112Adapter(DeviceAdapter):
         if on_disconnect is not None:
             self.add_callback('on_disconnect', on_disconnect)
 
-        if port is None or port == '<auto>':
-            devices = self.find_bled112_devices()
-            if len(devices) > 0:
-                port = devices[0]
-            else:
-                raise ValueError("Could not find any BLED112 adapters connected to this computer")
-
         self.scanning = False
         self.stopped = False
 
@@ -98,7 +91,7 @@ class BLED112Adapter(DeviceAdapter):
 
         self._logger = logging.getLogger(__name__)
         self._logger.addHandler(logging.NullHandler())
-        self._serial_port = serial.Serial(port, 256000, timeout=0.01, rtscts=True, exclusive=True)
+        self._serial_port = open_bled112(port, self._logger)
         self._stream = AsyncPacketBuffer(self._serial_port, header_length=4, length_function=packet_length)
         self._commands = Queue()
         self._command_task = BLED112CommandProcessor(self._stream, self._commands, stop_check_interval=stop_check_interval)
