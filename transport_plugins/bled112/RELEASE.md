@@ -2,6 +2,16 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
+## HEAD
+
+- Remove VirtualInterface and replace with an initial implementation of `BLED112DeviceServer`.
+  There is still more work to do on the device server to make it production quality but all
+  basic functionality works currently.
+
+- Adds mechanism to automatically find the first available BLED112 dongle on a computer so
+  that you don't have to hardcode dongle paths if you have multiple `iotile` processes 
+  running.
+
 ## 2.0.4
 
 - Implement proper dependency major version limits.

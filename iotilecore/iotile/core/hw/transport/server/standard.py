@@ -140,7 +140,7 @@ class StandardDeviceServer(AbstractDeviceServer):
                 used to refer to it in all future interactions.  If this is
                 None, then a random string will be generated for the client_id.
             user_data (object): An arbitrary object that you would like to store
-                with this client and will be pased to your event handler when
+                with this client and will be passed to your event handler when
                 events are forwarded to this client.
             scan (bool): Whether to install a monitor to listen for device_found
                 events.
@@ -217,7 +217,7 @@ class StandardDeviceServer(AbstractDeviceServer):
 
         for conn_string, conn_id in conns.items():
             try:
-                self._logger.debug("Disconnecting client %d from conn %s at teardown", client_id, conn_string)
+                self._logger.debug("Disconnecting client %s from conn %s at teardown", client_id, conn_string)
                 await self.adapter.disconnect(conn_id)
             except:  #pylint:disable=bare-except; This is a finalization method that should not raise unexpectedly
                 self._logger.exception("Error disconnecting device during teardown_client: conn_string=%s", conn_string)

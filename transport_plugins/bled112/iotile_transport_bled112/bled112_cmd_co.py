@@ -6,6 +6,7 @@ import logging
 import functools
 from queue import Empty
 from iotile.core.utilities.packed import unpack
+from iotile.core.utilities.async_tools import OperationManager, SharedLoop
 from iotile.core.exceptions import HardwareError
 from .tilebus import *
 from .bgapi_structures import process_gatt_service, process_attribute, process_read_handle, process_notification
@@ -15,31 +16,32 @@ from .async_packet import InternalTimeoutError, DeviceNotConfiguredError
 BGAPIPacket = namedtuple("BGAPIPacket", ["is_event", "command_class", "command", "payload"])
 
 
-class BLED112CommandProcessor(threading.Thread):
-    def __init__(self, stream, commands, stop_check_interval=0.01, loop=None):
-        super(BLED112CommandProcessor, self).__init__()
+class AsyncBLED112CommandProcessor(threading.Thread):
+    def __init__(self, stream, commands, stop_check_interval=0.01, loop=SharedLoop):
+        super(AsyncBLED112CommandProcessor, self).__init__()
 
         self._stream = stream
         self._commands = commands
-        self._stop_event = threading.Event()
         self._logger = logging.getLogger(__name__)
         self._logger.addHandler(logging.NullHandler())
-        self.event_handler = None
         self._current_context = None
         self._current_callback = None
-        self._stop_event_check_interval = stop_check_interval
-        self._loop = loop
+        self._event_check_interval = stop_check_interval
 
-        if loop is not None:
-            self._asyncio_cmd_lock = loop.create_lock()
-        else:
-            self._asyncio_cmd_lock = None
+        self._loop = loop
+        self._asyncio_cmd_lock = loop.create_lock()
+        self.operations = OperationManager(loop=loop)
 
     def run(self):
-        while not self._stop_event.is_set():
+        while True:
             try:
                 self._process_events()
-                cmdargs, callback, _, context = self._commands.get(timeout=self._stop_event_check_interval)
+                event = self._commands.get(timeout=self._event_check_interval)
+                if event is None:
+                    self._logger.info("Shutting down bled112 thread due to stop command")
+                    return
+
+                cmdargs, callback, _, context = event
                 cmd = cmdargs[0]
 
                 if len(cmdargs) > 0:
@@ -709,6 +711,9 @@ class BLED112CommandProcessor(threading.Thread):
         response = self._receive_packet(timeout)
         return response
 
+    def event_handler(self, event_packet):
+        self._loop.run_coroutine(self.operations.process_message, event_packet, wait=False)
+
     def _receive_packet(self, timeout=3.0):
         """
         Receive a response packet to a command
@@ -727,27 +732,8 @@ class BLED112CommandProcessor(threading.Thread):
             return response
 
     def stop(self):
-        self._stop_event.set()
+        self._commands.put(None)
         self.join()
-
-    def sync_command(self, cmd):
-        done_event = threading.Event()
-        results = []
-
-        def done_callback(result):
-            results.append(result)
-            done_event.set()
-
-        self._commands.put((cmd, done_callback, True, None))
-
-        done_event.wait()
-
-        success = results[0]['result']
-        retval = results[0]['return_value']
-        if not success:
-            raise HardwareError("Error executing synchronous command", command=cmd, return_value=retval)
-
-        return retval
 
     def async_command(self, cmd, callback, context):
         self._commands.put((cmd, callback, False, context))
