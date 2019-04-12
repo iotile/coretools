@@ -34,7 +34,8 @@ class JLinkControlThread(threading.Thread):
     DUMP_ALL_RAM = 5
     PROGRAM_FLASH = 6
     SEND_SCRIPT = 7
-    DEBUG_READ_RAM = 8
+    DEBUG_RD_MEM = 8
+    DEBUG_WR_MEM = 9
 
     KNOWN_COMMANDS = {
         STOP: None,
@@ -45,9 +46,10 @@ class JLinkControlThread(threading.Thread):
         SEND_SCRIPT: "_send_script",  # Takes  device_info, control_info, script, progress_callback
 
         # Debug commands
-        DEBUG_READ_RAM: "_debug_read_ram", # Takes device_info (ignored), control_info (ignored), args
-        DUMP_ALL_RAM: "_dump_all_ram",  # Takes device_info, control_info (ignored), args (ignored)
-        PROGRAM_FLASH: "_program_flash" # Takes device_info, control_info (ignored), args {'data': binary}
+        DEBUG_RD_MEM:   "_debug_rd_mem", # Takes device_info (ignored), control_info (ignored), args
+        DEBUG_WR_MEM:   "_debug_wr_mem", # Takes device_info (ignored), control_info (ignored), args
+        DUMP_ALL_RAM:   "_dump_all_ram", # Takes device_info, control_info (ignored), args (ignored)
+        PROGRAM_FLASH:  "_program_flash" # Takes device_info, control_info (ignored), args {'data': binary}
     }
 
     def __init__(self, jlink):
@@ -163,9 +165,13 @@ class JLinkControlThread(threading.Thread):
         else:
             raise HardwareError("Unknown RPC trigger method", method=method)
 
-    def _debug_read_ram(self, _device_info, _control_info, args, _progress_callback):
-        memory = self._read_memory(args.get('start_addr'), args.get('length'))
+    def _debug_rd_mem(self, _device_info, _control_info, args, _progress_callback):
+        memory = self._read_memory(args.get('address'), args.get('length'))
         return memory
+
+    def _debug_wr_mem(self, _device_info, _control_info, args, _progress_callback):
+        nbytes = self._jlink.memory_write(args.get('address'), args.get('data'))
+        return int(nbytes)
 
     def _dump_all_ram(self, device_info, _control_info, _args, _progress_callback):
         memory = self._read_memory(device_info.ram_start, device_info.ram_size)
