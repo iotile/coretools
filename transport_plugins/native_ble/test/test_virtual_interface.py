@@ -13,8 +13,6 @@ from test.devices_factory import build_report_device, build_tracing_device, get_
 
 pytestmark = pytest.mark.skip
 
-# from iotile_transport_native_ble.virtual_ble import NativeBLEVirtualInterface
-
 
 @pytest.fixture(scope="function")
 def virtual_interface(mock_bable, request):
