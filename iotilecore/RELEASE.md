@@ -2,6 +2,10 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## HEAD
+
+- Add debug_interface read_ram() function
+
 ## 4.1.1
 
 - Implement proper dependency major version limits.
