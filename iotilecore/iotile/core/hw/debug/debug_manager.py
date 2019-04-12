@@ -39,11 +39,12 @@ class DebugManager:
             data_length (integer): The length of data to read in bytes
 
         Returns:
-            dict: The data read
+            string: The data read
         """
 
-        data = self._stream.debug_command('read_ram', {'start_addr': start_addr, 'length': data_length} )
-        return data
+        data = bytearray(self._stream.debug_command(
+            'read_ram', {'start_addr': start_addr, 'length': data_length}))
+        return data.hex()
 
     @docannotate
     def dump_ram(self, out_path, pause=False):
