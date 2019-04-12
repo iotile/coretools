@@ -2,7 +2,7 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
-## HEAD
+## 4.1.2
 
 - Add debug_interface read_ram() function
 
