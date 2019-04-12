@@ -31,6 +31,21 @@ class DebugManager:
         self._stream = stream
 
     @docannotate
+    def read_ram(self, start_addr, data_length):
+        """ Read RAM 
+
+        Args:
+            start_addr (integer): The start address to read
+            data_length (integer): The length of data to read in bytes
+
+        Returns:
+            dict: The data read
+        """
+
+        data = self._stream.debug_command('read_ram', {'start_addr': start_addr, 'length': data_length} )
+        return data
+
+    @docannotate
     def dump_ram(self, out_path, pause=False):
         """Dump all RAM to a binary file.
 

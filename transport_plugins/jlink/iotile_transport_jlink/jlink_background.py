@@ -44,6 +44,7 @@ class JLinkControlThread(threading.Thread):
         SEND_SCRIPT: "_send_script",  # Takes  device_info, control_info, script, progress_callback
 
         # Debug commands
+        DEBUG_READ_RAM: "_debug_read_ram", # Takes device_info (ignored), control_info (ignored), args
         DUMP_ALL_RAM: "_dump_all_ram",  # Takes device_info, control_info (ignored), args (ignored)
         PROGRAM_FLASH: "_program_flash" # Takes device_info, control_info (ignored), args {'data': binary}
     }
@@ -160,6 +161,10 @@ class JLinkControlThread(threading.Thread):
             self._jlink.memory_write32(method.register, [1 << method.bit])
         else:
             raise HardwareError("Unknown RPC trigger method", method=method)
+
+    def _debug_read_ram(self, _device_info, _control_info, args, _progress_callback):
+        memory = self._read_memory(args.get('start_addr'), args.get('length'))
+        return memory
 
     def _dump_all_ram(self, device_info, _control_info, _args, _progress_callback):
         memory = self._read_memory(device_info.ram_start, device_info.ram_size)
