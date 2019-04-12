@@ -41,7 +41,7 @@ class DebugManager:
         return self._stream.debug_command(name, cmd_args)
 
     @docannotate
-    def read_ram(self, start_addr, data_length):
+    def rd_mem(self, start_addr, data_length):
         """ Read RAM 
 
         Args:
@@ -53,8 +53,22 @@ class DebugManager:
         """
 
         data = bytearray(self._stream.debug_command(
-            'read_ram', {'start_addr': start_addr, 'length': data_length}))
+            'rd_mem', {'address': start_addr, 'length': data_length}))
         return data.hex()
+
+    @docannotate
+    def wr_mem(self, address, data):
+        """ Write RAM 32bits
+        Args:
+            address (integer): The address to write 
+            data (list(integer)): Data to write
+
+        Returns:
+            integer: Number of bytes written
+        """
+        nbytes = self._stream.debug_command(
+            'wr_mem', {'address': address, 'data': data})
+        return nbytes
 
     @docannotate
     def dump_ram(self, out_path, pause=False):
