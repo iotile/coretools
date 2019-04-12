@@ -16,7 +16,7 @@ BGAPIPacket = namedtuple("BGAPIPacket", ["is_event", "command_class", "command",
 
 
 class BLED112CommandProcessor(threading.Thread):
-    def __init__(self, stream, commands, stop_check_interval=0.01, loop=None):
+    def __init__(self, stream, commands, stop_check_interval=0.01):
         super(BLED112CommandProcessor, self).__init__()
 
         self._stream = stream
@@ -28,12 +28,6 @@ class BLED112CommandProcessor(threading.Thread):
         self._current_context = None
         self._current_callback = None
         self._stop_event_check_interval = stop_check_interval
-        self._loop = loop
-
-        if loop is not None:
-            self._asyncio_cmd_lock = loop.create_lock()
-        else:
-            self._asyncio_cmd_lock = None
 
     def run(self):
         while not self._stop_event.is_set():
@@ -752,52 +746,6 @@ class BLED112CommandProcessor(threading.Thread):
     def async_command(self, cmd, callback, context):
         self._commands.put((cmd, callback, False, context))
 
-    async def future_command(self, cmd):
-        """Run command as a coroutine and return a future.
-
-        Args:
-            loop (BackgroundEventLoop): The loop that we should attach
-                the future too.
-            cmd (list): The command and arguments that we wish to call.
-
-        Returns:
-            asyncio.Future: An awaitable future with the result of the operation.
-        """
-
-        if self._asyncio_cmd_lock is None:
-            raise HardwareError("Cannot use future_command because no event loop attached")
-
-        async with self._asyncio_cmd_lock:
-            return await self._future_command_unlocked(cmd)
-
-    def _future_command_unlocked(self, cmd):
-        """Run command as a coroutine and return a future.
-
-        Args:
-            loop (BackgroundEventLoop): The loop that we should attach
-                the future too.
-            cmd (list): The command and arguments that we wish to call.
-
-        Returns:
-            asyncio.Future: An awaitable future with the result of the operation.
-        """
-
-        future = self._loop.create_future()
-        asyncio_loop = self._loop.get_loop()
-
-        def _done_callback(result):
-            retval = result['return_value']
-
-            if not result['result']:
-                future.set_exception(HardwareError("Error executing synchronous command",
-                                                   command=cmd, return_value=retval))
-            else:
-                future.set_result(retval)
-
-        callback = functools.partial(asyncio_loop.call_soon_threadsafe, _done_callback)
-        self._commands.put((cmd, callback, True, None))
-
-        return future
 
     def _process_events(self, return_filter=None, max_events=0):
         to_return = []
