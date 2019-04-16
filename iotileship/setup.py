@@ -41,7 +41,8 @@ setup(
             'SendOTAScriptStep  = iotile.ship.actions.send_ota_script_step:SendOTAScriptStep'
         ],
         'iotile.recipe_resource': [
-            'hardware_manager   = iotile.ship.resources:HardwareManagerResource'
+            'hardware_manager   = iotile.ship.resources:HardwareManagerResource',
+            'filesystem_manager = iotile.ship.resources:FilesystemManagerResource'
         ],
         'iotile.autobuild': [
             'autobuild_shiparchive = iotile.ship.autobuild:autobuild_shiparchive'
