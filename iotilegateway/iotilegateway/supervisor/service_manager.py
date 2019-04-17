@@ -117,7 +117,7 @@ class ServiceManager:
         """
 
         if name in self.services:
-            raise ArgumentError("Could not add service because the short_name is taken", short_name=short_name)
+            raise ArgumentError("Could not add service because the long_name is taken", long_name=long_name)
 
         serv_state = states.ServiceState(name, long_name, preregistered)
 

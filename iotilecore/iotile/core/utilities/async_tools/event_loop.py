@@ -63,7 +63,7 @@ class BackgroundTask:
             If not specified, calling stop() will result in cancel()
             being called on the underlying task.
 
-            The finalizer (or task.cancel()) is always invokved inside
+            The finalizer (or task.cancel()) is always invoked inside
             the event loop.  If finalizer is a coroutine it is awaited.
         loop (BackgroundEventLoop): The background event loop this task
             should run in.  If not specified, it defaults to the global
@@ -201,15 +201,16 @@ class BackgroundTask:
 
         tasks.extend(x.task for x in self.subtasks)
         finished = asyncio.gather(*tasks, return_exceptions=True)
+        outcomes = []
 
         try:
-            await asyncio.wait_for(finished, timeout=self._stop_timeout)
+            outcomes = await asyncio.wait_for(finished, timeout=self._stop_timeout)
         except asyncio.TimeoutError as err:
             # See discussion here: https://github.com/python/asyncio/issues/253#issuecomment-120138132
             # This prevents a nuisance log error message, finished is guaranteed
             # to be cancelled but not awaited when wait_for() has a timeout.
             try:
-                await finished
+                outcomes = await finished
             except asyncio.CancelledError:
                 pass
 
@@ -218,6 +219,9 @@ class BackgroundTask:
             raise err
         finally:
             self.stopped = True
+            for outcome in outcomes:
+                if isinstance(outcome, Exception) and not isinstance(outcome, asyncio.CancelledError):
+                    self._logger.error(outcome)
 
             if self in self._loop.tasks:
                 self._loop.tasks.remove(self)
@@ -391,7 +395,6 @@ class BackgroundEventLoop:
         self.stopping = True
 
         awaitables = [task.stop() for task in self.tasks]
-
         results = await asyncio.gather(*awaitables, return_exceptions=True)
         for task, result in zip(self.tasks, results):
             if isinstance(result, Exception):
@@ -412,12 +415,12 @@ class BackgroundEventLoop:
             self._logger.debug("Starting loop in background thread")
             self.loop.run_forever()
             self._logger.debug("Finished loop in background thread")
-        except:  #pylint:disable=bare-except;This is a background worker thread.
+        except:  # pylint:disable=bare-except;This is a background worker thread.
             self._logger.exception("Exception raised from event loop thread")
         finally:
             self.loop.close()
 
-    #pylint:disable=too-many-arguments;These all have sane defaults that should not be changed often.
+    # pylint:disable=too-many-arguments;These all have sane defaults that should not be changed often.
     def add_task(self, cor, name=None, finalizer=None, stop_timeout=1.0, parent=None):
         """Schedule a task to run on the background event loop.
 
@@ -598,7 +601,6 @@ class BackgroundEventLoop:
         self.start()
         return asyncio.Lock(loop=self.loop)
 
-
     def create_future(self):
         """Attach a Future to the background loop.
 
@@ -668,6 +670,6 @@ SharedLoop = BackgroundEventLoop()  # pylint:disable=invalid-name;This is for ba
 #
 # See: https://github.com/python/cpython/blob/master/Lib/concurrent/futures/thread.py#L33
 
-#pylint:disable=wrong-import-position,wrong-import-order,unused-import;See above comment
+# pylint:disable=wrong-import-position,wrong-import-order,unused-import;See above comment
 import concurrent.futures.thread
 atexit.register(SharedLoop.stop)
