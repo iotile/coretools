@@ -84,7 +84,7 @@ class AsyncValidatingWSClient:
         """
 
         self._con = await websockets.connect(self.url)
-        self._connection_task = self._loop.add_task(self._manage_connection(self._con), name=name)
+        self._connection_task = self._loop.add_task(self._manage_connection(), name=name)
 
     async def stop(self):
         """Stop this websocket client and disconnect from the server.
@@ -161,7 +161,7 @@ class AsyncValidatingWSClient:
         raise ExternalError("Command {} failed".format(command),
                             reason=response.get('reason'))
 
-    async def _manage_connection(self, task):
+    async def _manage_connection(self):
         """Internal coroutine for managing the client connection."""
 
         try:
@@ -170,7 +170,7 @@ class AsyncValidatingWSClient:
 
                 try:
                     unpacked = unpack(message)
-                except Exception:  #pylint:disable=broad-except;This is a background worker
+                except Exception:  # pylint:disable=broad-except;This is a background worker
                     self._logger.exception("Corrupt message received")
                     continue
 
@@ -187,8 +187,6 @@ class AsyncValidatingWSClient:
             self._logger.info("Closing connection to server due to stop()")
         finally:
             await self._manager.process_message(dict(type='event', name=self.DISCONNECT_EVENT, payload=None))
-
-            task.cancel_subtasks()
             await self._con.close()
 
     def register_event(self, name, callback, validator):
@@ -225,7 +223,7 @@ class AsyncValidatingWSClient:
                 result = callback(payload)
                 if inspect.isawaitable(result):
                     await result
-            except:  #pylint:disable=bare-except;This is a background logging routine
+            except:  # pylint:disable=bare-except;This is a background logging routine
                 self._logger.error("Error calling callback for event %s, payload=%s",
                                    name, payload, exc_info=True)
 
