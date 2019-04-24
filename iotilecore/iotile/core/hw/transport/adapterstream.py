@@ -276,7 +276,7 @@ class AdapterStream:
         exceptions that can be raised here.
 
         Args:
-            address (int): The tile address containin the RPC
+            address (int): The tile address containing the RPC
             rpc_id (int): The ID of the RPC that we wish to call.
             call_payload (bytes): The payload containing encoded arguments for the
                 RPC.

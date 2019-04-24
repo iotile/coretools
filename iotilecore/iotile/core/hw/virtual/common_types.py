@@ -69,6 +69,7 @@ def pack_rpc_response(response=None, exception=None):
 
     return status, response
 
+
 def unpack_rpc_response(status, response=None, rpc_id=0, address=0):
     """Unpack an RPC status back in to payload or exception."""
 
@@ -166,29 +167,54 @@ def rpc(address, rpc_id, arg_format, resp_format=None):
         raise RPCInvalidIDError("Invalid RPC ID: {}".format(rpc_id))
 
     def _rpc_wrapper(func):
-        def _rpc_executor(self, payload):
-            try:
-                args = unpack_rpc_payload(arg_format, payload)
-            except struct.error as exc:
-                raise RPCInvalidArgumentsError(str(exc), arg_format=arg_format, payload=binascii.hexlify(payload))
-
-            resp = func(self, *args)
-
-            if resp is None:
-                resp = []
-
-            if resp_format is not None:
+        if inspect.iscoroutinefunction(func):
+            async def _rpc_executor(self, payload):
                 try:
-                    return pack_rpc_payload(resp_format, resp)
+                    args = unpack_rpc_payload(arg_format, payload)
                 except struct.error as exc:
-                    raise RPCInvalidReturnValueError(address, rpc_id, resp_format, resp, error=exc) from exc
+                    raise RPCInvalidArgumentsError(str(exc), arg_format=arg_format, payload=binascii.hexlify(payload))
 
-            return resp
+                resp = await func(self, *args)
 
-        _rpc_executor.rpc_id = rpc_id
-        _rpc_executor.rpc_addr = address
-        _rpc_executor.is_rpc = True
-        return _rpc_executor
+                if resp is None:
+                    resp = []
+
+                if resp_format is not None:
+                    try:
+                        return pack_rpc_payload(resp_format, resp)
+                    except struct.error as exc:
+                        raise RPCInvalidReturnValueError(str(exc), resp_format=resp_format, resp=repr(resp))
+
+                return resp
+
+            _rpc_executor.rpc_id = rpc_id
+            _rpc_executor.rpc_addr = address
+            _rpc_executor.is_rpc = True
+            return _rpc_executor
+        else:
+            def _rpc_executor(self, payload):
+                try:
+                    args = unpack_rpc_payload(arg_format, payload)
+                except struct.error as exc:
+                    raise RPCInvalidArgumentsError(str(exc), arg_format=arg_format, payload=binascii.hexlify(payload))
+
+                resp = func(self, *args)
+
+                if resp is None:
+                    resp = []
+
+                if resp_format is not None:
+                    try:
+                        return pack_rpc_payload(resp_format, resp)
+                    except struct.error as exc:
+                        raise RPCInvalidReturnValueError(address, rpc_id, resp_format, resp, error=exc) from exc
+
+                return resp
+
+            _rpc_executor.rpc_id = rpc_id
+            _rpc_executor.rpc_addr = address
+            _rpc_executor.is_rpc = True
+            return _rpc_executor
 
     return _rpc_wrapper
 

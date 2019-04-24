@@ -1,5 +1,6 @@
 import json
 import logging
+import inspect
 from iotile.core.exceptions import ArgumentError
 from iotile.core.dev import ComponentRegistry
 from iotile.core.hw.reports import BroadcastReport
@@ -295,7 +296,11 @@ class VirtualDeviceAdapter(StandardDeviceAdapter):
         dev = self._get_property(conn_id, 'device')
 
         try:
-            return dev.call_rpc(address, rpc_id, bytes(payload))
+            res = dev.call_rpc(address, rpc_id, bytes(payload))
+            if inspect.iscoroutine(res):
+                return await res
+            else:
+                return res
         except (RPCInvalidIDError, RPCNotFoundError, TileNotFoundError, RPCErrorCode, BusyRPCResponse):
             raise
         except Exception:

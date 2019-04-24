@@ -1,8 +1,8 @@
 """A virtual tile that delegates all RPC calls to a named service."""
-
 from iotile.core.exceptions import InternalError
 from iotile.core.hw.virtual import VirtualTile, RPCNotFoundError, RPCInvalidArgumentsError, RPCInvalidReturnValueError, TileNotFoundError
-from iotilegateway.supervisor import SupervisorClient
+from iotilegateway.supervisor import AsyncSupervisorClient
+from iotile.core.utilities.async_tools import SharedLoop
 
 
 class ServiceDelegateTile(VirtualTile):
@@ -24,10 +24,13 @@ class ServiceDelegateTile(VirtualTile):
         service = args['service']
         url = args.get('url', 'ws://127.0.0.1:9400/services')
 
+        self.loop = SharedLoop
+
         super(ServiceDelegateTile, self).__init__(address, name)
 
         self._service = service
-        self._client = SupervisorClient(url)
+        self._client = AsyncSupervisorClient(url, loop=self.loop)
+        self.loop.run_coroutine(self._client.start())
 
     def has_rpc(self, rpc_id):
         """Check if an RPC is defined.
@@ -60,26 +63,29 @@ class ServiceDelegateTile(VirtualTile):
         if super(ServiceDelegateTile, self).has_rpc(rpc_id):
             return super(ServiceDelegateTile, self).call_rpc(rpc_id, payload)
 
-        # FIXME: We set the timeout here to a very large number since we don't
-        # know what an appropriate timeout is and don't want to restrict the
-        # run time of RPCs that could be long running.  The caller of the RPC
-        # through the tile will know what an appropriate timeout is for the
-        # RPC that they are trying to call.
+        async def _awaitable_wrapper():
 
-        resp = self._client.send_rpc(self._service, rpc_id, payload, timeout=120.0)
-        result = resp['result']
+            # FIXME: We set the timeout here to a very large number since we don't
+            # know what an appropriate timeout is and don't want to restrict the
+            # run time of RPCs that could be long running.  The caller of the RPC
+            # through the tile will know what an appropriate timeout is for the
+            # RPC that they are trying to call.
+            resp = await self._client.send_rpc(self._service, rpc_id, payload, timeout=120.0)
+            result = resp['result']
 
-        if result == 'success':
-            return resp['response']
-        elif result == 'service_not_found':
-            raise TileNotFoundError("Could not find service by name", name=self._service)
-        elif result == 'rpc_not_found':
-            raise RPCNotFoundError("Could not find RPC on service", name=self._service, rpc_id=rpc_id)
-        elif result == 'invalid_arguments':
-            raise RPCInvalidArgumentsError("Invalid arguments to RPC", name=self._service, rpc_id=rpc_id)
-        elif result == 'invalid_response':
-            raise RPCInvalidReturnValueError("Invalid response from RPC", name=self._service, rpc_id=rpc_id)
-        elif result == 'execution_exception':
-            raise InternalError("Exception raised during processing RPC", name=self._service, rpc_id=rpc_id)
-        else:
-            raise InternalError("Unknown response received from delegated RPC", name=self._service, rpc_id=rpc_id, result=result)
+            if result == 'success':
+                return resp['response']
+            elif result == 'service_not_found':
+                raise TileNotFoundError("Could not find service by name", name=self._service)
+            elif result == 'rpc_not_found':
+                raise RPCNotFoundError("Could not find RPC on service", name=self._service, rpc_id=rpc_id)
+            elif result == 'invalid_arguments':
+                raise RPCInvalidArgumentsError("Invalid arguments to RPC", name=self._service, rpc_id=rpc_id)
+            elif result == 'invalid_response':
+                raise RPCInvalidReturnValueError("Invalid response from RPC", name=self._service, rpc_id=rpc_id)
+            elif result == 'execution_exception':
+                raise InternalError("Exception raised during processing RPC", name=self._service, rpc_id=rpc_id)
+            else:
+                raise InternalError("Unknown response received from delegated RPC", name=self._service, rpc_id=rpc_id, result=result)
+
+        return _awaitable_wrapper()

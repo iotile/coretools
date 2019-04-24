@@ -278,7 +278,7 @@ class BackgroundEventLoop:
         self._logger = logging.getLogger(__name__)
         self._loop_check = threading.local()
 
-    def start(self):
+    def start(self, aug='EventLoopThread'):
         """Ensure the background loop is running.
 
         This method is safe to call multiple times.  If the loop is already
@@ -291,7 +291,7 @@ class BackgroundEventLoop:
         if not self.loop:
             self._logger.debug("Starting event loop")
             self.loop = asyncio.new_event_loop()
-            self.thread = threading.Thread(target=self._loop_thread_main, name="EventLoopThread", daemon=True)
+            self.thread = threading.Thread(target=self._loop_thread_main, name=aug, daemon=True)
             self.thread.start()
 
     def wait_for_interrupt(self, check_interval=1.0, max_time=None):
