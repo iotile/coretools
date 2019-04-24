@@ -3,8 +3,8 @@
 import threading
 from copy import copy
 import logging
-from time import monotonic
 import asyncio
+import inspect
 
 from iotile.core.hw.virtual import RPCInvalidArgumentsError, RPCInvalidReturnValueError
 from iotile.core.utilities import SharedLoop
@@ -503,6 +503,8 @@ class AsyncSupervisorClient(AsyncValidatingWSClient):
         else:
             try:
                 response = self._rpc_dispatcher.call_rpc(rpc_id, args)
+                if inspect.iscoroutine(response):
+                    response = await response
             except RPCInvalidArgumentsError:
                 result = 'invalid_arguments'
             except RPCInvalidReturnValueError:

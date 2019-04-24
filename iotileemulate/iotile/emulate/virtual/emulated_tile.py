@@ -376,7 +376,6 @@ class EmulatedTile(EmulationMixin, RPCDispatcher):
     @async_tile_rpc(*rpcs.RESET)
     async def reset_rpc(self):
         """Reset this tile."""
-
         await self.reset()
         raise TileNotFoundError("tile was reset via an RPC")
 
