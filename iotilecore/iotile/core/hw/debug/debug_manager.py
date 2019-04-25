@@ -61,6 +61,40 @@ class DebugManager:
         return nbytes
 
     @docannotate
+    def dump_memory(self, memory_type, out_path, start_addr=0, data_length=0, pause=False):
+        """Dump all RAM or external flash to a binary file.
+
+        Args:
+            memory_type (str): A string specifying 'RAM' or 'external'.
+            out_path (path): The output path at which to save
+                the binary core dump.  This core dump consists
+                of the current contents of RAM for the device.
+            start_addr (integer): The start address to read
+            data_length (integer): The length of data to read in bytes
+            pause (bool): Optional parameter to halt chip operation
+                while performing the core dump.  Defaults to False,
+                which could cause rapidly changing RAM values to
+                be in an inconsistent state, but it noninvasive and
+                will not interrupt any device activity.
+        """
+        # if memory.lower() == 'ram':
+        #     ram_contents = self._stream.debug_command('dump_memory', {'halt': pause})
+
+        #     with open(out_path, "wb") as outfile:
+        #         outfile.write(ram_contents)
+        # elif memory.lower() == 'external' or memory.lower() == 'flash':
+        #     # write the read flash command
+        #     # read the response buffer's address
+        #     flash_contents = self._stream.debug_command('dump_memory', {'start': start_addr, 'length': data_length})
+        #     with open(out_path, "wb") as outfile:
+        #         outfile.write(flash_contents)
+
+        memory_contents = self._stream.debug_command('dump_memory', {'memory': memory_type, 'start': start_addr, 'length': data_length, 'halt': pause})
+
+        with open(out_path, "wb") as outfile:
+            outfile.write(memory_contents)
+
+    @docannotate
     def dump_ram(self, out_path, pause=False):
         """Dump all RAM to a binary file.
 

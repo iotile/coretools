@@ -31,7 +31,7 @@ class JLinkControlThread(threading.Thread):
     FIND_CONTROL = 2
     VERIFY_CONTROL = 3
     SEND_RPC = 4
-    DUMP_ALL_RAM = 5
+    DUMP_MEMORY = 5
     PROGRAM_FLASH = 6
     SEND_SCRIPT = 7
     DEBUG_RD_MEM = 8
@@ -48,7 +48,7 @@ class JLinkControlThread(threading.Thread):
         # Debug commands
         DEBUG_RD_MEM:   "_debug_rd_mem", # Takes device_info (ignored), control_info (ignored), args
         DEBUG_WR_MEM:   "_debug_wr_mem", # Takes device_info (ignored), control_info (ignored), args
-        DUMP_ALL_RAM:   "_dump_all_ram", # Takes device_info, control_info (ignored), args (ignored)
+        DUMP_MEMORY:    "_dump_memory", # Takes device_info, control_info (ignored), args {'start' : integer, 'length' : integer}
         PROGRAM_FLASH:  "_program_flash" # Takes device_info, control_info (ignored), args {'data': binary}
     }
 
@@ -173,9 +173,25 @@ class JLinkControlThread(threading.Thread):
         nbytes = self._jlink.memory_write(args.get('address'), args.get('data'))
         return int(nbytes)
 
-    def _dump_all_ram(self, device_info, _control_info, _args, _progress_callback):
-        memory = self._read_memory(device_info.ram_start, device_info.ram_size)
-        return memory
+    def _dump_memory(self, device_info, _control_info, args, _progress_callback):
+        memory_type = args.get('memory')
+        start_addr  = args.get('start')
+        data_length = args.get('length')
+
+        if memory_type.lower() == 'ram':
+            memory = self._read_memory(device_info.ram_start, device_info.ram_size)
+            return memory
+        elif memory_type.lower() == 'external' or memory_type.lower() == 'flash':
+            return bytes([42])
+
+    # def _dump_all_ram(self, device_info, _control_info, _args, _progress_callback):
+    #     memory = self._read_memory(device_info.ram_start, device_info.ram_size)
+    #     return memory
+
+    # def _dump_external(self, device_info, _control_info, _args, _progress_callback):
+    #     memory = self._read_memory(device_info.ram_start, device_info.ram_size)
+    #     # memory = 1337
+    #     return memory
 
     def _program_flash(self, _device_info, _control_info, args, progress_callback):
         base_address = args.get('base_address')

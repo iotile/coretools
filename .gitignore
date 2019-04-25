@@ -63,3 +63,4 @@ target/
 
 workspace
 .pytest_cache
+test\.bin
