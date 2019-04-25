@@ -173,6 +173,33 @@ class JLinkControlThread(threading.Thread):
         nbytes = self._jlink.memory_write(args.get('address'), args.get('data'))
         return int(nbytes)
 
+# FF_CMD_INFO Byte Layout
+
+# 0x2000FFE0: ff_cmd_info.command.id
+# 0x2000FFE1: ff_cmd_info.command.reserved[0]
+# 0x2000FFE2: ff_cmd_info.command.reserved[1]
+# 0x2000FFE3: ff_cmd_info.command.reserved[2]
+# 0x2000FFE4: ff_cmd_info.command.read_cmd.address
+# 0x2000FFE8: ff_cmd_info.command.read_cmd.length
+# 0x2000FFEA: ff_cmd_info.command.read_cmd.reserved[0]
+# 0x2000FFEB: ff_cmd_info.command.read_cmd.reserved[1]
+# 0x2000FFEC: ff_cmd_info.response.id
+# 0x2000FFED: ff_cmd_info.response.error_code
+# 0x2000FFED: ff_cmd_info.response.reserved[0]
+# 0x2000FFEF: ff_cmd_info.response.reserved[1]
+# 0x2000FFF0: ff_cmd_info.response.read_resp.buffer_addr
+# 0x2000FFF4: ff_cmd_info.response.read_resp.offset
+# 0x2000FFF6: ff_cmd_info.response.read_resp.reserved[0]
+# 0x2000FFF7: ff_cmd_info.response.read_resp.reserved[1]
+# 0x2000FFF8: ff_cmd_info.max_read_length
+# 0x2000FFFA: ff_cmd_info.max_write_length
+# 0x2000FFFC: ff_cmd_info.reserved[0]
+# 0x2000FFFD: ff_cmd_info.reserved[1]
+# 0x2000FFFE: ff_cmd_info.reserved[2]
+# 0x2000FFFF: ff_cmd_info.reserved[3]
+
+# FF_CMD_INFO Byte Layout
+
     def _dump_memory(self, device_info, _control_info, args, _progress_callback):
         memory_type = args.get('memory')
         start_addr  = args.get('start')
@@ -180,17 +207,24 @@ class JLinkControlThread(threading.Thread):
 
         if memory_type.lower() == 'ram':
             memory = self._read_memory(device_info.ram_start, device_info.ram_size)
-            return memory
+            # return memory
         elif memory_type.lower() == 'external' or memory_type.lower() == 'flash':
-            return bytes([42])
+            # inject flash forensics blob
+            # wait until breakpoint to give command
+            # write the address of flash to spi read at command address 0x2000FFE4
+            self._jlink.memory_write(0x2000FFE4, str(start_addr))
+            # write the length of flash to spi read at command address 0x2000FFE8
+            self._jlink.memory_write(0x2000FFE8, str(data_length))
+            # wait untilbreakpoint to read response
+            # read 4 byte address of buffer that contains external flash data
+            buffer_addr = self._jlink.memory_read(0x2000FFF0, 4)
+            memory = self._jlink.memory_read(buffer_addr, data_length)
+            self._jlink.reset()
+            # return memory
+        return memory
 
     # def _dump_all_ram(self, device_info, _control_info, _args, _progress_callback):
     #     memory = self._read_memory(device_info.ram_start, device_info.ram_size)
-    #     return memory
-
-    # def _dump_external(self, device_info, _control_info, _args, _progress_callback):
-    #     memory = self._read_memory(device_info.ram_start, device_info.ram_size)
-    #     # memory = 1337
     #     return memory
 
     def _program_flash(self, _device_info, _control_info, args, progress_callback):
