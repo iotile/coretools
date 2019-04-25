@@ -165,6 +165,12 @@ class JLinkControlThread(threading.Thread):
         memory = self._read_memory(device_info.ram_start, device_info.ram_size)
         return memory
 
+    def _dump_all_flash(self, device_info, _control_info, _args, _progress_callback):
+        # send read flash command
+        # read resp buffer address
+        memory = self._read_memory(device_info.ram_start, device_info.ram_size)
+        return memory
+
     def _program_flash(self, _device_info, _control_info, args, progress_callback):
         base_address = args.get('base_address')
         data = args.get('data')
