@@ -71,7 +71,7 @@ class DebugManager:
         return nbytes
 
     @docannotate
-    def dump_memory(self, memory_type, out_path, start_addr=0, data_length=0, pause=False):
+    def dump_memory(self, memory_type, out_path, start_addr, data_length, pause=False):
         """Dump all RAM or external flash to a binary file.
 
         Args:
