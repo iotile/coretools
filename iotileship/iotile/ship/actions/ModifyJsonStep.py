@@ -80,10 +80,10 @@ class ModifyJsonStep: #pylint: disable=too-few-public-methods
         root = resources['filesystem'].root
         fullpath = root.joinpath(self._path)
 
-        with open(fullpath, "r") as infile:
+        with open(str(fullpath), "r") as infile:
             data = json.load(infile)
 
         result = modify_dict(data, self._key, self._value, self._create)
 
-        with open(fullpath, "w") as outfile:
+        with open(str(fullpath), "w") as outfile:
             json.dump(result, outfile, indent=2)

@@ -13,10 +13,10 @@ class test_harness:
         self.expected_json = path / "expected.json"
 
     def init_data(self, original, expected):
-        with open(self.tested_json, "w") as file:
+        with open(str(self.tested_json), "w") as file:
             json.dump(original, file, indent=2)
 
-        with open(self.expected_json, "w") as file:
+        with open(str(self.expected_json), "w") as file:
             json.dump(expected, file, indent=2)
 
     def execute_test(self, args):
@@ -24,14 +24,14 @@ class test_harness:
         step.run(self.resources)
 
     def check_success(self, expected):
-        with open(self.tested_json, "r") as file:
+        with open(str(self.tested_json), "r") as file:
             result = json.load(file)
             assert result == expected
 
-        with open(self.tested_json, "r") as file:
+        with open(str(self.tested_json), "r") as file:
             result_str = file.read()
 
-        with open(self.expected_json, "r") as file:
+        with open(str(self.expected_json), "r") as file:
             expected_str = file.read()
 
         assert result_str == expected_str
