@@ -3,6 +3,10 @@
 All major changes in each released version of the jlink transport plugin are
 listed here.
 
+## 1.0.5
+
+- Fix `_try_connect` logic around already connected devices.
+
 ## 1.0.4
 
 - Implement proper dependency major version limits.
