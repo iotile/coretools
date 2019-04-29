@@ -137,8 +137,7 @@ class JLinkAdapter(DeviceAdapter):
             if self.connected is True:
                 self._trigger_callback('on_disconnect', self.id, self._connection_id)
                 self.connected = False
-
-            self.stop_sync()
+                self.stop_sync()
 
             if self._mux_func is not None:
                 self._mux_func(self._channel)
