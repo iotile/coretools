@@ -37,8 +37,15 @@ class CloudUploader(IOTileApp):
     def __init__(self, hw, app_info, os_info, device_id):
         super(CloudUploader, self).__init__(hw, app_info, os_info, device_id)
 
-        self._cloud = IOTileCloud()
+        self._cloud_obj = None
         self._con = self._hw.get(8, basic=True)
+
+    @property
+    def _cloud(self):
+        if self._cloud_obj is None:
+            self._cloud_obj = IOTileCloud()
+
+        return self._cloud_obj
 
     @classmethod
     def AppName(cls):
