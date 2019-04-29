@@ -3,7 +3,7 @@ import time
 import struct
 import threading
 import logging
-import binascii
+import functools
 from queue import Empty
 from iotile.core.utilities.packed import unpack
 from iotile.core.exceptions import HardwareError
@@ -745,6 +745,7 @@ class BLED112CommandProcessor(threading.Thread):
 
     def async_command(self, cmd, callback, context):
         self._commands.put((cmd, callback, False, context))
+
 
     def _process_events(self, return_filter=None, max_events=0):
         to_return = []

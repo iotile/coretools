@@ -23,6 +23,7 @@ def simple_hw():
     yield hw
 
     hw.disconnect()
+    hw.close()
 
 
 @pytest.fixture
@@ -31,6 +32,7 @@ def report_hw():
     yield hw
 
     hw.disconnect()
+    hw.close()
 
 
 @pytest.fixture
@@ -44,6 +46,7 @@ def conf_report_hw():
     yield hw
 
     hw.disconnect()
+    hw.close()
 
 
 @pytest.fixture
@@ -59,6 +62,8 @@ def realtime_hw():
     if hw.stream.connected:
         hw.disconnect()
 
+    hw.close()
+
 @pytest.fixture
 def realtime_scan_hw():
     conf_file = os.path.join(os.path.dirname(__file__), 'fast_realtime_test.json')
@@ -70,6 +75,7 @@ def realtime_scan_hw():
     yield hw
 
     hw.disconnect()
+    hw.close()
 
 @pytest.fixture
 def tile_based():
@@ -87,6 +93,8 @@ def tile_based():
 
     reg.clear_extensions()
     hw.disconnect()
+    hw.close()
+
 
 @pytest.fixture
 def tracer_hw():
@@ -99,6 +107,7 @@ def tracer_hw():
     yield hw
 
     hw.disconnect()
+    hw.close()
 
 
 @pytest.fixture
@@ -112,6 +121,8 @@ def conf2_report_hw():
     yield hw
 
     hw.disconnect()
+    hw.close()
+
 
 def test_basic(simple_hw):
     simple_hw.connect_direct('1')
@@ -232,6 +243,22 @@ def test_tilebased_device(tile_based):
 
     assert tile1.add(3, 5) == 8
     tile1.count()
+
+
+def test_debug(realtime_scan_hw):
+    """Make sure we can send debug commands."""
+
+    hw = realtime_scan_hw
+
+    hw.connect('1')
+    debug_man = hw.debug()
+    result = debug_man.send_command('inspect_property', dict(properties=['connected']))
+
+    assert len(result) == 1
+    assert result.get('connected') is True
+
+    with pytest.raises(HardwareError):
+        debug_man.send_command('random_command', dict())
 
 
 def test_recording_rpcs(tmpdir):

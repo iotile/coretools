@@ -38,10 +38,12 @@ setup(
             'SyncCloudStep      = iotile.ship.actions.sync_cloud_step:SyncCloudStep',
             'SyncRTCStep        = iotile.ship.actions.sync_rtc_step:SyncRTCStep',
             'VerifyDeviceStep   = iotile.ship.actions.verify_device_step:VerifyDeviceStep',
-            'SendOTAScriptStep  = iotile.ship.actions.send_ota_script_step:SendOTAScriptStep'
+            'SendOTAScriptStep  = iotile.ship.actions.send_ota_script_step:SendOTAScriptStep',
+            'ModifyJsonStep     = iotile.ship.actions.ModifyJsonStep:ModifyJsonStep'
         ],
         'iotile.recipe_resource': [
-            'hardware_manager   = iotile.ship.resources:HardwareManagerResource'
+            'hardware_manager   = iotile.ship.resources:HardwareManagerResource',
+            'filesystem_manager = iotile.ship.resources:FilesystemManagerResource'
         ],
         'iotile.autobuild': [
             'autobuild_shiparchive = iotile.ship.autobuild:autobuild_shiparchive'

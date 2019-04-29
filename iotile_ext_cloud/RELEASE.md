@@ -2,6 +2,12 @@
 
 All major changes in each released version of the iotile-ext-cloud plugin are listed here.
 
+## 1.0.5
+
+- Only request IOTileCloud credentials if we are actually uploading to IOTileCloud.
+  This allows people to use the cloud_uploader app to download reports from a POD
+  without needing to have/enter an IOTile.cloud password.
+
 ## 1.0.4
 
 - Implement proper dependency major version limits.

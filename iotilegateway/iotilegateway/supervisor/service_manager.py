@@ -3,6 +3,10 @@
 from time import monotonic
 from collections import namedtuple
 import uuid
+import logging
+import inspect
+from iotile.core.utilities import SharedLoop
+from iotile.core.utilities.async_tools import AwaitableDict
 from iotile.core.exceptions import ArgumentError
 from . import states
 
@@ -16,16 +20,19 @@ class ServiceManager:
         expected_services (list): A list of dictionaries with the name of expected services that should be running
             other services may register on the fly but expected services will allow reporting of a
             NOT_STARTED status and querying the number of services that should be running.
+        loop (BackgroundEventLoop): The loop that we will be running in
     """
 
-    def __init__(self, expected_services):
+    def __init__(self, expected_services, loop=SharedLoop):
         self.services = {}
         self.agents = {}
         self.in_flight_rpcs = {}
+        self.rpc_results = AwaitableDict(loop=loop)
         self._monitors = set()
+        self._logger = logging.getLogger(__name__)
 
         for service in expected_services:
-            self.add_service(service['short_name'], service['long_name'], preregistered=True)
+            self.add_service(service['short_name'], service['long_name'], preregistered=True, notify=False)
 
     def add_monitor(self, callback):
         """Register a callback whenever a service changes.
@@ -51,17 +58,19 @@ class ServiceManager:
         except KeyError:
             raise ArgumentError("Callback was not registered")
 
-    def _notify_update(self, name, change_type, change_info=None, directed_client=None):
+    async def _notify_update(self, name, change_type, change_info=None, directed_client=None):
         """Notify updates on a service to anyone who cares."""
 
         for monitor in self._monitors:
             try:
-                monitor(name, change_type, change_info, directed_client=directed_client)
+                result = monitor(name, change_type, change_info, directed_client=directed_client)
+                if inspect.isawaitable(result):
+                    await result
             except Exception:
                 # We can't allow any exceptions in a monitor routine to break the server.
-                pass
+                self._logger.warning("Error calling monitor with update %s", name, exc_info=True)
 
-    def update_state(self, short_name, state):
+    async def update_state(self, short_name, state):
         """Set the current state of a service.
 
         If the state is unchanged from a previous attempt, this routine does
@@ -89,30 +98,40 @@ class ServiceManager:
         update['new_status_string'] = states.KNOWN_STATES[state]
 
         serv.state = state
-        self._notify_update(short_name, 'state_change', update)
+        await self._notify_update(short_name, 'state_change', update)
 
-    def add_service(self, short_name, long_name, preregistered=False):
+    def add_service(self, name, long_name, preregistered=False, notify=True):
         """Add a service to the list of tracked services.
 
         Args:
-            short_name (string): A unique short service name for the service
+            name (string): A unique short service name for the service
             long_name (string): A longer, user friendly name for the service
             preregistered (bool): Whether this service is an expected preregistered
                 service.
+            notify (bool): Send notifications about this service to all clients
+
+        Returns:
+            awaitable: If notify is True, an awaitable for the notifications.
+
+            Otherwise None.
         """
 
-        if short_name in self.services:
-            raise ArgumentError("Could not add service because the short_name is taken", short_name=short_name)
+        if name in self.services:
+            raise ArgumentError("Could not add service because the long_name is taken", long_name=long_name)
 
-        serv_state = states.ServiceState(short_name, long_name, preregistered)
+        serv_state = states.ServiceState(name, long_name, preregistered)
 
         service = {
             'state': serv_state,
             'heartbeat_threshold': 600
         }
 
-        self.services[short_name] = service
-        self._notify_update(short_name, 'new_service', self.service_info(short_name))
+        self.services[name] = service
+
+        if notify:
+            return self._notify_update(name, 'new_service', self.service_info(name))
+
+        return None
 
     def service_info(self, short_name):
         """Get static information about a service.
@@ -148,7 +167,7 @@ class ServiceManager:
         if short_name not in self.services:
             raise ArgumentError("Unknown service name", short_name=short_name)
 
-        return self.services[short_name]['state'].messages
+        return list(self.services[short_name]['state'].messages)
 
     def service_headline(self, short_name):
         """Get the headline stored for a service.
@@ -192,41 +211,39 @@ class ServiceManager:
 
         return info
 
-    def send_message(self, short_name, level, message):
+    async def send_message(self, name, level, message):
         """Post a message for a service.
 
         Args:
-            short_name (string): The short name of the service to query
+            name (string): The short name of the service to query
             level (int): The level of the message (info, warning, error)
             message (string): The message contents
         """
 
-        if short_name not in self.services:
-            raise ArgumentError("Unknown service name", short_name=short_name)
+        if name not in self.services:
+            raise ArgumentError("Unknown service name", short_name=name)
 
-        now = monotonic()
+        msg = self.services[name]['state'].post_message(level, message)
+        await self._notify_update(name, 'new_message', msg.to_dict())
 
-        self.services[short_name]['state'].post_message(level, message)
-        self._notify_update(short_name, 'new_message', {'level': level, 'message': message, 'created_time': now, 'now_time': now})
-
-    def set_headline(self, short_name, level, message):
+    async def set_headline(self, name, level, message):
         """Set the sticky headline for a service.
 
         Args:
-            short_name (string): The short name of the service to query
+            name (string): The short name of the service to query
             level (int): The level of the message (info, warning, error)
             message (string): The message contents
         """
 
-        if short_name not in self.services:
-            raise ArgumentError("Unknown service name", short_name=short_name)
+        if name not in self.services:
+            raise ArgumentError("Unknown service name", short_name=name)
 
-        now = monotonic()
+        self.services[name]['state'].set_headline(level, message)
 
-        self.services[short_name]['state'].set_headline(level, message)
-        self._notify_update(short_name, 'new_headline', {'level': level, 'message': message, 'created_time': now, 'now_time': now})
+        headline = self.services[name]['state'].headline.to_dict()
+        await self._notify_update(name, 'new_headline', headline)
 
-    def send_heartbeat(self, short_name):
+    async def send_heartbeat(self, short_name):
         """Post a heartbeat for a service.
 
         Args:
@@ -237,7 +254,7 @@ class ServiceManager:
             raise ArgumentError("Unknown service name", short_name=short_name)
 
         self.services[short_name]['state'].heartbeat()
-        self._notify_update(short_name, 'heartbeat')
+        await self._notify_update(short_name, 'heartbeat')
 
     def list_services(self):
         """Get a list of the services known to this ServiceManager.
@@ -285,7 +302,7 @@ class ServiceManager:
 
         del self.agents[short_name]
 
-    def send_rpc_command(self, short_name, rpc_id, payload, sender_client, timeout=1.0):
+    async def send_rpc_command(self, short_name, rpc_id, payload, sender_client, timeout=1.0):
         """Send an RPC to a service using its registered agent.
 
         Args:
@@ -303,23 +320,25 @@ class ServiceManager:
                 RPC.
         """
 
-        if short_name not in self.services:
-            raise ArgumentError("Unknown service name", short_name=short_name)
 
-        if short_name not in self.agents:
-            raise ArgumentError("No agent registered for service", short_name=short_name)
-
-        agent_tag = self.agents[short_name]
         rpc_tag = str(uuid.uuid4())
 
-        rpc_message = {
-            'rpc_id': rpc_id,
-            'payload': payload,
-            'response_uuid': rpc_tag
-        }
+        self.rpc_results.declare(rpc_tag)
 
-        self.in_flight_rpcs[rpc_tag] = InFlightRPC(sender_client, short_name, monotonic(), timeout)
-        self._notify_update(short_name, 'rpc_command', rpc_message, directed_client=agent_tag)
+        if short_name in self.services and short_name in self.agents:
+            agent_tag = self.agents[short_name]
+            rpc_message = {
+                'rpc_id': rpc_id,
+                'payload': payload,
+                'response_uuid': rpc_tag
+            }
+
+            self.in_flight_rpcs[rpc_tag] = InFlightRPC(sender_client, short_name,
+                                                       monotonic(), timeout)
+            await self._notify_update(short_name, 'rpc_command', rpc_message, directed_client=agent_tag)
+        else:
+            response = dict(result='service_not_found', response=b'')
+            self.rpc_results.set(rpc_tag, response)
 
         return rpc_tag
 
@@ -337,16 +356,17 @@ class ServiceManager:
         if rpc_tag not in self.in_flight_rpcs:
             raise ArgumentError("In flight RPC could not be found, it may have timed out", rpc_tag=rpc_tag)
 
-        rpc = self.in_flight_rpcs[rpc_tag]
         del self.in_flight_rpcs[rpc_tag]
 
         response_message = {
-            'payload': response,
-            'result': result,
-            'response_uuid': rpc_tag
+            'response': response,
+            'result': result
         }
 
-        self._notify_update(rpc.service, 'rpc_response', response_message, directed_client=rpc.sender)
+        try:
+            self.rpc_results.set(rpc_tag, response_message)
+        except KeyError:
+            self._logger.warning("RPC response came but no one was waiting: response=%s", response)
 
     def periodic_service_rpcs(self):
         """Check if any RPC has expired and remove it from the in flight list.
@@ -357,7 +377,7 @@ class ServiceManager:
         to_remove = []
 
         now = monotonic()
-        for rpc_tag, rpc in self.in_flight_rpcs.iteritems():
+        for rpc_tag, rpc in self.in_flight_rpcs.items():
             expiry = rpc.sent_timestamp + rpc.timeout
             if now > expiry:
                 to_remove.append(rpc_tag)

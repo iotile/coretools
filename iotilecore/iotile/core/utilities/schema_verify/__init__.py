@@ -8,9 +8,11 @@ from .literal_verify import LiteralVerifier
 from .options_verify import OptionsVerifier
 from .enum_verify import EnumVerifier
 from .bytes_verify import BytesVerifier
+from .none_verify import NoneVerifier
 
 from .verifier import Verifier
 
-__all__ = ['DictionaryVerifier', 'ListVerifier', 'StringVerifier', 'IntVerifier', 'FloatVerifier',
-           'BooleanVerifier', 'LiteralVerifier', 'OptionsVerifier', 'EnumVerifier', 'Verifier',
-           'BytesVerifier']
+__all__ = ['DictionaryVerifier', 'ListVerifier', 'StringVerifier',
+           'IntVerifier', 'FloatVerifier', 'BooleanVerifier',
+           'LiteralVerifier', 'OptionsVerifier', 'EnumVerifier', 'Verifier',
+           'BytesVerifier', 'NoneVerifier']

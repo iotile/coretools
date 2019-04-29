@@ -17,19 +17,19 @@ from typedargs.shell import HierarchicalShell
 from typedargs import type_system
 from iotile.core.exceptions import IOTileException
 from iotile.core.dev.registry import ComponentRegistry
-import iotile.core.hw.transport.cmdstream as cmdstream
+from iotile.core.utilities import SharedLoop
 
 DESCRIPTION = \
     """Create an interactive shell that explores the IOTile API.
-    
+
     This tool allows you to run commands that are defined in either CoreTools, or
     in a registered plugin.  You can do things like build IOTile firmware or
     control an IOTile device.
-    
+
     If you wish enable logging to debug something that is not working correctly,
     you can do so by passing a combination of -v, -l, -e and -i flags as needed.
     See iotile --help for more details.
-    
+
     **NB, if you want to pass global arguments to enable logging you must do so
     before the first command you pass otherwise the global arguments will be
     interpreted as arguments to your commands.**
@@ -208,19 +208,19 @@ def main(argv=None):
         print(exc.format())
         # if the command passed on the command line fails, then we should
         # just exit rather than drop the user into a shell.
-        cmdstream.do_final_close()
+        SharedLoop.stop()
         return 1
     except Exception:  # pylint:disable=broad-except; We need to make sure we always call cmdstream.do_final_close()
         # Catch all exceptions because otherwise we won't properly close cmdstreams
         # since the program will be said to except 'abnormally'
         traceback.print_exc()
-        cmdstream.do_final_close()
+        SharedLoop.stop()
         return 1
 
     # If the user tells us to never spawn a shell, make sure we don't
     # Also, if we finished our command and there is no context, quit now
     if args.quit or finished:
-        cmdstream.do_final_close()
+        SharedLoop.stop()
         return 0
 
     setup_completion(shell)
@@ -263,7 +263,7 @@ def main(argv=None):
         print("")
     finally:
         # Make sure we close any open CMDStream communication channels so that we don't lockup at exit
-        cmdstream.do_final_close()
+        SharedLoop.stop()
 
     # Make sure we cleanly join our timeout thread before exiting
     if timeout_thread is not None:

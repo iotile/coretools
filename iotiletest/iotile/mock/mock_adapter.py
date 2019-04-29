@@ -82,7 +82,6 @@ class MockDeviceAdapter(DeviceAdapter):
             return
 
         device = self.connections[connection_id]
-
         try:
             payload = device.call_rpc(address, rpc_id, payload)
         except (RPCInvalidIDError, RPCNotFoundError):

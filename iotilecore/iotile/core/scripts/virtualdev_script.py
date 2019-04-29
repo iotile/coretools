@@ -4,10 +4,13 @@ import argparse
 import sys
 import logging
 import json
+import time
 from typedargs.doc_parser import ParsedDocstring
 from iotile.core.dev import ComponentRegistry
 from iotile.core.exceptions import ArgumentError
-from iotile.core.hw.virtual import VirtualIOTileDevice, VirtualIOTileInterface
+from iotile.core.hw.virtual import VirtualIOTileDevice
+from iotile.core.hw.transport import AbstractDeviceServer, StandardDeviceServer, VirtualDeviceAdapter
+from iotile.core.utilities import SharedLoop
 
 
 def one_line_desc(obj):
@@ -19,7 +22,7 @@ def one_line_desc(obj):
         doc = ParsedDocstring(obj.__doc__)
         return doc.short_desc
     except:  # pylint:disable=bare-except; We don't want a misbehaving exception to break the program
-        logger.warn("Could not parse docstring for %s", obj, exc_info=True)
+        logger.warning("Could not parse docstring for %s", obj, exc_info=True)
         return ""
 
 
@@ -43,7 +46,7 @@ def configure_logging(verbose):
         root.addHandler(logging.NullHandler())
 
 
-def main(argv=None):
+def main(argv=None, loop=SharedLoop):
     """Serve access to a virtual IOTile device using a virtual iotile interface."""
 
     if argv is None:
@@ -71,8 +74,8 @@ def main(argv=None):
         configure_logging(args.verbose)
 
         reg = ComponentRegistry()
-        print("Installed Virtual Interfaces:")
-        for name, _iface in reg.load_extensions('iotile.virtual_interface', class_filter=VirtualIOTileInterface):
+        print("Installed Device Servers:")
+        for name, _iface in reg.load_extensions('iotile.device_server', class_filter=AbstractDeviceServer):
             print('- {}'.format(name))
 
         print("\nInstalled Virtual Devices:")
@@ -87,7 +90,6 @@ def main(argv=None):
     configure_logging(args.verbose)
 
     config = {}
-    iface = None
     if args.config is not None:
         with open(args.config, "r") as conf_file:
             config = json.load(conf_file)
@@ -96,8 +98,8 @@ def main(argv=None):
     device = None
     stop_immediately = args.interface == 'null'
     try:
-        iface = instantiate_interface(args.interface, config)
-        device = instantiate_device(args.device, config)
+        server = instantiate_interface(args.interface, config, loop)
+        device = instantiate_device(args.device, config, loop)
 
         if args.state is not None:
             print("Loading device state from file %s" % args.state)
@@ -119,17 +121,28 @@ def main(argv=None):
             print("Tracking all state changes to device")
             device.state_history.enable()
 
-        iface.start(device)
+        adapter = VirtualDeviceAdapter(devices=[device], loop=loop)
+        server.adapter = adapter
+
+        loop.run_coroutine(adapter.start())
+
+        try:
+            loop.run_coroutine(server.start())
+        except:
+            loop.run_coroutine(adapter.stop())
+            adapter = None
+            raise
+
         started = True
 
         print("Starting to serve virtual IOTile device")
 
+        if stop_immediately:
+            return 0
+
         # We need to periodically process events that are queued up in the interface
         while True:
-            iface.process()
-
-            if stop_immediately:
-                break
+            time.sleep(0.5)
 
     except KeyboardInterrupt:
         print("Break received, cleanly exiting...")
@@ -138,8 +151,9 @@ def main(argv=None):
             print("Dumping final device state to %s" % args.dump)
             device.save_state(args.dump)
 
-        if iface is not None and started:
-            iface.stop()
+        if started:
+            loop.run_coroutine(server.stop())
+            loop.run_coroutine(adapter.stop())
 
         if args.track is not None and device is not None:
             print("Saving state history to file %s" % args.track)
@@ -148,7 +162,7 @@ def main(argv=None):
     return 0
 
 
-def instantiate_device(virtual_dev, config):
+def instantiate_device(virtual_dev, config, loop):
     """Find a virtual device by name and instantiate it
 
     Args:
@@ -182,7 +196,7 @@ def instantiate_device(virtual_dev, config):
         sys.exit(1)
 
 
-def instantiate_interface(virtual_iface, config):
+def instantiate_interface(virtual_iface, config, loop):
     """Find a virtual interface by name and instantiate it
 
     Args:
@@ -197,7 +211,7 @@ def instantiate_interface(virtual_iface, config):
 
     # Allow the null virtual interface for testing
     if virtual_iface == 'null':
-        return VirtualIOTileInterface()
+        return StandardDeviceServer(None, {}, loop=loop)
 
     conf = {}
     if 'interface' in config:
@@ -206,12 +220,12 @@ def instantiate_interface(virtual_iface, config):
     try:
         reg = ComponentRegistry()
         if virtual_iface.endswith('.py'):
-            _name, iface = reg.load_extension(virtual_iface, class_filter=VirtualIOTileInterface, unique=True)
+            _name, iface = reg.load_extension(virtual_iface, class_filter=AbstractDeviceServer, unique=True)
         else:
-            _name, iface = reg.load_extensions('iotile.virtual_interface', name_filter=virtual_iface,
-                                               class_filter=VirtualIOTileInterface, unique=True)
+            _name, iface = reg.load_extensions('iotile.device_server', name_filter=virtual_iface,
+                                               class_filter=AbstractDeviceServer, unique=True)
 
-        return iface(conf)
+        return iface(None, conf, loop=loop)
     except ArgumentError as err:
-        print("ERROR: Could not load virtual interface (%s): %s" % (virtual_iface, err.msg))
+        print("ERROR: Could not load device_server (%s): %s" % (virtual_iface, err.msg))
         sys.exit(1)

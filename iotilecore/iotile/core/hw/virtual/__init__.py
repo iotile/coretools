@@ -6,11 +6,14 @@ from .virtualdevice import VirtualIOTileDevice
 from .common_types import (tile_rpc, RPCDispatcher, RPCInvalidIDError,
                            RPCNotFoundError, RPCInvalidArgumentsError,
                            RPCInvalidReturnValueError, TileNotFoundError,
-                           RPCErrorCode, unpack_rpc_payload, pack_rpc_payload)
-from .virtualinterface import VirtualIOTileInterface
+                           RPCErrorCode, BusyRPCResponse, unpack_rpc_payload, pack_rpc_payload,
+                           pack_rpc_response, unpack_rpc_response,
+                           VALID_RPC_EXCEPTIONS)
 
 __all__ = ['VirtualTile', 'VirtualIOTileDevice', 'tile_rpc',
            'RPCDispatcher', 'RPCInvalidIDError', 'TileNotFoundError',
-           'RPCNotFoundError', 'RPCInvalidArgumentsError',
-           'RPCInvalidReturnValueError', 'RPCErrorCode', 'VirtualIOTileInterface',
-           'unpack_rpc_payload', 'pack_rpc_payload']
+           'RPCNotFoundError', 'RPCInvalidArgumentsError', 'BusyRPCResponse',
+           'RPCInvalidReturnValueError', 'RPCErrorCode',
+           'unpack_rpc_payload', 'pack_rpc_payload', 'pack_rpc_response',
+           'unpack_rpc_response',
+           'VALID_RPC_EXCEPTIONS']

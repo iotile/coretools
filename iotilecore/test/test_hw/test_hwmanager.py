@@ -7,8 +7,8 @@
 # are copyright Arch Systems Inc.
 
 from iotile.core.hw.hwmanager import HardwareManager
-from iotile.core.hw.exceptions import *
-from iotile.core.exceptions import *
+from iotile.core.hw.exceptions import UnknownModuleTypeError
+from iotile.core.exceptions import ArgumentError
 from iotile.core.utilities.gid import uuid_to_slug
 
 import unittest
@@ -22,7 +22,7 @@ class TestHardwareManager(unittest.TestCase):
     """
 
     def setUp(self):
-        self.hw = HardwareManager('none')
+        self.hw = HardwareManager('virtual')
 
     def tearDown(self):
         pass
@@ -31,9 +31,8 @@ class TestHardwareManager(unittest.TestCase):
         with pytest.raises(UnknownModuleTypeError):
             self.hw._create_proxy('UnknownTileBusModule', 8)
 
-    def test_uuid_to_slug(kvstore):
-        """Test UUID to DeviceSlug
-        """
+    def test_uuid_to_slug(self):
+        """Test UUID to DeviceSlug."""
 
         with pytest.raises(ArgumentError):
             uuid_to_slug('a')
@@ -47,4 +46,3 @@ class TestHardwareManager(unittest.TestCase):
         assert uuid_to_slug(1) == 'd--0000-0000-0000-0001'
         assert uuid_to_slug(0x9c400) == 'd--0000-0000-0009-c400'
         assert uuid_to_slug(0x0fffffff) == 'd--0000-0000-0fff-ffff'
-

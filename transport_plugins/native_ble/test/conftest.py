@@ -12,7 +12,6 @@ if sys.platform not in ['linux', 'linux2']:
 
 if not skip_imports:
     from iotile_transport_native_ble.device_adapter import NativeBLEDeviceAdapter
-    from iotile_transport_native_ble.virtual_ble import NativeBLEVirtualInterface
     from iotile_transport_native_ble.tilebus import *
 
 
@@ -55,41 +54,3 @@ def connected_device_adapter(mock_bable):
     callback_called.wait(timeout=10)
 
     return device_adapter, mock_bable
-
-
-@pytest.fixture(scope="function")
-def virtual_interface(mock_bable, request):
-    """Initialize the NativeBLEVirtualInterface with a given device."""
-    port = request.param['port']
-    config = {
-        'port': port
-    }
-
-    device = request.param['device']
-
-    interface = NativeBLEVirtualInterface(config)
-    interface.start(device)
-
-    # Call the process function periodically (in a separated thread)
-    def _call_process():
-        while True:
-            interface.process()
-            time.sleep(0.1)
-
-    process_thread = threading.Thread(target=_call_process, name='VirtualInterfaceProcessThread')
-    process_thread.daemon = True
-    process_thread.start()
-
-    return mock_bable, interface
-
-
-@pytest.fixture(scope="function")
-def connected_virtual_interface(virtual_interface):
-    """Create an already connected NativeBLEVirtualInterface."""
-    mock_bable, interface = virtual_interface
-    device_address = '11:11:11:11:11:11'
-
-    mock_bable.simulate_connected_event(interface.controller_id, device_address)
-    assert interface.connected is True
-
-    return mock_bable, interface

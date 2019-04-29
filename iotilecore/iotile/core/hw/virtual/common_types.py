@@ -3,54 +3,11 @@
 import struct
 import binascii
 import inspect
-from iotile.core.exceptions import IOTileException
-
-
-class RPCNotFoundError(IOTileException):
-    """Exception thrown when an RPC is not found."""
-    pass
-
-
-class RPCInvalidArgumentsError(IOTileException):
-    """Exception thrown when an RPC with a fixed parameter format has invalid arguments."""
-    pass
-
-
-class RPCInvalidReturnValueError(IOTileException):
-    """Exception thrown when the return value of an RPC does not conform to its known format."""
-    pass
-
-
-class RPCInvalidIDError(IOTileException):
-    """Exception thrown when an RPC is created with an invalid RPC id."""
-    pass
-
-
-class TileNotFoundError(IOTileException):
-    """Exception thrown when an RPC is sent to a tile that does not exist."""
-    pass
-
-
-class RPCErrorCode(IOTileException):
-    """Exception thrown from an RPC implementation to set the status code."""
-
-    def __init__(self, status_code):
-        super(RPCErrorCode, self).__init__("RPC returned application defined status code %d" % status_code,
-                                           code=status_code)
-
-
-class AsynchronousRPCResponse(IOTileException):
-    """Exception thrown from an RPC implementation when it will return asynchronously."""
-
-    def __init__(self):
-        super(AsynchronousRPCResponse, self).__init__("RPC handler elected to return asynchronously")
-
-
-class BusyRPCResponse(IOTileException):
-    """Exception thrown from an RPC implementation when a tile is busy handling asynchronous request"""
-
-    def __init__(self):
-        super(BusyRPCResponse, self).__init__("The tile is busy")
+from ..exceptions import (RPCNotFoundError, RPCInvalidArgumentsError,
+                          RPCInvalidReturnValueError, RPCInvalidIDError,
+                          TileNotFoundError, RPCErrorCode,
+                          AsynchronousRPCResponse, BusyRPCResponse,
+                          VALID_RPC_EXCEPTIONS)
 
 
 def _create_argcode(code, arg_bytes):
@@ -79,10 +36,63 @@ def _create_respcode(code, resp):
     fixed_size = struct.calcsize("<" + code)
 
     if fixed_size + final_length > 20:
-        raise RPCInvalidReturnValueError("Variable length return value is too large for rpc response payload (20bytes)",
-                                         fixed_code=code, fixed_length=fixed_size, variable_length=final_length,
-                                         variable_payload=binascii.hexlify(resp[-1]))
+        raise RPCInvalidReturnValueError(0, 0, code, resp, reason="Variable length return value is too large for rpc response payload (20 bytes)",
+                                         fixed_code=code, fixed_length=fixed_size, variable_length=final_length)
+
     return "<" + code + "%ds" % final_length
+
+
+def pack_rpc_response(response=None, exception=None):
+    """Convert a response payload or exception to a status code and payload.
+
+    This function will convert an Exception raised by an RPC implementation
+    to the corresponding status code.
+    """
+
+    if response is None:
+        response = bytes()
+
+    if exception is None:
+        status = (1 << 6)
+        if len(response) > 0:
+            status |= (1 << 7)
+    elif isinstance(exception, (RPCInvalidIDError, RPCNotFoundError)):
+        status = 2
+    elif isinstance(exception, BusyRPCResponse):
+        status = 0
+    elif isinstance(exception, TileNotFoundError):
+        status = 0xFF
+    elif isinstance(exception, RPCErrorCode):
+        status = (1 << 6) | (exception.params['code'] & ((1 << 6) - 1))
+    else:
+        status = 3
+
+    return status, response
+
+
+def unpack_rpc_response(status, response=None, rpc_id=0, address=0):
+    """Unpack an RPC status back in to payload or exception."""
+
+    status_code = status & ((1 << 6) - 1)
+
+    if address == 8:
+        status_code &= ~(1 << 7)
+
+    if status == 0:
+        raise BusyRPCResponse()
+    elif status == 2:
+        raise RPCNotFoundError("rpc %d:%04X not found" % (address, rpc_id))
+    elif status == 3:
+        raise RPCErrorCode(status_code)
+    elif status == 0xFF:
+        raise TileNotFoundError("tile %d not found" % address)
+    elif status_code != 0:
+        raise RPCErrorCode(status_code)
+
+    if response is None:
+        response = b''
+
+    return response
 
 
 def pack_rpc_payload(arg_format, args):
@@ -157,29 +167,54 @@ def rpc(address, rpc_id, arg_format, resp_format=None):
         raise RPCInvalidIDError("Invalid RPC ID: {}".format(rpc_id))
 
     def _rpc_wrapper(func):
-        def _rpc_executor(self, payload):
-            try:
-                args = unpack_rpc_payload(arg_format, payload)
-            except struct.error as exc:
-                raise RPCInvalidArgumentsError(str(exc), arg_format=arg_format, payload=binascii.hexlify(payload))
-
-            resp = func(self, *args)
-
-            if resp is None:
-                resp = []
-
-            if resp_format is not None:
+        if inspect.iscoroutinefunction(func):
+            async def _rpc_executor(self, payload):
                 try:
-                    return pack_rpc_payload(resp_format, resp)
+                    args = unpack_rpc_payload(arg_format, payload)
                 except struct.error as exc:
-                    raise RPCInvalidReturnValueError(str(exc), resp_format=resp_format, resp=repr(resp))
+                    raise RPCInvalidArgumentsError(str(exc), arg_format=arg_format, payload=binascii.hexlify(payload))
 
-            return resp
+                resp = await func(self, *args)
 
-        _rpc_executor.rpc_id = rpc_id
-        _rpc_executor.rpc_addr = address
-        _rpc_executor.is_rpc = True
-        return _rpc_executor
+                if resp is None:
+                    resp = []
+
+                if resp_format is not None:
+                    try:
+                        return pack_rpc_payload(resp_format, resp)
+                    except struct.error as exc:
+                        raise RPCInvalidReturnValueError(str(exc), resp_format=resp_format, resp=repr(resp))
+
+                return resp
+
+            _rpc_executor.rpc_id = rpc_id
+            _rpc_executor.rpc_addr = address
+            _rpc_executor.is_rpc = True
+            return _rpc_executor
+        else:
+            def _rpc_executor(self, payload):
+                try:
+                    args = unpack_rpc_payload(arg_format, payload)
+                except struct.error as exc:
+                    raise RPCInvalidArgumentsError(str(exc), arg_format=arg_format, payload=binascii.hexlify(payload))
+
+                resp = func(self, *args)
+
+                if resp is None:
+                    resp = []
+
+                if resp_format is not None:
+                    try:
+                        return pack_rpc_payload(resp_format, resp)
+                    except struct.error as exc:
+                        raise RPCInvalidReturnValueError(address, rpc_id, resp_format, resp, error=exc) from exc
+
+                return resp
+
+            _rpc_executor.rpc_id = rpc_id
+            _rpc_executor.rpc_addr = address
+            _rpc_executor.is_rpc = True
+            return _rpc_executor
 
     return _rpc_wrapper
 

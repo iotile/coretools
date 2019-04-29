@@ -1,7 +1,6 @@
 from setuptools import setup, find_packages
 
 import version
-# TODO: use 'ws' instead of 'ws2'
 
 setup(
     name="iotile-transport-websocket",
@@ -11,17 +10,16 @@ setup(
     install_requires=[
         "iotile-core>=4.0.0,<5",
         "msgpack>=0.6.1,<1"
+        "msgpack>=0.6.1",
+        "websockets~=7.0"
     ],
     python_requires=">=3.5,<4",
     entry_points={
         'iotile.device_adapter': [
-            'ws2 = iotile_transport_websocket.device_adapter:WebSocketDeviceAdapter'
+            'ws = iotile_transport_websocket.device_adapter:WebSocketDeviceAdapter'
         ],
-        'iotile.virtual_interface': [
-            'websocket = iotile_transport_websocket.virtual_websocket:WebSocketVirtualInterface'
-        ],
-        'iotile.gateway_agent': [
-            'websockets2 = iotile_transport_websocket.gateway_agent:WebSocketGatewayAgent'
+        'iotile.device_server': [
+            'websockets = iotile_transport_websocket.device_server:WebSocketDeviceServer'
         ]
     },
     description="IOTile Websocket Transport Plugin",

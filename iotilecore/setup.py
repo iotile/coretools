@@ -25,8 +25,6 @@ setup(
     version=version.version,
     license="LGPLv3",
     install_requires=[
-        "ws4py>=0.5.1,<1",
-        "msgpack>=0.6.1,<1",
         "python-dateutil>=2.8.0,<3",
         "typedargs>=1.0.0,<2",
         "sortedcontainers~=2.1",
@@ -41,11 +39,8 @@ setup(
             'virtual_device = iotile.core.scripts.virtualdev_script:main',
             'iotile-updateinfo = iotile.core.scripts.iotile_updateinfo_script:main'
         ],
-        'iotile.cmdstream': [
-            'ws = iotile.core.hw.transport.websocketstream:WebSocketStream'
-        ],
         'iotile.device_adapter': [
-            'virtual = iotile.core.hw.transport.virtualadapter:VirtualDeviceAdapter'
+            'virtual = iotile.core.hw.transport:VirtualDeviceAdapter'
         ],
         'iotile.report_format': [
             'individual = iotile.core.hw.reports:IndividualReadingReport',

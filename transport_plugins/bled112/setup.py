@@ -1,6 +1,4 @@
 from setuptools import setup, find_packages
-
-import os
 import version
 
 setup(
@@ -14,7 +12,7 @@ setup(
     ],
     python_requires=">=3.5,<4",
     entry_points={'iotile.device_adapter': ['bled112 = iotile_transport_bled112.bled112:BLED112Adapter'],
-                  'iotile.virtual_interface': ['bled112 = iotile_transport_bled112.virtual_bled112:BLED112VirtualInterface'],
+                  'iotile.device_server': ['bled112 = iotile_transport_bled112.server_bled112:BLED112Server'],
                   'iotile.config_variables': ['bled112 = iotile_transport_bled112.config_variables:get_variables']},
     description="IOTile BLED112 Transport Plugin",
     author="Arch",

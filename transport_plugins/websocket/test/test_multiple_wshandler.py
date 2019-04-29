@@ -4,13 +4,11 @@ One of the gateway is used as an intermediate. Useful to test multiple connectio
 """
 
 import json
-import pytest
 import struct
 import threading
-from devices_factory import get_report_device_string, get_tracing_device_string
+import pytest
+from devices_factory import build_report_device, build_tracing_device, get_tracing_device_string
 
-
-report_device_string = get_report_device_string()
 tracing_device_string = get_tracing_device_string()
 
 # Get traces sent from the config file
@@ -19,7 +17,7 @@ with open(tracing_device_string.split('@')[-1], "r") as conf_file:
     traces_sent = config['device']['ascii_data']
 
 
-@pytest.mark.parametrize('gateway', [{"name": "virtual", "port": ';'.join([report_device_string, tracing_device_string])}], indirect=True)
+@pytest.mark.parametrize('server', [(build_report_device(), build_tracing_device())], indirect=True)
 def test_probe(multiple_device_adapter):
     device_adapter1, _ = multiple_device_adapter
     scanned_devices = []
@@ -39,7 +37,7 @@ def test_probe(multiple_device_adapter):
     assert report_device['connection_string'] == str(report_device['uuid'])
 
 
-@pytest.mark.parametrize('gateway', [{"name": "virtual", "port": ';'.join([report_device_string, tracing_device_string])}], indirect=True)
+@pytest.mark.parametrize('server', [(build_report_device(), build_tracing_device())], indirect=True)
 def test_multiple_device_adapter_connection(multiple_device_adapter):
     device_adapter1, device_adapter2 = multiple_device_adapter
 
@@ -72,7 +70,7 @@ def test_multiple_device_adapter_connection(multiple_device_adapter):
     assert result['success'] is True
 
 
-@pytest.mark.parametrize('gateway', [{"name": "virtual", "port": ';'.join([report_device_string, tracing_device_string])}], indirect=True)
+@pytest.mark.parametrize('server', [(build_report_device(), build_tracing_device())], indirect=True)
 def test_traces(multiple_device_adapter):
     device_adapter1, device_adapter2 = multiple_device_adapter
 
@@ -97,7 +95,7 @@ def test_traces(multiple_device_adapter):
     assert result['traces'] == traces_sent.encode('utf-8')
 
 
-@pytest.mark.parametrize('gateway', [{"name": "virtual", "port": ';'.join([report_device_string, tracing_device_string])}], indirect=True)
+@pytest.mark.parametrize('server', [(build_report_device(), build_tracing_device())], indirect=True)
 def test_reports(multiple_device_adapter):
     device_adapter1, device_adapter2 = multiple_device_adapter
     reports = []
@@ -121,7 +119,7 @@ def test_reports(multiple_device_adapter):
     assert len(reports) == 3
 
 
-@pytest.mark.parametrize('gateway', [{"name": "virtual", "port": ';'.join([report_device_string, tracing_device_string])}], indirect=True)
+@pytest.mark.parametrize('server', [(build_report_device(), build_tracing_device())], indirect=True)
 def test_send_rpc(multiple_device_adapter):
     device_adapter1, device_adapter2 = multiple_device_adapter
     device_adapter1.connect_sync(0, str(0x10))
@@ -147,7 +145,7 @@ def test_send_rpc(multiple_device_adapter):
     assert len(result['payload']) > 0
 
 
-@pytest.mark.parametrize('gateway', [{"name": "virtual", "port": ';'.join([report_device_string, tracing_device_string])}], indirect=True)
+@pytest.mark.parametrize('server', [(build_report_device(), build_tracing_device())], indirect=True)
 def test_send_script(multiple_device_adapter):
     device_adapter1, device_adapter2 = multiple_device_adapter
     progress = {'done': 0, 'total': None}
