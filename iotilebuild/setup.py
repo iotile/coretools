@@ -75,7 +75,3 @@ IOTileBuild embeds SCons in accordance with its license permitting redistributio
 SCons can be found at: https://scons.org
 """
 )
-
-print("yo")
-print(find_packages(exclude=("test",)))
-print("asuh")
