@@ -77,17 +77,6 @@ class DebugManager:
                 be in an inconsistent state, but it noninvasive and
                 will not interrupt any device activity.
         """
-        # if memory.lower() == 'ram':
-        #     ram_contents = self._stream.debug_command('dump_memory', {'halt': pause})
-
-        #     with open(out_path, "wb") as outfile:
-        #         outfile.write(ram_contents)
-        # elif memory.lower() == 'external' or memory.lower() == 'flash':
-        #     # write the read flash command
-        #     # read the response buffer's address
-        #     flash_contents = self._stream.debug_command('dump_memory', {'start': start_addr, 'length': data_length})
-        #     with open(out_path, "wb") as outfile:
-        #         outfile.write(flash_contents)
 
         memory_contents = self._stream.debug_command('dump_memory', {'memory': memory_type, 'start': start_addr, 'length': data_length, 'halt': pause})
 
