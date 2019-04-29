@@ -193,6 +193,10 @@ class JLinkControlThread(threading.Thread):
                 return reg
         return None
 
+    def _get_ffd_max_read_length(self):
+        max_read_length = self._jlink.memory_read16(ffd_cfg.ffd_ram_addrs['max_read_length'], 1)
+        return max_read_length[0]
+
     def _write_ffd_dump_cmd(self, start, length):
         # start must be a 32 bit address
         start_bytes = start.to_bytes(4, byteorder='little')
@@ -249,20 +253,30 @@ class JLinkControlThread(threading.Thread):
 
             # continue until first BKPT hit (after ff_init_board)
             self._continue()
+            max_read_length = self._get_ffd_max_read_length()
 
-            # write the address of flash to spi read at command address 0x2000FFE4
-            logger.info("BKPT hit, writing SPI dump command now...")
-            logger.info("At PC: %s", hex(self._jlink.register_read(pc_reg)))
-            self._write_ffd_dump_cmd(start_addr, data_length)
+            bytes_dumped = 0
+            memory = b''
+            while bytes_dumped < data_length:
+                bytes_to_dump = max_read_length if (data_length - bytes_dumped) > max_read_length else (data_length - bytes_dumped)
+ 
+                # write the address of flash to spi read at command address 0x2000FFE4
+                logger.info("BKPT hit, writing SPI dump command now...")
+                logger.info("At PC: %s", hex(self._jlink.register_read(pc_reg)))
+                self._write_ffd_dump_cmd(start_addr, data_length)
 
-            # continue until second BKPT hit (after command finished)
-            self._continue()
+                # continue until second BKPT hit (after command finished)
+                self._continue()
 
-            # read 4 byte address of buffer that contains external flash data
-            logger.info("BKPT hit, reading response buffer address...")
-            logger.info("At PC: %s", hex(self._jlink.register_read(pc_reg)))
-            memory = self._read_ffd_dump_resp(data_length)
-            
+                # read 4 byte address of buffer that contains external flash data
+                logger.info("BKPT hit, reading response buffer address...")
+                logger.info("At PC: %s", hex(self._jlink.register_read(pc_reg)))
+                memory += self._read_ffd_dump_resp(data_length)
+
+                # continue until we can write a new command
+                bytes_dumped += bytes_to_dump
+                self._continue()
+
             # reset and continue
             self._jlink.reset()
             self._jlink._dll.JLINKARM_Go()
