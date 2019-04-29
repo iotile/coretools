@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileShip are listed here.
 
+## 1.0.6
+
+- Added the FilesystemManager resource and ModifyJSON step
+
 ## 1.0.5
 
 - Implement proper dependency major version limits.
