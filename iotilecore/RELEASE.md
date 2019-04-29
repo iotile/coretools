@@ -2,6 +2,10 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## 4.1.3
+
+- Integrating flash forensics tool to dump external memory data
+
 ## 4.1.2
 
 - Add debug_interface read_ram() function
