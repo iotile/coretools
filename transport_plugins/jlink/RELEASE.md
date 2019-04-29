@@ -3,6 +3,11 @@
 All major changes in each released version of the jlink transport plugin are
 listed here.
 
+## 1.0.6
+
+- Added JLink functions like continue and register updating
+- Integrated flash dump tool
+
 ## 1.0.5
 
 - Add debug_read_ram() function
