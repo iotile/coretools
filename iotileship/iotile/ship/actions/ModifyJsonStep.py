@@ -4,8 +4,7 @@ import copy
 from iotile.ship.exceptions import RecipeActionMissingParameter
 
 def modify_dict(data, key, value, create_if_missing=False):
-    """
-    Change (or add) a json key/value pair.
+    """ Change (or add) a json key/value pair.
 
     Args:
         data (dict): The original data. This will not be modified.
@@ -47,10 +46,8 @@ def modify_dict(data, key, value, create_if_missing=False):
 
     return data_copy
 
-
 class ModifyJsonStep: #pylint: disable=too-few-public-methods
-    """
-    A Recipe Step used to change (or add) a json key/value pair.
+    """ A Recipe Step used to change (or add) a json key/value pair.
 
     Args:
         key (str|list): Either a string or a list of keys and subkeys specifing the key to change
@@ -74,7 +71,6 @@ class ModifyJsonStep: #pylint: disable=too-few-public-methods
         self._value = str(args.get('value'))
         self._path = str(args.get('path'))
         self._create = bool(args.get('create_if_missing', False))
-
 
     def run(self, resources): #pylint: disable=missing-docstring
         root = resources['filesystem'].root

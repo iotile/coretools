@@ -12,6 +12,7 @@ class test_harness:
         self.tested_json = path / "tested.json"
         self.expected_json = path / "expected.json"
 
+
     def init_data(self, original, expected):
         with open(str(self.tested_json), "w") as file:
             json.dump(original, file, indent=2)
@@ -19,9 +20,11 @@ class test_harness:
         with open(str(self.expected_json), "w") as file:
             json.dump(expected, file, indent=2)
 
+
     def execute_test(self, args):
         step = ModifyJsonStep(args)
         step.run(self.resources)
+
 
     def check_success(self, expected):
         with open(str(self.tested_json), "r") as file:
@@ -36,6 +39,7 @@ class test_harness:
 
         assert result_str == expected_str
 
+
 def test_str(tmp_path):
     harness = test_harness(tmp_path)
     data = {'iotile-id': '42', 'key2' : 'value2'}
@@ -47,6 +51,7 @@ def test_str(tmp_path):
     harness.init_data(data, expected)
     harness.execute_test(args)
     harness.check_success(expected)
+
 
 def test_str_missing(tmp_path):
     harness = test_harness(tmp_path)
@@ -65,6 +70,7 @@ def test_str_missing(tmp_path):
     args['create_if_missing'] = True
     harness.execute_test(args)
     harness.check_success(expected)
+
 
 def test_two_deep(tmp_path):
     harness = test_harness(tmp_path)

@@ -9,8 +9,7 @@ RESOURCE_ARG_SCHEMA.add_required("path", StringVerifier("path to filesystem to w
 
 
 class FilesystemManagerResource(SharedResource):
-    """
-    A Resource for operating on a Filesystem
+    """ A Resource for operating on a Filesystem
 
     All Steps using this Resource will use self.root as the root directory to find other files
 
