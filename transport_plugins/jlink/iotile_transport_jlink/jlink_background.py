@@ -212,22 +212,12 @@ class JLinkControlThread(threading.Thread):
             memory = self._read_memory(device_info.ram_start, device_info.ram_size)
         elif memory_type.lower() == 'external' or memory_type.lower() == 'flash':
             # inject flash forensics blob
-            self._jlink.halt()
             self._jlink.reset()
-            self._jlink.enable_soft_breakpoints()
-            self._jlink.halt()
             ffd_bin = pkg_resources.resource_string(__name__, "data/forensic_flash_dump.bin")
             self._jlink.memory_write8(0x20002128, ffd_bin)
 
-            # find PC register #
-            # registers = self._jlink.register_list()
-            # for reg in registers:
-            #     print("register %d is %s\t" % (reg, self._jlink.register_name(reg)))
-
             # update PC (15)
             self._jlink.register_write(15, 0x20002e78) # TODO don't hardcode address
-            self._jlink.software_breakpoint_set(0x20002772)
-            self._jlink.software_breakpoint_set(0x200027ae)
             self._jlink._dll.JLINKARM_Go()
 
             # wait until first BKPT hit (after ff_init_board)
@@ -262,15 +252,13 @@ class JLinkControlThread(threading.Thread):
             print("BKPT hit, reading response buffer address...")
             print("At PC: ", hex(self._jlink.register_read(15))) # checking PC
             buffer_addr = self._jlink.memory_read32(0x2000FFF0, 1)
-            print("buffer_addr at ", hex(buffer_addr[0]))
+            print("Response buffer at ", hex(buffer_addr[0]))
             memory = self._read_memory(buffer_addr[0], data_length)
-            # memory = self._jlink.memory_read(buffer_addr[0], data_length)
+            
+            # reset and continue
             self._jlink.reset()
+            self._jlink._dll.JLINKARM_Go()
         return memory
-
-    # def _dump_all_ram(self, device_info, _control_info, _args, _progress_callback):
-    #     memory = self._read_memory(device_info.ram_start, device_info.ram_size)
-    #     return memory
 
     def _program_flash(self, _device_info, _control_info, args, progress_callback):
         base_address = args.get('base_address')
