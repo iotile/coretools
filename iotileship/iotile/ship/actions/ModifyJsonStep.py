@@ -1,5 +1,6 @@
 import json
 import copy
+from typedargs import type_system
 
 from iotile.ship.exceptions import RecipeActionMissingParameter
 
@@ -48,8 +49,8 @@ class ModifyJsonStep: # pylint: disable=too-few-public-methods
         key (list): A list of keys and subkeys specifing the key to change (list can be one)
         value (str): The value to change for the above key
         path (str): The file path, relative to the Filesystem Manager's root, to the file to change
-        create_if_missing (bool): Set to true to create key if the last key in the list is not found
-                Otherwise the function will throw a KeyError
+        create_if_missing (bool, optional): Set to true to create key if the last key in the list is not found
+                Otherwise the function will throw a KeyError. Defaults to False.
     """
 
     REQUIRED_RESOURCES = [('filesystem', 'filesystem_manager')]
@@ -65,7 +66,7 @@ class ModifyJsonStep: # pylint: disable=too-few-public-methods
         self._key = args.get('key')
         self._value = str(args.get('value'))
         self._path = str(args.get('path'))
-        self._create = bool(args.get('create_if_missing', False))
+        self._create = type_system.convert_to_type(args.get('create_if_missing', False), 'bool')
 
     def run(self, resources): # pylint: disable=missing-docstring
         root = resources['filesystem'].root
