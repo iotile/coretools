@@ -2,6 +2,12 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 3.0.7
+
+- Add support for `iotile depends python` command to get the python dependencies
+  of an iotile component.  This allows the creation of scripts that automatically
+  install required python dependencies in a CI setting.
+
 ## 3.0.6
 
 - Implement proper dependency major version limits.

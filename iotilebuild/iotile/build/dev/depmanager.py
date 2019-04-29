@@ -196,6 +196,24 @@ class DependencyManager (object):
         shutil.rmtree(depdir)
         os.makedirs(depdir)
 
+    @docannotate
+    def python(self, path='.'):
+        """Return all python dependencies in pip install compatible format.
+
+        This function can be used to easily ensure that all required python
+        dependencies are installed before building/testing.
+
+        Args:
+            path (str): Optional path to the iotile component to install dependencies
+                for.  Defaults to the cwd.
+
+        Returns:
+            str: A newline delimited list of python dependencies.
+        """
+
+        tile = IOTile(path)
+        return "\n".join('"{}"'.format(x) for x in tile.support_wheel_depends)
+
     @param("path", "path", "exists", desc="Path to IOTile to check")
     def ensure_compatible(self, path='.'):
         """Check that all of the version of dependency tiles are compatible
