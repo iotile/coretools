@@ -43,7 +43,7 @@ class test_harness:
 def test_str(tmp_path):
     harness = test_harness(tmp_path)
     data = {'iotile-id': '42', 'key2' : 'value2'}
-    args = {'key': 'iotile-id',
+    args = {'key': ['iotile-id'],
             'value': 'NEWVAL',
             'path': harness.tested_json}
     expected = {'iotile-id': 'NEWVAL', 'key2' : 'value2'}
@@ -56,17 +56,17 @@ def test_str(tmp_path):
 def test_str_missing(tmp_path):
     harness = test_harness(tmp_path)
     data = {'iotile-id': '42', 'key2' : 'value2'}
-    args = {'key': 'NEW',
+    args = {'key': ['NEW'],
             'value': 'NEWVAL',
             'path': harness.tested_json}
     expected = {'iotile-id': '42', 'key2' : 'value2', 'NEW': 'NEWVAL'}
 
-    #Make sure it fails without 'create' flag
+    # Make sure it fails without 'create' flag
     harness.init_data(data, expected)
     with pytest.raises(KeyError):
         harness.execute_test(args)
 
-    #Make sure it works with 'create' flag
+    # Make sure it works with 'create' flag
     args['create_if_missing'] = True
     harness.execute_test(args)
     harness.check_success(expected)
