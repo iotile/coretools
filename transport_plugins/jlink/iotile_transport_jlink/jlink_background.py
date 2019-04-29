@@ -10,7 +10,7 @@ from iotile.core.exceptions import ArgumentError, HardwareError
 import iotile_transport_jlink.devices as devices
 from .structures import ControlStructure
 import pkg_resources
-import os
+from .data import ffd_cfg
 import time
 
 from queue import Queue
@@ -168,6 +168,61 @@ class JLinkControlThread(threading.Thread):
         else:
             raise HardwareError("Unknown RPC trigger method", method=method)
 
+    def _continue(self):
+        self._jlink.step()
+        self._jlink._dll.JLINKARM_Go()
+        while not self._jlink.halted():
+            pass
+
+    def _inject_blob(self, rel_path_to_bin):
+        ffd_bin = pkg_resources.resource_string(__name__, rel_path_to_bin)
+        self._jlink.memory_write8(ffd_cfg.ffd_ram_addrs['inject_start'], ffd_bin)
+
+    def _update_reg(self, register, value):
+        if not self._jlink.halted():
+            self._jlink.halt()
+        self._jlink.register_write(register, value)
+
+    def _get_register_handle(self, register_string):
+        reg_list = self._jlink.register_list()
+        reg_str_paren = '(' + register_string + ')'
+
+        for reg in reg_list:
+            reg_name = self._jlink.register_name(reg)
+            if reg_name is register_string or reg_str_paren in reg_name:
+                return reg
+        return None
+
+    def _write_ffd_dump_cmd(self, start, length):
+        # start must be a 32 bit address
+        start_bytes = start.to_bytes(4, byteorder='little')
+        # length must be 16 bit length
+        length_bytes = length.to_bytes(2, byteorder='little')
+
+        self._jlink.memory_write8(ffd_cfg.ffd_ram_addrs['read_cmd.address'], start_bytes)
+        written_start = self._jlink.memory_read32(ffd_cfg.ffd_ram_addrs['read_cmd.address'], 1)
+
+        # check if start address written to RAM was correct
+        if written_start[0].to_bytes(4, byteorder='little') != start_bytes:
+            raise ArgumentError("FFD dump command address was not successfully written.")
+        else:
+            logger.info("FFD dump command address written to %s", hex(start))
+
+        self._jlink.memory_write8(ffd_cfg.ffd_ram_addrs['read_cmd.length'], length_bytes)
+        written_length = self._jlink.memory_read16(ffd_cfg.ffd_ram_addrs['read_cmd.length'], 1)
+
+        # check if data length written to RAM was correct
+        if written_length[0].to_bytes(2, byteorder='little') != length_bytes:
+            raise ArgumentError("FFD dump command length was not successfully written.")
+        else:
+            logger.info("FFD dump command length written to %d", length)
+
+    def _read_ffd_dump_resp(self, length):
+        buffer_addr = self._jlink.memory_read32(ffd_cfg.ffd_ram_addrs['read_resp.buffer_addr'], 1)
+        logger.info("Response buffer at %s", hex(buffer_addr[0]))
+        flash_dump = self._read_memory(buffer_addr[0], length)
+        return flash_dump
+
     def _debug_rd_mem(self, _device_info, _control_info, args, _progress_callback):
         memory = self._read_memory(args.get('address'), args.get('length'))
         return memory
@@ -175,33 +230,6 @@ class JLinkControlThread(threading.Thread):
     def _debug_wr_mem(self, _device_info, _control_info, args, _progress_callback):
         nbytes = self._jlink.memory_write(args.get('address'), args.get('data'))
         return int(nbytes)
-
-# FF_CMD_INFO Byte Layout
-
-# 0x2000FFE0: ff_cmd_info.command.id
-# 0x2000FFE1: ff_cmd_info.command.reserved[0]
-# 0x2000FFE2: ff_cmd_info.command.reserved[1]
-# 0x2000FFE3: ff_cmd_info.command.reserved[2]
-# 0x2000FFE4: ff_cmd_info.command.read_cmd.address
-# 0x2000FFE8: ff_cmd_info.command.read_cmd.length
-# 0x2000FFEA: ff_cmd_info.command.read_cmd.reserved[0]
-# 0x2000FFEB: ff_cmd_info.command.read_cmd.reserved[1]
-# 0x2000FFEC: ff_cmd_info.response.id
-# 0x2000FFED: ff_cmd_info.response.error_code
-# 0x2000FFED: ff_cmd_info.response.reserved[0]
-# 0x2000FFEF: ff_cmd_info.response.reserved[1]
-# 0x2000FFF0: ff_cmd_info.response.read_resp.buffer_addr
-# 0x2000FFF4: ff_cmd_info.response.read_resp.offset
-# 0x2000FFF6: ff_cmd_info.response.read_resp.reserved[0]
-# 0x2000FFF7: ff_cmd_info.response.read_resp.reserved[1]
-# 0x2000FFF8: ff_cmd_info.max_read_length
-# 0x2000FFFA: ff_cmd_info.max_write_length
-# 0x2000FFFC: ff_cmd_info.reserved[0]
-# 0x2000FFFD: ff_cmd_info.reserved[1]
-# 0x2000FFFE: ff_cmd_info.reserved[2]
-# 0x2000FFFF: ff_cmd_info.reserved[3]
-
-# FF_CMD_INFO Byte Layout
 
     def _dump_memory(self, device_info, _control_info, args, _progress_callback):
         memory_type = args.get('memory')
@@ -213,47 +241,27 @@ class JLinkControlThread(threading.Thread):
         elif memory_type.lower() == 'external' or memory_type.lower() == 'flash':
             # inject flash forensics blob
             self._jlink.reset()
-            ffd_bin = pkg_resources.resource_string(__name__, "data/forensic_flash_dump.bin")
-            self._jlink.memory_write8(0x20002128, ffd_bin)
+            self._inject_blob(ffd_cfg.ffd_rel_bin_path)
 
-            # update PC (15)
-            self._jlink.register_write(15, 0x20002e78) # TODO don't hardcode address
-            self._jlink._dll.JLINKARM_Go()
+            # update program counter
+            pc_reg = self._get_register_handle("PC")
+            self._update_reg(pc_reg, ffd_cfg.ffd_ram_addrs['prog_start'])
 
-            # wait until first BKPT hit (after ff_init_board)
-            while not self._jlink.halted():
-                pass
-
-            # do some checks, to make sure we're at the right place
-            print("BKPT hit, writing SPI dump command now...")
-            print("At PC: ", hex(self._jlink.register_read(15))) # checking PC
-            max_read_length = self._jlink.memory_read16(0x2000FFF8, 1)
-            print ("Max Read Length: ", *max_read_length) # seeing if we do have 4096 in this register
+            # continue until first BKPT hit (after ff_init_board)
+            self._continue()
 
             # write the address of flash to spi read at command address 0x2000FFE4
-            written = self._jlink.memory_write8(0x2000FFE4, start_addr.to_bytes(4, byteorder='little'))
-            print("written bytes ", written)
-            print("Address: ", self._jlink.memory_read32(0x2000FFE4, 1))
-            # write the length of flash to spi read at command address 0x2000FFE8
-            written = self._jlink.memory_write8(0x2000FFE8, data_length.to_bytes(2, byteorder='little'))
-            print("written bytes ", written)
+            logger.info("BKPT hit, writing SPI dump command now...")
+            logger.info("At PC: %s", hex(self._jlink.register_read(pc_reg)))
+            self._write_ffd_dump_cmd(start_addr, data_length)
 
-            print("Length: ", self._jlink.memory_read16(0x2000FFE8, 1))
-
-            # continue
-            self._jlink.step()
-            self._jlink._dll.JLINKARM_Go()
-            
-            # # wait until second BKPT hit (after command finished)
-            while not self._jlink.halted():
-                pass
+            # continue until second BKPT hit (after command finished)
+            self._continue()
 
             # read 4 byte address of buffer that contains external flash data
-            print("BKPT hit, reading response buffer address...")
-            print("At PC: ", hex(self._jlink.register_read(15))) # checking PC
-            buffer_addr = self._jlink.memory_read32(0x2000FFF0, 1)
-            print("Response buffer at ", hex(buffer_addr[0]))
-            memory = self._read_memory(buffer_addr[0], data_length)
+            logger.info("BKPT hit, reading response buffer address...")
+            logger.info("At PC: %s", hex(self._jlink.register_read(pc_reg)))
+            memory = self._read_ffd_dump_resp(data_length)
             
             # reset and continue
             self._jlink.reset()
