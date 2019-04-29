@@ -11,6 +11,7 @@ import iotile_transport_jlink.devices as devices
 from .structures import ControlStructure
 import pkg_resources
 import os
+import time
 
 from queue import Queue
 
@@ -212,16 +213,11 @@ class JLinkControlThread(threading.Thread):
         elif memory_type.lower() == 'external' or memory_type.lower() == 'flash':
             # inject flash forensics blob
             self._jlink.halt()
-            # ffd_bin = pkg_resources.resource_string(__name__, "data/forensic_flash_dump.bin")
-            # self._jlink.memory_write8(0x20002128, ffd_bin)
-            ffd_bin_path = os.getcwd()
-            ffd_bin_path += "/data/forensic_flash_dump.bin"
-            load_cmd = "loadfile " + ffd_bin_path + " 0x20002128"
-            self._jlink.exec_command(load_cmd)
-            ### DEBUG ###
-            # list_bytes = self._jlink.memory_read8(0x20002128, 8)
-            # print(*list_bytes)
-            ### /DEBUG ###
+            self._jlink.reset()
+            self._jlink.enable_soft_breakpoints()
+            self._jlink.halt()
+            ffd_bin = pkg_resources.resource_string(__name__, "data/forensic_flash_dump.bin")
+            self._jlink.memory_write8(0x20002128, ffd_bin)
 
             # find PC register #
             # registers = self._jlink.register_list()
@@ -229,52 +225,47 @@ class JLinkControlThread(threading.Thread):
             #     print("register %d is %s\t" % (reg, self._jlink.register_name(reg)))
 
             # update PC (15)
-            print(self._jlink.register_read(15))
             self._jlink.register_write(15, 0x20002e78) # TODO don't hardcode address
-            print(self._jlink.register_read(15)) # verify
+            self._jlink.software_breakpoint_set(0x20002772)
+            self._jlink.software_breakpoint_set(0x200027ae)
             self._jlink._dll.JLINKARM_Go()
 
-            # check read max length
+            # wait until first BKPT hit (after ff_init_board)
             while not self._jlink.halted():
                 pass
-            print("made it here")
-            print(self._jlink.register_read(15))
-            max_read_length = self._jlink.memory_read16(0x2000FFF8, 2)
-            print (*max_read_length) # seeing if we do have 4096 in this register
-
-            # continue
-            # self._jlink.disable_reset_inits_registers()
-            # self._jlink.reset(0, False)
-            # self._jlink._dll.JLINKARM_Go()
-            # while self._jlink.halted():
-            #     pass
-
-            # wait until first BKPT hit (after ff_init_board)
-            # while not self._jlink.halted():
-            #     pass
 
             # do some checks, to make sure we're at the right place
-            # print("BKPT hit, can input command now")
-            # print(self._jlink.register_read(15)) # checking PC
-            # max_read_length = self._jlink.memory_read16(0x2000FFF8, 2)
-            # print (*max_read_length) # seeing if we do have 4096 in this register
+            print("BKPT hit, writing SPI dump command now...")
+            print("At PC: ", hex(self._jlink.register_read(15))) # checking PC
+            max_read_length = self._jlink.memory_read16(0x2000FFF8, 1)
+            print ("Max Read Length: ", *max_read_length) # seeing if we do have 4096 in this register
 
             # write the address of flash to spi read at command address 0x2000FFE4
-            # self._jlink.memory_write8(0x2000FFE4, bytes([start_addr]))
-
+            written = self._jlink.memory_write8(0x2000FFE4, start_addr.to_bytes(4, byteorder='little'))
+            print("written bytes ", written)
+            print("Address: ", self._jlink.memory_read32(0x2000FFE4, 1))
             # write the length of flash to spi read at command address 0x2000FFE8
-            # self._jlink.memory_write8(0x2000FFE8, bytes([data_length]))
-            # wait untilbreakpoint to read response
+            written = self._jlink.memory_write8(0x2000FFE8, data_length.to_bytes(2, byteorder='little'))
+            print("written bytes ", written)
+
+            print("Length: ", self._jlink.memory_read16(0x2000FFE8, 1))
+
+            # continue
+            self._jlink.step()
+            self._jlink._dll.JLINKARM_Go()
             
-            # wait until second BKPT hit (after command finished)
-            # while not self._jlink.halted():
-            #     pass
+            # # wait until second BKPT hit (after command finished)
+            while not self._jlink.halted():
+                pass
 
             # read 4 byte address of buffer that contains external flash data
-            # buffer_addr = self._jlink.memory_read(0x2000FFF0, 4)
-            # memory = self._jlink.memory_read(buffer_addr, data_length)
-            # self._jlink.reset()
-            memory = bytes([42])
+            print("BKPT hit, reading response buffer address...")
+            print("At PC: ", hex(self._jlink.register_read(15))) # checking PC
+            buffer_addr = self._jlink.memory_read32(0x2000FFF0, 1)
+            print("buffer_addr at ", hex(buffer_addr[0]))
+            memory = self._read_memory(buffer_addr[0], data_length)
+            # memory = self._jlink.memory_read(buffer_addr[0], data_length)
+            self._jlink.reset()
         return memory
 
     # def _dump_all_ram(self, device_info, _control_info, _args, _progress_callback):
