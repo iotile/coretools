@@ -233,9 +233,8 @@ class JLinkAdapter(DeviceAdapter):
         """
 
         known_commands = {
-            'rd_mem': JLinkControlThread.DEBUG_RD_MEM,
-            'wr_mem': JLinkControlThread.DEBUG_WR_MEM,
-            'dump_memory': JLinkControlThread.DUMP_MEMORY,
+            'read_memory': JLinkControlThread.DEBUG_READ_MEMORY,
+            'write_memory': JLinkControlThread.DEBUG_WRITE_MEMORY,
             'program_flash': JLinkControlThread.PROGRAM_FLASH
         }
 
