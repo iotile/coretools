@@ -14,7 +14,6 @@ setup(
         "pylibftdi>=0.17.0,<1"
     ],
     python_requires=">=3.5,<4",
-    include_package_data=True,
     entry_points={'iotile.device_adapter': ['jlink = iotile_transport_jlink.jlink:JLinkAdapter']},
     description="IOTile JLINK Transport Plugin",
     author="Arch",
