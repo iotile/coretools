@@ -2,15 +2,9 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
-## 4.1.3
-
-- Integrating flash forensics tool to dump external memory data
-
-## 4.1.2
+## HEAD
 
 - Add support for background event loops using `asyncio` and migrate CMDStream
-
-## HEAD
   DeviceAdapter interface.
 - Refactor transport plugin system to use `asyncio` and add shim around legacy
   to use background event loop.
