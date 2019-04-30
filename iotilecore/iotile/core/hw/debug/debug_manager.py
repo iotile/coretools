@@ -41,41 +41,47 @@ class DebugManager:
         return self._stream.debug_command(name, cmd_args)
 
     @docannotate
-    def rd_mem(self, start_addr, data_length):
-        """ Read RAM 
+    def read_memory(self, start_addr, data_length, memory_region="mapped", pause=False):
+        """ Read RAM or external memory
 
         Args:
+            memory_region (str): The region of memory to read
             start_addr (integer): The start address to read
             data_length (integer): The length of data to read in bytes
+            pause (bool): Optional parameter to halt chip operation
+                while performing the core dump.  Defaults to False,
+                which could cause rapidly changing RAM values to
+                be in an inconsistent state, but it noninvasive and
+                will not interrupt any device activity.
 
         Returns:
-            string: The data read
+            bytes format-as hexdump: The data that was read from the memory region
         """
 
-        data = bytearray(self._stream.debug_command(
-            'rd_mem', {'address': start_addr, 'length': data_length}))
-        return data.hex()
+        # memory = bytearray(self._stream.debug_command(
+        #     'read_memory', {'address': start_addr, 'length': data_length}))
+
+        memory_contents = self._stream.debug_command('read_memory', {'region': memory_region, 'start': start_addr, 'length': data_length, 'halt': pause})
+        return memory_contents
 
     @docannotate
-    def wr_mem(self, address, data):
-        """ Write RAM 32bits
+    def write_memory(self, start_addr, data, memory_region="mapped"):
+        """ Write RAM or external memory in 32bits
         Args:
+            memory_region (str): The region of memory to write
             address (integer): The address to write 
-            data (list(integer)): Data to write
-
-        Returns:
-            integer: Number of bytes written
+            data (bytes): Data to write
         """
-        nbytes = self._stream.debug_command(
-            'wr_mem', {'address': address, 'data': data})
-        return nbytes
+        # nbytes = self._stream.debug_command(
+        #     'write_memory', {'address': start_addr, 'data': data})
+        self._stream.debug_command('write_memory', {'address': start_addr, 'data': data})
 
     @docannotate
-    def dump_memory(self, memory_type, out_path, start_addr, data_length, pause=False):
+    def dump_memory(self, out_path, start_addr, data_length, memory_region="mapped", pause=False):
         """Dump all RAM or external flash to a binary file.
 
         Args:
-            memory_type (str): A string specifying 'RAM' or 'external'.
+            memory_region (str): The region of memory to dump to file
             out_path (path): The output path at which to save
                 the binary core dump.  This core dump consists
                 of the current contents of RAM for the device.
@@ -88,8 +94,8 @@ class DebugManager:
                 will not interrupt any device activity.
         """
 
-        memory_contents = self._stream.debug_command('dump_memory', {'memory': memory_type, 'start': start_addr, 'length': data_length, 'halt': pause})
-
+        # memory_contents = self._stream.debug_command('dump_memory', {'memory': memory_type, 'start': start_addr, 'length': data_length, 'halt': pause})
+        memory_contents = self._stream.debug_command('read_memory', {'region': memory_region, 'start': start_addr, 'length': data_length, 'halt': pause})
         with open(out_path, "wb") as outfile:
             outfile.write(memory_contents)
 
