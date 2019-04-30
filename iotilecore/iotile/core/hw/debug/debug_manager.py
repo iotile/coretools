@@ -41,13 +41,52 @@ class DebugManager:
         return self._stream.debug_command(name, cmd_args)
 
     @docannotate
-    def dump_ram(self, out_path, pause=False):
-        """Dump all RAM to a binary file.
+    def read_memory(self, start_addr, data_length, memory_region="mapped", pause=False):
+        """ Read RAM or external memory
 
         Args:
+            memory_region (str): The region of memory to read
+            start_addr (integer): The start address to read
+            data_length (integer): The length of data to read in bytes
+            pause (bool): Optional parameter to halt chip operation
+                while performing the core dump.  Defaults to False,
+                which could cause rapidly changing RAM values to
+                be in an inconsistent state, but it noninvasive and
+                will not interrupt any device activity.
+
+        Returns:
+            bytes format-as hexdump: The data that was read from the memory region
+        """
+
+        # memory = bytearray(self._stream.debug_command(
+        #     'read_memory', {'address': start_addr, 'length': data_length}))
+
+        memory_contents = self._stream.debug_command('read_memory', {'region': memory_region, 'start': start_addr, 'length': data_length, 'halt': pause})
+        return memory_contents
+
+    @docannotate
+    def write_memory(self, start_addr, data, memory_region="mapped"):
+        """ Write RAM or external memory in 32bits
+        Args:
+            memory_region (str): The region of memory to write
+            address (integer): The address to write 
+            data (bytes): Data to write
+        """
+        # nbytes = self._stream.debug_command(
+        #     'write_memory', {'address': start_addr, 'data': data})
+        self._stream.debug_command('write_memory', {'address': start_addr, 'data': data})
+
+    @docannotate
+    def dump_memory(self, out_path, start_addr, data_length, memory_region="mapped", pause=False):
+        """Dump all RAM or external flash to a binary file.
+
+        Args:
+            memory_region (str): The region of memory to dump to file
             out_path (path): The output path at which to save
                 the binary core dump.  This core dump consists
                 of the current contents of RAM for the device.
+            start_addr (integer): The start address to read
+            data_length (integer): The length of data to read in bytes
             pause (bool): Optional parameter to halt chip operation
                 while performing the core dump.  Defaults to False,
                 which could cause rapidly changing RAM values to
@@ -55,10 +94,10 @@ class DebugManager:
                 will not interrupt any device activity.
         """
 
-        ram_contents = self._stream.debug_command('dump_ram', {'halt': pause})
-
+        # memory_contents = self._stream.debug_command('dump_memory', {'memory': memory_type, 'start': start_addr, 'length': data_length, 'halt': pause})
+        memory_contents = self._stream.debug_command('read_memory', {'region': memory_region, 'start': start_addr, 'length': data_length, 'halt': pause})
         with open(out_path, "wb") as outfile:
-            outfile.write(ram_contents)
+            outfile.write(memory_contents)
 
     @docannotate
     def save_snapshot(self, out_path):

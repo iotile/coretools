@@ -4,14 +4,19 @@ All major changes in each released version of `iotile-core` are listed here.
 
 ## HEAD
 
-- Refactor transport plugin system to use `asyncio` and add shim around legacy
-  DeviceAdapter interface.
 - Add support for background event loops using `asyncio` and migrate CMDStream
+  DeviceAdapter interface.
+- Refactor transport plugin system to use `asyncio` and add shim around legacy
   to use background event loop.
 - Move all websockets code to `iotile-transport-websocket`.
 - Completely remove `VirtualIOTileInterface` and replace with `AbstractDeviceServer`.
   `virtual_device` script has been updated to use `AbstractDeviceServer` directly instead
   of requiring it to be wrapped inside a `VirtualIOTileInterface` shim.
+
+## 4.1.2
+
+- Add debug_interface read_memory() and write_memory() functions
+- Integrate flash dump tool to read/dump data from flash, mapped, ram, external memory
 
 ## 4.1.1
 

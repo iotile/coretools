@@ -9,6 +9,9 @@ from time import monotonic
 from iotile.core.exceptions import ArgumentError, HardwareError
 import iotile_transport_jlink.devices as devices
 from .structures import ControlStructure
+import pkg_resources
+from .data import flash_forensics_config as ff_cfg
+import time
 
 from queue import Queue
 
@@ -31,9 +34,10 @@ class JLinkControlThread(threading.Thread):
     FIND_CONTROL = 2
     VERIFY_CONTROL = 3
     SEND_RPC = 4
-    DUMP_ALL_RAM = 5
-    PROGRAM_FLASH = 6
-    SEND_SCRIPT = 7
+    PROGRAM_FLASH = 5
+    SEND_SCRIPT = 6
+    DEBUG_READ_MEMORY = 7
+    DEBUG_WRITE_MEMORY = 8
 
     KNOWN_COMMANDS = {
         STOP: None,
@@ -44,7 +48,8 @@ class JLinkControlThread(threading.Thread):
         SEND_SCRIPT: "_send_script",  # Takes  device_info, control_info, script, progress_callback
 
         # Debug commands
-        DUMP_ALL_RAM: "_dump_all_ram",  # Takes device_info, control_info (ignored), args (ignored)
+        DEBUG_READ_MEMORY:   "_debug_read_memory", # Takes device_info, control_info (ignored), args {'region' : str, 'start' : integer, 'length' : integer, 'halt' : boolean}
+        DEBUG_WRITE_MEMORY:   "_debug_write_memory", # Takes device_info (ignored), control_info (ignored), args {'region' : str, 'start' : integer, 'length' : integer}
         PROGRAM_FLASH: "_program_flash" # Takes device_info, control_info (ignored), args {'data': binary}
     }
 
@@ -161,9 +166,152 @@ class JLinkControlThread(threading.Thread):
         else:
             raise HardwareError("Unknown RPC trigger method", method=method)
 
-    def _dump_all_ram(self, device_info, _control_info, _args, _progress_callback):
-        memory = self._read_memory(device_info.ram_start, device_info.ram_size)
+    def _continue(self):
+        self._jlink.step()
+        self._jlink._dll.JLINKARM_Go()
+        while not self._jlink.halted():
+            time.sleep(0.01)
+
+    def _inject_blob(self, absolute_path_to_binary):
+        with open(absolute_path_to_binary, mode='rb') as ff_file:
+            ff_bin = ff_file.read()
+        self._jlink.memory_write8(ff_cfg.ff_addresses['blob_inject_start'], ff_bin)
+
+    def _update_reg(self, register, value):
+        if not self._jlink.halted():
+            self._jlink.halt()
+        self._jlink.register_write(register, value)
+
+    def _get_register_handle(self, register_string):
+        reg_list = self._jlink.register_list()
+        reg_str_paren = '(' + register_string + ')'
+
+        for reg in reg_list:
+            reg_name = self._jlink.register_name(reg)
+            if reg_name is register_string or reg_str_paren in reg_name:
+                return reg
+        return None
+
+    def _get_ff_max_read_length(self):
+        max_read_length, = self._jlink.memory_read16(ff_cfg.ff_addresses['max_read_length'], 1)
+        return max_read_length
+
+    def _write_ff_dump_cmd(self, start, length):
+        start_bytes = start.to_bytes(4, byteorder='little')
+        length_bytes = length.to_bytes(2, byteorder='little')
+
+        self._jlink.memory_write8(ff_cfg.ff_addresses['read_command_address'], start_bytes)
+        written_start, = self._jlink.memory_read32(ff_cfg.ff_addresses['read_command_address'], 1)
+
+        if written_start != start:
+            raise ArgumentError("FF dump command address was not successfully written.")
+        else:
+            logger.info("FF dump command address written to %s", hex(start))
+
+        self._jlink.memory_write8(ff_cfg.ff_addresses['read_command_length'], length_bytes)
+        written_length, = self._jlink.memory_read16(ff_cfg.ff_addresses['read_command_length'], 1)
+
+        if written_length != length:
+            raise ArgumentError("ff dump command length was not successfully written.")
+        else:
+            logger.info("ff dump command length written to %d", length)
+
+    def _read_ff_dump_resp(self, length):
+        buffer_addr, = self._jlink.memory_read32(ff_cfg.ff_addresses['read_response_buffer_address'], 1)
+        logger.info("Response buffer at %s", hex(buffer_addr))
+        flash_dump = self._read_memory(buffer_addr, length)
+        return flash_dump
+
+    def _read_mapped_memory(self, device_info, region, read_start_addr, read_length):
+        if read_length is None:
+            if region == 'ram':
+                memory = self._read_memory(device_info.ram_start, device_info.ram_size)
+            elif region == 'flash':
+                memory = self._read_memory(device_info.flash_start, device_info.flash_size)
+            elif region == 'mapped':
+                raise ArgumentError("Must specify a data length to read from mapped memory.")
+        else:
+            if region == 'ram':
+                if read_length > device_info.ram_size:
+                    raise ArgumentError("Invalid data length to read from RAM.")
+                if read_start_addr > device_info.ram_size:
+                    raise ArgumentError("Invalid start address to read from RAM.")
+                memory = self._read_memory(read_start_addr + device_info.ram_start, read_length)
+
+            elif region == 'flash':
+                if read_length > device_info.flash_size:
+                    raise ArgumentError("Invalid data length to read from flash.")
+                if read_start_addr > device_info.flash_size:
+                    raise ArgumentError("Invalid start address to read from flash.")
+                memory = self._read_memory(read_start_addr + device_info.flash_start, read_length)
+
+            elif region == 'mapped':
+                if read_length > (device_info.ram_start + device_info.ram_size):
+                    raise ArgumentError("Invalid data length to read from mapped memory.")
+                if read_start_addr < device_info.flash_start or read_start_addr > (device_info.ram_start + device_info.ram_size):
+                    raise ArgumentError("Invalid start address to read from mapped memory.")
+                memory = self._read_memory(read_start_addr, read_length)
+
         return memory
+
+    def _debug_read_memory(self, device_info, _control_info, args, _progress_callback):
+        memory_region = args.get('region').lower()
+        start_addr    = args.get('start')
+        data_length   = args.get('length')
+        pause         = args.get('halt')
+
+        if memory_region == 'external':
+            if pause is False:
+                raise ArgumentError("Pause must be True in order to read external data.")
+            self._jlink.reset()
+            self._inject_blob(ff_cfg.ff_absolute_bin_path)
+
+            pc_reg = self._get_register_handle("PC")
+            self._update_reg(pc_reg, ff_cfg.ff_addresses['program_start'])
+
+            self._continue()
+            max_read_length = self._get_ff_max_read_length()
+
+            bytes_dumped = 0
+            memory = b''
+            while bytes_dumped < data_length:
+                bytes_to_dump = max_read_length if (data_length - bytes_dumped) > max_read_length else (data_length - bytes_dumped)
+ 
+                logger.info("BKPT hit, writing SPI dump command now...")
+                logger.info("At PC: %s", hex(self._jlink.register_read(pc_reg)))
+                self._write_ff_dump_cmd(start_addr, data_length)
+
+                self._continue()
+
+                logger.info("BKPT hit, reading response buffer address...")
+                logger.info("At PC: %s", hex(self._jlink.register_read(pc_reg)))
+                memory += self._read_ff_dump_resp(data_length)
+
+                bytes_dumped += bytes_to_dump
+                self._continue()
+
+            self._jlink.reset()
+            self._jlink._dll.JLINKARM_Go()
+
+        elif memory_region == 'flash' or memory_region == 'ram' or memory_region == 'mapped':
+            if pause is True:
+                self._jlink.halt()
+            
+            memory = self._read_mapped_memory(device_info, memory_region, start_addr, data_length)
+
+            if pause is True:
+                self._jlink._dll.JLINKARM_Go()
+        else:
+            raise ArgumentError("Invalid memory region specified, must be one of ['flash', 'ram', 'external', 'mapped']")
+
+        return memory
+
+    def _debug_write_memory(self, _device_info, _control_info, args, _progress_callback):
+        memory_region = args.get('region').lower()
+
+        if memory_region == 'external' or memory_region == 'flash':
+            raise ArgumentError("Writing to flash/external is not currently supported.")
+        self._jlink.memory_write(args.get('address'), args.get('data'))
 
     def _program_flash(self, _device_info, _control_info, args, progress_callback):
         base_address = args.get('base_address')
