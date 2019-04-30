@@ -1,2 +1,2 @@
 include version.py
-include iotile_transport_jlink/data/external_flash_dump.bin
+include iotile_transport_jlink/data/ffd.bin
