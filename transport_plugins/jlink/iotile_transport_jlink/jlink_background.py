@@ -198,15 +198,12 @@ class JLinkControlThread(threading.Thread):
         return max_read_length[0]
 
     def _write_ffd_dump_cmd(self, start, length):
-        # start must be a 32 bit address
         start_bytes = start.to_bytes(4, byteorder='little')
-        # length must be 16 bit length
         length_bytes = length.to_bytes(2, byteorder='little')
 
         self._jlink.memory_write8(ffd_cfg.ffd_ram_addrs['read_cmd.address'], start_bytes)
         written_start = self._jlink.memory_read32(ffd_cfg.ffd_ram_addrs['read_cmd.address'], 1)
 
-        # check if start address written to RAM was correct
         if written_start[0].to_bytes(4, byteorder='little') != start_bytes:
             raise ArgumentError("FFD dump command address was not successfully written.")
         else:
@@ -215,7 +212,6 @@ class JLinkControlThread(threading.Thread):
         self._jlink.memory_write8(ffd_cfg.ffd_ram_addrs['read_cmd.length'], length_bytes)
         written_length = self._jlink.memory_read16(ffd_cfg.ffd_ram_addrs['read_cmd.length'], 1)
 
-        # check if data length written to RAM was correct
         if written_length[0].to_bytes(2, byteorder='little') != length_bytes:
             raise ArgumentError("FFD dump command length was not successfully written.")
         else:
@@ -243,15 +239,12 @@ class JLinkControlThread(threading.Thread):
         if memory_type.lower() == 'ram':
             memory = self._read_memory(device_info.ram_start, device_info.ram_size)
         elif memory_type.lower() == 'external' or memory_type.lower() == 'flash':
-            # inject flash forensics blob
             self._jlink.reset()
             self._inject_blob(ffd_cfg.ffd_rel_bin_path)
 
-            # update program counter
             pc_reg = self._get_register_handle("PC")
             self._update_reg(pc_reg, ffd_cfg.ffd_ram_addrs['prog_start'])
 
-            # continue until first BKPT hit (after ff_init_board)
             self._continue()
             max_read_length = self._get_ffd_max_read_length()
 
@@ -260,24 +253,19 @@ class JLinkControlThread(threading.Thread):
             while bytes_dumped < data_length:
                 bytes_to_dump = max_read_length if (data_length - bytes_dumped) > max_read_length else (data_length - bytes_dumped)
  
-                # write the address of flash to spi read at command address 0x2000FFE4
                 logger.info("BKPT hit, writing SPI dump command now...")
                 logger.info("At PC: %s", hex(self._jlink.register_read(pc_reg)))
                 self._write_ffd_dump_cmd(start_addr, data_length)
 
-                # continue until second BKPT hit (after command finished)
                 self._continue()
 
-                # read 4 byte address of buffer that contains external flash data
                 logger.info("BKPT hit, reading response buffer address...")
                 logger.info("At PC: %s", hex(self._jlink.register_read(pc_reg)))
                 memory += self._read_ffd_dump_resp(data_length)
 
-                # continue until we can write a new command
                 bytes_dumped += bytes_to_dump
                 self._continue()
 
-            # reset and continue
             self._jlink.reset()
             self._jlink._dll.JLINKARM_Go()
         return memory
