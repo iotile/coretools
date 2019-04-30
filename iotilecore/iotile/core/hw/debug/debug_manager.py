@@ -100,26 +100,6 @@ class DebugManager:
             outfile.write(memory_contents)
 
     @docannotate
-    def dump_ram(self, out_path, pause=False):
-        """Dump all RAM to a binary file.
-
-        Args:
-            out_path (path): The output path at which to save
-                the binary core dump.  This core dump consists
-                of the current contents of RAM for the device.
-            pause (bool): Optional parameter to halt chip operation
-                while performing the core dump.  Defaults to False,
-                which could cause rapidly changing RAM values to
-                be in an inconsistent state, but it noninvasive and
-                will not interrupt any device activity.
-        """
-
-        ram_contents = self._stream.debug_command('dump_ram', {'halt': pause})
-
-        with open(out_path, "wb") as outfile:
-            outfile.write(ram_contents)
-
-    @docannotate
     def save_snapshot(self, out_path):
         """Save the current state of an emulated device.
 
