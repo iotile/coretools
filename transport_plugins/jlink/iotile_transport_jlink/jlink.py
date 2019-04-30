@@ -40,6 +40,7 @@ class JLinkAdapter(DeviceAdapter):
         self._control_thread = None
         self._connection_id = None
         self.jlink = None
+        self.connected = False
 
         self._parse_port(port)
 
@@ -133,9 +134,10 @@ class JLinkAdapter(DeviceAdapter):
     def _try_connect(self, connection_string):
         """If the connecton string settings are different, try and connect to an attached device"""
         if self._parse_conn_string(connection_string):
-            self._trigger_callback('on_disconnect', self.id, self._connection_id)
-
-            self.stop_sync()
+            if self.connected is True:
+                self._trigger_callback('on_disconnect', self.id, self._connection_id)
+                self.connected = False
+                self.stop_sync()
 
             if self._mux_func is not None:
                 self._mux_func(self._channel)
@@ -151,6 +153,7 @@ class JLinkAdapter(DeviceAdapter):
                 self.jlink.set_tif(pylink.enums.JLinkInterfaces.SWD)
                 self.jlink.connect(self._device_info.jlink_name)
                 self.jlink.set_little_endian()
+                self.connected = True
             except pylink.errors.JLinkException as exc:
                 if exc.code == exc.VCC_FAILURE:
                     raise HardwareError("No target power detected", code=exc.code,
