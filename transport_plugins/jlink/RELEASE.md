@@ -7,7 +7,7 @@ listed here.
 
 - Added JLink functions like continue and register updating
 - Integrated flash dump tool
-- Add debug_read_ram() function
+- Add debug_read_memory()/debug_write_memory() function
 
 ## 1.0.5
 

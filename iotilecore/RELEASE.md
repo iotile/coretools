@@ -15,8 +15,8 @@ All major changes in each released version of `iotile-core` are listed here.
 
 ## 4.1.2
 
-- Add debug_interface read_ram() function
-- Integrate flash dump tool
+- Add debug_interface read_memory() and write_memory() functions
+- Integrate flash dump tool to read/dump data from flash, mapped, ram, external memory
 
 ## 4.1.1
 
