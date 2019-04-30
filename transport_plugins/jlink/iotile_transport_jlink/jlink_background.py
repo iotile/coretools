@@ -222,6 +222,38 @@ class JLinkControlThread(threading.Thread):
         flash_dump = self._read_memory(buffer_addr, length)
         return flash_dump
 
+    def _read_mapped_memory(self, device_info, region, read_start_addr, read_length):
+        if read_length is None:
+            if region == 'ram':
+                memory = self._read_memory(device_info.ram_start, device_info.ram_size)
+            elif region == 'flash':
+                memory = self._read_memory(device_info.flash_start, device_info.flash_size)
+            elif region == 'mapped':
+                raise ArgumentError("Must specify a data length to read from mapped memory.")
+        else:
+            if region == 'ram':
+                if read_length > device_info.ram_size:
+                    raise ArgumentError("Invalid data length to read from RAM.")
+                if read_start_addr > device_info.ram_size:
+                    raise ArgumentError("Invalid start address to read from RAM.")
+                memory = self._read_memory(read_start_addr + device_info.ram_start, read_length)
+
+            elif region == 'flash':
+                if read_length > device_info.flash_size:
+                    raise ArgumentError("Invalid data length to read from flash.")
+                if read_start_addr > device_info.flash_size:
+                    raise ArgumentError("Invalid start address to read from flash.")
+                memory = self._read_memory(read_start_addr + device_info.flash_start, read_length)
+
+            elif region == 'mapped':
+                if read_length > (device_info.ram_start + device_info.ram_size):
+                    raise ArgumentError("Invalid data length to read from mapped memory.")
+                if read_start_addr < device_info.flash_start or read_start_addr > (device_info.ram_start + device_info.ram_size):
+                    raise ArgumentError("Invalid start address to read from mapped memory.")
+                memory = self._read_memory(read_start_addr, read_length)
+
+        return memory
+
     def _debug_read_memory(self, device_info, _control_info, args, _progress_callback):
         memory_region = args.get('region').lower()
         start_addr    = args.get('start')
@@ -264,35 +296,8 @@ class JLinkControlThread(threading.Thread):
         elif memory_region == 'flash' or memory_region == 'ram' or memory_region == 'mapped':
             if pause is True:
                 self._jlink.halt()
-
-            if data_length is None:
-                if memory_region == 'ram':
-                    memory = self._read_memory(device_info.ram_start, device_info.ram_size)
-                elif memory_region == 'flash':
-                    memory = self._read_memory(device_info.flash_start, device_info.flash_size)
-                elif memory_region == 'mapped':
-                    raise ArgumentError("Must specify a data length to read from mapped memory.")
-            else:
-                if memory_region == 'ram':
-                    if data_length > device_info.ram_size:
-                        raise ArgumentError("Invalid data length to read from RAM.")
-                    if start_addr < device_info.ram_start or start_addr > (device_info.ram_start + device_info.ram_size):
-                        raise ArgumentError("Invalid start address to read from RAM.")
-                    memory = self._read_memory(start_addr + device_info.ram_start, data_length)
-
-                if memory_region == 'flash':
-                    if data_length > device_info.flash_size:
-                        raise ArgumentError("Invalid data length to read from flash.")
-                    if start_addr < device_info.flash_start or start_addr > (device_info.flash_start + device_info.flash_size):
-                        raise ArgumentError("Invalid start address to read from flash.")
-                    memory = self._read_memory(start_addr + device_info.flash_start, data_length)
-                
-                if memory_region == 'mapped':
-                    if data_length > (device_info.ram_start + device_info.ram_size):
-                        raise ArgumentError("Invalid data length to read from mapped memory.")
-                    if start_addr < device_info.flash_start or start_addr > (device_info.ram_start + device_info.ram_size):
-                        raise ArgumentError("Invalid start address to read from mapped memory.")
-                    memory = self._read_memory(start_addr, data_length)
+            
+            memory = self._read_mapped_memory(device_info, memory_region, start_addr, data_length)
 
             if pause is True:
                 self._jlink._dll.JLINKARM_Go()
