@@ -3,6 +3,11 @@
 All major changes in each released version of the jlink transport plugin are
 listed here.
 
+## 1.0.7
+
+- Improved error checking/messaging for `_read_memory_map`
+- Fix `version.py` version number
+
 ## 1.0.6
 
 - Added JLink functions like continue and register updating

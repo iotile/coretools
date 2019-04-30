@@ -233,24 +233,23 @@ class JLinkControlThread(threading.Thread):
         else:
             if region == 'ram':
                 if read_length > device_info.ram_size:
-                    raise ArgumentError("Invalid data length to read from RAM.")
+                    raise ArgumentError("Data length must be less than RAM size.", ram_size=device_info.ram_size)
                 if read_start_addr > device_info.ram_size:
-                    raise ArgumentError("Invalid start address to read from RAM.")
+                    raise ArgumentError("Starting address must be less than RAM size.", ram_size=device_info.ram_size)
                 memory = self._read_memory(read_start_addr + device_info.ram_start, read_length)
 
             elif region == 'flash':
                 if read_length > device_info.flash_size:
-                    raise ArgumentError("Invalid data length to read from flash.")
+                    raise ArgumentError("Data length must be less than flash size.", flash_size=device_info.flash_size)
                 if read_start_addr > device_info.flash_size:
-                    raise ArgumentError("Invalid start address to read from flash.")
+                    raise ArgumentError("Starting address must be less than flash size.", flash_size=device_info.flash_size)
                 memory = self._read_memory(read_start_addr + device_info.flash_start, read_length)
 
             elif region == 'mapped':
-                if read_length > (device_info.ram_start + device_info.ram_size):
-                    raise ArgumentError("Invalid data length to read from mapped memory.")
-                if read_start_addr < device_info.flash_start or read_start_addr > (device_info.ram_start + device_info.ram_size):
+                if read_start_addr > 0:
+                    memory = self._read_memory(read_start_addr, read_length)
+                else:
                     raise ArgumentError("Invalid start address to read from mapped memory.")
-                memory = self._read_memory(read_start_addr, read_length)
 
         return memory
 
