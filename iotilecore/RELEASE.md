@@ -13,6 +13,11 @@ All major changes in each released version of `iotile-core` are listed here.
   `virtual_device` script has been updated to use `AbstractDeviceServer` directly instead
   of requiring it to be wrapped inside a `VirtualIOTileInterface` shim.
 
+## 4.1.2
+
+- Add debug_interface read_ram() function
+- Integrate flash dump tool
+
 ## 4.1.1
 
 - Implement proper dependency major version limits.
