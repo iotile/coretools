@@ -1,2 +1,2 @@
 include version.py
-include iotile_transport_jlink/data/ffd.bin
+include iotile_transport_jlink/data/flash_forensics.bin

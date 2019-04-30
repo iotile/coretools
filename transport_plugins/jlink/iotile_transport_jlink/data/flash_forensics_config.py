@@ -1,11 +1,11 @@
 import os
 
-ffd_bin_name = "ffd.bin"
-ffd_data_dir = "data"
+ff_bin_filename   = "flash_forensics.bin"
+ff_data_directory = "data"
 
-ffd_rel_bin_path = ffd_data_dir + "\\"+ ffd_bin_name
+ff_relative_bin_path = ff_data_directory + "\\"+ ff_bin_filename
 
-ffd_abs_bin_path = os.path.dirname(os.path.realpath(__file__)) + "\\" + ffd_bin_name
+ff_absolute_bin_path = os.path.dirname(os.path.realpath(__file__)) + "\\" + ff_bin_filename
 
 
 # FF_CMD_INFO Byte Layout
@@ -34,16 +34,16 @@ ffd_abs_bin_path = os.path.dirname(os.path.realpath(__file__)) + "\\" + ffd_bin_
 # 0x2000FFFF: ff_cmd_info.reserved[3]
 
 # FF_CMD_INFO Byte Layout
-ffd_ram_addrs = {
-    'inject_start' : 0x20002128,
-    'prog_start' : 0x20002e78,
+ff_addresses = {
+    'blob_inject_start' : 0x20002128,
+    'program_start' : 0x20002e78,
     'command_id' : 0x2000FFE0,
-    'read_cmd.address' : 0x2000FFE4,
-    'read_cmd.length' : 0x2000FFE8,
-    'response.id' : 0x2000FFEC,
-    'response.error_code' : 0x2000FFED,
-    'read_resp.buffer_addr' : 0x2000FFF0,
-    'read_resp.offset' : 0x2000FFF4,
+    'read_command_address' : 0x2000FFE4,
+    'read_command_length' : 0x2000FFE8,
+    'response_id' : 0x2000FFEC,
+    'response_error_code' : 0x2000FFED,
+    'read_response_buffer_address' : 0x2000FFF0,
+    'read_response_offset' : 0x2000FFF4,
     'max_read_length' : 0x2000FFF8,
     'max_write_length' : 0x2000FFFA
 }
