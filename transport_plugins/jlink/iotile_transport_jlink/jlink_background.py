@@ -172,8 +172,9 @@ class JLinkControlThread(threading.Thread):
         while not self._jlink.halted():
             time.sleep(0.01)
 
-    def _inject_blob(self, relative_path_to_binary):
-        ff_bin = pkg_resources.resource_string(__name__, relative_path_to_binary)
+    def _inject_blob(self, absolute_path_to_binary):
+        with open(absolute_path_to_binary, mode='rb') as ff_file:
+            ff_bin = ff_file.read()
         self._jlink.memory_write8(ff_cfg.ff_addresses['blob_inject_start'], ff_bin)
 
     def _update_reg(self, register, value):
@@ -216,9 +217,9 @@ class JLinkControlThread(threading.Thread):
             logger.info("ff dump command length written to %d", length)
 
     def _read_ff_dump_resp(self, length):
-        buffer_addr = self._jlink.memory_read32(ff_cfg.ff_addresses['read_response_buffer_address'], 1)
-        logger.info("Response buffer at %s", hex(buffer_addr[0]))
-        flash_dump = self._read_memory(buffer_addr[0], length)
+        buffer_addr, = self._jlink.memory_read32(ff_cfg.ff_addresses['read_response_buffer_address'], 1)
+        logger.info("Response buffer at %s", hex(buffer_addr))
+        flash_dump = self._read_memory(buffer_addr, length)
         return flash_dump
 
     def _debug_read_memory(self, device_info, _control_info, args, _progress_callback):
@@ -231,7 +232,7 @@ class JLinkControlThread(threading.Thread):
             if pause is False:
                 raise ArgumentError("Pause must be True in order to read external data.")
             self._jlink.reset()
-            self._inject_blob(ff_cfg.ff_relative_bin_path)
+            self._inject_blob(ff_cfg.ff_absolute_bin_path)
 
             pc_reg = self._get_register_handle("PC")
             self._update_reg(pc_reg, ff_cfg.ff_addresses['program_start'])
