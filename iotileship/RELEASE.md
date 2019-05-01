@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileShip are listed here.
 
+## 1.0.7
+
+- Added value_type argument to ModifyJsonStep
+
 ## 1.0.6
 
 - Added the FilesystemManager resource and ModifyJSON step
