@@ -48,6 +48,7 @@ class ModifyJsonStep: # pylint: disable=too-few-public-methods
     Args:
         key (list): A list of keys and subkeys specifing the key to change (list can be one)
         value (str): The value to change for the above key
+        value_type (str, optional): The type of value. Typedargs types supported Defaults to 'string'
         path (str): The file path, relative to the Filesystem Manager's root, to the file to change
         create_if_missing (bool, optional): Set to true to create key if the last key in the list is not found
                 Otherwise the function will throw a KeyError. Defaults to False.
@@ -64,9 +65,11 @@ class ModifyJsonStep: # pylint: disable=too-few-public-methods
             raise RecipeActionMissingParameter("ModifyJsonStep Parameter Missing", parameter_name='path')
 
         self._key = args.get('key')
-        self._value = str(args.get('value'))
         self._path = str(args.get('path'))
         self._create = type_system.convert_to_type(args.get('create_if_missing', False), 'bool')
+
+        self._value_type = str(args.get('value_type', 'string'))
+        self._value = type_system.convert_to_type(args.get('value'), self._value_type)
 
     def run(self, resources): # pylint: disable=missing-docstring
         root = resources['filesystem'].root
