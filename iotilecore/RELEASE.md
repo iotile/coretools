@@ -12,6 +12,8 @@ All major changes in each released version of `iotile-core` are listed here.
 - Completely remove `VirtualIOTileInterface` and replace with `AbstractDeviceServer`.
   `virtual_device` script has been updated to use `AbstractDeviceServer` directly instead
   of requiring it to be wrapped inside a `VirtualIOTileInterface` shim.
+- Add parse_uuid(), parse_uuid2int(), parse_uuid2slug() function to aid in UUID
+  conversions
 
 ## 4.1.2
 
