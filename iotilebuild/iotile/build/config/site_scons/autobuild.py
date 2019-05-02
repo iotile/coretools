@@ -149,7 +149,7 @@ def autobuild_release(family=None):
     copy_extra_files(family.tile)
     build_python_distribution(family.tile)
 
-def autobuild_arm_program(elfname, test_dir=os.path.join('firmware', 'test'), patch=True):
+def autobuild_arm_program(elfname, test_dir=os.path.join('firmware', 'test'), patch=True, objcopy_flags=None):
     """
     Build the an ARM module for all targets and build all unit tests. If pcb files are given, also build those.
     """
@@ -157,7 +157,7 @@ def autobuild_arm_program(elfname, test_dir=os.path.join('firmware', 'test'), pa
     try:
         #Build for all targets
         family = utilities.get_family('module_settings.json')
-        family.for_all_targets(family.tile.short_name, lambda x: arm.build_program(family.tile, elfname, x, patch=patch))
+        family.for_all_targets(family.tile.short_name, lambda x: arm.build_program(family.tile, elfname, x, patch=patch, objcopy_flags=objcopy_flags))
 
         #Build all unit tests
         unit_test.build_units(os.path.join('firmware','test'), family.targets(family.tile.short_name))
