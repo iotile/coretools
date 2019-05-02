@@ -17,7 +17,7 @@ import os
 from dependencies import load_dependencies
 
 
-def build_program(tile, elfname, chip, patch=True, objcopy_flags=None):
+def build_program(tile, elfname, chip, patch=True, objcopy_flags=""):
     """
     Build an ARM cortex executable
     """
