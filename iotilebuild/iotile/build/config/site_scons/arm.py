@@ -17,7 +17,7 @@ import os
 from dependencies import load_dependencies
 
 
-def build_program(tile, elfname, chip, patch=True):
+def build_program(tile, elfname, chip, patch=True, objcopy_flags=""):
     """
     Build an ARM cortex executable
     """
@@ -102,7 +102,7 @@ def build_program(tile, elfname, chip, patch=True):
         # Create a patched ELF including a proper checksum
         # First create a binary dump of the program flash
         outbin = prog_env.Command(prog_env['OUTPUTBIN'], os.path.join(dirs['build'], prog_env['OUTPUT']),
-                                  "arm-none-eabi-objcopy -O binary $SOURCES $TARGET")
+                                  "arm-none-eabi-objcopy -O binary {} $SOURCES $TARGET".format(objcopy_flags))
 
         # Now create a command file containing the linker command needed to patch the elf
         outhex = prog_env.Command(prog_env['PATCH_FILE'], outbin, action=prog_env.Action(checksum_creation_action,
