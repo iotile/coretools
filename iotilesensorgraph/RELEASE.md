@@ -3,6 +3,10 @@
 All major changes in each released version of iotile-sensorgraph are listed
 here.
 
+## 1.0.6
+
+- Fix py3 byte / str concat errors
+
 ## 1.0.5
 
 - Implement proper dependency major version limits.
