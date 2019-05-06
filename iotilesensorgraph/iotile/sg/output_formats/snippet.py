@@ -63,7 +63,7 @@ def format_snippet(sensor_graph):
             conf_type, conf_val = conf_def
 
             if conf_type == 'binary':
-                conf_val = 'hex:' + hexlify(conf_val)
+                conf_val = 'hex:' + hexlify(conf_val).decode('utf-8')
             elif isinstance(conf_val, str):
                 conf_val = '"%s"' % conf_val
 

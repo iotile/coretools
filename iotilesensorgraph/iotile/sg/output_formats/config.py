@@ -26,7 +26,7 @@ def format_config(sensor_graph):
             conf_type, conf_val = conf_def
 
             if conf_type == 'binary':
-                conf_val = 'hex:' + hexlify(conf_val)
+                conf_val = 'hex:' + hexlify(conf_val).decode("utf-8")
 
             cmdfile.add("set_variable", slot, conf_var, conf_type, conf_val)
 
