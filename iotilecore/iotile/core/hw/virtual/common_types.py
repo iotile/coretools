@@ -183,14 +183,9 @@ def rpc(address, rpc_id, arg_format, resp_format=None):
                     try:
                         return pack_rpc_payload(resp_format, resp)
                     except struct.error as exc:
-                        raise RPCInvalidReturnValueError(str(exc), resp_format=resp_format, resp=repr(resp))
+                        raise RPCInvalidReturnValueError(address, rpc_id, resp_format, resp, error=exc) from exc
 
                 return resp
-
-            _rpc_executor.rpc_id = rpc_id
-            _rpc_executor.rpc_addr = address
-            _rpc_executor.is_rpc = True
-            return _rpc_executor
         else:
             def _rpc_executor(self, payload):
                 try:
@@ -211,10 +206,10 @@ def rpc(address, rpc_id, arg_format, resp_format=None):
 
                 return resp
 
-            _rpc_executor.rpc_id = rpc_id
-            _rpc_executor.rpc_addr = address
-            _rpc_executor.is_rpc = True
-            return _rpc_executor
+        _rpc_executor.rpc_id = rpc_id
+        _rpc_executor.rpc_addr = address
+        _rpc_executor.is_rpc = True
+        return _rpc_executor
 
     return _rpc_wrapper
 

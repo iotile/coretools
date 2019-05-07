@@ -3,11 +3,12 @@
 The device handles RPCs by dispatching them to tiles configured using a config dictionary.
 """
 
-from .virtualdevice import VirtualIOTileDevice
+from iotile.core.exceptions import ArgumentError
+from ..exceptions import RPCInvalidIDError, RPCNotFoundError, TileNotFoundError
+from .virtualdevice_standard import StandardVirtualDevice
 from .virtualtile import VirtualTile
 
-
-class TileBasedVirtualDevice(VirtualIOTileDevice):
+class TileBasedVirtualDevice(StandardVirtualDevice):
     """A VirtualDevice composed of one or more tiles.
 
     Args:
@@ -21,12 +22,9 @@ class TileBasedVirtualDevice(VirtualIOTileDevice):
         if isinstance(iotile_id, str):
             iotile_id = int(iotile_id, 16)
 
-        tiles = args.get('tiles', [])
-        name = args.get('name', "No Name")
+        super(TileBasedVirtualDevice, self).__init__(iotile_id)
 
-        super(TileBasedVirtualDevice, self).__init__(iotile_id, name)
-
-        for desc in tiles:
+        for desc in args.get('tiles', []):
             name = desc['name']
             address = desc['address']
 

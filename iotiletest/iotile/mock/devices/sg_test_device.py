@@ -1,10 +1,10 @@
 """Basic virtual IOTile device class for testing other components interactions with IOTile devices"""
 
 import random
-from iotile.core.hw.virtual.virtualdevice import VirtualIOTileDevice, rpc
+from iotile.core.hw.virtual.virtualdevice_simple import SimpleVirtualDevice, rpc
 
 
-class SensorGraphTestDevice(VirtualIOTileDevice):
+class SensorGraphTestDevice(SimpleVirtualDevice):
     """Mock IOTileDevice that can be used to test sensor graphs.
 
     Args:
@@ -14,15 +14,6 @@ class SensorGraphTestDevice(VirtualIOTileDevice):
 
     def __init__(self, args):
         super(SensorGraphTestDevice, self).__init__(1, 'Simple')
-
-    @rpc(8, 0x0004, "", "H6sBBBB")
-    def controller_name(self):
-        """Return the name of the controller as a 6 byte string
-        """
-
-        status = (1 << 1) | (1 << 0) #Configured and running
-
-        return [0xFFFF, self.name, 1, 0, 0, status]
 
     @rpc(8, 0x8000, "", "L")
     def random_int(self):

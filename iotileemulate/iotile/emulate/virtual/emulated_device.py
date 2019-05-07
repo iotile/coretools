@@ -2,7 +2,7 @@
 
 import logging
 from iotile.core.exceptions import DataError
-from iotile.core.hw.virtual import VirtualIOTileDevice
+from iotile.core.hw.virtual import StandardVirtualDevice
 from iotile.core.hw.virtual.common_types import pack_rpc_payload, unpack_rpc_payload, AsynchronousRPCResponse, BusyRPCResponse
 from .emulation_mixin import EmulationMixin
 from .state_log import EmulationStateLog
@@ -12,7 +12,7 @@ from ..utilities import format_rpc
 
 
 #pylint:disable=abstract-method;This is an abstract base class
-class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
+class EmulatedDevice(EmulationMixin, StandardVirtualDevice):
     """Base class for virtual devices designed to emulate physical devices.
 
     This class adds additional state and test scenario loading functionality
@@ -28,16 +28,14 @@ class EmulatedDevice(EmulationMixin, VirtualIOTileDevice):
     Args:
         iotile_id (int): A 32-bit integer that specifies the globally unique ID
             for this IOTile device.
-        name (string): The 6 byte name that should be returned when anyone asks
-            for the controller's name of this IOTile device using an RPC
     """
 
     __NO_EXTENSION__ = True
 
-    def __init__(self, iotile_id, name):
+    def __init__(self, iotile_id):
         self.state_history = EmulationStateLog()
 
-        VirtualIOTileDevice.__init__(self, iotile_id, name)
+        StandardVirtualDevice.__init__(self, iotile_id)
         EmulationMixin.__init__(self, None, self.state_history)
 
         self._logger = logging.getLogger(__name__)

@@ -1,11 +1,11 @@
 """Reference device for testing the individual report format
 """
 
-from iotile.core.hw.virtual.virtualdevice import VirtualIOTileDevice
+from iotile.core.hw.virtual.virtualdevice_simple import SimpleVirtualDevice
 from iotile.core.hw.reports import IndividualReadingReport, IOTileReading, BroadcastReport
 
 
-class RealtimeTestDevice(VirtualIOTileDevice):
+class RealtimeTestDevice(SimpleVirtualDevice):
     """Mock IOTileDevice that streams and traces data periodically
 
     This device can be configured to stream data on any streams at any interval.
@@ -27,29 +27,30 @@ class RealtimeTestDevice(VirtualIOTileDevice):
         args (dict): Any arguments that you want to pass to create this device.
             Supported args are:
 
-                iotile_id (int)
-                    The UUID used for this device.  If no UUID is specified, the default value of 1 is used.
+                iotile_id (int) The UUID used for this device.  If no UUID is
+                    specified, the default value of 1 is used.
 
-                streams (dict):
-                    A map of strings with hex numbers to tuples of (interval, value)
-                    where interval is a float that expresses how often the stream should stream
-                    in seconds and value is an integer that is sent as the value every interval
-                    as a realtime reading (IndividualReadingReport).  The stream id is the key of the
-                    streams dict which should be a string encoding of a hex number including
-                    the prefix 0x so that it can be parsed with int(key, 0).
+                streams (dict): A map of strings with hex numbers to tuples of
+                    (interval, value) where interval is a float that expresses
+                    how often the stream should stream in seconds and value is
+                    an integer that is sent as the value every interval as a
+                    realtime reading (IndividualReadingReport).  The stream id
+                    is the key of the streams dict which should be a string
+                    encoding of a hex number including the prefix 0x so that
+                    it can be parsed with int(key, 0).
 
-                broadcast (dict):
-                    A map of strings with hex numbers to tuples of (interval, value)
-                    where interval is a float that expresses how often the stream should stream
-                    in seconds and value is an integer that is sent as the value every interval
-                    as a broadcast reading (BroadcastReport).  The stream id is the key of the
-                    streams dict which should be a string encoding of a hex number including
-                    the prefix 0x so that it can be parsed with int(key, 0).
+                broadcast (dict): A map of strings with hex numbers to tuples
+                    of (interval, value) where interval is a float that
+                    expresses how often the stream should stream in seconds
+                    and value is an integer that is sent as the value every
+                    interval as a broadcast reading (BroadcastReport).  The
+                    stream id is the key of the streams dict which should be a
+                    string encoding of a hex number including the prefix 0x so
+                    that it can be parsed with int(key, 0).
 
-                trace (list):
-                    A list of tuples which are (float, string) lists
-                    that will trace the fixed string every fixed interval given
-                    by the first float argument in seconds.
+                trace (list): A list of tuples which are (float, string) lists
+                    that will trace the fixed string every fixed interval
+                    given by the first float argument in seconds.
     """
 
     def __init__(self, args):
@@ -93,7 +94,7 @@ class RealtimeTestDevice(VirtualIOTileDevice):
             value (string): The tracing value to send
         """
 
-        if not self.trace_iface_open:
+        if not self.interface_open('tracing'):
             return
 
         self.trace(bytearray(value.encode('ascii')))
@@ -106,7 +107,7 @@ class RealtimeTestDevice(VirtualIOTileDevice):
             value (int): The stream value to send
         """
 
-        if not self.stream_iface_open:
+        if not self.interface_open('streaming'):
             return
 
         reading = IOTileReading(0, stream, value)

@@ -35,7 +35,7 @@ class ReferenceDevice(EmulatedDevice):
         if isinstance(iotile_id, str):
             iotile_id = int(iotile_id, 16)
 
-        super(ReferenceDevice, self).__init__(iotile_id, controller_name)
+        super(ReferenceDevice, self).__init__(iotile_id)
 
         self.controller = ReferenceController(8, {'name': controller_name}, device=self)
         self.add_tile(8, self.controller)
@@ -152,8 +152,6 @@ class ReferenceDevice(EmulatedDevice):
                 the streaming interface.
         """
 
-        super(ReferenceDevice, self).open_streaming_interface()
-
         self.rpc(8, rpcs.SG_GRAPH_INPUT, 8, streams.COMM_TILE_OPEN)
         return []
 
@@ -163,8 +161,6 @@ class ReferenceDevice(EmulatedDevice):
         This method will automatically notify sensor_graph that there is a no
         longer a streaming interface opened.
         """
-
-        super(ReferenceDevice, self).close_streaming_interface()
 
         self.rpc(8, rpcs.SG_GRAPH_INPUT, 8, streams.COMM_TILE_CLOSED)
 

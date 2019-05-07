@@ -4,52 +4,39 @@ import inspect
 from iotile.core.exceptions import InternalError, ArgumentError
 from iotile.core.hw.reports.individual_format import IndividualReadingReport
 from iotile.core.hw.reports.report import IOTileReading
-from .base_runnable import BaseRunnable
-from .common_types import RPCInvalidIDError, RPCNotFoundError, TileNotFoundError, RPCDispatcher, rpc  # pylint: disable=W0611; rpc import needed for backwards compatibility
+from .common_types import RPCInvalidIDError, RPCNotFoundError, TileNotFoundError, RPCDispatcher
 
 
 # pylint: disable=R0902,R0904; backwards compatibility methods and properties already referenced in other modules
-class VirtualIOTileDevice(BaseRunnable):
+class BaseVirtualDevice:
     """A Virtual IOTile device that can be interacted with as if it were a real one.
 
-    This is the base class of all other Virtual IOTile devices.  It allows defining
-    RPCs directly using decorators and the `register_rpc` function.  Subclasses
-    implement virtual tiles that modularize building complex virtual devices from
-    reusable pieces.
+    This is the base class of all other Virtual IOTile devices.  It allows
+    defining RPCs directly using decorators and the `register_rpc` function.
 
-    This class also implements the required controller status RPC that allows
-    matching it with a proxy object.
+    This base class does not make any assumptions about how your particular
+    subclass is organized and as such is unlikely to be the best parent class
+    for any particular use case.  Depending on what you want to do, you may
+    want one of the following subclasses:
 
     Args:
         iotile_id (int): A 32-bit integer that specifies the globally unique ID
             for this IOTile device.
-        name (string): The 6 byte name that should be returned when anyone asks
-            for the controller's name of this IOTile device using an RPC
     """
 
-    def __init__(self, iotile_id, name):
-        super(VirtualIOTileDevice, self).__init__()
+    def __init__(self, iotile_id):
+        super(BaseVirtualDevice, self).__init__()
 
         self._rpc_overlays = {}
-        self._tiles = {}
-
-        self.name = name.encode('utf-8')
         self.iotile_id = iotile_id
-        self.reports = []
-        self.traces = []
-        self.script = bytearray()
 
-        self._interface_status = {}
-        self._interface_status['connected'] = False
-        self._interface_status['stream'] = False
-        self._interface_status['trace'] = False
-        self._interface_status['script'] = False
-        self._interface_status['rpc'] = False
-        self._interface_status['debug'] = False
+        self._interface_status = dict(connected=False, streaming=False, rpc=False,
+                                      tracing=False, script=False, debug=False)
 
         # For this device to push streams or tracing data through a VirtualInterface, it
         # needs access to that interface's push channel
         self._push_channel = None
+        self._started = False
 
         # Iterate through all of our member functions and see the ones that are
         # RPCS and add them to the RPC handler table
@@ -67,33 +54,27 @@ class VirtualIOTileDevice(BaseRunnable):
     def connected(self, value):
         self._interface_status['connected'] = value
 
-    @property
-    def stream_iface_open(self):
-        """Whether the streaming interface is opened.
-
-        Deprecated:
-            3.14.5: Use interface_open('stream') instead
-        """
-
-        return self._interface_status['stream']
-
-    @property
-    def trace_iface_open(self):
-        """Whether the tracing interface is opened.
-
-        Deprecated:
-            3.14.5: Use interface_open('trace') instead
-        """
-
-        return self._interface_status['trace']
-
-    @property
-    def pending_data(self):
-        """Whether there are streaming reports waiting to be sent."""
-
-        return len(self.reports) > 0
-
     def interface_open(self, name):
+        """Check whether the given interface is open.
+
+        Valid interface names are:
+         - connected
+         - stream
+         - trace
+         - script
+         - debug
+
+        Interfaces are opened by calling open_interface and closed by calling
+        close_interface, except for connections which are opened by setting
+        the connect propery and closed by clearing the connect property.
+
+        Args:
+            name (str): The name of the interface.
+
+        Returns:
+            bool: Whether the interface is open.
+        """
+
         if name not in self._interface_status:
             raise ArgumentError("Unkown interface name: %s" % name)
 
@@ -111,12 +92,9 @@ class VirtualIOTileDevice(BaseRunnable):
             raise InternalError("The method start() was called twice on VirtualIOTileDevice.")
 
         self._push_channel = channel
-        self.start_workers()
 
     def stop(self):
         """Stop running this virtual device including any worker threads."""
-
-        self.stop_workers()
 
     def stream(self, report, callback=None):
         """Stream a report asynchronously.
@@ -147,7 +125,7 @@ class VirtualIOTileDevice(BaseRunnable):
             value (int): The stream value to send
         """
 
-        if not self.stream_iface_open:
+        if not self.interface_open('streaming'):
             return
 
         reading = IOTileReading(0, stream, value)
@@ -215,112 +193,68 @@ class VirtualIOTileDevice(BaseRunnable):
         if rpc_id < 0 or rpc_id > 0xFFFF:
             raise RPCInvalidIDError("Invalid RPC ID: {}".format(rpc_id))
 
-        if address not in self._rpc_overlays and address not in self._tiles:
+        if address not in self._rpc_overlays:
             raise TileNotFoundError("Unknown tile address, no registered handler", address=address)
 
         overlay = self._rpc_overlays.get(address, None)
-        tile = self._tiles.get(address, None)
+
         if overlay is not None and overlay.has_rpc(rpc_id):
             return overlay.call_rpc(rpc_id, payload)
-        elif tile is not None and tile.has_rpc(rpc_id):
-            return tile.call_rpc(rpc_id, payload)
 
         raise RPCNotFoundError("Could not find RPC 0x%X at address %d" % (rpc_id, address))
 
-    def add_tile(self, address, tile):
-        """Add a tile to handle all RPCs at a given address.
-
-        Args:
-            address (int): The address of the tile
-            tile (RPCDispatcher): A tile object that inherits from RPCDispatcher
-        """
-
-        if address in self._tiles:
-            raise ArgumentError("Tried to add two tiles at the same address", address=address)
-
-        self._tiles[address] = tile
-
     def open_interface(self, name):
         """Open an interface on the device by name.
+
+        Subclasses that want to be notified when an interface is opened can
+        declare a method named open_{name}_interface that will be called when
+        the given interface is opened.  If such a function is delcared and
+        raises an exception, the interface will not be opened.
 
         Args:
             name (str): The name of the interface to open.
         """
 
-        open_func = getattr(self, "open_{}_interface".format(name))
-        return open_func()
+        if name not in self._interface_status:
+            raise ArgumentError("Unknown interface name in open_interface: {}".format(name))
+
+        self._interface_status[name] = True
+
+        try:
+            iface_open_name = "open_{}_interface".format(name)
+
+            if hasattr(self, iface_open_name):
+                open_func = getattr(self, "open_{}_interface".format(name))
+                return open_func()
+
+            return None
+        except:
+            self._interface_status[name] = False
+            raise
 
     def close_interface(self, name):
         """Close an interface on the device by name.
+
+        Subclasses that want to be notified when an interface is closed can
+        declare a method named close_{name}_interface that will be called when
+        the given interface is opened.  If such a function is declared and
+        raises an exception, the interface will still be closed but the
+        exception will be raised to the caller.
 
         Args:
             name (str): The name of the interface to close.
         """
 
-        close_func = getattr(self, "close_{}_interface".format(name))
-        close_func()
+        if name not in self._interface_status:
+            raise ArgumentError("Unknown interface name in close_interface: {}".format(name))
 
-    def open_rpc_interface(self):
-        """Called when someone opens an RPC interface to the device."""
+        iface_close_name = "close_{}_interface".format(name)
 
-        self._interface_status['rpc'] = True
+        self._interface_status[name] = False
 
-    def close_rpc_interface(self):
-        """Called when someone closes an RPC interface to the device."""
-
-        self._interface_status['rpc'] = False
-
-    def open_script_interface(self):
-        """Called when someone opens a script interface on this device."""
-
-        self._interface_status['script'] = True
-
-    def close_script_interface(self):
-        """Called when someone closes a script interface on this device."""
-
-        self._interface_status['script'] = False
-
-    def open_debug_interface(self):
-        """Called when someone opens a script interface on this device."""
-
-        self._interface_status['debug'] = True
-
-    def close_debug_interface(self):
-        """Called when someone closes a script interface on this device."""
-
-        self._interface_status['debug'] = False
-
-    def open_streaming_interface(self):
-        """Called when someone opens a streaming interface to the device.
-
-        Returns:
-            list: A list of IOTileReport objects that should be sent out
-                the streaming interface.
-        """
-
-        self._interface_status['stream'] = True
-        return self.reports
-
-    def close_streaming_interface(self):
-        """Called when someone closes the streaming interface to the device."""
-
-        self._interface_status['stream'] = False
-
-    def open_tracing_interface(self):
-        """Called when someone opens a tracing interface to the device.
-
-        Returns:
-            list: A list of bytearray objects that should be sent out
-                the tracing interface.
-        """
-
-        self._interface_status['trace'] = True
-        return self.traces
-
-    def close_tracing_interface(self):
-        """Called when someone closes the tracing interface to the device."""
-
-        self._interface_status['trace'] = False
+        if hasattr(self, iface_close_name):
+            close_func = getattr(self, iface_close_name)
+            close_func()
 
     def push_script_chunk(self, chunk):
         """Called when someone pushes a new bit of a TRUB script to this device
@@ -328,5 +262,3 @@ class VirtualIOTileDevice(BaseRunnable):
         Args:
             chunk (str): a buffer with the next bit of script to append
         """
-
-        self.script += bytearray(chunk)
