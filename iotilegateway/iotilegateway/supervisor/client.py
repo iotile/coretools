@@ -6,7 +6,7 @@ import logging
 import asyncio
 import inspect
 
-from iotile.core.hw.virtual import RPCInvalidArgumentsError, RPCInvalidReturnValueError
+from iotile.core.hw.exceptions import RPCInvalidArgumentsError, RPCInvalidReturnValueError
 from iotile.core.utilities import SharedLoop
 from iotile.core.exceptions import ArgumentError
 from iotile_transport_websocket import AsyncValidatingWSClient

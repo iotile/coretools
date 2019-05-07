@@ -2,8 +2,8 @@
 
 import logging
 from iotile.core.exceptions import DataError
-from iotile.core.hw.virtual import StandardVirtualDevice
-from iotile.core.hw.virtual.common_types import pack_rpc_payload, unpack_rpc_payload, AsynchronousRPCResponse, BusyRPCResponse
+from iotile.core.hw.virtual import StandardVirtualDevice, pack_rpc_payload, unpack_rpc_payload
+from iotile.core.hw.exceptions import AsynchronousRPCResponse, BusyRPCResponse
 from .emulation_mixin import EmulationMixin
 from .state_log import EmulationStateLog
 from ..constants.rpcs import RPCDeclaration

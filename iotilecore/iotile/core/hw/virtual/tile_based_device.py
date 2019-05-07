@@ -52,9 +52,6 @@ class TileBasedVirtualDevice(StandardVirtualDevice):
         """Stop running this virtual device including any worker threads."""
 
         for tile in self._tiles.values():
-            tile.signal_stop()
-
-        for tile in self._tiles.values():
-            tile.wait_stopped()
+            tile.stop()
 
         super(TileBasedVirtualDevice, self).stop()

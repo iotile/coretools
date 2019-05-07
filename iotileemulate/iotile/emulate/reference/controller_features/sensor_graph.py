@@ -58,7 +58,8 @@ import struct
 import asyncio
 import inspect
 from collections import deque
-from iotile.core.hw.virtual import tile_rpc, RPCErrorCode
+from iotile.core.hw.virtual import tile_rpc
+from iotile.core.hw.exceptions import RPCErrorCode
 from iotile.core.hw.reports import IOTileReading
 from iotile.sg import DataStream, SensorGraph
 from iotile.sg.sim.executor import RPCExecutor

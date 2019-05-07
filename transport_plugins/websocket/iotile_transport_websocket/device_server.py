@@ -5,8 +5,8 @@ import base64
 import websockets
 from iotile.core.utilities import SharedLoop
 from iotile.core.hw.transport.server import StandardDeviceServer
-from iotile.core.hw.exceptions import DeviceServerError, DeviceAdapterError
-from iotile.core.hw.virtual import VALID_RPC_EXCEPTIONS, pack_rpc_response
+from iotile.core.hw.exceptions import VALID_RPC_EXCEPTIONS, DeviceServerError, DeviceAdapterError
+from iotile.core.hw.virtual import pack_rpc_response
 from .generic import AsyncValidatingWSServer, ServerCommandError
 from .protocol import COMMANDS, OPERATIONS
 
