@@ -114,6 +114,18 @@ class BaseVirtualDevice:
         raise ``RPCNotFoundError`` for all RPCs.  The above two subclasses
         provide appropriate implementations for ``call_rpc``.
 
+    In order to be able to dynamically created by :class:`VirtualDeviceAdapter`,
+    all BaseVirtualDevice subclasses must have the following __init__ signature::
+
+        __init__(self, config, *, loop=SharedLoop)
+
+    The ``config`` parameter is a dictionary of arguments that can be used in
+    any way the virtual device class likes to configure itself.  If the device
+    needs explicit access to a BackgroundEventLoop, it can declare a keyword
+    parameter named ``loop``, which will be filled in with the appropriate
+    ``BackgroundEventLoop`` that the ``VirtualDeviceAdapter`` is using
+    internally.
+
     Args:
         iotile_id (int): A 32-bit integer that specifies the globally unique ID
             for this IOTile device.
