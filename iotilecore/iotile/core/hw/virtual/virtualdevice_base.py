@@ -1,23 +1,35 @@
-"""Mock IOTile device class for testing other components interactions with IOTile devices"""
+"""Base class for software based iotile devices called virtual devices."""
 
-import inspect
 from iotile.core.exceptions import InternalError, ArgumentError
-from iotile.core.hw.reports.individual_format import IndividualReadingReport
-from iotile.core.hw.reports.report import IOTileReading
-from .common_types import RPCInvalidIDError, RPCNotFoundError, TileNotFoundError, RPCDispatcher
+from ..exceptions import RPCNotFoundError
+from ..reports.individual_format import IndividualReadingReport
+from ..reports.report import IOTileReading
 
 
 # pylint: disable=R0902,R0904; backwards compatibility methods and properties already referenced in other modules
 class BaseVirtualDevice:
     """A Virtual IOTile device that can be interacted with as if it were a real one.
 
-    This is the base class of all other Virtual IOTile devices.  It allows
-    defining RPCs directly using decorators and the `register_rpc` function.
+    This is the base class of all other Virtual IOTile devices.
 
     This base class does not make any assumptions about how your particular
     subclass is organized and as such is unlikely to be the best parent class
     for any particular use case.  Depending on what you want to do, you may
     want one of the following subclasses:
+
+    - :class:`StandardVirtualDevice`: A general purpose base class for complex
+      virtual devices supporting organizing the device into tiles.
+
+    - :class:`SimpleVirtualDevice`: A simpler base class for creating very
+      simple virtual devices that just implement a few RPCs without needing to
+      put those rpcs into tiles.
+
+    .. important::
+
+        All subclasses must override the function :meth:`call_rpc` to actually
+        find and call their RPCs, otherwise the default impementation will
+        raise ``RPCNotFoundError`` for all RPCs.  The above two subclasses
+        provide appropriate implementations for ``call_rpc``.
 
     Args:
         iotile_id (int): A 32-bit integer that specifies the globally unique ID
@@ -25,9 +37,6 @@ class BaseVirtualDevice:
     """
 
     def __init__(self, iotile_id):
-        super(BaseVirtualDevice, self).__init__()
-
-        self._rpc_overlays = {}
         self.iotile_id = iotile_id
 
         self._interface_status = dict(connected=False, streaming=False, rpc=False,
@@ -37,12 +46,6 @@ class BaseVirtualDevice:
         # needs access to that interface's push channel
         self._push_channel = None
         self._started = False
-
-        # Iterate through all of our member functions and see the ones that are
-        # RPCS and add them to the RPC handler table
-        for _name, value in inspect.getmembers(self, predicate=inspect.ismethod):
-            if hasattr(value, 'is_rpc'):
-                self.register_rpc(value.rpc_addr, value.rpc_id, value)
 
     @property
     def connected(self):
@@ -151,58 +154,6 @@ class BaseVirtualDevice:
 
         self._push_channel.trace(data, callback=callback)
 
-    def register_rpc(self, address, rpc_id, func):
-        """Register a single RPC handler with the given info.
-
-        This function can be used to directly register individual RPCs,
-        rather than delegating all RPCs at a given address to a virtual
-        Tile.
-
-        If calls to this function are mixed with calls to add_tile for
-        the same address, these RPCs will take precedence over what is
-        defined in the tiles.
-
-        Args:
-            address (int): The address of the mock tile this RPC is for
-            rpc_id (int): The number of the RPC
-            func (callable): The function that should be called to handle the
-                RPC.  func is called as func(payload) and must return a single
-                string object of up to 20 bytes with its response
-        """
-
-        if rpc_id < 0 or rpc_id > 0xFFFF:
-            raise RPCInvalidIDError("Invalid RPC ID: {}".format(rpc_id))
-
-        if address not in self._rpc_overlays:
-            self._rpc_overlays[address] = RPCDispatcher()
-
-        self._rpc_overlays[address].add_rpc(rpc_id, func)
-
-    def call_rpc(self, address, rpc_id, payload=b""):
-        """Call an RPC by its address and ID.
-
-        Args:
-            address (int): The address of the mock tile this RPC is for
-            rpc_id (int): The number of the RPC
-            payload (bytes): A byte string of payload parameters up to 20 bytes
-
-        Returns:
-            bytes: The response payload from the RPC
-        """
-
-        if rpc_id < 0 or rpc_id > 0xFFFF:
-            raise RPCInvalidIDError("Invalid RPC ID: {}".format(rpc_id))
-
-        if address not in self._rpc_overlays:
-            raise TileNotFoundError("Unknown tile address, no registered handler", address=address)
-
-        overlay = self._rpc_overlays.get(address, None)
-
-        if overlay is not None and overlay.has_rpc(rpc_id):
-            return overlay.call_rpc(rpc_id, payload)
-
-        raise RPCNotFoundError("Could not find RPC 0x%X at address %d" % (rpc_id, address))
-
     def open_interface(self, name):
         """Open an interface on the device by name.
 
@@ -262,3 +213,20 @@ class BaseVirtualDevice:
         Args:
             chunk (str): a buffer with the next bit of script to append
         """
+
+    def call_rpc(self, address, rpc_id, payload=b""):
+        """Call an RPC by its address and ID.
+
+        Subclasses must override this function with methods of finding RPCs as
+        part of their implementations.
+
+        Args:
+            address (int): The address of the mock tile this RPC is for
+            rpc_id (int): The number of the RPC
+            payload (bytes): A byte string of payload parameters up to 20 bytes
+
+        Returns:
+            bytes: The response payload from the RPC
+        """
+
+        raise RPCNotFoundError("RPC not found because virtual device did not implement call_rpc method")

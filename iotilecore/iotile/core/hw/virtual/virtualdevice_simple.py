@@ -8,16 +8,28 @@ are triggered on a schedule.
 They are useful for writing simple, repeatable tests.
 """
 
+import inspect
+from ..exceptions import RPCInvalidIDError, RPCNotFoundError, TileNotFoundError
 from .virtualdevice_base import BaseVirtualDevice
 from .base_runnable import BaseRunnable
-from .common_types import rpc
+from .common_types import rpc, RPCDispatcher
+
 
 class SimpleVirtualDevice(BaseVirtualDevice, BaseRunnable):
-    """A simple virtual device with a tile "fake" tile at address 8.
+    """A simple virtual device with a "fake" tile at address 8.
 
     This class implements the required controller status RPC that allows
-    matching it with a proxy object.  You can define period worker functions
+    matching it with a proxy object.  You can define periodic worker functions
     that add simple interactivity using the :meth:`start_worker` method.
+
+    If you want to add extra RPCs, you can do so by decorating your rpc
+    implementation with an ``@rpc`` decorator or by adding them dynamically
+    using :meth:`register_rpc`.
+
+    The default implementation will respond to RPC 8:0004 with a fixed tile
+    name for the tile at address 8 based on the ``name`` you pass in to the
+    __init__ function.  This allows for the creation of matched proxy objects
+    that correspond with your simple device.
 
     Args:
         iotile_id (int): A 32-bit integer that specifies the globally unique ID
@@ -36,6 +48,66 @@ class SimpleVirtualDevice(BaseVirtualDevice, BaseRunnable):
         self.reports = []
         self.traces = []
         self.script = bytearray()
+
+        # Iterate through all of our member functions and see the ones that are
+        # RPCS and add them to the RPC handler table
+        self._rpc_overlays = {}
+        for _name, value in inspect.getmembers(self, predicate=inspect.ismethod):
+            if hasattr(value, 'is_rpc'):
+                self.register_rpc(value.rpc_addr, value.rpc_id, value)
+
+    def register_rpc(self, address, rpc_id, func):
+        """Register a single RPC handler with the given info.
+
+        This function can be used to directly register individual RPCs,
+        rather than delegating all RPCs at a given address to a virtual
+        Tile.
+
+        If calls to this function are mixed with calls to add_tile for
+        the same address, these RPCs will take precedence over what is
+        defined in the tiles.
+
+        Args:
+            address (int): The address of the mock tile this RPC is for
+            rpc_id (int): The number of the RPC
+            func (callable): The function that should be called to handle the
+                RPC.  func is called as func(payload) and must return a single
+                string object of up to 20 bytes with its response
+        """
+
+        if rpc_id < 0 or rpc_id > 0xFFFF:
+            raise RPCInvalidIDError("Invalid RPC ID: {}".format(rpc_id))
+
+        if address not in self._rpc_overlays:
+            self._rpc_overlays[address] = RPCDispatcher()
+
+        self._rpc_overlays[address].add_rpc(rpc_id, func)
+
+    def call_rpc(self, address, rpc_id, payload=b""):
+        """Call an RPC by its address and ID.
+
+        Args:
+            address (int): The address of the mock tile this RPC is for
+            rpc_id (int): The number of the RPC
+            payload (bytes): A byte string of payload parameters up to 20 bytes
+
+        Returns:
+            bytes: The response payload from the RPC
+        """
+
+        if rpc_id < 0 or rpc_id > 0xFFFF:
+            raise RPCInvalidIDError("Invalid RPC ID: {}".format(rpc_id))
+
+        if address not in self._rpc_overlays:
+            raise TileNotFoundError("Unknown tile address, no registered handler", address=address)
+
+        overlay = self._rpc_overlays.get(address, None)
+
+        if overlay is not None and overlay.has_rpc(rpc_id):
+            return overlay.call_rpc(rpc_id, payload)
+
+        raise RPCNotFoundError("Could not find RPC 0x%X at address %d" % (rpc_id, address))
+
 
     @rpc(8, 0x0004, "", "H6sBBBB")
     def status(self):
