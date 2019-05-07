@@ -130,7 +130,7 @@ class NativeBLEVirtualInterface(VirtualIOTileInterface):
         super(NativeBLEVirtualInterface, self).stop()
 
         self.stop_sync()
-    
+
     def register_gatt_table(self):
         """Register the GATT table into baBLE."""
         services = [BLEService, TileBusService]
@@ -232,7 +232,6 @@ class NativeBLEVirtualInterface(VirtualIOTileInterface):
         self.connected = True
         self._connection_handle = device['connection_handle']
         self.device.connected = True
-        self._audit('ClientConnected')
 
     def _on_disconnected(self, device):
         """Callback function called when a disconnected event has been received.
@@ -264,7 +263,6 @@ class NativeBLEVirtualInterface(VirtualIOTileInterface):
         self._clear_traces()
 
         self._defer(self.set_advertising, [True])
-        self._audit('ClientDisconnected')
 
     def _on_write_request(self, request):
         """Callback function called when a write request has been received.
@@ -300,7 +298,6 @@ class NativeBLEVirtualInterface(VirtualIOTileInterface):
 
                 if self.header_notif and self.payload_notif:
                     self.device.open_rpc_interface()
-                    self._audit("RPCInterfaceOpened")
 
             # Streaming
             elif attribute_handle == StreamingChar.config_handle:
@@ -312,11 +309,9 @@ class NativeBLEVirtualInterface(VirtualIOTileInterface):
                     if reports is not None:
                         self._queue_reports(*reports)
 
-                    self._audit('StreamingInterfaceOpened')
                 elif not notification_enabled and self.streaming:
                     self.streaming = False
                     self.device.close_streaming_interface()
-                    self._audit('StreamingInterfaceClosed')
 
             # Tracing
             elif attribute_handle == TracingChar.config_handle:
@@ -328,11 +323,9 @@ class NativeBLEVirtualInterface(VirtualIOTileInterface):
                     if traces is not None:
                         self._queue_traces(*traces)
 
-                    self._audit('TracingInterfaceOpened')
                 elif not notification_enabled and self.tracing:
                     self.tracing = False
                     self.device.close_tracing_interface()
-                    self._audit('TracingInterfaceClosed')
 
             return True
         # If write an RPC
@@ -378,15 +371,6 @@ class NativeBLEVirtualInterface(VirtualIOTileInterface):
             status = 3
             response = b''
             self._logger.exception("Exception raise while calling rpc, header=%s, payload=%s", header, payload)
-
-        self._audit(
-            "RPCReceived",
-            rpc_id=rpc_id,
-            address=address,
-            payload=binascii.hexlify(payload),
-            status=status,
-            response=binascii.hexlify(response)
-        )
 
         resp_header = struct.pack("<BBBB", status, 0, 0, len(response))
 
@@ -435,7 +419,6 @@ class NativeBLEVirtualInterface(VirtualIOTileInterface):
                 time.sleep(0.05)
                 self._defer(self._send_rpc_response, list(packets))
             else:
-                self._audit('ErrorSendingRPCResponse')
                 self._logger.exception("Error while sending RPC response, handle=%s, payload=%s", handle, payload)
 
             return
@@ -469,7 +452,6 @@ class NativeBLEVirtualInterface(VirtualIOTileInterface):
                 time.sleep(0.05)
                 self._defer(self._stream_data, [chunk])
             else:
-                self._audit('ErrorStreamingReport')  # If there was an error, stop streaming but don't choke
                 self._logger.exception("Error while streaming data")
 
     def _send_trace(self, chunk=None):
@@ -497,7 +479,6 @@ class NativeBLEVirtualInterface(VirtualIOTileInterface):
                 time.sleep(0.05)
                 self._defer(self._send_trace, [chunk])
             else:
-                self._audit('ErrorStreamingTrace')  # If there was an error, stop streaming but don't choke
                 self._logger.exception("Error while tracing data")
 
     def process(self):
