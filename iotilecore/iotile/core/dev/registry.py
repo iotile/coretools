@@ -148,7 +148,7 @@ class ComponentRegistry:
                                                       component=comp)
                         if len(entries) == 0 and name_filter is None:
                             # Don't warn if we're filtering by name since most extensions won't match
-                            self._logger.warn("Found no valid extensions in product %s of component %s",
+                            self._logger.warning("Found no valid extensions in product %s of component %s",
                                               product, comp.path)
                             continue
 
@@ -166,7 +166,7 @@ class ComponentRegistry:
             try:
                 ext = entry.load()
             except:  # pylint:disable=bare-except;
-                self._logger.warn("Unable to load %s from %s", entry.name, entry.distro, exc_info=True)
+                self._logger.warning("Unable to load %s from %s", entry.name, entry.distro, exc_info=True)
                 continue
 
             found_extensions.extend((name, x) for x in self._filter_subclasses(ext, class_filter))
