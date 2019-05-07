@@ -4,9 +4,9 @@ import json
 import os.path
 from iotile.core.hw.hwmanager import HardwareManager
 from iotile.core.dev.registry import ComponentRegistry
-from iotile.core.hw.exceptions import RPCNotFoundError
+from iotile.core.hw.exceptions import RPCNotFoundError, RPCInvalidArgumentsError
 from typedargs.exceptions import KeyValueException
-from iotile.core.hw.virtual import VirtualTile, RPCInvalidArgumentsError
+from iotile.core.hw.virtual import VirtualTile
 
 @pytest.fixture
 def registry():

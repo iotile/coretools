@@ -1,10 +1,10 @@
 """Basic virtual IOTile device class for testing tracing data from an IOTile device"""
 
 import binascii
-from iotile.core.hw.virtual.virtualdevice import VirtualIOTileDevice, rpc
+from iotile.core.hw.virtual.virtualdevice_simple import SimpleVirtualDevice
 
 
-class TracingTestDevice(VirtualIOTileDevice):
+class TracingTestDevice(SimpleVirtualDevice):
     """Mock IOTileDevice that sends tracing data from the device
 
     If no arguments are passed, the fixed string 'Hello world, this is tracing data!'
@@ -45,12 +45,3 @@ class TracingTestDevice(VirtualIOTileDevice):
         # what typically comes from real devices
         for i in range(0, len(data), 20):
             self.traces.append(data[i:i+20])
-
-    @rpc(8, 0x0004, "", "H6sBBBB")
-    def controller_name(self):
-        """Return the name of the controller as a 6 byte string
-        """
-
-        status = (1 << 1) | (1 << 0)  # Configured and running
-
-        return [0xFFFF, self.name, 1, 0, 0, status]

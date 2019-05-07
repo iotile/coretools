@@ -1,11 +1,11 @@
 """Reference device for testing the individual report format"""
 
-from iotile.core.hw.virtual.virtualdevice import VirtualIOTileDevice, rpc
+from iotile.core.hw.virtual.virtualdevice_simple import SimpleVirtualDevice, rpc
 from iotile.core.exceptions import ArgumentError
 from iotile.core.hw.reports import IndividualReadingReport, IOTileReading, SignedListReport
 
 
-class ReportTestDevice(VirtualIOTileDevice):
+class ReportTestDevice(SimpleVirtualDevice):
     """Mock IOTileDevice that creates a sequence of reports upon connection
 
     This device can be considered a reference implementation of the individual
@@ -86,19 +86,6 @@ class ReportTestDevice(VirtualIOTileDevice):
 
         super(ReportTestDevice, self).__init__(iotile_id, module_name)
 
-    @rpc(8, 0x0004, "", "H6sBBBB")
-    def controller_name(self):
-        """Return the name of the controller as a 6 byte string
-        """
-
-        status = (1 << 1) | (1 << 0) #Configured and running
-
-        name = self.name
-        if isinstance(self.name, str):
-            name = name.encode('utf-8')
-
-        return [0xFFFF, name, 1, 0, 0, status]
-
     @rpc(8, 0x200f, "HHL", "L")
     def acknowledge_streamer(self, index, force, acknowledgement):
         if force or self.acks.get(index, 0) < acknowledgement:
@@ -137,8 +124,6 @@ class ReportTestDevice(VirtualIOTileDevice):
             list: A list of IOTileReport objects that should be sent out
                 the streaming interface.
         """
-
-        super(ReportTestDevice, self).open_streaming_interface()
 
         readings = self.generator()
 

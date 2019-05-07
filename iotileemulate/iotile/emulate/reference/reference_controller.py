@@ -2,7 +2,8 @@
 
 import logging
 import asyncio
-from iotile.core.hw.virtual import tile_rpc, TileNotFoundError
+from iotile.core.hw.virtual import tile_rpc
+from iotile.core.hw.exceptions import TileNotFoundError
 from iotile.core.hw.reports import IOTileReading
 from iotile.core.exceptions import ArgumentError
 from iotile.sg.model import DeviceModel

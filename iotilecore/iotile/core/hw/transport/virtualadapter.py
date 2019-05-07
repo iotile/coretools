@@ -7,9 +7,8 @@ from iotile.core.hw.reports import BroadcastReport
 from iotile.core.hw.virtual.common_types import BusyRPCResponse
 from iotile.core.utilities import SharedLoop
 from .adapter import StandardDeviceAdapter
-from ..exceptions import DeviceAdapterError
-from ..virtual import (RPCInvalidIDError, TileNotFoundError, RPCNotFoundError,
-                       VirtualIOTileDevice, RPCErrorCode)
+from ..exceptions import DeviceAdapterError, RPCInvalidIDError, TileNotFoundError, RPCNotFoundError, RPCErrorCode
+from ..virtual import BaseVirtualDevice
 
 
 class VirtualAdapterAsyncChannel:
@@ -104,7 +103,7 @@ class VirtualDeviceAdapter(StandardDeviceAdapter):
     Args:
         port (string): A port description that should be in the form of
             device_name1@<optional_config_json1;device_name2@optional_config_json2
-        devices (list of VirtualIOTileDevice): Optional list of precreated virtual
+        devices (list of BaseVirtualDevice): Optional list of precreated virtual
             devices that you would like to add to this virtual adapter.  It can sometimes
             be easier to pass precreated devices rather than needing to specify how
             they should be created.
@@ -197,12 +196,12 @@ class VirtualDeviceAdapter(StandardDeviceAdapter):
         reg = ComponentRegistry()
 
         if name.endswith('.py'):
-            _name, device_factory = reg.load_extension(name, class_filter=VirtualIOTileDevice, unique=True)
+            _name, device_factory = reg.load_extension(name, class_filter=BaseVirtualDevice, unique=True)
             return device_factory(config_dict)
 
         seen_names = []
         for device_name, device_factory in reg.load_extensions('iotile.virtual_device',
-                                                               class_filter=VirtualIOTileDevice,
+                                                               class_filter=BaseVirtualDevice,
                                                                product_name="virtual_device"):
             if device_name == name:
                 return device_factory(config_dict)

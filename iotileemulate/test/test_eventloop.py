@@ -5,7 +5,7 @@ import struct
 import pytest
 from iotile.emulate.internal import EmulationLoop
 from iotile.emulate import RPCRuntimeError
-from iotile.core.hw.virtual.common_types import AsynchronousRPCResponse
+from iotile.core.hw.exceptions import AsynchronousRPCResponse
 from iotile.core.exceptions import TimeoutExpiredError, InternalError
 
 

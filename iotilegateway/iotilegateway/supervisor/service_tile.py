@@ -1,8 +1,9 @@
 """A virtual tile that delegates all RPC calls to a named service."""
 from iotile.core.exceptions import InternalError
-from iotile.core.hw.virtual import VirtualTile, RPCNotFoundError, RPCInvalidArgumentsError, RPCInvalidReturnValueError, TileNotFoundError
-from iotilegateway.supervisor import AsyncSupervisorClient
 from iotile.core.utilities.async_tools import SharedLoop
+from iotile.core.hw.virtual import VirtualTile
+from iotile.core.hw.exceptions import RPCNotFoundError, RPCInvalidArgumentsError, RPCInvalidReturnValueError, TileNotFoundError
+from iotilegateway.supervisor import AsyncSupervisorClient
 
 
 class ServiceDelegateTile(VirtualTile):

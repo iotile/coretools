@@ -3,7 +3,7 @@ import threading
 import serial
 from util.mock_bled112 import MockBLED112
 from iotile.mock.mock_ble import MockBLEDevice
-from iotile.mock.mock_iotile import MockIOTileDevice
+from iotile.core.hw.virtual.virtualdevice_simple import SimpleVirtualDevice
 import util.dummy_serial
 from iotile_transport_bled112.bled112 import BLED112Adapter
 import time
@@ -17,7 +17,7 @@ class TestBLED112Connections(unittest.TestCase):
         self.old_serial = serial.Serial
         serial.Serial = util.dummy_serial.Serial
         self.adapter = MockBLED112(3)
-        self.dev1 = MockIOTileDevice(100, 'TestCN')
+        self.dev1 = SimpleVirtualDevice(100, 'TestCN')
         self.dev1_ble = MockBLEDevice("00:11:22:33:44:55", self.dev1)
         self.adapter.add_device(self.dev1_ble)
 

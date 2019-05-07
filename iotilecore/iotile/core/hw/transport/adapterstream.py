@@ -9,8 +9,9 @@ import logging
 import threading
 from iotile.core.exceptions import HardwareError, ArgumentError
 from iotile.core.utilities import SharedLoop
+from ..exceptions import VALID_RPC_EXCEPTIONS
+from ..virtual import unpack_rpc_response, pack_rpc_response
 from .adapter import AbstractDeviceAdapter, AsynchronousModernWrapper, DeviceAdapter
-from ..virtual import VALID_RPC_EXCEPTIONS, unpack_rpc_response, pack_rpc_response
 
 
 class _RecordedRPC:

@@ -4,7 +4,7 @@ import asyncio
 import logging
 import inspect
 from iotile.core.exceptions import InternalError, ArgumentError
-from iotile.core.hw.virtual.common_types import AsynchronousRPCResponse
+from iotile.core.hw.exceptions import AsynchronousRPCResponse
 
 class RPCQueue:
     """Coroutine based RPC dispatcher.
