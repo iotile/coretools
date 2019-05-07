@@ -3,6 +3,8 @@
 import struct
 import uuid
 import logging
+import inspect
+from iotile.core.utilities import SharedLoop
 from iotile.core.hw.reports import IOTileReading
 from iotile.core.hw.exceptions import RPCInvalidIDError, RPCNotFoundError, TileNotFoundError
 from iotile.core.exceptions import *
@@ -267,7 +269,6 @@ class MockBLEDevice:
         raise WriteToUnhandledCharacteristic("write on unknown characteristic", char_id=char_id, value=value)
 
     def _call_rpc(self, header):
-        print(header)
         length, _, cmd, feature, address = struct.unpack("<BBBBB", bytes(header))
         rpc_id = (feature << 8) |  cmd
 
@@ -278,12 +279,14 @@ class MockBLEDevice:
         status = 0
         try:
             response = self.device.call_rpc(address, rpc_id, bytes(payload))
+            if inspect.isawaitable(response):
+                response = SharedLoop.run_coroutine(response)
         except (RPCInvalidIDError, RPCNotFoundError):
             status = 1 #FIXME: Insert the correct ID here
-            response = ""
+            response = b""
         except TileNotFoundError:
             status = 0xFF
-            response = ""
+            response = b""
 
         resp_header = struct.pack("<BBBB", status, 0, 0, len(response))
 

@@ -503,18 +503,21 @@ class AsyncSupervisorClient(AsyncValidatingWSClient):
         else:
             try:
                 response = self._rpc_dispatcher.call_rpc(rpc_id, args)
-                if inspect.iscoroutine(response):
+                if inspect.isawaitable(response):
                     response = await response
             except RPCInvalidArgumentsError:
                 result = 'invalid_arguments'
+                response = b''
             except RPCInvalidReturnValueError:
                 result = 'invalid_response'
+                response = b''
             except Exception: #pylint:disable=broad-except;We are being called in a background task
                 self._logger.exception("Exception handling RPC 0x%04X", rpc_id)
                 result = 'execution_exception'
+                response = b''
 
         message = dict(response_uuid=tag, result=result, response=response)
-
+        self._logger.warning("Message was %s", message)
         try:
             await self.send_command(OPERATIONS.CMD_RESPOND_RPC, message,
                                     MESSAGES.RespondRPCResponse)
