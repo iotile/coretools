@@ -30,9 +30,6 @@ class TestTile(VirtualTile):
         super(TestTile, self).__init__(address, 'test01')
         self._counter = 0
 
-        # Test worker creation
-        self.create_worker(self._increment_counter, 1.0)
-
     def _increment_counter(self):
         self._counter += 1
 
