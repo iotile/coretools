@@ -517,7 +517,6 @@ class AsyncSupervisorClient(AsyncValidatingWSClient):
                 response = b''
 
         message = dict(response_uuid=tag, result=result, response=response)
-        self._logger.warning("Message was %s", message)
         try:
             await self.send_command(OPERATIONS.CMD_RESPOND_RPC, message,
                                     MESSAGES.RespondRPCResponse)
