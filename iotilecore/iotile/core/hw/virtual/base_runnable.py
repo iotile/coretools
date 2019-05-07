@@ -1,35 +1,39 @@
 """Base class for objects that have a background runnable task like virtual devices and tiles."""
 
+import asyncio
+import logging
+import inspect
 from iotile.core.exceptions import InternalError
-from iotile.core.utilities.stoppable_thread import StoppableWorkerThread
+from iotile.core.utilities.async_tools import SharedLoop, BackgroundTask
 
 
 class BaseRunnable:
-    """A simple class that uses StoppableWorkerThreads for background tasks."""
+    """A simple class that can run periodic callback in background tasks."""
 
-    def __init__(self):
-        super(BaseRunnable, self).__init__()
-
+    def __init__(self, loop=SharedLoop):
+        self._queued_workers = []
         self._workers = []
         self._started = False
+        self._loop = loop
 
     def create_worker(self, func, interval, *args, **kwargs):
         """Spawn a worker thread running func.
 
-        The worker will be automatically be started when start() is called
-        and terminated when stop() is called on this object.
-        This must be called only from the main thread, not from a worker thread.
+        The worker will be automatically be started when start() is called and
+        terminated when stop() is called on this object. This must be called
+        only from the main thread.
 
-        create_worker must not be called after stop() has been called.  If it
-        is called before start() is called, the thread is started when start()
-        is called, otherwise it is started immediately.
+        ``create_worker`` must not be called after stop() has been called.  If
+        it is called before start() is called, the worker is started when
+        start() is called, otherwise it is started immediately.
 
         Args:
             func (callable): Either a function that will be called in a loop
                 with a sleep of interval seconds with *args and **kwargs or
                 a generator function that will be called once and expected to
                 yield periodically so that the worker can check if it should
-                be killed.
+                be killed.  If the function returns an awaitable, it will be
+                awaited before sleeping again
             interval (float): The time interval between invocations of func.
                 This should not be 0 so that the thread doesn't peg the CPU
                 and should be short enough so that the worker checks if it
@@ -38,11 +42,18 @@ class BaseRunnable:
             **kwargs: Arguments that are passed to func as keyword args
         """
 
-        thread = StoppableWorkerThread(func, interval, args, kwargs)
-        self._workers.append(thread)
+        worker = (func, interval, args, kwargs)
 
-        if self._started:
-            thread.start()
+        if not self._started:
+            self._queued_workers.append(worker)
+            return
+
+        self._start_worker(worker)
+
+    def _start_worker(self, worker):
+        func, interval, args, kwargs = worker
+        task = BackgroundTask(_worker_main(func, interval, args, kwargs), loop=self._loop)
+        self._workers.append(task)
 
     def start_workers(self):
         """Start running this virtual device including any necessary worker threads."""
@@ -52,8 +63,8 @@ class BaseRunnable:
 
         self._started = True
 
-        for worker in self._workers:
-            worker.start()
+        for worker in self._queued_workers:
+            self._start_worker(worker)
 
     def stop_workers(self):
         """Synchronously stop any potential workers."""
@@ -61,17 +72,26 @@ class BaseRunnable:
         self._started = False
 
         for worker in self._workers:
-            worker.stop()
+            worker.stop_threadsafe()
 
-    def stop_workers_async(self):
-        """Signal that all workers should stop without waiting."""
 
-        self._started = False
-        for worker in self._workers:
-            worker.signal_stop()
+async def _worker_main(func, interval, args, kwargs):
+    logger = logging.getLogger(__name__)
 
-    def wait_workers_stopped(self):
-        """Wait for all workers to stop."""
+    try:
+        while True:
+            await asyncio.sleep(interval)
 
-        for worker in self._workers:
-            worker.wait_stopped()
+            try:
+                res = func(*args, **kwargs)
+                if inspect.isawaitable(res):
+                    await res
+            except asyncio.CancelledError:
+                raise
+            except:  #pylint:disable=bare-except; We want to capture all errors in the background worker
+                logger.exception("Error running background worker %s with args=%s, kwargs=%s", func, args, kwargs)
+    except asyncio.CancelledError:
+        pass
+    except:
+        logger.exception("Unknown exception in background worker")
+        raise

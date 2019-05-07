@@ -1,10 +1,10 @@
 """Main class where all emulation takes place."""
 
 import sys
-import threading
 import logging
 import asyncio
 
+from iotile.core.utilities import SharedLoop
 from iotile.core.exceptions import ArgumentError, InternalError, TimeoutExpiredError
 from iotile.core.hw.virtual import unpack_rpc_payload, pack_rpc_payload
 
@@ -54,17 +54,17 @@ class EmulationLoop:
     Args:
         rpc_handler (callable): The method that actually dispatches each RPC.
             This method will always be invoked inside of the event loop.
+        loop (BackgroundEventLoop): The underlying event loop to use.
     """
 
-    def __init__(self, rpc_handler):
-        self._loop = asyncio.new_event_loop()
+    def __init__(self, rpc_handler, loop=SharedLoop):
+        self._loop = loop
         self._thread = None
         self._started = False
         self._tasks = {}
-        self._rpc_queue = RPCQueue(self._loop, rpc_handler)
+        self._rpc_queue = RPCQueue(self._loop.get_loop(), rpc_handler)
         self._work_queues = set([self._rpc_queue])
         self._events = set()
-        self._thread_check = threading.local()
         self._logger = logging.getLogger(__name__)
 
     def create_event(self, register=False):
@@ -96,7 +96,7 @@ class EmulationLoop:
             asyncio.Event: The Event object.
         """
 
-        event = asyncio.Event(loop=self._loop)
+        event = self._loop.create_event()
         if register:
             self._events.add(event)
 
@@ -116,7 +116,7 @@ class EmulationLoop:
             asyncio.Queue: The newly created queue.
         """
 
-        queue = asyncio.Queue(loop=self._loop)
+        queue = self._loop.create_queue()
         if register:
             self._work_queues.add(queue)
 
@@ -192,8 +192,8 @@ class EmulationLoop:
         if self._started is True:
             raise ArgumentError("EmulationLoop.start() called multiple times")
 
-        self._thread = threading.Thread(target=self._loop_thread_main)
-        self._thread.start()
+        self._loop.start()
+        self._rpc_queue.start()
         self._started = True
 
     def stop(self):
@@ -203,10 +203,7 @@ class EmulationLoop:
             raise ArgumentError("EmulationLoop.stop() called without calling start()")
 
         self.verify_calling_thread(False, "Cannot call EmulationLoop.stop() from inside the event loop")
-
-        if self._thread.is_alive():
-            self._loop.call_soon_threadsafe(self._loop.create_task, self._clean_shutdown())
-            self._thread.join()
+        self._loop.run_coroutine(self._clean_shutdown())
 
     def wait_idle(self, timeout=1.0):
         """Wait until the rpc queue is empty.
@@ -235,7 +232,7 @@ class EmulationLoop:
             if len(pending) > 0:
                 raise TimeoutExpiredError("Timeout waiting for event loop to become idle", pending=pending)
 
-        if self._on_emulation_thread():
+        if self.on_emulation_thread():
             return asyncio.wait_for(_awaiter(), timeout=timeout)
 
         self.run_task_external(_awaiter())
@@ -256,9 +253,7 @@ class EmulationLoop:
         """
 
         self.verify_calling_thread(False, 'run_task_external must not be called from the emulation thread')
-
-        future = asyncio.run_coroutine_threadsafe(coroutine, self._loop)
-        return future.result()
+        return self._loop.run_coroutine(coroutine)
 
     def call_rpc_external(self, address, rpc_id, arg_payload, timeout=10.0):
         """Call an RPC from outside of the event loop and block until it finishes.
@@ -282,12 +277,40 @@ class EmulationLoop:
 
         response = CrossThreadResponse()
 
-        self._loop.call_soon_threadsafe(self._rpc_queue.put_rpc, address, rpc_id, arg_payload, response)
+        self._loop.get_loop().call_soon_threadsafe(self._rpc_queue.put_rpc, address, rpc_id, arg_payload, response)
 
         try:
             return response.wait(timeout)
         except RPCRuntimeError as err:
             return err.binary_error
+
+    async def call_rpc_internal(self, address, rpc_id, arg_payload, timeout=10.0):
+        """Call an RPC from inside of the event loop and yield until it finishes.
+
+        This is the main method by which a caller inside of the EmulationLoop
+        can inject an RPC into the EmulationLoop and wait for it to complete.
+
+        Args:
+            address (int): The address of the mock tile this RPC is for
+            rpc_id (int): The number of the RPC
+            payload (bytes): A byte string of payload parameters up to 20 bytes
+            timeout (float): The maximum time to wait for the RPC to finish.
+
+        Returns:
+            bytes: The response payload from the RPC
+        """
+
+        self.verify_calling_thread(True, "call_rpc_internal is for use **inside** of the event loop")
+
+        response = AwaitableResponse()
+        self._rpc_queue.put_rpc(address, rpc_id, arg_payload, response)
+
+        try:
+            resp_payload = await response.wait(timeout)
+        except RPCRuntimeError as err:
+            resp_payload = err.binary_error
+
+        return resp_payload
 
     async def await_rpc(self, address, rpc_id, *args, **kwargs):
         """Send an RPC from inside the EmulationLoop.
@@ -364,7 +387,7 @@ class EmulationLoop:
             InternalError: When called from the wrong thread.
         """
 
-        if should_be_emulation == self._on_emulation_thread():
+        if should_be_emulation == self.on_emulation_thread():
             return
 
         if message is None:
@@ -391,7 +414,7 @@ class EmulationLoop:
                 to the event loop.
         """
 
-        self._loop.call_soon_threadsafe(self._add_task, tile_address, coroutine)
+        self._loop.get_loop().call_soon_threadsafe(self._add_task, tile_address, coroutine)
 
     def is_tile_busy(self, address):
         """Check that tile has no pending rpcs
@@ -404,32 +427,14 @@ class EmulationLoop:
         """
         return self._rpc_queue.is_pending_rpc(address)
 
-    def _loop_thread_main(self):
-        try:
-            self._thread_check.is_rpc_thread = True
-            self._logger.debug("Starting emulation loop in background thread")
-
-            self._rpc_queue.start()
-
-            self._loop.run_forever()
-        except:  #pylint:disable=bare-except;This is a logging statement in a background thread
-            self._logger.exception("Exception raised from emulation loop thread")
-        finally:
-            self._logger.debug("Ending emulation loop thread because loop returned")
-
-            self._loop.run_until_complete(self._loop.shutdown_asyncgens())
-            self._loop.close()
-
-            self._logger.debug("Finished loop")
-
-    def _on_emulation_thread(self):
+    def on_emulation_thread(self):
         """Returns whether we are running on the emulation thread.
 
         Returns:
             bool: True if we are on the emulation thread, else False.
         """
 
-        return self._thread_check.__dict__.get('is_rpc_thread', False)
+        return self._loop.inside_loop()
 
     async def stop_tasks(self, address):
         """Clear all tasks pertaining to a tile.
@@ -480,8 +485,6 @@ class EmulationLoop:
 
         await self._rpc_queue.stop()
 
-        self._loop.stop()
-
     def _add_task(self, tile_address, coroutine):
         """Add a task from within the event loop.
 
@@ -494,5 +497,5 @@ class EmulationLoop:
         if tile_address not in self._tasks:
             self._tasks[tile_address] = []
 
-        task = self._loop.create_task(coroutine)
+        task = self._loop.get_loop().create_task(coroutine)
         self._tasks[tile_address].append(task)

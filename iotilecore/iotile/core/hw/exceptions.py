@@ -68,6 +68,29 @@ class DeviceServerError(iotile.core.exceptions.HardwareError):
         self.connection_string = conn_str
 
 
+class DevicePushError(iotile.core.exceptions.HardwareError):
+    """Base class for errors related to virtual devices pushing to clients.
+
+    These errors can be thrown when a virtual device attempts to stream
+    reports and the report streaming process fails or when it attempts to
+    trace data.
+
+    The details of the failure reason are contained in the message.
+    """
+
+
+class InterfaceClosedError(DevicePushError):
+    """An asynchronous device push failed because the required interface was closed.
+
+    This is a typical error that is raised when, for example, a device
+    attempts to stream a report without the streaming interface being opened.
+    """
+
+    def __init__(self, interface):
+        super(InterfaceClosedError, self).__init__("Cannot push data to client because the {} interface is not open".
+                                                   format(interface), interface=interface)
+
+
 class RPCError(iotile.core.exceptions.HardwareError):
     """Base class for all RPC related errors.
 

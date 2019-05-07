@@ -9,6 +9,7 @@ They are useful for writing simple, repeatable tests.
 """
 
 import inspect
+from iotile.core.utilities import SharedLoop
 from ..exceptions import RPCInvalidIDError, RPCNotFoundError, TileNotFoundError
 from .virtualdevice_base import BaseVirtualDevice
 from .base_runnable import BaseRunnable
@@ -36,13 +37,15 @@ class SimpleVirtualDevice(BaseVirtualDevice, BaseRunnable):
             for this IOTile device.
         name (str): The 6 byte name that should be returned when anyone asks
             for the controller's name of this IOTile device using an RPC
+        loop (BackgroundEventLoop): The loop we should use for running background
+            tasks. Defaults to the global SharedLoop
     """
 
     __NO_EXTENSION__ = True
 
-    def __init__(self, iotile_id, name):
+    def __init__(self, iotile_id, name, *, loop=SharedLoop):
         BaseVirtualDevice.__init__(self, iotile_id)
-        BaseRunnable.__init__(self)
+        BaseRunnable.__init__(self, loop=loop)
 
         self.name = name.encode('utf-8')
         self.reports = []
@@ -126,7 +129,7 @@ class SimpleVirtualDevice(BaseVirtualDevice, BaseRunnable):
 
         self.script += bytearray(chunk)
 
-    def open_streaming_interface(self):
+    def _open_streaming_interface(self):
         """Handler called when the streaming interface is opened.
 
         If a list of reports is returned, those reports are streamed out of
@@ -135,7 +138,7 @@ class SimpleVirtualDevice(BaseVirtualDevice, BaseRunnable):
 
         return self.reports
 
-    def open_tracing_interface(self):
+    def _open_tracing_interface(self):
         """Handler called when the tracing interface is opened.
 
         If a list of bytes-like object is returned, they will be traced out of
@@ -146,9 +149,10 @@ class SimpleVirtualDevice(BaseVirtualDevice, BaseRunnable):
 
     def start(self, channel):
         """Start running this virtual device including any necessary worker threads.
+
         Args:
-            channel (IOTilePushChannel): the channel with a stream and trace
-                routine for streaming and tracing data through a VirtualInterface
+            channel (AbstractAsyncDeviceChannel): channel to use to push asynchronous
+                events to a connected client.
         """
 
         super(SimpleVirtualDevice, self).start(channel)

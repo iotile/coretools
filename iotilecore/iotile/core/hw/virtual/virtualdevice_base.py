@@ -1,9 +1,92 @@
 """Base class for software based iotile devices called virtual devices."""
 
+import abc
+import inspect
 from iotile.core.exceptions import InternalError, ArgumentError
-from ..exceptions import RPCNotFoundError
+from ..exceptions import RPCNotFoundError, DevicePushError
 from ..reports.individual_format import IndividualReadingReport
 from ..reports.report import IOTileReading
+
+class AbstractAsyncDeviceChannel(abc.ABC):
+    """Abstract class for virtual devices to push events to clients.
+
+    When a virtual device is started, it is passed a subclass of this base
+    class in its :meth:`BaseVirtualDevice.start` method and it can use that
+    class to push reports via the streaming interface, tracing data via the
+    tracing interface, broadcast data or to disconnect the client forcibly.
+
+    This base class just defines the methods that must be provided and their
+    signatures.  Each method must return an awaitable object.
+    """
+
+    @abc.abstractmethod
+    def stream(self, report):
+        """Stream a report to the client.
+
+        This method must yield until the report has been successfully sent or
+        queued for sending in order to propogate backpressure to callers that
+        are streaming reports faster than the DeviceServer can actually send
+        them.
+
+        If the report is not able to be sent, an instance of :class:`StreamingError`
+        must be raised.
+
+        Args:
+            report (IOTileReport): The report that should be streamed out of the
+                device.  If the report is a subclass of :class:`BroadcastReport`,
+                it will be broadcast instead of streamed.
+
+        Returns:
+            awaitable: An awaitable that will finish when the report has been sent.
+
+            Note that there is no gurantee that the report has succesfully
+            reached the client when this method returns since many things
+            could have gone wrong in the air or on the client's software.
+            This response is purely useful for flow control.
+
+        Raises:
+            DevicePushError: The report could not be streamed/queued for streaming.
+        """
+
+    @abc.abstractmethod
+    def trace(self, data):
+        """Send binary tracing data to the client.
+
+        This method must yield until the tracing data is successfully sent or
+        queued for sending in order to propogate backpressure to callers that
+        are tracing data faster than the DeviceServer can actually send it.
+
+        If the data cannot be sent or queued, an instance of :class:`TracingError`
+        must be raised.
+
+        Args:
+            data (bytes): The raw data that should be sent out of the tracing interface
+
+        Returns:
+            awaitable: An awaitable that will finish when the tracing data has been sent.
+
+            Note that there is no gurantee that the data has succesfully
+            reached the client when this method returns since many things
+            could have gone wrong in the air or on the client's software. This
+            response is purely useful for flow control.
+
+        Raises:
+            DevicePushError: The tracing data could not be send/queued for sending.
+        """
+
+    @abc.abstractmethod
+    def disconnect(self):
+        """Forcibly disconnect the connected client.
+
+        In order to prevent race conditions, this method should not return
+        until the client has been disconnected.
+
+        Returns:
+            awaitable: An awaitable that resolves when the client has been disconnected.
+
+        Raises:
+            DevicePushError: If there is no client connected or they could not be disconnected.
+        """
 
 
 # pylint: disable=R0902,R0904; backwards compatibility methods and properties already referenced in other modules
@@ -84,11 +167,11 @@ class BaseVirtualDevice:
         return self._interface_status[name]
 
     def start(self, channel):
-        """Start running this virtual device including any necessary worker threads.
+        """Start running this virtual device.
 
         Args:
-            channel (IOTilePushChannel): the channel with a stream and trace
-                routine for streaming and tracing data through a VirtualInterface
+            channel (AbstractAsyncDeviceChannel): A channel that can be used by the device
+                to push events asynchronously to an attached client.
         """
 
         if self._started:
@@ -97,9 +180,9 @@ class BaseVirtualDevice:
         self._push_channel = channel
 
     def stop(self):
-        """Stop running this virtual device including any worker threads."""
+        """Stop running this virtual device."""
 
-    def stream(self, report, callback=None):
+    async def stream(self, report):
         """Stream a report asynchronously.
 
         If no one is listening for the report, the report may be dropped,
@@ -109,14 +192,17 @@ class BaseVirtualDevice:
             report (IOTileReport): The report that should be streamed
             callback (callable): Optional callback to get notified when
                 this report is actually sent.
+
+        Returns:
+            awaitable: Resolves when the streaming finishes
         """
 
         if self._push_channel is None:
-            return
+            raise DevicePushError("No push channel configured for device")
 
-        self._push_channel.stream(report, callback=callback)
+        await self._push_channel.stream(report)
 
-    def stream_realtime(self, stream, value):
+    async def stream_realtime(self, stream, value):
         """Stream a realtime value as an IndividualReadingReport.
 
         If the streaming interface of the VirtualInterface this
@@ -136,25 +222,23 @@ class BaseVirtualDevice:
         report = IndividualReadingReport.FromReadings(self.iotile_id, [reading])
         self.stream(report)
 
-    def trace(self, data, callback=None):
+    async def trace(self, data):
         """Trace data asynchronously.
 
         If no one is listening for traced data, it will be dropped
         otherwise it will be queued for sending.
 
         Args:
-            data (bytearray, string): Unstructured data to trace to any
+            data (bytes): Unstructured data to trace to any
                 connected client.
-            callback (callable): Optional callback to get notified when
-                this data is actually sent.
         """
 
         if self._push_channel is None:
-            return
+            raise DevicePushError("No push channel configured for device")
 
-        self._push_channel.trace(data, callback=callback)
+        await self._push_channel.trace(data)
 
-    def open_interface(self, name):
+    async def open_interface(self, name):
         """Open an interface on the device by name.
 
         Subclasses that want to be notified when an interface is opened can
@@ -172,18 +256,22 @@ class BaseVirtualDevice:
         self._interface_status[name] = True
 
         try:
-            iface_open_name = "open_{}_interface".format(name)
+            iface_open_name = "_open_{}_interface".format(name)
 
             if hasattr(self, iface_open_name):
-                open_func = getattr(self, "open_{}_interface".format(name))
-                return open_func()
+                open_func = getattr(self, iface_open_name)
+                res = open_func()
+                if inspect.isawaitable(res):
+                    res = await res
+
+                return res
 
             return None
         except:
             self._interface_status[name] = False
             raise
 
-    def close_interface(self, name):
+    async def close_interface(self, name):
         """Close an interface on the device by name.
 
         Subclasses that want to be notified when an interface is closed can
@@ -199,13 +287,15 @@ class BaseVirtualDevice:
         if name not in self._interface_status:
             raise ArgumentError("Unknown interface name in close_interface: {}".format(name))
 
-        iface_close_name = "close_{}_interface".format(name)
+        iface_close_name = "_close_{}_interface".format(name)
 
         self._interface_status[name] = False
 
         if hasattr(self, iface_close_name):
             close_func = getattr(self, iface_close_name)
-            close_func()
+            res = close_func()
+            if inspect.isawaitable(res):
+                await res
 
     def push_script_chunk(self, chunk):
         """Called when someone pushes a new bit of a TRUB script to this device

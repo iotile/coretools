@@ -4,14 +4,14 @@ import inspect
 from iotile.core.exceptions import ArgumentError
 from iotile.core.dev import ComponentRegistry
 from iotile.core.hw.reports import BroadcastReport
-from iotile.core.hw.virtual.common_types import BusyRPCResponse
+from iotile.core.hw.exceptions import BusyRPCResponse, DevicePushError
 from iotile.core.utilities import SharedLoop
-from .adapter import StandardDeviceAdapter
 from ..exceptions import DeviceAdapterError, RPCInvalidIDError, TileNotFoundError, RPCNotFoundError, RPCErrorCode
-from ..virtual import BaseVirtualDevice
+from ..virtual import BaseVirtualDevice, AbstractAsyncDeviceChannel
+from .adapter import StandardDeviceAdapter
 
 
-class VirtualAdapterAsyncChannel:
+class VirtualAdapterAsyncChannel(AbstractAsyncDeviceChannel):
     """A channel for tracing and streaming data asynchronously from virtual devices"""
 
     def __init__(self, adapter, iotile_id):
@@ -19,50 +19,44 @@ class VirtualAdapterAsyncChannel:
         self.iotile_id = iotile_id
         self.conn_string = str(iotile_id)
 
-    def stream(self, report, callback=None):
+    async def stream(self, report):
         """Queue data for streaming
 
         Args:
             report (IOTileReport): A report object to stream to a client
-            callback (callable): An optional callback that will be called with
-                a bool value of True when this report actually gets streamed.
-                If the client disconnects and the report is dropped instead,
-                callback will be called with False
         """
 
         conn_id = self._find_connection(self.conn_string)
 
         if isinstance(report, BroadcastReport):
-            self.adapter.notify_event_nowait(self.conn_string, 'broadcast', report)
+            await self.adapter.notify_event(self.conn_string, 'broadcast', report)
         elif conn_id is not None:
-            self.adapter.notify_event_nowait(self.conn_string, 'report', report)
+            await self.adapter.notify_event(self.conn_string, 'report', report)
+        else:
+            raise DevicePushError("Cannot push report because no client is connected")
 
-        if callback is not None:
-            callback(isinstance(report, BroadcastReport) or (conn_id is not None))
-
-    def trace(self, data, callback=None):
+    async def trace(self, data):
         """Queue data for tracing
 
         Args:
-            data (bytearray, string): Unstructured data to trace to any
+            data (bytes): Unstructured data to trace to any
                 connected client.
-            callback (callable): An optional callback that will be called with
-                a bool value of True when this data actually gets traced.
-                If the client disconnects and the data is dropped instead,
-                callback will be called with False.
         """
 
         conn_id = self._find_connection(self.conn_string)
 
         if conn_id is not None:
-            self.adapter.notify_event_nowait(self.conn_string, 'trace', data)
+            await self.adapter.notify_event(self.conn_string, 'trace', data)
+        else:
+            raise DevicePushError("Cannot push tracing data because no client is connected")
 
-        if callback is not None:
-            callback(conn_id is not None)
+    async def disconnect(self):
+        """Forcibly disconnect a connected client."""
+
+        raise DevicePushError("Disconnection is not yet supported")
 
     def _find_connection(self, conn_string):
-        """Find the connection corresponding to an iotile_id
-        """
+        """Find the connection corresponding to an iotile_id."""
 
         return self.adapter._get_conn_id(conn_string)
 
@@ -153,7 +147,7 @@ class VirtualDeviceAdapter(StandardDeviceAdapter):
 
     async def start(self):
         for dev in self.devices.values():
-            dev.start(VirtualAdapterAsyncChannel(self, dev.iotile_id))
+            await self._loop.run_in_executor(dev.start, VirtualAdapterAsyncChannel(self, dev.iotile_id))
 
     # pylint:disable=unused-argument;The name needs to remain without an _ for subclasses to override
     @classmethod
@@ -197,14 +191,14 @@ class VirtualDeviceAdapter(StandardDeviceAdapter):
 
         if name.endswith('.py'):
             _name, device_factory = reg.load_extension(name, class_filter=BaseVirtualDevice, unique=True)
-            return device_factory(config_dict)
+            return _instantiate_virtual_device(device_factory, config_dict, self._loop)
 
         seen_names = []
         for device_name, device_factory in reg.load_extensions('iotile.virtual_device',
                                                                class_filter=BaseVirtualDevice,
                                                                product_name="virtual_device"):
             if device_name == name:
-                return device_factory(config_dict)
+                return _instantiate_virtual_device(device_factory, config_dict, self._loop)
 
             seen_names.append(device_name)
 
@@ -259,13 +253,13 @@ class VirtualDeviceAdapter(StandardDeviceAdapter):
 
         self._teardown_connection(conn_id)
 
-    async def open_interface(self, conn_id, interface, connection_string=None):
+    async def open_interface(self, conn_id, interface):
         self._ensure_connection(conn_id, True)
 
         dev = self._get_property(conn_id, 'device')
         conn_string = self._get_property(conn_id, 'connection_string')
 
-        result = dev.open_interface(interface)
+        result = await dev.open_interface(interface)
 
         if interface == 'streaming' and result is not None:
             for report in result:
@@ -273,15 +267,17 @@ class VirtualDeviceAdapter(StandardDeviceAdapter):
         elif interface == 'tracing' and result is not None:
             for trace in result:
                 await self.notify_event(conn_string, 'trace', trace)
+        elif result is not None:
+            self._logger.warning("Discarding non-None result from open_interface call: %s", result)
 
     async def close_interface(self, conn_id, interface):
         self._ensure_connection(conn_id, True)
 
         dev = self._get_property(conn_id, 'device')
-        dev.close_interface(interface)
+        await dev.close_interface(interface)
 
     async def send_rpc(self, conn_id, address, rpc_id, payload, timeout):
-        """Asynchronously send an RPC to this IOTile device
+        """Asynchronously send an RPC to this IOTile device.
 
         Args:
             conn_id (int): A unique identifier that will refer to this connection
@@ -296,10 +292,10 @@ class VirtualDeviceAdapter(StandardDeviceAdapter):
 
         try:
             res = dev.call_rpc(address, rpc_id, bytes(payload))
-            if inspect.iscoroutine(res):
-                return await res
-            else:
-                return res
+            if inspect.isawaitable(res):
+                res = await res
+
+            return res
         except (RPCInvalidIDError, RPCNotFoundError, TileNotFoundError, RPCErrorCode, BusyRPCResponse):
             raise
         except Exception:
@@ -308,7 +304,7 @@ class VirtualDeviceAdapter(StandardDeviceAdapter):
             raise
 
     async def send_script(self, conn_id, data):
-        """Asynchronously send a a script to this IOTile device
+        """Asynchronously send a script to this IOTile device.
 
         Args:
             conn_id (int): A unique identifier that will refer to this connection
@@ -380,10 +376,22 @@ class VirtualDeviceAdapter(StandardDeviceAdapter):
 
     async def stop(self):
         for dev in self.devices.values():
-            dev.stop()
+            await self._loop.run_in_executor(dev.stop)
 
     async def probe(self):
         """Send advertisements for all connected virtual devices."""
 
         for dev in self.devices.values():
             await self._send_scan_event(dev)
+
+
+def _instantiate_virtual_device(factory, config, loop):
+    """Safely instantiate a virtualdevice passing a BackgroundEventLoop if necessary."""
+
+    kwargs = dict()
+
+    sig = inspect.signature(factory)
+    if 'loop' in sig.parameters:
+        kwargs['loop'] = loop
+
+    return factory(config, **kwargs)
