@@ -238,12 +238,12 @@ class MockBLEDevice:
             if char_id == self.TBReceiveHeaderChar or char_id == self.TBReceivePayloadChar:
                 if self.notifications_enabled(self.TBReceiveHeaderChar) and self.notifications_enabled(self.TBReceivePayloadChar):
                     self.logger.info("Opening RPC interface on mock device")
-                    self.device.open_interface('rpc')
+                    SharedLoop.run_coroutine(self.device.open_interface('rpc'))
                     return True, []
 
             elif char_id == self.TBStreamingChar and self.notifications_enabled(self.TBStreamingChar):
                 self.logger.info("Opening Streaming interface on mock device")
-                reports = self.device.open_interface('streaming')
+                reports = SharedLoop.run_coroutine(self.device.open_interface('streaming'))
                 if reports is None:
                     reports = []
 
