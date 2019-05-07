@@ -1,4 +1,4 @@
-from iotile.core.exceptions import *
+from iotile.core.exceptions import ArgumentError
 
 # Generate a 0000-0000-0000-0001 given an integer
 int64gid = lambda n: '-'.join(['{:04x}'.format(n >> (i << 4) & 0xFFFF) for i in range(0, 4)[::-1]])
