@@ -6,7 +6,7 @@ import logging
 import asyncio
 
 from iotile.core.exceptions import ArgumentError, InternalError, TimeoutExpiredError
-from iotile.core.hw.virtual.common_types import unpack_rpc_payload, pack_rpc_payload
+from iotile.core.hw.virtual import unpack_rpc_payload, pack_rpc_payload
 
 from .response import CrossThreadResponse, AwaitableResponse
 from .rpc_queue import RPCQueue

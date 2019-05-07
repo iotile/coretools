@@ -3,8 +3,7 @@
 import pytest
 from iotile.core.utilities import BackgroundEventLoop
 from iotile.core.hw.transport import StandardDeviceServer, VirtualDeviceAdapter
-from iotile.core.hw.exceptions import DeviceAdapterError, DeviceServerError
-from iotile.core.hw.virtual import TileNotFoundError
+from iotile.core.hw.exceptions import DeviceAdapterError, DeviceServerError, TileNotFoundError
 from iotile.mock.devices import ReportTestDevice, TracingTestDevice
 
 class BasicDeviceServer(StandardDeviceServer):

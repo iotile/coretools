@@ -11,9 +11,10 @@ from iotile.core.utilities import SharedLoop
 
 from .abstract import AbstractDeviceAdapter
 from .legacy import DeviceAdapter
-from ...exceptions import DeviceAdapterError
-from ...virtual import (RPCInvalidIDError, TileNotFoundError, RPCNotFoundError,
-                        RPCErrorCode, BusyRPCResponse, pack_rpc_response)
+from ...exceptions import (DeviceAdapterError, RPCInvalidIDError,
+                           TileNotFoundError, RPCNotFoundError,
+                           RPCErrorCode, BusyRPCResponse)
+from ...virtual import pack_rpc_response
 
 _MISSING = object()
 

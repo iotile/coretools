@@ -1,16 +1,13 @@
-import unittest
-import pytest
-import os.path
-import os
 import struct
 import logging
 import sys
-from iotile.mock.mock_iotile import MockIOTileDevice
+import unittest
+from iotile.core.hw.virtual.virtualdevice_simple import SimpleVirtualDevice
 from iotile.mock.mock_ble import MockBLEDevice
 
 class TestMockBLEBasic(unittest.TestCase):
     def setUp(self):
-        self.dev = MockIOTileDevice('TestCN')
+        self.dev = SimpleVirtualDevice(1, 'TestCN')
         self.ble = MockBLEDevice("AA:BB:CC:DD:EE:FF", self.dev)
         logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
 

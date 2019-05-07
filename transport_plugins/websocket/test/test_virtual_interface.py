@@ -56,10 +56,10 @@ def test_traces(hw, server):
     _, interface = server
     device = interface.devices[17]
 
-    assert device.trace_iface_open is False
+    assert device.interface_open('tracing') is False
 
     hw.enable_tracing()
-    assert device.trace_iface_open is True
+    assert device.interface_open('tracing') is True
 
     raw_received_traces = hw.wait_trace(len(traces_sent), timeout=5.0)
 
@@ -74,10 +74,10 @@ def test_reports(hw, server):
     device = interface.devices[16]
 
     assert hw.count_reports() == 0
-    assert device.stream_iface_open is False
+    assert device.interface_open('streaming') is False
 
     hw.enable_streaming()
-    assert device.stream_iface_open is True
+    assert device.interface_open('streaming') is True
 
     reports = hw.wait_reports(3, timeout=5.0)
     assert len(reports) == 3

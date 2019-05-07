@@ -48,8 +48,7 @@ do on an EmulatedPeripheralTile:
 - Coroutine RPCs: For some RPCs it may be easier to implement them if they can
   await an object.  In this case the RPC never raises AsynchronousRPCResponse
   and still blocks the RPC dispatch thread until it finishes, it is just that
-  you are allowed to `await` an object inside your implementation.  These RPCs
-  must be decorated with `@async_tile_rpc` instead of `@tile_rpc`.
+  you are allowed to `await` an object inside your implementation.
 
 The DemoEmulatedTile class in this module shows an example of how to perform
 each of these 4 things.  Note that for ease of implementation, peripheral
@@ -61,9 +60,8 @@ their behalf.
 import asyncio
 import logging
 from iotile.core.hw.virtual import tile_rpc
-from iotile.core.hw.virtual.common_types import AsynchronousRPCResponse, pack_rpc_payload
+from iotile.core.hw.exceptions import AsynchronousRPCResponse
 from ..virtual import EmulatedPeripheralTile
-from ..internal import async_tile_rpc
 from ..reference import ReferenceDevice
 
 
@@ -151,7 +149,7 @@ class DemoEmulatedTile(EmulatedPeripheralTile):
         self._work.put_nowait(('trace', count))
         return []
 
-    @async_tile_rpc(0x8004, "L", "L")
+    @tile_rpc(0x8004, "L", "L")
     async def coroutine_echo(self, arg):
         """Wait for a small delay and then echo.
 

@@ -3,10 +3,9 @@
 import struct
 import base64
 import logging
-from iotile.core.exceptions import ArgumentError, DataError, InternalError
-from iotile.core.hw.virtual import VirtualTile, tile_rpc, TileNotFoundError
-from iotile.core.hw.virtual.common_types import RPCDispatcher
-from ..internal import async_tile_rpc
+from iotile.core.exceptions import ArgumentError, DataError
+from iotile.core.hw.exceptions import TileNotFoundError
+from iotile.core.hw.virtual import tile_rpc, RPCDispatcher
 from .emulated_device import EmulatedDevice
 from .emulation_mixin import EmulationMixin
 from ..constants import rpcs, Error
@@ -373,7 +372,7 @@ class EmulatedTile(EmulationMixin, RPCDispatcher):
         self._logger.info("Starting main task for tile at address %d", self.address)
         self._device.emulator.add_task(self.address, self._reset_vector())
 
-    @async_tile_rpc(*rpcs.RESET)
+    @tile_rpc(*rpcs.RESET)
     async def reset_rpc(self):
         """Reset this tile."""
         await self.reset()

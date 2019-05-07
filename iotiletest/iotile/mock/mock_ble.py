@@ -3,9 +3,11 @@
 import struct
 import uuid
 import logging
+import inspect
+from iotile.core.utilities import SharedLoop
 from iotile.core.hw.reports import IOTileReading
+from iotile.core.hw.exceptions import RPCInvalidIDError, RPCNotFoundError, TileNotFoundError
 from iotile.core.exceptions import *
-from iotile.mock.mock_iotile import RPCInvalidIDError, RPCNotFoundError, TileNotFoundError
 
 
 class CouldNotFindHandleError(IOTileException):
@@ -84,7 +86,7 @@ class MockBLEDevice:
             return self.ConnectableAdvertising
 
     def advertisement(self):
-        flags = (int(self.low_voltage) << 1) | (int(self.user_connected) << 2) | (int(self.device.pending_data))
+        flags = (int(self.low_voltage) << 1) | (int(self.user_connected) << 2) | (int(len(self.device.reports) > 0))
         ble_flags = struct.pack("<BBB", 2, 0, 0) #FIXME fix length
         uuid_list = struct.pack("<BB16s", 17, 6, self.TBService.bytes_le)
         manu = struct.pack("<BBHLH", 9, 0xFF, self.ArchManuID, self.device.iotile_id, flags)
@@ -236,13 +238,16 @@ class MockBLEDevice:
             if char_id == self.TBReceiveHeaderChar or char_id == self.TBReceivePayloadChar:
                 if self.notifications_enabled(self.TBReceiveHeaderChar) and self.notifications_enabled(self.TBReceivePayloadChar):
                     self.logger.info("Opening RPC interface on mock device")
-                    self.device.open_rpc_interface()
+                    self.device.open_interface('rpc')
                     return True, []
 
             elif char_id == self.TBStreamingChar and self.notifications_enabled(self.TBStreamingChar):
                 self.logger.info("Opening Streaming interface on mock device")
-                reports = self.device.open_streaming_interface()
-                self.logger.info("Received {} reports from mock device".format(len(reports)))
+                reports = self.device.open_interface('streaming')
+                if reports is None:
+                    reports = []
+
+                self.logger.info("Received %d reports from mock device", len(reports))
 
                 return True, self._process_reports(reports)
 
@@ -264,7 +269,6 @@ class MockBLEDevice:
         raise WriteToUnhandledCharacteristic("write on unknown characteristic", char_id=char_id, value=value)
 
     def _call_rpc(self, header):
-        print(header)
         length, _, cmd, feature, address = struct.unpack("<BBBBB", bytes(header))
         rpc_id = (feature << 8) |  cmd
 
@@ -275,12 +279,14 @@ class MockBLEDevice:
         status = 0
         try:
             response = self.device.call_rpc(address, rpc_id, bytes(payload))
+            if inspect.isawaitable(response):
+                response = SharedLoop.run_coroutine(response)
         except (RPCInvalidIDError, RPCNotFoundError):
             status = 1 #FIXME: Insert the correct ID here
-            response = ""
+            response = b""
         except TileNotFoundError:
             status = 0xFF
-            response = ""
+            response = b""
 
         resp_header = struct.pack("<BBBB", status, 0, 0, len(response))
 
@@ -294,6 +300,9 @@ class MockBLEDevice:
         """
 
         notifs = []
+
+        if reports is None:
+            return notifs
 
         for report in reports:
             data = report.encode()

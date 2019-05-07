@@ -8,7 +8,7 @@ import time
 from typedargs.doc_parser import ParsedDocstring
 from iotile.core.dev import ComponentRegistry
 from iotile.core.exceptions import ArgumentError
-from iotile.core.hw.virtual import VirtualIOTileDevice
+from iotile.core.hw.virtual import BaseVirtualDevice
 from iotile.core.hw.transport import AbstractDeviceServer, StandardDeviceServer, VirtualDeviceAdapter
 from iotile.core.utilities import SharedLoop
 
@@ -79,7 +79,7 @@ def main(argv=None, loop=SharedLoop):
             print('- {}'.format(name))
 
         print("\nInstalled Virtual Devices:")
-        for name, dev in reg.load_extensions('iotile.virtual_device', class_filter=VirtualIOTileDevice,
+        for name, dev in reg.load_extensions('iotile.virtual_device', class_filter=BaseVirtualDevice,
                                              product_name="virtual_device"):
             print('- {}: {}'.format(name, one_line_desc(dev)))
 
@@ -173,7 +173,7 @@ def instantiate_device(virtual_dev, config, loop):
             this virtual device.  This is optional.
 
     Returns:
-        VirtualIOTileDevice: The instantiated subclass of VirtualIOTileDevice
+        BaseVirtualDevice: The instantiated subclass of BaseVirtualDevice
     """
     conf = {}
     if 'device' in config:
@@ -184,10 +184,10 @@ def instantiate_device(virtual_dev, config, loop):
         reg = ComponentRegistry()
 
         if virtual_dev.endswith('.py'):
-            _name, dev = reg.load_extension(virtual_dev, class_filter=VirtualIOTileDevice, unique=True)
+            _name, dev = reg.load_extension(virtual_dev, class_filter=BaseVirtualDevice, unique=True)
         else:
             _name, dev = reg.load_extensions('iotile.virtual_device', name_filter=virtual_dev,
-                                             class_filter=VirtualIOTileDevice,
+                                             class_filter=BaseVirtualDevice,
                                              product_name="virtual_device", unique=True)
 
         return dev(conf)
