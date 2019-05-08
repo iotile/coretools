@@ -7,14 +7,16 @@ from iotile.core.exceptions import InternalError
 from iotile.core.utilities.async_tools import SharedLoop, BackgroundTask
 
 
-class BaseRunnable:
-    """A simple class that can run periodic callback in background tasks."""
+class _PeriodicWorkerMixin:
+    """A simple mixin class that can run periodic callbacks in coroutines.
 
-    def __init__(self, loop=SharedLoop):
+    This is not designed to be a general purpose class and requires that
+    the class it is mixed into have a _loop and _started property.
+    """
+
+    def __init__(self):
         self._queued_workers = []
         self._workers = []
-        self._started = False
-        self._loop = loop
 
     def create_worker(self, func, interval, *args, **kwargs):
         """Spawn a worker thread running func.
@@ -58,18 +60,11 @@ class BaseRunnable:
     def start_workers(self):
         """Start running this virtual device including any necessary worker threads."""
 
-        if self._started:
-            raise InternalError("The method start() was called twice on a BaseRunnable object.")
-
-        self._started = True
-
         for worker in self._queued_workers:
             self._start_worker(worker)
 
     def stop_workers(self):
         """Synchronously stop any potential workers."""
-
-        self._started = False
 
         for worker in self._workers:
             worker.stop_threadsafe()

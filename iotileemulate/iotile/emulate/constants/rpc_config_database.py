@@ -9,7 +9,8 @@ The variables are sent to each tile when the tiles boot and their values do
 not change during the lifetime of the tile.
 """
 
-from .rpc_declaration import RPCDeclaration
+from iotile.core.hw.virtual import RPCDeclaration
+
 
 START_CONFIG_VAR_ENTRY = RPCDeclaration(0x2a07, "H8s", "L")
 """Start pushing a new config variable to the ConfigDatabase.

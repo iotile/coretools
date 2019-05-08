@@ -121,10 +121,11 @@ from .virtualdevice_standard import StandardVirtualDevice
 from .virtualdevice_simple import SimpleVirtualDevice
 
 from .common_types import (rpc, tile_rpc, unpack_rpc_payload, pack_rpc_payload,
-                           pack_rpc_response, unpack_rpc_response, RPCDispatcher)
+                           pack_rpc_response, unpack_rpc_response, RPCDispatcher,
+                           RPCDeclaration)
 
 __all__ = ['BaseVirtualTile', 'VirtualTile', 'BaseVirtualDevice',
            'AbstractAsyncDeviceChannel', 'StandardVirtualDevice',
-           'SimpleVirtualDevice', 'tile_rpc', 'rpc',
+           'RPCDeclaration', 'SimpleVirtualDevice', 'tile_rpc', 'rpc',
            'unpack_rpc_payload', 'pack_rpc_payload', 'pack_rpc_response',
            'unpack_rpc_response']

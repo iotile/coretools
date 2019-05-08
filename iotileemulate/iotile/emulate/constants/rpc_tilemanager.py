@@ -8,7 +8,8 @@ REGISTER_TILE to use to notify the controller of their bootloading status and
 request new chunks of firmware.
 """
 
-from .rpc_declaration import RPCDeclaration
+from iotile.core.hw.virtual import RPCDeclaration
+
 
 REGISTER_TILE = RPCDeclaration(0x2a00, "3B6s6BBL", "HHH")
 """Register a peripheral tile with the local controller.

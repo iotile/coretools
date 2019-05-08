@@ -2,10 +2,14 @@
 
 import abc
 import inspect
+import logging
 from iotile.core.exceptions import InternalError, ArgumentError
+from iotile.core.utilities import SharedLoop
 from ..exceptions import RPCNotFoundError, DevicePushError
 from ..reports.individual_format import IndividualReadingReport
 from ..reports.report import IOTileReading
+from .common_types import RPCDeclaration, pack_rpc_payload, unpack_rpc_payload
+
 
 class AbstractAsyncDeviceChannel(abc.ABC):
     """Abstract class for virtual devices to push events to clients.
@@ -129,9 +133,10 @@ class BaseVirtualDevice:
     Args:
         iotile_id (int): A 32-bit integer that specifies the globally unique ID
             for this IOTile device.
+        loop (BackgroundEventLoop): The event loop to use to run coroutines.
     """
 
-    def __init__(self, iotile_id):
+    def __init__(self, iotile_id, loop=SharedLoop):
         self.iotile_id = iotile_id
 
         self._interface_status = dict(connected=False, streaming=False, rpc=False,
@@ -141,6 +146,8 @@ class BaseVirtualDevice:
         # needs access to that interface's push channel
         self._push_channel = None
         self._started = False
+        self._logger = logging.getLogger(__name__)
+        self._loop = loop
 
     @property
     def connected(self):
@@ -190,9 +197,15 @@ class BaseVirtualDevice:
             raise InternalError("The method start() was called twice on VirtualIOTileDevice.")
 
         self._push_channel = channel
+        self._started = True
 
     def stop(self):
         """Stop running this virtual device."""
+
+        if not self._started:
+            raise InternalError("Stop called without start() first being called")
+
+        self._started = False
 
     async def stream(self, report):
         """Stream a report asynchronously.
@@ -316,11 +329,17 @@ class BaseVirtualDevice:
             chunk (str): a buffer with the next bit of script to append
         """
 
-    def call_rpc(self, address, rpc_id, payload=b""):
+    async def async_rpc(self, address, rpc_id, payload=b""):
         """Call an RPC by its address and ID.
 
         Subclasses must override this function with methods of finding RPCs as
-        part of their implementations.
+        part of their implementations.  This method is designed to be called
+        from a DeviceAdapter subclass and passed binary encoded arguments.
+
+        It is not intended to be called directly by users.  If you are looking
+        for a simple way to test out the rpcs provided by a VirtualDevice
+        without needing an event loop or worrying about packing, you should
+        use :meth:`simple_rpc`.
 
         Args:
             address (int): The address of the mock tile this RPC is for
@@ -332,3 +351,49 @@ class BaseVirtualDevice:
         """
 
         raise RPCNotFoundError("RPC not found because virtual device did not implement call_rpc method")
+
+    def simple_rpc(self, address, rpc_id, *args, **kwargs):
+        """Synchronously dispatch an RPC inside this device.
+
+        This function is meant to be used for testing purposes.  It is not
+        an async method and indeed cannot be called from an event loop since
+        it synchronously blocks until the RPC finished before returning.
+
+        Callers of this function must know the argument spec of the RPC that
+        they are trying to call and expected return value.
+
+        Args:
+            address (int): The address of the tile that has the RPC.
+            rpc_id (int or RPCDeclaration): The 16-bit id of the rpc we want
+                to call. If an RPCDeclaration is passed then arg_format and
+                result_format are not required since they are included in the
+                RPCDeclaration.
+            *args: Any required arguments for the RPC as python objects.
+            **kwargs: Only two keyword arguments are supported:
+                - arg_format: A format specifier for the argument list
+                - result_format: A format specifier for the result
+
+        Returns:
+            list: A list of the decoded response members from the RPC.
+        """
+
+        if isinstance(rpc_id, RPCDeclaration):
+            arg_format = rpc_id.arg_format
+            resp_format = rpc_id.resp_format
+            rpc_id = rpc_id.rpc_id
+        else:
+            arg_format = kwargs.get('arg_format', None)
+            resp_format = kwargs.get('resp_format', None)
+
+        arg_payload = b''
+
+        if arg_format is not None:
+            arg_payload = pack_rpc_payload(arg_format, args)
+
+        self._logger.debug("Sending rpc to %d:%04X, payload=%s", address, rpc_id, args)
+
+        resp_payload = self._loop.run_coroutine(self.async_rpc(address, rpc_id, arg_payload))
+        if resp_format is None:
+            return []
+
+        return unpack_rpc_payload(resp_format, resp_payload)

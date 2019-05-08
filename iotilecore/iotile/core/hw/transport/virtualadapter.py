@@ -6,7 +6,7 @@ from iotile.core.dev import ComponentRegistry
 from iotile.core.hw.reports import BroadcastReport
 from iotile.core.hw.exceptions import BusyRPCResponse, DevicePushError
 from iotile.core.utilities import SharedLoop
-from ..exceptions import DeviceAdapterError, RPCInvalidIDError, TileNotFoundError, RPCNotFoundError, RPCErrorCode
+from ..exceptions import DeviceAdapterError, VALID_RPC_EXCEPTIONS
 from ..virtual import BaseVirtualDevice, AbstractAsyncDeviceChannel
 from .adapter import StandardDeviceAdapter
 
@@ -291,12 +291,8 @@ class VirtualDeviceAdapter(StandardDeviceAdapter):
         dev = self._get_property(conn_id, 'device')
 
         try:
-            res = dev.call_rpc(address, rpc_id, bytes(payload))
-            if inspect.isawaitable(res):
-                res = await res
-
-            return res
-        except (RPCInvalidIDError, RPCNotFoundError, TileNotFoundError, RPCErrorCode, BusyRPCResponse):
+            return await dev.async_rpc(address, rpc_id, bytes(payload))
+        except VALID_RPC_EXCEPTIONS:
             raise
         except Exception:
             self._logger.exception("Exception inside rpc %d:0x%04X, payload=%s",

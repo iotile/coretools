@@ -12,11 +12,11 @@ import inspect
 from iotile.core.utilities import SharedLoop
 from ..exceptions import RPCInvalidIDError, RPCNotFoundError, TileNotFoundError
 from .virtualdevice_base import BaseVirtualDevice
-from .base_runnable import BaseRunnable
+from .periodic_worker import _PeriodicWorkerMixin
 from .common_types import rpc, RPCDispatcher
 
 
-class SimpleVirtualDevice(BaseVirtualDevice, BaseRunnable):
+class SimpleVirtualDevice(BaseVirtualDevice, _PeriodicWorkerMixin):
     """A simple virtual device with a "fake" tile at address 8.
 
     This class implements the required controller status RPC that allows
@@ -44,8 +44,8 @@ class SimpleVirtualDevice(BaseVirtualDevice, BaseRunnable):
     __NO_EXTENSION__ = True
 
     def __init__(self, iotile_id, name, *, loop=SharedLoop):
-        BaseVirtualDevice.__init__(self, iotile_id)
-        BaseRunnable.__init__(self, loop=loop)
+        BaseVirtualDevice.__init__(self, iotile_id, loop=loop)
+        _PeriodicWorkerMixin.__init__(self)
 
         self.name = name.encode('utf-8')
         self.reports = []
@@ -86,7 +86,7 @@ class SimpleVirtualDevice(BaseVirtualDevice, BaseRunnable):
 
         self._rpc_overlays[address].add_rpc(rpc_id, func)
 
-    def call_rpc(self, address, rpc_id, payload=b""):
+    async def async_rpc(self, address, rpc_id, payload=b""):
         """Call an RPC by its address and ID.
 
         Args:
@@ -107,7 +107,11 @@ class SimpleVirtualDevice(BaseVirtualDevice, BaseRunnable):
         overlay = self._rpc_overlays.get(address, None)
 
         if overlay is not None and overlay.has_rpc(rpc_id):
-            return overlay.call_rpc(rpc_id, payload)
+            resp = overlay.call_rpc(rpc_id, payload)
+            if inspect.isawaitable(resp):
+                resp = await resp
+
+            return resp
 
         raise RPCNotFoundError("Could not find RPC 0x%X at address %d" % (rpc_id, address))
 

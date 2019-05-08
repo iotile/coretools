@@ -43,7 +43,7 @@ class EmulatedDevice(EmulationMixin, StandardVirtualDevice):
         self._logger = logging.getLogger(__name__)
         self.emulator = EmulationLoop(self._dispatch_rpc, loop=loop)
 
-    def _dispatch_rpc(self, address, rpc_id, arg_payload):
+    async def _dispatch_rpc(self, address, rpc_id, arg_payload):
         """Background work queue handler to dispatch RPCs."""
 
         if self.emulator.is_tile_busy(address):
@@ -52,7 +52,7 @@ class EmulatedDevice(EmulationMixin, StandardVirtualDevice):
 
         try:
             # Send the RPC immediately and wait for the response
-            resp = super(EmulatedDevice, self).call_rpc(address, rpc_id, arg_payload)
+            resp = await super(EmulatedDevice, self).async_rpc(address, rpc_id, arg_payload)
             self._track_change('device.rpc_sent', (address, rpc_id, arg_payload, resp, None), formatter=format_rpc)
 
             return resp
@@ -129,51 +129,7 @@ class EmulatedDevice(EmulationMixin, StandardVirtualDevice):
 
         return state
 
-    def rpc(self, address, rpc_id, *args, **kwargs):
-        """Immediately dispatch an RPC inside this EmulatedDevice.
-
-        This function is meant to be used for testing purposes as well as by
-        tiles inside a complex EmulatedDevice subclass that need to
-        communicate with each other.  It should only be called from the main
-        virtual device thread where start() was called from.
-
-        **Background workers may not call this method since it may cause them to deadlock.**
-
-        Args:
-            address (int): The address of the tile that has the RPC.
-            rpc_id (int): The 16-bit id of the rpc we want to call
-            *args: Any required arguments for the RPC as python objects.
-            **kwargs: Only two keyword arguments are supported:
-                - arg_format: A format specifier for the argument list
-                - result_format: A format specifier for the result
-
-        Returns:
-            list: A list of the decoded response members from the RPC.
-        """
-
-        if isinstance(rpc_id, RPCDeclaration):
-            arg_format = rpc_id.arg_format
-            resp_format = rpc_id.resp_format
-            rpc_id = rpc_id.rpc_id
-        else:
-            arg_format = kwargs.get('arg_format', None)
-            resp_format = kwargs.get('resp_format', None)
-
-        arg_payload = b''
-
-        if arg_format is not None:
-            arg_payload = pack_rpc_payload(arg_format, args)
-
-        self._logger.debug("Sending rpc to %d:%04X, payload=%s", address, rpc_id, args)
-
-        resp_payload = self.emulator.call_rpc_external(address, rpc_id, arg_payload)
-        if resp_format is None:
-            return []
-
-        resp = unpack_rpc_payload(resp_format, resp_payload)
-        return resp
-
-    def call_rpc(self, address, rpc_id, payload=b""):
+    async def async_rpc(self, address, rpc_id, payload=b""):
         """Call an RPC by its address and ID.
 
         This will send the RPC to the background rpc dispatch thread and
@@ -185,10 +141,10 @@ class EmulatedDevice(EmulationMixin, StandardVirtualDevice):
             payload (bytes): A byte string of payload parameters up to 20 bytes
 
         Returns:
-            awaitable: Resolves to the response payload from the RPC
+            bytes: the response payload from the RPC
         """
 
-        return self.emulator.call_rpc_internal(address, rpc_id, payload)
+        return await self.emulator.call_rpc_internal(address, rpc_id, payload)
 
     def synchronize_task(self, func, *args, **kwargs):
         """Run callable in the rpc thread and wait for it to finish.

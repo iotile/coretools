@@ -11,7 +11,9 @@ and are not interested in reusing your RPC implementations.  For those cases,
 :class:`SimpleVirtualDevice` is a better base class to inherit from.
 """
 
+import inspect
 from iotile.core.exceptions import ArgumentError
+from iotile.core.utilities import SharedLoop
 from ..exceptions import RPCInvalidIDError, RPCNotFoundError, TileNotFoundError
 from .virtualdevice_base import BaseVirtualDevice
 
@@ -22,12 +24,14 @@ class StandardVirtualDevice(BaseVirtualDevice):
     Args:
         iotile_id (int): A 32-bit integer that specifies the globally unique ID
             for this IOTile device.
+        loop (BackgroundEventLoop): The loop we should use for running background
+            tasks. Defaults to the global SharedLoop.
     """
 
     __NO_EXTENSION__ = True
 
-    def __init__(self, iotile_id):
-        BaseVirtualDevice.__init__(self, iotile_id)
+    def __init__(self, iotile_id, *, loop=SharedLoop):
+        BaseVirtualDevice.__init__(self, iotile_id, loop=loop)
 
         self._tiles = {}
         self.script = bytearray()
@@ -53,8 +57,9 @@ class StandardVirtualDevice(BaseVirtualDevice):
 
         self._tiles[address] = tile
 
-    def call_rpc(self, address, rpc_id, payload=b""):
+    async def async_rpc(self, address, rpc_id, payload=b""):
         """Call an RPC by its address and ID.
+
         Args:
             address (int): The address of the mock tile this RPC is for
             rpc_id (int): The number of the RPC
@@ -71,6 +76,10 @@ class StandardVirtualDevice(BaseVirtualDevice):
 
         tile = self._tiles.get(address)
         if tile is not None and tile.has_rpc(rpc_id):
-            return tile.call_rpc(rpc_id, payload)
+            resp = tile.call_rpc(rpc_id, payload)
+            if inspect.isawaitable(resp):
+                resp = await resp
+
+            return resp
 
         raise RPCNotFoundError("Could not find RPC 0x%X at address %d" % (rpc_id, address))
