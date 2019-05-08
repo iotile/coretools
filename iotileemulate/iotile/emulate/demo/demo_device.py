@@ -105,7 +105,7 @@ class DemoEmulatedTile(EmulatedPeripheralTile):
 
                         self._logger.debug("Tracing chunk %d/%d (size=%d)", i + 1, chunks, chunk_length)
 
-                        success = await self._device.trace_sync(data)
+                        success = await self._device.trace(data)
                         if not success:
                             self._logger.error("Failure sending chunk %d, aborting", i)
                             break

@@ -22,6 +22,8 @@ import inspect
 import logging
 import threading
 import atexit
+import functools
+import concurrent.futures
 from iotile.core.exceptions import TimeoutExpiredError, ArgumentError, InternalError, LoopStoppingError
 
 
@@ -277,6 +279,7 @@ class BackgroundEventLoop:
 
         self._logger = logging.getLogger(__name__)
         self._loop_check = threading.local()
+        self._pool = None
 
     def start(self, aug='EventLoopThread'):
         """Ensure the background loop is running.
@@ -348,12 +351,16 @@ class BackgroundEventLoop:
         try:
             self.run_coroutine(self._stop_internal())
             self.thread.join()
+
+            if self._pool is not None:
+                self._pool.shutdown(wait=True)
         except:
             self._logger.exception("Error stopping BackgroundEventLoop")
             raise
         finally:
             self.thread = None
             self.loop = None
+            self._pool = None
             self.tasks = set()
 
     def get_loop(self):
@@ -548,6 +555,22 @@ class BackgroundEventLoop:
             return asyncio.ensure_future(cor, loop=self.loop)
 
         return asyncio.run_coroutine_threadsafe(cor, loop=self.loop)
+
+    def run_in_executor(self, func, *args, **kwargs):
+        """Execute a function on a background executor.
+
+        This method is used to run blocking functions in an awaitable fashion.
+        The function is dispatched to a background worker thread and an
+        awaitable is returned that will finalize when the function has
+        finished.
+        """
+
+        self.start()
+
+        if self._pool is None:
+            self._pool = concurrent.futures.ThreadPoolExecutor()
+
+        return self.loop.run_in_executor(self._pool, functools.partial(func, *args, **kwargs))
 
     def log_coroutine(self, cor, *args, **kwargs):
         """Run a coroutine logging any exception raised.

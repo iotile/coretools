@@ -3,7 +3,6 @@
 import struct
 import uuid
 import logging
-import inspect
 from iotile.core.utilities import SharedLoop
 from iotile.core.hw.reports import IOTileReading
 from iotile.core.hw.exceptions import RPCInvalidIDError, RPCNotFoundError, TileNotFoundError
@@ -238,12 +237,12 @@ class MockBLEDevice:
             if char_id == self.TBReceiveHeaderChar or char_id == self.TBReceivePayloadChar:
                 if self.notifications_enabled(self.TBReceiveHeaderChar) and self.notifications_enabled(self.TBReceivePayloadChar):
                     self.logger.info("Opening RPC interface on mock device")
-                    self.device.open_interface('rpc')
+                    SharedLoop.run_coroutine(self.device.open_interface('rpc'))
                     return True, []
 
             elif char_id == self.TBStreamingChar and self.notifications_enabled(self.TBStreamingChar):
                 self.logger.info("Opening Streaming interface on mock device")
-                reports = self.device.open_interface('streaming')
+                reports = SharedLoop.run_coroutine(self.device.open_interface('streaming'))
                 if reports is None:
                     reports = []
 
@@ -278,9 +277,7 @@ class MockBLEDevice:
 
         status = 0
         try:
-            response = self.device.call_rpc(address, rpc_id, bytes(payload))
-            if inspect.isawaitable(response):
-                response = SharedLoop.run_coroutine(response)
+            response = SharedLoop.run_coroutine(self.device.async_rpc(address, rpc_id, bytes(payload)))
         except (RPCInvalidIDError, RPCNotFoundError):
             status = 1 #FIXME: Insert the correct ID here
             response = b""

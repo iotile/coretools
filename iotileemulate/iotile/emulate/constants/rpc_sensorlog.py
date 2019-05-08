@@ -45,7 +45,8 @@ particular, they can be used for:
   - clearing all data from the RSL
 """
 
-from .rpc_declaration import RPCDeclaration
+from iotile.core.hw.virtual import RPCDeclaration
+
 
 RSL_PUSH_READING = RPCDeclaration(0x2000, "LH", "L")
 """Push a single reading into a stream.

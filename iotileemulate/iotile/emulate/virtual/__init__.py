@@ -68,17 +68,34 @@ Both start() and stop() are synchronous calls in that emulation is guaranteed
 to be running when start() returns and guaranteed to be finished when stop()
 returns.
 
+Since start() and stop() are synchronous, they are not safe to call from
+within the event loop that is used to run the simulation.
+
 Conceptually start() is equivalent to powering on the emulated device and
 stop() is equivalent to powering it off.
 
-Internally, most emulated devices are made up of one or more emulated tiles.
-The tiles all run in their own execution thread and are not synchronized with
-each other in any way, just as would be the case in a physical IOTile device.
+Emulation is performed inside of a BackgroundEventLoop using
+:class:`EmulationLoop`. Each subsystem or tile inside the device that would
+normally run in an RTOS task or on a separate processor instead runs as a
+coroutine cooperatively scheduled with all other tasks inside the background
+event loop.
 
-There is a single background thread spawned by EmulatedDevice during the
+There is a single background coroutine spawned by EmulatedDevice during the
 start() method that is in charge of dispatching rpcs to each tile.  Any time a
-tile wishes to communicate with another tile, it calls self.device.rpc() and
-this queues the rpc for completion on the background rpc dispatcher task.
+tile wishes to communicate with another tile, it calls
+``self.device.emulator.await_rpc()`` and this queues the rpc for completion on the
+background rpc dispatcher task.  The caller can await that call in order to
+yield until the rpc has finished.
+
+There is a clear distinction between routines that are safe to call (by a
+user) outside of the emulation loop an those that are not threadsafe and must
+not be called outside of the emulation loop.  Some of the convenience methods
+declared on ``EmulatedDevice`` can automatically detect what context they are
+being called from to know whether they should block or return an awaitable.
+
+This makes it safe to call methods like ``wait_idle``from both inside and outside
+of the event loop.  However, some methods are marked to only be safe to call
+from outside the event loop like ``EmulatedDevice.rpc()``.
 
 Since all RPCs are guaranteed to only execute on a single thread, only one RPC
 at a time can execute, as is the case in a physical IOTile device.

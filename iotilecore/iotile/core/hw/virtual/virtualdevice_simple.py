@@ -9,13 +9,14 @@ They are useful for writing simple, repeatable tests.
 """
 
 import inspect
+from iotile.core.utilities import SharedLoop
 from ..exceptions import RPCInvalidIDError, RPCNotFoundError, TileNotFoundError
 from .virtualdevice_base import BaseVirtualDevice
-from .base_runnable import BaseRunnable
+from .periodic_worker import _PeriodicWorkerMixin
 from .common_types import rpc, RPCDispatcher
 
 
-class SimpleVirtualDevice(BaseVirtualDevice, BaseRunnable):
+class SimpleVirtualDevice(BaseVirtualDevice, _PeriodicWorkerMixin):
     """A simple virtual device with a "fake" tile at address 8.
 
     This class implements the required controller status RPC that allows
@@ -36,13 +37,16 @@ class SimpleVirtualDevice(BaseVirtualDevice, BaseRunnable):
             for this IOTile device.
         name (str): The 6 byte name that should be returned when anyone asks
             for the controller's name of this IOTile device using an RPC
+        loop (BackgroundEventLoop): The loop we should use for running background
+            tasks. Defaults to the global SharedLoop.
+            *This must be passed as a keyword agument.*
     """
 
     __NO_EXTENSION__ = True
 
-    def __init__(self, iotile_id, name):
-        BaseVirtualDevice.__init__(self, iotile_id)
-        BaseRunnable.__init__(self)
+    def __init__(self, iotile_id, name, *, loop=SharedLoop):
+        BaseVirtualDevice.__init__(self, iotile_id, loop=loop)
+        _PeriodicWorkerMixin.__init__(self)
 
         self.name = name.encode('utf-8')
         self.reports = []
@@ -83,7 +87,7 @@ class SimpleVirtualDevice(BaseVirtualDevice, BaseRunnable):
 
         self._rpc_overlays[address].add_rpc(rpc_id, func)
 
-    def call_rpc(self, address, rpc_id, payload=b""):
+    async def async_rpc(self, address, rpc_id, payload=b""):
         """Call an RPC by its address and ID.
 
         Args:
@@ -104,7 +108,11 @@ class SimpleVirtualDevice(BaseVirtualDevice, BaseRunnable):
         overlay = self._rpc_overlays.get(address, None)
 
         if overlay is not None and overlay.has_rpc(rpc_id):
-            return overlay.call_rpc(rpc_id, payload)
+            resp = overlay.call_rpc(rpc_id, payload)
+            if inspect.isawaitable(resp):
+                resp = await resp
+
+            return resp
 
         raise RPCNotFoundError("Could not find RPC 0x%X at address %d" % (rpc_id, address))
 
@@ -126,7 +134,7 @@ class SimpleVirtualDevice(BaseVirtualDevice, BaseRunnable):
 
         self.script += bytearray(chunk)
 
-    def open_streaming_interface(self):
+    def _open_streaming_interface(self):
         """Handler called when the streaming interface is opened.
 
         If a list of reports is returned, those reports are streamed out of
@@ -135,7 +143,7 @@ class SimpleVirtualDevice(BaseVirtualDevice, BaseRunnable):
 
         return self.reports
 
-    def open_tracing_interface(self):
+    def _open_tracing_interface(self):
         """Handler called when the tracing interface is opened.
 
         If a list of bytes-like object is returned, they will be traced out of
@@ -146,9 +154,10 @@ class SimpleVirtualDevice(BaseVirtualDevice, BaseRunnable):
 
     def start(self, channel):
         """Start running this virtual device including any necessary worker threads.
+
         Args:
-            channel (IOTilePushChannel): the channel with a stream and trace
-                routine for streaming and tracing data through a VirtualInterface
+            channel (AbstractAsyncDeviceChannel): channel to use to push asynchronous
+                events to a connected client.
         """
 
         super(SimpleVirtualDevice, self).start(channel)

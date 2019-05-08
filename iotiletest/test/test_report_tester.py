@@ -21,16 +21,16 @@ def test_report_args():
     assert dev.start_timestamp == 10
     assert dev.start_id == 15
 
-    reports = dev.open_streaming_interface()
+    reports = dev._open_streaming_interface()
 
     assert len(reports) == 11
 
     report1 = reports[0]
 
     assert report1.lowest_id == 15
-    assert report1.highest_id == 24 
+    assert report1.highest_id == 24
     assert len(report1.visible_readings) == 10
-    
+
     read = report1.visible_readings[0]
     assert read.stream == 0x5001
     assert read.value == 100

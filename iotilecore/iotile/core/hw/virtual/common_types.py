@@ -1,12 +1,16 @@
 """Shared decorators and exceptions used in virtual tiles and devices."""
 
 import struct
+from collections import namedtuple
 import binascii
 import inspect
 from ..exceptions import (RPCNotFoundError, RPCInvalidArgumentsError,
                           RPCInvalidReturnValueError, RPCInvalidIDError,
                           TileNotFoundError, RPCErrorCode,
                           BusyRPCResponse)
+
+
+RPCDeclaration = namedtuple("RPCDeclaration", ["rpc_id", "arg_format", "resp_format"])
 
 
 def _create_argcode(code, arg_bytes):

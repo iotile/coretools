@@ -133,18 +133,19 @@ Now you have your component registered with CoreTools so we need to create a sim
 Creating a Virtual Device
 #########################
 
-Virtual IOTile devices are just python scripts that define a class that inherits from ``VirtualIOTileDevice``.  We're going to
+Virtual IOTile devices are just python scripts that define a class that inherits from ``BaseVirtualDevice``.  We're going to
 create a demo device.  Just like above there is a bit of boilerplate that is required for the device to support the necessary
-RPC for CoreTools be able to identify its name and match it with a Proxy Module.  
+RPC for CoreTools be able to identify its name and match it with a Proxy Module.  Since the device we are creating is so 
+simple, we are going to derive from a convenience subclass ``SimpleVirtualDevice``.
 
 Create a file named ``demo_device.py`` in your current working directory with the following contents::
 
     """Virtual IOTile device for CoreTools Walkthrough"""
 
-    from iotile.core.hw.virtual.virtualdevice import VirtualIOTileDevice, rpc
+    from iotile.core.hw.virtual import SimpleVirtualDevice, rpc
 
 
-    class DemoVirtualDevice(VirtualIOTileDevice):
+    class DemoVirtualDevice(SimpleVirtualDevice):
         """A simple virtual IOTile device that has an RPC to read fake temperature
 
         Args:
@@ -154,19 +155,14 @@ Create a file named ``demo_device.py`` in your current working directory with th
         def __init__(self, args):
             super(DemoVirtualDevice, self).__init__(1, 'Demo01')
 
-        @rpc(8, 0x0004, "", "H6sBBBB")
-        def controller_status(self):
-            """Return the name of the controller as a 6 byte string"""
-
-            status = (1 << 1) | (1 << 0)  # Report configured and running
-            return [0xFFFF, self.name, 1, 0, 0, status]
 
 Note how this is just a normal python class and it has one function ``controller_status`` that is
 decorated with an ``@rpc`` decorator.  This decorator is how we mark what python functions in our
 class are really mocking the RPCs present in a real IOTile device.  For more information on the ``rpc``
 decorator, we can see its documentation below.
 
-.. py:module:: iotile.core.hw.virtual.virtualdevice
+.. py:module:: iotile.core.hw.virtual
+    :noindex:
 .. autofunction:: rpc
 
 
@@ -324,10 +320,10 @@ call `get_temperature`.  We'll need to create a member variable to store the tem
 
     """Virtual IOTile device for CoreTools Walkthrough"""
 
-    from iotile.core.hw.virtual.virtualdevice import VirtualIOTileDevice, rpc
+    from iotile.core.hw.virtual import SimpleVirtualDevice, rpc
 
 
-    class DemoVirtualDevice(VirtualIOTileDevice):
+    class DemoVirtualDevice(SimpleVirtualDevice):
         """A simple virtual IOTile device that has an RPC to read fake temperature
 
         Args:
@@ -337,13 +333,6 @@ call `get_temperature`.  We'll need to create a member variable to store the tem
         def __init__(self, args):
             super(DemoVirtualDevice, self).__init__(1, 'Demo01')
             self.temp = 273
-
-        @rpc(8, 0x0004, "", "H6sBBBB")
-        def controller_status(self):
-            """Return the name of the controller as a 6 byte string"""
-
-            status = (1 << 1) | (1 << 0)  # Report configured and running
-            return [0xFFFF, self.name, 1, 0, 0, status]
 
         @rpc(8, 0x8000, "", "L")
         def get_temperature(self):
@@ -379,12 +368,16 @@ Now add a new annotated RPC wrapper to ``DemoProxyObject`` in your ``demo_proxy.
 
         self.rpc(0x80, 0x02, new_temp, arg_format="L", result_format="")
 
+
 .. important::
     
-    When you write a proxy module method that takes arguments, you need to tell ``typedargs`` what type they are so that it can convert them
-    to the appropriate python types when you enter them on the command line.  In this case we're telling ``typedargs`` that we take one parameter
-    ``new_temp`` that is an integer.  That's all we need to say and ``typedargs`` takes care of interpreting our command line input into a native
-    python integer and passing that to ``set_temperature``.
+    When you write a proxy module method that takes arguments, you need to
+    tell ``typedargs`` what type they are so that it can convert them to the
+    appropriate python types when you enter them on the command line.  In this
+    case we're telling ``typedargs`` that we take one parameter ``new_temp``
+    that is an integer.  That's all we need to say and ``typedargs`` takes
+    care of interpreting our command line input into a native python integer
+    and passing that to ``set_temperature``.
 
 Alternatively, you can pack your arguments with the newer rpc method, ``rpc_v2``::
 
@@ -430,9 +423,13 @@ Let's try out our ``set_temperature`` and ``get_temperature`` functions::
 Next Steps
 ##########
 
-This concludes the tutorial on creating proxy modules.  It's a pretty simple proxy module that we made that just sets one number but one of the
-core principles of IOTile is that everything we do should be as reusable as possible, so in future tutorials we'll take the exact same proxy module and
-virtual device and show how you can access them over MQTT from anywhere in the world or over Bluetooth Low Energy without doing any additional work.
+This concludes the tutorial on creating proxy modules.  It's a pretty simple
+proxy module that we made that just sets one number but one of the core
+principles of IOTile is that everything we do should be as reusable as
+possible, so in future tutorials we'll take the exact same proxy module and
+virtual device and show how you can access them over MQTT from anywhere in the
+world or over Bluetooth Low Energy without doing any additional work.
 
-You may already be able to think of what you would want to do with a virtual device running on your computer that would let you run a python function
-from anywhere in the world. 
+You may already be able to think of what you would want to do with a virtual
+device running on your computer that would let you run a python function from
+anywhere in the world.

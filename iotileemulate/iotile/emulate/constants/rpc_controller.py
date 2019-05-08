@@ -4,7 +4,7 @@ These are generic RPCs that set configuration information for the entire
 device or store persistent metadata like app or os tags.
 """
 
-from .rpc_declaration import RPCDeclaration
+from iotile.core.hw.virtual import RPCDeclaration
 
 
 SET_OS_APP_TAG = RPCDeclaration(0x100B, "LLBB", "L")

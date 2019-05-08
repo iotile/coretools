@@ -117,7 +117,7 @@ class ReportTestDevice(SimpleVirtualDevice):
     def _generate_random(self):
         return []
 
-    def open_streaming_interface(self):
+    def _open_streaming_interface(self):
         """Called when someone opens a streaming interface to the device
 
         Returns:

@@ -71,7 +71,7 @@ class BasicStreamingSubsystem(ControllerSubsystemBase):
                         queued.record_acknowledgement(highest_id)
 
                     self._logger.debug("Streamer %d: starting with report %s", queued.streamer.index, report)
-                    success = await self._device.stream_sync(report)
+                    success = await self._device.stream(report)
                     self._logger.debug("Streamer %d: finished with success=%s", queued.streamer.index, success)
             except:  #pylint:disable=bare-except;This background worker should never die
                 self._logger.exception("Exception during streaming of streamer %s", queued.streamer)

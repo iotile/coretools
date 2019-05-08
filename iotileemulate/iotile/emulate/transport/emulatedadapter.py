@@ -55,7 +55,7 @@ class EmulatedDeviceAdapter(VirtualDeviceAdapter):
             return await super(EmulatedDeviceAdapter, self).send_rpc(conn_id, address, rpc_id, payload, timeout)
         finally:
             for dev in self.devices.values():
-                dev.wait_idle()
+                await dev.wait_idle()
 
     async def debug(self, conn_id, name, cmd_args):
         """Asynchronously complete a named debug command.
