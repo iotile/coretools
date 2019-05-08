@@ -1,10 +1,25 @@
+"""DeviceAdapter that connects to virtual devices that are run inside the same process.
+
+This adapter is very useful for integration testing other systems that depends
+on device interaction since you can create whatever kind of situation you want
+using a virtual device and to anyone outside of HardwareManager, there is no
+way to tell they are not talking to a physical iotile device.
+
+This adapter also forms the basis for transparent proxying of device access.
+Using a combination of a DeviceServer class attached to a VirtaulDevice, you
+can project any virtual device out into the world as a connectable iotile
+device over any protocol supported by an installed device adapter.  This could
+let you, for example, serve a virtual device from your computer over bluetooth
+low energy that lets users control your computer from their mobile phone.
+"""
+
 import json
 import logging
 import inspect
 from iotile.core.exceptions import ArgumentError
 from iotile.core.dev import ComponentRegistry
 from iotile.core.hw.reports import BroadcastReport
-from iotile.core.hw.exceptions import BusyRPCResponse, DevicePushError
+from iotile.core.hw.exceptions import DevicePushError
 from iotile.core.utilities import SharedLoop
 from ..exceptions import DeviceAdapterError, VALID_RPC_EXCEPTIONS
 from ..virtual import BaseVirtualDevice, AbstractAsyncDeviceChannel
