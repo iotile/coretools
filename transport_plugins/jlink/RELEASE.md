@@ -3,6 +3,10 @@
 All major changes in each released version of the jlink transport plugin are
 listed here.
 
+## 1.0.8
+
+- Unpin dependency of iotile-core for iotile-core 5 release
+
 ## 1.0.7
 
 - Improved error checking/messaging for `_read_memory_map`

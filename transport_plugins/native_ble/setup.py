@@ -8,7 +8,7 @@ setup(
     version=version.version,
     license="LGPLv3",
     install_requires=[
-        "iotile-core>=4.0.0,<5",
+        "iotile-core>=5.0.0rc1,<6",
         "bable-interface>=1.2.0,<2"
     ],
     python_requires=">=3.5,<4",

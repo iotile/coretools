@@ -8,7 +8,7 @@ setup(
     version=version.version,
     license="LGPLv3",
     install_requires=[
-        "iotile-core>=4.0.0,<5",
+        "iotile-core>=5.0.0rc1,<6",
         "msgpack>=0.6.1,<1"
         "msgpack>=0.6.1",
         "websockets~=7.0"

@@ -9,7 +9,7 @@ setup(
     version=version.version,
     license="LGPLv3",
     install_requires=[
-        "iotile-core>=4.0.0,<5",
+        "iotile-core>=5.0.0rc1,<6",
         "pylink-square>=0.1.3,<1",
         "pylibftdi>=0.17.0,<1"
     ],

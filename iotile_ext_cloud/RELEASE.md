@@ -2,6 +2,10 @@
 
 All major changes in each released version of the iotile-ext-cloud plugin are listed here.
 
+## 1.0.6
+
+- Unpin `iotile-core` to support compatibility with version 5.0.0
+
 ## 1.0.5
 
 - Only request IOTileCloud credentials if we are actually uploading to IOTileCloud.

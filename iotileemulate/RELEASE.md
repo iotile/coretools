@@ -2,7 +2,7 @@
 
 All major changes in each released version of iotile-emulate are listed here.
 
-## HEAD
+## 0.5.0-rc1
 
 - Refactor for compatibility with latest coretools release that integrated asyncio
   support directly into CoreTools so it doesn't need to be bolted on anymore inside

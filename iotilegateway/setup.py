@@ -21,9 +21,9 @@ setup(
     version=version.version,
     license="LGPLv3",
     install_requires=[
-        "iotile-core>=4.0.0,<5",
+        "iotile-core>=5.0.0rc1,<6",
         "msgpack>=0.6.1,<1",
-        "iotile-transport-websocket>=2.0.2"
+        "iotile-transport-websocket>=3.0.0rc1,<4"
     ],
     python_requires=">=3.5,<4",
     entry_points={

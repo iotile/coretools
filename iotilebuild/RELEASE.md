@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 3.0.9
+
+- Unpin `iotile-core` to support version 5.0
+
 ## 3.0.8
 
 - Add optional argument in `autobuild_arm_program` to pass `objcopy` flags
