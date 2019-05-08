@@ -2,7 +2,7 @@
 
 All major changes in each released version of the websocket transport plugin are listed here.
 
-## HEAD
+## 3.0.0-rc1
 
 - Completely refactor to be based on `asyncio` and the `websockets` package
   instead of ws4py and an older package as well as tornado.

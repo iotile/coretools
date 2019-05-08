@@ -2,9 +2,14 @@
 
 All major changes in each released version of IOTileShip are listed here.
 
+## 1.0.7
+
+- Unpin `iotile-core` to support iotile-core 5
+
 ## 1.0.6
 
 - Added the FilesystemManager resource and ModifyJsonStep
+
 ## 1.0.5
 
 - Implement proper dependency major version limits.
