@@ -155,10 +155,6 @@ class BaseVirtualDevice:
 
         return self._interface_status['connected']
 
-    @connected.setter
-    def connected(self, value):
-        self._interface_status['connected'] = value
-
     def interface_open(self, name):
         """Check whether the given interface is open.
 
@@ -206,6 +202,32 @@ class BaseVirtualDevice:
             raise InternalError("Stop called without start() first being called")
 
         self._started = False
+
+    async def connect(self):
+        """Connect to this virtual device."""
+
+        if self.connected:
+            raise InternalError("connect() was called but someone was already connected")
+
+        await self.open_interface('connected')
+
+    async def disconnect(self):
+        """Disconnect from this virtual device.
+
+        Any other interfaces that are opened on the device will be closed
+        automatically before the disconnect routine completes.  After this
+        method finishes successfully, you will be able to connect to the
+        device again.
+        """
+
+        if not self.connected:
+            raise InternalError("disconnect() was called without a connection")
+
+        for key in ('streaming', 'tracing', 'debug', 'script', 'rpc'):
+            if self.interface_open(key):
+                await self.close_interface(key)
+
+        await self.close_interface('connected')
 
     async def stream(self, report):
         """Stream a report asynchronously.

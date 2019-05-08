@@ -232,7 +232,7 @@ class VirtualDeviceAdapter(StandardDeviceAdapter):
         if dev.connected:
             raise DeviceAdapterError(conn_id, 'connect', 'device already connected')
 
-        dev.connected = True
+        await dev.connect()
 
         self._setup_connection(conn_id, connection_string)
         self._track_property(conn_id, 'device', dev)
@@ -249,7 +249,7 @@ class VirtualDeviceAdapter(StandardDeviceAdapter):
         self._ensure_connection(conn_id, True)
 
         dev = self._get_property(conn_id, 'device')
-        dev.connected = False
+        await dev.disconnect()
 
         self._teardown_connection(conn_id)
 
