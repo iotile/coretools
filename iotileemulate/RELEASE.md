@@ -2,6 +2,12 @@
 
 All major changes in each released version of iotile-emulate are listed here.
 
+## HEAD
+
+- Refactor for compatibility with latest coretools release that integrated asyncio
+  support directly into CoreTools so it doesn't need to be bolted on anymore inside
+  `iotile-emulate`
+
 ## 0.4.4
 
 - Support busy response for RPCs in iotile-emulate. Issue #619
