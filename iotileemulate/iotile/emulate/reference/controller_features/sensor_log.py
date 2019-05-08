@@ -227,7 +227,7 @@ class SensorLogSubsystem(ControllerSubsystemBase):
         if not exact:
             error = pack_error(ControllerSubsystem.SENSOR_LOG, SensorLogError.ID_FOUND_FOR_ANOTHER_STREAM)
 
-        return (error, error.NO_ERROR, self.dump_walker.count())
+        return (error, Error.NO_ERROR, self.dump_walker.count())
 
     def dump_next(self):
         """Dump the next reading from the stream.
