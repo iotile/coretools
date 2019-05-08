@@ -11,7 +11,7 @@ setup(
     description="IOTile Device Emulation",
     install_requires=[
         "iotile-core>=5.0.0rc1,<6",
-        "iotile-sensorgraph>=0.8.1,<1"
+        "iotile-sensorgraph>=1,<2"
     ],
     python_requires=">=3.5,<4",
     entry_points={'iotile.virtual_device': ['reference_1_0 = iotile.emulate.demo:DemoReferenceDevice',
