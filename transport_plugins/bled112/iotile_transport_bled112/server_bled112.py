@@ -185,13 +185,13 @@ class BLED112Server(StandardDeviceServer):
         ble_flags = struct.pack("<BBB", 2, 1, 0x4 | 0x2)  # General discoverability and no BR/EDR support
 
         if self.virtual_info['advertising_version'] == 1:
-            flags = (0 << 1) | (0 << 2) | (1 << 3) | (1 << 4) | (int(self.device.pending_data))
+            flags = (0 << 1) | (0 << 2) | (1 << 3) | (1 << 4)
             uuid_list = struct.pack("<BB16s", 17, 6, TileBusService.bytes_le)
             manu = struct.pack("<BBHLH", 9, 0xFF, ArchManuID, self.device.iotile_id, flags)
             return ble_flags + uuid_list + manu
 
         else: #self.virtual_info['advertising_version'] == 2:
-            flags = (0 << 0) | (int(self.device.pending_data) << 1) | (int(self.device.connected) << 2) | (0 << 3)
+            flags = (0 << 0) | (int(self.device.connected) << 2) | (0 << 3)
             reboots = self.virtual_info['reboot_count']
             voltage = int(self.virtual_info['battery_voltage'] * 32)
 
@@ -253,6 +253,8 @@ class BLED112Server(StandardDeviceServer):
         self.payload_notif = False
         self.connected = False
 
+        await self.disconnect(self.CLIENT_ID, str(self.device.iotile_id))
+
         self._logger.debug("Reenabling advertisements after disconnection")
         await self._command_task.future_command(['_set_mode', 4, 2])
 
@@ -268,17 +270,17 @@ class BLED112Server(StandardDeviceServer):
                 self._logger.debug("Opening rpc interface")
                 await self.open_interface(self.CLIENT_ID, str(self.device.iotile_id), 'rpc')
         elif handle == self.StreamingHandle:
-            if flags & 0b1 and not self.device.interface_open('stream'):
+            if flags & 0b1 and not self.device.interface_open('streaming'):
                 self._logger.debug("Opening streaming interface")
                 await self.open_interface(self.CLIENT_ID, str(self.device.iotile_id), 'streaming')
-            elif not (flags & 0b1) and self.device.interface_open('stream'):
+            elif not (flags & 0b1) and self.device.interface_open('streaming'):
                 self._logger.debug("Closing streaming interface")
                 await self.close_interface(self.CLIENT_ID, str(self.device.iotile_id), 'streaming')
         elif handle == self.TracingHandle:
-            if flags & 0b1 and not self.device.interface_open('trace'):
+            if flags & 0b1 and not self.device.interface_open('tracing'):
                 self._logger.debug("Opening tracing interface")
                 await self.open_interface(self.CLIENT_ID, str(self.device.iotile_id), 'tracing')
-            elif not (flags & 0b1) and self.device.interface_open('trace'):
+            elif not (flags & 0b1) and self.device.interface_open('tracing'):
                 self._logger.debug("Closing tracing interface")
                 await self.close_interface(self.CLIENT_ID, str(self.device.iotile_id), 'tracing')
 
@@ -317,7 +319,7 @@ class BLED112Server(StandardDeviceServer):
 
         payload = self.rpc_payload[:length]
 
-        self._logger.debug("Calling RPC %d:%04X with %s", address, rpc_id, binascii.hexlify(payload))
+        self._logger.debug("Calling RPC %d:%04X with hex payload '%s'", address, rpc_id, binascii.hexlify(payload).decode('utf-8'))
 
         exception = None
         response = None
