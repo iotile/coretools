@@ -1,7 +1,8 @@
 """Reference device for testing the individual report format
 """
 
-from iotile.core.hw.virtual.virtualdevice_simple import SimpleVirtualDevice
+from iotile.core.hw.exceptions import DevicePushError
+from iotile.core.hw.virtual import SimpleVirtualDevice
 from iotile.core.hw.reports import IndividualReadingReport, IOTileReading, BroadcastReport
 
 
@@ -94,7 +95,7 @@ class RealtimeTestDevice(SimpleVirtualDevice):
         for interval, value in traces:
             self.create_worker(self._create_trace, interval, value)
 
-    def _create_trace(self, value):
+    async def _create_trace(self, value):
         """Send a realtime tracing value
 
         Args:
@@ -104,9 +105,12 @@ class RealtimeTestDevice(SimpleVirtualDevice):
         if not self.interface_open('tracing'):
             return
 
-        self.trace(bytearray(value.encode('ascii')))
+        try:
+            await self.trace(bytearray(value.encode('ascii')))
+        except DevicePushError:
+            pass
 
-    def _create_stream(self, stream, value):
+    async def _create_stream(self, stream, value):
         """Send a realtime streaming value
 
         Args:
@@ -120,9 +124,13 @@ class RealtimeTestDevice(SimpleVirtualDevice):
         reading = IOTileReading(0, stream, value)
 
         report = IndividualReadingReport.FromReadings(self.iotile_id, [reading])
-        self.stream(report)
 
-    def _create_broadcast(self, stream, value):
+        try:
+            await self.stream(report)
+        except DevicePushError:
+            pass
+
+    async def _create_broadcast(self, stream, value):
         """Send a broadcast streaming value.
 
         Args:
@@ -133,4 +141,8 @@ class RealtimeTestDevice(SimpleVirtualDevice):
         reading = IOTileReading(0, stream, value)
 
         report = BroadcastReport.FromReadings(self.iotile_id, [reading])
-        self.stream(report)
+
+        try:
+            await self.stream(report)
+        except DevicePushError:
+            pass

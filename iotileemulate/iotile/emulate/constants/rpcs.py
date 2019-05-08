@@ -10,7 +10,7 @@ the RPCDeclaration itself.
 """
 
 #pylint:disable=wildcard-import,unused-wildcard-import;This is designed to a single place for all RPCS.
-from .rpc_declaration import RPCDeclaration
+from iotile.core.hw.virtual import RPCDeclaration
 from .rpc_tilemanager import *
 from .rpc_config_database import *
 from .rpc_config_variables import *

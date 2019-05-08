@@ -75,7 +75,7 @@ def test_config_variable_rpcs(reference):
     peripheral.declare_config_variable('test 2', 0x8001, 'uint32_t[5]')
 
     # Test listing
-    resp = device.rpc(10, rpcs.LIST_CONFIG_VARIABLES, 0)
+    resp = device.simple_rpc(10, rpcs.LIST_CONFIG_VARIABLES, 0)
     count = resp[0]
     ids = resp[1:]
 
@@ -84,9 +84,9 @@ def test_config_variable_rpcs(reference):
     assert ids[:2] == (0x8000, 0x8001)
 
     # Test describing
-    resp1 = device.rpc(10, rpcs.DESCRIBE_CONFIG_VARIABLE, 0x8000)
-    resp2 = device.rpc(10, rpcs.DESCRIBE_CONFIG_VARIABLE, 0x8001)
-    resp3 = device.rpc(10, rpcs.DESCRIBE_CONFIG_VARIABLE, 0x8002)
+    resp1 = device.simple_rpc(10, rpcs.DESCRIBE_CONFIG_VARIABLE, 0x8000)
+    resp2 = device.simple_rpc(10, rpcs.DESCRIBE_CONFIG_VARIABLE, 0x8001)
+    resp3 = device.simple_rpc(10, rpcs.DESCRIBE_CONFIG_VARIABLE, 0x8002)
 
     assert len(resp1) == 5
     assert len(resp2) == 5
@@ -105,30 +105,30 @@ def test_config_variable_rpcs(reference):
 
     # Test setting (make sure to artificially force pre-app started state)
     peripheral.initialized.clear()
-    err, = device.rpc(10, rpcs.SET_CONFIG_VARIABLE, 0x8000, 0, bytes(bytearray([5, 6])))
+    err, = device.simple_rpc(10, rpcs.SET_CONFIG_VARIABLE, 0x8000, 0, bytes(bytearray([5, 6])))
     assert err == 0
 
-    err, = device.rpc(10, rpcs.SET_CONFIG_VARIABLE, 0x8001, 0, bytes(bytearray([7, 8])))
+    err, = device.simple_rpc(10, rpcs.SET_CONFIG_VARIABLE, 0x8001, 0, bytes(bytearray([7, 8])))
     assert err == 0
 
-    err, = device.rpc(10, rpcs.SET_CONFIG_VARIABLE, 0x8001, 19, bytes(bytearray([7, 8])))
+    err, = device.simple_rpc(10, rpcs.SET_CONFIG_VARIABLE, 0x8001, 19, bytes(bytearray([7, 8])))
     assert err == Error.INPUT_BUFFER_TOO_LONG
 
-    err, = device.rpc(10, rpcs.SET_CONFIG_VARIABLE, 0x8002, 0, bytes(bytearray([7, 8])))
+    err, = device.simple_rpc(10, rpcs.SET_CONFIG_VARIABLE, 0x8002, 0, bytes(bytearray([7, 8])))
     assert err == Error.INVALID_ARRAY_KEY
 
     peripheral.initialized.set()
-    err, = device.rpc(10, rpcs.SET_CONFIG_VARIABLE, 0x8000, 0, bytes(bytearray([5, 6])))
+    err, = device.simple_rpc(10, rpcs.SET_CONFIG_VARIABLE, 0x8000, 0, bytes(bytearray([5, 6])))
     assert err == Error.STATE_CHANGE_AT_INVALID_TIME
 
     # Test Getting
-    data, = device.rpc(10, rpcs.GET_CONFIG_VARIABLE, 0x8000, 0)
+    data, = device.simple_rpc(10, rpcs.GET_CONFIG_VARIABLE, 0x8000, 0)
     assert data == bytearray([5, 6])
 
-    data, = device.rpc(10, rpcs.GET_CONFIG_VARIABLE, 0x8001, 0)
+    data, = device.simple_rpc(10, rpcs.GET_CONFIG_VARIABLE, 0x8001, 0)
     assert data == bytearray([7, 8])
 
-    data, = device.rpc(10, rpcs.GET_CONFIG_VARIABLE, 0x8002, 0)
+    data, = device.simple_rpc(10, rpcs.GET_CONFIG_VARIABLE, 0x8002, 0)
     assert data == bytearray([])
 
 

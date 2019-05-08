@@ -45,7 +45,7 @@ in a variety of contexts including a direct command line simulator named
 iotile-sgrun as well as an optimizing compiler.
 """
 
-from .rpc_declaration import RPCDeclaration
+from iotile.core.hw.virtual import RPCDeclaration
 
 
 SG_COUNT_NODES = RPCDeclaration(0x2002, "", "L")

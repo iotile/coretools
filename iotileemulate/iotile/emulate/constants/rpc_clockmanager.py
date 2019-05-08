@@ -23,7 +23,8 @@ by the user, however the last two ticks are designed for easy control in the
 field.
 """
 
-from .rpc_declaration import RPCDeclaration
+from iotile.core.hw.virtual import RPCDeclaration
+
 
 GET_USER_TIMER = RPCDeclaration(0x2014, "H", "LL")
 """Get the current interval in seconds of a user-controllable timer.

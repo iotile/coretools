@@ -179,8 +179,7 @@ class RPCQueue:
 
                     self._current_rpc = (address, rpc_id)
                     result = self._rpc_handler(address, rpc_id, arg_payload)
-
-                    if inspect.iscoroutine(result):
+                    if inspect.isawaitable(result):
                         result = await result
 
                     self._current_rpc = None

@@ -2,12 +2,13 @@
 
 import logging
 from iotile.core.exceptions import DataError
+from iotile.core.utilities import SharedLoop
 from iotile.core.hw.virtual import StandardVirtualDevice, pack_rpc_payload, unpack_rpc_payload
 from iotile.core.hw.exceptions import AsynchronousRPCResponse, BusyRPCResponse
 from .emulation_mixin import EmulationMixin
 from .state_log import EmulationStateLog
 from ..constants.rpcs import RPCDeclaration
-from ..internal import EmulationLoop, AwaitableResponse
+from ..internal import EmulationLoop
 from ..utilities import format_rpc
 
 
@@ -28,20 +29,21 @@ class EmulatedDevice(EmulationMixin, StandardVirtualDevice):
     Args:
         iotile_id (int): A 32-bit integer that specifies the globally unique ID
             for this IOTile device.
+        loop (BackgroundEventLoop): The loop to use to run this device's simulation.
     """
 
     __NO_EXTENSION__ = True
 
-    def __init__(self, iotile_id):
+    def __init__(self, iotile_id, *, loop=SharedLoop):
         self.state_history = EmulationStateLog()
 
         StandardVirtualDevice.__init__(self, iotile_id)
         EmulationMixin.__init__(self, None, self.state_history)
 
         self._logger = logging.getLogger(__name__)
-        self.emulator = EmulationLoop(self._dispatch_rpc)
+        self.emulator = EmulationLoop(self._dispatch_rpc, loop=loop)
 
-    def _dispatch_rpc(self, address, rpc_id, arg_payload):
+    async def _dispatch_rpc(self, address, rpc_id, arg_payload):
         """Background work queue handler to dispatch RPCs."""
 
         if self.emulator.is_tile_busy(address):
@@ -50,7 +52,7 @@ class EmulatedDevice(EmulationMixin, StandardVirtualDevice):
 
         try:
             # Send the RPC immediately and wait for the response
-            resp = super(EmulatedDevice, self).call_rpc(address, rpc_id, arg_payload)
+            resp = await super(EmulatedDevice, self).async_rpc(address, rpc_id, arg_payload)
             self._track_change('device.rpc_sent', (address, rpc_id, arg_payload, resp, None), formatter=format_rpc)
 
             return resp
@@ -98,8 +100,8 @@ class EmulatedDevice(EmulationMixin, StandardVirtualDevice):
         before returning.
 
         Args:
-            channel (IOTilePushChannel): the channel with a stream and trace
-                routine for streaming and tracing data through a VirtualInterface
+            channel (AbstractAsyncDeviceChannel): A channel to allow pushing
+                events to the client asynchronously.
         """
 
         super(EmulatedDevice, self).start(channel)
@@ -109,7 +111,6 @@ class EmulatedDevice(EmulationMixin, StandardVirtualDevice):
         """Stop running this virtual device including any worker threads."""
 
         self.emulator.stop()
-
         super(EmulatedDevice, self).stop()
 
     def dump_state(self):
@@ -128,51 +129,7 @@ class EmulatedDevice(EmulationMixin, StandardVirtualDevice):
 
         return state
 
-    def rpc(self, address, rpc_id, *args, **kwargs):
-        """Immediately dispatch an RPC inside this EmulatedDevice.
-
-        This function is meant to be used for testing purposes as well as by
-        tiles inside a complex EmulatedDevice subclass that need to
-        communicate with each other.  It should only be called from the main
-        virtual device thread where start() was called from.
-
-        **Background workers may not call this method since it may cause them to deadlock.**
-
-        Args:
-            address (int): The address of the tile that has the RPC.
-            rpc_id (int): The 16-bit id of the rpc we want to call
-            *args: Any required arguments for the RPC as python objects.
-            **kwargs: Only two keyword arguments are supported:
-                - arg_format: A format specifier for the argument list
-                - result_format: A format specifier for the result
-
-        Returns:
-            list: A list of the decoded response members from the RPC.
-        """
-
-        if isinstance(rpc_id, RPCDeclaration):
-            arg_format = rpc_id.arg_format
-            resp_format = rpc_id.resp_format
-            rpc_id = rpc_id.rpc_id
-        else:
-            arg_format = kwargs.get('arg_format', None)
-            resp_format = kwargs.get('resp_format', None)
-
-        arg_payload = b''
-
-        if arg_format is not None:
-            arg_payload = pack_rpc_payload(arg_format, args)
-
-        self._logger.debug("Sending rpc to %d:%04X, payload=%s", address, rpc_id, args)
-
-        resp_payload = self.call_rpc(address, rpc_id, arg_payload)
-        if resp_format is None:
-            return []
-
-        resp = unpack_rpc_payload(resp_format, resp_payload)
-        return resp
-
-    def call_rpc(self, address, rpc_id, payload=b""):
+    async def async_rpc(self, address, rpc_id, payload=b""):
         """Call an RPC by its address and ID.
 
         This will send the RPC to the background rpc dispatch thread and
@@ -184,68 +141,10 @@ class EmulatedDevice(EmulationMixin, StandardVirtualDevice):
             payload (bytes): A byte string of payload parameters up to 20 bytes
 
         Returns:
-            bytes: The response payload from the RPC
+            bytes: the response payload from the RPC
         """
 
-        return self.emulator.call_rpc_external(address, rpc_id, payload)
-
-    def trace_sync(self, data, timeout=5.0):
-        """Send tracing data and wait for it to finish.
-
-        This awaitable coroutine wraps VirtualIOTileDevice.trace() and turns
-        the callback into an awaitable object.  The appropriate usage of this
-        method is by calling it inside the event loop as:
-
-        await device.trace_sync(data)
-
-        Args:
-            data (bytes): The raw data that should be traced.
-            timeout (float): The maximum number of seconds to wait before
-                timing out.
-
-        Returns:
-            awaitable: An awaitable object with the result.
-
-            The result will be True if the data was sent successfully
-            or False if the data could not be sent in its entirety.
-
-            When False is returned, there is no guarantee about how much of
-            the data was sent, if any, just that it was not known to be
-            successfully sent.
-        """
-
-        done = AwaitableResponse()
-        self.trace(data, callback=done.set_result)
-        return done.wait(timeout)
-
-    def stream_sync(self, report, timeout=120.0):
-        """Send a report and wait for it to finish.
-
-        This awaitable coroutine wraps VirtualIOTileDevice.stream() and turns
-        the callback into an awaitable object.  The appropriate usage of this
-        method is by calling it inside the event loop as:
-
-        await device.stream_sync(data)
-
-        Args:
-            report (IOTileReport): The report that should be streamed.
-            timeout (float): The maximum number of seconds to wait before
-                timing out.
-
-        Returns:
-            awaitable: An awaitable object with the result.
-
-            The result will be True if the data was sent successfully
-            or False if the data could not be sent in its entirety.
-
-            When False is returned, there is no guarantee about how much of
-            the data was sent, if any, just that it was not known to be
-            successfully sent.
-        """
-
-        done = AwaitableResponse()
-        self.stream(report, callback=done.set_result)
-        return done.wait(timeout)
+        return await self.emulator.call_rpc_internal(address, rpc_id, payload)
 
     def synchronize_task(self, func, *args, **kwargs):
         """Run callable in the rpc thread and wait for it to finish.
@@ -271,6 +170,9 @@ class EmulatedDevice(EmulationMixin, StandardVirtualDevice):
             object: Whatever callable returns after it runs.
         """
 
+        if self.emulator.on_emulation_thread():
+            return func(*args, **kwargs)
+
         async def _runner():
             return func(*args, **kwargs)
 
@@ -289,14 +191,23 @@ class EmulatedDevice(EmulationMixin, StandardVirtualDevice):
         deterministic testing because you can start an action and know
         precisely when all potential chain reactions have stopped.
 
-        This method will block the calling thread until the _rpc_queue is
-        idle.
+        The behavior of this function depends on whether it is called within
+        or outside of the emulation loop.  If it is called within the emulation
+        loop then it returns an awaitable object so the correct usage is:
+        ``await wait_idle()``.
 
-        **Calling wait_idle from the emulation thread would deadlock and will
-        raise an exception.**
+        If it is called outside of the event loop it blocks the calling thread
+        synchronously until the device is idle and returns None.
+
+        This method is safe to call either inside or outside of the emulation
+        loop.  However, if you are calling it inside of the emulation loop,
+        you need to make sure you are not creating a deadlock by waiting for
+        an idle condition inside of a handler function that must finish before
+        the device can be idle.  It is not possible to deadlock with this
+        function if called from outside of the event loop.
         """
 
-        self.emulator.wait_idle()
+        return self.emulator.wait_idle()
 
     def restore_state(self, state):
         """Restore the current state of this emulated device.

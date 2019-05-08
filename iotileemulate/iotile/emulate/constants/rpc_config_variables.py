@@ -9,7 +9,7 @@ actual config variables to each tile, these RPCs just provide the API that it
 can use in order to do so.
 """
 
-from .rpc_declaration import RPCDeclaration
+from iotile.core.hw.virtual import RPCDeclaration
 
 
 LIST_CONFIG_VARIABLES = RPCDeclaration(10, "H", "H9H")

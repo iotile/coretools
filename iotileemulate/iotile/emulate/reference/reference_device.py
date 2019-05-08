@@ -141,29 +141,6 @@ class ReferenceDevice(EmulatedDevice):
         self._simulating_time = False
         super(ReferenceDevice, self).stop()
 
-    def open_streaming_interface(self):
-        """Called when someone opens a streaming interface to the device.
-
-        This method will automatically notify sensor_graph that there is a
-        streaming interface opened.
-
-        Returns:
-            list: A list of IOTileReport objects that should be sent out
-                the streaming interface.
-        """
-
-        self.rpc(8, rpcs.SG_GRAPH_INPUT, 8, streams.COMM_TILE_OPEN)
-        return []
-
-    def close_streaming_interface(self):
-        """Called when someone closes the streaming interface to the device.
-
-        This method will automatically notify sensor_graph that there is a no
-        longer a streaming interface opened.
-        """
-
-        self.rpc(8, rpcs.SG_GRAPH_INPUT, 8, streams.COMM_TILE_CLOSED)
-
     def dump_state(self):
         """Dump the current state of this emulated object as a dictionary.
 
@@ -216,3 +193,21 @@ class ReferenceDevice(EmulatedDevice):
             self.script = base64.b64decode(state.get('received_script'))
 
         self.synchronize_task(_background_restore)
+
+    async def _open_streaming_interface(self):
+        """Called when someone opens a streaming interface to the device.
+
+        This method will automatically notify sensor_graph that there is a
+        streaming interface opened.
+        """
+
+        await self.emulator.await_rpc(8, rpcs.SG_GRAPH_INPUT, 8, streams.COMM_TILE_OPEN)
+
+    async def _close_streaming_interface(self):
+        """Called when someone closes the streaming interface to the device.
+
+        This method will automatically notify sensor_graph that there is a no
+        longer a streaming interface opened.
+        """
+
+        await self.emulator.await_rpc(8, rpcs.SG_GRAPH_INPUT, 8, streams.COMM_TILE_CLOSED)
