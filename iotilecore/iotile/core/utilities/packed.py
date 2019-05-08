@@ -1,6 +1,8 @@
 import struct
 import sys
+import warnings
 
+warnings.warn("unpack was a legacy shim for python < 2.7.5 and will be removed in a future iotile-core release", DeprecationWarning)
 
 def unpack(fmt, arg):
     """A shim around struct.unpack to allow it to work on python 2.7.3."""

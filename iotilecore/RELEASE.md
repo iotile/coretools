@@ -12,6 +12,9 @@ All major changes in each released version of `iotile-core` are listed here.
 - Completely remove `VirtualIOTileInterface` and replace with `AbstractDeviceServer`.
   `virtual_device` script has been updated to use `AbstractDeviceServer` directly instead
   of requiring it to be wrapped inside a `VirtualIOTileInterface` shim.
+- Refactor virtual device hierarchy to be more maintainable and remove a lot of the
+  legacy cruft that had accumulated in the machinery over the years.
+- Standardize all hardware related exceptions inside `iotile.core.hw.exceptions`
 
 ## 4.1.2
 
