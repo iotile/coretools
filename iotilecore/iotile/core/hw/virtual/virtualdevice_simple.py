@@ -38,7 +38,8 @@ class SimpleVirtualDevice(BaseVirtualDevice, _PeriodicWorkerMixin):
         name (str): The 6 byte name that should be returned when anyone asks
             for the controller's name of this IOTile device using an RPC
         loop (BackgroundEventLoop): The loop we should use for running background
-            tasks. Defaults to the global SharedLoop
+            tasks. Defaults to the global SharedLoop.
+            *This must be passed as a keyword agument.*
     """
 
     __NO_EXTENSION__ = True

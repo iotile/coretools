@@ -3,7 +3,6 @@
 import struct
 import uuid
 import logging
-import inspect
 from iotile.core.utilities import SharedLoop
 from iotile.core.hw.reports import IOTileReading
 from iotile.core.hw.exceptions import RPCInvalidIDError, RPCNotFoundError, TileNotFoundError
@@ -278,9 +277,7 @@ class MockBLEDevice:
 
         status = 0
         try:
-            response = self.device.call_rpc(address, rpc_id, bytes(payload))
-            if inspect.isawaitable(response):
-                response = SharedLoop.run_coroutine(response)
+            response = SharedLoop.run_coroutine(self.device.async_rpc(address, rpc_id, bytes(payload)))
         except (RPCInvalidIDError, RPCNotFoundError):
             status = 1 #FIXME: Insert the correct ID here
             response = b""
