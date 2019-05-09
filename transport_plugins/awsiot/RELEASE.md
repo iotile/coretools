@@ -2,7 +2,7 @@
 
 All major changes in each released version of iotile-transport-awsiot are listed here.
 
-## 1.0.4
+## 1.0.4rc1
 
 - Update for iotile-core 5.
 

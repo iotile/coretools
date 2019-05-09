@@ -2,7 +2,7 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
-## 5.0.0-rc1
+## 5.0.0rc1
 
 - Add support for background event loops using `asyncio` and migrate CMDStream
   DeviceAdapter interface.

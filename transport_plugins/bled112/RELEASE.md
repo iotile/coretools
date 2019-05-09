@@ -2,7 +2,7 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
-## 3.0.0-rc1
+## 3.0.0rc1
 
 - Remove VirtualInterface and replace with an initial implementation of `BLED112DeviceServer`.
   There is still more work to do on the device server to make it production quality but all
