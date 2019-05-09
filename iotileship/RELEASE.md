@@ -2,7 +2,7 @@
 
 All major changes in each released version of IOTileShip are listed here.
 
-## 1.0.7
+## 1.0.7rc1
 
 - Unpin `iotile-core` to support iotile-core 5
 

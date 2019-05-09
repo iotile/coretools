@@ -2,7 +2,7 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
-## 2.0.0-rc1
+## 2.0.0rc1
 
 - Remove old test fixtures and update for compatibility with iotile-core 5
 

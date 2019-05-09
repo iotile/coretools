@@ -2,7 +2,7 @@
 
 All major changes in each released version of the native BLE transport plugin are listed here.
 
-## 3.0.0-rc1
+## 3.0.0rc1
 
 - Temporarily remove `virtual_ble` interface as it is ported to be a DeviceServer.
 - Update for compatibility with `iotile-core` 5.

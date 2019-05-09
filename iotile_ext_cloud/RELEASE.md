@@ -2,7 +2,7 @@
 
 All major changes in each released version of the iotile-ext-cloud plugin are listed here.
 
-## 1.0.6
+## 1.0.6rc1
 
 - Unpin `iotile-core` to support compatibility with version 5.0.0
 
