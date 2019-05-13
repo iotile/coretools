@@ -1,188 +1,113 @@
-"""A background thread for asynchronous operations on the jlink adapter."""
+"""A class with async wrappers around operations on the jlink adapter."""
 
-import threading
+import asyncio
 import logging
 import struct
 import time
-from collections import namedtuple
-from time import monotonic
+import pylink
 from iotile.core.exceptions import ArgumentError, HardwareError
+from iotile.core.utilities import SharedLoop
 import iotile_transport_jlink.devices as devices
 from .structures import ControlStructure
-import pkg_resources
 from .data import flash_forensics_config as ff_cfg
-import time
 
-from queue import Queue
 
 # pylint:disable=invalid-name;This is not a constant so its name is okay
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
-JLinkCommand = namedtuple("JLinkCommand", ['name', 'args', 'callback'])
-
-
-class JLinkControlThread(threading.Thread):
-    """A class that synchronously executes long-running commands on a jlink.
+class AsyncJLink:
+    """A class that wraps long-running commands on a jlink into async functions.
 
     Args:
         jlink (pylink.JLink): An open jlink adapter instance.
     """
 
-    STOP = 0
-    READ_MEMORY = 1
-    FIND_CONTROL = 2
-    VERIFY_CONTROL = 3
-    SEND_RPC = 4
-    PROGRAM_FLASH = 5
-    SEND_SCRIPT = 6
-    DEBUG_READ_MEMORY = 7
-    DEBUG_WRITE_MEMORY = 8
+    def __init__(self, jlink_adapter, loop=SharedLoop):
+        self._jlink_adapter = jlink_adapter
+        self._jlink = None
+        self._loop = loop
 
-    KNOWN_COMMANDS = {
-        STOP: None,
-        READ_MEMORY: "_read_memory",
-        FIND_CONTROL: "_find_control_structure",
-        VERIFY_CONTROL: "_verify_control_structure",  # Takes device_info, (optional) control_info parameters
-        SEND_RPC: "_send_rpc",  # Takes control_info, address, rpc_id, payload, poll_interval, timeout
-        SEND_SCRIPT: "_send_script",  # Takes  device_info, control_info, script, progress_callback
+        # maintenance can be enabled for different interfaces
+        self._maintenance_counter = 0
+        self._maintenance_task = None
+        self.rpc_response_event = self._loop.create_event() # triggered when the controller acknowledge rpc response
 
-        # Debug commands
-        DEBUG_READ_MEMORY:   "_debug_read_memory", # Takes device_info, control_info (ignored), args {'region' : str, 'start' : integer, 'length' : integer, 'halt' : boolean}
-        DEBUG_WRITE_MEMORY:   "_debug_write_memory", # Takes device_info (ignored), control_info (ignored), args {'region' : str, 'start' : integer, 'length' : integer}
-        PROGRAM_FLASH: "_program_flash" # Takes device_info, control_info (ignored), args {'data': binary}
-    }
-
-    def __init__(self, jlink):
-        super(JLinkControlThread, self).__init__()
-
-        self._jlink = jlink
-        self._commands = Queue()
-
-    def run(self):
-        logger.critical("Starting JLink control thread")
-        while True:
-            try:
-                cmd = self._commands.get()
-                if not isinstance(cmd, JLinkCommand):
-                    logger.error("Invalid command object that is not a JLinkCommand: %s", cmd)
-                    continue
-
-                if cmd.name == JLinkControlThread.STOP:
-                    logger.info("stop command received")
-                    break
-
-                callback = cmd.callback
-                exception = None
-                result = None
-                try:
-                    funcname = self.KNOWN_COMMANDS.get(cmd.name)
-                    if funcname is None:
-                        raise ArgumentError("Unknown command name in JLinkControlThread", name=cmd.name)
-
-                    func = getattr(self, funcname)
-
-                    args = cmd.args
-                    if args is None:
-                        args = ()
-
-                    result = func(*args)
-                except Exception as exc:  #pylint:disable=broad-except;We want to rethrow everything in the main thread
-                    exception = exc
-                    logger.exception("Error executing command %s with args %s", cmd.name, cmd.args)
-
-                if callback is not None:
-                    callback(cmd.name, result, exception=exception)
-            except:  #pylint:disable=bare-except;We want to keep our control thread always open
-                logger.exception("Uncaught exception in JLink control thread")
-
-        logger.critical("Shutting down JLink control thread")
-
-    def command(self, cmd_name, callback, *args):
-        """Run an asynchronous command.
-
-        Args:
-            cmd_name (int): The unique code for the command to execute.
-            callback (callable): The optional callback to run when the command finishes.
-                The signature should be callback(cmd_name, result, exception)
-            *args: Any arguments that are passed to the underlying command handler
-        """
-        cmd = JLinkCommand(cmd_name, args, callback)
-        self._commands.put(cmd)
-
-    def stop(self):
-        """Tell this thread to stop, do not wait for it to finish."""
-        self._commands.put(JLinkCommand(JLinkControlThread.STOP, None, None))
-
-    def _send_rpc(self, device_info, control_info, address, rpc_id, payload, poll_interval, timeout):
+    async def send_rpc(self, device_info, control_info, address, rpc_id, payload, timeout):
         """Write and trigger an RPC."""
 
         write_address, write_data = control_info.format_rpc(address, rpc_id, payload)
-        self._jlink.memory_write32(write_address, write_data)
+        await self.write_memory(write_address, write_data, chunk_size=4)
 
-        self._trigger_rpc(device_info)
-
-        start = monotonic()
-        now = start
-
-        poll_address, poll_mask = control_info.poll_info()
-
-        while (now - start) < timeout:
-            time.sleep(poll_interval)
-            value, = self._jlink.memory_read8(poll_address, 1)
-
-            if value & poll_mask:
-                break
-
-            now = monotonic()
-
-        if (now - start) >= timeout:
-            raise HardwareError("Timeout waiting for RPC response", timeout=timeout, poll_interval=poll_interval)
+        await self._trigger_rpc(device_info)
+        await self._wait_rpc_completion(control_info, timeout)
 
         read_address, read_length = control_info.response_info()
-        read_data = self._read_memory(read_address, read_length, join=True)
+        read_data = await self.read_memory(read_address, read_length, join=True)
 
         return control_info.format_response(read_data)
 
-    def _send_script(self, device_info, control_info, script, progress_callback):
+    async def send_script(self, device_info, control_info, script):
         """Send a script by repeatedly sending it as a bunch of RPCs.
 
         This function doesn't do anything special, it just sends a bunch of RPCs
         with each chunk of the script until it's finished.
         """
 
+        conn_string = self._jlink_adapter._get_property(self._jlink_adapter._connection_id, 'connection_string')
         for i in range(0, len(script), 20):
             chunk = script[i:i+20]
-            self._send_rpc(device_info, control_info, 8, 0x2101, chunk, 0.001, 1.0)
-            if progress_callback is not None:
-                progress_callback(i + len(chunk), len(script))
+            await self.send_rpc(device_info, control_info, 8, 0x2101, chunk, 1.0)
 
-    def _trigger_rpc(self, device_info):
+            event = {
+                "operation": "script",
+                "finished": i + len(chunk),
+                "total": len(script)
+            }
+            self._jlink_adapter.notify_event(conn_string, 'progress', event)
+
+    async def _wait_rpc_completion(self, control_info, timeout):
+        try:
+            await asyncio.wait_for(self.rpc_response_event.wait(), timeout)
+        except asyncio.TimeoutError:
+            raise HardwareError("Timeout waiting for RPC response", timeout=timeout)
+
+        poll_address, poll_mask = control_info.poll_info()
+        value, = await self.read_memory(poll_address, 1, chunk_size=1)
+
+        if not value & poll_mask:
+            raise HardwareError("RPC complete bit is not set")
+
+    async def _trigger_rpc(self, device_info):
         """Trigger an RPC in a device specific way."""
+        self.rpc_response_event.clear()
 
         method = device_info.rpc_trigger
         if isinstance(method, devices.RPCTriggerViaSWI):
-            self._jlink.memory_write32(method.register, [1 << method.bit])
+            await self.write_memory(method.register, [1 << method.bit], chunk_size=4)
         else:
             raise HardwareError("Unknown RPC trigger method", method=method)
 
-    def _continue(self):
+    def _continue_blocking(self):
         self._jlink.step()
         self._jlink._dll.JLINKARM_Go()
         while not self._jlink.halted():
             time.sleep(0.01)
 
-    def _inject_blob(self, absolute_path_to_binary):
-        with open(absolute_path_to_binary, mode='rb') as ff_file:
-            ff_bin = ff_file.read()
-        self._jlink.memory_write8(ff_cfg.ff_addresses['blob_inject_start'], ff_bin)
+    async def _continue(self):
+        await self._loop.run_in_executor(self._continue_blocking)
 
-    def _update_reg(self, register, value):
+    async def _inject_blob(self, absolute_path_to_binary):
+        with open(absolute_path_to_binary, mode='rb', loop=self._loop) as ff_file:
+            ff_bin = await self._loop.run_in_executor(ff_file.read())
+        await self.write_memory(ff_cfg.ff_addresses['blob_inject_start'], ff_bin, chunk_size=1)
+
+    def _update_reg_blocking(self, register, value):
         if not self._jlink.halted():
             self._jlink.halt()
         self._jlink.register_write(register, value)
 
-    def _get_register_handle(self, register_string):
+    def _get_register_handle_blocking(self, register_string):
         reg_list = self._jlink.register_list()
         reg_str_paren = '(' + register_string + ')'
 
@@ -192,42 +117,43 @@ class JLinkControlThread(threading.Thread):
                 return reg
         return None
 
-    def _get_ff_max_read_length(self):
-        max_read_length, = self._jlink.memory_read16(ff_cfg.ff_addresses['max_read_length'], 1)
+    async def _get_ff_max_read_length(self):
+        max_read_length, = await self.read_memory(
+            ff_cfg.ff_addresses['max_read_length'], 1, chunk_size=2)
         return max_read_length
 
-    def _write_ff_dump_cmd(self, start, length):
+    async def _write_ff_dump_cmd(self, start, length):
         start_bytes = start.to_bytes(4, byteorder='little')
         length_bytes = length.to_bytes(2, byteorder='little')
 
-        self._jlink.memory_write8(ff_cfg.ff_addresses['read_command_address'], start_bytes)
-        written_start, = self._jlink.memory_read32(ff_cfg.ff_addresses['read_command_address'], 1)
+        await self.write_memory(ff_cfg.ff_addresses['read_command_address'], start_bytes, chunk_size=1)
+        written_start, = await self.read_memory(ff_cfg.ff_addresses['read_command_address'], 1, chunk_size=4)
 
         if written_start != start:
             raise ArgumentError("FF dump command address was not successfully written.")
         else:
             logger.info("FF dump command address written to %s", hex(start))
 
-        self._jlink.memory_write8(ff_cfg.ff_addresses['read_command_length'], length_bytes)
-        written_length, = self._jlink.memory_read16(ff_cfg.ff_addresses['read_command_length'], 1)
+        await self.write_memory(ff_cfg.ff_addresses['read_command_length'], length_bytes, chunk_size=1)
+        written_length, = await self.read_memory(ff_cfg.ff_addresses['read_command_length'], 1, chunk_size=2)
 
         if written_length != length:
             raise ArgumentError("ff dump command length was not successfully written.")
         else:
             logger.info("ff dump command length written to %d", length)
 
-    def _read_ff_dump_resp(self, length):
-        buffer_addr, = self._jlink.memory_read32(ff_cfg.ff_addresses['read_response_buffer_address'], 1)
+    async def _read_ff_dump_resp(self, length):
+        buffer_addr, = await self._jlink.read_memory(ff_cfg.ff_addresses['read_response_buffer_address'], 1)
         logger.info("Response buffer at %s", hex(buffer_addr))
-        flash_dump = self._read_memory(buffer_addr, length)
+        flash_dump = await self.read_memory(buffer_addr, length)
         return flash_dump
 
-    def _read_mapped_memory(self, device_info, region, read_start_addr, read_length):
+    async def _read_mapped_memory(self, device_info, region, read_start_addr, read_length):
         if read_length is None:
             if region == 'ram':
-                memory = self._read_memory(device_info.ram_start, device_info.ram_size)
+                memory = await self.read_memory(device_info.ram_start, device_info.ram_size)
             elif region == 'flash':
-                memory = self._read_memory(device_info.flash_start, device_info.flash_size)
+                memory = await self.read_memory(device_info.flash_start, device_info.flash_size)
             elif region == 'mapped':
                 raise ArgumentError("Must specify a data length to read from mapped memory.")
         else:
@@ -236,24 +162,24 @@ class JLinkControlThread(threading.Thread):
                     raise ArgumentError("Data length must be less than RAM size.", ram_size=device_info.ram_size)
                 if read_start_addr > device_info.ram_size:
                     raise ArgumentError("Starting address must be less than RAM size.", ram_size=device_info.ram_size)
-                memory = self._read_memory(read_start_addr + device_info.ram_start, read_length)
+                memory = await self.read_memory(read_start_addr + device_info.ram_start, read_length)
 
             elif region == 'flash':
                 if read_length > device_info.flash_size:
                     raise ArgumentError("Data length must be less than flash size.", flash_size=device_info.flash_size)
                 if read_start_addr > device_info.flash_size:
                     raise ArgumentError("Starting address must be less than flash size.", flash_size=device_info.flash_size)
-                memory = self._read_memory(read_start_addr + device_info.flash_start, read_length)
+                memory = await self.read_memory(read_start_addr + device_info.flash_start, read_length)
 
             elif region == 'mapped':
                 if read_start_addr > 0:
-                    memory = self._read_memory(read_start_addr, read_length)
+                    memory = await self.read_memory(read_start_addr, read_length)
                 else:
                     raise ArgumentError("Invalid start address to read from mapped memory.")
 
         return memory
 
-    def _debug_read_memory(self, device_info, _control_info, args, _progress_callback):
+    async def debug_read_memory(self, device_info, _control_info, args):
         memory_region = args.get('region').lower()
         start_addr    = args.get('start')
         data_length   = args.get('length')
@@ -262,76 +188,145 @@ class JLinkControlThread(threading.Thread):
         if memory_region == 'external':
             if pause is False:
                 raise ArgumentError("Pause must be True in order to read external data.")
-            self._jlink.reset()
-            self._inject_blob(ff_cfg.ff_absolute_bin_path)
+            await self.reset()
+            await self._inject_blob(ff_cfg.ff_absolute_bin_path)
 
-            pc_reg = self._get_register_handle("PC")
-            self._update_reg(pc_reg, ff_cfg.ff_addresses['program_start'])
+            pc_reg = await self._loop.run_in_executor(
+                self._get_register_handle_blocking, "PC")
+            await self._loop.run_in_executor(self._update_reg_blocking,
+                pc_reg, ff_cfg.ff_addresses['program_start'])
 
-            self._continue()
-            max_read_length = self._get_ff_max_read_length()
+            await self._continue()
+            max_read_length = await self._get_ff_max_read_length()
 
             bytes_dumped = 0
             memory = b''
             while bytes_dumped < data_length:
                 bytes_to_dump = max_read_length if (data_length - bytes_dumped) > max_read_length else (data_length - bytes_dumped)
- 
-                logger.info("BKPT hit, writing SPI dump command now...")
-                logger.info("At PC: %s", hex(self._jlink.register_read(pc_reg)))
-                self._write_ff_dump_cmd(start_addr + bytes_dumped, bytes_to_dump)
 
-                self._continue()
+                logger.info("BKPT hit, writing SPI dump command now...")
+
+                logger.info("At PC: %s", hex(await self.register_read(pc_reg)))
+                await self._write_ff_dump_cmd(start_addr, data_length)
+
+                await self._continue()
 
                 logger.info("BKPT hit, reading response buffer address...")
-                logger.info("At PC: %s", hex(self._jlink.register_read(pc_reg)))
-                memory += self._read_ff_dump_resp(bytes_to_dump)
+                logger.info("At PC: %s", hex(await self.register_read(pc_reg)))
+                memory += await self._read_ff_dump_resp(data_length)
 
                 bytes_dumped += bytes_to_dump
-                self._continue()
+                await self._continue()
 
-            self._jlink.reset()
-            self._jlink._dll.JLINKARM_Go()
+            await self.reset()
+            await self._loop.run_in_executor(self._jlink._dll.JLINKARM_Go)
 
         elif memory_region == 'flash' or memory_region == 'ram' or memory_region == 'mapped':
             if pause is True:
-                self._jlink.halt()
-            
-            memory = self._read_mapped_memory(device_info, memory_region, start_addr, data_length)
+                await self._loop.run_in_executor(self._jlink.halt)
+
+            memory = await self._read_mapped_memory(device_info, memory_region, start_addr, data_length)
 
             if pause is True:
-                self._jlink._dll.JLINKARM_Go()
+                await self._loop.run_in_executor(self._jlink._dll.JLINKARM_Go)
         else:
             raise ArgumentError("Invalid memory region specified, must be one of ['flash', 'ram', 'external', 'mapped']")
 
         return memory
 
-    def _debug_write_memory(self, _device_info, _control_info, args, _progress_callback):
+    async def debug_write_memory(self, _device_info, _control_info, args):
         memory_region = args.get('region').lower()
 
         if memory_region == 'external' or memory_region == 'flash':
             raise ArgumentError("Writing to flash/external is not currently supported.")
-        self._jlink.memory_write(args.get('address'), args.get('data'))
+        await self.write_memory(args.get('address'), args.get('data'), raw_data=True)
 
-    def _program_flash(self, _device_info, _control_info, args, progress_callback):
+    async def program_flash(self, _device_info, _control_info, args):
         base_address = args.get('base_address')
         data = args.get('data')
 
         if base_address is None or data is None:
             raise ArgumentError("Invalid arguments to program flash, expected a dict with base_address and data members")
 
+        conn_string = self._jlink_adapter._get_property(self._jlink_adapter._connection_id, 'connection_string')
+
         def _internal_progress(action, _prog_string, percent):
             """Convert jlink progress callback into our own (finished, total) format."""
-            action_table = {'Compare': 1, 'Erase': 2,
-                            'Flash': 3, 'Verify': 4}
+            action_table = {'Compare': 0, 'Erase': 1,
+                            'Flash': 2, 'Verify': 3}
 
-            if progress_callback is not None:
-                progress_callback(action_table.get(action, 4)*percent, 400)
+            event = {
+                "operation": "debug",
+                "finished": action_table.get(action, 3) * 100 + percent,
+                "total": 400
+            }
+            self._jlink_adapter.notify_event(conn_string, 'progress', event)
 
         logger.info("Flashing %d bytes starting at address 0x%08X", len(data), base_address)
-        self._jlink.flash(data, base_address, _internal_progress)
-        self._jlink.reset(halt=False)
+        await self._loop.run_in_executor(
+            self._jlink.flash, data, base_address, _internal_progress)
+        await self.reset(halt=False)
 
-    def _read_memory(self, start_address, length, chunk_size=4, join=True):
+    @staticmethod
+    def _connect_jlink_blocking(jlink_serial, jlink_name):
+        jlink = pylink.JLink()
+        jlink.open(jlink_serial)
+        jlink.set_tif(pylink.enums.JLinkInterfaces.SWD)
+        jlink.connect(jlink_name)
+        jlink.set_little_endian()
+
+        return jlink
+
+    async def connect_jlink(self, jlink_serial, jlink_name):
+        self._jlink = await self._loop.run_in_executor(
+            self._connect_jlink_blocking, jlink_serial, jlink_name)
+
+        return self._jlink
+
+    async def close_jlink(self):
+        if self._jlink is not None:
+            await self._loop.run_in_executor(self._jlink.close)
+
+    async def start_polling(self, control_info, step_timeout=0.1):
+        counter = self._maintenance_counter
+        self._maintenance_counter += 1
+
+        if counter == 0:
+            self._maintenance_task = self._loop.add_task(
+                self._maintenance_coroutine(control_info, step_timeout))
+
+    async def stop_polling(self):
+        self._maintenance_counter -= 1
+        if self._maintenance_counter == 0:
+            await self._maintenance_task
+
+    async def register_read(self, pc_reg):
+        return await self._loop.run_in_executor(self._jlink.register_read, pc_reg)
+
+    async def reset(self, halt=False):
+        await self._loop.run_in_executor(self._jlink.reset, halt=halt)
+
+    def _write_memory_blocking(self, start_address, data, chunk_size=4, raw_data=False):
+        if raw_data:
+            write_fn = self._jlink.memory_write
+        else:
+            if chunk_size == 1:
+                write_fn = self._jlink.memory_write8
+            elif chunk_size == 2:
+                write_fn = self._jlink.memory_write16
+            elif chunk_size == 4:
+                write_fn = self._jlink.memory_write32
+            else:
+                raise ArgumentError("_write_memory_blocking chunk_size {} is not valid".format(chunk_size))
+
+        return write_fn(start_address, data)
+
+    async def write_memory(self, start_address, data, chunk_size=4, raw_data=False):
+        """ Preferable async version of jlink.memory_writeXX """
+        return await self._loop.run_in_executor(self._write_memory_blocking,
+            start_address, data, chunk_size, raw_data)
+
+    def _read_memory_blocking(self, start_address, length, chunk_size=4, join=True):
         if chunk_size not in (1, 2, 4):
             raise ArgumentError("Invalid chunk size specified in read_memory command", chunk_size=chunk_size)
 
@@ -357,7 +352,26 @@ class JLinkControlThread(threading.Thread):
 
         return words
 
-    def _find_control_structure(self, start_address, search_length):
+    async def read_memory(self, start_address, length, chunk_size=4, join=True):
+        """ Prefable async version for jlink.memory_readXX """
+        return await self._loop.run_in_executor(self._read_memory_blocking,
+            start_address, length, chunk_size, join)
+
+    async def _poll_rpc_status(self, control_info):
+        poll_address, poll_mask = control_info.poll_info()
+        value, = await self.read_memory(poll_address, 1, chunk_size=1)
+
+        if value & poll_mask:
+            self.rpc_response_event.set()
+
+    async def _maintenance_coroutine(self, control_info, step_timeout):
+        while self._maintenance_counter > 0:
+            if self._jlink_adapter.opened_interfaces["rpc"]:
+                await self._poll_rpc_status(control_info)
+
+            await asyncio.sleep(step_timeout)
+
+    async def find_control_structure(self, start_address, search_length):
         """Find the control structure in RAM for this device.
 
         Returns:
@@ -365,7 +379,7 @@ class JLinkControlThread(threading.Thread):
                 used for communication with this IOTile device.
         """
 
-        words = self._read_memory(start_address, search_length, chunk_size=4, join=False)
+        words = await self.read_memory(start_address, search_length, chunk_size=4, join=False)
         found_offset = None
 
         for i, word in enumerate(words):
@@ -393,7 +407,7 @@ class JLinkControlThread(threading.Thread):
 
         return ControlStructure(start_address + 4*found_offset, control_data)
 
-    def _verify_control_structure(self, device_info, control_info=None):
+    async def verify_control_structure(self, device_info, control_info=None):
         """Verify that a control structure is still valid or find one.
 
         Returns:
@@ -401,8 +415,7 @@ class JLinkControlThread(threading.Thread):
         """
 
         if control_info is None:
-            control_info = self._find_control_structure(device_info.ram_start, device_info.ram_size)
+            control_info = await self.find_control_structure(device_info.ram_start, device_info.ram_size)
 
         #FIXME: Actually reread the memory here to verify that the control structure is still valid
         return control_info
-
