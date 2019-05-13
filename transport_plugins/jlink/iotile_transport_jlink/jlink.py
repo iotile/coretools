@@ -7,10 +7,11 @@ import logging
 import pylink
 from typedargs.exceptions import ArgumentError
 from iotile.core.exceptions import HardwareError
-from iotile.core.hw.transport.adapter import DeviceAdapter
+from iotile.core.hw.transport.adapter import StandardDeviceAdapter
+from iotile.core.utilities import SharedLoop
 from .devices import KNOWN_DEVICES, DEVICE_ALIASES
 from .multiplexers import KNOWN_MULTIPLEX_FUNCS
-from .jlink_background import JLinkControlThread
+from .jlink_background import AsyncJLink
 
 
 # pylint:disable=invalid-name;This is not a constant so its name is okay
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
 
-class JLinkAdapter(DeviceAdapter):
+class JLinkAdapter(StandardDeviceAdapter):
     """Wrapper around JLink based transport layer.
 
     Args:
@@ -29,26 +30,27 @@ class JLinkAdapter(DeviceAdapter):
 
     ExpirationTime = 600000
 
-    def __init__(self, port, on_scan=None, on_disconnect=None, **kwargs):
-        super(JLinkAdapter, self).__init__()
+    def __init__(self, port, name=__name__, loop=SharedLoop, **kwargs):
+        super(JLinkAdapter, self).__init__(name, loop)
         self._default_device_info = None
         self._device_info = None
         self._control_info = None
         self._jlink_serial = None
         self._mux_func = None
         self._channel = None
-        self._control_thread = None
+        self._jlink_async = None
         self._connection_id = None
         self.jlink = None
         self.connected = False
+        self.opened_interfaces = {
+            "rpc": False,
+            "tracing": False,
+            "streaming": False,
+            "debug": False,
+            "script": False
+            }
 
         self._parse_port(port)
-
-        if on_scan is not None:
-            self.add_callback('on_scan', on_scan)
-
-        if on_disconnect is not None:
-            self.add_callback('on_disconnect', on_disconnect)
 
     def _parse_port(self, port):
         if port is None or len(port) == 0:
@@ -131,13 +133,17 @@ class JLinkAdapter(DeviceAdapter):
                     print("Warning: multiplexing architecture not selected, channel will not be set")
         return disconnection_required
 
-    def _try_connect(self, connection_string):
+    async def _try_connect(self, connection_string):
         """If the connecton string settings are different, try and connect to an attached device"""
         if self._parse_conn_string(connection_string):
             if self.connected is True:
-                self._trigger_callback('on_disconnect', self.id, self._connection_id)
+                info = {
+                    "reason": "Reconnection",
+                    "expected": True
+                }
+                self.notify_event(connection_string, 'disconnection', info)
                 self.connected = False
-                self.stop_sync()
+                await self.stop()
 
             if self._mux_func is not None:
                 self._mux_func(self._channel)
@@ -147,12 +153,10 @@ class JLinkAdapter(DeviceAdapter):
                                     "or -c device=name in connect_direct or debug command",
                                     known_devices=[x for x in DEVICE_ALIASES.keys()])
 
+            self._jlink_async = AsyncJLink(self, loop=self._loop)
             try:
-                self.jlink = pylink.JLink()
-                self.jlink.open(serial_no=self._jlink_serial)
-                self.jlink.set_tif(pylink.enums.JLinkInterfaces.SWD)
-                self.jlink.connect(self._device_info.jlink_name)
-                self.jlink.set_little_endian()
+                await self._jlink_async.connect_jlink(
+                    self._jlink_serial, self._device_info.jlink_name)
                 self.connected = True
             except pylink.errors.JLinkException as exc:
                 if exc.code == exc.VCC_FAILURE:
@@ -163,166 +167,102 @@ class JLinkAdapter(DeviceAdapter):
             except:
                 raise
 
-            self._control_thread = JLinkControlThread(self.jlink)
-            self._control_thread.start()
-
             self.set_config('probe_required', True)
             self.set_config('probe_supported', True)
 
-    def stop_sync(self):
-        """Synchronously stop this adapter and release all resources."""
+    async def stop(self):
+        """Asynchronously stop this adapter and release all resources."""
 
-        if self._control_thread is not None and self._control_thread.is_alive():
-            self._control_thread.stop()
-            self._control_thread.join()
+        await self._jlink_async.close_jlink()
 
-        if self.jlink is not None:
-            self.jlink.close()
+    async def probe(self):
+        """Send advertisements for all connected devices."""
 
-    def probe_async(self, callback):
-        """Send advertisements for all connected devices.
+        try:
+            self._control_info = await self._jlink_async.find_control_structure(
+                self._device_info.ram_start, self._device_info.ram_size)
+        except HardwareError as e:
+            logger.debug("Jlink probe failed to find contorl structure")
 
-        Args:
-            callback (callable): A callback for when the probe operation has completed.
-                callback should have signature callback(adapter_id, success, failure_reason) where:
-                    success: bool
-                    failure_reason: None if success is True, otherwise a reason for why we could not probe
-        """
+        if not self._control_info:
+            return
 
-        def _on_finished(_name, control_info, exception):
-            if exception is not None:
-                callback(self.id, False, str(exception))
-                return
+        info = {
+            'connection_string': "direct",
+            'uuid': self._control_info.uuid,
+            'signal_strength': 100
+        }
 
-            self._control_info = control_info
+        conn_string = self._get_property(self._connection_id, 'connection_string')
+        self.notify_event(conn_string, 'device_seen', info)
 
-            try:
-                info = {
-                    'connection_string': "direct",
-                    'uuid': control_info.uuid,
-                    'signal_strength': 100
-                }
-
-                self._trigger_callback('on_scan', self.id, info, self.ExpirationTime)
-            finally:
-                callback(self.id, True, None)
-
-        self._control_thread.command(JLinkControlThread.FIND_CONTROL, _on_finished, self._device_info.ram_start, self._device_info.ram_size)
-
-    def debug_async(self, conn_id, cmd_name, cmd_args, progress_callback, callback):
+    async def debug(self, conn_id, name, cmd_args):
         """Asynchronously complete a named debug command.
 
         The command name and arguments are passed to the underlying device adapter
         and interpreted there.  If the command is long running, progress_callback
-        may be used to provide status updates.  Callback is called when the command
-        has finished.
+        may be used to provide status updates.
 
         Args:
             conn_id (int): A unique identifer that will refer to this connection
-            cmd_name (string): the name of the debug command we want to invoke
+            name (string): the name of the debug command we want to invoke
             cmd_args (dict): any arguments that we want to send with this command.
-            progress_callback (callable): A function to be called with status on our progress, called as:
-                progress_callback(done_count, total_count)
-            callback (callable): A callback for when we have finished the debug command, called as:
-                callback(connection_id, adapter_id, success, retval, failure_reason)
-                'connection_id': the connection id
-                'adapter_id': this adapter's id
-                'success': a bool indicating whether we received a response to our attempted RPC
-                'failure_reason': a string with the reason for the failure if success == False
-                'retval': A command specific dictionary of return value information
         """
-
         known_commands = {
-            'read_memory': JLinkControlThread.DEBUG_READ_MEMORY,
-            'write_memory': JLinkControlThread.DEBUG_WRITE_MEMORY,
-            'program_flash': JLinkControlThread.PROGRAM_FLASH
+            'read_memory': self._jlink_async.debug_read_memory,
+            'write_memory': self._jlink_async.debug_write_memory,
+            'program_flash': self._jlink_async.program_flash
         }
 
-        cmd_code = known_commands.get(cmd_name)
-        if cmd_code is None:
-            callback(conn_id, self.id, False, None, "Unsupported command: %s" % cmd_name)
+        self._ensure_connection(conn_id, True)
 
-        def _on_finished(_name, retval, exception):
-            if exception is not None:
-                callback(conn_id, self.id, False, None, str(exception))
-                return
+        func = known_commands.get(name)
+        if name is None:
+            raise ArgumentError("Unsupported command: %s" % name)
 
-            callback(conn_id, self.id, True, retval, None)
+        return await func(self._device_info, self._control_info, cmd_args)
 
-        self._control_thread.command(cmd_code, _on_finished, self._device_info, self._control_info, cmd_args, progress_callback)
 
-    def connect_async(self, connection_id, connection_string, callback):
+    async def connect(self, conn_id, connection_string):
         """Connect to a device by its connection_string
 
-        This function asynchronously connects to a device by its BLE address
-        passed in the connection_string parameter and calls callback when
-        finished.  Callback is called on either success or failure with the
-        signature:
-
-        callback(conection_id, adapter_id, success: bool, failure_reason: string or None)
-
-        Args:
-            connection_string (string): A unique connection string that identifies
-                which device to connect to, if many are possible.
-            connection_id (int): A unique integer set by the caller for
-                referring to this connection once created
-            callback (callable): A callback function called when the
-                connection has succeeded or failed
+        This function asynchronously connects to a device by device type.
+        See iotile_transport_jlink_devices.py
         """
-        self._try_connect(connection_string)
+        await self._try_connect(connection_string)
+        self._setup_connection(conn_id, connection_string)
 
-        def _on_finished(_name, control_info, exception):
-            if exception is not None:
-                callback(connection_id, self.id, False, str(exception))
-                return
+        try:
+            self._control_info = await self._jlink_async.verify_control_structure(self._device_info, self._control_info)
+        except HardwareError as e:
+            logger.warning("RPC, streaming and tracing won't work, but device still can be flashed or debugged",
+                exc_info=True)
 
-            if control_info is not None:
-                self._control_info = control_info
+        self._connection_id = conn_id
 
-            callback(connection_id, self.id, True, None)
-            self._connection_id = connection_id
+    async def disconnect(self, conn_id):
+        await self._jlink_async.close_jlink()
+        self._teardown_connection(conn_id)
 
-        self._control_thread.command(JLinkControlThread.VERIFY_CONTROL, _on_finished, self._device_info, self._control_info)
+    async def open_interface(self, conn_id, interface):
+        self._ensure_connection(conn_id, True)
 
-    def _open_rpc_interface(self, conn_id, callback):
-        """Enable RPC interface for this IOTile device
+        if self.opened_interfaces[interface]:
+            return
 
-        Args:
-            conn_id (int): the unique identifier for the connection
-            callback (callback): Callback to be called when this command finishes
-                callback(conn_id, adapter_id, success, failure_reason)
-        """
+        self.opened_interfaces[interface] = True
 
-        callback(conn_id, self.id, True, None)
+        if interface in ["rpc", "tracing", "streaming"]:
+            await self._jlink_async.start_polling(self._control_info)
 
-    def _open_script_interface(self, conn_id, callback):
-        """Enable script streaming interface for this IOTile device
+    async def close_interface(self, conn_id, interface):
+        self._ensure_connection(conn_id, True)
 
-        Args:
-            conn_id (int): the unique identifier for the connection
-            callback (callback): Callback to be called when this command finishes
-                callback(conn_id, adapter_id, success, failure_reason)
-        """
+        if interface in ["rpc", "tracing", "streaming"]:
+            await self._jlink_async.stop_polling()
 
-        callback(conn_id, self.id, True, None)
+    async def send_rpc(self, conn_id, address, rpc_id, payload, timeout):
 
-    def _open_debug_interface(self, conn_id, callback, connection_string=None):
-        """Enable debug interface for this IOTile device
-
-        Args:
-            conn_id (int): the unique identifier for the connection
-            callback (callback): Callback to be called when this command finishes
-                callback(conn_id, adapter_id, success, failure_reason)
-        """
-        self._try_connect(connection_string)
-        callback(conn_id, self.id, True, None)
-
-    def periodic_callback(self):
-        """Periodic cleanup tasks to maintain this adapter."""
-
-        pass
-
-    def send_rpc_async(self, conn_id, address, rpc_id, payload, timeout, callback):
         """Asynchronously send an RPC to this IOTile device.
 
         Args:
@@ -331,28 +271,18 @@ class JLinkAdapter(DeviceAdapter):
             rpc_id (int): the 16-bit id of the RPC we want to call
             payload (bytearray): the payload of the command
             timeout (float): the number of seconds to wait for the RPC to execute
-            callback (callable): A callback for when we have finished the RPC.  The callback will be called as"
-                callback(connection_id, adapter_id, success, failure_reason, status, payload)
-                'connection_id': the connection id
-                'adapter_id': this adapter's id
-                'success': a bool indicating whether we received a response to our attempted RPC
-                'failure_reason': a string with the reason for the failure if success == False
-                'status': the one byte status code returned for the RPC if success == True else None
-                'payload': a bytearray with the payload returned by RPC if success == True else None
         """
-
-        def _on_finished(_name, retval, exception):
-            if exception is not None:
-                callback(conn_id, self.id, False, str(exception), None, None)
-                return
-
-            callback(conn_id, self.id, True, None, retval['status'], retval['payload'])
 
         # Default to polling for the response every 1 millisecond
         # FIXME, add an exponential polling backoff so that we wait 1, 2, 4, 8, etc ms
-        self._control_thread.command(JLinkControlThread.SEND_RPC, _on_finished, self._device_info, self._control_info, address, rpc_id, payload, 0.001, timeout)
+        self._ensure_connection(conn_id, True)
 
-    def send_script_async(self, conn_id, data, progress_callback, callback):
+        response = await self._jlink_async.send_rpc(
+            self._device_info, self._control_info,
+            address, rpc_id, payload, timeout)
+        return response['payload']
+
+    async def send_script(self, conn_id, data):
         """Asynchronously send a a script to this IOTile device
 
         Args:
@@ -360,19 +290,7 @@ class JLinkAdapter(DeviceAdapter):
             data (string): the script to send to the device
             progress_callback (callable): A function to be called with status on our progress, called as:
                 progress_callback(done_count, total_count)
-            callback (callable): A callback for when we have finished sending the script.  The callback will be called as"
-                callback(connection_id, adapter_id, success, failure_reason)
-                'connection_id': the connection id
-                'adapter_id': this adapter's id
-                'success': a bool indicating whether we received a response to our attempted RPC
-                'failure_reason': a string with the reason for the failure if success == False
         """
+        self._ensure_connection(conn_id, True)
 
-        def _on_finished(_name, _retval, exception):
-            if exception is not None:
-                callback(conn_id, self.id, False, str(exception))
-                return
-
-            callback(conn_id, self.id, True, None)
-
-        self._control_thread.command(JLinkControlThread.SEND_SCRIPT, _on_finished, self._device_info, self._control_info, data, progress_callback)
+        await self._jlink_async.send_script(self._device_info, self._control_info, data)
