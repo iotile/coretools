@@ -3,7 +3,7 @@
 All major changes in each released version of iotile-sensorgraph are listed
 here.
 
-## 1.0.7rc1
+## 1.0.7
 
 - Unpin iotile-core to support compatibility with `iotile-core` 5
 

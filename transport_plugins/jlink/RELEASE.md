@@ -3,7 +3,7 @@
 All major changes in each released version of the jlink transport plugin are
 listed here.
 
-## 1.0.8rc1
+## 1.0.8
 
 - Unpin dependency of iotile-core for iotile-core 5 release
 

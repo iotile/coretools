@@ -39,9 +39,7 @@ Using this for development will make it easier for you to merge pull requests.
 1. Make sure you update the RELEASE.md by adding a summary of changes to the ##HEAD section 
    (add one if there isn't in the same form as releases are). If you are a maintainer, you can
    promote the HEAD changes to a new version release, and also amend the `version.py` for 
-   your updated component. We will eventually stabilize our release process and establish 
-   a cadence of tagging releases, but this is the process for now. For reference, we version 
-   our releases following [SemVer](http://semver.org/).
+   your updated component. Please see [RELEASING.md](RELEASING.md)
 2. You must clean up your commits in to logical changes before merging. If you are changing multiple
    packages, you should consider using multiple commits. Good practice suggests that smaller, more contained
    feature PRs are easier to review and less prone to regressions. In general, it's good if your PR can be squashed
