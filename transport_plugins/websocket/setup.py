@@ -40,7 +40,7 @@ setup(
         ],
     long_description="""\
 IOTile Websocket Transport Plugin
-------
+---------------------------------
 
 A python plug for IOTile CoreTools that allows interacting with IOTile devices through
 websockets, including providing DeviceAdapters that allow controlling devices.

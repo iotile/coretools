@@ -33,7 +33,7 @@ setup(
     ],
     long_description="""\
 IOTile Native BLE Transport Plugin
--------------------------------
+----------------------------------
 
 A python plugin for the IOTile framework that allows communication with IOTile devices over
 Bluetooth Smart using the native Bluetooth controller, embedded in your computer.  See https://www.arch-iot.com.
