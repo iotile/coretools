@@ -2,7 +2,7 @@
 
 All major changes in each released version of IOTileGateway are listed here.
 
-## 3.0.0rc1
+## 3.0.0
 
 - Remove tornado dependency and rely on `asyncio` instead.
 - Significant refactor of all code to port to `asyncio`.  

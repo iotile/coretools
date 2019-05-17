@@ -2,7 +2,7 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
-## 3.0.9rc1
+## 3.0.9
 
 - Unpin `iotile-core` to support version 5.0
 
