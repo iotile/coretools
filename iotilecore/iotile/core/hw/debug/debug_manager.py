@@ -74,7 +74,8 @@ class DebugManager:
         """
         # nbytes = self._stream.debug_command(
         #     'write_memory', {'address': start_addr, 'data': data})
-        self._stream.debug_command('write_memory', {'address': start_addr, 'data': data})
+        self._stream.debug_command('write_memory',
+            {'region': memory_region, 'address': start_addr, 'data': data})
 
     @docannotate
     def dump_memory(self, out_path, start_addr, data_length, memory_region="mapped", pause=False):
