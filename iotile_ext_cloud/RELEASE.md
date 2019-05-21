@@ -2,6 +2,11 @@
 
 All major changes in each released version of the iotile-ext-cloud plugin are listed here.
 
+## 1.0.7
+
+- Fix issue using cloud uploader on very old controller firmwares that do not support
+  configuring the maximum report size. 
+
 ## 1.0.6
 
 - Unpin `iotile-core` to support compatibility with version 5.0.0

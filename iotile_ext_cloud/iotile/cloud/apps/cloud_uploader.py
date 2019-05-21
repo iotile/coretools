@@ -3,11 +3,12 @@
 import logging
 import time
 import struct
+from typedargs.annotate import docannotate, context
 from iotile.core.exceptions import HardwareError, ArgumentError
 from iotile.core.hw import IOTileApp
+from iotile.core.hw.exceptions import RPCNotFoundError
 from iotile.core.hw.reports import SignedListReport
 from iotile.cloud import IOTileCloud, device_id_to_slug
-from typedargs.annotate import docannotate, context
 
 
 @context("CloudUploader")
@@ -181,7 +182,9 @@ class CloudUploader(IOTileApp):
             self._ack_streamer(index, last_id, force=force)
 
         # Configure Downloader to not break up the report
-        self.set_report_size()  # Set to max report size
+        # on old pod firmware the required RPC is not implemented to allow this
+        # to fail.
+        self.set_report_size(allow_fail=True)  # Set to max report size
         self._hw.enable_streaming()
 
         if trigger is not None:
@@ -235,29 +238,43 @@ class CloudUploader(IOTileApp):
 
     @docannotate
     def get_report_size(self):
-        """ Sets and verifies the report size for a pod
+        """ Gets the configured report size for a pod.
+
         Returns:
            int: The maximum size of a report
+
         """
-        maxpacket, _comp1, comp2, = self._con.rpc(0x0A, 0x06, result_format="LBB")
+        maxpacket, _comp1, _comp2 = self._con.rpc(0x0A, 0x06, result_format="LBB")
         return maxpacket
 
     @docannotate
-    def set_report_size(self, size=0xFFFFFFFF):
-        """ Sets and verifies the report size for a pod
+    def set_report_size(self, size=0xFFFFFFFF, allow_fail=False):
+        """ Sets and verifies the report size for a pod.
+
+        If the POD's firmware does not support setting report size, this will
+        raise an exception unless you pass ``allow_fail=True``, in which case
+        it will continue with the default report size for the POD.
+
         Args:
             size (int): The maximum size of a report
+            allow_fail (bool): Optional argument to not raise an exception if the
+                POD's firmware does not support configuring report size, i.e. the
+                RPC call raises RPCNotFoundError.
         """
 
-        error, = self._con.rpc(0x0A, 0x05, size, 0, arg_format="LB", result_format="L")
+        try:
+            error, = self._con.rpc(0x0A, 0x05, size, 0, arg_format="LB", result_format="L")
+        except RPCNotFoundError:
+            self.logger.warning("Could not set report size because firmware was old and didn't support needed RPC 0x0a05")
+            if allow_fail:
+                return
+
+            raise
 
         if error:
             raise HardwareError("Error setting report size.", error_code=error, size=size)
 
-        maxpacket, _comp1, comp2, = self._con.rpc(0x0A, 0x06, result_format="LBB")
+        maxpacket, _comp1, _comp2 = self._con.rpc(0x0A, 0x06, result_format="LBB")
 
         if maxpacket != size:
             raise HardwareError("Max Packet Size was not set as expected")
-
-
-
