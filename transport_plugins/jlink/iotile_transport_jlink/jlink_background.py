@@ -23,6 +23,10 @@ class AsyncJLink:
         jlink (pylink.JLink): An open jlink adapter instance.
     """
 
+    CONNECTION_BIT = 2
+    TRACE_BIT = 1
+    STREAMING_BIT = 0
+
     def __init__(self, jlink_adapter, loop=SharedLoop):
         self._jlink_adapter = jlink_adapter
         self._jlink = None
@@ -358,18 +362,90 @@ class AsyncJLink:
             start_address, length, chunk_size, join)
 
     async def _poll_rpc_status(self, control_info):
+        if not self._jlink_adapter.opened_interfaces["rpc"]:
+            return
+
         poll_address, poll_mask = control_info.poll_info()
         value, = await self.read_memory(poll_address, 1, chunk_size=1)
 
         if value & poll_mask:
             self.rpc_response_event.set()
 
+    async def _read_next_queue_frame(self, control_info, read_index):
+        header_address, data_address = control_info.queue_element_info(read_index)
+        header, = await self.read_memory(header_address, 1, chunk_size=1)
+        data = await self.read_memory(data_address, control_info.FRAME_SIZE, chunk_size=1)
+
+        is_trace = header & 0x40
+        is_stream = header & 0x80
+        data_length = header & 0x3F
+
+        if is_trace and self._jlink_adapter.opened_interfaces["tracing"]:
+            name = 'trace'
+        elif is_stream and self._jlink_adapter.opened_interfaces["streaming"]:
+            name = 'report'
+        else:
+            raise HardwareError("Frame is neither trace nor report or corresponding interface is not opened")
+
+        if data_length > control_info.FRAME_SIZE:
+            raise HardwareError("Frame size is too big {}".format(data_length))
+
+        return name, data[0: data_length]
+
+    async def _poll_queue_status(self, control_info, conn_string):
+        """ Read next fream from queue
+
+            Returns:
+                bool: true if queue is empty
+        """
+
+        read_address, write_address = control_info.queue_info()
+        read_index, = await self.read_memory(read_address, 1, chunk_size=1)
+        write_index, = await self.read_memory(write_address, 1, chunk_size=1)
+
+        if read_index == write_index: # queue is empty
+            return True
+
+        try:
+            name, data = await self._read_next_queue_frame(control_info, read_index)
+            self._jlink_adapter.notify_event(conn_string, name, data)
+        except HardwareError:
+            logger.debug(exc_info=True)
+
+        read_index = (read_index + 1) % control_info.QUEUE_SIZE
+        await self.write_memory(read_address, [read_index], chunk_size=1)
+
+        return read_index == write_index
+
+    async def _update_watch_counter(self, control_info):
+        counter_address = control_info.counter_info()
+
+        counter, = await self.read_memory(counter_address, 1, chunk_size=1)
+        counter = (counter + 1) % 256
+        await self.write_memory(counter_address, [counter], chunk_size=1)
+
     async def _maintenance_coroutine(self, control_info, step_timeout):
+        conn_string = self._jlink_adapter._get_property(
+            self._jlink_adapter._connection_id, 'connection_string')
+
         while self._maintenance_counter > 0:
-            if self._jlink_adapter.opened_interfaces["rpc"]:
-                await self._poll_rpc_status(control_info)
+            await self._poll_rpc_status(control_info)
+            while not await self._poll_queue_status(control_info, conn_string):
+                pass
+            await self._update_watch_counter(control_info)
 
             await asyncio.sleep(step_timeout)
+
+    async def change_state_flag(self, control_info, flag, flag_status):
+        state_flags = control_info.state_info()
+        flags, = await self.read_memory(state_flags, 1, chunk_size=1)
+
+        if flag_status:
+            flags = flags | 1 << flag
+        else:
+            flags = flags & ~(1 << flag)
+
+        await self.write_memory(state_flags, [flags], chunk_size=1)
 
     async def find_control_structure(self, start_address, search_length):
         """Find the control structure in RAM for this device.
