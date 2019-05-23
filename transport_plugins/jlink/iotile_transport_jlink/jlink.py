@@ -7,7 +7,9 @@ import logging
 import pylink
 from typedargs.exceptions import ArgumentError
 from iotile.core.exceptions import HardwareError
+from iotile.core.hw.exceptions import DeviceAdapterError
 from iotile.core.hw.transport.adapter import StandardDeviceAdapter
+from iotile.core.hw.reports import IOTileReportParser
 from iotile.core.utilities import SharedLoop
 from .devices import KNOWN_DEVICES, DEVICE_ALIASES
 from .multiplexers import KNOWN_MULTIPLEX_FUNCS
@@ -29,6 +31,7 @@ class JLinkAdapter(StandardDeviceAdapter):
     """
 
     ExpirationTime = 600000
+    POLLING_INTERFACES = ["rpc", "tracing", "streaming"]
 
     def __init__(self, port, name=__name__, loop=SharedLoop, **kwargs):
         super(JLinkAdapter, self).__init__(name, loop)
@@ -49,6 +52,8 @@ class JLinkAdapter(StandardDeviceAdapter):
             "debug": False,
             "script": False
             }
+        self.report_parser = IOTileReportParser(
+            report_callback=self._on_report, error_callback=self._on_report_error)
 
         self.set_config('probe_required', True)
         self.set_config('probe_supported', True)
@@ -135,6 +140,20 @@ class JLinkAdapter(StandardDeviceAdapter):
                 else:
                     print("Warning: multiplexing architecture not selected, channel will not be set")
         return disconnection_required
+
+    def _on_report(self, report, context):
+        conn_string = self._get_property(self._connection_id, 'connection_string')
+        self.notify_event(conn_string, 'report', report)
+
+        return False
+
+    def _on_report_error(self, code, message, context):
+        print("Report Error, code=%d, message=%s" % (code, message))
+        self._logger.critical("Error receiving reports, no more reports will be processed on this adapter, code=%d, msg=%s", code, message)
+
+    def add_trace(self, trace):
+        conn_string = self._get_property(self._connection_id, 'connection_string')
+        self.notify_event(conn_string, 'trace', trace)
 
     async def _try_connect(self, connection_string):
         """If the connecton string settings are different, try and connect to an attached device"""
@@ -271,7 +290,11 @@ class JLinkAdapter(StandardDeviceAdapter):
         self._setup_connection(conn_id, connection_string)
 
         try:
-            self._control_info = await self._jlink_async.verify_control_structure(self._device_info, self._control_info)
+            self._control_info = await self._jlink_async.verify_control_structure(
+                self._device_info, self._control_info)
+
+            await self._jlink_async.change_state_flag(
+                self._control_info, AsyncJLink.CONNECTION_BIT, True)
         except HardwareError as e:
             logger.warning("RPC, streaming and tracing won't work, but device still can be flashed or debugged",
                 exc_info=True)
@@ -279,8 +302,20 @@ class JLinkAdapter(StandardDeviceAdapter):
         self._connection_id = conn_id
 
     async def disconnect(self, conn_id):
-        await self._jlink_async.close_jlink()
         self._teardown_connection(conn_id)
+
+        if not self._control_info: # direct debug connection case
+            return
+
+        try:
+            for interface in JLinkAdapter.POLLING_INTERFACES:
+                if self.opened_interfaces[interface]:
+                    await self.close_interface(conn_id, interface)
+
+            await self._jlink_async.change_state_flag(
+                self._control_info, AsyncJLink.CONNECTION_BIT, False)
+        except pylink.errors.JLinkReadException:
+            logger.warning("Error disconnecting jlink adapter", exc_info=True)
 
     async def open_interface(self, conn_id, interface):
         self._ensure_connection(conn_id, True)
@@ -290,13 +325,39 @@ class JLinkAdapter(StandardDeviceAdapter):
 
         self.opened_interfaces[interface] = True
 
-        if interface in ["rpc", "tracing", "streaming"]:
+        if interface == "tracing":
+            await self._jlink_async.change_state_flag(
+                self._control_info, AsyncJLink.TRACE_BIT, True)
+        elif interface == "streaming":
+            await self._jlink_async.change_state_flag(
+                self._control_info, AsyncJLink.STREAM_BIT, True)
+            await self._jlink_async.notify_sensor_graph(
+                self._device_info, self._control_info, True)
+
+        if interface in JLinkAdapter.POLLING_INTERFACES:
             await self._jlink_async.start_polling(self._control_info)
 
     async def close_interface(self, conn_id, interface):
         self._ensure_connection(conn_id, True)
 
-        if interface in ["rpc", "tracing", "streaming"]:
+        if not self.opened_interfaces[interface]:
+            return
+
+        self.opened_interfaces[interface] = False
+
+        if interface == "tracing":
+            await self._jlink_async.change_state_flag(
+                self._control_info, AsyncJLink.TRACE_BIT, False)
+        elif interface == "streaming":
+            await self._jlink_async.change_state_flag(
+                self._control_info, AsyncJLink.STREAM_BIT, False)
+            try:
+                await self._jlink_async.notify_sensor_graph(
+                    self._device_info, self._control_info, False)
+            except DeviceAdapterError:
+                logger.debug("Exception sending rpc to notify SG", exc_info=True)
+
+        if interface in JLinkAdapter.POLLING_INTERFACES:
             await self._jlink_async.stop_polling()
 
     async def send_rpc(self, conn_id, address, rpc_id, payload, timeout):

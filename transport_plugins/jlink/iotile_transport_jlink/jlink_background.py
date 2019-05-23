@@ -7,6 +7,7 @@ import time
 import pylink
 from iotile.core.exceptions import ArgumentError, HardwareError
 from iotile.core.utilities import SharedLoop
+from iotile.core.hw.exceptions import TileNotFoundError, DeviceAdapterError
 import iotile_transport_jlink.devices as devices
 from .structures import ControlStructure
 from .data import flash_forensics_config as ff_cfg
@@ -22,6 +23,13 @@ class AsyncJLink:
     Args:
         jlink (pylink.JLink): An open jlink adapter instance.
     """
+
+    CONNECTION_BIT = 2
+    TRACE_BIT = 1
+    STREAM_BIT = 0
+
+    RESET_RPC_ID = 1
+    CONTROLLER_ADDRESS = 8
 
     def __init__(self, jlink_adapter, loop=SharedLoop):
         self._jlink_adapter = jlink_adapter
@@ -40,7 +48,13 @@ class AsyncJLink:
         await self.write_memory(write_address, write_data, chunk_size=4)
 
         await self._trigger_rpc(device_info)
-        await self._wait_rpc_completion(control_info, timeout)
+
+        if rpc_id == self.RESET_RPC_ID and address == self.CONTROLLER_ADDRESS:
+            await asyncio.sleep(2)
+            await self._update_state_flags_after_reset(device_info, control_info)
+            raise TileNotFoundError("tile was reset via an RPC")
+        else:
+            await self._wait_rpc_completion(control_info, timeout)
 
         read_address, read_length = control_info.response_info()
         read_data = await self.read_memory(read_address, read_length, join=True)
@@ -66,17 +80,28 @@ class AsyncJLink:
             }
             self._jlink_adapter.notify_event(conn_string, 'progress', event)
 
+    async def notify_sensor_graph(self, device_info, control_info, is_open_interface):
+        stream = 0x3C01 # System Input Stream 1025 kSGCommTileOpen
+        if not is_open_interface:
+            stream = 0x3C02
+
+        payload = struct.pack("<IH", self.CONTROLLER_ADDRESS, stream)
+        await self.send_rpc(device_info, control_info, self.CONTROLLER_ADDRESS,
+                            0x2004, payload, 1.0)
+
     async def _wait_rpc_completion(self, control_info, timeout):
         try:
             await asyncio.wait_for(self.rpc_response_event.wait(), timeout)
         except asyncio.TimeoutError:
-            raise HardwareError("Timeout waiting for RPC response", timeout=timeout)
+            raise DeviceAdapterError(
+                self._jlink_adapter._connection_id, 'send rpc', 'timeout')
 
         poll_address, poll_mask = control_info.poll_info()
         value, = await self.read_memory(poll_address, 1, chunk_size=1)
 
         if not value & poll_mask:
-            raise HardwareError("RPC complete bit is not set")
+            raise DeviceAdapterError(
+                self._jlink_adapter._connection_id, 'send rpc', 'RPC complete bit is not set')
 
     async def _trigger_rpc(self, device_info):
         """Trigger an RPC in a device specific way."""
@@ -87,6 +112,19 @@ class AsyncJLink:
             await self.write_memory(method.register, [1 << method.bit], chunk_size=4)
         else:
             raise HardwareError("Unknown RPC trigger method", method=method)
+
+    async def _update_state_flags_after_reset(self, device_info, control_info):
+        await self.change_state_flag(control_info, AsyncJLink.CONNECTION_BIT, True)
+
+        await self._clear_queue(control_info)
+
+        for interface in self._jlink_adapter.POLLING_INTERFACES:
+            if self._jlink_adapter.opened_interfaces[interface]:
+                if interface == "tracing":
+                    await self.change_state_flag(control_info, AsyncJLink.TRACE_BIT, True)
+                elif interface == "streaming":
+                    await self.change_state_flag(control_info, AsyncJLink.STREAM_BIT, True)
+                    await self.notify_sensor_graph(device_info, control_info, True)
 
     def _continue_blocking(self):
         self._jlink.step()
@@ -283,6 +321,9 @@ class AsyncJLink:
         return self._jlink
 
     async def close_jlink(self):
+        if self._maintenance_counter:
+            logger.error("Closing jlink while maintenance still running!")
+
         if self._jlink is not None:
             await self._loop.run_in_executor(self._jlink.close)
             self._jlink = None
@@ -292,13 +333,14 @@ class AsyncJLink:
         self._maintenance_counter += 1
 
         if counter == 0:
+            await self._clear_queue(control_info)
             self._maintenance_task = self._loop.add_task(
                 self._maintenance_coroutine(control_info, step_timeout))
 
     async def stop_polling(self):
         self._maintenance_counter -= 1
         if self._maintenance_counter == 0:
-            await self._maintenance_task
+            await self._maintenance_task.stop()
 
     async def register_read(self, pc_reg):
         return await self._loop.run_in_executor(self._jlink.register_read, pc_reg)
@@ -353,23 +395,112 @@ class AsyncJLink:
         return words
 
     async def read_memory(self, start_address, length, chunk_size=4, join=True):
-        """ Prefable async version for jlink.memory_readXX """
+        """ Preferable async version for jlink.memory_readXX """
         return await self._loop.run_in_executor(self._read_memory_blocking,
             start_address, length, chunk_size, join)
 
     async def _poll_rpc_status(self, control_info):
+        if not self._jlink_adapter.opened_interfaces["rpc"]:
+            return
+
         poll_address, poll_mask = control_info.poll_info()
         value, = await self.read_memory(poll_address, 1, chunk_size=1)
 
         if value & poll_mask:
             self.rpc_response_event.set()
 
-    async def _maintenance_coroutine(self, control_info, step_timeout):
-        while self._maintenance_counter > 0:
-            if self._jlink_adapter.opened_interfaces["rpc"]:
-                await self._poll_rpc_status(control_info)
+    async def _read_next_queue_frame(self, control_info, read_index):
+        header_address, data_address = control_info.queue_element_info(read_index)
+        header, = await self.read_memory(header_address, 1, chunk_size=1)
+        data = await self.read_memory(data_address, control_info.FRAME_SIZE - 1, chunk_size=1)
 
-            await asyncio.sleep(step_timeout)
+        is_trace = header & 0x40
+        is_stream = header & 0x80
+        data_length = header & 0x3F
+
+        if data_length > ControlStructure.FRAME_SIZE - 1:
+            raise HardwareError("Data length is too big {}".format(data_length))
+
+        if is_trace and self._jlink_adapter.opened_interfaces["tracing"]:
+            self._jlink_adapter.add_trace(data[0:data_length])
+        elif is_stream and self._jlink_adapter.opened_interfaces["streaming"]:
+            self._jlink_adapter.report_parser.add_data(data[0:data_length])
+        else:
+            pass # Drop if interface is not opened
+
+    async def _poll_queue_status(self, control_info):
+        """ Read next frame from queue
+
+            Returns:
+                bool: true if queue is empty
+        """
+
+        read_address, write_address, queue_size_address = control_info.queue_info()
+        read_index, = await self.read_memory(read_address, 1, chunk_size=1)
+        write_index, = await self.read_memory(write_address, 1, chunk_size=1)
+        queue_size = await self.read_memory(queue_size_address, 2, chunk_size=2)
+        queue_size = int.from_bytes(queue_size, 'little')
+
+        if read_index == write_index:
+            return True
+
+        try:
+            await self._read_next_queue_frame(control_info, read_index)
+        except (HardwareError, pylink.errors.JLinkException):
+            logger.debug("Queue poll exception.", exc_info=True)
+        except:
+            logger.exception("Unexpected queue poll exception!")
+
+        read_index = (read_index + 1) % queue_size
+        await self.write_memory(read_address, [read_index], chunk_size=1)
+
+        return read_index == write_index
+
+    async def _clear_queue(self, control_info):
+        read_address, write_address, _ = control_info.queue_info()
+        await self.write_memory(read_address, [0], chunk_size=1)
+        await self.write_memory(write_address, [0], chunk_size=1)
+
+    async def _update_watch_counter(self, control_info):
+        counter_address = control_info.counter_info()
+
+        counter, = await self.read_memory(counter_address, 1, chunk_size=1)
+        counter = (counter + 1) % 256
+        await self.write_memory(counter_address, [counter], chunk_size=1)
+
+    async def _maintenance_coroutine(self, control_info, step_timeout):
+        last_timer_update = time.time()
+        while self._maintenance_counter > 0:
+            try:
+                is_queue_empty = False
+
+                while not is_queue_empty:
+                    is_queue_empty = await self._poll_queue_status(control_info)
+
+                    if (time.time() - last_timer_update) > step_timeout:
+                        last_timer_update = time.time()
+                        await self._update_watch_counter(control_info)
+                        await self._poll_rpc_status(control_info)
+
+            except asyncio.CancelledError:
+                logger.debug("Maintenance task is canceled")
+            except:
+                logger.exception("Exception in maintenance task")
+
+            delay = time.time() - last_timer_update
+            if delay < step_timeout:
+                await asyncio.sleep(step_timeout - delay)
+
+    async def change_state_flag(self, control_info, flag, flag_status):
+        state_flags = control_info.state_info()
+        flags, = await self.read_memory(state_flags, 1, chunk_size=1)
+
+        if flag_status:
+            flags = flags | 1 << flag
+        else:
+            flags = flags & ~(1 << flag)
+
+        await self.write_memory(state_flags, [flags], chunk_size=1)
 
     async def find_control_structure(self, start_address, search_length):
         """Find the control structure in RAM for this device.

@@ -21,6 +21,8 @@ class ControlStructure:
 
     # The offset from the start of our debug info to where the tb_fabric_tls_t structure is located
     RPC_TLS_OFFSET = 28
+    QUEUE_OFFSET = 68
+    FRAME_SIZE = 21
 
     def __init__(self, address, raw_data):
         self.base_address = address
@@ -53,6 +55,30 @@ class ControlStructure:
         """Return the address and mask to determine if an RPC is finished."""
 
         return self.base_address + self.RPC_TLS_OFFSET + 11, (1 << 2) | (1 << 3)
+
+    def state_info(self):
+        """Return the address of state flags."""
+
+        return self.base_address + 24
+
+    def counter_info(self):
+        """Return the address of watch counter that should be incremented by jlink adapter"""
+
+        return self.state_info() + 3
+
+    def queue_info(self):
+        """Return adress of read_index, write_index and size of the circular tracing/streaming queue"""
+
+        return self.base_address + self.QUEUE_OFFSET, \
+                self.base_address + self.QUEUE_OFFSET + 1, \
+                self.base_address + self.QUEUE_OFFSET + 2
+
+    def queue_element_info(self, element_index):
+        """Return start address of queue element header and data"""
+
+        queue_info_offset = self.base_address + self.QUEUE_OFFSET + 4
+        header_address = queue_info_offset + element_index * self.FRAME_SIZE
+        return header_address, header_address + 1
 
     def response_info(self):
         """Return the address and read size of the RPC resonse storage area."""
