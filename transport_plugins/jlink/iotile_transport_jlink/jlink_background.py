@@ -286,6 +286,7 @@ class AsyncJLink:
     async def close_jlink(self):
         if self._jlink is not None:
             await self._loop.run_in_executor(self._jlink.close)
+            self._jlink = None
 
     async def start_polling(self, control_info, step_timeout=0.1):
         counter = self._maintenance_counter
