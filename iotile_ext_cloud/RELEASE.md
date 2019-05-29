@@ -2,6 +2,10 @@
 
 All major changes in each released version of the iotile-ext-cloud plugin are listed here.
 
+## 1.0.8
+
+- Add `msgpack` dependency that was missing
+
 ## 1.0.7
 
 - Fix issue using cloud uploader on very old controller firmwares that do not support
