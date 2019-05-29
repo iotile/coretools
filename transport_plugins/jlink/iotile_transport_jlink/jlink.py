@@ -276,10 +276,14 @@ class JLinkAdapter(StandardDeviceAdapter):
             logger.warning("RPC, streaming and tracing won't work, but device still can be flashed or debugged",
                 exc_info=True)
 
+        await self._jlink_async.change_state_flag(
+            self._control_info, AsyncJLink.CONNECTION_BIT, True)
         self._connection_id = conn_id
 
     async def disconnect(self, conn_id):
         await self._jlink_async.close_jlink()
+        await self._jlink_async.change_state_flag(
+            self._control_info, AsyncJLink.CONNECTION_BIT, False)
         self._teardown_connection(conn_id)
 
     async def open_interface(self, conn_id, interface):
@@ -289,12 +293,25 @@ class JLinkAdapter(StandardDeviceAdapter):
             return
 
         self.opened_interfaces[interface] = True
+        if interface == "tracing":
+            self._control_info = await self._jlink_async.verify_control_structure(self._device_info, self._control_info)
+            await self._jlink_async.change_state_flag(
+                self._control_info, AsyncJLink.TRACE_BIT, True)
 
         if interface in ["rpc", "tracing", "streaming"]:
             await self._jlink_async.start_polling(self._control_info)
 
     async def close_interface(self, conn_id, interface):
         self._ensure_connection(conn_id, True)
+
+        if not self.opened_interfaces[interface]:
+            return
+
+        self.opened_interfaces[interface] = False
+
+        if interface == "tracing":
+            await self._jlink_async.change_state_flag(
+                self._control_info, AsyncJLink.TRACE_BIT, False)
 
         if interface in ["rpc", "tracing", "streaming"]:
             await self._jlink_async.stop_polling()
