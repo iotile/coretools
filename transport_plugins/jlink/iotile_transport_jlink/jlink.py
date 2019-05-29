@@ -38,7 +38,7 @@ class JLinkAdapter(StandardDeviceAdapter):
         self._jlink_serial = None
         self._mux_func = None
         self._channel = None
-        self._jlink_async = None
+        self._jlink_async = AsyncJLink(self, loop)
         self._connection_id = None
         self.jlink = None
         self.connected = False
@@ -49,6 +49,9 @@ class JLinkAdapter(StandardDeviceAdapter):
             "debug": False,
             "script": False
             }
+
+        self.set_config('probe_required', True)
+        self.set_config('probe_supported', True)
 
         self._parse_port(port)
 
@@ -153,7 +156,6 @@ class JLinkAdapter(StandardDeviceAdapter):
                                     "or -c device=name in connect_direct or debug command",
                                     known_devices=[x for x in DEVICE_ALIASES.keys()])
 
-            self._jlink_async = AsyncJLink(self, loop=self._loop)
             try:
                 await self._jlink_async.connect_jlink(
                     self._jlink_serial, self._device_info.jlink_name)
@@ -167,33 +169,69 @@ class JLinkAdapter(StandardDeviceAdapter):
             except:
                 raise
 
-            self.set_config('probe_required', True)
-            self.set_config('probe_supported', True)
-
     async def stop(self):
         """Asynchronously stop this adapter and release all resources."""
 
         await self._jlink_async.close_jlink()
 
+    async def _find_device_behind_jlink(self):
+        control_info = None
+        device_name = None
+
+        for device_name in DEVICE_ALIASES.keys():
+            try:
+                dev = DEVICE_ALIASES[device_name]
+                await self._jlink_async.connect_jlink(self._jlink_serial, dev)
+
+                device_info = KNOWN_DEVICES.get(dev)
+                control_info = await self._jlink_async.find_control_structure(
+                    device_info.ram_start, device_info.ram_size)
+
+                await self._jlink_async.close_jlink()
+                break # only one device can be connected at a time and it was found
+            except pylink.errors.JLinkException as e:
+                logger.debug("Jlink probe failed to connect to {}".format(dev))
+                continue
+
+        return control_info, device_name
+
+    async def _find_connected_device(self, device_info, control_info):
+        device_name = None
+
+        if device_info:
+            try:
+                control_info = await self._jlink_async.verify_control_structure(
+                    device_info, control_info)
+
+                for alias, device in DEVICE_ALIASES.items():
+                    if device == device_info.jlink_name:
+                        device_name = alias
+                        break
+            except HardwareError as e:
+                logger.warning("Event though jlink is connected, control structure is not found", exc_info=True)
+
+        return control_info, device_name
+
     async def probe(self):
         """Send advertisements for all connected devices."""
+        if self.connected:
+            control_info, device_name = await self._find_connected_device(
+                self._device_info, self._control_info)
+        else:
+            control_info, device_name = await self._find_device_behind_jlink()
 
-        try:
-            self._control_info = await self._jlink_async.find_control_structure(
-                self._device_info.ram_start, self._device_info.ram_size)
-        except HardwareError as e:
-            logger.debug("Jlink probe failed to find contorl structure")
-
-        if not self._control_info:
+        if not control_info or not device_name:
             return
 
         info = {
-            'connection_string': "direct",
-            'uuid': self._control_info.uuid,
+            'connection_string': "device={}".format(device_name),
+            'uuid': control_info.uuid,
             'signal_strength': 100
         }
 
-        conn_string = self._get_property(self._connection_id, 'connection_string')
+        conn_string = None
+        if self._connection_id:
+            conn_string = self._get_property(self._connection_id, 'connection_string')
         self.notify_event(conn_string, 'device_seen', info)
 
     async def debug(self, conn_id, name, cmd_args):
