@@ -2,6 +2,10 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## 5.0.1
+
+- Fix bug in utc_assigner.py that resulted in oscillating timestamp calculations
+
 ## 5.0.0
 
 - Add support for background event loops using `asyncio` and migrate CMDStream
