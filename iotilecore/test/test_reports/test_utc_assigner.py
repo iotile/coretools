@@ -85,6 +85,7 @@ def assigner():
 
     return assigner
 
+
 def test_basic_utcassigner(assigner):
     """Make sure we are able to load in reports."""
 
@@ -138,6 +139,7 @@ def test_bidirectional_fixes(assigner):
     assert first.utc == datetime.datetime(2018, 11, 15, 18, 32, 26)
     assert first.exact is False
 
+
 def test_whole_report_fixing(assigner):
     """Make sure we can fix entire reports."""
     regex = r'^report_[0-9]_(.*)\.bin$'
@@ -149,21 +151,10 @@ def test_whole_report_fixing(assigner):
     fixed1 = assigner.fix_report(report1)
     fixed2 = assigner.fix_report(report2)
 
-    #print("\nReport 0")
-    #for reading in fixed0.visible_readings:
-    #    print(reading)
-
-    #print("\nReport 1")
-    #for reading in fixed1.visible_readings:
-    #    print(reading)
-
-    #print("\nReport 2")
-    #for reading in fixed2.visible_readings:
-    #    print(reading)
-
     compare_fixed_report(fixed0, 'report_0_fixed.txt')
     compare_fixed_report(fixed1, 'report_1_fixed.txt')
     compare_fixed_report(fixed2, 'report_2_fixed.txt')
+
 
 def test_fixed_report_monotonic():
     regex = r'^.*[/]?report_[0-9]_(.*)\.bin$'
@@ -183,9 +174,9 @@ def test_fixed_report_monotonic():
     fixed1 = assigner.fix_report(report1)
     fixed2 = assigner.fix_report(report2)
 
-    for rep in [fixed0,fixed1,fixed2]:
+    for rep in [fixed0, fixed1, fixed2]:
         prevts = None
-        for reading in sorted(rep.visible_readings,key=lambda x: x.reading_id):
+        for reading in sorted(rep.visible_readings, key=lambda x: x.reading_id):
             if prevts is None:
                 prevts = reading.reading_time
             else:
@@ -231,8 +222,3 @@ def test_whole_report_fixing_osc():
     compare_fixed_report(fixed0_2, 'd_05db/report_0_05db_fixed.txt')
     compare_fixed_report(fixed1_2, 'd_05db/report_1_05db_fixed.txt')
     compare_fixed_report(fixed2_2, 'd_05db/report_2_05db_fixed.txt')
-
-
-
-
-
