@@ -5,7 +5,6 @@ import re
 import datetime
 import pytest
 import dateutil.parser
-import time
 from iotile.core.hw.reports import UTCAssigner, SignedListReport, IOTileReportParser
 
 
@@ -64,8 +63,6 @@ def compare_fixed_report(fixed, ref_filename):
     assert len(fixed.visible_readings) == len(ref_lines)
 
     for reading, ref_string in zip(fixed.visible_readings, ref_lines):
-        if str(reading) != ref_string:
-            print("FAIL: {} != {}".format(str(reading),ref_string))
         assert str(reading) == ref_string
 
 
@@ -143,7 +140,6 @@ def test_bidirectional_fixes(assigner):
 
 def test_whole_report_fixing(assigner):
     """Make sure we can fix entire reports."""
-
     regex = r'^report_[0-9]_(.*)\.bin$'
     report0 = load_report('report_0_2019-03-04T19-37-28.504446.bin', regex)
     report1 = load_report('report_1_2019-03-04T19-37-29.953927.bin', regex)
@@ -193,22 +189,16 @@ def test_fixed_report_monotonic():
             if prevts is None:
                 prevts = reading.reading_time
             else:
-                #print("Reading id: {:X}".format(reading.reading_id))
                 assert reading.reading_time >= prevts
                 prevts = reading.reading_time
 
 
 def test_whole_report_fixing_osc():
     """Create a loaded utc assigner."""
-
     regex = r'^.*[/]?report_[0-9]_(.*)\.bin$'
     report0 = load_report('d_05db/report_0_2019-05-30T02-52-11.561340.bin', regex)
     report1 = load_report('d_05db/report_1_2019-05-30T02-52-14.744161.bin', regex)
     report2 = load_report('d_05db/report_2_2019-05-30T02-52-15.658468.bin', regex)
-
-    #print("Report0: rxtime:{}".format(report0.received_time))
-    #print("Report1: rxtime:{}".format(report1.received_time))
-    #print("Report2: rxtime:{}".format(report2.received_time))
 
     assigner = UTCAssigner()
     assigner.anchor_stream(0x0E00, converter="epoch")
@@ -221,23 +211,6 @@ def test_whole_report_fixing_osc():
     fixed0 = assigner.fix_report(report0)
     fixed1 = assigner.fix_report(report1)
     fixed2 = assigner.fix_report(report2)
-
-    time.sleep(1)
-
-    #print("\nReport 0")
-    #with open("report_0_05db_fixed.txt","w") as ofile:
-    #    for reading in fixed0.visible_readings:
-    #        ofile.write(str(reading)+"\n")
-
-    #print("\nReport 1")
-    #with open("report_1_05db_fixed.txt","w") as ofile:
-    #    for reading in fixed1.visible_readings:
-    #        ofile.write(str(reading)+"\n")
-
-    #print("\nReport 2")
-    #with open("report_2_05db_fixed.txt","w") as ofile:
-    #    for reading in fixed2.visible_readings:
-    #        ofile.write(str(reading)+"\n")
 
     compare_fixed_report(fixed0, 'd_05db/report_0_05db_fixed.txt')
     compare_fixed_report(fixed1, 'd_05db/report_1_05db_fixed.txt')
