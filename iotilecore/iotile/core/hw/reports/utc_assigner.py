@@ -434,7 +434,7 @@ class UTCAssigner:
         if start == 0:
             return None
 
-        for curr in self._anchor_points.islice(None, start - 1, reverse=True):
+        for curr in self._anchor_points.islice(None, start, reverse=True):
             if curr.uptime is None or last.uptime is None:
                 exact = False
             elif curr.is_break or last.uptime < curr.uptime:
