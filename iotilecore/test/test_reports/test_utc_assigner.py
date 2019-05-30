@@ -5,6 +5,7 @@ import re
 import datetime
 import pytest
 import dateutil.parser
+import time
 from iotile.core.hw.reports import UTCAssigner, SignedListReport, IOTileReportParser
 
 
@@ -63,6 +64,8 @@ def compare_fixed_report(fixed, ref_filename):
     assert len(fixed.visible_readings) == len(ref_lines)
 
     for reading, ref_string in zip(fixed.visible_readings, ref_lines):
+        if str(reading) != ref_string:
+            print("FAIL: {} != {}".format(str(reading),ref_string))
         assert str(reading) == ref_string
 
 
@@ -84,7 +87,6 @@ def assigner():
     assigner.add_report(report2)
 
     return assigner
-
 
 def test_basic_utcassigner(assigner):
     """Make sure we are able to load in reports."""
@@ -166,3 +168,69 @@ def test_whole_report_fixing(assigner):
     compare_fixed_report(fixed0, 'report_0_fixed.txt')
     compare_fixed_report(fixed1, 'report_1_fixed.txt')
     compare_fixed_report(fixed2, 'report_2_fixed.txt')
+
+def test_whole_report_fixing_osc():
+    """Create a loaded utc assigner."""
+
+    regex = r'^.*[/]?report_[0-9]_(.*)\.bin$'
+    report0 = load_report('d_05db/report_0_2019-05-30T02-52-11.561340.bin', regex)
+    report1 = load_report('d_05db/report_1_2019-05-30T02-52-14.744161.bin', regex)
+    report2 = load_report('d_05db/report_2_2019-05-30T02-52-15.658468.bin', regex)
+
+    print("Report0: rxtime:{}".format(report0.received_time))
+    print("Report1: rxtime:{}".format(report1.received_time))
+    print("Report2: rxtime:{}".format(report2.received_time))
+
+    assigner = UTCAssigner()
+    assigner.anchor_stream(0x0E00, converter="epoch")
+    assigner.anchor_stream(0x0E01, converter="epoch")
+
+    assigner.add_report(report0)
+    assigner.add_report(report1)
+    assigner.add_report(report2)
+
+    fixed0 = assigner.fix_report(report0)
+    fixed1 = assigner.fix_report(report1)
+    fixed2 = assigner.fix_report(report2)
+
+    time.sleep(1)
+
+    #print("\nReport 0")
+    #with open("report_0_05db_fixed.txt","w") as ofile:
+    #    for reading in fixed0.visible_readings:
+    #        ofile.write(str(reading)+"\n")
+
+    #print("\nReport 1")
+    #with open("report_1_05db_fixed.txt","w") as ofile:
+    #    for reading in fixed1.visible_readings:
+    #        ofile.write(str(reading)+"\n")
+
+    #print("\nReport 2")
+    #with open("report_2_05db_fixed.txt","w") as ofile:
+    #    for reading in fixed2.visible_readings:
+    #        ofile.write(str(reading)+"\n")
+
+    compare_fixed_report(fixed0, 'd_05db/report_0_05db_fixed.txt')
+    compare_fixed_report(fixed1, 'd_05db/report_1_05db_fixed.txt')
+    compare_fixed_report(fixed2, 'd_05db/report_2_05db_fixed.txt')
+
+    assigner2 = UTCAssigner()
+    assigner2.anchor_stream(0x0E00, converter="epoch")
+    assigner2.anchor_stream(0x0E01, converter="epoch")
+
+    assigner2.add_report(report0)
+    assigner2.add_report(report1)
+    assigner2.add_report(report2)
+
+    fixed0_2 = assigner2.fix_report(report0)
+    fixed1_2 = assigner2.fix_report(report1)
+    fixed2_2 = assigner2.fix_report(report2)
+
+    compare_fixed_report(fixed0_2, 'd_05db/report_0_05db_fixed.txt')
+    compare_fixed_report(fixed1_2, 'd_05db/report_1_05db_fixed.txt')
+    compare_fixed_report(fixed2_2, 'd_05db/report_2_05db_fixed.txt')
+
+
+
+
+
