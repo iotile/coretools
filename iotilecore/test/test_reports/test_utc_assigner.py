@@ -169,6 +169,35 @@ def test_whole_report_fixing(assigner):
     compare_fixed_report(fixed1, 'report_1_fixed.txt')
     compare_fixed_report(fixed2, 'report_2_fixed.txt')
 
+def test_fixed_report_monotonic():
+    regex = r'^.*[/]?report_[0-9]_(.*)\.bin$'
+    report0 = load_report('d_05db/report_0_2019-05-30T02-52-11.561340.bin', regex)
+    report1 = load_report('d_05db/report_1_2019-05-30T02-52-14.744161.bin', regex)
+    report2 = load_report('d_05db/report_2_2019-05-30T02-52-15.658468.bin', regex)
+
+    assigner = UTCAssigner()
+    assigner.anchor_stream(0x0E00, converter="epoch")
+    assigner.anchor_stream(0x0E01, converter="epoch")
+
+    assigner.add_report(report0)
+    assigner.add_report(report1)
+    assigner.add_report(report2)
+
+    fixed0 = assigner.fix_report(report0)
+    fixed1 = assigner.fix_report(report1)
+    fixed2 = assigner.fix_report(report2)
+
+    for rep in [fixed0,fixed1,fixed2]:
+        prevts = None
+        for reading in sorted(rep.visible_readings,key=lambda x: x.reading_id):
+            if prevts is None:
+                prevts = reading.reading_time
+            else:
+                #print("Reading id: {:X}".format(reading.reading_id))
+                assert reading.reading_time >= prevts
+                prevts = reading.reading_time
+
+
 def test_whole_report_fixing_osc():
     """Create a loaded utc assigner."""
 
@@ -177,9 +206,9 @@ def test_whole_report_fixing_osc():
     report1 = load_report('d_05db/report_1_2019-05-30T02-52-14.744161.bin', regex)
     report2 = load_report('d_05db/report_2_2019-05-30T02-52-15.658468.bin', regex)
 
-    print("Report0: rxtime:{}".format(report0.received_time))
-    print("Report1: rxtime:{}".format(report1.received_time))
-    print("Report2: rxtime:{}".format(report2.received_time))
+    #print("Report0: rxtime:{}".format(report0.received_time))
+    #print("Report1: rxtime:{}".format(report1.received_time))
+    #print("Report2: rxtime:{}".format(report2.received_time))
 
     assigner = UTCAssigner()
     assigner.anchor_stream(0x0E00, converter="epoch")
