@@ -2,6 +2,7 @@
 
 import logging
 import time
+import os
 import struct
 from typedargs.annotate import docannotate, context
 from iotile.core.exceptions import HardwareError, ArgumentError
@@ -112,7 +113,7 @@ class CloudUploader(IOTileApp):
         time.sleep(1.0)
         self._wait_streamers_finished()
 
-    def download(self, trigger=None, acknowledge=True, force=None):
+    def download(self, trigger=None, acknowledge=True, force=None, save=None):
         """Synchronously download all reports from the device.
 
         This function will:
@@ -141,6 +142,10 @@ class CloudUploader(IOTileApp):
                 a number, which is interpreted as the value to acknowledge, or it can
                 be a tuple with a number and boolean, which is interpreted as the
                 force parameter.
+            save (str): Optional path to save the reports that are downloaded.
+                If not passed, reports will not be saved.  The path should
+                point to a directory. If it does not exist, it will be created
+                (as will any needed parent directories)
 
         Returns:
             list of IOTileReport: The list of reports received from the device.
@@ -199,10 +204,25 @@ class CloudUploader(IOTileApp):
         self.logger.info("Received %d signed reports, ignored %d realtime reports",
                          len(signed_reports), len(reports) - len(signed_reports))
 
+        if save is not None:
+            if not os.path.exists(save):
+                self.logger.debug("Creating directory to save reports: %s", save)
+                os.makedirs(os.path.abspath(save), exist_ok=True)
+
+            for report in signed_reports:
+                outname = "report-{:08x}-{:04x}-{}.bin".format(report.origin, report.origin_streamer,
+                                                               report.received_time.isoformat().replace(':', '_'))
+                outpath = os.path.join(save, outname)
+
+                with open(outpath, "wb") as outfile:
+                    outfile.write(report.encode())
+
+                self.logger.debug("Saved report to file %s", outname)
+
         return signed_reports
 
     @docannotate
-    def upload(self, trigger=None, acknowledge=True):
+    def upload(self, trigger=None, acknowledge=True, save=None):
         """Synchronously get all data from the device and upload it to iotile.cloud.
 
         This function will:
@@ -228,13 +248,34 @@ class CloudUploader(IOTileApp):
             acknowledge (bool): If you don't want to send all cloud acknowledgements
                 down to the device before enabling streaming, you can pass False.  The
                 default behavior is True.
+            save (str): Optional path to save the reports that are downloaded.  If not
+                passed, reports will not be saved.  The path should point to a directory.
+                If it does not exist, it will be created (as will any needed parent directories)
         """
 
-        signed_reports = self.download(trigger, acknowledge)
+        signed_reports = self.download(trigger, acknowledge, save)
 
         for report in signed_reports:
             self.logger.info("Uploading report with ids in (%d, %d)", report.lowest_id, report.highest_id)
             self._cloud.upload_report(report)
+
+    @docannotate
+    def save_locally(self, folder, trigger=None):
+        """Synchronously get all reports from the device and save them to a local folder.
+
+        This function **does not access iotile.cloud**, is idempotent and does
+        not acknowledge any report readings either before or after downloading the reports.
+
+        Args:
+            folder (str): Optional path to save the reports that are downloaded.  If not
+                passed, reports will not be saved.  The path should point to a directory.
+                If it does not exist, it will be created (as will any needed parent directories)
+            trigger (int): If you need to manually trigger a streamer on the device,
+                you can specify its index here and it will have trigger_streamer called
+                on it before we enter the upload loop.
+        """
+
+        self.download(trigger, False, save=folder)
 
     @docannotate
     def get_report_size(self):

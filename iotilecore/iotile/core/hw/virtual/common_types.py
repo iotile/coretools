@@ -81,9 +81,11 @@ def unpack_rpc_response(status, response=None, rpc_id=0, address=0):
     if address == 8:
         status_code &= ~(1 << 7)
 
+    # There is a firmware bug in lib_controller that misreports rpc not found exceptions
+    # as application level exceptions, not protocol level exceptions.
     if status == 0:
         raise BusyRPCResponse()
-    elif status == 2:
+    elif status == 2 or (address == 8 and status_code == 2):
         raise RPCNotFoundError("rpc %d:%04X not found" % (address, rpc_id))
     elif status == 3:
         raise RPCErrorCode(status_code)

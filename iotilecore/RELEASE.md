@@ -2,6 +2,15 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## 5.0.2
+
+- Workaround bug in handling of RPCNotFound exception raised when a controller
+  RPC is not found.  It was misraised as an application RPCError instead of
+  RPCNotFound.
+
+- Add required msgpack dependency that was incorrectly in `iotile-ext-cloud` 
+  although `iotile-core` had the dependency.
+
 ## 5.0.1
 
 - Fix bug in utc_assigner.py that resulted in oscillating timestamp calculations
