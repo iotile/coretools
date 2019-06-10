@@ -43,7 +43,7 @@ jobs:
       set PATH=%PATH%;c:\gcc\bin
       pip install six cmdln pytest
       pip install pytest pytest-logging pytest-localserver
-      pip install requests-mock pycryptodome configparser iotile-support-lib-controller-3
+      pip install requests-mock pycryptodome configparser iotile-support-lib-controller-3 iotile-support-con-nrf52832-3
       pip install -e ./iotilecore/
       pip install -e ./iotilebuild/
       pip install -e ./iotiletest/
