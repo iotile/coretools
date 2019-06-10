@@ -9,8 +9,7 @@ setup(
     license="LGPLv3",
     install_requires=[
         "iotile-core>=5.0.0,<6",
-        "iotile_cloud>=0.9.9,<2",
-        "msgpack>=0.6.1,<1"
+        "iotile_cloud>=0.9.9,<2"
     ],
     python_requires=">=3.5,<4",
     entry_points={'iotile.config_function': ['link_cloud = iotile.cloud.config:link_cloud'],

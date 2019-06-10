@@ -2,6 +2,13 @@
 
 All major changes in each released version of the iotile-ext-cloud plugin are listed here.
 
+## 1.0.9
+
+- Remove `msgpack` dependency that should be in `iotile-core`.
+- Add annotated `save_locally` method to `cloud_uploader` app that is able to save
+  all reports locally without interacting with iotile.cloud.  Also added options
+  to `download` and `upload` methods to also save reports locally.
+
 ## 1.0.8
 
 - Add `msgpack` dependency that was missing
