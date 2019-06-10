@@ -28,7 +28,8 @@ setup(
         "python-dateutil>=2.8.0,<3",
         "typedargs>=1.0.0,<2",
         "sortedcontainers~=2.1",
-        "entrypoints>=0.3.0,<1"
+        "entrypoints>=0.3.0,<1",
+        "msgpack>=0.6.1,<1"
     ],
     extras_require={
         'ui': ["asciimatics>=1.10.0,<2"]
