@@ -278,13 +278,13 @@ class JLinkControlThread(threading.Thread):
  
                 logger.info("BKPT hit, writing SPI dump command now...")
                 logger.info("At PC: %s", hex(self._jlink.register_read(pc_reg)))
-                self._write_ff_dump_cmd(start_addr, data_length)
+                self._write_ff_dump_cmd(start_addr + bytes_dumped, bytes_to_dump)
 
                 self._continue()
 
                 logger.info("BKPT hit, reading response buffer address...")
                 logger.info("At PC: %s", hex(self._jlink.register_read(pc_reg)))
-                memory += self._read_ff_dump_resp(data_length)
+                memory += self._read_ff_dump_resp(bytes_to_dump)
 
                 bytes_dumped += bytes_to_dump
                 self._continue()
