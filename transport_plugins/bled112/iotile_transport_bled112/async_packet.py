@@ -84,3 +84,4 @@ def ReaderThread(filelike, read_queue, header_length, length_function, stop):
             read_queue.put(packet)
         except:
             logger.exception("Error in reader thread")
+            break
