@@ -2,6 +2,10 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
+## 3.0.1
+
+- Hack fix for the log flood caused when a bled112 dongle gets disconnected
+
 ## 3.0.0
 
 - Remove VirtualInterface and replace with an initial implementation of `BLED112DeviceServer`.
@@ -9,7 +13,7 @@ All major changes in each released version of the bled112 transport plugin are l
   basic functionality works currently.
 
 - Adds mechanism to automatically find the first available BLED112 dongle on a computer so
-  that you don't have to hardcode dongle paths if you have multiple `iotile` processes 
+  that you don't have to hardcode dongle paths if you have multiple `iotile` processes
   running.
 
 ## 2.0.4
@@ -36,18 +40,18 @@ All major changes in each released version of the bled112 transport plugin are l
   BLED112 virtual interface snoops on \_queue_reports, it needs to be updated
   to understand the new format of what the arguments to that method mean.
 
-- Refactor broadcast and advertisement packet decoding to better support 
+- Refactor broadcast and advertisement packet decoding to better support
   v2 advertisement packets.
 
 ## 1.7.4
 
-- Add support for advertising packets version 2. 
+- Add support for advertising packets version 2.
 - Improve behavior of scan to handle empty payloads
 
 ## 1.7.3
 
 - Add support for broadcast readings in virtual bled112 interface.  Now if you
-  stream BroadcastReport objects from a virtual device over bled112, it will 
+  stream BroadcastReport objects from a virtual device over bled112, it will
   properly update the advertising scan response data to contain the reading
   value.
 
@@ -130,7 +134,7 @@ All major changes in each released version of the bled112 transport plugin are l
 
 ## 1.4.0
 
-- Add preliminary support for tracing interface.  BLED112 adapter now supports the tracing interface.  
+- Add preliminary support for tracing interface.  BLED112 adapter now supports the tracing interface.
 
 ## 1.3.6
 
