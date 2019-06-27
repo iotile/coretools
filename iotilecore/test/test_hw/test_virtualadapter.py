@@ -15,6 +15,7 @@ import pytest
 import os.path
 import os
 import time
+import sys
 
 
 @pytest.fixture
@@ -135,17 +136,15 @@ def test_report(report_hw):
 
 
 def test_config_file(conf_report_hw):
-    """Make sure we can pass a config dict
-    """
+    """Make sure we can pass a config dict"""
 
     conf_report_hw.connect_direct('2')
     conf_report_hw.enable_streaming()
     assert conf_report_hw.count_reports() == 11
 
-
+@pytest.mark.skipif(sys.platform == 'darwin', reason="Error installing Crypto on OSX")
 def test_config_file2(conf2_report_hw, monkeypatch):
-    """Make sure we can sign reports
-    """
+    """Make sure we can sign reports"""
 
     monkeypatch.setenv('USER_KEY_00000002', '0000000000000000000000000000000000000000000000000000000000000000')
 
@@ -163,8 +162,7 @@ def test_config_file2(conf2_report_hw, monkeypatch):
 
 
 def test_realtime_streaming(realtime_hw):
-    """Make sure we properly support streaming asynchronously
-    """
+    """Make sure we properly support streaming asynchronously"""
 
     realtime_hw.connect_direct('1')
     realtime_hw.enable_streaming()
@@ -231,18 +229,39 @@ def test_tilebased_device(tile_based):
     hw = tile_based
 
     hw.connect(1)
-    con = hw.controller()
+    adder = hw.get(9)
     tile1 = hw.get(11)
     simple_tile = hw.get(7)
 
     assert tile1.tile_name() == 'test01'
     assert simple_tile.tile_name() == 'test02'
 
-    assert con.add(1, 2) == 3
-    con.count()
+    assert adder.add(1, 2) == 3
+    adder.count()
 
     assert tile1.add(3, 5) == 8
     tile1.count()
+
+
+def test_vircon(tile_based):
+    """Make sure the virtual controller interfaces added function as expected"""
+
+    hw = tile_based
+
+    hw.connect(1)
+    con = hw.get(8, force='NRF52 ')
+    tile_manager = con.tile_manager()
+
+    assert tile_manager.count_tiles() == 4
+
+    tiles = {9: b'test01',
+             8: b'vircon',
+             7: b'test02',
+             11: b'test01'}
+
+    for i in range(tile_manager.count_tiles()):
+        tile = tile_manager.describe_tile(i)
+        assert tiles[tile.slot] == tile.name
 
 
 def test_debug(realtime_scan_hw):
@@ -277,7 +296,7 @@ def test_recording_rpcs(tmpdir):
         with HardwareManager('virtual:tile_based@%s' % conf_file, record=str(record_path)) as hw:
             hw.connect(1)
 
-            con = hw.controller()
+            con = hw.get(9)
             tile1 = hw.get(11)
 
             con.count()
@@ -305,10 +324,10 @@ def test_recording_rpcs(tmpdir):
     rpc_lines = [",".join(x) for x in rpc_lines]
 
     print(rpc_lines[4])
-    assert rpc_lines == ['1,, 8,0x0004,0xc0,,                                        ,ffff74657374303101000003                ,',
-                         '1,, 8,0x0004,0xc0,,                                        ,ffff74657374303101000003                ,',
+    assert rpc_lines == ['1,, 9,0x0004,0xc0,,                                        ,ffff74657374303101000003                ,',
+                         '1,, 9,0x0004,0xc0,,                                        ,ffff74657374303101000003                ,',
                          '1,,11,0x0004,0xc0,,                                        ,ffff74657374303101000003                ,',
                          '1,,11,0x0004,0xc0,,                                        ,ffff74657374303101000003                ,',
-                         '1,, 8,0x8001,0xc0,,                                        ,00000000                                ,',
+                         '1,, 9,0x8001,0xc0,,                                        ,00000000                                ,',
                          '1,,11,0x8000,0xc0,,0300000005000000                        ,08000000                                ,',
                          '1,,11,0x8001,0xc0,,                                        ,00000000                                ,']

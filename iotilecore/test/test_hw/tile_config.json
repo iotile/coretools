@@ -1,5 +1,5 @@
 {
-	"device": 
+	"device":
 	{
 		"iotile_id": 1,
 		"tiles":
@@ -11,7 +11,7 @@
 			},
 
 			{
-				"address": 8,
+				"address": 9,
 				"name": "test/test_hw/virtual_tile.py",
 				"args": {}
 			},
