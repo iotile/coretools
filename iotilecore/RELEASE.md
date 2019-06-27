@@ -2,6 +2,12 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## 5.0.4
+
+- Augments the TileBasedDevice to respond to certain controller RPCs. It has the basic
+  utilities from the tile_manager.
+- Updates the event loop to have a more robust check for uncancelled tasks on shutdown
+
 ## 5.0.3
 
 - `run_executor` can now be used in finalizer code
@@ -12,7 +18,7 @@ All major changes in each released version of `iotile-core` are listed here.
   RPC is not found.  It was misraised as an application RPCError instead of
   RPCNotFound.
 
-- Add required msgpack dependency that was incorrectly in `iotile-ext-cloud` 
+- Add required msgpack dependency that was incorrectly in `iotile-ext-cloud`
   although `iotile-core` had the dependency.
 
 ## 5.0.1
@@ -45,8 +51,8 @@ All major changes in each released version of `iotile-core` are listed here.
 ## 4.1.0
 
 - Update UTCAssigner with more test coverage and add fix_report() method that
-  will fix all readings inside of a SignedListReport with memoization to 
-  speed up the fixing process. 
+  will fix all readings inside of a SignedListReport with memoization to
+  speed up the fixing process.
 
 - Update UTCAssigner logic to check both directions from a reading to find out
   which part produces a more exact UTC timestamp, choosing the best one
@@ -80,7 +86,7 @@ All major changes in each released version of `iotile-core` are listed here.
 
 ## 3.27.2
 
-- Fix support for `support_package` products in `IOTile` object and 
+- Fix support for `support_package` products in `IOTile` object and
   `ComponentRegistry`.
 
 ## 3.27.1
@@ -127,15 +133,15 @@ All major changes in each released version of `iotile-core` are listed here.
   stored with the virtual environment, speeding up small program invocations
   by removing the necessity to enumerate all installed packages.
 
-- Make log messages from virtual_device script less chatty by removing audit 
+- Make log messages from virtual_device script less chatty by removing audit
   log messages by default.
 
-- Remove nuisance log warning when loading extensions by name (Issue #637) 
+- Remove nuisance log warning when loading extensions by name (Issue #637)
 
 - Fix problem loading `module_settings.json` files for components that had been
   built before on python 3.  (Issue #636)
 
-- Adds support for complex python support wheels in ComponentRegistry.  
+- Adds support for complex python support wheels in ComponentRegistry.
   Submodules inside the support package are now imported correctly so that
   relative imports among the modules work.
 
@@ -169,9 +175,9 @@ All major changes in each released version of `iotile-core` are listed here.
 ## 3.24.2
 
 - Add a better exception when the return value received from an RPC does not
-  match the format that we expect.  
+  match the format that we expect.
 
-- Add a workaround for a controller firmware bug so that CommandNotFound 
+- Add a workaround for a controller firmware bug so that CommandNotFound
   exceptions are properly raised when an RPC does not exist on the controller
   tile.
 
@@ -235,7 +241,7 @@ All major changes in each released version of `iotile-core` are listed here.
 
 ## 3.22.11
 
-- Fix Ctrl-C behavior of watch_broadcasts to not hang on exit sometimes and 
+- Fix Ctrl-C behavior of watch_broadcasts to not hang on exit sometimes and
   properly double buffer the display to remove the flickering.  Also update the
   UI at 50 ms rather than 500 ms to increase responsiveness.
 
@@ -248,7 +254,7 @@ All major changes in each released version of `iotile-core` are listed here.
 ## 3.22.9
 
 - Fix the registry function `list_config` so that the string 'config:' does not
-  prefix each variable name in the list. 
+  prefix each variable name in the list.
 
 ## 3.22.8
 
@@ -272,7 +278,7 @@ All major changes in each released version of `iotile-core` are listed here.
 
 - Make asciimatics an optional feature since it includes a large dependency
   on Pillow which requires compilation on linux.  Now, if you want the fancy
-  command line ui, you need to install it using: 
+  command line ui, you need to install it using:
   `pip install iotilecore[ui]`
 
 ## 3.22.3
@@ -288,7 +294,7 @@ All major changes in each released version of `iotile-core` are listed here.
 
 - Update device_updater app to reboot the device by default
 - Update AdapterStream to better detect unicode strings incorrectly passed to
-  send_highspeed on python 3. 
+  send_highspeed on python 3.
 
 ## 3.22.0
 
@@ -364,14 +370,14 @@ dependencies. (Issue #387)
 - Add support for IOTileApp objects that match the app tag on an iotile device
   and provide a high level API container for accessing functionality that is
   not just implemented by a single tile.  (Issue #303)
-- Add support for waiting for a certain amount of tracing data like 
+- Add support for waiting for a certain amount of tracing data like
   wait_reports.  (Issue #348)
 - Cleanup the enable_streaming and enable_tracing code to allow it to be called
   multiple times per HardwareManager connection without breaking.
 
 ## 3.18.3
 
-- Add support for generating PEP440 compliant version strings in 
+- Add support for generating PEP440 compliant version strings in
   SemanticVersion. (Issue #342)
 
 ## 3.18.2
