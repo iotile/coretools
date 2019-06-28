@@ -136,8 +136,8 @@ class AsyncJLink:
         await self._loop.run_in_executor(self._continue_blocking)
 
     async def _inject_blob(self, absolute_path_to_binary):
-        with open(absolute_path_to_binary, mode='rb', loop=self._loop) as ff_file:
-            ff_bin = await self._loop.run_in_executor(ff_file.read())
+        with open(absolute_path_to_binary, mode='rb') as ff_file:
+            ff_bin = await self._loop.run_in_executor(ff_file.read)
         await self.write_memory(ff_cfg.ff_addresses['blob_inject_start'], ff_bin, chunk_size=1)
 
     def _update_reg_blocking(self, register, value):
@@ -157,7 +157,7 @@ class AsyncJLink:
 
     async def _get_ff_max_read_length(self):
         max_read_length, = await self.read_memory(
-            ff_cfg.ff_addresses['max_read_length'], 1, chunk_size=2)
+            ff_cfg.ff_addresses['max_read_length'], 2, chunk_size=2, join=False)
         return max_read_length
 
     async def _write_ff_dump_cmd(self, start, length):
@@ -165,7 +165,7 @@ class AsyncJLink:
         length_bytes = length.to_bytes(2, byteorder='little')
 
         await self.write_memory(ff_cfg.ff_addresses['read_command_address'], start_bytes, chunk_size=1)
-        written_start, = await self.read_memory(ff_cfg.ff_addresses['read_command_address'], 1, chunk_size=4)
+        written_start, = await self.read_memory(ff_cfg.ff_addresses['read_command_address'], 4, chunk_size=4, join=False)
 
         if written_start != start:
             raise ArgumentError("FF dump command address was not successfully written.")
@@ -173,7 +173,7 @@ class AsyncJLink:
             logger.info("FF dump command address written to %s", hex(start))
 
         await self.write_memory(ff_cfg.ff_addresses['read_command_length'], length_bytes, chunk_size=1)
-        written_length, = await self.read_memory(ff_cfg.ff_addresses['read_command_length'], 1, chunk_size=2)
+        written_length, = await self.read_memory(ff_cfg.ff_addresses['read_command_length'], 2, chunk_size=2, join=False)
 
         if written_length != length:
             raise ArgumentError("ff dump command length was not successfully written.")
@@ -181,9 +181,9 @@ class AsyncJLink:
             logger.info("ff dump command length written to %d", length)
 
     async def _read_ff_dump_resp(self, length):
-        buffer_addr, = await self._jlink.read_memory(ff_cfg.ff_addresses['read_response_buffer_address'], 1)
+        buffer_addr, = await self.read_memory(ff_cfg.ff_addresses['read_response_buffer_address'], 4, chunk_size=4, join=False)
         logger.info("Response buffer at %s", hex(buffer_addr))
-        flash_dump = await self.read_memory(buffer_addr, length)
+        flash_dump = await self.read_memory(buffer_addr, length, chunk_size=1)
         return flash_dump
 
     async def _read_mapped_memory(self, device_info, region, read_start_addr, read_length):
@@ -245,13 +245,13 @@ class AsyncJLink:
                 logger.info("BKPT hit, writing SPI dump command now...")
 
                 logger.info("At PC: %s", hex(await self.register_read(pc_reg)))
-                await self._write_ff_dump_cmd(start_addr, data_length)
+                await self._write_ff_dump_cmd(start_addr + bytes_dumped, bytes_to_dump)
 
                 await self._continue()
 
                 logger.info("BKPT hit, reading response buffer address...")
                 logger.info("At PC: %s", hex(await self.register_read(pc_reg)))
-                memory += await self._read_ff_dump_resp(data_length)
+                memory += await self._read_ff_dump_resp(bytes_to_dump)
 
                 bytes_dumped += bytes_to_dump
                 await self._continue()
