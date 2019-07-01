@@ -452,7 +452,8 @@ class AsyncJLink:
         except:
             logger.exception("Unexpected queue poll exception!")
 
-        read_index = (read_index + 1) % queue_size
+        if queue_size != 0:
+            read_index = (read_index + 1) % queue_size
         await self.write_memory(read_address, [read_index], chunk_size=1)
 
         return read_index == write_index

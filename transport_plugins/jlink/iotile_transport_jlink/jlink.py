@@ -338,7 +338,7 @@ class JLinkAdapter(StandardDeviceAdapter):
             await self._jlink_async.start_polling(self._control_info)
 
     async def close_interface(self, conn_id, interface):
-        self._ensure_connection(conn_id, True)
+        self._ensure_connection(conn_id, False)
 
         if not self.opened_interfaces[interface]:
             return
