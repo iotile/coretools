@@ -50,7 +50,7 @@ class ready_bled():
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("blob")
+    parser.add_argument("blob", nargs='?', default="bled112-v1-6-0-virtual.raw")
     args = parser.parse_args()
 
     bleds = BLED112Adapter.find_bled112_devices()
@@ -70,23 +70,3 @@ if __name__ == "__main__":
             bled.flash(args.blob)
             num_bleds_remaining -= 1
         print("Waiting for", num_bleds_remaining, "bleds to finish resetting")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    #bledadapter = BLED112Adapter(port = port, passive=True)
-
-    #bledadapter._command_task._reset()
-    #bledadapter.stop_sync()
