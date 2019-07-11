@@ -31,18 +31,24 @@ from .report import IOTileReading
 class _TimeAnchor:
     """Internal class for storing a utc reference point."""
 
-    __slots__ = ('uptime', 'utc', 'reading_id', 'is_break', 'exact')
+    __slots__ = ('uptime', 'utc', 'reading_id', 'is_break', 'exact', 'stream')
 
-    def __init__(self, reading_id, uptime=None, utc=None, is_break=False, exact=False):
+    def __init__(self, reading_id, uptime=None, utc=None, is_break=False, exact=False, stream=None):
         self.uptime = uptime
         self.utc = utc
         self.reading_id = reading_id
         self.is_break = is_break
         self.exact = exact
+        self.stream = stream
 
     def copy(self):
         """Return a copy of this _TimeAnchor."""
-        return _TimeAnchor(self.reading_id, self.uptime, self.utc, self.is_break, self.exact)
+        return _TimeAnchor(self.reading_id, self.uptime, self.utc, self.is_break, self.exact, self.stream)
+
+    def __str__(self):
+        return "stream:{:04X}, reading_id:{:08X}, uptime:{:08X}, isbreak:{}, isexact:{}, utc:{}".format(
+            self.stream, self.reading_id, self.uptime, self.is_break, self.exact, self.utc)
+
 
 
 class UTCAssignment:
@@ -84,8 +90,8 @@ class UTCAssignment:
         return int((self.utc - self._EpochReference).total_seconds())
 
     def __str__(self):
-        return "%s (reading_id=%08X, exact=%s, crossed_break=%s)" % \
-               (self.utc, self.reading_id, self.exact, self.crossed_break)
+        return "%s (reading_id=%08X, exact=%s, crossed_break=%s, found_id=%s, rtc_value=%08X)" % \
+               (self.utc, self.reading_id, self.exact, self.crossed_break, self.found_id, self.rtc_value)
 
 
 class UTCAssigner:
@@ -113,11 +119,13 @@ class UTCAssigner:
         self._anchor_streams = {}
         self._break_streams = set()
         self._logger = logging.getLogger(__name__)
+        self._load_known_breaks()
 
         self._known_converters = {
             'rtc': UTCAssigner._convert_rtc_anchor,
             'epoch': UTCAssigner._convert_epoch_anchor
         }
+
 
     def _load_known_breaks(self):
         self._break_streams.add(0x5C00)
@@ -171,7 +179,7 @@ class UTCAssigner:
         delta = datetime.timedelta(seconds=reading.value)
         return cls._EpochReference + delta
 
-    def add_point(self, reading_id, uptime=None, utc=None, is_break=False):
+    def add_point(self, reading_id, uptime=None, utc=None, is_break=False, streamid=None):
         """Add a time point that could be used as a UTC reference."""
 
         if reading_id == 0:
@@ -189,7 +197,7 @@ class UTCAssigner:
             utc = self.convert_rtc(uptime)
             uptime = None
 
-        anchor = _TimeAnchor(reading_id, uptime, utc, is_break, exact=utc is not None)
+        anchor = _TimeAnchor(reading_id, uptime, utc, is_break, exact=utc is not None, stream=streamid)
 
         if anchor in self._anchor_points:
             return
@@ -209,7 +217,7 @@ class UTCAssigner:
         if reading.stream in self._anchor_streams:
             utc = self._anchor_streams[reading.stream](reading)
 
-        self.add_point(reading.reading_id, reading.raw_time, utc, is_break=is_break)
+        self.add_point(reading.reading_id, reading.raw_time, utc, is_break=is_break, streamid=reading.stream)
 
     def add_report(self, report, ignore_errors=False):
         """Add all anchors from a report."""
@@ -223,7 +231,8 @@ class UTCAssigner:
         for reading in report.visible_readings:
             self.add_reading(reading)
 
-        self.add_point(report.report_id, report.sent_timestamp, report.received_time)
+        #FIXME Not a valid anchor point
+        #self.add_point(report.report_id, report.sent_timestamp, report.received_time)
 
     def assign_utc(self, reading_id, uptime=None, prefer="before"):
         """Assign a utc datetime to a reading id.
@@ -350,6 +359,7 @@ class UTCAssigner:
 
         for reading in report.visible_readings:
             assignment = self.assign_utc(reading.reading_id, reading.raw_time, prefer=prefer)
+            #XXX self._logger.debug("Assignment: {}".format(assignment))
 
             if assignment is None:
                 dropped_readings += 1
