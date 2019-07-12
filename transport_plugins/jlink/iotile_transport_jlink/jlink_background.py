@@ -35,6 +35,11 @@ class AsyncJLink:
         self._jlink_adapter = jlink_adapter
         self._jlink = None
         self._loop = loop
+        self._times_polled = 0
+        self._total_bytes_read = 0
+        self._total_frames_read = 0
+        self._start_poll_time = 0
+        self._end_poll_time = 0
 
         # maintenance can be enabled for different interfaces
         self._maintenance_counter = 0
@@ -329,12 +334,13 @@ class AsyncJLink:
             await self._loop.run_in_executor(self._jlink.close)
             self._jlink = None
 
-    async def start_polling(self, control_info, step_timeout=0.1):
+    async def start_polling(self, control_info, step_timeout=0.05):
         counter = self._maintenance_counter
         self._maintenance_counter += 1
 
         if counter == 0:
             await self._clear_queue(control_info)
+            self._start_poll_time = time.time()
             self._maintenance_task = self._loop.add_task(
                 self._maintenance_coroutine(control_info, step_timeout))
 
@@ -342,6 +348,11 @@ class AsyncJLink:
         self._maintenance_counter -= 1
         if self._maintenance_counter == 0:
             await self._maintenance_task.stop()
+            self._end_poll_time = time.time()
+            print("time polled: ", (self._end_poll_time - self._start_poll_time))
+            print("times_polled ", self._times_polled)
+            print("total_bytes_read: ", self._total_bytes_read)
+            print("total_frames_read: ", self._total_frames_read)
 
     async def register_read(self, pc_reg):
         return await self._loop.run_in_executor(self._jlink.register_read, pc_reg)
@@ -410,24 +421,46 @@ class AsyncJLink:
         if value & poll_mask:
             self.rpc_response_event.set()
 
-    async def _read_next_queue_frame(self, control_info, read_index):
-        header_address, data_address = control_info.queue_element_info(read_index)
-        header, = await self.read_memory(header_address, 1, chunk_size=1)
-        data = await self.read_memory(data_address, control_info.FRAME_SIZE - 1, chunk_size=1)
+    async def _read_queue_frames(self, control_info, read_index, write_index, queue_size):
+        header_address, _ = control_info.queue_element_info(read_index)
 
-        is_trace = header & 0x40
-        is_stream = header & 0x80
-        data_length = header & 0x3F
-
-        if data_length > ControlStructure.FRAME_SIZE - 1:
-            raise HardwareError("Data length is too big {}".format(data_length))
-
-        if is_trace and self._jlink_adapter.opened_interfaces["tracing"]:
-            self._jlink_adapter.add_trace(data[0:data_length])
-        elif is_stream and self._jlink_adapter.opened_interfaces["streaming"]:
-            self._jlink_adapter.report_parser.add_data(data[0:data_length])
+        if read_index > write_index:
+            queue_wrapped = True
+            number_frames = queue_size + write_index - read_index
+            number_pre_wrapped_frames = (queue_size - 1) - read_index
+            pre_wrapped_frame_bytes = control_info.FRAME_SIZE * number_pre_wrapped_frames
+            post_wrapped_frame_bytes = (number_frames - number_pre_wrapped_frames) * control_info.FRAME_SIZE
         else:
-            pass # Drop if interface is not opened
+            queue_wrapped = False
+            number_frames = write_index - read_index
+
+        total_frame_bytes = control_info.FRAME_SIZE * number_frames
+
+        if queue_wrapped is True:
+            frames = await self.read_memory(header_address, pre_wrapped_frame_bytes, chunk_size=1)
+            header_address, _ = control_info.queue_element_info(0)
+            frames += await self.read_memory(header_address, post_wrapped_frame_bytes, chunk_size=1)
+        else:
+            frames = await self.read_memory(header_address, total_frame_bytes, chunk_size=1)
+
+        self._total_frames_read += number_frames
+        for frame in range(number_frames):
+            frame_index = frame * control_info.FRAME_SIZE
+            is_trace = frames[frame_index] & 0x40
+            is_stream = frames[frame_index] & 0x80
+            frame_length = frames[frame_index] & 0x3F
+            frame_data = frames[(frame_index + 1):(frame_index + frame_length + 1)]
+
+            if frame_length > ControlStructure.FRAME_SIZE - 1:
+                raise HardwareError("Data length is too big {}".format(frame_length))
+
+            if is_trace and self._jlink_adapter.opened_interfaces["tracing"]:
+                self._jlink_adapter.add_trace(frame_data)
+            elif is_stream and self._jlink_adapter.opened_interfaces["streaming"]:
+                self._jlink_adapter.report_parser.add_data(frame_data)
+                self._total_bytes_read += len(frame_data)
+            else:
+                pass # Drop if interface is not opened
 
     async def _poll_queue_status(self, control_info):
         """ Read next frame from queue
@@ -437,23 +470,37 @@ class AsyncJLink:
         """
 
         read_address, write_address, queue_size_address = control_info.queue_info()
-        read_index, = await self.read_memory(read_address, 1, chunk_size=1)
-        write_index, = await self.read_memory(write_address, 1, chunk_size=1)
-        queue_size = await self.read_memory(queue_size_address, 2, chunk_size=2)
-        queue_size = int.from_bytes(queue_size, 'little')
+        # read_index, = await self.read_memory(read_address, 1, chunk_size=1)
+        # write_index, = await self.read_memory(write_address, 1, chunk_size=1)
+        # queue_size = await self.read_memory(queue_size_address, 2, chunk_size=2)
+
+        if read_address != (write_address - 1) and write_address != (queue_size_address - 1):
+            raise HardwareError("Read/Write/Queue Size addresses are not algined.")
+
+        queue_info = await self.read_memory(read_address, 4, chunk_size=1)
+        read_index = queue_info[0]
+        write_index = queue_info[1]
+        queue_size = queue_info[2] + (queue_info[3] << 8)
+
+        # print("read_index: ", read_index)
+        # print("write_index: ", write_index)
+        # print("queue_size: ", queue_size)
+
+        # queue_size = int.from_bytes(queue_size, 'little')
 
         if read_index == write_index:
             return True
 
         try:
-            await self._read_next_queue_frame(control_info, read_index)
+            await self._read_queue_frames(control_info, read_index, write_index, queue_size)
         except (HardwareError, pylink.errors.JLinkException):
             logger.debug("Queue poll exception.", exc_info=True)
         except:
             logger.exception("Unexpected queue poll exception!")
 
         if queue_size != 0:
-            read_index = (read_index + 1) % queue_size
+            # read_index = (read_index + 1) % queue_size
+            read_index = write_index
         await self.write_memory(read_address, [read_index], chunk_size=1)
 
         return read_index == write_index
@@ -474,21 +521,23 @@ class AsyncJLink:
         last_timer_update = time.time()
         while self._maintenance_counter > 0:
             try:
-                is_queue_empty = False
+                # is_queue_empty = False
 
-                while not is_queue_empty:
-                    is_queue_empty = await self._poll_queue_status(control_info)
+                # while not is_queue_empty:
+                    # is_queue_empty = await self._poll_queue_status(control_info)
+                await self._poll_queue_status(control_info)
 
-                    if (time.time() - last_timer_update) > step_timeout:
-                        last_timer_update = time.time()
-                        await self._update_watch_counter(control_info)
-                        await self._poll_rpc_status(control_info)
+                if (time.time() - last_timer_update) > step_timeout:
+                    last_timer_update = time.time()
+                    await self._update_watch_counter(control_info)
+                    await self._poll_rpc_status(control_info)
 
             except asyncio.CancelledError:
                 logger.debug("Maintenance task is canceled")
             except:
                 logger.exception("Exception in maintenance task")
 
+            self._times_polled += 1
             delay = time.time() - last_timer_update
             if delay < step_timeout:
                 await asyncio.sleep(step_timeout - delay)
