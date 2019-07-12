@@ -349,10 +349,10 @@ class AsyncJLink:
         if self._maintenance_counter == 0:
             await self._maintenance_task.stop()
             self._end_poll_time = time.time()
-            print("time polled: ", (self._end_poll_time - self._start_poll_time))
-            print("times_polled ", self._times_polled)
-            print("total_bytes_read: ", self._total_bytes_read)
-            print("total_frames_read: ", self._total_frames_read)
+            # print("time polled: ", (self._end_poll_time - self._start_poll_time))
+            # print("times_polled ", self._times_polled)
+            # print("total_bytes_read: ", self._total_bytes_read)
+            # print("total_frames_read: ", self._total_frames_read)
 
     async def register_read(self, pc_reg):
         return await self._loop.run_in_executor(self._jlink.register_read, pc_reg)
@@ -426,13 +426,13 @@ class AsyncJLink:
 
         if read_index > write_index:
             queue_wrapped = True
-            number_frames = queue_size + write_index - read_index
-            number_pre_wrapped_frames = (queue_size - 1) - read_index
+            number_frames = (write_index + 1) + (queue_size - read_index)
+            number_pre_wrapped_frames = queue_size - read_index
             pre_wrapped_frame_bytes = control_info.FRAME_SIZE * number_pre_wrapped_frames
             post_wrapped_frame_bytes = (number_frames - number_pre_wrapped_frames) * control_info.FRAME_SIZE
         else:
             queue_wrapped = False
-            number_frames = write_index - read_index
+            number_frames = write_index - read_index + 1
 
         total_frame_bytes = control_info.FRAME_SIZE * number_frames
 
@@ -443,8 +443,10 @@ class AsyncJLink:
         else:
             frames = await self.read_memory(header_address, total_frame_bytes, chunk_size=1)
 
+        # print(number_frames, ",", len(frames), ",", read_index, ",", write_index)
+        # print("length of read frames: ", len(frames))
         self._total_frames_read += number_frames
-        for frame in range(number_frames):
+        for frame in range(number_frames - 1):
             frame_index = frame * control_info.FRAME_SIZE
             is_trace = frames[frame_index] & 0x40
             is_stream = frames[frame_index] & 0x80
@@ -459,6 +461,7 @@ class AsyncJLink:
             elif is_stream and self._jlink_adapter.opened_interfaces["streaming"]:
                 self._jlink_adapter.report_parser.add_data(frame_data)
                 self._total_bytes_read += len(frame_data)
+                # print("length of frame data sent to report: ", len(frame_data))
             else:
                 pass # Drop if interface is not opened
 
