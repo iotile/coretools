@@ -337,9 +337,6 @@ class JLinkAdapter(StandardDeviceAdapter):
 
         self.opened_interfaces[interface] = True
 
-        if interface == "tracing" or interface == "streaming":
-            await self.check_interface_compatibility(conn_id)
-
         if interface == "tracing":
             await self._jlink_async.change_state_flag(
                 self._control_info, AsyncJLink.TRACE_BIT, True)
@@ -374,11 +371,6 @@ class JLinkAdapter(StandardDeviceAdapter):
 
         if interface in JLinkAdapter.POLLING_INTERFACES:
             await self._jlink_async.stop_polling()
-
-    async def check_interface_compatibility(self, conn_id):
-        status = await self.send_rpc(
-            conn_id, 8, 0x0004, b'', timeout=0.3)
-        logger.debug(status)
 
     async def send_rpc(self, conn_id, address, rpc_id, payload, timeout):
 
