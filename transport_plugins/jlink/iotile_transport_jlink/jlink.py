@@ -42,6 +42,7 @@ class JLinkAdapter(StandardDeviceAdapter):
         self._mux_func = None
         self._channel = None
         self._jlink_async = AsyncJLink(self, loop)
+        self._task = loop.add_task(None, name="JLINK Adapter stopper", finalizer=self.stop)
         self._connection_id = None
         self.jlink = None
         self.connected = False
@@ -188,8 +189,15 @@ class JLinkAdapter(StandardDeviceAdapter):
             except:
                 raise
 
-    async def stop(self):
+    async def stop(self, _task=None):
         """Asynchronously stop this adapter and release all resources."""
+
+        logger.info("Stopping JLINK adapter")
+        if self.connected == True:
+            await self.disconnect(self._connection_id)
+
+        if self._task.stopped:
+            return
 
         await self._jlink_async.close_jlink()
 
@@ -308,12 +316,16 @@ class JLinkAdapter(StandardDeviceAdapter):
             return
 
         try:
-            for interface in JLinkAdapter.POLLING_INTERFACES:
-                if self.opened_interfaces[interface]:
-                    await self.close_interface(conn_id, interface)
+            if self.opened_interfaces["streaming"]:
+                await self.close_interface(conn_id, "streaming")
+            if self.opened_interfaces["tracing"]:
+                await self.close_interface(conn_id, "tracing")
+            if self.opened_interfaces["rpc"]:
+                await self.close_interface(conn_id, "rpc")
 
             await self._jlink_async.change_state_flag(
                 self._control_info, AsyncJLink.CONNECTION_BIT, False)
+            self.connected = False
         except pylink.errors.JLinkReadException:
             logger.warning("Error disconnecting jlink adapter", exc_info=True)
 
