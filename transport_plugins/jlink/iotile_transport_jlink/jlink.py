@@ -344,15 +344,6 @@ class JLinkAdapter(StandardDeviceAdapter):
             await self._jlink_async.change_state_flag(
                 self._control_info, AsyncJLink.TRACE_BIT, True)
         elif interface == "streaming":
-            # status = await self._jlink_async.send_rpc(
-            #     self._device_info, self._control_info,
-            #     8, 0x0004, b'', timeout=0.3)
-            # logger.debug(status['payload'])
-            # status = await self.send_rpc(
-            #     conn_id, 8, 0x0004, b'', timeout=0.3)
-            # logger.debug(status)
-            # logger.debug(self._device_info)
-            # logger.debug(self._control_info)
             await self._jlink_async.change_state_flag(
                 self._control_info, AsyncJLink.STREAM_BIT, True)
             await self._jlink_async.notify_sensor_graph(
