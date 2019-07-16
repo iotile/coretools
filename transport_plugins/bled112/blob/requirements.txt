@@ -1,0 +1,2 @@
+iotile-core>=5.0.0,<6
+pyserial>=3.4.0,<4
