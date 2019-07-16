@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 2.0.1
+
+- Fix max retry attempts for connecting
+
 ## 2.0.0
 
 - Remove old test fixtures and update for compatibility with iotile-core 5

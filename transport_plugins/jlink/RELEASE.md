@@ -3,6 +3,10 @@
 All major changes in each released version of the jlink transport plugin are
 listed here.
 
+## 2.0.0
+
+- JLink adapter support for streaming and tracing
+
 ## 1.0.9
 
 - Fixed bug in memory dump tool to correctly iterate read over large sizes
