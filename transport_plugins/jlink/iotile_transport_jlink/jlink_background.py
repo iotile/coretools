@@ -35,11 +35,6 @@ class AsyncJLink:
         self._jlink_adapter = jlink_adapter
         self._jlink = None
         self._loop = loop
-        self._times_polled = 0
-        self._total_bytes_read = 0
-        self._total_frames_read = 0
-        self._start_poll_time = 0
-        self._end_poll_time = 0
 
         # maintenance can be enabled for different interfaces
         self._maintenance_counter = 0
@@ -343,7 +338,6 @@ class AsyncJLink:
 
         if counter == 0:
             await self._clear_queue(control_info)
-            self._start_poll_time = time.time()
             self._maintenance_task = self._loop.add_task(
                 self._maintenance_coroutine(control_info, step_timeout), parent=self._jlink_adapter._task)
 
@@ -351,11 +345,6 @@ class AsyncJLink:
         self._maintenance_counter -= 1
         if self._maintenance_counter == 0:
             await self._maintenance_task.stop()
-            self._end_poll_time = time.time()
-            print("time polled: ", (self._end_poll_time - self._start_poll_time))
-            print("times_polled ", self._times_polled)
-            print("total_bytes_read: ", self._total_bytes_read)
-            print("total_frames_read: ", self._total_frames_read)
 
     async def register_read(self, pc_reg):
         return await self._loop.run_in_executor(self._jlink.register_read, pc_reg)
