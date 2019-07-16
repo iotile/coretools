@@ -324,6 +324,7 @@ class AsyncJLink:
     async def close_jlink(self):
         if self._maintenance_task is not None:
             await self._maintenance_task.stop()
+
         if self._maintenance_counter:
             logger.error("Closing jlink while maintenance still running!")
 
