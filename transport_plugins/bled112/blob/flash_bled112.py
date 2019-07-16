@@ -2,6 +2,7 @@ import serial
 import argparse
 import subprocess
 import time
+import sys
 
 from iotile_transport_bled112.bled112 import BLED112Adapter
 
@@ -70,26 +71,48 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("blob", nargs='?', default="bled112-v1-6-0-virtual.raw")
+    parser.add_argument("-n", "--num", help="Number of expected bled devices", required=False, type=int)
     args = parser.parse_args()
 
-    bleds = BLED112Adapter.find_bled112_devices()
-    print("Flashing", bleds)
-    num_bleds_remaining = len(bleds)
+    unreset_bleds = BLED112Adapter.find_bled112_devices()
+
+    if args.num and args.num != len(unreset_bleds):
+        print("Error: Did not find expected number of bleds. Expected:", args.num, "Found:", len(unreset_bleds))
+        exit(1)
+
+    if args.num:
+        total_num_to_flash = args.num
+    else:
+        total_num_to_flash = len(unreset_bleds)
+
+    print("Resetting each dongle")
+    while unreset_bleds:
+        reset(unreset_bleds.pop())
+
     ready_bleds = []
-
-    for bled in bleds:
-        reset(bled)
-        print("Reset", bled)
-
-    # Bleds may not all reset at the same speed. So, note the number of bleds that
-    # we should be flashing, and keep looking for them until we find and flash
-    # all of them.
-    while num_bleds_remaining > 0:
-        time.sleep(0.5)
-
+    when_num_ready_changed = time.monotonic()
+    while len(ready_bleds) < total_num_to_flash:
+        old_num_ready = len(ready_bleds)
         add_ready_bleds(ready_bleds)
 
-        for bled in [x for x in ready_bleds if x.flashed == False]:
-            bled.flash(args.blob)
-            num_bleds_remaining -= 1
-        print("Waiting for", num_bleds_remaining, "bleds to finish resetting")
+        if old_num_ready != len(ready_bleds):
+            when_num_ready_changed = time.monotonic()
+
+        #Try to reset the missing ones again, but only after nothing's changed for a bit
+        if time.monotonic() - when_num_ready_changed > 2.0:
+            for unreset_bled in BLED112Adapter.find_bled112_devices():
+                print("Attempting to re-reset", unreset_bled)
+                reset(unreset_bled)
+            when_num_ready_changed = time.monotonic()
+
+        sys.stdout.write("\033[K")
+        print("Waiting for", total_num_to_flash - len(ready_bleds), "to finish resetting", end="\r")
+        time.sleep(0.1)
+    #Cleanup after the last print
+    print("")
+
+    num_finished = 0
+    for bled in [x for x in ready_bleds if x.flashed == False]:
+        bled.flash(args.blob)
+        num_finished += 1
+        print("\nFlash_bled script: FINISHED", num_finished, "out of", str(total_num_to_flash)+".\n")
