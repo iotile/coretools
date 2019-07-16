@@ -17,7 +17,7 @@ class ControlStructure:
     CONTROL_MAGIC_3 = 0x4e43656c
     CONTROL_MAGIC_4 = 0xBBBBBBBB
 
-    KNOWN_VERSIONS = frozenset([1])
+    KNOWN_VERSIONS = frozenset([1, 2])
 
     # The offset from the start of our debug info to where the tb_fabric_tls_t structure is located
     RPC_TLS_OFFSET = 28
