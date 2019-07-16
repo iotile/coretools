@@ -76,7 +76,6 @@ if __name__ == "__main__":
 
     unreset_bleds = BLED112Adapter.find_bled112_devices()
 
-
     if args.num and args.num != len(unreset_bleds):
         print("Error: Did not find expected number of bleds. Expected:", args.num, "Found:", len(unreset_bleds))
         exit(1)
