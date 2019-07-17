@@ -376,7 +376,7 @@ class JLinkAdapter(StandardDeviceAdapter):
         if interface in JLinkAdapter.POLLING_INTERFACES:
             await self._jlink_async.stop_polling()
 
-    async def send_rpc(self, conn_id, address, rpc_id, payload, timeout):
+    async def send_rpc(self, conn_id, address, rpc_id, payload, timeout, retries=5):
 
         """Asynchronously send an RPC to this IOTile device.
 
@@ -392,10 +392,20 @@ class JLinkAdapter(StandardDeviceAdapter):
         # FIXME, add an exponential polling backoff so that we wait 1, 2, 4, 8, etc ms
         self._ensure_connection(conn_id, True)
 
-        response = await self._jlink_async.send_rpc(
-            self._device_info, self._control_info,
-            address, rpc_id, payload, timeout)
-        return response['payload']
+        response = None
+        
+        for attempt in range(retries):
+            try:
+                response = await self._jlink_async.send_rpc(
+                    self._device_info, self._control_info,
+                    address, rpc_id, payload, timeout)
+            except:
+                logger.info("Unsuccessful RPC, attempt %d of %d", attempt, retries)
+
+            if response is not None:
+                return response['payload']
+
+        return None
 
     async def send_script(self, conn_id, data):
         """Asynchronously send a a script to this IOTile device
