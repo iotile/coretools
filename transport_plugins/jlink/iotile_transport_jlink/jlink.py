@@ -400,7 +400,7 @@ class JLinkAdapter(StandardDeviceAdapter):
                     self._device_info, self._control_info,
                     address, rpc_id, payload, timeout)
             except HardwareError as exc:
-                if exc.params['external_gate_error'] == 1:
+                if exc.params.get('external_gate_error') == 1:
                     logger.debug("Unsuccessful RPC, attempt %d of %d", attempt, retries)
                 else:
                     raise
