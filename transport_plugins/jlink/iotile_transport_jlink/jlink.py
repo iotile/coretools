@@ -405,7 +405,7 @@ class JLinkAdapter(StandardDeviceAdapter):
                 else:
                     break
             except:
-                break
+                return None
 
             if response is not None:
                 return response['payload']
