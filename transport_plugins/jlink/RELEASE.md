@@ -3,7 +3,7 @@
 All major changes in each released version of the jlink transport plugin are
 listed here.
 
-## 1.1.0
+## 1.1.0rc1
 
 - JLink adapter support for streaming and tracing
 
