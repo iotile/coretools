@@ -4,7 +4,6 @@ All major changes in each released version of `iotile-core` are listed here.
 
 ## 5.0.3
 
-- JLink adapter support
 - `run_executor` can now be used in finalizer code
 
 ## 5.0.2
