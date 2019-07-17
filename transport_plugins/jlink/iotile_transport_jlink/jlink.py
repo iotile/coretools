@@ -338,8 +338,8 @@ class JLinkAdapter(StandardDeviceAdapter):
         self.opened_interfaces[interface] = True
 
         if (interface == "tracing" or interface == "streaming") and self._control_info.version < 2:
-            logger.warning("Controller firmware does not support streaming/tracing.")
-            return
+            raise DeviceAdapterError(conn_id, 'open_interface',
+                'Controller firmware does not support streaming or tracing interfaces')
 
         if interface == "tracing":
             await self._jlink_async.change_state_flag(
