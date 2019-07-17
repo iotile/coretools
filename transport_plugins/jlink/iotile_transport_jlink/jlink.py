@@ -403,9 +403,9 @@ class JLinkAdapter(StandardDeviceAdapter):
                 if exc.params['external_gate_error'] == 1:
                     logger.debug("Unsuccessful RPC, attempt %d of %d", attempt, retries)
                 else:
-                    break
+                    raise
             except:
-                return None
+                raise
 
             if response is not None:
                 return response['payload']
