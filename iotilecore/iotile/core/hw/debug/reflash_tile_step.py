@@ -33,4 +33,7 @@ class ReflashTileStep:
         hwman = resources['connection']
         con = hwman.hwman.controller()
         rb = con.remote_bridge()
-        rb.reflash_tile(self._tile, self._file)
+        if self._tile == "controller":
+            rb.reflash_controller(self._file)
+        else:
+            rb.reflash_tile(self._tile, self._file)

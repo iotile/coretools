@@ -2,6 +2,10 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## 5.0.3
+
+- Add ReflashTileStep to iotile.core.hw.debug for iotile-ship.
+
 ## 5.0.2
 
 - Workaround bug in handling of RPCNotFound exception raised when a controller
