@@ -108,7 +108,7 @@ class ControlStructure:
         resp, flags, received_length, payload = struct.unpack("<HxBL4x20s", response_data)
         resp = resp & 0xFF
         if flags & (1 << 3):
-            raise HardwareError("Could not grab external gate")
+            raise HardwareError("Could not grab external gate", external_gate_error=1)
 
         if received_length > 20:
             raise HardwareError("Invalid received payload length > 20 bytes", received_length=received_length)

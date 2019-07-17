@@ -393,19 +393,24 @@ class JLinkAdapter(StandardDeviceAdapter):
         self._ensure_connection(conn_id, True)
 
         response = None
-        
+
         for attempt in range(retries):
             try:
                 response = await self._jlink_async.send_rpc(
                     self._device_info, self._control_info,
                     address, rpc_id, payload, timeout)
+            except HardwareError as exc:
+                if exc.params['external_gate_error'] == 1:
+                    logger.debug("Unsuccessful RPC, attempt %d of %d", attempt, retries)
+                else:
+                    break
             except:
-                logger.info("Unsuccessful RPC, attempt %d of %d", attempt, retries)
+                break
 
             if response is not None:
                 return response['payload']
 
-        return None
+        raise DeviceAdapterError(conn_id, 'send_rpc', 'Unable to get ExternalGate')
 
     async def send_script(self, conn_id, data):
         """Asynchronously send a a script to this IOTile device
