@@ -58,7 +58,7 @@ class SetFirmwareTagStep:
             raise ArgumentError("SetFirmwareTagStep tag name is not valid. Expected 'os' or 'app'.", args=args)
         if 'tag' not in args:
             raise ArgumentError("SetFirmwareTagStep required parameters missing", required=["tag"], args=args)
-        if 'version' not in args
+        if 'version' not in args:
             raise ArgumentError("SetFirmwareTagStep required parameters missing", required=["version"], args=args)
 
         self._name = args['tag_name']
@@ -78,8 +78,8 @@ class SetFirmwareTagStep:
 
         rb.create_script()
         rb.add_setversion_action(self._name, self._tag, self._version)
-        self.send_script()
-        self.wait_script()
+        rb.send_script()
+        rb.wait_script()
 
 class SetUUIDStep:
     """A Recipe Step to set the uuid of a POD 
@@ -111,7 +111,7 @@ class SetUUIDStep:
 
         rb.create_script()
         rb.add_setuuid_action(self._uuid)
-        self.send_script()
-        self.wait_script()
+        rb.send_script()
+        rb.wait_script()
 
 

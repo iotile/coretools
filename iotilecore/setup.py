@@ -65,8 +65,8 @@ setup(
         ],
         'iotile.recipe_action': [
             'FlashBoardStep = iotile.core.hw.debug.flash_board_step:FlashBoardStep',
-            'ReflashTileStep = iotile.core.hw.debug.firmware_ship_steps:ReflashTileStep'
-            'SetFirmwareTagStep = iotile.core.hw.debug.firmware_ship_steps:SetFirmwareTagStep'
+            'ReflashTileStep = iotile.core.hw.debug.firmware_ship_steps:ReflashTileStep',
+            'SetFirmwareTagStep = iotile.core.hw.debug.firmware_ship_steps:SetFirmwareTagStep',
             'SetUUIDStep = iotile.core.hw.debug.firmware_ship_steps:SetUUIDStep'
         ],
         'iotile.app': [
