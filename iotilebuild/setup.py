@@ -19,7 +19,7 @@
 from setuptools import setup, find_packages
 import version
 
-embedded_scons = "3.0.1"
+embedded_scons = "3.0.3"
 
 setup(
     name="iotile-build",
