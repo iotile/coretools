@@ -75,7 +75,7 @@ class BackgroundTask:
             an unlimited amount of time.  Default is 1 second.
     """
 
-    #pylint:disable=too-many-arguments;This class is not meant to be directly constructed by the user
+    # pylint:disable=too-many-arguments;This class is not meant to be directly constructed by the user
     def __init__(self, cor, name=None, finalizer=None, stop_timeout=1.0, loop=None):
         self._name = name
         self._finalizer = finalizer
@@ -155,7 +155,7 @@ class BackgroundTask:
         if not isinstance(subtask, BackgroundTask):
             raise ArgumentError("Subtasks must inherit from BackgroundTask, task={}".format(subtask))
 
-        #pylint:disable=protected-access;It is the same class as us so is equivalent to self access.
+        # pylint:disable=protected-access;It is the same class as us so is equivalent to self access.
         if subtask._loop != self._loop:
             raise ArgumentError("Subtasks must run in the same BackgroundEventLoop as their parent",
                                 subtask=subtask, parent=self)
@@ -191,7 +191,7 @@ class BackgroundTask:
                 result = self._finalizer(self)
                 if inspect.isawaitable(result):
                     await result
-            except:  #pylint:disable=bare-except;We need to make sure we always wait for the task
+            except:  # pylint:disable=bare-except;We need to make sure we always wait for the task
                 self._logger.exception("Error running finalizer for task %s",
                                        self.name)
         elif self.task is not None:
@@ -404,6 +404,19 @@ class BackgroundEventLoop:
         awaitables = [task.stop() for task in self.tasks]
         results = await asyncio.gather(*awaitables, return_exceptions=True)
         for task, result in zip(self.tasks, results):
+            if isinstance(result, Exception):
+                self._logger.error("Error stopping task %s: %s", task.name, repr(result))
+
+        # In some cases, tasks may not properly register or cancel their subtasks.
+        # This catches that in development, and also in deployment when there are third-party libraries
+        # that have this fault (such as hbmqtt)
+        tasks = [task for task in asyncio.Task.all_tasks() if task is not
+                 asyncio.tasks.Task.current_task() and not task.done()]
+        list(map(lambda task: task.cancel(), tasks))
+        for task in tasks:
+            self._logger.debug("A task wasn't properly registered/cancelled as expected: %s", task)
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        for task, result in zip(tasks, results):
             if isinstance(result, Exception):
                 self._logger.error("Error stopping task %s: %s", task.name, repr(result))
 
@@ -675,7 +688,7 @@ def _log_future_exception(future, logger):
 
     try:
         future.result()
-    except:  #pylint:disable=bare-except;This is a background logging helper
+    except:  # pylint:disable=bare-except;This is a background logging helper
         logger.warning("Exception in ignored future: %s", future, exc_info=True)
 
 
