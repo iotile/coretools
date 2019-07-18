@@ -60,7 +60,7 @@ def device(port, device_id, direct, record, request):
             except HardwareError:
                 time.sleep(1)
 
-        if i == max_attempts:
+        if i == max_attempts - 1:
             pytest.fail("Could not connect to device after %d attempts, failing" % max_attempts)
             return
 
@@ -92,7 +92,7 @@ def per_test_device(port, device_id, direct, record, request):
             except HardwareError:
                 time.sleep(1)
 
-        if i == max_attempts:
+        if i == max_attempts - 1:
             pytest.fail("Could not connect to device after %d attempts, failing" % max_attempts)
             return
 

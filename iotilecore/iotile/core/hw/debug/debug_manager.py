@@ -69,12 +69,13 @@ class DebugManager:
         """ Write RAM or external memory in 32bits
         Args:
             memory_region (str): The region of memory to write
-            address (integer): The address to write 
+            start_addr (integer): The address to write
             data (bytes): Data to write
         """
         # nbytes = self._stream.debug_command(
         #     'write_memory', {'address': start_addr, 'data': data})
-        self._stream.debug_command('write_memory', {'address': start_addr, 'data': data})
+        self._stream.debug_command('write_memory',
+            {'region': memory_region, 'address': start_addr, 'data': data})
 
     @docannotate
     def dump_memory(self, out_path, start_addr, data_length, memory_region="mapped", pause=False):
