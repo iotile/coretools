@@ -4,7 +4,10 @@ All major changes in each released version of `iotile-core` are listed here.
 
 ## 5.0.3
 
-- Add ReflashTileStep to iotile.core.hw.debug for iotile-ship.
+- Add a number of iotile-ship steps to iotile.core.hw.debug for reflashing firmware
+  and setting os/app tags as well as setting the uuid. This differs from previous 
+  implementations in that it uses the normal hardware manager/remote bridge interface 
+  and can be used over bluetooth.
 
 ## 5.0.2
 
