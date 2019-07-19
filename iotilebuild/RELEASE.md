@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 3.0.10
+
+- Upgrade to scons-local-3.0.5 from scons-local-3.0.1
+
 ## 3.0.9
 
 - Unpin `iotile-core` to support version 5.0
