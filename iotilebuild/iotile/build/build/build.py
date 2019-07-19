@@ -19,7 +19,7 @@ from iotile.core.exceptions import BuildError, InternalError, ArgumentError, Dat
 from iotile.core.dev.iotileobj import IOTile
 from iotile.build.utilities import resource_path
 
-SCONS_VERSION = "3.0.1"
+SCONS_VERSION = "3.0.5"
 
 
 @takes_cmdline
