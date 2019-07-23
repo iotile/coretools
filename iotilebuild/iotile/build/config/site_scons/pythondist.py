@@ -61,7 +61,7 @@ def iter_support_files(tile):
     else:
         for dirpath, _dirnames, filenames in os.walk(support_package):
             for filename in filenames:
-                if os.path.basename(os.path.normpath(dirpath)) == 'data':
+                if 'data' in os.path.normpath(dirpath).split(os.sep):
                     pass
                 elif not filename.endswith('.py'):
                     continue
