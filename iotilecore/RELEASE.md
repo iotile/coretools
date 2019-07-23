@@ -2,6 +2,11 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## 5.0.5
+
+- Fix TileBasedDevice controller override
+- Update .pylintrc
+
 ## 5.0.4
 
 - Augments the TileBasedDevice to respond to certain controller RPCs. It has the basic
