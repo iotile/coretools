@@ -124,6 +124,7 @@ def build_python_distribution(tile):
         return
 
     buildfiles = []
+    package_data = []
 
     pkg_init = os.path.join(packagedir, '__init__.py')
 
@@ -156,10 +157,15 @@ def build_python_distribution(tile):
         target = env.Command(buildfile, inpath, Copy("$TARGET", "$SOURCE"))
         env.Depends(target, pkg_init)
 
+        if 'data' in os.path.normpath(buildfile).split(os.sep):
+            packagefile = os.path.join(tile.support_distribution, outpath)
+            package_data.append(packagefile)
+
         buildfiles.append(buildfile)
 
     # Create setup.py file and then use that to build a python wheel and an sdist
     env['TILE'] = tile
+    env['package_data'] = package_data
     support_sdist = "%s-%s.tar.gz" % (tile.support_distribution, tile.parsed_version.pep440_string())
     wheel_output = os.path.join('build', 'python', 'dist', tile.support_wheel)
     sdist_output = os.path.join('build', 'python', 'dist', support_sdist)
@@ -221,10 +227,19 @@ def generate_setup_py(target, source, env):
         data['deps'] += tile.support_wheel_depends
 
     data['entry_points'] = entry_points
+    data['include_package_data'] = True
 
     outdir = os.path.dirname(str(target[0]))
 
     render_template('setup.py.tpl', data, out_path=str(target[0]))
+
+    manifest_fn = outdir + '/MANIFEST.in'
+    with open(manifest_fn, 'w') as manifest_file:
+        for data in env['package_data']:
+            manifest_file.write('include ')
+            manifest_file.write(data)
+            manifest_file.write('\n')
+
 
     # Run setuptools to generate a wheel and an sdist
     curr = os.getcwd()
