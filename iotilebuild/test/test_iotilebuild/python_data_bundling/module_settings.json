@@ -16,6 +16,7 @@
 
             "products": 
             {
+                "python/support": "support_package",
                 "python/test_app.py": "app_module"
             }
         }
