@@ -17,8 +17,10 @@ class TileBasedVirtualDevice(StandardVirtualDevice):
             gets added or not. Defaults to false.
     """
 
-    def __init__(self, args, override_controller=False):
+    def __init__(self, args):
         iotile_id = args.get('iotile_id')
+
+        override_controller = args.get('override_controller', False)
 
         con_args = args
 
