@@ -233,7 +233,7 @@ def generate_setup_py(target, source, env):
 
     render_template('setup.py.tpl', data, out_path=str(target[0]))
 
-    manifest_fn = outdir + '/MANIFEST.in'
+    manifest_path = os.path.join(outdir, 'MANIFEST.in')
     with open(manifest_fn, 'w') as manifest_file:
         for data in env['datafiles']:
             manifest_file.write('include ')
