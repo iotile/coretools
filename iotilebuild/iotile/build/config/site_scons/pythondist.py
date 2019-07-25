@@ -43,7 +43,7 @@ def iter_support_files(tile):
     """Iterate over all files that go in the support wheel.
 
     This method has two possible behaviors.  If there is a 'support_package'
-    product defined, then this recursively enumerates all .py files inside
+    product defined, then this recursively enumerates all .py/data files inside
     that folder and adds them all in the same hierarchy to the support wheel.
 
     If there is no support_package product defined, then the old behavior
@@ -111,6 +111,7 @@ def iter_python_modules(tile):
 
 
 def build_python_distribution(tile):
+    """Gather support/data files to create python wheel distribution."""
     env = Environment(tools=[])
 
     builddir = os.path.join('build', 'python')
@@ -202,7 +203,7 @@ def build_python_distribution(tile):
 
 
 def generate_setup_and_manifest(target, source, env):
-    """Generate the setup.py file for this distribution."""
+    """Generate the setup.py and MANIFEST.in files for this distribution."""
 
     tile = env['TILE']
     data = {}
@@ -236,7 +237,6 @@ def generate_setup_and_manifest(target, source, env):
     with open(manifest_path, 'w') as manifest_file:
         for data in env['datafiles']:
             manifest_file.write('include %s\n' % data)
-
 
     # Run setuptools to generate a wheel and an sdist
     curr = os.getcwd()
