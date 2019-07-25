@@ -61,10 +61,7 @@ def iter_support_files(tile):
     else:
         for dirpath, _dirnames, filenames in os.walk(support_package):
             for filename in filenames:
-                if not filename.endswith('.py') and  'data' not in os.path.normpath(dirpath).split(os.sep):
-                    continue
-                    pass
-                elif not filename.endswith('.py'):
+                if not filename.endswith('.py') and 'data' not in os.path.normpath(dirpath).split(os.sep):
                     continue
 
                 input_path = os.path.join(dirpath, filename)
@@ -172,8 +169,9 @@ def build_python_distribution(tile):
     sdist_output = os.path.join('build', 'python', 'dist', support_sdist)
 
     env.Clean(os.path.join(outdir, tile.support_wheel), os.path.join('build', 'python'))
-    env.Command([os.path.join(builddir, 'setup.py'), wheel_output], ['module_settings.json'] + buildfiles,
-                action=Action(generate_setup_py, "Building python distribution"))
+    env.Command([os.path.join(builddir, 'setup.py'), os.path.join(builddir, 'MANIFEST.in'),
+                wheel_output], ['module_settings.json'] + buildfiles,
+                action=Action(generate_setup_and_manifest, "Building python distribution"))
 
     env.Depends(sdist_output, wheel_output)
     env.Command([os.path.join(outdir, tile.support_wheel)], [wheel_output], Copy("$TARGET", "$SOURCE"))
@@ -203,7 +201,7 @@ def build_python_distribution(tile):
             raise BuildError("dependent wheel not built with compatible python version")
 
 
-def generate_setup_py(target, source, env):
+def generate_setup_and_manifest(target, source, env):
     """Generate the setup.py file for this distribution."""
 
     tile = env['TILE']
@@ -235,11 +233,9 @@ def generate_setup_py(target, source, env):
     render_template('setup.py.tpl', data, out_path=str(target[0]))
 
     manifest_path = os.path.join(outdir, 'MANIFEST.in')
-    with open(manifest_fn, 'w') as manifest_file:
+    with open(manifest_path, 'w') as manifest_file:
         for data in env['datafiles']:
             manifest_file.write('include %s\n' % data)
-            manifest_file.write(data)
-            manifest_file.write('\n')
 
 
     # Run setuptools to generate a wheel and an sdist
