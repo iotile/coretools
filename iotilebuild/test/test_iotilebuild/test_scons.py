@@ -381,3 +381,38 @@ def test_pytest(tmpdir):
         assert os.path.exists(os.path.join('build', 'test', 'output', 'pytest.log'))
     finally:
         os.chdir(olddir)
+
+def test_data_bundling(tmpdir):
+    """Make sure we can bundle files with support wheels."""
+
+    olddir = os.getcwd()
+    builddir = copy_folder('python_data_bundling', tmpdir)
+
+    try:
+        os.chdir(builddir)
+
+        err = subprocess.call(["iotile", "build"])
+        assert err == 0
+
+        assert os.path.exists(os.path.join('build', 'python', 'build', 'lib',
+            'iotile_support_py_data_bundle_1', 'data', 'data', 'file5.use'))
+
+        assert os.path.exists(os.path.join('build', 'python', 'build', 'lib',
+            'iotile_support_py_data_bundle_1', 'data', 'dir1', 'dir1a', 'file1.use'))
+
+        assert os.path.exists(os.path.join('build', 'python', 'build', 'lib',
+            'iotile_support_py_data_bundle_1', 'data', 'dir1', 'file2.use'))
+
+        assert os.path.exists(os.path.join('build', 'python', 'build', 'lib',
+            'iotile_support_py_data_bundle_1', 'data', 'dir1', 'file3.use'))
+
+        assert os.path.exists(os.path.join('build', 'python', 'build', 'lib',
+            'iotile_support_py_data_bundle_1', 'data', 'file4.use'))
+
+        assert os.path.exists(os.path.join('build', 'python', 'build', 'lib',
+            'iotile_support_py_data_bundle_1', 'dir2', 'file6.ignore')) == False
+
+        assert os.path.exists(os.path.join('build', 'python', 'build', 'lib',
+            'iotile_support_py_data_bundle_1', 'dir2', 'dir2a', 'file7.ignore')) == False
+    finally:
+        os.chdir(olddir)
