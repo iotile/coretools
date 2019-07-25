@@ -236,7 +236,7 @@ def generate_setup_py(target, source, env):
     manifest_path = os.path.join(outdir, 'MANIFEST.in')
     with open(manifest_fn, 'w') as manifest_file:
         for data in env['datafiles']:
-            manifest_file.write('include ')
+            manifest_file.write('include %s\n' % data)
             manifest_file.write(data)
             manifest_file.write('\n')
 
