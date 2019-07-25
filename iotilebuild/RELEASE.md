@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 3.0.11
+
+- Allow bundling data file with support wheels
+
 ## 3.0.10
 
 - Upgrade to scons-local-3.0.5 from scons-local-3.0.1

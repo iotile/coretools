@@ -1,0 +1,29 @@
+{
+    "module_name": "py_data_bundle",
+    
+    "module_targets": 
+    {
+        "py_data_bundle": ["none"]
+    },
+
+    "modules":
+    {
+        "py_data_bundle":
+        {
+            "version": "1.0.0",
+            
+            "depends": {},
+
+            "products": 
+            {
+                "python/support": "support_package",
+                "python/support/test_app.py": "app_module"
+            }
+        }
+    },
+
+    "architectures":
+    {
+    
+    }
+}

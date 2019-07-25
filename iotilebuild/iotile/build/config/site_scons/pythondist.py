@@ -43,7 +43,7 @@ def iter_support_files(tile):
     """Iterate over all files that go in the support wheel.
 
     This method has two possible behaviors.  If there is a 'support_package'
-    product defined, then this recursively enumerates all .py files inside
+    product defined, then this recursively enumerates all .py/data files inside
     that folder and adds them all in the same hierarchy to the support wheel.
 
     If there is no support_package product defined, then the old behavior
@@ -61,7 +61,7 @@ def iter_support_files(tile):
     else:
         for dirpath, _dirnames, filenames in os.walk(support_package):
             for filename in filenames:
-                if not filename.endswith('.py'):
+                if not filename.endswith('.py') and 'data' not in os.path.normpath(dirpath).split(os.sep):
                     continue
 
                 input_path = os.path.join(dirpath, filename)
@@ -111,6 +111,7 @@ def iter_python_modules(tile):
 
 
 def build_python_distribution(tile):
+    """Gather support/data files to create python wheel distribution."""
     env = Environment(tools=[])
 
     builddir = os.path.join('build', 'python')
@@ -122,6 +123,7 @@ def build_python_distribution(tile):
         return
 
     buildfiles = []
+    datafiles = []
 
     pkg_init = os.path.join(packagedir, '__init__.py')
 
@@ -154,17 +156,23 @@ def build_python_distribution(tile):
         target = env.Command(buildfile, inpath, Copy("$TARGET", "$SOURCE"))
         env.Depends(target, pkg_init)
 
+        if 'data' in os.path.normpath(buildfile).split(os.sep):
+            datafile = os.path.join(tile.support_distribution, outpath)
+            datafiles.append(datafile)
+
         buildfiles.append(buildfile)
 
     # Create setup.py file and then use that to build a python wheel and an sdist
     env['TILE'] = tile
+    env['datafiles'] = datafiles
     support_sdist = "%s-%s.tar.gz" % (tile.support_distribution, tile.parsed_version.pep440_string())
     wheel_output = os.path.join('build', 'python', 'dist', tile.support_wheel)
     sdist_output = os.path.join('build', 'python', 'dist', support_sdist)
 
     env.Clean(os.path.join(outdir, tile.support_wheel), os.path.join('build', 'python'))
-    env.Command([os.path.join(builddir, 'setup.py'), wheel_output], ['module_settings.json'] + buildfiles,
-                action=Action(generate_setup_py, "Building python distribution"))
+    env.Command([os.path.join(builddir, 'setup.py'), os.path.join(builddir, 'MANIFEST.in'),
+                wheel_output], ['module_settings.json'] + buildfiles,
+                action=Action(generate_setup_and_manifest, "Building python distribution"))
 
     env.Depends(sdist_output, wheel_output)
     env.Command([os.path.join(outdir, tile.support_wheel)], [wheel_output], Copy("$TARGET", "$SOURCE"))
@@ -194,8 +202,8 @@ def build_python_distribution(tile):
             raise BuildError("dependent wheel not built with compatible python version")
 
 
-def generate_setup_py(target, source, env):
-    """Generate the setup.py file for this distribution."""
+def generate_setup_and_manifest(target, source, env):
+    """Generate the setup.py and MANIFEST.in files for this distribution."""
 
     tile = env['TILE']
     data = {}
@@ -219,10 +227,16 @@ def generate_setup_py(target, source, env):
         data['deps'] += tile.support_wheel_depends
 
     data['entry_points'] = entry_points
+    data['include_package_data'] = True
 
     outdir = os.path.dirname(str(target[0]))
 
     render_template('setup.py.tpl', data, out_path=str(target[0]))
+
+    manifest_path = os.path.join(outdir, 'MANIFEST.in')
+    with open(manifest_path, 'w') as manifest_file:
+        for data in env['datafiles']:
+            manifest_file.write('include %s\n' % data)
 
     # Run setuptools to generate a wheel and an sdist
     curr = os.getcwd()
