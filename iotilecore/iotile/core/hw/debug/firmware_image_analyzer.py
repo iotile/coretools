@@ -10,7 +10,7 @@ class FirmwareImageAnalyzer:
 
     KNOWN_FIRMWARE_NAMES = ['boot52', 'NRF52 ', 'firmPP', 'UART  ', 'firmFF']
 
-    def __init__(self, firmware):
+    def __init__(self, firmware, magic_number=0xBAADDAAD):
         if not firmware.endswith(".elf") and not firmware.endswith(".hex"):
             raise ArgumentError("You must pass an ARM firmware image in elf/hex format", path=firmware)
 
@@ -33,46 +33,62 @@ class FirmwareImageAnalyzer:
         finally:
             os.remove(tmp)
 
+        self.cdb_app_info = None
         self.min_addr = self._hex_image.minaddr()
         self.max_addr = self._hex_image.maxaddr()
         self.num_addresses = len(self._hex_image.addresses())
         self.segments = self._hex_image.segments()
         self.memory_size = self._hex_image.get_memory_size()
+        self.magic_number = magic_number
 
-        self.cdb_app_info = None
+    def set_firmware_magic_number(self, magic_number):
+        """Sets the magic number to search a CDB app info block by
+        """
+        if isinstance(magic_number, int):
+            self.magic_number = magic_number
+        else:
+            raise ArgumentError("You must pass in a valid magic number")
 
-    def get_firmware_hardware_type(self, magic_number=0xBAADDAAD):
+    def get_firmware_hardware_type(self):
+        """Returns hardware type specified in cdb app info
+        """
         if self.cdb_app_info is None:
-            self.get_cdb_app_info(magic_number)
+            self.get_cdb_app_info()
 
         return self.cdb_app_info['hardware_type']
 
-    def get_firmware_api_version(self, magic_number=0xBAADDAAD):
+    def get_firmware_api_version(self):
+        """Returns firmware api version specified in cdb app info
+        """
         if self.cdb_app_info is None:
-            self.get_cdb_app_info(magic_number)
+            self.get_cdb_app_info()
 
         return (self.cdb_app_info['api_major_version'],
                 self.cdb_app_info['api_minor_version'])
 
-    def get_firmware_name(self, magic_number=0xBAADDAAD):
+    def get_firmware_name(self):
+        """Returns firmware name specified in cdb app info
+        """
         if self.cdb_app_info is None:
-            self.get_cdb_app_info(magic_number)
+            self.get_cdb_app_info()
 
         return self.cdb_app_info['name'].decode("utf-8")
 
-    def get_firmware_version(self, magic_number=0xBAADDAAD):
+    def get_firmware_version(self):
+        """Returns firmware module version specified in cdb app info
+        """
         if self.cdb_app_info is None:
-            self.get_cdb_app_info(magic_number)
+            self.get_cdb_app_info()
 
         return (self.cdb_app_info['module_major_version'],
                 self.cdb_app_info['module_minor_version'],
                 self.cdb_app_info['module_patch_version'])
 
-    def get_cdb_app_info(self, default_magic_number=0xBAADDAAD):
+    def get_cdb_app_info(self):
         """Gets the string of bytes of the CDB app info
         """
         cdb_app_info_bytes = self._hex_image.gets(self.max_addr - 31, 32)
-        if self._check_cdb_app_info(cdb_app_info_bytes, default_magic_number):
+        if self._check_cdb_app_info(cdb_app_info_bytes):
             self.cdb_app_info = self._format_cdb_app_info(cdb_app_info_bytes)
             return self.cdb_app_info
 
@@ -80,14 +96,14 @@ class FirmwareImageAnalyzer:
         for address_index in range(0, self.num_addresses - 4):
             search_bytes = self._hex_image.gets(addresses[address_index], 4)
             search, = struct.unpack("<L", search_bytes)
-            if search == default_magic_number:
+            if search == self.magic_number:
                 cdb_app_info_bytes = self._hex_image.gets(addresses[address_index - 24], 32)
-                if self._check_cdb_app_info(cdb_app_info_bytes, default_magic_number):
+                if self._check_cdb_app_info(cdb_app_info_bytes):
                     self.cdb_app_info = self._format_cdb_app_info(cdb_app_info_bytes)
                     return self.cdb_app_info
                 
 
-    def _check_cdb_app_info(self, cdb_app_info_bytes, default_magic_number=0xBAADDAAD):
+    def _check_cdb_app_info(self, cdb_app_info_bytes):
         """Helper function to check the byte string if it is a valid CDB app info
         """
         _hardware_type, _api_major_version, _api_minor_version, name, _module_major_version, \
@@ -102,7 +118,7 @@ class FirmwareImageAnalyzer:
             return False
 
         if name in FirmwareImageAnalyzer.KNOWN_FIRMWARE_NAMES \
-            and cdb_app_info['magic_number'] == default_magic_number:
+            and cdb_app_info['magic_number'] == self.magic_number:
             return True
 
         return False
