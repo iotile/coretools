@@ -69,6 +69,8 @@ class BLED112Adapter(DeviceAdapter):
             self._active_scan = config.get('bled112:active-scan')
 
         self._throttle_broadcast = config.get('bled112:throttle-broadcast')
+        self._throttle_scans = config.get('bled112:throttle-scan')
+        self._throttle_timeout = config.get('bled112:throttle-timeout')
 
         # Prepare internal state of scannable and in progress devices
         # Do this before spinning off the BLED112CommandProcessor
@@ -544,6 +546,14 @@ class BLED112Adapter(DeviceAdapter):
         v2: There is only an advertisement and no scan response.
         """
 
+        info = None
+        reading_time = time.monotonic()
+        stream = None
+        reading = None
+        broadcast_toggle = None
+        counter = None
+        broadcast_multiplex = 0
+
         payload = response.payload
         length = len(payload) - 10
 
@@ -569,21 +579,40 @@ class BLED112Adapter(DeviceAdapter):
 
             if data[22] == 0xFF and data[23] == 0xC0 and data[24] == 0x3:
                 self._v1_scan_count += 1
-                self._parse_v1_advertisement(rssi, string_address, data)
+                info = self._parse_v1_advertisement(rssi, string_address, data)
             elif data[3] == 27 and data[4] == 0x16 and data[5] == 0xdd and data[6] == 0xfd:
                 self._v2_scan_count += 1
-                self._parse_v2_advertisement(rssi, string_address, data)
+                info, reading_time, stream, reading, \
+                    broadcast_toggle, counter, broadcast_multiplex = \
+                    self._parse_v2_advertisement(rssi, string_address, data)
             else:
                 pass # This just means the advertisement was from a non-IOTile device
         elif packet_type == 4:
             self._v1_scan_response_count += 1
-            self._parse_v1_scan_response(string_address, data)
+            info, reading_time, stream, reading = \
+                self._parse_v1_scan_response(string_address, data)
+
+        if info:
+            drop_broadcast = self._check_update_seen_broadcast(
+                sender, reading_time, stream, reading,
+                broadcast_toggle, counter=counter, channel=broadcast_multiplex)
+
+            if not (self._throttle_scans and drop_broadcast):
+                self._trigger_callback('on_scan', self.id, info, self.ExpirationTime)
+
+            # If there is a valid reading on the advertising data, broadcast it
+            if not (self._throttle_broadcast and drop_broadcast) and \
+                    stream and stream not in [0xFFFF, 0x7FFF]:
+                io_tile_reading = IOTileReading(reading_time, stream, reading, reading_time=datetime.datetime.utcnow())
+                report = BroadcastReport.FromReadings(info['uuid'], [io_tile_reading], reading_time)
+                self._trigger_callback('on_report', None, report)
+
 
     def _parse_v2_advertisement(self, rssi, sender, data):
         """ Parse the IOTile Specific advertisement packet"""
 
         if len(data) != 31:
-            return
+            return None, None, None, None, None, None, None
 
         # We have already verified that the device is an IOTile device
         # by checking its service data uuid in _process_scan_event so
@@ -624,18 +653,8 @@ class BLED112Adapter(DeviceAdapter):
                 'battery': battery / 32.0,
                 'advertising_version':2}
 
-        self._trigger_callback('on_scan', self.id, info, self.ExpirationTime)
-
-        # If there is a valid reading on the advertising data, broadcast it
-        if broadcast_stream != 0xFFFF & ((1 << 15) - 1):
-            if self._throttle_broadcast and \
-               self._check_update_seen_broadcast(sender, timestamp, broadcast_stream, broadcast_value,
-                                                 broadcast_toggle, counter=counter, channel=broadcast_multiplex):
-                return
-
-            reading = IOTileReading(timestamp, broadcast_stream, broadcast_value, reading_time=datetime.datetime.utcnow())
-            report = BroadcastReport.FromReadings(info['uuid'], [reading], timestamp)
-            self._trigger_callback('on_report', None, report)
+        return info, timestamp, broadcast_stream, broadcast_value, \
+            broadcast_toggle, counter, broadcast_multiplex
 
     def _check_update_seen_broadcast(self, sender, device_time, stream, value, toggle=None, counter=None, channel=0):
         key = (sender, channel)
@@ -649,7 +668,8 @@ class BLED112Adapter(DeviceAdapter):
                 if old_toggle == toggle and old_counter == counter:
                     return True
             else:
-                if old_value == value and old_stream == stream and old_time == device_time:
+                if old_value == value and old_stream == stream and \
+                    (device_time - old_time) < self._throttle_timeout:
                     return True
 
         self._broadcast_state[key] = (device_time, stream, value, toggle, counter)
@@ -657,11 +677,11 @@ class BLED112Adapter(DeviceAdapter):
 
     def _parse_v1_advertisement(self, rssi, sender, advert):
         if len(advert) != 31:
-            return
+            return None
 
         # Make sure the scan data comes back with an incomplete UUID list
         if advert[3] != 17 or advert[4] != 6:
-            return
+            return None
 
 
         # Make sure the uuid is our tilebus UUID
@@ -689,16 +709,17 @@ class BLED112Adapter(DeviceAdapter):
 
             if self._active_scan:
                 self.partial_scan_responses[sender] = info
-            else:
-                self._trigger_callback('on_scan', self.id, info, self.ExpirationTime)
+                return None
+
+            return info
 
     def _parse_v1_scan_response(self, sender, scan_data):
         if len(scan_data) != 31:
-            return
+            return None, None, None, None
 
         info = self.partial_scan_responses.pop(sender, None)
         if info is None:
-            return
+            return None, None, None, None
 
         # Check if this is a scan response packet from an iotile based device
         _length, _datatype, _manu_id, voltage, stream, reading, reading_time, curr_time = unpack("<BBHHHLLL11x", scan_data)
@@ -707,16 +728,7 @@ class BLED112Adapter(DeviceAdapter):
         info['current_time'] = curr_time
         info['last_seen'] = datetime.datetime.now()
 
-        self._trigger_callback('on_scan', self.id, info, self.ExpirationTime)
-
-        # If there is a valid reading on the advertising data, broadcast it
-        if stream != 0xFFFF:
-            if self._throttle_broadcast and self._check_update_seen_broadcast(sender, reading_time, stream, reading):
-                return
-
-            reading = IOTileReading(reading_time, stream, reading, reading_time=datetime.datetime.utcnow())
-            report = BroadcastReport.FromReadings(info['uuid'], [reading], curr_time)
-            self._trigger_callback('on_report', None, report)
+        return info, reading_time, stream, reading
 
     def probe_services(self, handle, conn_id, callback):
         """Given a connected device, probe for its GATT services and characteristics
