@@ -42,14 +42,14 @@ class IOTileCloud:
 
     DEVICE_TOKEN_TYPE = 'a-jwt'
 
-    def __init__(self, domain=None, username=None):
+    def __init__(self, domain=None, username=None, **kwargs):
         reg = ComponentRegistry()
         conf = ConfigManager()
 
         if domain is None:
             domain = conf.get('cloud:server')
 
-        self.api = Api(domain=domain)
+        self.api = Api(domain=domain, **kwargs)
 
         try:
             token = reg.get_config('arch:cloud_token')
