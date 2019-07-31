@@ -3,10 +3,9 @@
 from io import BytesIO
 import getpass
 import datetime
+from collections import namedtuple
 from dateutil.tz import tzutc
 import dateutil.parser
-from collections import namedtuple
-import requests
 
 from iotile_cloud.api.connection import Api
 from iotile_cloud.api.exceptions import RestHttpBaseException, HttpNotFoundError
@@ -159,7 +158,7 @@ class IOTileCloud:
     def check_time(self, max_slop=300):
         """ Check if current system time is consistent with iotile.cloud time"""
 
-        cloud_time = requests.get('https://iotile.cloud/api/v1/server/').json().get('now', None)
+        cloud_time = self.api.session.get('https://iotile.cloud/api/v1/server/').json().get('now', None)
         if cloud_time is None:
             raise DataError("No date header returned from iotile.cloud")
 
@@ -352,7 +351,8 @@ class IOTileCloud:
         authorization_str = '{0} {1}'.format(self.token_type, self.token)
         headers['Authorization'] = authorization_str
 
-        resp = requests.post(resource.url(), files=payload, headers=headers, params={'timestamp': timestamp})
+        resp = self.api.session.post(resource.url(), files=payload, headers=headers,
+                                     params={'timestamp': timestamp})
 
         count = resource._process_response(resp)['count']
         return count
@@ -429,7 +429,7 @@ class IOTileCloud:
 
         url = '{}/api/v1/auth/api-jwt-refresh/'.format(domain)
 
-        resp = requests.post(url, json={'token': self.token})
+        resp = self.api.session.post(url, json={'token': self.token})
         if resp.status_code != 200:
             raise ExternalError("Could not refresh token", error_code=resp.status_code)
 
