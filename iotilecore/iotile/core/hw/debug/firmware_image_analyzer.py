@@ -111,8 +111,10 @@ class FirmwareImageAnalyzer:
 
         try:
             name = cdb_app_info['name'].decode("utf-8")
-        except:
+        except UnicodeDecodeError:
             return False
+        except:
+            raise ExternalError("Unexpected error resolving the firmware name.")
 
         if name in FirmwareImageAnalyzer.KNOWN_FIRMWARE_NAMES \
             and cdb_app_info['magic_number'] == self.magic_number:
