@@ -9,6 +9,8 @@ class FirmwareImageAnalyzer:
     """A firmware image analyzer using IntelHex"""
 
     KNOWN_FIRMWARE_NAMES = ['boot52', 'NRF52 ', 'firmPP', 'UART  ', 'firmFF']
+    SIZE_OF_CDBAPPINFO = 32
+    MAGIC_NUMBER_BYTE_OFFSET = 24
 
     def __init__(self, firmware, magic_number=0xBAADDAAD):
         if not firmware.endswith(".elf") and not firmware.endswith(".hex"):
@@ -87,7 +89,8 @@ class FirmwareImageAnalyzer:
     def get_cdb_app_info(self):
         """Gets the string of bytes of the CDB app info
         """
-        cdb_app_info_bytes = self._hex_image.gets(self.max_addr - 31, 32)
+        cdb_app_info_bytes = self._hex_image.gets(self.max_addr - (FirmwareImageAnalyzer.SIZE_OF_CDBAPPINFO - 1), \
+                FirmwareImageAnalyzer.SIZE_OF_CDBAPPINFO)
         if self._check_cdb_app_info(cdb_app_info_bytes):
             self.cdb_app_info = self._format_cdb_app_info(cdb_app_info_bytes)
             return self.cdb_app_info
@@ -97,7 +100,8 @@ class FirmwareImageAnalyzer:
             search_bytes = self._hex_image.gets(addresses[address_index], 4)
             search, = struct.unpack("<L", search_bytes)
             if search == self.magic_number:
-                cdb_app_info_bytes = self._hex_image.gets(addresses[address_index - 24], 32)
+                cdb_app_info_bytes = self._hex_image.gets(addresses[address_index - FirmwareImageAnalyzer.MAGIC_NUMBER_BYTE_OFFSET], \
+                    FirmwareImageAnalyzer.SIZE_OF_CDBAPPINFO)
                 if self._check_cdb_app_info(cdb_app_info_bytes):
                     self.cdb_app_info = self._format_cdb_app_info(cdb_app_info_bytes)
                     return self.cdb_app_info
