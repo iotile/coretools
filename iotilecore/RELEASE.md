@@ -2,6 +2,10 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## 5.0.6
+
+- Added firmware image analyzer tool in hw debug
+
 ## 5.0.5
 
 - Fix TileBasedDevice controller override
