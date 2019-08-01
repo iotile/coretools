@@ -8,7 +8,6 @@ import struct
 class FirmwareImageAnalyzer:
     """A firmware image analyzer using IntelHex"""
 
-    KNOWN_FIRMWARE_NAMES = ['boot52', 'NRF52 ', 'firmPP', 'UART  ', 'firmFF']
     SIZE_OF_CDBAPPINFO = 32
     MAGIC_NUMBER_BYTE_OFFSET = 24
 
@@ -35,20 +34,15 @@ class FirmwareImageAnalyzer:
         finally:
             os.remove(tmp)
 
-        self.cdb_app_info = None
+        self.magic_number = magic_number
         self.min_addr = self._hex_image.minaddr()
         self.max_addr = self._hex_image.maxaddr()
         self.num_addresses = len(self._hex_image.addresses())
         self.segments = self._hex_image.segments()
         self.memory_size = self._hex_image.get_memory_size()
-        self.magic_number = magic_number
-
-    def set_firmware_magic_number(self, magic_number):
-        """Sets the magic number to search a CDB app info block by"""
-        if isinstance(magic_number, int):
-            self.magic_number = magic_number
-        else:
-            raise ArgumentError("You must pass in a valid magic number")
+        self.cdb_app_info = self.get_cdb_app_info()
+        if self.cdb_app_info is None:
+            raise DataError("Unable to analyze firmware image.")
 
     def get_firmware_hardware_type(self):
         """Returns hardware type specified in cdb app info"""
@@ -86,7 +80,7 @@ class FirmwareImageAnalyzer:
         cdb_app_info_bytes = self._hex_image.gets(self.max_addr - (FirmwareImageAnalyzer.SIZE_OF_CDBAPPINFO - 1), \
                 FirmwareImageAnalyzer.SIZE_OF_CDBAPPINFO)
         if self._check_cdb_app_info(cdb_app_info_bytes):
-            self.cdb_app_info = self._format_cdb_app_info(cdb_app_info_bytes)
+            self.cdb_app_info = format_cdb_app_info(cdb_app_info_bytes)
             return self.cdb_app_info
 
         addresses = self._hex_image.addresses()
@@ -97,54 +91,50 @@ class FirmwareImageAnalyzer:
                 cdb_app_info_bytes = self._hex_image.gets(addresses[address_index - FirmwareImageAnalyzer.MAGIC_NUMBER_BYTE_OFFSET], \
                     FirmwareImageAnalyzer.SIZE_OF_CDBAPPINFO)
                 if self._check_cdb_app_info(cdb_app_info_bytes):
-                    self.cdb_app_info = self._format_cdb_app_info(cdb_app_info_bytes)
+                    self.cdb_app_info = format_cdb_app_info(cdb_app_info_bytes)
                     return self.cdb_app_info
-                
+
+        return None
 
     def _check_cdb_app_info(self, cdb_app_info_bytes):
         """Helper function to check the byte string if it is a valid CDB app info"""
-        _hardware_type, _api_major_version, _api_minor_version, name, _module_major_version, \
-            _module_minor_version, _module_patch_version, _num_slave_commands, _num_required_configs, \
-            _num_total_configs, _reserved, _p_config_variables, _p_slave_handlers, magic_number, \
-            _firmware_checksum = struct.unpack("<BBB6sBBBBBBBLLLL", cdb_app_info_bytes)
-        cdb_app_info = self._format_cdb_app_info(cdb_app_info_bytes)
+        cdb_app_info = format_cdb_app_info(cdb_app_info_bytes)
 
         try:
-            name = cdb_app_info['name'].decode("utf-8")
+            cdb_app_info['name'].decode("utf-8")
         except UnicodeDecodeError:
             return False
         except:
             raise ExternalError("Unexpected error resolving the firmware name.")
 
-        if name in FirmwareImageAnalyzer.KNOWN_FIRMWARE_NAMES \
-            and cdb_app_info['magic_number'] == self.magic_number:
+        if cdb_app_info['magic_number'] == self.magic_number:
             return True
 
         return False
 
-    def _format_cdb_app_info(self, cdb_app_info_bytes):
-        """Helper function to format the cdb_app_info byte string to dict"""
-        hardware_type, api_major_version, api_minor_version, name, module_major_version, \
-            module_minor_version, module_patch_version, num_slave_commands, num_required_configs, \
-            num_total_configs, reserved, p_config_variables, p_slave_handlers, magic_number, \
-            firmware_checksum = struct.unpack("<BBB6sBBBBBBBLLLL", cdb_app_info_bytes)
+def format_cdb_app_info(cdb_app_info_bytes):
+    """Helper function to format the cdb_app_info byte string to dict"""
+    hardware_type, api_major_version, api_minor_version, name, module_major_version, \
+        module_minor_version, module_patch_version, num_slave_commands, num_required_configs, \
+        num_total_configs, reserved, p_config_variables, p_slave_handlers, magic_number, \
+        firmware_checksum = struct.unpack("<BBB6sBBBBBBBLLLL", cdb_app_info_bytes)
 
-        cdb_app_info = {
-            'hardware_type': hardware_type,
-            'api_major_version': api_major_version,
-            'api_minor_version': api_minor_version,
-            'name': name,
-            'module_major_version': module_major_version,
-            'module_minor_version': module_minor_version,
-            'module_patch_version': module_patch_version,
-            'num_slave_commands': num_slave_commands,
-            'num_required_configs': num_required_configs,
-            'num_total_configs': num_total_configs,
-            'reserved': reserved,
-            'p_config_variables': p_config_variables,
-            'p_slave_handlers': p_slave_handlers,
-            'magic_number': magic_number,
-            'firmware_checksum': firmware_checksum
-        }
+    cdb_app_info = {
+        'hardware_type': hardware_type,
+        'api_major_version': api_major_version,
+        'api_minor_version': api_minor_version,
+        'name': name,
+        'module_major_version': module_major_version,
+        'module_minor_version': module_minor_version,
+        'module_patch_version': module_patch_version,
+        'num_slave_commands': num_slave_commands,
+        'num_required_configs': num_required_configs,
+        'num_total_configs': num_total_configs,
+        'reserved': reserved,
+        'p_config_variables': p_config_variables,
+        'p_slave_handlers': p_slave_handlers,
+        'magic_number': magic_number,
+        'firmware_checksum': firmware_checksum
+    }
 
-        return cdb_app_info
+    return cdb_app_info
