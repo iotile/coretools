@@ -48,6 +48,8 @@ class IOTileCloud:
         if domain is None:
             domain = conf.get('cloud:server')
 
+        self._domain = domain
+
         self.api = Api(domain=domain, **kwargs)
 
         try:
@@ -158,9 +160,9 @@ class IOTileCloud:
     def check_time(self, max_slop=300):
         """ Check if current system time is consistent with iotile.cloud time"""
 
-        cloud_time = self.api.session.get('https://iotile.cloud/api/v1/server/').json().get('now', None)
+        cloud_time = self.api.session.get('{domain}/api/v1/server/'.format(self._domain)).json().get('now', None)
         if cloud_time is None:
-            raise DataError("No date header returned from iotile.cloud")
+            raise DataError("No date header returned from iotile cloud", domain=self._domain)
 
         curtime = datetime.datetime.now(tzutc())
         delta = dateutil.parser.parse(cloud_time) - curtime
