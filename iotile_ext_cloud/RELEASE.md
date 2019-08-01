@@ -2,6 +2,12 @@
 
 All major changes in each released version of the iotile-ext-cloud plugin are listed here.
 
+## 1.0.10
+
+- Add support for passing kwargs down to Api() from underlying iotile-cloud package.
+  This allows configuring connection retries and timeouts when using the highlevel
+  `IOTileCloud` object.
+
 ## 1.0.9
 
 - Remove `msgpack` dependency that should be in `iotile-core`.
