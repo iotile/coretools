@@ -2,6 +2,10 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## 5.0.6
+
+- Modify `watch_broadcasts` to treat individual UUID's streams as different items
+
 ## 5.0.5
 
 - Fix TileBasedDevice controller override
