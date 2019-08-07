@@ -78,11 +78,12 @@ class LinebufferUI:
             new_items = [new_items]
 
         for item in new_items:
-            id_val, entry = self._parse_and_format(item)
+            id_val, stream_id, entry = self._parse_and_format(item)
             if id_val is None:
                 continue
 
-            self.items[id_val] = entry
+            item_id = str(id_val) + "," + str(stream_id)
+            self.items[item_id] = entry
 
     def _run_loop(self, screen, refresh_interval):
         self.items = {}
@@ -108,7 +109,7 @@ class LinebufferUI:
             pass
 
     def _parse_and_format(self, item):
-        id_val = self.id_func(item)
+        id_val, stream_id = self.id_func(item)
         if id_val is None:
             return None, None
 
@@ -118,4 +119,4 @@ class LinebufferUI:
         if self.sortkey_func is not None:
             sort_key = self.sortkey_func(item)
 
-        return id_val, LineEntry(text, id_val, sort_key, item)
+        return id_val, stream_id, LineEntry(text, id_val, sort_key, item)
