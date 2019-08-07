@@ -409,14 +409,13 @@ class HardwareManager:
 
         def _hash(item):
             uuid = item.origin
-            stream_id = item.visible_readings[0].stream
             if whitelist is not None and uuid not in whitelist:
                 return None
 
             if blacklist is not None and whitelist is None and uuid in blacklist:
                 return None
 
-            return uuid, stream_id
+            return uuid
 
         line_ui = LinebufferUI(_poll, _hash, _text, sortkey_func=_sort_order, title=_title)
         line_ui.run()
