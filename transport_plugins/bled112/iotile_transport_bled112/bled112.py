@@ -87,7 +87,7 @@ class BLED112Adapter(DeviceAdapter):
         self._v1_scan_response_count = 0
         self._v2_scan_count = 0
         self._device_scan_counts = {}
-        self._last_reset_time = time.time()
+        self._last_reset_time = time.monotonic()
 
         self._logger = logging.getLogger(__name__)
         self._logger.addHandler(logging.NullHandler())
@@ -132,7 +132,7 @@ class BLED112Adapter(DeviceAdapter):
             dict : device-specific scan counts
             float : seconds since last reset
         """
-        time_spent = time.time()
+        time_spent = time.monotonic()
         return self._scan_event_count, self._v1_scan_count, self._v1_scan_response_count, \
             self._v2_scan_count, self._device_scan_counts.copy(), \
             (time_spent - self._last_reset_time)
@@ -144,7 +144,7 @@ class BLED112Adapter(DeviceAdapter):
         self._v1_scan_response_count = 0
         self._v2_scan_count = 0
         self._device_scan_counts = {}
-        self._last_reset_time = time.time()
+        self._last_reset_time = time.monotonic()
 
     def can_connect(self):
         """Check if this adapter can take another connection
@@ -848,7 +848,7 @@ class BLED112Adapter(DeviceAdapter):
 
         handle = retval['handle']
         context['disconnect_handler'] = self._on_connection_failed
-        context['connect_time'] = time.time()
+        context['connect_time'] = time.monotonic()
         context['state'] = 'preparing'
         self._connections[handle] = context
 
@@ -905,7 +905,7 @@ class BLED112Adapter(DeviceAdapter):
             conndata['failure_reason'] = 'Could not probe GATT services'
             self.disconnect_async(conn_id, self._on_connection_failed)
         else:
-            conndata['services_done_time'] = time.time()
+            conndata['services_done_time'] = time.monotonic()
             self.probe_characteristics(result['context']['connection_id'], result['context']['handle'], result['return_value']['services'])
 
     def _probe_characteristics_finished(self, result):
@@ -941,7 +941,7 @@ class BLED112Adapter(DeviceAdapter):
             self.disconnect_async(conn_id, self._on_connection_failed)
             return
 
-        conndata['chars_done_time'] = time.time()
+        conndata['chars_done_time'] = time.monotonic()
         service_time = conndata['services_done_time'] - conndata['connect_time']
         char_time = conndata['chars_done_time'] - conndata['services_done_time']
         total_time = service_time + char_time
