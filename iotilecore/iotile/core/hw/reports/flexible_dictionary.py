@@ -114,6 +114,6 @@ class FlexibleDictionaryReport(IOTileReport):
 def _encode_datetime(obj):
     """Pack a datetime into an isoformat string."""
     if isinstance(obj, datetime.datetime):
-        return obj.isoformat()
+        return obj.isoformat() + 'Z'
 
     return obj
