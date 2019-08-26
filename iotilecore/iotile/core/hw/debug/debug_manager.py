@@ -78,7 +78,7 @@ class DebugManager:
             {'region': memory_region, 'address': start_addr, 'data': data})
 
     @docannotate
-    def dump_memory(self, out_path, start_addr, data_length, memory_region="mapped", pause=False):
+    def dump_memory(self, out_path, start_addr=None, data_length=None, memory_region="mapped", pause=False):
         """Dump all RAM or external flash to a binary file.
 
         Args:
