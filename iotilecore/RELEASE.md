@@ -5,6 +5,7 @@ All major changes in each released version of `iotile-core` are listed here.
 ## HEAD
 
 - Modify `watch_broadcasts` to treat individual UUID's streams as different items
+- Modify parameters for `dump_memory` to use default addresses/lengths
 
 ## 5.0.5
 
