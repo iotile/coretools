@@ -138,7 +138,7 @@ class AsyncJLink:
     async def _inject_blob(self, absolute_path_to_binary):
         with open(absolute_path_to_binary, mode='rb') as ff_file:
             ff_bin = await self._loop.run_in_executor(ff_file.read)
-        await self.write_memory(ff_cfg.ff_addresses['blob_inject_start'], ff_bin, chunk_size=1)
+        await self.write_memory(ff_cfg.ff_addresses['blob_inject_start'], ff_bin, chunk_size=1, raw_data=True)
 
     def _update_reg_blocking(self, register, value):
         if not self._jlink.halted():
