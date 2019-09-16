@@ -138,7 +138,8 @@ class AsyncJLink:
     async def _inject_blob(self, absolute_path_to_binary):
         with open(absolute_path_to_binary, mode='rb') as ff_file:
             ff_bin = await self._loop.run_in_executor(ff_file.read)
-        await self.write_memory(ff_cfg.ff_addresses['blob_inject_start'], ff_bin, chunk_size=1)
+        await self.write_memory(ff_cfg.ff_addresses['blob_inject_start'], ff_bin, chunk_size=1, raw_data=True)
+        logger.info("Blob injected.")
 
     def _update_reg_blocking(self, register, value):
         if not self._jlink.halted():
@@ -160,9 +161,30 @@ class AsyncJLink:
             ff_cfg.ff_addresses['max_read_length'], 2, chunk_size=2, join=False)
         return max_read_length
 
+    async def _write_ff_query_id_cmd(self):
+        cmd_id = 3
+        query_size_cmd = struct.pack("B", cmd_id)
+        await self.write_memory(ff_cfg.ff_addresses['command_id'], query_size_cmd, chunk_size=1)
+        written_cmd, = await self.read_memory(ff_cfg.ff_addresses['command_id'], 1, chunk_size=1, join=False)
+
+        if written_cmd != cmd_id:
+            raise ArgumentError("FF dump command id was not successfully written.")
+        else:
+            logger.info("FF dump command id written was %s", hex(cmd_id))
+
     async def _write_ff_dump_cmd(self, start, length):
         start_bytes = start.to_bytes(4, byteorder='little')
         length_bytes = length.to_bytes(2, byteorder='little')
+
+        cmd_id = 0
+        read_cmd = struct.pack("B", cmd_id)
+        await self.write_memory(ff_cfg.ff_addresses['command_id'], read_cmd, chunk_size=1)
+        written_cmd, = await self.read_memory(ff_cfg.ff_addresses['command_id'], 1, chunk_size=1, join=False)
+
+        if written_cmd != cmd_id:
+            raise ArgumentError("FF dump command id was not successfully written.")
+        else:
+            logger.info("FF dump command id written was %s", hex(cmd_id))
 
         await self.write_memory(ff_cfg.ff_addresses['read_command_address'], start_bytes, chunk_size=1)
         written_start, = await self.read_memory(ff_cfg.ff_addresses['read_command_address'], 4, chunk_size=4, join=False)
@@ -185,6 +207,17 @@ class AsyncJLink:
         logger.info("Response buffer at %s", hex(buffer_addr))
         flash_dump = await self.read_memory(buffer_addr, length, chunk_size=1)
         return flash_dump
+
+    async def _read_ff_query_size_resp(self):
+        manufacturer_id, = await self.read_memory(ff_cfg.ff_addresses['query_id_response_manufacturer_id'], 1, chunk_size=1, join=False)
+        memory_type, = await self.read_memory(ff_cfg.ff_addresses['query_id_response_memory_type'], 1, chunk_size=1, join=False)
+        capacity, = await self.read_memory(ff_cfg.ff_addresses['query_id_response_capacity'], 1, chunk_size=1, join=False)
+
+        if manufacturer_id == 0xEF:
+            if memory_type == 0x40 and capacity == 0x15:
+                return 0x200000
+            elif memory_type == 0x70 and capacity == 0x18:
+                return 0x1000000
 
     async def _read_mapped_memory(self, device_info, region, read_start_addr, read_length):
         if read_length is None:
@@ -237,8 +270,18 @@ class AsyncJLink:
             await self._continue()
             max_read_length = await self._get_ff_max_read_length()
 
+            logger.info("Querying JEDEC ID...")
+            await self._write_ff_query_id_cmd()
+            await self._continue()
+            external_max_size = await self._read_ff_query_size_resp()
+            logger.info("Max size of chip is %i", external_max_size)
+
+            await self._continue()
+
             bytes_dumped = 0
             memory = b''
+            data_length = external_max_size if data_length is None else data_length
+            start_addr = 0 if start_addr is None else start_addr
             while bytes_dumped < data_length:
                 bytes_to_dump = max_read_length if (data_length - bytes_dumped) > max_read_length else (data_length - bytes_dumped)
 

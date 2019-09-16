@@ -78,7 +78,7 @@ class DebugManager:
             {'region': memory_region, 'address': start_addr, 'data': data})
 
     @docannotate
-    def dump_memory(self, out_path, start_addr, data_length, memory_region="mapped", pause=False):
+    def dump_memory(self, out_path, start_addr=None, data_length=None, memory_region="mapped", pause=False):
         """Dump all RAM or external flash to a binary file.
 
         Args:
@@ -95,7 +95,6 @@ class DebugManager:
                 will not interrupt any device activity.
         """
 
-        # memory_contents = self._stream.debug_command('dump_memory', {'memory': memory_type, 'start': start_addr, 'length': data_length, 'halt': pause})
         memory_contents = self._stream.debug_command('read_memory', {'region': memory_region, 'start': start_addr, 'length': data_length, 'halt': pause})
         with open(out_path, "wb") as outfile:
             outfile.write(memory_contents)
