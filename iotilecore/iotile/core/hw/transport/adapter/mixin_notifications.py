@@ -175,11 +175,11 @@ class BasicNotificationMixin:
             self._currently_notifying = True
             conn_id = self._get_conn_id(conn_string)
 
-            event_maps = self._monitors.get(conn_string, {})
-            wildcard_maps = self._monitors.get(None, {})
-
-            wildcard_handlers = wildcard_maps.get(name, {})
+            event_maps = self._monitors.get(conn_string, {}) if conn_string is not None else {}
             event_handlers = event_maps.get(name, {})
+
+            wildcard_maps = self._monitors.get(None, {})
+            wildcard_handlers = wildcard_maps.get(name, {})
 
             for handler, func in itertools.chain(event_handlers.items(), wildcard_handlers.items()):
                 try:
