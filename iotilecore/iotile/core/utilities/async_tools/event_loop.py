@@ -405,7 +405,7 @@ class BackgroundEventLoop:
         results = await asyncio.gather(*awaitables, return_exceptions=True)
         for task, result in zip(self.tasks, results):
             if isinstance(result, Exception):
-                self._logger.error("Error stopping task %s: %s", task.name, repr(result))
+                self._logger.error("Error stopping task %s: %s", task, repr(result))
 
         # In some cases, tasks may not properly register or cancel their subtasks.
         # This catches that in development, and also in deployment when there are third-party libraries
@@ -418,7 +418,7 @@ class BackgroundEventLoop:
         results = await asyncio.gather(*tasks, return_exceptions=True)
         for task, result in zip(tasks, results):
             if isinstance(result, Exception):
-                self._logger.error("Error stopping task %s: %s", task.name, repr(result))
+                self._logger.error("Error stopping task %s: %s", task, repr(result))
 
         # It is important to defer this call by one loop cycle so
         # that this coroutine is finalized and anyone blocking on it
@@ -706,6 +706,5 @@ SharedLoop = BackgroundEventLoop()  # pylint:disable=invalid-name;This is for ba
 #
 # See: https://github.com/python/cpython/blob/master/Lib/concurrent/futures/thread.py#L33
 
-# pylint:disable=wrong-import-position,wrong-import-order,unused-import;See above comment
-import concurrent.futures.thread
+import concurrent.futures.thread  # pylint:disable=wrong-import-position,wrong-import-order,unused-import;
 atexit.register(SharedLoop.stop)
