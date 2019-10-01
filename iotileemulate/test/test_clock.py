@@ -27,8 +27,8 @@ def basic_device():
     with HardwareManager(adapter=adapter) as hw:
         hw.connect(1)
 
-        con = hw.get(8, basic=True)
-        sensor_graph = find_proxy_plugin('iotile_standard_library/lib_controller', 'SensorGraphPlugin')(con)
+        con = hw.get(8)
+        sensor_graph = con.sensor_graph()
 
         for node in nodes:
             sensor_graph.add_node(node)
@@ -43,9 +43,9 @@ def test_user_ticks(basic_device):
 
     hw, device = basic_device
 
-    con = hw.get(8, basic=True)
-    sensor_graph = find_proxy_plugin('iotile_standard_library/lib_controller', 'SensorGraphPlugin')(con)
-    config = find_proxy_plugin('iotile_standard_library/lib_controller', 'ConfigDatabasePlugin')(con)
+    con = hw.get(8, basic=False)
+    sensor_graph = con.sensor_graph()
+    config = con.config_database()
 
     assert sensor_graph.user_tick(0) == 0
     assert sensor_graph.user_tick(1) == 0
@@ -83,8 +83,9 @@ def test_tick_inputs(basic_device):
 
     hw, device = basic_device
 
-    con = hw.get(8, basic=True)
-    sensor_graph = find_proxy_plugin('iotile_standard_library/lib_controller', 'SensorGraphPlugin')(con)
+    con = hw.get(8, basic=False)
+    sensor_graph = con.sensor_graph()
+    # sensor_graph = find_proxy_plugin('iotile_standard_library/lib_controller', 'SensorGraphPlugin')(con)
     clock_man = device.controller.clock_manager
 
     sensor_graph.enable()
@@ -125,8 +126,8 @@ def test_utc_time(basic_device):
 
     hw, device = basic_device
 
-    con = hw.get(8, basic=True)
-    test_interface = find_proxy_plugin('iotile_standard_library/lib_controller', 'ControllerTestPlugin')(con)
+    con = hw.get(8, basic=False)
+    test_interface = con.test_interface()
 
     test_time = datetime.datetime(2018, 11, 11, 16, 0, 0)
     zero = datetime.datetime(1970, 1, 1)
