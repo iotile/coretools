@@ -97,8 +97,9 @@ class HardwareManager:
         for name, obj in proxy_classes:
             proxy_key = obj.__name__ + ':' + name
 
-            if proxy_key in self._proxies:
-                continue
+            # awu_10/01/19 - we want to add all proxies even if duplicate but diff version
+            # if proxy_key in self._proxies:
+            #     continue
 
             self._proxies[proxy_key] = obj
 
@@ -167,13 +168,15 @@ class HardwareManager:
             return tile
 
         name = tile.tile_name()
-        _version = tile.tile_version()
+        version = tile.tile_version()
+        print("tile_name: ", name)
+        print("tile_version: ", version)
 
         if force is not None:
             name = force
 
         # Now create the appropriate proxy object based on the name and version of the tile
-        tile_type = self.get_proxy(name)
+        tile_type = self.get_proxy(name, version)
         if tile_type is None:
             raise HardwareError("Could not find proxy object for tile", name="'{}'".format(name),
                                 known_names=self._name_map.keys())
@@ -776,7 +779,7 @@ class HardwareManager:
         # FIXME: Use dictionary format in bled112stream to document information returned about devices
         return devices
 
-    def get_proxy(self, short_name):
+    def get_proxy(self, short_name, version):
         """Find a proxy type given its short name.
 
         If no proxy type is found, return None.
@@ -785,7 +788,44 @@ class HardwareManager:
         if short_name not in self._name_map:
             return None
 
-        return self._name_map[short_name][0]
+        # print("short_name: ", short_name)
+        # print("name_map: ", self._name_map)
+        # print("name_map[short_name]: ", self._name_map[short_name])
+        # print("version: ", version)
+        proxy_match = self.find_correct_proxy_version(self._name_map[short_name], version)
+        print("using proxy: ", proxy_match)
+        return proxy_match
+
+    def find_correct_proxy_version(self, proxies, version):
+        """Retrieves the ModuleVersion of each proxy if possible, then match"""
+
+        proxy_versions = {}
+        proxy_names = {}
+        for proxy in proxies:
+            module_version = None
+            try:
+                module_version = proxy.ModuleVersion()
+                print("module_version: ", module_version)
+            except AttributeError:
+                module_version = None
+            proxy_versions[proxy] = module_version
+            proxy_names[proxy] = str(proxy)
+
+        print(proxy_names)
+
+        # if theres an exact match, return that
+        for proxy, proxy_version in proxy_versions.items():
+            print(proxy_version)
+            if proxy_version is not None and version[0] == proxy_version[0]:
+                return proxy
+
+        # TODO
+        # try matching based off of support package name
+        # for proxy, proxy_name in proxy_names.items():
+        #     stripped_proxy_name = proxy_name.split('.')[0]
+        #     stripped_proxy_name = stripped_proxy_name.split('_')[-1]
+        #     # need to somehow bring ModuleVersion information in here
+        #     if stripped_proxy_name == 
 
     def _create_proxy(self, proxy, address):
         """
