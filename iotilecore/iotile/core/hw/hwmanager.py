@@ -793,42 +793,46 @@ class HardwareManager:
         return proxy_match if proxy_match is not None else self._name_map[short_name][0] 
 
     def find_correct_proxy_version(self, proxies, version):
-        """Retrieves the ModuleVersion of each proxy and match it with the tile version"""
+        """Retrieves the ModuleVersion of each proxy and match it with the tile version
+
+        something
+
+        Args:
+            proxies (list): A list of proxies of a specific short name
+            version (obj): A tuple that specifies the tile's version
+        """
 
         proxy_details = {}
         tile_version = SemanticVersion(version[0], version[1], version[2])
-        latest_version = SemanticVersion(0, 0, 0)
+        min_version = SemanticVersion(0, 0, 0)
+        best_proxy = None
 
         for proxy in proxies:
             proxy_details[proxy] = {}
             try:
                 # If proxy has ModuleVersion(), get the SemanticVersionRange
                 module_version = proxy.ModuleVersion()
-                proxy_details[proxy]['ModuleVersion'] = module_version
+                least_version = module_version._disjuncts[0][0][0]
+                # proxy_details[proxy]['ModuleVersion'] = module_version
             except AttributeError:
-                # If proxy does not have ModuleVersion(), use the name of the support package
-                stripped_proxy_version = str(proxy).split('.')[0].split('_')[-1]
-                module_version = SemanticVersionRange.FromString('^' + stripped_proxy_version + '.0.0')
-                proxy_details[proxy]['ModuleVersion'] = module_version
+                # If proxy does not have ModuleVersion(), use None
+                module_version = None
+                least_version = SemanticVersion(0, 0, 0)
 
-            # Keep track of each proxy's minimum version required
-            proxy_details[proxy]['MinVersion'] = module_version._disjuncts[0][0][0]
+            if module_version is None:
+                # Regardless if version is compatible, choose a best proxy for now
+                if min_version == SemanticVersion(0, 0, 0):
+                    best_proxy = proxy
+            elif module_version.check(tile_version):
+                # Set best proxy since it matches SVR and update min_version to beat
+                if least_version > min_version:
+                    min_version = least_version
+                    best_proxy = proxy
+                else:
+                    self.logger.debug("Passed compatible proxy: {0}".format(proxy))
 
-            if module_version.check(tile_version):
-                # Mark the proxy as compatible, and check if it is the latest version of the proxy
-                proxy_details[proxy]['Compatible'] = True
-                min_version = proxy_details[proxy]['MinVersion']
-                latest_version = min_version if latest_version.__lt__(min_version) else latest_version
-            else:
-                proxy_details[proxy]['Compatible'] = False
-
-        # Return the latest/compatible proxy
-        for proxy, details in proxy_details.items():
-            if details['Compatible'] and details['MinVersion'] == latest_version:
-                return proxy
-
-        # Last ditch effort, return None
-        return None
+        # If we don't make it in either conditional, best_proxy will return None
+        return best_proxy
 
     def _create_proxy(self, proxy, address):
         """
