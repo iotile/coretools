@@ -13,7 +13,7 @@ import logging
 from queue import Empty
 from typedargs.annotate import annotated, param, return_type, finalizer, docannotate, context
 
-from iotile.core.dev.semver import SemanticVersion
+from iotile.core.dev.semver import SemanticVersion, SemanticVersionRange
 from iotile.core.hw.exceptions import UnknownModuleTypeError
 from iotile.core.exceptions import ArgumentError, HardwareError, ValidationError, TimeoutExpiredError, ExternalError
 from iotile.core.dev.registry import ComponentRegistry
@@ -788,51 +788,47 @@ class HardwareManager:
         if short_name not in self._name_map:
             return None
 
-        # print("short_name: ", short_name)
-        # print("name_map: ", self._name_map)
-        # print("name_map[short_name]: ", self._name_map[short_name])
-        # print("version: ", version)
         proxy_match = self.find_correct_proxy_version(self._name_map[short_name], version)
-        print("using proxy: ", proxy_match)
-        return proxy_match
+        print("proxy_match: ", proxy_match)
+        return proxy_match if proxy_match is not None else self._name_map[short_name][0] 
 
     def find_correct_proxy_version(self, proxies, version):
-        """Retrieves the ModuleVersion of each proxy if possible, then match"""
+        """Retrieves the ModuleVersion of each proxy and match it with the tile version"""
 
         proxy_details = {}
-        latest_package_version = 0
+        tile_version = SemanticVersion(version[0], version[1], version[2])
+        latest_version = SemanticVersion(0, 0, 0)
 
         for proxy in proxies:
             proxy_details[proxy] = {}
-            module_version = None
             try:
+                # If proxy has ModuleVersion(), get the SemanticVersionRange
                 module_version = proxy.ModuleVersion()
-                print("module_version: ", module_version)
+                proxy_details[proxy]['ModuleVersion'] = module_version
             except AttributeError:
-                module_version = None
+                # If proxy does not have ModuleVersion(), use the name of the support package
+                stripped_proxy_version = str(proxy).split('.')[0].split('_')[-1]
+                module_version = SemanticVersionRange.FromString('^' + stripped_proxy_version + '.0.0')
+                proxy_details[proxy]['ModuleVersion'] = module_version
 
-            stripped_proxy_version = str(proxy).split('.')[0]
-            stripped_proxy_version = int(stripped_proxy_version.split('_')[-1])
-            proxy_details[proxy]['ModuleVersion'] = module_version
-            proxy_details[proxy]['PackageVersion'] = stripped_proxy_version
-            latest_package_version = stripped_proxy_version if stripped_proxy_version > latest_package_version else latest_package_version
+            # Keep track of each proxy's minimum version required
+            proxy_details[proxy]['MinVersion'] = module_version._disjuncts[0][0][0]
 
-        print("latest_package_version: ", latest_package_version)
+            if module_version.check(tile_version):
+                # Mark the proxy as compatible, and check if it is the latest version of the proxy
+                proxy_details[proxy]['Compatible'] = True
+                min_version = proxy_details[proxy]['MinVersion']
+                latest_version = min_version if latest_version.__lt__(min_version) else latest_version
+            else:
+                proxy_details[proxy]['Compatible'] = False
 
-        # if theres an exact match, return that
+        # Return the latest/compatible proxy
         for proxy, details in proxy_details.items():
-            if details['ModuleVersion'] is not None and version[0] == details['ModuleVersion'][0]:
+            if details['Compatible'] and details['MinVersion'] == latest_version:
                 return proxy
 
-        # try matching based off of support package name
-        for proxy, details in proxy_details.items():
-            if details['PackageVersion'] == version[0]:
-                return proxy
-
-        # last ditch effort, return latest proxy and hope for the best
-        for proxy, details in proxy_details.items():
-            if details['PackageVersion'] == latest_package_version:
-                return proxy
+        # Last ditch effort, return None
+        return None
 
     def _create_proxy(self, proxy, address):
         """
