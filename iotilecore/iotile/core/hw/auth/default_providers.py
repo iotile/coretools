@@ -1,2 +1,2 @@
-DefaultBasicAuth = (100, 'BasicAuthProvider', {})
+DefaultNullAuth = (100, 'NullAuthProvider', {})
 DefaultEnvAuth = (0, 'EnvAuthProvider', {})

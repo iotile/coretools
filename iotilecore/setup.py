@@ -49,13 +49,13 @@ setup(
             'broadcast = iotile.core.hw.reports:BroadcastReport'
         ],
         'iotile.auth_provider': [
-            'BasicAuthProvider = iotile.core.hw.auth.basic_auth_provider:BasicAuthProvider',
             'EnvAuthProvider = iotile.core.hw.auth.env_auth_provider:EnvAuthProvider',
+            'NullAuthProvider = iotile.core.hw.auth.null_auth_provider:NullAuthProvider',
             'ChainedAuthProvider = iotile.core.hw.auth.auth_chain:ChainedAuthProvider'
         ],
         'iotile.default_auth_providers': [
-            'BasicAuthProvider = iotile.core.hw.auth.default_providers:DefaultBasicAuth',
-            'EnvAuthProvider = iotile.core.hw.auth.default_providers:DefaultEnvAuth'
+            'EnvAuthProvider = iotile.core.hw.auth.default_providers:DefaultEnvAuth',
+            'NullAuthProvider = iotile.core.hw.auth.default_providers:DefaultNullAuth'
         ],
         'iotile.config_variables': [
             'iotile-core = iotile.core.config_variables:get_variables'

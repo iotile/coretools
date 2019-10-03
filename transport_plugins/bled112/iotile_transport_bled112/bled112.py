@@ -12,14 +12,19 @@ import serial.tools.list_ports
 from iotile_transport_bled112 import bgapi_structures
 from iotile.core.dev.config import ConfigManager
 from iotile.core.utilities.packed import unpack
-from iotile.core.exceptions import HardwareError
+from iotile.core.exceptions import HardwareError, NotFoundError
 from iotile.core.hw.reports import IOTileReportParser, IOTileReading, BroadcastReport
 from iotile.core.hw.transport.adapter import DeviceAdapter
 from .bled112_cmd import BLED112CommandProcessor
 from .tilebus import TileBusService, TileBusStreamingCharacteristic, TileBusTracingCharacteristic, TileBusHighSpeedCharacteristic
 from .async_packet import AsyncPacketBuffer
 from .utilities import open_bled112
-from .security import generate_per_reboot_key, generate_ephemeral_key, verify_payload, generate_nonce, EPHEMERAL_KEY_CYCLE_POWER
+from .security import verify_payload, generate_nonce
+from iotile.core.hw.auth.auth_provider import AuthProvider
+from iotile.core.hw.auth.auth_chain import ChainedAuthProvider
+
+
+EPHEMERAL_KEY_CYCLE_POWER = 6
 
 def packet_length(header):
     """Find the BGAPI packet length given its header"""
@@ -62,6 +67,8 @@ class BLED112Adapter(DeviceAdapter):
         self.scanning = False
         self.stopped = False
 
+        self._key_provider = ChainedAuthProvider()
+
         config = ConfigManager()
 
         if passive is not None:
@@ -100,11 +107,6 @@ class BLED112Adapter(DeviceAdapter):
         self._command_task = BLED112CommandProcessor(self._stream, self._commands, stop_check_interval=stop_check_interval)
         self._command_task.event_handler = self._handle_event
         self._command_task.start()
-
-        self._reboot_key = None
-        self._reboot_key_counter = 0
-        self._ephemeral_key = None
-        self._ephemeral_key_last_update = 0
 
         try:
             self.initialize_system_sync()
@@ -614,23 +616,6 @@ class BLED112Adapter(DeviceAdapter):
                 self._trigger_callback('on_report', None, report)
 
 
-    def _get_ephemeral_key(self, timestamp, reboots):
-        new_reboot_key = False
-
-        if not self._reboot_key or reboots != self._reboot_key_counter:
-            null_key = bytearray(16)
-            self._reboot_key = generate_per_reboot_key(null_key, 0, reboots)
-            self._reboot_key_counter = reboots
-
-            new_reboot_key = True
-
-        if new_reboot_key or not self._ephemeral_key or \
-            (timestamp - self._ephemeral_key_last_update >= 2**EPHEMERAL_KEY_CYCLE_POWER):
-
-            self._ephemeral_key = generate_ephemeral_key(self._reboot_key, timestamp)
-            self._ephemeral_key_last_update = timestamp
-
-        return self._ephemeral_key
 
     def _parse_v2_advertisement(self, rssi, sender, data):
         """ Parse the IOTile Specific advertisement packet"""
@@ -651,13 +636,32 @@ class BLED112Adapter(DeviceAdapter):
         broadcast_multiplex = counter_packed >> 5
         broadcast_toggle = broadcast_stream_packed >> 15
         broadcast_stream = broadcast_stream_packed & ((1 << 15) - 1)
+        is_encrypted = bool(flags & (1 << 3))
+        is_device_key = bool(flags & (1 << 4))
 
-        key = self._get_ephemeral_key(timestamp, reboots)
-        nonce = generate_nonce(device_id, timestamp, reboot_low, reboot_high_packed, counter_packed)
+        key_type = AuthProvider.NoKey
+        if is_encrypted:
+            if is_device_key:
+                key_type = AuthProvider.DeviceKey
+            else:
+                key_type = AuthProvider.UserKey
 
-        if not verify_payload(key, data[7:], nonce):
-            self._logger.warning("Advertisement packet is not verified")
-            return
+        if is_encrypted:
+            try:
+                key = self._key_provider.get_rotated_key(key_type, device_id,
+                    reboot_counter=reboots,
+                    rotation_interval_power=EPHEMERAL_KEY_CYCLE_POWER,
+                    current_timestamp=timestamp)
+                nonce = generate_nonce(device_id, timestamp, reboot_low, reboot_high_packed, counter_packed)
+
+                if not verify_payload(key, data[7:], nonce):
+                    print(reboots, timestamp)
+                    self._logger.warning("Advertisement packet is not verified")
+                    return
+            except NotFoundError:
+                self._logger.warning("Key is not found")
+                return
+
 
         # Flags for version 2 are:
         #   bit 0: Has pending data to stream

@@ -4,8 +4,6 @@ import struct
 
 from Crypto.Cipher import AES
 
-EPHEMERAL_KEY_CYCLE_POWER = 6
-
 def generate_per_reboot_key(root_key, key_purpose, reboot_counter):
     signed_data = struct.pack("<LL", key_purpose, reboot_counter)
 
