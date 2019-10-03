@@ -799,33 +799,42 @@ class HardwareManager:
     def find_correct_proxy_version(self, proxies, version):
         """Retrieves the ModuleVersion of each proxy if possible, then match"""
 
-        proxy_versions = {}
-        proxy_names = {}
+        proxy_details = {}
+        latest_package_version = 0
+
         for proxy in proxies:
+            proxy_details[proxy] = {}
             module_version = None
             try:
                 module_version = proxy.ModuleVersion()
                 print("module_version: ", module_version)
             except AttributeError:
                 module_version = None
-            proxy_versions[proxy] = module_version
-            proxy_names[proxy] = str(proxy)
+            # proxy_versions[proxy] = module_version
+            # proxy_names[proxy] = str(proxy)
+            stripped_proxy_version = str(proxy).split('.')[0]
+            stripped_proxy_version = int(stripped_proxy_version.split('_')[-1])
+            proxy_details[proxy]['ModuleVersion'] = module_version
+            proxy_details[proxy]['PackageVersion'] = stripped_proxy_version
+            latest_package_version = stripped_proxy_version if stripped_proxy_version > latest_package_version else latest_package_version
 
-        print(proxy_names)
+        print("latest_package_version: ", latest_package_version)
+
 
         # if theres an exact match, return that
-        for proxy, proxy_version in proxy_versions.items():
-            print(proxy_version)
-            if proxy_version is not None and version[0] == proxy_version[0]:
+        for proxy, details in proxy_details.items():
+            if details['ModuleVersion'] is not None and version[0] == details['ModuleVersion'][0]:
                 return proxy
 
-        # TODO
         # try matching based off of support package name
-        # for proxy, proxy_name in proxy_names.items():
-        #     stripped_proxy_name = proxy_name.split('.')[0]
-        #     stripped_proxy_name = stripped_proxy_name.split('_')[-1]
-        #     # need to somehow bring ModuleVersion information in here
-        #     if stripped_proxy_name == 
+        for proxy, details in proxy_details.items():
+            if details['ModuleVersion'] is not None and details['PackageVersion'] == details['ModuleVersion'][0]:
+                return proxy
+
+        # last ditch effort, return latest proxy and hope for the best
+        for proxy, details in proxy_details.items():
+            if details['PackageVersion'] == latest_package_version:
+                return proxy
 
     def _create_proxy(self, proxy, address):
         """
