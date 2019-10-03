@@ -810,8 +810,7 @@ class HardwareManager:
                 print("module_version: ", module_version)
             except AttributeError:
                 module_version = None
-            # proxy_versions[proxy] = module_version
-            # proxy_names[proxy] = str(proxy)
+
             stripped_proxy_version = str(proxy).split('.')[0]
             stripped_proxy_version = int(stripped_proxy_version.split('_')[-1])
             proxy_details[proxy]['ModuleVersion'] = module_version
@@ -820,7 +819,6 @@ class HardwareManager:
 
         print("latest_package_version: ", latest_package_version)
 
-
         # if theres an exact match, return that
         for proxy, details in proxy_details.items():
             if details['ModuleVersion'] is not None and version[0] == details['ModuleVersion'][0]:
@@ -828,7 +826,7 @@ class HardwareManager:
 
         # try matching based off of support package name
         for proxy, details in proxy_details.items():
-            if details['ModuleVersion'] is not None and details['PackageVersion'] == details['ModuleVersion'][0]:
+            if details['PackageVersion'] == version[0]:
                 return proxy
 
         # last ditch effort, return latest proxy and hope for the best
