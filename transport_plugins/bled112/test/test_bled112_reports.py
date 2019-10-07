@@ -2,7 +2,7 @@ import unittest
 import threading
 import serial
 import pytest
-from util.mock_bled112 import MockBLED112
+from iotile_transport_bled112.hardware.emulator.mock_bled112 import MockBLED112
 from iotile.mock.mock_ble import MockBLEDevice
 from iotile.core.hw.virtual.virtualdevice_simple import SimpleVirtualDevice
 import util.dummy_serial

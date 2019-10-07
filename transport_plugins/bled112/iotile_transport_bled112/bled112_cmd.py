@@ -788,10 +788,10 @@ class BLED112CommandProcessor(threading.Thread):
         acc = []
         delta = 0.01
 
-        start_time = time.time()
+        start_time = time.monotonic()
         end_time = start_time + total_time
 
-        while time.time() < end_time:
+        while time.monotonic() < end_time:
             events = self._process_events(lambda x: return_filter(x) or end_filter(x), max_events=1)
             acc += events
 
