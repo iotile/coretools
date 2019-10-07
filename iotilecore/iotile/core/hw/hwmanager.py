@@ -169,8 +169,6 @@ class HardwareManager:
 
         name = tile.tile_name()
         version = tile.tile_version()
-        print("tile_name: ", name)
-        print("tile_version: ", version)
 
         if force is not None:
             name = force
@@ -789,7 +787,6 @@ class HardwareManager:
             return None
 
         proxy_match = self.find_correct_proxy_version(self._name_map[short_name], version)
-        print("proxy_match: ", proxy_match)
         return proxy_match if proxy_match is not None else self._name_map[short_name][0] 
 
     def find_correct_proxy_version(self, proxies, version):
@@ -806,14 +803,13 @@ class HardwareManager:
         tile_version = SemanticVersion(version[0], version[1], version[2])
         min_version = SemanticVersion(0, 0, 0)
         best_proxy = None
-
+        self.logger.debug("Short name matched proxies found: {0}".format(proxies))
         for proxy in proxies:
             proxy_details[proxy] = {}
             try:
                 # If proxy has ModuleVersion(), get the SemanticVersionRange
                 module_version = proxy.ModuleVersion()
                 least_version = module_version._disjuncts[0][0][0]
-                # proxy_details[proxy]['ModuleVersion'] = module_version
             except AttributeError:
                 # If proxy does not have ModuleVersion(), use None
                 module_version = None
@@ -823,14 +819,17 @@ class HardwareManager:
                 # Regardless if version is compatible, choose a best proxy for now
                 if min_version == SemanticVersion(0, 0, 0):
                     best_proxy = proxy
+                    self.logger.debug("Using default proxy: {0}".format(proxy))
             elif module_version.check(tile_version):
                 # Set best proxy since it matches SVR and update min_version to beat
                 if least_version > min_version:
                     min_version = least_version
                     best_proxy = proxy
+                    self.logger.debug("Found a compatible proxy: {0}".format(proxy))
                 else:
                     self.logger.debug("Passed compatible proxy: {0}".format(proxy))
 
+        self.logger.debug("Best proxy found: {0}".format(proxy))
         # If we don't make it in either conditional, best_proxy will return None
         return best_proxy
 
