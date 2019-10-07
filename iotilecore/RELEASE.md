@@ -2,7 +2,7 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
-## 5.0.6
+## 5.0.7
 
 - Add proxy matching with tile version
 - Modify `watch_broadcasts` to treat individual UUID's streams as different items
