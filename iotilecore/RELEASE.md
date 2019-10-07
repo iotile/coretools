@@ -2,6 +2,13 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## 5.0.6
+
+- Modify `watch_broadcasts` to treat individual UUID's streams as different items
+- Modify parameters for `dump_memory` to use default addresses/lengths
+- Fix double passing of BroadcastReports
+- Fix logging error on task cancellation
+
 ## 5.0.5
 
 - Fix TileBasedDevice controller override

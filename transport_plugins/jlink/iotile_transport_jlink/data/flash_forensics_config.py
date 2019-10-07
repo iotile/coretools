@@ -36,7 +36,7 @@ ff_absolute_bin_path = os.path.dirname(os.path.realpath(__file__)) + "\\" + ff_b
 # FF_CMD_INFO Byte Layout
 ff_addresses = {
     'blob_inject_start' : 0x20002128,
-    'program_start' : 0x20002e78,
+    'program_start' : 0x20002eac,
     'command_id' : 0x2000FFE0,
     'read_command_address' : 0x2000FFE4,
     'read_command_length' : 0x2000FFE8,
@@ -44,6 +44,9 @@ ff_addresses = {
     'response_error_code' : 0x2000FFED,
     'read_response_buffer_address' : 0x2000FFF0,
     'read_response_offset' : 0x2000FFF4,
+    'query_id_response_manufacturer_id' : 0x2000FFF0,
+    'query_id_response_memory_type' : 0x2000FFF1,
+    'query_id_response_capacity' : 0x2000FFF2,
     'max_read_length' : 0x2000FFF8,
     'max_write_length' : 0x2000FFFA
 }
