@@ -819,7 +819,7 @@ class HardwareManager:
                 # Regardless if version is compatible, choose a best proxy for now
                 if min_version == SemanticVersion(0, 0, 0):
                     best_proxy = proxy
-                    self.logger.debug("Using default proxy: {0}".format(proxy))
+                    self.logger.debug("Found a proxy without ModuleVersion info: {0}".format(proxy))
             elif module_version.check(tile_version):
                 # Set best proxy since it matches SVR and update min_version to beat
                 if least_version > min_version:
@@ -829,7 +829,7 @@ class HardwareManager:
                 else:
                     self.logger.debug("Passed compatible proxy: {0}".format(proxy))
 
-        self.logger.debug("Best proxy found: {0}".format(proxy))
+        self.logger.debug("Best proxy found: {0} with base version {1}".format(best_proxy, min_version))
         # If we don't make it in either conditional, best_proxy will return None
         return best_proxy
 
