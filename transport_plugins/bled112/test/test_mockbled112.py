@@ -1,5 +1,5 @@
 import unittest
-from util.mock_bled112 import BGAPIPacket, MockBLED112
+from iotile_transport_bled112.hardware.emulator.mock_bled112 import BGAPIPacket, MockBLED112
 
 def test_create_disconnect_packet():
     """Verify that we can create and then parse a disconnect command
