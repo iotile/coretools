@@ -1,4 +1,4 @@
-"""Virtual Tile for testing proxy collision."""
+"""Virtual Tile for testing proxy matching."""
 
 from iotile.core.hw.virtual import VirtualTile
 from iotile.core.hw.proxy.proxy import TileBusProxyObject
@@ -6,7 +6,7 @@ from iotile.core.utilities.typedargs import context
 
 @context("TestProxyMatch")
 class TestProxyMatch(TileBusProxyObject):
-    """ TestTileProxy is used to check the proxy matching feature.
+    """ TestProxyMatch is used to check the proxy matching feature.
         Note: if you are going to rename it,
         it must have the same name as another proxy(check virtual_tile.py)"""
     @classmethod
