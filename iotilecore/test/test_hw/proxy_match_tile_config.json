@@ -1,0 +1,14 @@
+{
+	"device":
+	{
+		"iotile_id": 1,
+		"tiles":
+		[
+			{
+				"address": 7,
+				"name": "test/test_hw/proxy_match_tile.py",
+				"args": {}
+			}
+		]
+	}
+}
