@@ -6,10 +6,10 @@ import websockets
 
 from iotile.core.exceptions import ValidationError
 
-from .messages import VALID_CLIENT_MESSAGE
+from iotile.core.utilities.async_tools import SharedLoop
+from iotile_transport_socket_lib.protocol.messages import VALID_CLIENT_MESSAGE
 from .packing import pack, unpack
 from .errors import ServerCommandError
-from iotile.core.utilities.async_tools import SharedLoop
 
 
 class _ConnectionContext:
@@ -20,7 +20,7 @@ class _ConnectionContext:
         self.user_data = None
 
 
-class AsyncValidatingWSServer:
+class AsyncSocketServer:
     """A websocket server supporting command/response and server push.
 
     There is only one kind of message that can be sent from client to server:
@@ -45,10 +45,9 @@ class AsyncValidatingWSServer:
 
     OPERATIONS_MAX_PRUNE = 10
 
-    def __init__(self, host, port=None, loop=SharedLoop):
+    def __init__(self, implementation, loop=SharedLoop):
         self.task = None
-        self.host = host
-        self.port = port
+        self.implementation = implementation
 
         self._commands = {}
         self._server_task = None
@@ -141,11 +140,7 @@ class AsyncValidatingWSServer:
 
         started_signal = self._loop.create_future()
         self._server_task = self._loop.add_task(self._run_server_task(started_signal))
-
         await started_signal
-
-        if self.port is None:
-            self.port = started_signal.result()
 
     async def _run_server_task(self, started_signal):
         """Create a BackgroundTask to manage the server.
@@ -156,13 +151,8 @@ class AsyncValidatingWSServer:
         to perform this action.
         """
 
-        try:
-            server = await websockets.serve(self._manage_connection, self.host, self.port)
-            port = server.sockets[0].getsockname()[1]
-            started_signal.set_result(port)
-        except Exception as err:
-            self._logger.exception("Error starting server on host %s, port %s", self.host, self.port)
-            started_signal.set_exception(err)
+        server = await self.implementation.connect(self._manage_connection, started_signal)
+        if not server:
             return
 
         try:
@@ -206,7 +196,10 @@ class AsyncValidatingWSServer:
 
         message = dict(type="event", name=name, payload=payload)
         encoded = pack(message)
-        await con.send(encoded)
+        try:
+            await self.implementation.send(con, encoded)
+        except websockets.exceptions.ConnectionClosed:
+            self._logger.debug("Could not send notification because connection was closed.")
 
     async def _manage_connection(self, con, _path):
         context = _ConnectionContext(self, con)
@@ -219,7 +212,7 @@ class AsyncValidatingWSServer:
                 raise
 
             while True:
-                encoded = await con.recv()
+                encoded = await self.implementation.recv(con)
 
                 message = unpack(encoded)
                 if not VALID_CLIENT_MESSAGE.matches(message):
@@ -274,9 +267,9 @@ class AsyncValidatingWSServer:
         self._logger.debug("Sending response: %s", response)
 
         try:
-            await con.send(encoded_resp)
-        except websockets.exceptions.ConnectionClosed:
-            self._logger.debug("Response %s not sent because connection closed", response)
+            await self.implementation.send(con, encoded_resp)
+        except ConnectionError:
+            self._logger.debug("Response %s not sent because connection may be closed", response)
 
     async def _try_call_command(self, message, context):
         name = message.get('operation')

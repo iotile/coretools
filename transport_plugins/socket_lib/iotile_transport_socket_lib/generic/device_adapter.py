@@ -11,11 +11,10 @@ from iotile.core.hw.virtual import unpack_rpc_response
 from iotile.core.hw.reports import IOTileReportParser
 from iotile.core.hw.exceptions import DeviceAdapterError
 from iotile.core.exceptions import ExternalError
-from .protocol import OPERATIONS, NOTIFICATIONS, COMMANDS
-from .generic import AsyncValidatingWSClient
+from iotile_transport_socket_lib.protocol import OPERATIONS, NOTIFICATIONS, COMMANDS
 
 
-class WebSocketDeviceAdapter(StandardDeviceAdapter):
+class SocketDeviceAdapter(StandardDeviceAdapter):
     """ A device adapter allowing connections to devices over WebSockets.
 
     Args:
@@ -24,8 +23,8 @@ class WebSocketDeviceAdapter(StandardDeviceAdapter):
         loop (BackgroundEventLoop): Loop for running our websocket client.
     """
 
-    def __init__(self, port, *, loop=SharedLoop):
-        super(WebSocketDeviceAdapter, self).__init__(loop=loop)
+    def __init__(self, client, *, loop=SharedLoop):
+        super(SocketDeviceAdapter, self).__init__(loop=loop)
 
         # Configuration
         self.set_config('default_timeout', 10.0)
@@ -40,10 +39,7 @@ class WebSocketDeviceAdapter(StandardDeviceAdapter):
 
         self._report_parser = IOTileReportParser()
 
-        # WebSocket client
-        path = "ws://{0}/iotile/v3".format(port)
-        self.client = AsyncValidatingWSClient(path, loop=loop)
-
+        self.client = client
         self.client.register_event(OPERATIONS.NOTIFY_DEVICE_FOUND, self._on_device_found,
                                    NOTIFICATIONS.ScanEvent)
         self.client.register_event(OPERATIONS.NOTIFY_TRACE, self._on_trace_notification,
@@ -54,8 +50,8 @@ class WebSocketDeviceAdapter(StandardDeviceAdapter):
                                    NOTIFICATIONS.ReportEvent)
         self.client.register_event(OPERATIONS.NOTIFY_PROGRESS, self._on_progress_notification,
                                    NOTIFICATIONS.ProgressEvent)
-        self.client.register_event(AsyncValidatingWSClient.DISCONNECT_EVENT,
-                                   self._on_websocket_disconnect, NoneVerifier())
+        self.client.register_event(OPERATIONS.NOTIFY_SOCKET_DISCONNECT,
+                                   self._on_socket_disconnect, NoneVerifier())
 
     async def start(self):
         """Start the device adapter.
@@ -225,17 +221,17 @@ class WebSocketDeviceAdapter(StandardDeviceAdapter):
 
         await self.notify_progress(conn_string, operation, done, total, wait=True)
 
-    async def _on_websocket_disconnect(self, _event):
+    async def _on_socket_disconnect(self, _event):
         """Callback function called when we have been disconnected from the server (by error or not).
         Allows to clean all if the disconnection was unexpected."""
 
-        self.logger.info('Forcibly disconnected from the WebSocket server')
+        self.logger.info('Forcibly disconnected from the socket server')
 
         conns = self._connections.copy()
         for conn_id in conns:
             conn_string = self._get_property(conn_id, 'connection_string')
             self._teardown_connection(conn_id)
-            self.notify_event(conn_string, 'disconnect', "Websocket connection closed")
+            self.notify_event(conn_string, 'disconnect', "Socket connection closed")
 
     async def _send_command(self, name, args, verifier, timeout=10.0):
         try:

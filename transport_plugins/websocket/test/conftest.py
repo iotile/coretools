@@ -4,8 +4,8 @@ from iotile.core.hw.hwmanager import HardwareManager
 from iotile.core.hw.transport.adapter.sync_wrapper import SynchronousLegacyWrapper
 from iotile.core.hw.transport import VirtualDeviceAdapter
 from iotile.core.utilities import BackgroundEventLoop
-from iotile_transport_websocket.device_adapter import WebSocketDeviceAdapter
-from iotile_transport_websocket.device_server import WebSocketDeviceServer
+from iotile_transport_websocket.websocket_adapter import WebSocketDeviceAdapter
+from iotile_transport_websocket.websocket_server import WebSocketDeviceServer
 
 logger = logging.getLogger(__name__)
 
@@ -37,12 +37,12 @@ def server(request, loop):
         'host': '127.0.0.1',
         'port': None
     }
-    server = WebSocketDeviceServer(adapter, args, loop=loop)
-    loop.run_coroutine(server.start())
+    ws_dev_server = WebSocketDeviceServer(adapter, args, loop=loop)
+    loop.run_coroutine(ws_dev_server.start())
 
-    yield server.port, adapter
+    yield ws_dev_server.implementation.port, adapter
 
-    loop.run_coroutine(server.stop())
+    loop.run_coroutine(ws_dev_server.stop())
     loop.run_coroutine(adapter.stop())
 
 

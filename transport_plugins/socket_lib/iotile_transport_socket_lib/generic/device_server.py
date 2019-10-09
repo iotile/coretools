@@ -7,12 +7,12 @@ from iotile.core.utilities import SharedLoop
 from iotile.core.hw.transport.server import StandardDeviceServer
 from iotile.core.hw.exceptions import VALID_RPC_EXCEPTIONS, DeviceServerError, DeviceAdapterError
 from iotile.core.hw.virtual import pack_rpc_response
-from .generic import AsyncValidatingWSServer, ServerCommandError
-from .protocol import COMMANDS, OPERATIONS
+from . import ServerCommandError
+from iotile_transport_socket_lib.protocol import COMMANDS, OPERATIONS
 
 _MISSING = object()
 
-class WebSocketDeviceServer(StandardDeviceServer):
+class SocketDeviceServer(StandardDeviceServer):
     """A device server for connections to multiple devices over websockets.
 
     This class connects to an AbstractDeviceAdapter and serves it over
@@ -31,14 +31,10 @@ class WebSocketDeviceServer(StandardDeviceServer):
             run in.  Defaults to the shared global loop.
     """
 
-    def __init__(self, adapter, args=None, *, loop=SharedLoop):
-        host = args.get('host', '127.0.0.1')
-        port = args.get('port', None)
-
+    def __init__(self, adapter, server, args=None, *, loop=SharedLoop):
         StandardDeviceServer.__init__(self, adapter, args, loop=loop)
 
-        self.port = None
-        self.server = AsyncValidatingWSServer(host, port, loop=loop)
+        self.server = server
         self.chunk_size = 4*1024  # Config chunk size to be 4kb for traces and reports streaming
         self._logger = logging.getLogger(__name__)
 
@@ -81,7 +77,6 @@ class WebSocketDeviceServer(StandardDeviceServer):
         """
 
         await self.server.start()
-        self.port = self.server.port
 
     async def stop(self):
         """Stop serving access to devices.
@@ -106,7 +101,7 @@ class WebSocketDeviceServer(StandardDeviceServer):
         await self.server.stop()
 
         # Cleanup any resources we had on the adapter
-        await super(WebSocketDeviceServer, self).stop()
+        await super(SocketDeviceServer, self).stop()
 
     async def probe_message(self, _message, context):
         """Handle a probe message.

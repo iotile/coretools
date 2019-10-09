@@ -1,4 +1,4 @@
-"""Exceptions specific to the websockets subpackage."""
+"""Exceptions specific to the sockets subpackage."""
 
 class ServerCommandError(Exception):
     """An internal exception used to signal failure be a command handler.

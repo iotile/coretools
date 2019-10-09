@@ -4,7 +4,9 @@ import pytest
 import threading
 from iotile.core.exceptions import ExternalError
 from iotile.core.utilities.async_tools import BackgroundEventLoop
-from iotile_transport_websocket.generic import AsyncValidatingWSClient, AsyncValidatingWSServer
+from iotile_transport_websocket.websocket_implementation import WebsocketServerImplementation
+from iotile_transport_websocket.websocket_implementation import WebsocketClientImplementation
+from iotile_transport_socket_lib.generic import AsyncSocketServer, AsyncSocketClient
 from iotile.core.utilities.schema_verify import Verifier, StringVerifier, IntVerifier
 
 @pytest.fixture(scope="function")
@@ -17,11 +19,16 @@ def client_server():
     server = None
     client = None
     try:
-        server = AsyncValidatingWSServer('127.0.0.1', loop=loop)
+
+        args = {'host': '127.0.0.1'}
+        socket_implementation = WebsocketServerImplementation(args)
+        server = AsyncSocketServer(socket_implementation, loop=loop)
         loop.run_coroutine(server.start())
 
-        print("Server port: %d" % server.port)
-        client = AsyncValidatingWSClient('ws://127.0.0.1:%s' % server.port, loop=loop)
+        print("Server port: %d" % server.implementation.port)
+
+        client_implementation = WebsocketClientImplementation('ws://127.0.0.1:%s' % server.implementation.port)
+        client = AsyncSocketClient(client_implementation, loop=loop)
         loop.run_coroutine(client.start())
 
         yield loop, client, server
