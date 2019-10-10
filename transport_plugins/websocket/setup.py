@@ -16,10 +16,10 @@ setup(
     python_requires=">=3.5,<4",
     entry_points={
         'iotile.device_adapter': [
-            'ws = iotile_transport_websocket.websocket_adapter:WebSocketDeviceAdapter'
+            'ws = iotile_transport_websocket:WebSocketDeviceAdapter'
         ],
         'iotile.device_server': [
-            'websockets = iotile_transport_websocket.websocket_server:WebSocketDeviceServer'
+            'websockets = iotile_transport_websocket:WebSocketDeviceServer'
         ]
     },
     description="IOTile Websocket Transport Plugin",

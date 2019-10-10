@@ -12,6 +12,14 @@ setup(
         "msgpack>=0.6.1,<1"
     ],
     python_requires=">=3.5,<4",
+    entry_points={
+        'iotile.device_adapter': [
+            'unix = iotile_transport_socket_lib.unix_socket:UnixSocketDeviceAdapter'
+        ],
+        'iotile.device_server': [
+            'unixsocket = iotile_transport_socket_lib.unix_socket:UnixSocketDeviceServer'
+        ]
+    },
     description="IOTile Transport Socket Library Plugin",
     author="Arch",
     author_email="info@arch-iot.com",

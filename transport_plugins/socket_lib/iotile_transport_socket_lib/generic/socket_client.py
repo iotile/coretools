@@ -8,7 +8,7 @@ from iotile.core.utilities.async_tools import OperationManager, SharedLoop
 from iotile.core.utilities.schema_verify import Verifier
 from iotile_transport_socket_lib.generic.packing import pack, unpack
 from iotile_transport_socket_lib.protocol.messages import VALID_SERVER_MESSAGE
-from iotile_transport_socket_lib.protocol.operations import EVENTS
+from iotile_transport_socket_lib.protocol.operations import NOTIFY_SOCKET_DISCONNECT
 
 
 
@@ -184,7 +184,7 @@ class AsyncSocketClient:
         except asyncio.CancelledError:
             self._logger.info("Closing connection to server due to stop()")
         finally:
-            await self._manager.process_message(dict(type='event', name=EVENTS.NOTIFY_SOCKET_DISCONNECT, payload=None))
+            await self._manager.process_message(dict(type='event', name=NOTIFY_SOCKET_DISCONNECT, payload=None))
             await self._implementation.close()
 
     def register_event(self, name, callback, validator):

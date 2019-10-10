@@ -2,7 +2,6 @@
 
 import logging
 import base64
-import websockets
 from iotile.core.utilities import SharedLoop
 from iotile.core.hw.transport.server import StandardDeviceServer
 from iotile.core.hw.exceptions import VALID_RPC_EXCEPTIONS, DeviceServerError, DeviceAdapterError
@@ -266,5 +265,5 @@ class SocketDeviceServer(StandardDeviceServer):
         try:
             self._logger.debug("Sending event %s: %s", msg_name, msg_payload)
             await self.server.send_event(user_data, msg_name, msg_payload)
-        except websockets.exceptions.ConnectionClosed:
+        except ConnectionError:
             self._logger.debug("Could not send notification because connection was closed for client %s", client_id)
