@@ -8,9 +8,9 @@ from iotile.core.utilities import SharedLoop
 
 class WebsocketServerImplementation:
 
-    def __init__(self, args=None):
-        self.host = args.get('host', '127.0.0.1')
-        self.port = args.get('port', None)
+    def __init__(self, host='127.0.0.1', port=None):
+        self.host = host
+        self.port = port
         self._logger = logging.getLogger(__name__)
 
     async def connect(self, manage_connection_cb, started_signal):

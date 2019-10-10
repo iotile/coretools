@@ -28,7 +28,9 @@ class WebSocketDeviceServer(SocketDeviceServer):
     """
 
     def __init__(self, adapter, args=None, *, loop=SharedLoop):
-        self.implementation = WebsocketServerImplementation(args)
+        host = args.get('host', '127.0.0.1')
+        port_suggestion = args.get('port', None)
+        self.implementation = WebsocketServerImplementation(host, port_suggestion)
         server = AsyncSocketServer(self.implementation, loop=loop)
 
         SocketDeviceServer.__init__(self, adapter, server, args, loop=loop)

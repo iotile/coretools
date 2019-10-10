@@ -20,8 +20,7 @@ def client_server():
     client = None
     try:
 
-        args = {'host': '127.0.0.1'}
-        socket_implementation = WebsocketServerImplementation(args)
+        socket_implementation = WebsocketServerImplementation(host='127.0.0.1')
         server = AsyncSocketServer(socket_implementation, loop=loop)
         loop.run_coroutine(server.start())
 
