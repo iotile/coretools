@@ -672,6 +672,19 @@ class BLED112Adapter(DeviceAdapter):
 
         self._device_scan_counts.setdefault(device_id, {'v1': 0, 'v2': 0})['v2'] += 1
 
+        info = {'connection_string': sender,
+                'uuid': device_id,
+                'pending_data': is_pending_data,
+                'low_voltage': is_low_voltage,
+                'user_connected': is_user_connected,
+                'signal_strength': rssi,
+                'reboot_counter': reboots,
+                'sequence': counter,
+                'broadcast_toggle': broadcast_toggle, # FIX toggle is not decrypted at this point
+                'timestamp': timestamp,
+                'battery': battery / 32.0,
+                'advertising_version':2}
+
         key_type = AuthProvider.NoKey
         if is_encrypted:
             if is_device_key:
@@ -687,33 +700,19 @@ class BLED112Adapter(DeviceAdapter):
                     current_timestamp=timestamp)
             except NotFoundError:
                 self._logger.warning("Key type {} is not found".format(key_type))
-                return
+                return info, timestamp, None, None, None, None, None
 
             nonce = generate_nonce(device_id, timestamp, reboot_low, reboot_high_packed, counter_packed)
 
             try:
                 decrypted_data = decrypt_payload(key, data[7:], nonce)
             except ValueError:
-                print(hex(device_id), hex(reboots), hex(timestamp), key.hex())
                 self._logger.warning("Advertisement packet is not verified")
-                return
+                return info, timestamp, None, None, None, None, None
 
             broadcast_stream_packed, broadcast_value = unpack("<HL", decrypted_data)
             broadcast_toggle = broadcast_stream_packed >> 15
             broadcast_stream = broadcast_stream_packed & ((1 << 15) - 1)
-
-        info = {'connection_string': sender,
-                'uuid': device_id,
-                'pending_data': is_pending_data,
-                'low_voltage': is_low_voltage,
-                'user_connected': is_user_connected,
-                'signal_strength': rssi,
-                'reboot_counter': reboots,
-                'sequence': counter,
-                'broadcast_toggle': broadcast_toggle,
-                'timestamp': timestamp,
-                'battery': battery / 32.0,
-                'advertising_version':2}
 
         return info, timestamp, broadcast_stream, broadcast_value, \
             broadcast_toggle, counter, broadcast_multiplex
