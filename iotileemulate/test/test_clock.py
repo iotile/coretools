@@ -5,7 +5,6 @@ import pytest
 
 from iotile.core.hw import HardwareManager
 from iotile.core.exceptions import HardwareError
-from iotile.core.hw.proxy.external_proxy import find_proxy_plugin
 from iotile.emulate.reference import ReferenceDevice
 from iotile.emulate.transport import EmulatedDeviceAdapter
 
