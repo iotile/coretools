@@ -4,7 +4,6 @@ import sys
 import pytest
 from iotile.core.hw import HardwareManager
 from iotile.core.exceptions import HardwareError
-from iotile.core.hw.proxy.external_proxy import find_proxy_plugin
 from iotile.emulate.virtual import EmulatedPeripheralTile
 from iotile.emulate.reference import ReferenceDevice
 from iotile.emulate.constants import rpcs, Error
@@ -146,9 +145,9 @@ def test_config_database(reference_hw):
 
     hw, _device, _peripheral = reference_hw
 
-    con = hw.get(8, basic=True)
+    con = hw.get(8, basic=False)
     slot = hw.get(11, basic=True)
-    config_db = find_proxy_plugin('iotile_standard_library/lib_controller', 'ConfigDatabasePlugin')(con)
+    config_db = con.config_database()
 
     # Make sure all of the basic RPCs work
     assert config_db.count_variables() == 0
@@ -232,9 +231,9 @@ def test_tile_manager(reference_hw):
 
     hw, _device, _peripheral = reference_hw
 
-    con = hw.get(8, basic=True)
+    con = hw.get(8, basic=False)
     slot = hw.get(11, basic=True)
-    tileman = find_proxy_plugin('iotile_standard_library/lib_controller', 'TileManagerPlugin')(con)
+    tileman = con.tile_manager()
 
     assert tileman.count_tiles() == 2
 
@@ -264,8 +263,8 @@ def test_raw_sensor_log(reference_hw):
 
     hw, _device, _peripheral = reference_hw
 
-    con = hw.get(8, basic=True)
-    sensor_graph = find_proxy_plugin('iotile_standard_library/lib_controller', 'SensorGraphPlugin')(con)
+    con = hw.get(8, basic=False)
+    sensor_graph = con.sensor_graph()
 
     assert sensor_graph.count_readings() == {
         'streaming': 0,
@@ -305,9 +304,9 @@ def test_rsl_reset_config(reference_hw):
     import logging
     logger = logging.getLogger(__name__)
 
-    con = hw.get(8, basic=True)
-    sensor_graph = find_proxy_plugin('iotile_standard_library/lib_controller', 'SensorGraphPlugin')(con)
-    config = find_proxy_plugin('iotile_standard_library/lib_controller', 'ConfigDatabasePlugin')(con)
+    con = hw.get(8, basic=False)
+    sensor_graph = con.sensor_graph()
+    config = con.config_database()
 
     config.set_variable('controller', 0x2004, 'uint8_t', 1)
 
@@ -342,8 +341,8 @@ def test_rsl_dump_restore(reference_hw):
     hw, device, _peripheral = reference_hw
     refcon = device.controller
 
-    con = hw.get(8, basic=True)
-    sensor_graph = find_proxy_plugin('iotile_standard_library/lib_controller', 'SensorGraphPlugin')(con)
+    con = hw.get(8, basic=False)
+    sensor_graph = con.sensor_graph()
 
     # Verify that we properly restore data and our download walker
     for i in range(0, 10):

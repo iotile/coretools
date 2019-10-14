@@ -6,7 +6,6 @@ import time
 from iotile.core.hw import HardwareManager
 from iotile.core.hw.reports import SignedListReport
 from iotile.core.exceptions import HardwareError
-from iotile.core.hw.proxy.external_proxy import find_proxy_plugin
 from iotile.emulate.virtual import EmulatedPeripheralTile
 from iotile.emulate.reference import ReferenceDevice
 from iotile.emulate.demo import DemoEmulatedDevice
@@ -29,8 +28,8 @@ def sg_device():
     with HardwareManager(adapter=adapter) as hw:
         hw.connect(1)
 
-        con = hw.get(8, basic=True)
-        sensor_graph = find_proxy_plugin('iotile_standard_library/lib_controller', 'SensorGraphPlugin')(con)
+        con = hw.get(8, basic=False)
+        sensor_graph = con.sensor_graph()
 
         yield sensor_graph, hw
 
@@ -57,8 +56,8 @@ def basic_sg():
     with HardwareManager(adapter=adapter) as hw:
         hw.connect(1)
 
-        con = hw.get(8, basic=True)
-        sensor_graph = find_proxy_plugin('iotile_standard_library/lib_controller', 'SensorGraphPlugin')(con)
+        con = hw.get(8, basic=False)
+        sensor_graph = con.sensor_graph()
 
         for node in nodes:
             sensor_graph.add_node(node)
@@ -85,8 +84,8 @@ def streaming_sg():
     with HardwareManager(adapter=adapter) as hw:
         hw.connect(1)
 
-        con = hw.get(8, basic=True)
-        sensor_graph = find_proxy_plugin('iotile_standard_library/lib_controller', 'SensorGraphPlugin')(con)
+        con = hw.get(8, basic=False)
+        sensor_graph = con.sensor_graph()
 
         for node in nodes:
             sensor_graph.add_node(node)
@@ -110,8 +109,8 @@ def empty_sg():
     with HardwareManager(adapter=adapter) as hw:
         hw.connect(1)
 
-        con = hw.get(8, basic=True)
-        sensor_graph = find_proxy_plugin('iotile_standard_library/lib_controller', 'SensorGraphPlugin')(con)
+        con = hw.get(8, basic=False)
+        sensor_graph = con.sensor_graph()
         yield sensor_graph, hw, device
 
 
@@ -131,8 +130,8 @@ def rpc_sg():
     with HardwareManager(adapter=adapter) as hw:
         hw.connect(1)
 
-        con = hw.get(8, basic=True)
-        sensor_graph = find_proxy_plugin('iotile_standard_library/lib_controller', 'SensorGraphPlugin')(con)
+        con = hw.get(8, basic=False)
+        sensor_graph = con.sensor_graph()
 
         for node in nodes:
             sensor_graph.add_node(node)
@@ -178,7 +177,7 @@ def test_persist(basic_sg):
     assert sg.count_nodes() == 3
     assert str(sg.inspect_streamer(0)) == 'realtime streamer on output 10'
 
-    hw.get(8, basic=True).reset(wait=0)
+    hw.get(8, basic=False).reset(wait=0)
 
     # Make sure we recover both streamers and nodes
     assert sg.count_nodes() == 3

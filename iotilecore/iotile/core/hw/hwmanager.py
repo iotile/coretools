@@ -13,7 +13,7 @@ import logging
 from queue import Empty
 from typedargs.annotate import annotated, param, return_type, finalizer, docannotate, context
 
-from iotile.core.dev.semver import SemanticVersion
+from iotile.core.dev.semver import SemanticVersion, SemanticVersionRange
 from iotile.core.hw.exceptions import UnknownModuleTypeError
 from iotile.core.exceptions import ArgumentError, HardwareError, ValidationError, TimeoutExpiredError, ExternalError
 from iotile.core.dev.registry import ComponentRegistry
@@ -97,8 +97,9 @@ class HardwareManager:
         for name, obj in proxy_classes:
             proxy_key = obj.__name__ + ':' + name
 
-            if proxy_key in self._proxies:
-                continue
+            # awu_10/01/19 - we want to add all proxies even if duplicate but diff version
+            # if proxy_key in self._proxies:
+            #     continue
 
             self._proxies[proxy_key] = obj
 
@@ -167,13 +168,13 @@ class HardwareManager:
             return tile
 
         name = tile.tile_name()
-        _version = tile.tile_version()
+        version = tile.tile_version()
 
         if force is not None:
             name = force
 
         # Now create the appropriate proxy object based on the name and version of the tile
-        tile_type = self.get_proxy(name)
+        tile_type = self.get_proxy(name, version)
         if tile_type is None:
             raise HardwareError("Could not find proxy object for tile", name="'{}'".format(name),
                                 known_names=self._name_map.keys())
@@ -776,7 +777,7 @@ class HardwareManager:
         # FIXME: Use dictionary format in bled112stream to document information returned about devices
         return devices
 
-    def get_proxy(self, short_name):
+    def get_proxy(self, short_name, version):
         """Find a proxy type given its short name.
 
         If no proxy type is found, return None.
@@ -785,7 +786,52 @@ class HardwareManager:
         if short_name not in self._name_map:
             return None
 
-        return self._name_map[short_name][0]
+        proxy_match = self.find_correct_proxy_version(self._name_map[short_name], version)
+        return proxy_match if proxy_match is not None else self._name_map[short_name][0] 
+
+    def find_correct_proxy_version(self, proxies, version):
+        """Retrieves the ModuleVersion of each proxy and match it with the tile version
+
+        something
+
+        Args:
+            proxies (list): A list of proxies of a specific short name
+            version (obj): A tuple that specifies the tile's version
+        """
+
+        proxy_details = {}
+        tile_version = SemanticVersion(version[0], version[1], version[2])
+        min_version = SemanticVersion(0, 0, 0)
+        best_proxy = None
+        self.logger.debug("Short name matched proxies found: {0}".format(proxies))
+        for proxy in proxies:
+            proxy_details[proxy] = {}
+            try:
+                # If proxy has ModuleVersion(), get the SemanticVersionRange
+                module_version = proxy.ModuleVersion()
+                least_version = module_version._disjuncts[0][0][0]
+            except AttributeError:
+                # If proxy does not have ModuleVersion(), use None
+                module_version = None
+                least_version = SemanticVersion(0, 0, 0)
+
+            if module_version is None:
+                # Regardless if version is compatible, choose a best proxy for now
+                if min_version == SemanticVersion(0, 0, 0):
+                    best_proxy = proxy
+                    self.logger.debug("Found a proxy without ModuleVersion info: {0}".format(proxy))
+            elif module_version.check(tile_version):
+                # Set best proxy since it matches SVR and update min_version to beat
+                if least_version > min_version:
+                    min_version = least_version
+                    best_proxy = proxy
+                    self.logger.debug("Found a compatible proxy: {0}".format(proxy))
+                else:
+                    self.logger.debug("Passed compatible proxy: {0}".format(proxy))
+
+        self.logger.debug("Best proxy found: {0} with base version {1}".format(best_proxy, min_version))
+        # If we don't make it in either conditional, best_proxy will return None
+        return best_proxy
 
     def _create_proxy(self, proxy, address):
         """
