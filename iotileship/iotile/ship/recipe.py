@@ -436,7 +436,7 @@ class RecipeObject:
                 objects that should be used instead of creating that resource
                 and destroying it inside this function.
         """
-
+        outs = []
         old_dir = os.getcwd()
         try:
             os.chdir(self.run_directory)
@@ -453,6 +453,7 @@ class RecipeObject:
                         self.steps[i][1].get('description', '')))
 
                     runtime, out = _run_step(step, decl, initialized_resources)
+                    outs.append(out)
 
                     print("======> Time Elapsed: %.2f seconds" % runtime)
                     if out is not None:
@@ -461,6 +462,8 @@ class RecipeObject:
                 self._cleanup_resources(owned_resources)
         finally:
             os.chdir(old_dir)
+
+        return outs
 
     def __str__(self):
         output_string = "========================================\n"
