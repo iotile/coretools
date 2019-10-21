@@ -3,13 +3,52 @@
 
 import logging
 import asyncio
+import struct
 from iotile.core.utilities import SharedLoop
 from iotile_transport_socket_lib.generic.packing import pack, unpack
 
-class UnixServerConnection:
-    def __init__(self, reader, writer):
+ARCHMAGIC = "ARCH".encode()
+HEADERFORMAT = '4sL'
+
+class UnixSocketConnection:
+    def __init__(self, reader, writer, logger):
         self.reader = reader
         self.writer = writer
+        self._logger = logger
+
+    async def send(self, encoded):
+        try:
+            packed_header = struct.pack(HEADERFORMAT, ARCHMAGIC, len(encoded))
+            self.writer.write(packed_header)
+            self.writer.write(encoded)
+            await self.writer.drain()
+            self._logger.debug("Sent %d bytes: %s", len(encoded), unpack(encoded))
+
+        except Exception:
+            raise ConnectionError
+
+    async def _reset_read_buffer(self, packed_header):
+        self._logger.error("Invalid header. Read %b", packed_header)
+        await self.reader.read()
+
+    async def recv(self):
+        encoded = ""
+        while encoded == "":
+            packed_header = await self.reader.read(struct.calcsize(HEADERFORMAT))
+            try:
+                magic, encoded_len = struct.unpack(HEADERFORMAT, packed_header)
+            except struct.error:
+                await self._reset_read_buffer(packed_header)
+                continue
+
+            if magic != ARCHMAGIC:
+                await self._reset_read_buffer(packed_header)
+                continue
+
+            encoded = await self.reader.read(encoded_len)
+            self._logger.debug("Read %d bytes: %s", len(encoded), unpack(encoded))
+            return encoded
+
 
 class UnixServerImplementation:
 
@@ -34,61 +73,38 @@ class UnixServerImplementation:
 
     async def _conn_cb_wrapper(self, reader, writer):
         self._logger.debug("reader: %s, writer: %s", str(reader), str(writer))
-        unix_conn = UnixServerConnection(reader, writer)
+        unix_conn = UnixSocketConnection(reader, writer, self._logger)
         await self._manage_connection_cb(unix_conn, None)
 
     async def send(self, con, encoded):
-        try:
-            con.writer.write(encoded)
-            con.writer.write('\n'.encode())
-            await con.writer.drain()
-            self._logger.debug("Sent %d bytes: %s", len(encoded), unpack(encoded))
-
-        except Exception:
-            raise ConnectionError
+        await con.send(encoded)
 
     async def recv(self, con):
-        encoded = await con.reader.readline()
-        encoded = encoded[:-1]
-        self._logger.debug("Read %d bytes: %s", len(encoded), unpack(encoded))
-        return encoded
+        return await con.recv()
 
 class UnixClientImplementation:
 
     def __init__(self, path, loop=SharedLoop):
         self.path = path
-        self._reader = None
-        self._writer = None
         self._logger = logging.getLogger(__name__)
         self.loop = loop
         self.is_connected = False
+        self.con = None
 
     async def start(self):
-        self._reader, self._writer = await asyncio.open_unix_connection(self.path, loop=self.loop.get_loop())
+        reader, writer = await asyncio.open_unix_connection(self.path, loop=self.loop.get_loop())
+        self.con = UnixSocketConnection(reader, writer, self._logger)
         self._logger.debug("Connected to %s", self.path)
-        self.is_connected = True
 
     async def close(self):
-        await self._reader.close()
-        await self._writer.close()
-        self._writer = None
-        self._reader = None
-        self.is_connected = False
+        await self.con.writer.close()
+        self.con = None
 
     def connected(self):
-        return self.is_connected
+        return bool(self.con)
 
     async def send(self, encoded):
-        try:
-            self._writer.write(encoded)
-            self._writer.write('\n'.encode())
-            await self._writer.drain()
-            self._logger.debug("Sent %d bytes: %s", len(encoded), unpack(encoded))
-        except Exception:
-            raise ConnectionError
+        await self.con.send(encoded)
 
     async def recv(self):
-        encoded = await self._reader.readline()
-        encoded = encoded[:-1]
-        self._logger.debug("Read %d bytes: %s", len(encoded), unpack(encoded))
-        return encoded
+        return await self.con.recv()
