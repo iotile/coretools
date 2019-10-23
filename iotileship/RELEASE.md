@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileShip are listed here.
 
+## 1.0.8
+
+- Change raw_input to input for python3 compatability
+
 ## 1.0.7
 
 - Unpin `iotile-core` to support iotile-core 5
