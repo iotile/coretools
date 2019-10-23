@@ -6,13 +6,27 @@ import websockets
 import asyncio
 
 class WebsocketServerImplementation:
+    """Websocket flavor of a socket server
 
+    Args:
+        host (str): The host name to serve on, defaults to 127.0.0.1
+        port (str): The port name to serve on, defaults to a random port if not specified.
+
+    """
     def __init__(self, host='127.0.0.1', port=None):
         self.host = host
         self.port = port
         self._logger = logging.getLogger(__name__)
 
-    async def connect(self, manage_connection_cb, started_signal):
+    async def start_server(self, manage_connection_cb, started_signal):
+        """Begin serving. Once started up, set the result of a given signal to the server's port
+
+        Args:
+            manage_connection_cb (function): The function to call when a connection is made. Must accept
+                a connection info object to store and later present back to this class to interact
+                with that connection
+            started_signal (asyncio.future): A future that will be set to the server's port once started
+        """
         try:
             server = await websockets.serve(manage_connection_cb, self.host, self.port)
             if self.port is None:
@@ -25,35 +39,59 @@ class WebsocketServerImplementation:
         return server
 
     async def send(self, con, encoded):
+        """Send the byte-encoded data to the given connection
+
+        Args:
+            con (websockets.WebSocketServerProtocol): The connection to send to
+            encoded (bytes): Data to send
+        """
         try:
             await con.send(encoded)
         except websockets.exceptions.ConnectionClosed:
             raise ConnectionError
 
     async def recv(self, con):
+        """Await incoming data from the given connection
+
+        Args:
+            con (websockets.WebSocketServerProtocol): The connection to receive from
+        """
         return await con.recv()
 
 class WebsocketClientImplementation:
+    """Websockets flavor of a Socket Connection
 
-    def __init__(self, path):
-        self.path = path
+    Args:
+        sockaddr (str): A target for the WebSocket client to connect to in form of
+            server:port.  For example, "localhost:5120".
+    """
+
+    def __init__(self, sockaddr):
+        self.sockaddr = sockaddr
         self._con = None
 
-    async def start(self):
-        self._con = await websockets.connect(self.path)
+    async def connect(self):
+        """Open the connection"""
+        self._con = await websockets.connect(self.sockaddr)
 
     async def close(self):
+        """Close the connection"""
         await self._con.close()
         self._con = None
 
     def connected(self):
-        if self._con:
-            return True
-        else:
-            return False
+        """Return true if there is an active connection"""
+        return bool(self._con)
 
     async def send(self, packed):
-       await self._con.send(packed)
+        """Send the bytes-encoded data
+
+        Args:
+            packed(bytes): Data to send
+        """
+        await self._con.send(packed)
 
     async def recv(self):
+        """Await incoming data and return it"""
         return await self._con.recv()
+        

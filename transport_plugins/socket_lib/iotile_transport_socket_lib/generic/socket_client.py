@@ -2,7 +2,6 @@ import logging
 import uuid
 import inspect
 import asyncio
-import websockets
 from iotile.core.exceptions import ExternalError, ValidationError
 from iotile.core.utilities.async_tools import OperationManager, SharedLoop
 from iotile.core.utilities.schema_verify import Verifier
@@ -45,7 +44,7 @@ class AsyncSocketClient:
         self._allowed_exceptions = {}
         self._manager = OperationManager(loop=loop)
 
-        logger = logging.getLogger('websockets')
+        logger = logging.getLogger('SocketClient')
         logger.setLevel(logging.ERROR)
         logger.addHandler(logging.NullHandler())
 
@@ -82,7 +81,7 @@ class AsyncSocketClient:
             name (str): Optional name for the background task.
         """
 
-        await self._implementation.start()
+        await self._implementation.connect()
         self._connection_task = self._loop.add_task(self._manage_connection(), name=name)
 
     async def stop(self):

@@ -13,12 +13,13 @@ class WebSocketDeviceAdapter(SocketDeviceAdapter):
     Args:
         port (string): A target for the WebSocket client to connect to in form of
             server:port.  For example, "localhost:5120".
-        loop (BackgroundEventLoop): Loop for running our websocket client.
+        loop (iotile.core.utilities.BackgroundEventLoop): The background event loop we should
+            run in.  Defaults to the shared global loop.
     """
 
     def __init__(self, port, *, loop=SharedLoop):
-        path = "ws://{0}/iotile/v3".format(port)
-        self.implementation = WebsocketClientImplementation(path)
+        sockaddr = "ws://{0}/iotile/v3".format(port)
+        self.implementation = WebsocketClientImplementation(sockaddr)
 
         client = AsyncSocketClient(self.implementation, loop=loop)
         SocketDeviceAdapter.__init__(self, client, loop=loop)

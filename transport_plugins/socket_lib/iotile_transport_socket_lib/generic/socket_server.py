@@ -2,7 +2,6 @@
 
 import logging
 import asyncio
-import websockets
 
 from iotile.core.exceptions import ValidationError
 
@@ -54,7 +53,7 @@ class AsyncSocketServer:
         self._loop = loop
         self._logger = logging.getLogger(__name__)
 
-        logger = logging.getLogger('websockets')
+        logger = logging.getLogger('SocketServer')
         logger.setLevel(logging.ERROR)
         logger.addHandler(logging.NullHandler())
 
@@ -151,7 +150,7 @@ class AsyncSocketServer:
         to perform this action.
         """
 
-        server = await self.implementation.connect(self._manage_connection, started_signal)
+        server = await self.implementation.start_server(self._manage_connection, started_signal)
         if not server:
             return
 
@@ -198,8 +197,8 @@ class AsyncSocketServer:
         encoded = pack(message)
         try:
             await self.implementation.send(con, encoded)
-        except websockets.exceptions.ConnectionClosed:
-            self._logger.debug("Could not send notification because connection was closed.")
+        except Exception:
+            self._logger.debug("Error sending data")
 
     async def _manage_connection(self, con, _path):
         context = _ConnectionContext(self, con)
@@ -214,6 +213,7 @@ class AsyncSocketServer:
             while True:
                 encoded = await self.implementation.recv(con)
 
+
                 message = unpack(encoded)
                 if not VALID_CLIENT_MESSAGE.matches(message):
                     self._logger.warning("Received invalid message %s", message)
@@ -224,8 +224,8 @@ class AsyncSocketServer:
 
                 if len(context.operations) > self.OPERATIONS_MAX_PRUNE:
                     _prune_finished(context.operations)
-        except websockets.exceptions.ConnectionClosed:
-            self._logger.info("Connection closed")
+        except Exception:
+            self._logger.debug("Error sending data")
         finally:
             await _cancel_operations(context.operations)
 

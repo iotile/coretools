@@ -1,5 +1,4 @@
-# This file is copyright Arch Systems, Inc.
-# Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
+"""Presents a SocketDeviceAdapter that connects via Async Unix Sockets."""
 
 from iotile.core.utilities import SharedLoop
 
@@ -7,12 +6,15 @@ from iotile_transport_socket_lib.generic import SocketDeviceAdapter, AsyncSocket
 from .unixsocket_implementation import UnixClientImplementation
 
 class UnixSocketDeviceAdapter(SocketDeviceAdapter):
-    """ A device adapter allowing connections to devices over WebSockets.
+    """A device adapter allowing connections to devices over Unix Sockets.
 
     Args:
-        port (string): A target for the WebSocket client to connect to in form of
-            server:port.  For example, "localhost:5120".
-        loop (BackgroundEventLoop): Loop for running our websocket client.
+        port (str): The path to the unix socket opened by the Device Server
+            ex: "/tmp/gateway_socket". Note: This is usually passed in via config file
+            in the format "unix:<port>". The "unix:" part is parsed and dropped by the
+            HardwareManager
+        loop(iotile.core.utilities.BackgroundEventLoop): The background event loop we should
+            run in.  Defaults to the shared global loop.
     """
 
     def __init__(self, port, *, loop=SharedLoop):

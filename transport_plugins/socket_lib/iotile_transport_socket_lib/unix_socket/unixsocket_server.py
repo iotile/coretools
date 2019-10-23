@@ -1,25 +1,23 @@
-"""Generic implementation of serving access to a device over websockets."""
+"""Presents a SocketDeviceServer that serves via Async Unix Sockets."""
 
 from iotile.core.utilities import SharedLoop
 from iotile_transport_socket_lib.generic import SocketDeviceServer, AsyncSocketServer
 from .unixsocket_implementation import UnixServerImplementation
 
 class UnixSocketDeviceServer(SocketDeviceServer):
-    """A device server for connections to multiple devices via a SocketServerx
+    """A device server for connections to multiple devices via a SocketServer
 
     This class connects to an AbstractDeviceAdapter and serves it over
-    Websockets. Currently the support arguments to pass in args are:
+    Unix Sockets. Currently the support arguments to pass in args are:
 
-    - ``host``: The host name to serve on, defaults to 127.0.0.1
-    - ``port``: The port name to serve on, defaults to a random port if not specified.
-      If a random port is used, its value can be read on the ``port`` property after
-      start() has completed.
+    - ``path``: The path to the Unix Socket that will be opened. The file descriptor that it points
+        to will be created by the UnixServerImplementation's asyncio.start_unix_server() call
 
     Args:
         adapter (AbstractDeviceAdapter): The device adapter that we should use
             to find devices.
         args (dict): Arguments to this device server.
-        loop (BackgroundEventLoop): The background event loop we should
+        loop(iotile.core.utilities.BackgroundEventLoop): The background event loop we should
             run in.  Defaults to the shared global loop.
     """
 
