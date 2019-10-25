@@ -6,6 +6,7 @@ import argparse
 import yaml
 from iotile.core.exceptions import IOTileException
 from iotile.ship.recipe_manager import RecipeManager
+import asyncio
 
 DESCRIPTION = \
     u"""Load and run an iotile recipe.
@@ -93,10 +94,11 @@ def main(argv=None):
     success = 0
 
     start_time = time.time()
+    loop = asyncio.get_event_loop()
 
     if args.loop is None:
         try:
-            recipe.run(variables)
+            loop.run_until_complete(recipe.run(variables))
             success += 1
         except IOTileException as exc:
             print("Error running recipe: %s" % str(exc))
@@ -112,7 +114,7 @@ def main(argv=None):
             local_vars[args.loop] = value
 
             try:
-                recipe.run(local_vars)
+                loop.run_until_complete(recipe.run(local_vars))
                 success += 1
             except IOTileException as exc:
                 print("--> ERROR processing loop variable %s: %s" % (value, str(exc)))
@@ -127,3 +129,4 @@ def main(argv=None):
 
     print("Performed %d runs in %.1f seconds (%.1f seconds / run)" % (success, total_time, per_time))
     return 0
+

@@ -3,6 +3,7 @@ from iotile.core.utilities.schema_verify import DictionaryVerifier, OptionsVerif
 from iotile.core.hw import HardwareManager
 from iotile.core.exceptions import HardwareError
 from .shared_resource import SharedResource
+import asyncio
 
 
 RESOURCE_ARG_SCHEMA = DictionaryVerifier(desc="hardware_manager arguments")
@@ -43,7 +44,7 @@ class HardwareManagerResource(SharedResource):
         if self._connect_id is not None and not isinstance(self._connect_id, int):
             self._connect_id = int(self._connect_id, 0)
 
-    def open(self):
+    async def open(self):
         """Open and potentially connect to a device."""
 
         self.hwman = HardwareManager(port=self._port)
@@ -51,14 +52,14 @@ class HardwareManagerResource(SharedResource):
 
         if self._connection_string is not None:
             try:
-                self.hwman.connect_direct(self._connection_string)
+                await self.hwman.connect_direct(self._connection_string)
             except HardwareError:
                 self.hwman.close()
                 raise
 
         elif self._connect_id is not None:
             try:
-                self.hwman.connect(self._connect_id)
+                await self.hwman.connect(self._connect_id)
             except HardwareError:
                 self.hwman.close()
                 raise

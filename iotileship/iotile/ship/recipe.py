@@ -9,6 +9,7 @@ import tempfile
 from iotile.core.exceptions import ArgumentError, ValidationError
 from .exceptions import RecipeFileInvalid, UnknownRecipeActionType, RecipeVariableNotPassed, UnknownRecipeResourceType, RecipeResourceManagementError
 from .recipe_format import RecipeSchema
+import asyncio
 
 ResourceDeclaration = namedtuple("ResourceDeclaration", ["name", "type", "args", "autocreate", "description", "type_name"])
 ResourceUsage = namedtuple("ResourceUsage", ["used", "opened", "closed"])
@@ -417,7 +418,7 @@ class RecipeObject:
         if len(cleanup_errors) > 0:
             raise RecipeResourceManagementError(operation="resource cleanup", errors=cleanup_errors)
 
-    def run(self, variables=None, overrides=None):
+    async def run(self, variables=None, overrides=None):
         """Initialize and run this recipe.
 
         By default all necessary shared resources are created and destroyed in
@@ -452,7 +453,7 @@ class RecipeObject:
                     print("===> Step %d: %s\t Description: %s" % (i+1, self.steps[i][0].__name__, \
                         self.steps[i][1].get('description', '')))
 
-                    runtime, out = _run_step(step, decl, initialized_resources)
+                    runtime, out = await _run_step(step, decl, initialized_resources)
 
                     print("======> Time Elapsed: %.2f seconds" % runtime)
                     if out is not None:
@@ -522,14 +523,14 @@ def _extract_variables(param):
     return variables
 
 
-def _run_step(step_obj, step_declaration, initialized_resources):
+async def _run_step(step_obj, step_declaration, initialized_resources):
     """Actually run a step."""
 
     start_time = time.time()
 
     # Open any resources that need to be opened before we run this step
     for res_name in step_declaration.resources.opened:
-        initialized_resources[res_name].open()
+        await initialized_resources[res_name].open()
 
     # Create a dictionary of all of the resources that are required for this step
     used_resources = {local_name: initialized_resources[global_name] for local_name, global_name in step_declaration.resources.used.items()}
