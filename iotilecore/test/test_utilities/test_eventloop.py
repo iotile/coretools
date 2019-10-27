@@ -2,6 +2,7 @@
 
 import asyncio
 import pytest
+import time
 from iotile.core.utilities import BackgroundEventLoop
 from iotile.core.exceptions import TimeoutExpiredError
 
@@ -38,6 +39,44 @@ def test_basic_functionality():
             loop.run_coroutine(_failing_task())
     finally:
         loop.stop()
+
+
+def test_periodic_coroutine():
+    """Ensure that we can start and stop a periodic coroutine
+
+    Since there is some jitter in scheduling, we want to assert that
+    the function having sleep time doesn't impact the number
+    of calls even when it's 50% of the time between calls.
+
+    Unfortunately, on the test VMs, there is a LOT of schedule jitter.
+    We don't want the tests to run for very long, though, so quick iterations
+    are necessary to keep things moving along. At the very least, there shouldn't
+    be many MORE than we expect, but there may be fewer
+    (because they're still Queued when the test wraps up)
+    """
+    loop = BackgroundEventLoop()
+    loop.start()
+
+    try:
+        async def _repeating_task():
+            _repeating_task.counter += 1
+            await asyncio.sleep(.05)
+            return
+
+        _repeating_task.counter = 0
+
+        rt = loop.launch_periodic_coroutine(_repeating_task, .1)
+
+        time.sleep(4.5)
+
+        rt.cancel()
+
+        assert _repeating_task.counter >= 20
+        assert _repeating_task.counter <= 50
+
+    finally:
+        loop.stop()
+
 
 
 def test_primary_task_cleanup():
