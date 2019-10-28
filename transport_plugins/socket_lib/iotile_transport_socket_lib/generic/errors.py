@@ -3,8 +3,7 @@
 class ServerCommandError(Exception):
     """An internal exception used to signal failure be a command handler.
 
-    This exception communicates from a command handler to
-    AsyncValidatingWSServer that the command failed and triggers an
+    This exception communicates from a command handler to the server that the command failed and triggers an
     error response.
 
     Args:

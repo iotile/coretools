@@ -12,18 +12,18 @@ from iotile.core.hw.reports import IOTileReportParser
 from iotile.core.hw.exceptions import DeviceAdapterError
 from iotile.core.exceptions import ExternalError
 from iotile_transport_socket_lib.protocol import OPERATIONS, NOTIFICATIONS, COMMANDS
-
+from .socket_client import AsyncSocketClient
 
 class SocketDeviceAdapter(StandardDeviceAdapter):
-    """ A device adapter allowing connections to devices over WebSockets.
+    """ A device adapter allowing connections to devices over any socket implementation
 
     Args:
-        port (string): A target for the WebSocket client to connect to in form of
-            server:port.  For example, "localhost:5120".
+        implementation (AbstractSocketClient): The implementation of the socket client
+            that will be used to connect to the SocketDeviceServer
         loop (BackgroundEventLoop): Loop for running our websocket client.
     """
 
-    def __init__(self, client, *, loop=SharedLoop):
+    def __init__(self, implementation, *, loop=SharedLoop):
         super(SocketDeviceAdapter, self).__init__(loop=loop)
 
         # Configuration
@@ -39,7 +39,7 @@ class SocketDeviceAdapter(StandardDeviceAdapter):
 
         self._report_parser = IOTileReportParser()
 
-        self.client = client
+        self.client = AsyncSocketClient(implementation, loop=loop)
         self.client.register_event(OPERATIONS.NOTIFY_DEVICE_FOUND, self._on_device_found,
                                    NOTIFICATIONS.ScanEvent)
         self.client.register_event(OPERATIONS.NOTIFY_TRACE, self._on_trace_notification,

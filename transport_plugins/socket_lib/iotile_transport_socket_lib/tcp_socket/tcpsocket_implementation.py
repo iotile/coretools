@@ -10,18 +10,20 @@ from iotile_transport_socket_lib.generic.abstract_socket_implementation import A
 
 
 
-class UnixServerImplementation(AbstractSocketServerImplementation):
-    """Unix flavor of a socket server
+class TcpServerImplementation(AbstractSocketServerImplementation):
+    """Tcp flavor of a socket server
 
     Args:
-        path (str): The path to the Unix Socket that will be opened. The file descriptor that it points
-            to will be created by the asyncio.start_unix_server() call
+        host (str): The host name to serve on, defaults to 127.0.0.1
+        port (str): The port name to serve on, defaults to a random port if not specified.
+
         loop (iotile.core.utilities.BackgroundEventLoop): The background event loop we should
             run in.  Defaults to the shared global loop.
     """
 
-    def __init__(self, path, loop=SharedLoop):
-        self.path = path
+    def __init__(self, host='127.0.0.1', port=0, loop=SharedLoop):
+        self.host = host
+        self.port = port
         self._logger = logging.getLogger(__name__)
         self.loop = loop
         self._manage_connection_cb = None
@@ -38,11 +40,14 @@ class UnixServerImplementation(AbstractSocketServerImplementation):
 
         self._manage_connection_cb = manage_connection_cb
         try:
-            server = await asyncio.start_unix_server(self._conn_cb_wrapper, path=self.path, loop=self.loop.get_loop())
-            self._logger.debug("Serving on path %s", self.path)
+            server = await asyncio.start_server(self._conn_cb_wrapper, host=self.host, port=self.port,
+                                                loop=self.loop.get_loop())
+            if self.port is None:
+                self.port = server.sockets[0].getsockname()[1]
+            self._logger.debug("Serving on port %s", self.port)
             started_signal.set_result(True)
         except Exception as err:
-            self._logger.exception("Error starting unix server on path %s", self.path)
+            self._logger.exception("Error starting unix server on port %s", self.port)
             started_signal.set_exception(err)
             return
         return server
@@ -80,17 +85,19 @@ class UnixServerImplementation(AbstractSocketServerImplementation):
         """
         return await con.recv()
 
-class UnixClientImplementation(AbstractSocketClientImplementation):
+class TcpClientImplementation(AbstractSocketClientImplementation):
     """Unix flavor of a Socket Connection
 
     Args:
-        path (str): Path to the unix socket opened by the Server
+        host (str): The host name to connect to
+        port (str): The port name to connect to
         loop (iotile.core.utilities.BackgroundEventLoop): The background event loop we should
             run in.  Defaults to the shared global loop.
     """
 
-    def __init__(self, path, loop=SharedLoop):
-        self.path = path
+    def __init__(self, host, port, loop=SharedLoop):
+        self.host = host
+        self.port = port
         self._logger = logging.getLogger(__name__)
         self.loop = loop
         self.is_connected = False
@@ -98,9 +105,9 @@ class UnixClientImplementation(AbstractSocketClientImplementation):
 
     async def connect(self):
         """Open the connection"""
-        reader, writer = await asyncio.open_unix_connection(self.path, loop=self.loop.get_loop())
+        reader, writer = await asyncio.open_unix_connection(host=self.host, port=self.port, loop=self.loop.get_loop())
         self.con = AsyncioSocketConnection(reader, writer, self._logger)
-        self._logger.debug("Connected to %s", self.path)
+        self._logger.debug("Connected to %s:%s", self.host, self.port)
 
     async def close(self):
         """Close the connection"""

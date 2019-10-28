@@ -1,18 +1,18 @@
-"""Generic implementation of serving access to a device over websockets."""
+"""Generic implementation of serving access to a device over TCP sockets."""
 
 
 from iotile.core.utilities import SharedLoop
 from iotile_transport_socket_lib.generic import SocketDeviceServer
-from .websocket_implementation import WebsocketServerImplementation
+from .tcpsocket_implementation import TcpClientImplementation
 
 
 _MISSING = object()
 
-class WebSocketDeviceServer(SocketDeviceServer):
+class TcpSocketDeviceServer(SocketDeviceServer):
     """A device server for connections to multiple devices via a SocketServer
 
     This class connects to an AbstractDeviceAdapter and serves it over
-    Websockets. Currently the support arguments to pass in args are:
+    TCP sockets. Currently the support arguments to pass in args are:
 
     - ``host``: The host name to serve on, defaults to 127.0.0.1
     - ``port``: The port name to serve on, defaults to a random port if not specified.
@@ -30,6 +30,6 @@ class WebSocketDeviceServer(SocketDeviceServer):
     def __init__(self, adapter, args=None, *, loop=SharedLoop):
         host = args.get('host', '127.0.0.1')
         port_suggestion = args.get('port', None)
-        self.implementation = WebsocketServerImplementation(host, port_suggestion)
+        self.implementation = TcpSocketServerImplementation(host, port_suggestion)
         SocketDeviceServer.__init__(self, adapter, self.implementation, args, loop=loop)
         self.port = None

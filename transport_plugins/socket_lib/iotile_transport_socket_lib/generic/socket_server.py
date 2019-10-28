@@ -30,7 +30,7 @@ class AsyncSocketServer:
     The server can also, at any time, send an EVENT message to the client,
     which is able to register a callback for the event.
 
-    This class is the server side implementation of AsyncValidatingWSClient
+    This class is the server side implementation of AsyncSocketClient
     and is designed to be used with that class.
 
     Args:
@@ -65,7 +65,7 @@ class AsyncSocketServer:
         that is passed to all command coroutines.
 
         Args:
-            con (websockets.Connection): The connection that we are supposed
+            _con (a connection object): The connection that we are supposed
                 to prepare.
 
         Returns:
@@ -125,8 +125,7 @@ class AsyncSocketServer:
     async def start(self):
         """Start the websocket server.
 
-        When this method returns, the websocket server will be running and
-        the port property of this class will have its assigned port number.
+        When this method returns, the socket server will be running 
 
         This method should be called only once in the lifetime of the server
         and must be paired with a call to stop() to cleanly release the
@@ -168,7 +167,7 @@ class AsyncSocketServer:
     async def stop(self):
         """Stop the websocket server.
 
-        This method will shutdown the websocket server and free all resources
+        This method will shutdown the socket server and free all resources
         associated with it.  If there are ongoing connections at the time of
         shutdown, they will be cleanly closed.
         """
@@ -186,7 +185,7 @@ class AsyncSocketServer:
         connected and passed to self.prepare_conn(connection).
 
         Args:
-            con (websockets.Connection): The connection to use to send
+            con (a connection object): The connection to use to send
                 the event.
             name (str): The name of the event to send.
             payload (object): The msgpack-serializable object so send

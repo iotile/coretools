@@ -5,7 +5,10 @@ import logging
 import websockets
 import asyncio
 
-class WebsocketServerImplementation:
+from iotile_transport_socket_lib.generic import AbstractSocketServerImplementation
+from iotile_transport_socket_lib.generic import AbstractSocketClientImplementation
+
+class WebsocketServerImplementation(AbstractSocketServerImplementation):
     """Websocket flavor of a socket server
 
     Args:
@@ -25,13 +28,13 @@ class WebsocketServerImplementation:
             manage_connection_cb (function): The function to call when a connection is made. Must accept
                 a connection info object to store and later present back to this class to interact
                 with that connection
-            started_signal (asyncio.future): A future that will be set to the server's port once started
+            started_signal (asyncio.future): A future that will be set to True once the server has started
         """
         try:
             server = await websockets.serve(manage_connection_cb, self.host, self.port)
             if self.port is None:
                 self.port = server.sockets[0].getsockname()[1]
-            started_signal.set_result(self.port)
+            started_signal.set_result(True)
         except Exception as err:
             self._logger.exception("Error starting server on host %s, port %s", self.host, self.port)
             started_signal.set_exception(err)
@@ -58,7 +61,7 @@ class WebsocketServerImplementation:
         """
         return await con.recv()
 
-class WebsocketClientImplementation:
+class WebsocketClientImplementation(AbstractSocketClientImplementation):
     """Websockets flavor of a Socket Connection
 
     Args:

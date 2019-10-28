@@ -9,8 +9,6 @@ from iotile_transport_socket_lib.generic.packing import pack, unpack
 from iotile_transport_socket_lib.protocol.messages import VALID_SERVER_MESSAGE
 from iotile_transport_socket_lib.protocol.operations import NOTIFY_SOCKET_DISCONNECT
 
-
-
 class AsyncSocketClient:
     """An asynchronous socket client that validates messages received.
 
@@ -27,7 +25,8 @@ class AsyncSocketClient:
     validated automatically.
 
     Args:
-        url (str): The URL of the websocket server that we should connect to.
+        implementation (AbstractSocketClient): The implementation of the socket client
+            that will be used for data transport
         loop (BackgroundEventLoop): The background event loop that we should
             run in, or None to use the default shared background loop.
         logger_name (str): Optional name for the logger we should use to
@@ -70,7 +69,7 @@ class AsyncSocketClient:
         self._allowed_exceptions[name] = exc_class
 
     async def start(self, name="socket_client"):
-        """Connect to the websocket server.
+        """Connect to the socket server.
 
         This method will spawn a background task in the designated event loop
         that will run until stop() is called.  You can control the name of the
@@ -85,7 +84,7 @@ class AsyncSocketClient:
         self._connection_task = self._loop.add_task(self._manage_connection(), name=name)
 
     async def stop(self):
-        """Stop this websocket client and disconnect from the server.
+        """Stop this socket client and disconnect from the server.
 
         This method is idempotent and may be called multiple times.  If called
         when there is no active connection, it will simply return.
@@ -234,7 +233,7 @@ class AsyncSocketClient:
         occurred.  The command's response is discarded.
 
         This method is thread-safe and may be called from inside or ouside
-        of the background event loop.  If there is no websockets connection,
+        of the background event loop.  If there is no connection,
         no error will be raised (though an error will be logged).
 
         Args:

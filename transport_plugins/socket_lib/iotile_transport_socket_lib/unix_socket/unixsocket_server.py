@@ -1,7 +1,7 @@
 """Presents a SocketDeviceServer that serves via Async Unix Sockets."""
 
 from iotile.core.utilities import SharedLoop
-from iotile_transport_socket_lib.generic import SocketDeviceServer, AsyncSocketServer
+from iotile_transport_socket_lib.generic import SocketDeviceServer
 from .unixsocket_implementation import UnixServerImplementation
 
 class UnixSocketDeviceServer(SocketDeviceServer):
@@ -24,5 +24,4 @@ class UnixSocketDeviceServer(SocketDeviceServer):
     def __init__(self, adapter, args=None, *, loop=SharedLoop):
         path = args.get('path', None)
         self.implementation = UnixServerImplementation(path, loop)
-        server = AsyncSocketServer(self.implementation, loop=loop)
-        SocketDeviceServer.__init__(self, adapter, server, args, loop=loop)
+        SocketDeviceServer.__init__(self, adapter, self.implementation, args, loop=loop)

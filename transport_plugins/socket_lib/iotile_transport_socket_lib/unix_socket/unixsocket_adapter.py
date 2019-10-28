@@ -2,7 +2,7 @@
 
 from iotile.core.utilities import SharedLoop
 
-from iotile_transport_socket_lib.generic import SocketDeviceAdapter, AsyncSocketClient
+from iotile_transport_socket_lib.generic import SocketDeviceAdapter
 from .unixsocket_implementation import UnixClientImplementation
 
 class UnixSocketDeviceAdapter(SocketDeviceAdapter):
@@ -19,5 +19,4 @@ class UnixSocketDeviceAdapter(SocketDeviceAdapter):
 
     def __init__(self, port, *, loop=SharedLoop):
         self.implementation = UnixClientImplementation(port, loop)
-        client = AsyncSocketClient(self.implementation, loop=loop)
-        SocketDeviceAdapter.__init__(self, client, loop=loop)
+        SocketDeviceAdapter.__init__(self, self.implementation, loop=loop)
