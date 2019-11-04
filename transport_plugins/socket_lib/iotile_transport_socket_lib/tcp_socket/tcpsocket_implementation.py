@@ -42,7 +42,7 @@ class TcpServerImplementation(AbstractSocketServerImplementation):
         try:
             server = await asyncio.start_server(self._conn_cb_wrapper, host=self.host, port=self.port,
                                                 loop=self.loop.get_loop())
-            if self.port is None:
+            if self.port == 0:
                 self.port = server.sockets[0].getsockname()[1]
             self._logger.debug("Serving on port %s", self.port)
             started_signal.set_result(True)
@@ -105,7 +105,7 @@ class TcpClientImplementation(AbstractSocketClientImplementation):
 
     async def connect(self):
         """Open the connection"""
-        reader, writer = await asyncio.open_unix_connection(host=self.host, port=self.port, loop=self.loop.get_loop())
+        reader, writer = await asyncio.open_connection(host=self.host, port=self.port, loop=self.loop.get_loop())
         self.con = AsyncioSocketConnection(reader, writer, self._logger)
         self._logger.debug("Connected to %s:%s", self.host, self.port)
 
