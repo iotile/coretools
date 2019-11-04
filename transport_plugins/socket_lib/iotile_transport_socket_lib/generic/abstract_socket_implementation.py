@@ -43,7 +43,6 @@ class AsyncioSocketConnection:
             self.writer.write(packed_header)
             self.writer.write(encoded)
             await self.writer.drain()
-            #self._logger.debug("Sent %d bytes: %s", len(encoded), unpack(encoded))
 
         except Exception:
             raise ConnectionError
@@ -63,7 +62,6 @@ class AsyncioSocketConnection:
                 raise struct.error
 
             encoded = await self.reader.read(encoded_len)
-            #self._logger.debug("Read %d bytes: %s", len(encoded), unpack(encoded))
             return encoded
 
 

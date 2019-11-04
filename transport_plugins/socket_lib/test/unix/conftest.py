@@ -37,12 +37,12 @@ def server(tmp_path, request, loop):
     args = {
         'path': socketfile
     }
-    ws_dev_server = UnixSocketDeviceServer(adapter, args, loop=loop)
-    loop.run_coroutine(ws_dev_server.start())
+    dev_server = UnixSocketDeviceServer(adapter, args, loop=loop)
+    loop.run_coroutine(dev_server.start())
 
     yield socketfile, adapter
 
-    loop.run_coroutine(ws_dev_server.stop())
+    loop.run_coroutine(dev_server.stop())
     loop.run_coroutine(adapter.stop())
 
 

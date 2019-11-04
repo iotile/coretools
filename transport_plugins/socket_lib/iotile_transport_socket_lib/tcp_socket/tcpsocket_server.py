@@ -3,7 +3,7 @@
 
 from iotile.core.utilities import SharedLoop
 from iotile_transport_socket_lib.generic import SocketDeviceServer
-from .tcpsocket_implementation import TcpClientImplementation
+from .tcpsocket_implementation import TcpServerImplementation
 
 
 _MISSING = object()
@@ -29,7 +29,7 @@ class TcpSocketDeviceServer(SocketDeviceServer):
 
     def __init__(self, adapter, args=None, *, loop=SharedLoop):
         host = args.get('host', '127.0.0.1')
-        port_suggestion = args.get('port', None)
-        self.implementation = TcpSocketServerImplementation(host, port_suggestion)
+        port_suggestion = args.get('port', 0)
+        self.implementation = TcpServerImplementation(host, port_suggestion, loop)
         SocketDeviceServer.__init__(self, adapter, self.implementation, args, loop=loop)
         self.port = None

@@ -6,9 +6,6 @@ from iotile.core.utilities import SharedLoop
 from iotile_transport_socket_lib.generic import AbstractSocketServerImplementation
 from iotile_transport_socket_lib.generic import AbstractSocketClientImplementation
 from iotile_transport_socket_lib.generic.abstract_socket_implementation import AsyncioSocketConnection
-#from iotile_transport_socket_lib.generic.packing import pack, unpack
-
-
 
 class UnixServerImplementation(AbstractSocketServerImplementation):
     """Unix flavor of a socket server

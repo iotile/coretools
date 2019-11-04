@@ -14,10 +14,12 @@ setup(
     python_requires=">=3.5,<4",
     entry_points={
         'iotile.device_adapter': [
-            'unix = iotile_transport_socket_lib.unix_socket:UnixSocketDeviceAdapter'
+            'unix = iotile_transport_socket_lib.unix_socket:UnixSocketDeviceAdapter',
+            'tcp = iotile_transport_socket_lib.tcp_socket:TcpSocketDeviceAdapter'
         ],
         'iotile.device_server': [
-            'unixsocket = iotile_transport_socket_lib.unix_socket:UnixSocketDeviceServer'
+            'unixsocket = iotile_transport_socket_lib.unix_socket:UnixSocketDeviceServer',
+            'tcpsocket = iotile_transport_socket_lib.tcp_socket:TcpSocketDeviceServer'
         ]
     },
     description="IOTile Transport Socket Library Plugin",

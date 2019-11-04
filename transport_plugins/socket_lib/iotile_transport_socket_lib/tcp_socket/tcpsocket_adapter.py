@@ -20,6 +20,6 @@ class TcpSocketDeviceAdapter(SocketDeviceAdapter):
     def __init__(self, port, *, loop=SharedLoop):
         host = port.split(':')[0]
         tcp_port = port.split(':')[1]
-        self.implementation = TcpSocketClientImplementation(host, tcp_port, loop)
+        self.implementation = TcpClientImplementation(host, tcp_port, loop)
 
         SocketDeviceAdapter.__init__(self, self.implementation, loop=loop)
