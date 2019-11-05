@@ -8,7 +8,7 @@ from .tcpsocket_implementation import TcpClientImplementation
 
 
 class TcpSocketDeviceAdapter(SocketDeviceAdapter):
-    """ A device adapter allowing connections to devices over WebSockets.
+    """A device adapter allowing connections to devices over WebSockets.
 
     Args:
         port (string): A target for the TCP Socket client to connect to in form of
