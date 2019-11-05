@@ -364,7 +364,7 @@ class BackgroundEventLoop:
             self.tasks = set()
 
     def get_loop(self):
-        """Get the current loop instance.z
+        """Get the current loop instance.
 
         If there is no current loop, a new loop is created and started before
         returning.

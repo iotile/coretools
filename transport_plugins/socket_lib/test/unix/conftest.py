@@ -1,5 +1,6 @@
 import pytest
 import logging
+import tempfile
 from iotile.core.hw.hwmanager import HardwareManager
 from iotile.core.hw.transport.adapter.sync_wrapper import SynchronousLegacyWrapper
 from iotile.core.hw.transport import VirtualDeviceAdapter
@@ -22,9 +23,10 @@ def loop():
 
 
 @pytest.fixture(scope="function")
-def server(tmp_path, request, loop):
+def server(request, loop):
     devices = request.param
-    socketfile = str((tmp_path / "socket").resolve())
+    tmpdir = tempfile.TemporaryDirectory()
+    socketfile = tmpdir.name+"/s"
 
     if not isinstance(devices, tuple):
         devices = (devices,)

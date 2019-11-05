@@ -24,6 +24,7 @@ comp_names = {
     'iotile_transport_bled112': Component('iotile-transport-bled112', 'transport_plugins/bled112'),
     'iotile_transport_awsiot': Component('iotile-transport-awsiot', 'transport_plugins/awsiot'),
     'iotile_transport_websocket': Component('iotile-transport-websocket', 'transport_plugins/websocket'),
+    'iotile_transport_socket_lib': Component('iotile-transport-socket-lib', 'transport_plugins/socket_lib'),
     'iotile_transport_native_ble': Component('iotile-transport-native-ble', 'transport_plugins/native_ble'),
     'iotile_transport_jlink': Component('iotile-transport-jlink', 'transport_plugins/jlink'),
     'iotile_ext_cloud': Component('iotile-ext-cloud', 'iotile_ext_cloud')

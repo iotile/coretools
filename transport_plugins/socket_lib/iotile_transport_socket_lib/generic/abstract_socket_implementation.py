@@ -15,8 +15,8 @@ import asyncio
 
 
 class AsyncioSocketConnection:
-    """Paired read and write commands for an active Socket Connection 
-        
+    """Paired read and write commands for an active Socket Connection
+
     Args:
         reader (asyncio.StreamReader): The reader returned from the connect command or callback
         writer (asyncio.StreamWriter): The writer returned from the connect command or callback
@@ -33,7 +33,7 @@ class AsyncioSocketConnection:
 
     async def send(self, encoded):
         """Send encoded byte data. First send a header with the data's length, then the data itself
-        Return once data in the buffer has been drained 
+        Return once data in the buffer has been drained
 
         Args:
             encoded (bytes): Encoded data to send
@@ -45,24 +45,22 @@ class AsyncioSocketConnection:
             await self.writer.drain()
 
         except Exception:
-            raise ConnectionError
+            raise ConnectionError from Exception
 
     async def recv(self):
-        """ Await incoming data, return the encoded bytes
+        """Await incoming data, return the encoded bytes
 
         Returns:
             bytes: Encoded data object
         """
-        encoded = ""
-        while encoded == "":
-            packed_header = await self.reader.read(struct.calcsize(self._HEADERFORMAT))
-            magic, encoded_len = struct.unpack(self._HEADERFORMAT, packed_header)
+        packed_header = await self.reader.read(struct.calcsize(self._HEADERFORMAT))
+        magic, encoded_len = struct.unpack(self._HEADERFORMAT, packed_header)
 
-            if magic != self._ARCHMAGIC:
-                raise struct.error
+        if magic != self._ARCHMAGIC:
+            raise struct.error
 
-            encoded = await self.reader.read(encoded_len)
-            return encoded
+        encoded = await self.reader.read(encoded_len)
+        return encoded
 
 
 class AbstractSocketServerImplementation(abc.ABC):
