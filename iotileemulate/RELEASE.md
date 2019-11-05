@@ -2,6 +2,10 @@
 
 All major changes in each released version of iotile-emulate are listed here.
 
+## 0.5.1
+
+- Updating tests to use `ReferenceControllerProxy`
+
 ## 0.5.0
 
 - Refactor for compatibility with latest coretools release that integrated asyncio

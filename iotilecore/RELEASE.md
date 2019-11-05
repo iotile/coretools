@@ -2,6 +2,14 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## HEAD
+
+- Add ability to start periodic coroutines with the SharedLoop
+
+## 5.0.7
+
+- Add proxy matching with tile version
+
 ## 5.0.6
 
 - Modify `watch_broadcasts` to treat individual UUID's streams as different items

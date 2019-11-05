@@ -617,6 +617,52 @@ class BackgroundEventLoop:
         else:
             self.loop.call_soon_threadsafe(_run_and_log)
 
+    def launch_periodic_coroutine(self, cor, interval, *args, handle_exceptions=True, **kwargs):
+        """Start a coroutine task that's meant to occur every n seconds
+
+        If this method is called from inside the event loop, it will return an
+        awaitable object.  If it is called from outside the event loop it will
+        return an concurrent Future object.
+
+        The coroutine will be scheduled in this function, but has no
+        guaranteed execution time.
+
+        Drift is corrected for, to some extent, so your function should execute
+        at the interval regardless of its execution time.
+
+        You can call `cancel()` on the object to stop it.
+
+        Args:
+            cor (coroutine): The coroutine that we wish to periodically run in the
+                background.
+            interval (int): How many seconds you want the calls to happen apart
+            handle_exceptions (bool): Whether you want the repeatable to exit or
+                continue if an exception is seen. Defaults to True.
+
+        Returns:
+            Future or asyncio.Task: A future representing the coroutine.
+
+            If this method is called from within the background loop
+            then an awaitable asyncio.Tasks is returned.  Otherwise,
+            a concurrent Future object is returned.
+
+            You should NOT await on the returned object unless you are
+            intending to cancel it from another place (high risk of locking)
+        """
+
+        if self.stopping:
+            raise LoopStoppingError("Could not launch coroutine because loop is shutting down: %s" % cor)
+
+        # Ensure the loop exists and is started
+        self.start()
+
+        cor = _repeat(cor, interval, self.loop, self._logger, handle_exceptions, *args, **kwargs)
+
+        if self.inside_loop():
+            return asyncio.ensure_future(cor, loop=self.loop)
+
+        return asyncio.run_coroutine_threadsafe(cor, loop=self.loop)
+
     def create_event(self):
         """Attach an Event to the background loop.
 
@@ -691,6 +737,40 @@ def _log_future_exception(future, logger):
     except:  # pylint:disable=bare-except;This is a background logging helper
         logger.warning("Exception in ignored future: %s", future, exc_info=True)
 
+
+async def _repeat(cor, interval, loop, logger, handle_exceptions, *args, **kwargs):
+    """Run a coroutine every interval seconds.
+
+    Note that if your function doesn't finish in time, it will run again immediately
+    after the previous iteration is finished (it doesn't guarantee runtime).
+
+    Each repeatable will have its own tick generation to account for its own drift.
+    """
+    tick = _tick_generator(interval, loop)
+    if handle_exceptions:
+        while 1:
+            try:
+                await asyncio.gather(cor(*args, **kwargs), asyncio.sleep(next(tick)),)
+            except asyncio.CancelledError:
+                break
+            except:  # pylint:disable=bare-except; We have indicated that this coroutine shouldn't stop.
+                logger.exception("Exception in repeating coroutine: %s", cor, exc_info=True)
+    else:
+        try:
+            while 1:
+                await asyncio.gather(cor(*args, **kwargs), asyncio.sleep(next(tick)),)
+        except asyncio.CancelledError:
+            return
+        except:  # pylint:disable=bare-except; We need to log the coroutine exception here, then reraise
+            logger.exception("Exception in repeating coroutine; exiting repetition: %s", cor, exc_info=True)
+            raise
+
+def _tick_generator(period, loop):
+    t1 = loop.time()
+    count = 0
+    while True:
+        count += 1
+        yield max(t1 + count * period - loop.time(), 0)
 
 # Create a single global event loop that anyone can add tasks to.
 SharedLoop = BackgroundEventLoop()  # pylint:disable=invalid-name;This is for backwards compatibility.
