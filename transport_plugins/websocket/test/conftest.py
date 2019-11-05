@@ -4,8 +4,8 @@ from iotile.core.hw.hwmanager import HardwareManager
 from iotile.core.hw.transport.adapter.sync_wrapper import SynchronousLegacyWrapper
 from iotile.core.hw.transport import VirtualDeviceAdapter
 from iotile.core.utilities import BackgroundEventLoop
-from iotile_transport_websocket.websocket_adapter import WebSocketDeviceAdapter
-from iotile_transport_websocket.websocket_server import WebSocketDeviceServer
+from iotile_transport_websocket import WebSocketDeviceAdapter
+from iotile_transport_websocket import WebSocketDeviceServer
 
 logger = logging.getLogger(__name__)
 
