@@ -3,6 +3,7 @@
 import sys
 import pytest
 import threading
+import tempfile
 from iotile.core.exceptions import ExternalError
 from iotile.core.utilities.async_tools import BackgroundEventLoop
 from iotile_transport_socket_lib.unix_socket.unixsocket_implementation import UnixServerImplementation
@@ -14,12 +15,13 @@ if sys.platform.startswith("win"):
     pytest.skip("skipping unix socket tests", allow_module_level=True)
 
 @pytest.fixture(scope="function")
-def client_server(tmp_path):
+def client_server():
     """Create a connected async ws client and server pair."""
 
     loop = BackgroundEventLoop()
     loop.start()
-    socketfile = str((tmp_path / "socket").resolve())
+    tmpdir = tempfile.TemporaryDirectory(dir="/tmp")
+    socketfile = tmpdir.name+"/s"
 
     server = None
     client = None
