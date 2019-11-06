@@ -7,8 +7,7 @@ from Crypto.Cipher import AES
 from iotile.core.exceptions import NotFoundError
 
 class AuthProvider:
-    """ Base calls for all objects that provide a way to obtaine a key
-    """
+    """Base calls for all objects that provide a way to obtain a key"""
 
     ReportKeyMagic = 0x00000002
 
@@ -32,6 +31,9 @@ class AuthProvider:
     def VerifyRoot(cls, root_key_type):
         """Verify that the root key type is known to us.
 
+        Args:
+            root_key_type: requested key type
+
         Raises:
             NotFoundError: If the key type is not known.
         """
@@ -48,6 +50,14 @@ class AuthProvider:
 
         The standard method is HMAC-SHA256(root_key, MAGIC_NUMBER || report_id || sent_timestamp)
         where MAGIC_NUMBER is 0x00000002 and all integers are in little endian.
+
+        Args:
+            root_key (bytearray): 16 bytes with the key
+            report_id (int): id in report
+            sent_timestamp (int): timestamp in report
+
+        Returns:
+            bytearray: 32 bytes  containing digest of id and timestamp
         """
 
         signed_data = struct.pack("<LLL", AuthProvider.ReportKeyMagic, report_id, sent_timestamp)
@@ -58,9 +68,19 @@ class AuthProvider:
 
     @classmethod
     def DeriveRebootKey(cls, root_key, key_purpose, reboot_counter):
-        """ Derive a key generated on reboot
+        """Derive a key generated on reboot
 
         HMAC SHA-256-128(Root Key, key purpose (uint32_t) || reboot counter (uint32_t))
+
+        Args:
+            root_key (bytearray): 16 bytes key
+            key_purpose (int): value to differentiate different keys,
+                for example with different permissions. Not used at the moment
+            reboot_counter (int): received in ble adv packet
+
+        Returns:
+            bytearray: 16 bytes containing digest of key_purpose and reboot_counter
+
         """
         signed_data = struct.pack("<LL", key_purpose, reboot_counter)
 
@@ -70,9 +90,18 @@ class AuthProvider:
 
     @classmethod
     def DeriveRotatedKey(cls, reboot_key, current_timestamp, rotation_interval_power):
-        """ Derive an ephemeral key every 2^X seconds,
+        """ Derive an ephemeral key every 2^rotation_interval_power seconds,
+        The same key will be return if timeout of rotation is not elapsed
 
         AES-128-ECB(Reboot Key, current_timestamp with low X bits masked to 0)
+
+        Args:
+            reboot_key (bytearray): 16 bytes key
+            current_timestamp (int): current time
+            rotation_interval_power (int): X in 2^X
+
+        Returns:
+            bytearray: the rotated key
         """
         timestamp = current_timestamp & (~(2 ** rotation_interval_power - 1))
         cipher = AES.new(reboot_key, AES.MODE_ECB)
@@ -85,8 +114,16 @@ class AuthProvider:
         """Get a serialized key such for signing a streamer report.
 
         These keys are designed to only be used once and only provide
-            access to the object of ``key_type`` with the given
-            ``serial_number``.
+            access to the object of key_type with the given serial_number
+
+        Args:
+            key_type (int): no key, user key or device key
+            device_id (int): UUID of the device
+            key_info (dict): data required for key generation.
+                It may be report_id and sent_timestamp
+
+        Returns:
+            bytearray: the key
         """
         raise NotImplementedError()
 
@@ -94,10 +131,16 @@ class AuthProvider:
     def get_rotated_key(self, key_type, device_id, **rotation_info):
         """Get a key that is only valid for a limit period of time.
 
-        ``rotation_info`` should be a KeyRotationInfo object that
-            describes the conditions when the key is rotated.  For example,
-            for a broadcast report key it may be the reboot counter of the
-            device, the current uptime and the rotation interval of the key
+        Args:
+            key_type (int): no key, user key or device key
+            device_id (int): UUID of the device
+            key_info (dict): data that describes the conditions when
+                the key is rotated. For example, for a broadcast report key
+                it may be the reboot counter of the
+                device, the current uptime and the rotation interval of the key.
+
+        Returns:
+            bytearray: the rotated key
         """
         raise NotImplementedError()
 
@@ -110,12 +153,28 @@ class AuthProvider:
         abilities.  For AuthProviders that have access to the root key
             though, the other methods can be provided via a mixin from this
             root method.
+
+        Args:
+            key_type (int): no key, user key or device key
+            device_id (int): UUID of the device
+
+        Returns:
+            bytearray: the root key
         """
 
         raise NotImplementedError()
 
 
     def get_device_access_key(self, key_type, device_id, scope):
-        """Future method for scoped access tokens to device."""
+        """Future method for scoped access tokens to device.
 
+        Args:
+            key_type (int): no key, user key or device key
+            device_id (int): UUID of the device
+            scope (int): permissions that will be granted with this key
+
+        Returns:
+            bytearray: the key
+
+        """
         raise NotImplementedError()

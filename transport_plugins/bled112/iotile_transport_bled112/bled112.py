@@ -707,7 +707,7 @@ class BLED112Adapter(DeviceAdapter):
             try:
                 decrypted_data = decrypt_payload(key, data[7:], nonce)
             except ValueError:
-                self._logger.warning("Advertisement packet is not verified")
+                self._logger.warning("Advertisement packet is not verified", exc_info=True)
                 return info, timestamp, None, None, None, None, None
 
             broadcast_stream_packed, broadcast_value = unpack("<HL", decrypted_data)

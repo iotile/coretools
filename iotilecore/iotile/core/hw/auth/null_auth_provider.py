@@ -8,7 +8,19 @@ class NullAuthProvider(AuthProvider):
     root_key = bytearray(16)
 
     def get_rotated_key(self, key_type, device_id, **rotation_info):
+        """Get a key that is only valid for a limit period of time.
 
+        Args:
+            key_type (int): no key, user key or device key
+            device_id (int): UUID of the device
+            key_info (dict): data that describes the conditions when
+                the key is rotated. For example, for a broadcast report key
+                it may be the reboot counter of the
+                device, the current uptime and the rotation interval of the key.
+
+        Returns:
+            bytearray: the rotated key
+        """
         counter = rotation_info.get("reboot_counter", None)
         interval_power = rotation_info.get("rotation_interval_power", None)
         timestamp = rotation_info.get("current_timestamp", None)
@@ -34,8 +46,16 @@ class NullAuthProvider(AuthProvider):
         """Get a serialized key such for signing a streamer report.
 
         These keys are designed to only be used once and only provide
-            access to the object of ``key_type`` with the given
-            ``serial_number``.
+            access to the object of key_type with the given serial_number
+
+        Args:
+            key_type (int): no key, user key or device key
+            device_id (int): UUID of the device
+            key_info (dict): data required for key generation.
+                It may be report_id and sent_timestamp
+
+        Returns:
+            bytearray: the key
         """
         report_id = key_info.get('report_id', None)
         sent_timestamp = key_info.get('sent_timestamp', None)

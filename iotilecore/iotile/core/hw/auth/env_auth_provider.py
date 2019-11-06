@@ -29,9 +29,9 @@ class EnvAuthProvider(AuthProvider):
 
         try:
             key = binascii.unhexlify(key_var)
-        except ValueError:
+        except ValueError as exc:
             raise NotFoundError("Key in variable could not be decoded from hex", device_id=device_id,
-                                key_value=key_var)
+                                key_value=key_var) from exc
 
         if len(key) != 32:
             raise NotFoundError("Key in variable is not the correct length, should be 64 hex characters",
@@ -44,8 +44,16 @@ class EnvAuthProvider(AuthProvider):
         """Get a serialized key such for signing a streamer report.
 
         These keys are designed to only be used once and only provide
-            access to the object of ``key_type`` with the given
-            ``serial_number``.
+            access to the object of key_type with the given serial_number
+
+        Args:
+            key_type (int): no key, user key or device key
+            device_id (int): UUID of the device
+            key_info (dict): data required for key generation,
+                includes report_id and sent_timestamp
+
+        Returns:
+            bytearray: the key
         """
         report_id = key_info.get('report_id', None)
         sent_timestamp = key_info.get('sent_timestamp', None)
@@ -65,7 +73,20 @@ class EnvAuthProvider(AuthProvider):
 
 
     def get_rotated_key(self, key_type, device_id, **rotation_info):
+        """Get a serialized key such for signing a streamer report.
 
+        These keys are designed to only be used once and only provide
+            access to the object of key_type with the given serial_number
+
+        Args:
+            key_type (int): no key, user key or device key
+            device_id (int): UUID of the device
+            key_info (dict): data required for key generation.
+                It may be report_id and sent_timestamp
+
+        Returns:
+            bytearray: the key
+        """
         counter = rotation_info.get("reboot_counter", None)
         interval_power = rotation_info.get("rotation_interval_power", None)
         timestamp = rotation_info.get("current_timestamp", None)

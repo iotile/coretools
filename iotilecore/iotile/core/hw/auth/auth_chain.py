@@ -45,9 +45,9 @@ class ChainedAuthProvider(AuthProvider):
             self._auth_factories[name] = entry
 
     def get_serialized_key(self, key_type, device_id, **key_info):
+        """Deligates call to auth providers in the chain"""
         for _priority, provider in self.providers:
             try:
-                print(_priority, provider)
                 return provider.get_serialized_key(key_type, device_id, **key_info)
             except NotFoundError:
                 pass
@@ -55,6 +55,7 @@ class ChainedAuthProvider(AuthProvider):
         raise NotFoundError("get_serialized_key method is not implemented in any sub_providers")
 
     def get_rotated_key(self, key_type, device_id, **rotation_info):
+        """Deligates call to auth providers in the chain"""
         for _priority, provider in self.providers:
             try:
                 return provider.get_rotated_key(key_type, device_id, **rotation_info)
@@ -62,3 +63,4 @@ class ChainedAuthProvider(AuthProvider):
                 pass
 
         raise NotFoundError("get_rotated_key method is not implemented in any sub_providers")
+
