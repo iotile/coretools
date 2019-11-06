@@ -25,7 +25,7 @@ def loop():
 @pytest.fixture(scope="function")
 def server(request, loop):
     devices = request.param
-    tmpdir = tempfile.TemporaryDirectory()
+    tmpdir = tempfile.TemporaryDirectory(dir="/tmp")
     socketfile = tmpdir.name+"/s"
 
     if not isinstance(devices, tuple):

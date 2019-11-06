@@ -4,8 +4,8 @@ import pytest
 import threading
 from iotile.core.exceptions import ExternalError
 from iotile.core.utilities.async_tools import BackgroundEventLoop
-from iotile_transport_socket_lib.unix_socket.unixsocket_implementation import UnixServerImplementation
-from iotile_transport_socket_lib.unix_socket.unixsocket_implementation import UnixClientImplementation
+from iotile_transport_socket_lib.tcp_socket.tcpsocket_implementation import TcpServerImplementation
+from iotile_transport_socket_lib.tcp_socket.tcpsocket_implementation import TcpClientImplementation
 from iotile_transport_socket_lib.generic import AsyncSocketServer, AsyncSocketClient
 from iotile.core.utilities.schema_verify import Verifier, StringVerifier, IntVerifier
 
@@ -21,11 +21,11 @@ def client_server(tmp_path):
     client = None
     try:
 
-        socket_implementation = UnixServerImplementation(path=socketfile, loop=loop)
+        socket_implementation = TcpServerImplementation(host='127.0.0.1', loop=loop)
         server = AsyncSocketServer(socket_implementation, loop=loop)
         loop.run_coroutine(server.start())
 
-        client_implementation = UnixClientImplementation(path=socketfile, loop=loop)
+        client_implementation = TcpClientImplementation('127.0.0.1', server.implementation.port, loop)
         client = AsyncSocketClient(client_implementation, loop=loop)
         loop.run_coroutine(client.start())
 
