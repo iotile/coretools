@@ -40,7 +40,7 @@ setup(
         ],
     long_description="""\
 IOTile Transport Socket Library Plugin
----------------------------------
+--------------------------------------
 
 A python plug for IOTile CoreTools that provides common message formats, packing routines and
 other code that is useful for performing iotile operations via socket or 
