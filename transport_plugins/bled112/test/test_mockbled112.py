@@ -1,5 +1,8 @@
 import unittest
-from iotile_transport_bled112.hardware.emulator.mock_bled112 import BGAPIPacket, MockBLED112
+import pytest
+from iotile_transport_bled112.hardware.emulator.mock_bled112 import BGAPIPacket
+import threading
+
 
 def test_create_disconnect_packet():
     """Verify that we can create and then parse a disconnect command
@@ -33,3 +36,4 @@ def test_create_disconnect_event():
     assert parsed.cmd == 4
     assert parsed.payload['handle'] == info['handle']
     assert parsed.payload['reason'] == info['reason']
+

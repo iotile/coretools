@@ -5,13 +5,31 @@ import sys
 import cmdln
 import components
 
+from subprocess import Popen, PIPE, STDOUT
+from time import sleep, monotonic
+
+def checkOutput(cmd):
+    a = Popen(cmd, shell=True, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+    print(a.pid)
+    start = monotonic()
+    while a.poll() == None or monotonic()-start <= 30: #30 sec grace period
+        sleep(0.25)
+    if a.poll() == None:
+        print('Still running, killing')
+        a.kill()
+    else:
+        print('exit code:',a.poll())
+    output = a.stdout.read()
+    a.stdout.close()
+    a.stdin.close()
+    return output
 
 def run_test(component, args):
     comp = components.comp_names[component]
 
     currdir = os.getcwd()
 
-    testcmd = ['pytest'] + list(args)
+    testcmd = ['pytest'] + list(args) + ['-s']
     output_status = 0
 
     if sys.version_info.major >= 3 and not comp.py3k_clean:
@@ -23,10 +41,19 @@ def run_test(component, args):
         os.chdir(comp.path)
 
         with open(os.devnull, "wb") as devnull:
-                output = subprocess.check_output(testcmd, stderr=subprocess.STDOUT)
+            try:
+                output = subprocess.check_output(testcmd, stderr=subprocess.STDOUT, timeout=60)
+            except subprocess.TimeoutExpired as exc:
+                print("test timeout, command was: ", exc.cmd)
+                print("Here is some potential test output: ", exc.output.decode("utf-8"))
+                output = exc.output
+                output_status = 1
+
     except subprocess.CalledProcessError as exc:
         output_status = exc.returncode
         output = exc.output
+    except Exception as exc:  # pylint:disable=broad-except; We want some output first
+        output = str(exc)
     finally:
         os.chdir(currdir)
 
@@ -55,6 +82,8 @@ class TestProcessor(cmdln.Cmdln):
         failed_outputs = []
 
         for comp_name in sorted(components.comp_names):
+            if comp_name != 'iotile_transport_bled112':
+                continue
             start = time.time()
             sys.stdout.write("Testing {}: ".format(comp_name))
             sys.stdout.flush()

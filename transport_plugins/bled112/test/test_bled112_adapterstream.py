@@ -42,6 +42,7 @@ class TestBLED112AdapterStream(unittest.TestCase):
 
     def tearDown(self):
         self.hw.close()
+        serial.Serial = self.old_serial
 
     def test_connect_direct(self):
         self.hw.connect_direct("00:11:22:33:44:55")

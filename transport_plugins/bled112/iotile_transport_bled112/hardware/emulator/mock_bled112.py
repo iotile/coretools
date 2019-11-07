@@ -170,12 +170,12 @@ class BGAPIPacket(object):
         return output
 
 
-class MockBLED112(object):
+class MockBLED112:
     def __init__(self, max_connections):
         self._register_handlers()
         self.devices = {}
         self.max_connections = max_connections
-        self.connections =[]
+        self.connections = []
         self.active_scan = False
         self.scanning = False
         self.connecting = False

@@ -171,9 +171,12 @@ class BLED112Adapter(DeviceAdapter):
 
         self._command_task.stop()
         self._stream.stop()
-        self._serial_port.close()
-
-        self.stopped = True
+        try:
+            self._serial_port.close()
+        except IOError:  # Port is already closed
+            pass
+        finally:
+            self.stopped = True
 
     def stop_scan(self):
         """Stop the scanning task"""
