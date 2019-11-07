@@ -2,14 +2,13 @@
 
 import logging
 import asyncio
-import websockets
 
 from iotile.core.exceptions import ValidationError
 
-from .messages import VALID_CLIENT_MESSAGE
+from iotile.core.utilities.async_tools import SharedLoop
+from iotile_transport_socket_lib.protocol.messages import VALID_CLIENT_MESSAGE
 from .packing import pack, unpack
 from .errors import ServerCommandError
-from iotile.core.utilities.async_tools import SharedLoop
 
 
 class _ConnectionContext:
@@ -20,7 +19,7 @@ class _ConnectionContext:
         self.user_data = None
 
 
-class AsyncValidatingWSServer:
+class AsyncSocketServer:
     """A websocket server supporting command/response and server push.
 
     There is only one kind of message that can be sent from client to server:
@@ -31,7 +30,7 @@ class AsyncValidatingWSServer:
     The server can also, at any time, send an EVENT message to the client,
     which is able to register a callback for the event.
 
-    This class is the server side implementation of AsyncValidatingWSClient
+    This class is the server side implementation of AsyncSocketClient
     and is designed to be used with that class.
 
     Args:
@@ -45,17 +44,16 @@ class AsyncValidatingWSServer:
 
     OPERATIONS_MAX_PRUNE = 10
 
-    def __init__(self, host, port=None, loop=SharedLoop):
+    def __init__(self, implementation, loop=SharedLoop):
         self.task = None
-        self.host = host
-        self.port = port
+        self.implementation = implementation
 
         self._commands = {}
         self._server_task = None
         self._loop = loop
         self._logger = logging.getLogger(__name__)
 
-        logger = logging.getLogger('websockets')
+        logger = logging.getLogger('SocketServer')
         logger.setLevel(logging.ERROR)
         logger.addHandler(logging.NullHandler())
 
@@ -67,7 +65,7 @@ class AsyncValidatingWSServer:
         that is passed to all command coroutines.
 
         Args:
-            con (websockets.Connection): The connection that we are supposed
+            _con (a connection object): The connection that we are supposed
                 to prepare.
 
         Returns:
@@ -127,8 +125,7 @@ class AsyncValidatingWSServer:
     async def start(self):
         """Start the websocket server.
 
-        When this method returns, the websocket server will be running and
-        the port property of this class will have its assigned port number.
+        When this method returns, the socket server will be running 
 
         This method should be called only once in the lifetime of the server
         and must be paired with a call to stop() to cleanly release the
@@ -141,11 +138,7 @@ class AsyncValidatingWSServer:
 
         started_signal = self._loop.create_future()
         self._server_task = self._loop.add_task(self._run_server_task(started_signal))
-
         await started_signal
-
-        if self.port is None:
-            self.port = started_signal.result()
 
     async def _run_server_task(self, started_signal):
         """Create a BackgroundTask to manage the server.
@@ -156,13 +149,8 @@ class AsyncValidatingWSServer:
         to perform this action.
         """
 
-        try:
-            server = await websockets.serve(self._manage_connection, self.host, self.port)
-            port = server.sockets[0].getsockname()[1]
-            started_signal.set_result(port)
-        except Exception as err:
-            self._logger.exception("Error starting server on host %s, port %s", self.host, self.port)
-            started_signal.set_exception(err)
+        server = await self.implementation.start_server(self._manage_connection, started_signal)
+        if not server:
             return
 
         try:
@@ -179,7 +167,7 @@ class AsyncValidatingWSServer:
     async def stop(self):
         """Stop the websocket server.
 
-        This method will shutdown the websocket server and free all resources
+        This method will shutdown the socket server and free all resources
         associated with it.  If there are ongoing connections at the time of
         shutdown, they will be cleanly closed.
         """
@@ -197,7 +185,7 @@ class AsyncValidatingWSServer:
         connected and passed to self.prepare_conn(connection).
 
         Args:
-            con (websockets.Connection): The connection to use to send
+            con (a connection object): The connection to use to send
                 the event.
             name (str): The name of the event to send.
             payload (object): The msgpack-serializable object so send
@@ -206,7 +194,10 @@ class AsyncValidatingWSServer:
 
         message = dict(type="event", name=name, payload=payload)
         encoded = pack(message)
-        await con.send(encoded)
+        try:
+            await self.implementation.send(con, encoded)
+        except Exception:
+            self._logger.debug("Error sending data")
 
     async def _manage_connection(self, con, _path):
         context = _ConnectionContext(self, con)
@@ -219,7 +210,8 @@ class AsyncValidatingWSServer:
                 raise
 
             while True:
-                encoded = await con.recv()
+                encoded = await self.implementation.recv(con)
+
 
                 message = unpack(encoded)
                 if not VALID_CLIENT_MESSAGE.matches(message):
@@ -231,8 +223,8 @@ class AsyncValidatingWSServer:
 
                 if len(context.operations) > self.OPERATIONS_MAX_PRUNE:
                     _prune_finished(context.operations)
-        except websockets.exceptions.ConnectionClosed:
-            self._logger.info("Connection closed")
+        except Exception:
+            self._logger.debug("Error sending data")
         finally:
             await _cancel_operations(context.operations)
 
@@ -240,6 +232,7 @@ class AsyncValidatingWSServer:
                 await self.teardown_conn(context)
             except:  #pylint:disable=bare-except;This is a background worker
                 self._logger.exception("Error tearing down connecion")
+                raise
 
     async def _dispatch_message(self, con, message, context):
         cmd = message.get('operation')
@@ -274,9 +267,9 @@ class AsyncValidatingWSServer:
         self._logger.debug("Sending response: %s", response)
 
         try:
-            await con.send(encoded_resp)
-        except websockets.exceptions.ConnectionClosed:
-            self._logger.debug("Response %s not sent because connection closed", response)
+            await self.implementation.send(con, encoded_resp)
+        except ConnectionError:
+            self._logger.debug("Response %s not sent because connection may be closed", response)
 
     async def _try_call_command(self, message, context):
         name = message.get('operation')

@@ -1,13 +1,18 @@
 """Test ValidateWSCient against ValidatingWSServer."""
 
+import sys
 import pytest
 import threading
+import tempfile
 from iotile.core.exceptions import ExternalError
 from iotile.core.utilities.async_tools import BackgroundEventLoop
-from iotile_transport_websocket.websocket_implementation import WebsocketServerImplementation
-from iotile_transport_websocket.websocket_implementation import WebsocketClientImplementation
+from iotile_transport_socket_lib.unix_socket.unixsocket_implementation import UnixServerImplementation
+from iotile_transport_socket_lib.unix_socket.unixsocket_implementation import UnixClientImplementation
 from iotile_transport_socket_lib.generic import AsyncSocketServer, AsyncSocketClient
 from iotile.core.utilities.schema_verify import Verifier, StringVerifier, IntVerifier
+
+if sys.platform.startswith("win"):
+    pytest.skip("skipping unix socket tests", allow_module_level=True)
 
 @pytest.fixture(scope="function")
 def client_server():
@@ -15,18 +20,18 @@ def client_server():
 
     loop = BackgroundEventLoop()
     loop.start()
+    tmpdir = tempfile.TemporaryDirectory(dir="/tmp")
+    socketfile = tmpdir.name+"/s"
 
     server = None
     client = None
     try:
 
-        socket_implementation = WebsocketServerImplementation(host='127.0.0.1')
+        socket_implementation = UnixServerImplementation(path=socketfile, loop=loop)
         server = AsyncSocketServer(socket_implementation, loop=loop)
         loop.run_coroutine(server.start())
 
-        print("Server port: %d" % server.implementation.port)
-
-        client_implementation = WebsocketClientImplementation('ws://127.0.0.1:%s' % server.implementation.port)
+        client_implementation = UnixClientImplementation(path=socketfile, loop=loop)
         client = AsyncSocketClient(client_implementation, loop=loop)
         loop.run_coroutine(client.start())
 
@@ -44,7 +49,7 @@ def client_server():
 def test_basic(client_server):
     """Make sure client/server work at a basic level."""
 
-    loop, client, server = client_server
+    loop, client, _ = client_server
 
     with pytest.raises(ExternalError):
         loop.run_coroutine(client.send_command('test_cmd', dict(abc=False), None, timeout=1))

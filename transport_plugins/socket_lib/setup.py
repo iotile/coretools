@@ -3,26 +3,26 @@ from setuptools import setup, find_packages
 import version
 
 setup(
-    name="iotile-transport-websocket",
+    name="iotile-transport-socket-lib",
     packages=find_packages(exclude=("test",)),
     version=version.version,
     license="LGPLv3",
     install_requires=[
         "iotile-core>=5.0.0,<6",
-        "msgpack>=0.6.1,<1",
-        "websockets~=7.0",
-        "iotile-transport-socket-lib>=1.0.0"
+        "msgpack>=0.6.1,<1"
     ],
     python_requires=">=3.5,<4",
     entry_points={
         'iotile.device_adapter': [
-            'ws = iotile_transport_websocket:WebSocketDeviceAdapter'
+            'unix = iotile_transport_socket_lib.unix_socket:UnixSocketDeviceAdapter',
+            'tcp = iotile_transport_socket_lib.tcp_socket:TcpSocketDeviceAdapter'
         ],
         'iotile.device_server': [
-            'websockets = iotile_transport_websocket:WebSocketDeviceServer'
+            'unixsocket = iotile_transport_socket_lib.unix_socket:UnixSocketDeviceServer',
+            'tcpsocket = iotile_transport_socket_lib.tcp_socket:TcpSocketDeviceServer'
         ]
     },
-    description="IOTile Websocket Transport Plugin",
+    description="IOTile Transport Socket Library Plugin",
     author="Arch",
     author_email="info@arch-iot.com",
     url="http://github.com/iotile/coretools",
@@ -39,10 +39,11 @@ setup(
         "Topic :: Software Development :: Libraries :: Python Modules"
         ],
     long_description="""\
-IOTile Websocket Transport Plugin
+IOTile Transport Socket Library Plugin
 ---------------------------------
 
-A python plug for IOTile CoreTools that allows interacting with IOTile devices through
-websockets, including providing DeviceAdapters that allow controlling devices.
+A python plug for IOTile CoreTools that provides common message formats, packing routines and
+other code that is useful for performing iotile operations via socket or 
+socket-like protocols. Not particularily useful on it's own.
 """
 )

@@ -2,16 +2,15 @@ import logging
 import uuid
 import inspect
 import asyncio
-import websockets
 from iotile.core.exceptions import ExternalError, ValidationError
 from iotile.core.utilities.async_tools import OperationManager, SharedLoop
 from iotile.core.utilities.schema_verify import Verifier
-from .packing import pack, unpack
-from .messages import VALID_SERVER_MESSAGE
+from iotile_transport_socket_lib.generic.packing import pack, unpack
+from iotile_transport_socket_lib.protocol.messages import VALID_SERVER_MESSAGE
+from iotile_transport_socket_lib.protocol.operations import NOTIFY_SOCKET_DISCONNECT
 
-
-class AsyncValidatingWSClient:
-    """An asynchronous websocket client that validates messages received.
+class AsyncSocketClient:
+    """An asynchronous socket client that validates messages received.
 
     This client is designed to allow the easy construction of client/server
     protocols where the client can send commands to the server that
@@ -26,19 +25,17 @@ class AsyncValidatingWSClient:
     validated automatically.
 
     Args:
-        url (str): The URL of the websocket server that we should connect to.
+        implementation (AbstractSocketClient): The implementation of the socket client
+            that will be used for data transport
         loop (BackgroundEventLoop): The background event loop that we should
             run in, or None to use the default shared background loop.
         logger_name (str): Optional name for the logger we should use to
             log messages.
     """
 
-    DISCONNECT_EVENT = "__internal_ws_disconnect_event"
+    def __init__(self, implementation, loop=SharedLoop, logger_name=__name__):
+        self._implementation = implementation
 
-    def __init__(self, url, loop=SharedLoop, logger_name=__name__):
-        self.url = url
-
-        self._con = None
         self._connection_task = None
         self._logger = logging.getLogger(logger_name)
         self._loop = loop
@@ -46,7 +43,7 @@ class AsyncValidatingWSClient:
         self._allowed_exceptions = {}
         self._manager = OperationManager(loop=loop)
 
-        logger = logging.getLogger('websockets')
+        logger = logging.getLogger('SocketClient')
         logger.setLevel(logging.ERROR)
         logger.addHandler(logging.NullHandler())
 
@@ -71,8 +68,8 @@ class AsyncValidatingWSClient:
         name = exc_class.__name__
         self._allowed_exceptions[name] = exc_class
 
-    async def start(self, name="websocket_client"):
-        """Connect to the websocket server.
+    async def start(self, name="socket_client"):
+        """Connect to the socket server.
 
         This method will spawn a background task in the designated event loop
         that will run until stop() is called.  You can control the name of the
@@ -83,11 +80,11 @@ class AsyncValidatingWSClient:
             name (str): Optional name for the background task.
         """
 
-        self._con = await websockets.connect(self.url)
+        await self._implementation.connect()
         self._connection_task = self._loop.add_task(self._manage_connection(), name=name)
 
     async def stop(self):
-        """Stop this websocket client and disconnect from the server.
+        """Stop this socket client and disconnect from the server.
 
         This method is idempotent and may be called multiple times.  If called
         when there is no active connection, it will simply return.
@@ -99,7 +96,6 @@ class AsyncValidatingWSClient:
         try:
             await self._connection_task.stop()
         finally:
-            self._con = None
             self._connection_task = None
             self._manager.clear()
 
@@ -125,7 +121,7 @@ class AsyncValidatingWSClient:
                 given validator.
         """
 
-        if self._con is None:
+        if not self._implementation.connected:
             raise ExternalError("No websock connection established")
 
         cmd_uuid = str(uuid.uuid4())
@@ -138,7 +134,7 @@ class AsyncValidatingWSClient:
         response_future = self._manager.wait_for(type="response", uuid=cmd_uuid,
                                                  timeout=timeout)
 
-        await self._con.send(packed)
+        await self._implementation.send(packed)
 
         response = await response_future
 
@@ -166,7 +162,7 @@ class AsyncValidatingWSClient:
 
         try:
             while True:
-                message = await self._con.recv()
+                message = await self._implementation.recv()
 
                 try:
                     unpacked = unpack(message)
@@ -186,8 +182,8 @@ class AsyncValidatingWSClient:
         except asyncio.CancelledError:
             self._logger.info("Closing connection to server due to stop()")
         finally:
-            await self._manager.process_message(dict(type='event', name=self.DISCONNECT_EVENT, payload=None))
-            await self._con.close()
+            await self._manager.process_message(dict(type='event', name=NOTIFY_SOCKET_DISCONNECT, payload=None))
+            await self._implementation.close()
 
     def register_event(self, name, callback, validator):
         """Register a callback to receive events.
@@ -237,7 +233,7 @@ class AsyncValidatingWSClient:
         occurred.  The command's response is discarded.
 
         This method is thread-safe and may be called from inside or ouside
-        of the background event loop.  If there is no websockets connection,
+        of the background event loop.  If there is no connection,
         no error will be raised (though an error will be logged).
 
         Args:

@@ -4,8 +4,8 @@ from iotile.core.hw.hwmanager import HardwareManager
 from iotile.core.hw.transport.adapter.sync_wrapper import SynchronousLegacyWrapper
 from iotile.core.hw.transport import VirtualDeviceAdapter
 from iotile.core.utilities import BackgroundEventLoop
-from iotile_transport_websocket import WebSocketDeviceAdapter
-from iotile_transport_websocket import WebSocketDeviceServer
+from iotile_transport_socket_lib.tcp_socket.tcpsocket_adapter import TcpSocketDeviceAdapter
+from iotile_transport_socket_lib.tcp_socket.tcpsocket_server import TcpSocketDeviceServer
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ def loop():
 
 
 @pytest.fixture(scope="function")
-def server(request, loop):
+def server( request, loop):
     devices = request.param
 
     if not isinstance(devices, tuple):
@@ -35,14 +35,15 @@ def server(request, loop):
 
     args = {
         'host': '127.0.0.1',
-        'port': None
+        'port': 0
     }
-    ws_dev_server = WebSocketDeviceServer(adapter, args, loop=loop)
-    loop.run_coroutine(ws_dev_server.start())
 
-    yield ws_dev_server.implementation.port, adapter
+    dev_server = TcpSocketDeviceServer(adapter, args, loop=loop)
+    loop.run_coroutine(dev_server.start())
 
-    loop.run_coroutine(ws_dev_server.stop())
+    yield dev_server.implementation.port, adapter
+
+    loop.run_coroutine(dev_server.stop())
     loop.run_coroutine(adapter.stop())
 
 
@@ -51,7 +52,7 @@ def hw(server):
     port, _ = server
 
     logger.info("Creating HardwareManager at port %d", port)
-    hw = HardwareManager(port="ws:127.0.0.1:{}".format(port))
+    hw = HardwareManager(port="tcp:127.0.0.1:{}".format(port))
 
     yield hw
 
@@ -60,9 +61,9 @@ def hw(server):
 
 @pytest.fixture(scope="function")
 def device_adapter(server, loop):
-    port, _adpater = server
+    port, _ = server
 
-    adapter = WebSocketDeviceAdapter(port="127.0.0.1:{}".format(port), loop=loop)
+    adapter = TcpSocketDeviceAdapter(port="127.0.0.1:{}".format(port), loop=loop)
     wrapper = SynchronousLegacyWrapper(adapter, loop=loop)
     yield wrapper
 
@@ -71,10 +72,10 @@ def device_adapter(server, loop):
 
 @pytest.fixture(scope="function")
 def multiple_device_adapter(server, loop):
-    port, _adapter = server
+    port, _ = server
 
-    adapter1 = WebSocketDeviceAdapter(port="127.0.0.1:{}".format(port), loop=loop)
-    adapter2 = WebSocketDeviceAdapter(port="127.0.0.1:{}".format(port), loop=loop)
+    adapter1 = TcpSocketDeviceAdapter(port="127.0.0.1:{}".format(port), loop=loop)
+    adapter2 = TcpSocketDeviceAdapter(port="127.0.0.1:{}".format(port), loop=loop)
 
     wrapper1 = SynchronousLegacyWrapper(adapter1, loop=loop)
     wrapper2 = SynchronousLegacyWrapper(adapter2, loop=loop)

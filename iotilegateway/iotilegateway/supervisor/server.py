@@ -4,7 +4,8 @@ import logging
 import functools
 import asyncio
 from iotile.core.utilities import SharedLoop
-from iotile_transport_websocket import AsyncValidatingWSServer
+from iotile_transport_socket_lib.generic import AsyncSocketServer
+from iotile_transport_websocket.websocket_implementation import WebsocketServerImplementation
 from .service_manager import ServiceManager
 from .protocol import MESSAGES, OPERATIONS
 
@@ -43,7 +44,8 @@ class IOTileSupervisor:
 
         self.service_manager = ServiceManager(expected_services, loop=loop)
 
-        self.server = AsyncValidatingWSServer(self.host, self.port, loop=loop)
+        self._implementation = WebsocketServerImplementation(self.host, self.port)
+        self.server = AsyncSocketServer(self._implementation, loop=loop)
         self.server.prepare_conn = self.prepare_conn
         self.server.teardown_conn = self.teardown_conn
 
@@ -87,7 +89,7 @@ class IOTileSupervisor:
         """Start the supervisor server."""
 
         await self.server.start()
-        self.port = self.server.port
+        self.port = self.server.implementation.port
 
     async def stop(self):
         """Stop the supervisor server."""
