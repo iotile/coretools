@@ -232,6 +232,7 @@ class AsyncSocketServer:
                 await self.teardown_conn(context)
             except:  #pylint:disable=bare-except;This is a background worker
                 self._logger.exception("Error tearing down connecion")
+                raise
 
     async def _dispatch_message(self, con, message, context):
         cmd = message.get('operation')
