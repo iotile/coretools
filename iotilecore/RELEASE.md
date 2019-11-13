@@ -2,7 +2,7 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
-## HEAD
+## 5.0.8
 
 - Add ability to start periodic coroutines with the SharedLoop
 
