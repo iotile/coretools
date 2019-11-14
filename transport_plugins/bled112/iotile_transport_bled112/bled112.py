@@ -821,6 +821,13 @@ class BLED112Adapter(DeviceAdapter):
                                                                                 'handle': handle,
                                                                                 'services': services})
 
+    def authenticate(self, conn_id, handle, services):
+        self._command_task.async_command(['_authenticate_async', handle, services],
+                                         self._on_authentication_finished,
+                                         {'connection_id': conn_id,
+                                          'handle': handle,
+                                          'services': services})
+
     def initialize_system_sync(self):
         """Remove all active connections and query the maximum number of supported connections
         """
@@ -1033,6 +1040,10 @@ class BLED112Adapter(DeviceAdapter):
         self._logger.info("Total time to connect to device: %.3f (%.3f enumerating services, %.3f enumerating chars)", total_time, service_time, char_time)
         callback(conndata['connection_id'], self.id, True, None)
 
+        self.authenticate(conn_id, handle, services)
+        # Approve connection in auth callback
+
+
     def _on_report(self, report, connection_id):
         # self._logger.info('Received report: %s', str(report))
         self._trigger_callback('on_report', connection_id, report)
@@ -1055,3 +1066,8 @@ class BLED112Adapter(DeviceAdapter):
             self._logger.info("Restarting scan for devices")
             self.start_scan(self._active_scan)
             self._logger.info("Finished restarting scan for devices")
+
+    def _on_authentication_finished(self, result):
+        self._command_task._set_bondable_mode(0)
+        self._command_task._encrypt_start(result['context']['handle'])
+        self._command_task._set_oob_data(result['return_value'])

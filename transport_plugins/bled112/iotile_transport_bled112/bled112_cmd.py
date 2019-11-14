@@ -11,6 +11,7 @@ from .tilebus import *
 from .bgapi_structures import process_gatt_service, process_attribute, process_read_handle, process_notification
 from .bgapi_structures import parse_characteristic_declaration
 from .async_packet import InternalTimeoutError, DeviceNotConfiguredError
+from .bled112_auth import BLED112AuthManager
 
 BGAPIPacket = namedtuple("BGAPIPacket", ["is_event", "command_class", "command", "payload"])
 
@@ -260,6 +261,40 @@ class BLED112CommandProcessor(threading.Thread):
                     last_char['client_configuration'] = {'handle': handle, 'value': value}
 
         return True, {'services': services}
+
+    def _authenticate_async(self, conn_handle, services):
+        manager = BLED112AuthManager(0x01, 0x01, 0x01)
+        success, data = manager.authenticate(0x01, self, conn_handle, services)
+
+        return success, data
+
+    def send_auth_client_request(self, payload, conn_handle, services, timeout=1.0):
+        auth_server_write_handle = services[TileBusService]['characteristics'][TileBusAuthServerWriteCharacteristic]['handle']
+        auth_client_write_handle = services[TileBusService]['characteristics'][TileBusAuthClientWriteCharacteristic]['handle']
+
+        result, value = self._write_handle(conn_handle, auth_client_write_handle, False, bytes(payload))
+
+        if not result:
+            return result, value
+
+        def notified_payload(event):
+            print(event)
+            if event.command_class == 4 and event.command == 5:
+                event_handle, att_handle = unpack("<BH", event.payload[0:3])
+                return event_handle == conn_handle and att_handle == auth_server_write_handle
+
+        events = self._wait_process_events(timeout, lambda x: False, notified_payload)
+
+        response_payload = None
+        if len(events) != 0:
+            _, response_payload = process_notification(events[0])
+        else: # notification did not arrived, just read the value
+            success, result = self._read_handle(conn_handle, auth_server_write_handle, timeout)
+            if success:
+                response_payload = result['data']
+
+        return response_payload
+
 
     def _enable_rpcs(self, conn, services, timeout=1.0):
         """Prepare this device to receive RPCs
@@ -682,6 +717,31 @@ class BLED112CommandProcessor(threading.Thread):
 
         return True, {'handle': handle}
 
+    def _set_parameters(self, mitm=0, min_key_size=7, io_capabilities=3):
+        """ This command is used to configure the local Security Manager and its features """
+        payload = struct.pack("<BBB", mitm, min_key_size, io_capabilities)
+        self._send_command(0x05, 0x07, payload)
+
+    def _set_bondable_mode(self, bondable):
+        """ Set device to bondable mode """
+        payload = struct.pack("<B", bondable)
+        self._send_command(0x05, 0x01, payload)
+
+    def _encrypt_start(self, connection_handle, bonding=0):
+        """ This command starts the encryption for a given connection """
+
+        payload = struct.pack("<BB", connection_handle, bonding)
+        response = self._send_command(0x05, 0x00, payload)
+        return response
+
+    def _set_oob_data(self, oob_data):
+        """ This command sets the out of band encryption data for a device
+        Device does not allow any other kind of pairing except OoB
+        """
+
+        payload = struct.pack("<B%ss" % (len(oob_data)), len(oob_data), bytes(oob_data))
+        response = self._send_command(0x05, 0x06, payload)
+
     def _send_command(self, cmd_class, command, payload, timeout=3.0):
         """
         Send a BGAPI packet to the dongle and return the response
@@ -711,7 +771,6 @@ class BLED112CommandProcessor(threading.Thread):
         while True:
             response_data = self._stream.read_packet(timeout=timeout)
             response = BGAPIPacket(is_event=(response_data[0] == 0x80), command_class=response_data[2], command=response_data[3], payload=response_data[4:])
-
             if response.is_event:
                 if self.event_handler is not None:
                     self.event_handler(response)
