@@ -46,7 +46,7 @@ def configure_logging(verbose):
         root.addHandler(logging.NullHandler())
 
 
-def main(argv=None, loop=SharedLoop):
+def main(argv=None, loop=SharedLoop, device_f=None):
     """Serve access to a virtual IOTile device using a virtual iotile interface."""
 
     if argv is None:
@@ -134,8 +134,10 @@ def main(argv=None, loop=SharedLoop):
             raise
 
         started = True
-
         print("Starting to serve virtual IOTile device")
+        if device_f:
+            device_f.set_result(device)
+
 
         if stop_immediately:
             return 0
