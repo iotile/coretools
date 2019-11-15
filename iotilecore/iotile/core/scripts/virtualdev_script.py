@@ -47,7 +47,13 @@ def configure_logging(verbose):
 
 
 def main(argv=None, loop=SharedLoop, device_f=None):
-    """Serve access to a virtual IOTile device using a virtual iotile interface."""
+    """Serve access to a virtual IOTile device using a virtual iotile interface.
+
+    Args:
+        argv(list): Arguments to pass to this script. If none, use args passed in via sys.argv
+        loop(BackgroundLoop): The loop to launch tasks from. Defaults to the SharedLoop
+        device_f(asyncio.future): Optional future that will return a reference to the virt device once initialized
+    """
 
     if argv is None:
         argv = sys.argv[1:]
