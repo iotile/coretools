@@ -3,6 +3,8 @@ import os
 import struct
 import hashlib
 import hmac
+from iotile.core.hw.auth.cli_auth_provider import CliAuthProvider
+from iotile.core.hw.auth.auth_provider import AuthProvider
 
 
 class AuthType(enum.Enum):
@@ -65,7 +67,8 @@ class BLED112AuthManager:
             user_token = hmac.new(root_key, data, hashlib.sha256).digest()
 
         if not scoped_token:
-            scoped_token = hmac.new(user_token, self._permissions, hashlib.sha256).digest()
+            data = struct.pack("i",  self._permissions)
+            scoped_token = hmac.new(user_token, data, hashlib.sha256).digest()
 
         session_key = hmac.new(scoped_token, self._client_nonce + self._device_nonce, hashlib.sha256).digest()
         return session_key
@@ -78,7 +81,7 @@ class BLED112AuthManager:
         data = self._client_hello + self._server_hello + self._client_verify
         return hmac.new(session_key, data, hashlib.sha256).digest()[0:16]
 
-    def authenticate(self, auth_type, command_processor, *command_processor_args):
+    def authenticate(self, uuid, auth_type, command_processor, *command_processor_args):
         self._server_hello = self._send_client_hello(command_processor, *command_processor_args)
         generation, err, server_supported_auth, self._device_nonce = struct.unpack("HBB16s", self._server_hello)
 
@@ -89,11 +92,15 @@ class BLED112AuthManager:
             return False, {"reason": "Server support only newer generation tokens {}".format(generation)}
 
         if server_supported_auth & auth_type == 0:
-            return False, {"reason": "Auth type {} is not supported {}".format(auth_type, server_supported_auth)}
+            return False, {"reason": "Auth type {} is not supported, supported: {}".format(auth_type, server_supported_auth)}
 
         if AuthType(auth_type) == AuthType.AUTH_METHOD_0:
             self._session_key = self._compute_session_key_security_level_0()
-        else AuthType(auth_type) == AuthType.AUTH_METHOD_:
+        elif AuthType(auth_type) == AuthType.AUTH_METHOD_1:
+            auth_provider = CliAuthProvider()
+            root_key = auth_provider.get_root_key(key_type=AuthProvider.UserKey, device_id=uuid)
+            self._session_key = self._compute_session_key_security_level_1(root_key=root_key)
+        else:
             return False, {"reason": "Auth type is not implemented{}".format(AuthType(auth_type))}
         #FIX ME handle aother methods
 

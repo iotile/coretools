@@ -262,9 +262,9 @@ class BLED112CommandProcessor(threading.Thread):
 
         return True, {'services': services}
 
-    def _authenticate_async(self, conn_handle, services):
+    def _authenticate_async(self, uuid, conn_handle, services):
         manager = BLED112AuthManager(0x01, 0x01, 0x01)
-        success, data = manager.authenticate(0x01, self, conn_handle, services)
+        success, data = manager.authenticate(uuid, 0x02, self, conn_handle, services)
 
         return success, data
 
@@ -278,7 +278,6 @@ class BLED112CommandProcessor(threading.Thread):
             return result, value
 
         def notified_payload(event):
-            print(event)
             if event.command_class == 4 and event.command == 5:
                 event_handle, att_handle = unpack("<BH", event.payload[0:3])
                 return event_handle == conn_handle and att_handle == auth_server_write_handle

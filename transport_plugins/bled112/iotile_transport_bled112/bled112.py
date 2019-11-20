@@ -821,8 +821,8 @@ class BLED112Adapter(DeviceAdapter):
                                                                                 'handle': handle,
                                                                                 'services': services})
 
-    def authenticate(self, conn_id, handle, services):
-        self._command_task.async_command(['_authenticate_async', handle, services],
+    def authenticate(self, uuid, conn_id, handle, services):
+        self._command_task.async_command(['_authenticate_async', uuid, handle, services],
                                          self._on_authentication_finished,
                                          {'connection_id': conn_id,
                                           'handle': handle,
@@ -1040,7 +1040,7 @@ class BLED112Adapter(DeviceAdapter):
         self._logger.info("Total time to connect to device: %.3f (%.3f enumerating services, %.3f enumerating chars)", total_time, service_time, char_time)
         callback(conndata['connection_id'], self.id, True, None)
 
-        self.authenticate(conn_id, handle, services)
+        self.authenticate(conndata['connection_string'], conn_id, handle, services)
         # Approve connection in auth callback
 
 
@@ -1068,6 +1068,9 @@ class BLED112Adapter(DeviceAdapter):
             self._logger.info("Finished restarting scan for devices")
 
     def _on_authentication_finished(self, result):
-        self._command_task._set_bondable_mode(0)
-        self._command_task._encrypt_start(result['context']['handle'])
-        self._command_task._set_oob_data(result['return_value'])
+        if result['result']:
+            self._command_task._set_bondable_mode(0)
+            self._command_task._encrypt_start(result['context']['handle'])
+            self._command_task._set_oob_data(result['return_value'][0:16])
+        else:
+            self._logger.error(result['return_value'])
