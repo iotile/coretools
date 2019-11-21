@@ -692,7 +692,7 @@ class BLED112Adapter(DeviceAdapter):
             elif is_user_key:
                 key_type = AuthProvider.UserKey
 
-        if is_encrypted and (is_device_key or is_user_key):
+        if is_encrypted:
             try:
                 key = self._key_provider.get_rotated_key(key_type, device_id,
                     reboot_counter=reboots,

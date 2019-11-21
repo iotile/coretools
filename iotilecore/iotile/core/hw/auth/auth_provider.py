@@ -26,9 +26,9 @@ class AuthProvider:
             args = {}
 
         self.args = args
+        self.supported_keys = self.args.get("supported_keys", [])
 
-    @classmethod
-    def VerifyRoot(cls, root_key_type):
+    def verify_key(self, root_key_type):
         """Verify that the root key type is known to us.
 
         Args:
@@ -38,10 +38,11 @@ class AuthProvider:
             NotFoundError: If the key type is not known.
         """
 
-        if root_key_type in cls.KnownKeyRoots:
-            return
+        if root_key_type not in self.KnownKeyRoots:
+            raise NotFoundError("Unknown key type", key=root_key_type)
 
-        raise NotFoundError("Unknown key type", key=root_key_type)
+        if root_key_type not in self.supported_keys:
+            raise NotFoundError("Not supported key type", key=root_key_type)
 
 
     @classmethod

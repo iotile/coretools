@@ -51,10 +51,12 @@ setup(
         'iotile.auth_provider': [
             'EnvAuthProvider = iotile.core.hw.auth.env_auth_provider:EnvAuthProvider',
             'NullAuthProvider = iotile.core.hw.auth.null_auth_provider:NullAuthProvider',
+            'CliAuthProvider = iotile.core.hw.auth.cli_auth_provider:CliAuthProvider',
             'ChainedAuthProvider = iotile.core.hw.auth.auth_chain:ChainedAuthProvider'
         ],
         'iotile.default_auth_providers': [
             'EnvAuthProvider = iotile.core.hw.auth.default_providers:DefaultEnvAuth',
+            'CliAuthProvider = iotile.core.hw.auth.default_providers:DefaultCliAuth',
             'NullAuthProvider = iotile.core.hw.auth.default_providers:DefaultNullAuth'
         ],
         'iotile.config_variables': [
