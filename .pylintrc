@@ -49,6 +49,12 @@ confidence=
 # no Warning level messages displayed, use "--disable=all --enable=classes
 # --disable=W".
 disable=
+        len-as-condition,
+        redefined-builtin,
+        W0621,
+        C1801,
+
+        # Below are the default ones
         print-statement,
         parameter-unpacking,
         unpacking-in-except,
@@ -58,14 +64,15 @@ disable=
         old-ne-operator,
         old-octal-literal,
         import-star-module-level,
+        non-ascii-bytes-literal,
         raw-checker-failed,
         bad-inline-option,
         locally-disabled,
-        locally-enabled,
         file-ignored,
         suppressed-message,
         useless-suppression,
         deprecated-pragma,
+        use-symbolic-message-instead,
         apply-builtin,
         basestring-builtin,
         buffer-builtin,
@@ -115,11 +122,18 @@ disable=
         bad-python3-import,
         deprecated-string-function,
         deprecated-str-translate-call,
-        len-as-condition,
-        redefined-builtin,
-        W0621,
-        C1801
-
+        deprecated-itertools-function,
+        deprecated-types-field,
+        next-method-defined,
+        dict-items-not-iterating,
+        dict-keys-not-iterating,
+        dict-values-not-iterating,
+        deprecated-operator-function,
+        deprecated-urllib-function,
+        xreadlines-attribute,
+        deprecated-sys-function,
+        exception-escape,
+        comprehension-escape
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
