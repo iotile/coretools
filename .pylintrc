@@ -87,6 +87,14 @@ score=yes
 max-nested-blocks=5
 
 
+[STRING]
+
+# This flag controls whether the implicit-str-concat-in-sequence should
+# generate a warning on implicit string concatenation in sequences defined over
+# several lines.
+check-str-concat-over-line-jumps=no
+
+
 [TYPECHECK]
 
 # List of decorators that produce context managers, such as
