@@ -2,6 +2,10 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## 5.0.9
+
+- Fix regression in the realtime streaming device
+
 ## 5.0.8
 
 - Add ability to start periodic coroutines with the SharedLoop
