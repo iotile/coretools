@@ -61,7 +61,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'IOTile CoreTools'
-copyright = u'2017, Arch Systems Inc.'
+copyright = u'2019, Arch Systems Inc.'
 author = u'Arch Systems'
 
 # The version info for the project you're documenting, acts as replacement for
