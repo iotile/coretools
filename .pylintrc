@@ -246,6 +246,12 @@ variable-name-hint=(([a-z][a-z0-9_]{2,30})|(_[a-z0-9_]*))$
 variable-rgx=(([a-z][a-z0-9_]{2,30})|(_[a-z0-9_]*))$
 
 
+[MISCELLANEOUS]
+
+# List of note tags to take in consideration, separated by a comma.
+notes=FIXME,XXX,TODO
+
+
 [FORMAT]
 
 # Expected format of line ending, e.g. empty (any line ending), LF or CRLF.
@@ -287,12 +293,6 @@ single-line-if-stmt=no
 # Logging modules to check that the string format arguments are in logging
 # function parameter format
 logging-modules=logging
-
-
-[MISCELLANEOUS]
-
-# List of note tags to take in consideration, separated by a comma.
-notes=FIXME,XXX,TODO
 
 
 [VARIABLES]
