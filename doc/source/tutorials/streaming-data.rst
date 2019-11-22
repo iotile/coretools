@@ -150,10 +150,10 @@ Just like in the first tutorial, create a class for the virtual device::
     """Virtual IOTile device for CoreTools Walkthrough."""
 
     import random
-    from iotile.core.hw.virtual.virtualdevice import VirtualIOTileDevice
+    from iotile.core.hw.virtual import SimpleVirtualDevice
 
 
-    class DemoVirtualDevice(VirtualIOTileDevice):
+    class DemoVirtualDevice(SimpleVirtualDevice):
         """A simple virtual IOTile device that streams fake temperature.
 
         Args:
@@ -167,10 +167,10 @@ Just like in the first tutorial, create a class for the virtual device::
             # Create a worker that streams our realtime data every second
             self.create_worker(self._stream_temp, 1.0)
 
-        def _stream_temp(self):
+        async def _stream_temp(self):
             """Send a fake temperature reading between 32 and 100."""
 
-            self.stream_realtime(0x1000, random.randint(32, 100))
+            await self.stream_realtime(0x1000, random.randint(32, 100))
 
 Save your device file as `demo_streamer.py`.
 
