@@ -150,6 +150,7 @@ Let's see what the realtime_test device does.
 .. py:module:: iotile.mock.devices
 
 .. autoclass:: RealtimeTestDevice
+    :noindex:
 
 Basically, this is just a configurable device that can simulate realtime
 streaming data.  Note that it takes a dictionary of parameters named `args`.
@@ -195,7 +196,7 @@ Now, start running your virtual device using::
         pip install --upgrade iotile-test
 
 .. note::
-    To run a virtual device that hasn't been installed, simply replace the 
+    To run a virtual device that hasn't been installed, simply replace the
     installed device name with the path to your virtual device. For example,
     to run our "demo_streamer" device you might use::
 
