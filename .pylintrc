@@ -524,7 +524,12 @@ allow-wildcard-with-all=no
 analyse-fallback-blocks=no
 
 # Deprecated modules which should not be used, separated by a comma.
-deprecated-modules=optparse,tkinter.tix,regsub,TERMIOS,Bastion,rexec
+deprecated-modules=optparse,
+                   tkinter.tix,
+                   regsub,
+                   TERMIOS,
+                   Bastion,
+                   rexec
 
 # Create a graph of external dependencies in the given file (report RP0402 must
 # not be disabled).
