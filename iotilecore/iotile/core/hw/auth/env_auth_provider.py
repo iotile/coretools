@@ -23,7 +23,10 @@ class EnvAuthProvider(RootKeyAuthProvider):
 
         self.verify_key(key_type)
 
-        var_name = "USER_KEY_{0:08X}".format(device_id)
+        if isinstance(device_id, str):
+            var_name = "USER_KEY_{}".format(device_id)
+        else:
+            var_name = "USER_KEY_{0:08X}".format(device_id)
 
         if var_name not in os.environ:
             raise NotFoundError("No key could be found for devices", device_id=device_id,

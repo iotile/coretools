@@ -44,6 +44,16 @@ class ChainedAuthProvider(AuthProvider):
         for name, entry in reg.load_extensions('iotile.auth_provider'):
             self._auth_factories[name] = entry
 
+    def get_root_key(self, key_type, device_id):
+        """Deligates call to auth providers in the chain"""
+        for _priority, provider in self.providers:
+            try:
+                return provider.get_root_key(key_type, device_id)
+            except NotFoundError:
+                pass
+
+        raise NotFoundError("get_serialized_key method is not implemented in any sub_providers")
+
     def get_serialized_key(self, key_type, device_id, **key_info):
         """Deligates call to auth providers in the chain"""
         for _priority, provider in self.providers:

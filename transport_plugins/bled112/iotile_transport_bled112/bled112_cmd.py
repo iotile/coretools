@@ -294,6 +294,12 @@ class BLED112CommandProcessor(threading.Thread):
 
         return response_payload
 
+    def _check_is_authentication_required_async(self, conn_handle, services, timeout=1.0):
+        if TileBusFlagsCharacteristic in services[TileBusService]['characteristics']:
+            flags_handle = services[TileBusService]['characteristics'][TileBusFlagsCharacteristic]['handle']
+            return self._read_handle(conn_handle, flags_handle, timeout)
+        else: # in case the device does not support authentication
+            return False, None
 
     def _enable_rpcs(self, conn, services, timeout=1.0):
         """Prepare this device to receive RPCs

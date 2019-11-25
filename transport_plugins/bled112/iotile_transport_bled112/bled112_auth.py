@@ -3,8 +3,7 @@ import os
 import struct
 import hashlib
 import hmac
-from iotile.core.hw.auth.cli_auth_provider import CliAuthProvider
-from iotile.core.hw.auth.auth_provider import AuthProvider
+from iotile.core.hw.auth.auth_chain import ChainedAuthProvider
 
 
 class AuthType(enum.Enum):
@@ -16,6 +15,13 @@ class State(enum.Enum):
     NOT_AUTHENTICATED = 0
     AUTHENTICATION_IN_PROGRESS = 1
     AUTHENTICATED = 2
+
+ERROR_CODES = {
+    2: "Client token is too old",
+    3: "Client verify is incorrect, please make sure your password is correct",
+    4: "Client timeout",
+    5: "Unacceptable client authentication method"
+}
 
 class BLED112AuthManager:
 
@@ -33,14 +39,12 @@ class BLED112AuthManager:
         self._server_hello = None
         self._client_verify = None
 
+        self._key_provider = ChainedAuthProvider()
+
         self._state = State.NOT_AUTHENTICATED
 
     def _send_client_hello(self, command_processor, *command_processor_args):
-        """
-
-        FIXME
-
-        Initiate the authentication process
+        """Initiate the authentication process
 
         Tell the server what authentication methods it supports and nonce
         """
@@ -50,6 +54,7 @@ class BLED112AuthManager:
         return command_processor.send_auth_client_request(self._client_hello, *command_processor_args)
 
     def _send_client_verify(self, session_key, auth_type, command_processor, *command_processor_args):
+        """Verify session key between the client and the device"""
         client_verify = hmac.new(session_key, self._client_hello + self._server_hello, hashlib.sha256).digest()[0:16]
         self._client_verify = struct.pack("BBH16s", auth_type, self._permissions, self._token_generation, client_verify)
 
@@ -63,11 +68,11 @@ class BLED112AuthManager:
             return None
 
         if not scoped_token and not user_token:
-            data = struct.pack("ii", 0x01, self._token_generation)
+            data = struct.pack("II", 0x01, self._token_generation)
             user_token = hmac.new(root_key, data, hashlib.sha256).digest()
 
         if not scoped_token:
-            data = struct.pack("i",  self._permissions)
+            data = struct.pack("I",  self._permissions)
             scoped_token = hmac.new(user_token, data, hashlib.sha256).digest()
 
         session_key = hmac.new(scoped_token, self._client_nonce + self._device_nonce, hashlib.sha256).digest()
@@ -97,23 +102,24 @@ class BLED112AuthManager:
         if AuthType(auth_type) == AuthType.AUTH_METHOD_0:
             self._session_key = self._compute_session_key_security_level_0()
         elif AuthType(auth_type) == AuthType.AUTH_METHOD_1:
-            auth_provider = CliAuthProvider()
-            root_key = auth_provider.get_root_key(key_type=AuthProvider.UserKey, device_id=uuid)
+            root_key = self._key_provider.get_root_key(key_type=ChainedAuthProvider.UserKey, device_id=uuid)
             self._session_key = self._compute_session_key_security_level_1(root_key=root_key)
         else:
             return False, {"reason": "Auth type is not implemented{}".format(AuthType(auth_type))}
-        #FIX ME handle aother methods
 
         err, granted_permissions, received_server_verify = \
             self._send_client_verify(self._session_key, auth_type, command_processor, *command_processor_args)
 
         if err:
-            return False, {"reason": "Client verify returned an error {}".format(err)}
+            reason = "Client verify returned an error {}".format(err)
+            if err in ERROR_CODES:
+                reason = ERROR_CODES[err]
 
+            return False, {"reason": reason}
 
         computed_server_verify = self._compute_server_verify(self._session_key)
         if received_server_verify != computed_server_verify:
-            return False, {"reason": "Server failed verification"}
+            return False, {"reason": "The device failed verification"}
 
         return True, self._session_key
 
