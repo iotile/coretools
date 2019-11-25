@@ -529,7 +529,8 @@ deprecated-modules=optparse,
                    regsub,
                    TERMIOS,
                    Bastion,
-                   rexec
+                   rexec,
+                   imp
 
 # Create a graph of external dependencies in the given file (report RP0402 must
 # not be disabled).
