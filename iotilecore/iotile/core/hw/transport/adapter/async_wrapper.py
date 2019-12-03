@@ -39,7 +39,7 @@ class AsynchronousModernWrapper(StandardDeviceAdapter):
         self._logger = logging.getLogger(__name__)
         self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)
         self._task = loop.add_task(None, name="LegacyAdapter (%s)" % adapter.__class__.__name__,
-                                   finalizer=self.stop, stop_timeout=5.0)
+                                   finalizer=self._stop_internal, stop_timeout=5.0)
 
     def set_config(self, name, value):
         """Set a config value for this adapter by name
@@ -96,6 +96,9 @@ class AsynchronousModernWrapper(StandardDeviceAdapter):
         if self._task.stopped:
             return
 
+        await self._task.stop()
+
+    async def _stop_internal(self, _task):
         for task in self._task.subtasks:
             await task.stop()
 
