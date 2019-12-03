@@ -786,6 +786,8 @@ def _check_patch_python_3_8_0():
     exception to be raised at exit time since it tries to remove a
     KeyboardInterrupt handler when running in a background thread.  This
     behavior is fixed in python 3.8.1.
+
+    See details at: https://bugs.python.org/issue34679
     """
 
     if platform.system() != "Windows":
