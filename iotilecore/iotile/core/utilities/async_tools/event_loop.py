@@ -16,6 +16,8 @@ register then as subtasks and their parent task is in charge of stopping
 them cleanly in the correct order.
 """
 
+import sys
+import platform
 import time
 import asyncio
 import inspect
@@ -280,6 +282,8 @@ class BackgroundEventLoop:
         self._logger = logging.getLogger(__name__)
         self._loop_check = threading.local()
         self._pool = None
+
+        _check_patch_python_3_8_0()
 
     def start(self, aug='EventLoopThread'):
         """Ensure the background loop is running.
@@ -765,12 +769,37 @@ async def _repeat(cor, interval, loop, logger, handle_exceptions, *args, **kwarg
             logger.exception("Exception in repeating coroutine; exiting repetition: %s", cor, exc_info=True)
             raise
 
+
 def _tick_generator(period, loop):
     t1 = loop.time()
     count = 0
     while True:
         count += 1
         yield max(t1 + count * period - loop.time(), 0)
+
+
+def _check_patch_python_3_8_0():
+    """Python 3.8 on windows switches event loops but has a bug.
+
+    The event loop changes to ProactorEventLoop from SelectorEventLoop which
+    is generally good but in python 3.8.0 it has a bug that causes an
+    exception to be raised at exit time since it tries to remove a
+    KeyboardInterrupt handler when running in a background thread.  This
+    behavior is fixed in python 3.8.1.
+    """
+
+    if platform.system() != "Windows":
+        return
+
+    if sys.version_info < (3, 8, 0) or sys.version_info >= (3, 8, 1):
+        return
+
+    logger = logging.getLogger(__name__)
+
+    logger.info("Patching event loop policy to work around buggy ProactorEventLoop on python 3.8.0 (version_info=%s)",
+                sys.version_info)
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 
 # Create a single global event loop that anyone can add tasks to.
 SharedLoop = BackgroundEventLoop()  # pylint:disable=invalid-name;This is for backwards compatibility.
