@@ -4,6 +4,13 @@ All major changes in each released version of `iotile-core` are listed here.
 
 ## HEAD
 
+- Refactor OperationManager for usability.  It was designed to create maintainable networking
+  code by abstracting away the common waiting patterns and allowing the creation of simple
+  coroutines instead of complex callback based logic.
+- Add shim to make `iotile-core` compatible with Python 3.8.0 on Windows.  There is a bug in
+  that python version that breaks background event loops only on Windows.  It is fixed in
+  python 3.8.1.
+
 ## 5.0.11
 
 - Fix missing Crypto dependency #919
