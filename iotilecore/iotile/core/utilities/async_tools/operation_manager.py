@@ -6,7 +6,7 @@ many operations running in parallel and multiple operations can be triggered
 by the same message.  Messages are just dictionaries and the matching can
 be according to any keys in the messages.
 
-The Operationmanager class is designed to provide a friendly API on which to
+The OperationManager class is designed to provide a friendly API on which to
 build complex, asynchronous network or hardware operations.
 
 The prototypical use case is dealing with messages received from bluetooth low
@@ -34,11 +34,13 @@ import asyncio
 import inspect
 import logging
 from collections import deque
-from iotile.core.exceptions import ArgumentError
+from iotile.core.exceptions import ArgumentError, InternalError
 from . import event_loop
 
 
 class MessageSpec:
+    __slots__ = ['fields']
+
     def __init__(self, **kwargs):
         self.fields = kwargs
 
@@ -77,10 +79,19 @@ class OperationManager:
             raise ArgumentError("loop must be a BackgroundEventLoop, was {}".format(loop))
 
         self._waiters = {}
+        self._should_pause = set()
         self._loop = loop
         self._logger = logging.getLogger(__name__)
+        self._pause_count = 0
+        self._messages = deque()
+        self._dispatch_lock = loop.create_lock()
+        self._process_pending = False
 
-    def _add_waiter(self, spec, responder=None):
+    def _add_waiter(self, spec, responder=None, pause=False):
+
+        if responder is not None and pause is True:
+            raise ArgumentError("You can only pause after waiting for future based waiters")
+
         loc = self._waiters
         for key, value in sorted(spec.fields.items()):
             if key not in loc:
@@ -99,6 +110,10 @@ class OperationManager:
             responder = self._loop.create_future()
 
         loc[OperationManager._LEAF].add(responder)
+
+        if pause:
+            self._should_pause.add(responder)
+
         return responder
 
     def _remove_waiter(self, spec, future):
@@ -134,6 +149,9 @@ class OperationManager:
                 return
 
             del parent[key]
+
+        if future in self._should_pause:
+            self._should_pause.remove(future)
 
     def waiters(self, path=None):
         """Iterate over all waiters.
@@ -226,7 +244,7 @@ class OperationManager:
 
         self._waiters = {}
 
-    def wait_for(self, timeout=None, **kwargs):
+    def wait_for(self, timeout=None, pause=False, unpause=False, **kwargs):
         """Wait for a specific matching message or timeout.
 
         You specify the message by passing name=value keyword arguments to
@@ -242,6 +260,9 @@ class OperationManager:
 
         Args:
             timeout (float): Optional timeout, defaults to None for no timeout.
+            pause (bool): Pause the delivery of messages after receiving the message
+                that this method is waiting for.
+            unpause (bool): Unpause message delivery before waiting for messages.
             **kwargs: Keys to match in the message with their corresponding values.
                 You must pass at least one keyword argument so there is something
                 to look for.
@@ -254,10 +275,117 @@ class OperationManager:
             raise ArgumentError("You must specify at least one message field to wait on")
 
         spec = MessageSpec(**kwargs)
-        future = self._add_waiter(spec)
+        future = self._add_waiter(spec, pause=pause)
         future.add_done_callback(lambda x: self._remove_waiter(spec, future))
 
+        if unpause:
+            self.unpause()
+
         return asyncio.wait_for(future, timeout=timeout)
+
+    async def gather_until(self, gather_specs, until, timeout=None, *, pause=False, unpause=False):
+        """Gather all matching messages until a message matching until is given or a timeout.
+
+        This method allows you to accumulate messages matching the ``MessageSpec`` objects in
+        ``gather_specs`` until a message matching the MessageSpec ``until`` is seen or a
+        timeout occurs.
+
+        Args:
+            gather_specs (Iterable(MessageSpec)): The message specs that should be accumulated
+            until (MessageSpec): The message spec that signals the end of gathering.  This will
+                not be returend unless you also include the same message spec in ``gather_specs``.
+            timeout (float): The maximum amount of time to wait for a message matching ``until``
+                before giving up.  This is in seconds.
+            pause (bool): Pause the delivery of messages after receiving the message
+                that this method is waiting for.
+            unpause (bool): Unpause message delivery before waiting for messages.
+
+        Returns:
+            list(object): A list of the gathered messages.
+
+        Raises:
+            asyncio.TimeoutError: The timeout expired before a message matching ``until`` was seen.
+        """
+
+        accum = []
+
+        def _accum_message(message):
+            accum.append(message)
+
+        handles = []
+        for spec in gather_specs:
+            resp = self._add_waiter(spec, _accum_message)
+            handles.append((spec, resp))
+
+        future = self._add_waiter(until, pause=pause)
+        future.add_done_callback(lambda x: self._remove_waiter(until, future))
+
+        if unpause:
+            self.unpause()
+
+        try:
+            await asyncio.wait_for(future, timeout=timeout)
+        finally:
+            for spec, resp in handles:
+                self._remove_waiter(spec, resp)
+
+        return accum
+
+    async def gather_count(self, gather_specs, count, timeout=None, *, pause=False, unpause=False):
+        """Gather all matching messages until a fixed number have been received.
+
+        This method waits until an exact number of messages matching any of the specs in ``gather_specs``
+        is received or a timeout occurs.
+
+        Args:
+            Args:
+            gather_specs (Iterable(MessageSpec)): The message specs that should be accumulated
+            count (int): The number of matching messages to wait for.
+            timeout (float): The maximum amount of time to wait for a message matching ``until``
+                before giving up.  This is in seconds.
+            pause (bool): Pause the delivery of messages after receiving the message
+                that this method is waiting for.
+            unpause (bool): Unpause message delivery before waiting for messages.
+
+        Returns:
+            list(object): A list of the messages that were gathered.
+
+            If this method returns normally the list will always have exactly ``count`` entries.
+
+        Raises:
+            asyncio.TimeoutError: The timeout expired before ``count`` matching messages were seen.
+        """
+
+        accum = []
+        done = self._loop.create_event()
+
+        def _accum_message(message):
+            accum.append(message)
+
+            if len(accum) == count:
+                done.set()
+                if pause:
+                    self.pause()
+
+        handles = []
+        for spec in gather_specs:
+            resp = self._add_waiter(spec, _accum_message)
+            handles.append((spec, resp))
+
+        if unpause:
+            self.unpause()
+
+        try:
+            await asyncio.wait_for(done.wait(), timeout=timeout)
+        except asyncio.TimeoutError as err:
+            raise asyncio.TimeoutError("Timeout waiting for gathering fixed number of messages (%d of %d received)"
+                                       " pause_count=%d"
+                                       % (len(accum), count, self._pause_count)) from err
+        finally:
+            for spec, resp in handles:
+                self._remove_waiter(spec, resp)
+
+        return accum
 
     async def process_message(self, message, wait=True):
         """Process a message to see if it wakes any waiters.
@@ -269,17 +397,19 @@ class OperationManager:
         This method returns False if the message matched no waiters so it was
         ignored.
 
-        Normally you want to use wait=True (the default behavior) to guarantee
-        that all callbacks have finished before this method returns.  However,
-        sometimes that can cause a deadlock if those callbacks would
-        themselves invoke behavior that requires whatever is waiting for this
-        method to be alive.  In that case you can pass wait=False to ensure
-        that the caller of this method does not block.
+        All waiters for a given message are run in parallel with no guaranteed
+        ordering.  However, it is guaranteed that all coroutines that were
+        triggered by this message have run until completion by the time this
+        method returns.
+
+        If any waiters were configured to pause processing after they matched
+        a message, this OperationManager will be paused when this method
+        returns.
 
         Args:
             message (dict or object): The message that we should process
-            wait (bool): Whether to block until all callbacks have finished
-                or to return once the callbacks have been launched.
+            wait (bool): Whether to wait for the message handlers to finish
+                running. Defaults to True.
 
         Returns:
             bool: True if at least one waiter matched, otherwise False.
@@ -288,19 +418,22 @@ class OperationManager:
         to_check = deque([self._waiters])
         ignored = True
 
+        processors = list()
+
         while len(to_check) > 0:
             context = to_check.popleft()
 
             waiters = context.get(OperationManager._LEAF, [])
             for waiter in waiters:
                 if isinstance(waiter, asyncio.Future):
+                    if waiter in self._should_pause:
+                        self.pause()
+
                     waiter.set_result(message)
                 else:
-                    try:
-                        await _wait_or_launch(self._loop, waiter, message, wait)
-                    except:  #pylint:disable=bare-except;We can't let a user callback break this routine
-                        self._logger.warning("Error calling every_match callback, callback=%s, message=%s",
-                                             waiter, message, exc_info=True)
+                    proc = _launch(waiter, message, wait)
+                    if proc is not None:
+                        processors.append(proc)
 
                 ignored = False
 
@@ -316,7 +449,72 @@ class OperationManager:
                 if message_val in next_level:
                     to_check.append(next_level[message_val])
 
+        if len(processors) > 0 and wait:
+            results = await asyncio.gather(*processors, return_exceptions=True)
+            for proc, result in zip(processors, results):
+                if isinstance(result, Exception) and not isinstance(result, asyncio.CancelledError):
+                    self._logger.error("Error running processor %s: %s", proc, result)
+
         return not ignored
+
+    async def process_all(self):
+        """Process all messages that have been queued.
+
+        You can queue messages using queue_message_threadsafe.  This method
+        will drain the queue and process them all one at a time.  This method
+        is automatically called as needed by queue_message_threadsafe and
+        pause/unpause so it should not ever need to be called manually outside
+        of testing scenarios.
+
+        Only a single call to process all can be running at a time to ensure
+        that messages are always dispatched in order without race conditions.
+        """
+
+        self._process_pending = False
+
+        async with self._dispatch_lock:
+            while len(self._messages) > 0:
+                if self._pause_count > 0:
+                    return
+
+                current = self._messages.popleft()
+                await self.process_message(current)
+
+    def queue_message_threadsafe(self, message):
+        """Queue a message for processing."""
+
+        self._messages.append(message)
+        if not self._process_pending:
+            self._process_pending = True
+
+            if self._pause_count == 0:
+                self._loop.launch_coroutine(self.process_all)
+
+    def pause(self):
+        """Request to pause the dispatch of messages.
+
+        This method increases an internal pause counter.  As long as the pause
+        count is greater than 0, no messages will be dispatched through
+        process_all().  This is used in combination with routines like gather_until()
+        to make sure messages don't get processed in between when one operation finishes
+        and you setup the next operation.
+        """
+
+        self._pause_count += 1
+
+    def unpause(self):
+        """Undo a previous call to pause().
+
+        This method decreases the internal pause request counter.  When the counter
+        reaches 0, message processing is allowed again.
+        """
+
+        if self._pause_count == 0:
+            raise InternalError("Mismatched usage of pause/unpause, unpause called when not paused")
+
+        self._pause_count -= 1
+        if self._pause_count == 0 and len(self._messages) > 0:
+            self._loop.launch_coroutine(self.process_all)
 
 
 _MISSING = object()
@@ -331,10 +529,13 @@ def _get_key(obj, key, default=_MISSING):
     return default
 
 
-async def _wait_or_launch(loop, coroutine_func, message, wait):
+def _launch(coroutine_func, message, wait):
     result = coroutine_func(message)
     if inspect.isawaitable(result):
         if wait:
-            await result
-        else:
-            loop.launch_coroutine(result)
+            return result
+
+        asyncio.ensure_future(result)
+        return None
+
+    return None
