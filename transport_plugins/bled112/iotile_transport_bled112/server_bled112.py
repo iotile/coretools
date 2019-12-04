@@ -8,33 +8,20 @@ TileBus commands.
 # This file is copyright Arch Systems, Inc.
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
-from queue import Queue
 import struct
 import logging
 import time
 import calendar
 import asyncio
 import binascii
-from iotile.core.exceptions import HardwareError, ArgumentError
+from iotile.core.exceptions import ArgumentError
 from iotile.core.hw.transport import StandardDeviceServer
 from iotile.core.utilities import SharedLoop
 from iotile.core.hw.exceptions import VALID_RPC_EXCEPTIONS
 from iotile.core.hw.virtual import pack_rpc_response
-from .async_packet import AsyncPacketBuffer
-from .bled112_cmd_co import AsyncBLED112CommandProcessor
+from .hardware.async_bled112 import AsyncBLED112, BLEQueueFullError, BLEDisconnectError
 from .tilebus import TileBusService, ArchManuID
 from .utilities import open_bled112
-
-
-def packet_length(header):
-    """
-    Find the BGAPI packet length given its header
-    """
-
-    highbits = header[0] & 0b11
-    lowbits = header[1]
-
-    return (highbits << 8) | lowbits
 
 
 class BLED112Server(StandardDeviceServer):
@@ -66,19 +53,9 @@ class BLED112Server(StandardDeviceServer):
         self.init_virtual_device_info(args)
 
         self._serial_port = open_bled112(args.get('port'), self._logger)
-        self._stream = AsyncPacketBuffer(self._serial_port, header_length=4, length_function=packet_length)
-
-        self._commands = Queue()
-        self._command_task = AsyncBLED112CommandProcessor(self._stream, self._commands, stop_check_interval=0.01, loop=loop)
-
-        # Setup our event handlers
-        self._command_task.operations.every_match(self.on_connect, command_class=3, command=0)
-        self._command_task.operations.every_match(self.on_disconnect, command_class=3, command=4)
-        self._command_task.operations.every_match(self.on_attribute_write, command_class=2, command=2)
-        self._command_task.operations.every_match(self.on_write, command_class=2, command=0)
+        self._bled112 = AsyncBLED112(self._serial_port, loop=loop)
 
         self.connected = False
-        self._connection_handle = 0
 
         # Initialize state
         self.payload_notif = False
@@ -96,37 +73,35 @@ class BLED112Server(StandardDeviceServer):
         self.virtual_info['advertising_version'] = int(args.get('advertising_version', '1'), 0)
         if self.virtual_info['advertising_version'] not in (1, 2):
             raise ArgumentError("Invalid advertising version specified in args",
-            supported=(1, 2), found=self.virtual_info['advertising_version'])
+                                supported=(1, 2), found=self.virtual_info['advertising_version'])
 
         self.virtual_info['reboot_count'] = int(args.get('reboot_count', '1'), 0)
         if self.virtual_info['reboot_count'] <= 0:
             raise ArgumentError("Reboot count must be greater than 0.",
-            supported="> 0", found=self.virtual_info['reboot_count'])
+                                supported="> 0", found=self.virtual_info['reboot_count'])
 
         self.virtual_info['mac_value'] = int(args.get('mac_value', '0'), 0)
         if self.virtual_info['mac_value'] < 0 or self.virtual_info['mac_value'] > 0xFFFFFFFF:
             raise ArgumentError("MAC value is limited to 32bits.",
-            supported="0 - 0xFFFFFFFF", found=self.virtual_info['mac_value'])
+                                supported="0 - 0xFFFFFFFF", found=self.virtual_info['mac_value'])
 
         self.virtual_info['battery_voltage'] = float(args.get('battery_voltage',"3.14159"))
         if self.virtual_info['battery_voltage'] < 0 or self.virtual_info['battery_voltage'] > 7.9:
             raise ArgumentError("Battery voltage is invalid",
-            supported="0 - 7.9", found=self.virtual_info['battery_voltage'])
+                                supported="0 - 7.9", found=self.virtual_info['battery_voltage'])
 
     async def _cleanup_old_connections(self):
         """Remove all active connections and query the maximum number of supported connections
         """
 
-        retval = await self._command_task.future_command(['_query_systemstate'])
+        retval = await self._bled112.query_systemstate()
 
         for conn in retval['active_connections']:
             self._logger.info("Forcible disconnecting connection %d", conn)
-            await self._command_task.future_command(['_disconnect', conn])
+            await self._bled112.disconnect(conn)
 
     async def start(self):
         """Start serving access to devices over bluetooth."""
-
-        self._command_task.start()
 
         try:
             await self._cleanup_old_connections()
@@ -138,6 +113,12 @@ class BLED112Server(StandardDeviceServer):
         iotile_id = next(iter(self.adapter.devices))
         self.device = self.adapter.devices[iotile_id]
 
+        # Setup our event handlers
+        self._bled112.operations.every_match(self.on_connect, class_=3, cmd=0, new=True, connected=True)
+        self._bled112.operations.every_match(self.on_disconnect, class_=3, cmd=4)
+        self._bled112.operations.every_match(self.on_attribute_write, class_=2, cmd=2)
+        self._bled112.operations.every_match(self.on_write, class_=2, cmd=0)
+
         self._logger.info("Serving device 0x%04X over BLED112", iotile_id)
         await self._update_advertisement()
 
@@ -145,28 +126,26 @@ class BLED112Server(StandardDeviceServer):
 
     async def stop(self):
         """Safely shut down this interface"""
-        await self._command_task.future_command(['_set_mode', 0, 0])  # Disable advertising
+        await self._bled112.set_mode(0, 0)  # Disable advertising
         await self._cleanup_old_connections()
-
-        self._command_task.stop()
-        self._stream.stop()
+        await self._bled112.stop()
         self._serial_port.close()
 
         await super(BLED112Server, self).stop()
 
     async def _update_advertisement(self):
-        await self._command_task.future_command(['_set_advertising_data', 0, self._advertisement()])
+        await self._bled112.set_advertising_data(0, self._advertisement())
 
         if self.virtual_info['advertising_version'] == 1:
-            await self._command_task.future_command(['_set_advertising_data', 1, self._scan_response()])
+            await self._bled112.set_advertising_data(1, self._scan_response())
 
-        await self._command_task.future_command(['_set_mode', 0, 0])  # Disable advertising
+        await self._bled112.set_mode(0, 0)  # Disable advertising
 
         connectability = 2
         if self.connected:
             connectability = 0
 
-        await self._command_task.future_command(['_set_mode', 4, connectability])
+        await self._bled112.set_mode(4, connectability)
 
     def _advertisement(self):
         # Flags for version 1 are:
@@ -243,8 +222,6 @@ class BLED112Server(StandardDeviceServer):
 
         self.connected = True
         await self.connect(self.CLIENT_ID, str(self.device.iotile_id))
-        self._connection_handle = 0
-
 
     async def on_disconnect(self, _message):
         self._logger.debug("Received disconnect event")
@@ -255,8 +232,13 @@ class BLED112Server(StandardDeviceServer):
 
         await self.disconnect(self.CLIENT_ID, str(self.device.iotile_id))
 
-        self._logger.debug("Reenabling advertisements after disconnection")
-        await self._command_task.future_command(['_set_mode', 4, 2])
+        async def _reneable_advertisements():
+            """Defer reenabling advertisements since on_disconnect is triggered from an event."""
+
+            self._logger.debug("Reenabling advertisements after disconnection")
+            await self._bled112.set_mode(4, 2)
+
+        self._loop.launch_coroutine(_reneable_advertisements())
 
     async def on_attribute_write(self, event):
         handle, flags = struct.unpack("<HB", event.payload)
@@ -352,17 +334,13 @@ class BLED112Server(StandardDeviceServer):
     async def _send_notification(self, handle, payload):
         while True:
             try:
-                await self._command_task.future_command(['_send_notification', handle, payload])
+                await self._bled112.send_notification(handle, payload)
                 return True
-            except HardwareError as exc:
-                code = exc.params['return_value'].get('code', 0)
-
-                # If we're told we ran out of memory, wait and try again
-                if code == 0x182:
-                    await asyncio.sleep(0.02)
-                elif code == 0x181:  # Invalid state, the other side likely disconnected midstream
-                    self._logger.warning("Error sending RPC response due to disconnection")
-                    return False
-                else:
-                    self._logger.exception("Unkown error sending notification")
-                    return False
+            except BLEQueueFullError:
+                await asyncio.sleep(0.02)
+            except BLEDisconnectError:
+                self._logger.warning("Error sending RPC response due to disconnection")
+                return False
+            except:  #pylint:disable=bare-except;This routine can't raise so we convert to a return code and log.
+                self._logger.exception("Unkown error sending notification")
+                return False

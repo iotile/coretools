@@ -32,25 +32,39 @@ class _BLED112Locks:
 
 
 class BLEQueueFullError(DeviceAdapterError):
-    pass
+    """Error indicating a ble notification or write cannot be queued.
+
+    The queue is temporarily full so the caller should sleep and retry
+    in a few connection intervals (typically 10-50 ms per conn interval)
+    """
 
 
 class BLEDisconnectError(DeviceAdapterError):
-    pass
+    """The BLE device unexpected disconnected during the operation."""
 
 
 class AsyncBLED112:
+    """A coroutine based API on top of the BLED112 dongle.
+
+    This class is designed for INTERNAL USE only and is not considered
+    public or stable.  It is meant as a helper class to implement a
+    DeviceAdapter and a DeviceServer on top of bled112 hardware.
+
+    Args:
+        serial (serial.Serial):  The serial port connected to the bled112
+            dongle.
+        loop (BackgroundEventLoop): The loop we should run in.
+    """
+
     def __init__(self, serial, loop=SharedLoop):
         self._serial = serial
         self._logger = logging.getLogger(__name__)
         self._logger.addHandler(logging.NullHandler())
 
-        self._current_context = None
-        self._current_callback = None
+        self.operations = OperationManager(loop=loop)
 
         self._loop = loop
         self._locks = _BLED112Locks(loop)
-        self.operations = OperationManager(loop=loop)
         self._reader = AsyncPacketReader(self._serial, self.operations.queue_message_threadsafe)
 
     async def set_scan_parameters(self, interval=2100, window=2100, active=False):
@@ -272,7 +286,7 @@ class AsyncBLED112:
         await self._write_handle(conn, char['client_configuration']['handle'], True, valarray, timeout)
 
     async def connect(self, address):
-        """Connect to a device given its uuid."""
+        """Connect to a device given its mac address."""
 
         latency = 0
         conn_interval_min = 6
@@ -423,7 +437,6 @@ class AsyncBLED112:
 
         handle_type, handle_data = process_read_handle(event)
         return {'type': handle_type, 'data': handle_data}
-
 
 
 def _convert_address(address):
