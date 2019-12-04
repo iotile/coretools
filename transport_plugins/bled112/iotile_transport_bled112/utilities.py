@@ -22,14 +22,14 @@ def _find_bled112_devices(logger):
     return found_devs
 
 
-def _find_available_bled112(logger):
+def _find_available_bled112(logger, timeout=0.01):
     devices = _find_bled112_devices(logger)
     if len(devices) == 0:
         raise ExternalError("Could not find any BLED112 adapters connected to this computer")
 
     for port in devices:
         try:
-            dev = serial.Serial(port, _BAUD_RATE, timeout=0.01, rtscts=True, exclusive=True)
+            dev = serial.Serial(port, _BAUD_RATE, timeout=timeout, rtscts=True, exclusive=True)
             logger.info("Using first available BLED112 adapter at %s", port)
             return dev
         except serial.serialutil.SerialException:
@@ -38,11 +38,11 @@ def _find_available_bled112(logger):
     raise ExternalError("There were %d BLED112 adapters but all were in use." % len(devices))
 
 
-def open_bled112(port, logger):
+def open_bled112(port, logger, timeout=0.01):
     """Open a BLED112 adapter either by name or the first available."""
 
     if port is not None and port != '<auto>':
         logger.info("Using BLED112 adapter at %s", port)
-        return serial.Serial(port, _BAUD_RATE, timeout=0.01, rtscts=True, exclusive=True)
+        return serial.Serial(port, _BAUD_RATE, timeout=timeout, rtscts=True, exclusive=True)
 
     return _find_available_bled112(logger)
