@@ -4,34 +4,37 @@ We will serve a virtual device over one bled112 and connect to it with the other
 """
 
 import pytest
-import unittest
 import subprocess
 from iotile_transport_bled112.bled112 import BLED112Adapter
 from iotile.core.hw.hwmanager import HardwareManager
 import time
 import signal
 
-can_loopback = len(BLED112Adapter.find_bled112_devices()) >= 2
+pytestmark = pytest.mark.hardware('loopback')
 
-@pytest.mark.skipif(True, reason='(loopback not finished yet)You need two BLED112 adapters for loopback tests')
-class TestBLED112Loopback(unittest.TestCase):
-    def setUp(self):
-        self.vdev = subprocess.Popen(['virtual_device', 'bled112', 'report_test'])
+@pytest.fixture(scope="module")
+def loopback_devices():
+    vdev = subprocess.Popen(['virtual_device', 'bled112', 'report_test'])
 
-        bleds = BLED112Adapter.find_bled112_devices()
-        print(bleds)
-        self.hw = HardwareManager(port='bled112:{}'.format(bleds[1]))
+    try:
+        hw = HardwareManager(port='bled112')
 
-    def tearDown(self):
-        self.hw.close()
-        self.vdev.terminate()
+        yield hw
 
-    def test_loopback(self):
-        time.sleep(2)
-        print(self.hw.scan())
-        self.hw.connect(1)
-        con = self.hw.controller()
-        assert con.ModuleName() == 'Simple'
+        hw.close()
+    finally:
+        vdev.terminate()
 
-        self.hw.enable_streaming()
-        assert self.hw.count_reports() == 11
+
+def test_loopback(loopback_devices):
+    """Ensure that we can connect to a device, send it rpcs and get reports."""
+
+    hw = loopback_devices
+
+    hw.scan()
+    hw.connect(1)
+    con = hw.controller()
+    assert con.ModuleName() == 'Rptdev'
+
+    hw.enable_streaming()
+    _reports = hw.wait_reports(11, timeout=5.0)
