@@ -2,8 +2,12 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
-## HEAD
-
+- Created coroutine based asyncio bled112 with high performance packet handling.
+- Ported virtual device to use new asyncio bled112 wrapper.
+- Added additional hardware based integration tests that can be turned on by passing
+  --hardware to pytest when running the test suite.  The hardware tests require two
+  bled112 dongles and use the uuid 1 so there should be no other devices around with
+  that uuid during testing.
 - Fix bled112_auth error handling
 
 ## 3.0.2
