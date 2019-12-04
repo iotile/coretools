@@ -59,6 +59,4 @@ class TestBLED112AdapterStream(unittest.TestCase):
 
         assert self.hw.count_reports() == 0
         self.hw.enable_streaming()
-        time.sleep(0.2) #Wait for report callback to happen from bled112 thread
-        assert self.hw.count_reports() == 1
-
+        self.hw.wait_reports(1)
