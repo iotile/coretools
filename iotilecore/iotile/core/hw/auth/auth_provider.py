@@ -7,7 +7,12 @@ from Crypto.Cipher import AES
 from iotile.core.exceptions import NotFoundError
 
 class AuthProvider:
-    """Base calls for all objects that provide a way to obtain a key"""
+    """Base class for all objects that provide a way to obtain a key
+
+    Args:
+        args (dict): An optional dictionary of AuthProvider specific config information
+            field "supported_keys" specify wich keys the AuthProvider supports
+    """
 
     ReportKeyMagic = 0x00000002
 
@@ -58,7 +63,7 @@ class AuthProvider:
             sent_timestamp (int): timestamp in report
 
         Returns:
-            bytearray: 32 bytes  containing digest of id and timestamp
+            bytearray: 32 bytes containing digest of id and timestamp
         """
 
         signed_data = struct.pack("<LLL", AuthProvider.ReportKeyMagic, report_id, sent_timestamp)
@@ -81,7 +86,6 @@ class AuthProvider:
 
         Returns:
             bytearray: 16 bytes containing digest of key_purpose and reboot_counter
-
         """
         signed_data = struct.pack("<LL", key_purpose, reboot_counter)
 
@@ -91,7 +95,7 @@ class AuthProvider:
 
     @classmethod
     def DeriveRotatedKey(cls, reboot_key, current_timestamp, rotation_interval_power):
-        """ Derive an ephemeral key every 2^rotation_interval_power seconds,
+        """Derive an ephemeral key every 2^rotation_interval_power seconds,
         The same key will be return if timeout of rotation is not elapsed
 
         AES-128-ECB(Reboot Key, current_timestamp with low X bits masked to 0)
