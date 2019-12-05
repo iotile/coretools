@@ -4,6 +4,13 @@ All major changes in each released version of `iotile-core` are listed here.
 
 ## HEAD
 
+## 5.0.11
+
+- Add core authentication logic, authentication is conducted after the characteristics
+  where probed as additional stage of connection
+- Add auth provider to prompt user password
+- Implement handshake routines
+
 ## 5.0.10
 
 - Refactor auth providers, now it only manage access to key.
