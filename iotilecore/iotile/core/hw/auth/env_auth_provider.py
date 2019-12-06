@@ -8,7 +8,7 @@ from .rootkey_auth_provider import RootKeyAuthProvider
 
 
 class EnvAuthProvider(RootKeyAuthProvider):
-    """ Key provider implementation that search for keys in environment """
+    """Key provider implementation that search for keys in environment"""
 
     def __init__(self, args=None):
         if args is None:
@@ -19,11 +19,21 @@ class EnvAuthProvider(RootKeyAuthProvider):
         super().__init__(args)
 
     def get_root_key(self, key_type, device_id):
-        """Attempt to get a user key from an environment variable"""
+        """Attempt to get a user key from an environment variable
 
+        Args:
+            key_type (int): see KnownKeyRoots
+            device_id (int): uuid of the device
+
+        Returns:
+            bytes: the root key
+        """
         self.verify_key(key_type)
 
-        var_name = "USER_KEY_{0:08X}".format(device_id)
+        if isinstance(device_id, str):
+            var_name = "USER_KEY_{}".format(device_id)
+        else:
+            var_name = "USER_KEY_{0:08X}".format(device_id)
 
         if var_name not in os.environ:
             raise NotFoundError("No key could be found for devices", device_id=device_id,

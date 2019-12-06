@@ -821,6 +821,46 @@ class BLED112Adapter(DeviceAdapter):
                                                                                 'handle': handle,
                                                                                 'services': services})
 
+    def authenticate(self, uuid, conn_id, handle, services):
+        """Send client hello to the device, it will initiate authentication process
+
+        This routine must be called after ble connection is established and services are discovered
+        and if the device require the authentication
+
+        Args:
+            uuid (int): a device id, can be either int or str
+            handle (int): a handle to the connection on the BLED112 dongle
+            conn_id (int): a unique identifier for this connection on the DeviceManager
+                that owns this adapter.
+            services (dict): A dictionary of GATT services produced by probe_services()
+        """
+
+        self._command_task.async_command(['_authenticate_async', uuid, handle, services],
+                                         self._on_authentication_finished,
+                                         {'connection_id': conn_id,
+                                          'handle': handle,
+                                          'services': services})
+
+    def check_authentication(self, uuid, conn_id, handle, services):
+        """Discover if the device requires authentication
+
+        This routine must be called after ble connection is established and services are discovered
+
+        Args:
+            uuid (int): a device id, can be either int or str
+            handle (int): a handle to the connection on the BLED112 dongle
+            conn_id (int): a unique identifier for this connection on the DeviceManager
+                that owns this adapter.
+            services (dict): A dictionary of GATT services produced by probe_services()
+        """
+
+        self._command_task.async_command(['_check_is_authentication_required_async', handle, services],
+                                         self._on_authentication_check_response,
+                                         {'uuid': uuid,
+                                          'connection_id': conn_id,
+                                          'handle': handle,
+                                          'services': services})
+
     def initialize_system_sync(self):
         """Remove all active connections and query the maximum number of supported connections
         """
@@ -861,7 +901,9 @@ class BLED112Adapter(DeviceAdapter):
         connection_id = context['connection_id']
         handle = context['handle']
 
-        callback(connection_id, self.id, success, "No reason given")
+        # TODO why self.id is used here, connection handle should be an argument?
+        #callback(connection_id, self.id, success, "No reason given")
+        callback(connection_id, handle, success, "No reason given")
         self._remove_connection(handle)  # NB Cleanup connection after callback in case it needs the connection info
 
     @classmethod
@@ -998,8 +1040,6 @@ class BLED112Adapter(DeviceAdapter):
                               conn_id)
             return
 
-        callback = conndata['callback']
-
         if result['result'] is False:
             conndata['failed'] = True
             conndata['failure_reason'] = 'Could not probe GATT characteristics'
@@ -1013,6 +1053,19 @@ class BLED112Adapter(DeviceAdapter):
             conndata['failure_reason'] = 'TileBus service not present in GATT services'
             self.disconnect_async(conn_id, self._on_connection_failed)
             return
+
+        self.check_authentication(conndata['connection_string'], conn_id, handle, services)
+
+    def _finish_connection(self, context):
+        """Routine called when all services and characteristics discovered and
+            the client is authenticated if needed
+        """
+
+        handle = context['handle']
+        conn_id = context['connection_id']
+        services = context['services']
+
+        conndata = self._get_connection(handle, 'preparing')
 
         conndata['chars_done_time'] = time.monotonic()
         service_time = conndata['services_done_time'] - conndata['connect_time']
@@ -1031,6 +1084,7 @@ class BLED112Adapter(DeviceAdapter):
             self.connecting_count -= 1
 
         self._logger.info("Total time to connect to device: %.3f (%.3f enumerating services, %.3f enumerating chars)", total_time, service_time, char_time)
+        callback = conndata['callback']
         callback(conndata['connection_id'], self.id, True, None)
 
     def _on_report(self, report, connection_id):
@@ -1055,3 +1109,44 @@ class BLED112Adapter(DeviceAdapter):
             self._logger.info("Restarting scan for devices")
             self.start_scan(self._active_scan)
             self._logger.info("Finished restarting scan for devices")
+
+    def _on_authentication_check_response(self, result):
+        """Callback called on check_authentication is finished"""
+
+        context = result['context']
+
+        if result['result']:
+            flags, = struct.unpack("B", result['return_value']['data'])
+            if flags == 0x01:
+                self._logger.debug("Authentication is required")
+
+                self.authenticate(context['uuid'], context['connection_id'],
+                                  context['handle'], context['services'])
+            else:
+                self._logger.debug("Authentication is not required")
+                self._finish_connection(context)
+        else:
+            self._logger.warning("Authentication check failed, user may not be able to send RPCs or use device proxy")
+            self._finish_connection(context)
+
+    def _on_authentication_finished(self, result):
+        """Callback called on authentication is finished"""
+
+        connection_handle = result['context']['handle']
+        if result['result']:
+            session_key = result['return_value']
+
+            self._command_task._set_bondable_mode(0)
+            self._command_task._encrypt_start(connection_handle)
+            self._command_task._set_oob_data(session_key[0:16])
+
+            self._logger.info("User is authenticated")
+            self._finish_connection(result['context'])
+        else:
+            conn_id = result['context']['connection_id']
+            conndata = self._get_connection(connection_handle, 'preparing')
+
+            conndata['failed'] = True
+            conndata['failure_reason'] = result['return_value']['reason']
+
+            self.disconnect_async(conn_id, self._on_connection_failed)
