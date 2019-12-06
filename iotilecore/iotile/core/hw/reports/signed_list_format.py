@@ -2,6 +2,8 @@
 
 import datetime
 import struct
+import hashlib
+import hmac
 from .report import IOTileReport, IOTileReading
 from iotile.core.utilities.packed import unpack
 from iotile.core.exceptions import NotFoundError, ExternalError
@@ -39,6 +41,177 @@ class SignedListReport(IOTileReport):
 
         length = (first_word >> 8)
         return length
+
+    @classmethod
+    def VerifyReport(cls, device_id, auth_provider, key_type, data, signature, **kwargs):
+        """Verify a buffer of report data on behalf of a device.
+
+        Args:
+            device_id (int): The id of the device that we should encrypt for
+            root (int): The root key type that should be used to generate the report
+            data (bytearray): The data that we should verify
+            signature (bytearray): The signature attached to data that we should verify
+            **kwargs: There are additional specific keyword args that are required
+                depending on the root key used.  Typically, you must specify
+                - report_id (int): The report id
+                - sent_timestamp (int): The sent timestamp of the report
+
+                These two bits of information are used to construct the per report
+                signing and encryption key from the specific root key type.
+
+        Returns:
+            dict: The result of the verification process must always be a bool under the
+                'verified' key, however additional keys may be present depending on the
+                signature method used.
+
+        Raises:
+            NotFoundError: If the auth provider is not able to verify the data due to
+                an error.  If the data is simply not valid, then the function returns
+                normally.
+        """
+
+        if key_type == AuthProvider.NoKey:
+            result = bytearray(hashlib.sha256(data).digest())
+        else:
+            report_key = auth_provider.get_serialized_key(key_type, device_id, **kwargs)
+
+            message_hash = hashlib.sha256(data).digest()
+            hmac_calc = hmac.new(report_key, message_hash, hashlib.sha256)
+            result = bytearray(hmac_calc.digest())
+
+        if len(signature) == 0:
+            verified = False
+        elif len(signature) > len(result):
+            verified = False
+        elif len(signature) < len(result):
+            trunc_result = result[:len(signature)]
+            verified = hmac.compare_digest(signature, trunc_result)
+        else:
+            verified = hmac.compare_digest(signature, result)
+
+        return {'verified': verified, 'bit_length': 8*len(signature)}
+
+    @classmethod
+    def DecryptReport(cls, device_id, auth_provider, key_type, data, **kwargs):
+        """Decrypt a buffer of report data on behalf of a device.
+
+        Args:
+            device_id (int): The id of the device that we should encrypt for
+            root (int): The root key type that should be used to generate the report
+            data (bytearray): The data that we should decrypt
+            **kwargs: There are additional specific keyword args that are required
+                depending on the root key used.  Typically, you must specify
+                - report_id (int): The report id
+                - sent_timestamp (int): The sent timestamp of the report
+
+                These two bits of information are used to construct the per report
+                signing and encryption key from the specific root key type.
+
+        Returns:
+            dict: The decrypted data and any associated metadata about the data.
+                The data itself must always be a bytearray stored under the 'data'
+                key, however additional keys may be present depending on the encryption method
+                used.
+
+        Raises:
+            NotFoundError: If the auth provider is not able to decrypt the data.
+        """
+
+        report_key = auth_provider.get_serialized_key(key_type, device_id, **kwargs)
+
+        try:
+            from Crypto.Cipher import AES
+            import Crypto.Util.Counter
+        except ImportError:
+            raise NotFoundError
+
+        ctr = Crypto.Util.Counter.new(128)
+
+        # We use AES-128 for encryption
+        encryptor = AES.new(bytes(report_key[:16]), AES.MODE_CTR, counter=ctr)
+
+        decrypted = encryptor.decrypt(bytes(data))
+        return {'data': decrypted}
+
+    @classmethod
+    def EncryptReport(cls, device_id, auth_provider, key_type, data, **kwargs):
+        """Encrypt a buffer of report data on behalf of a device.
+
+        Args:
+            device_id (int): The id of the device that we should encrypt for
+            root (int): The root key type that should be used to generate the report
+            data (bytearray): The data that we should decrypt
+            **kwargs: There are additional specific keyword args that are required
+                depending on the root key used.  Typically, you must specify
+                - report_id (int): The report id
+                - sent_timestamp (int): The sent timestamp of the report
+
+                These two bits of information are used to construct the per report
+                signing and encryption key from the specific root key type.
+
+        Returns:
+            dict: The encrypted data and any associated metadata about the data.
+                The data itself must always be a bytearray stored under the 'data'
+                key, however additional keys may be present depending on the encryption method
+                used.
+
+        Raises:
+            NotFoundError: If the auth provider is not able to decrypt the data.
+        """
+
+        report_key = auth_provider.get_serialized_key(key_type, device_id, **kwargs)
+
+        try:
+            from Crypto.Cipher import AES
+            import Crypto.Util.Counter
+        except ImportError:
+            raise NotFoundError
+
+        # We use AES-128 for encryption
+        ctr = Crypto.Util.Counter.new(128)
+        encryptor = AES.new(bytes(report_key[:16]), AES.MODE_CTR, counter=ctr)
+
+        encrypted = encryptor.encrypt(bytes(data))
+        return {'data': encrypted}
+
+    @classmethod
+    def SignReport(cls, device_id, auth_provider, key_type, data, **kwargs):
+        """Sign a buffer of report data on behalf of a device.
+
+        Args:
+            device_id (int): The id of the device that we should encrypt for
+            root (int): The root key type that should be used to generate the report
+            data (bytearray): The data that we should sign
+            **kwargs: There are additional specific keyword args that are required
+                depending on the root key used.  Typically, you must specify
+                - report_id (int): The report id
+                - sent_timestamp (int): The sent timestamp of the report
+
+                These two bits of information are used to construct the per report
+                signing and encryption key from the specific root key type.
+
+        Returns:
+            dict: The signature and any associated metadata about the signature.
+                The signature itself must always be a bytearray stored under the
+                'signature' key, however additional keys may be present depending
+                on the signature method used.
+
+        Raises:
+            NotFoundError: If the auth provider is not able to sign the data.
+        """
+
+        if key_type == AuthProvider.NoKey:
+            result = bytearray(hashlib.sha256(data).digest())
+        else:
+            report_key = auth_provider.get_serialized_key(key_type, device_id, **kwargs)
+
+            # We sign the SHA256 hash of the message
+            message_hash = hashlib.sha256(data).digest()
+            hmac_calc = hmac.new(report_key, message_hash, hashlib.sha256)
+            result = bytearray(hmac_calc.digest())
+
+        return {'signature': result, 'root_key': key_type}
+
 
     @classmethod
     def FromReadings(cls, uuid, readings, root_key=AuthProvider.NoKey, signer=None,
@@ -99,7 +272,7 @@ class SignedListReport(IOTileReport):
             enc_data = packed_readings
 
             try:
-                result = signer.encrypt_report(uuid, root_key, enc_data, report_id=report_id,
+                result = SignedListReport.EncryptReport(uuid, signer, root_key, enc_data, report_id=report_id,
                                                sent_timestamp=sent_timestamp)
             except NotFoundError:
                 raise ExternalError("Could not encrypt report because no AuthProvider supported "
@@ -111,7 +284,7 @@ class SignedListReport(IOTileReport):
             signed_data = header + packed_readings + footer_stats
 
         try:
-            signature = signer.sign_report(uuid, root_key, signed_data, report_id=report_id,
+            signature = SignedListReport.SignReport(uuid, signer, root_key, signed_data, report_id=report_id,
                                            sent_timestamp=sent_timestamp)
         except NotFoundError:
             raise ExternalError("Could not sign report because no AuthProvider supported the requested "
@@ -163,7 +336,7 @@ class SignedListReport(IOTileReport):
             self.encrypted = True
 
         try:
-            verification = signer.verify_report(device_id, signature_flags, signed_data, signature,
+            verification = SignedListReport.VerifyReport(device_id, signer, signature_flags, signed_data, signature,
                                                 report_id=report_id, sent_timestamp=sent_timestamp)
             self.verified = verification['verified']
         except NotFoundError:
@@ -177,7 +350,7 @@ class SignedListReport(IOTileReport):
         # If the report is encrypted, try to decrypt it before parsing the readings
         if self.encrypted:
             try:
-                result = signer.decrypt_report(device_id, signature_flags, readings,
+                result = SignedListReport.DecryptReport(device_id, signer, signature_flags, readings,
                                                report_id=report_id, sent_timestamp=sent_timestamp)
                 readings = result['data']
             except NotFoundError:

@@ -7,18 +7,25 @@ import threading
 import logging
 import datetime
 import copy
+import struct
 import serial
 import serial.tools.list_ports
+from Crypto.Cipher import AES
 from iotile_transport_bled112 import bgapi_structures
 from iotile.core.dev.config import ConfigManager
 from iotile.core.utilities.packed import unpack
-from iotile.core.exceptions import HardwareError
+from iotile.core.exceptions import HardwareError, NotFoundError
 from iotile.core.hw.reports import IOTileReportParser, IOTileReading, BroadcastReport
 from iotile.core.hw.transport.adapter import DeviceAdapter
 from .bled112_cmd import BLED112CommandProcessor
 from .tilebus import TileBusService, TileBusStreamingCharacteristic, TileBusTracingCharacteristic, TileBusHighSpeedCharacteristic
 from .async_packet import AsyncPacketBuffer
 from .utilities import open_bled112
+from iotile.core.hw.auth.auth_provider import AuthProvider
+from iotile.core.hw.auth.auth_chain import ChainedAuthProvider
+
+
+EPHEMERAL_KEY_CYCLE_POWER = 6
 
 def packet_length(header):
     """Find the BGAPI packet length given its header"""
@@ -28,6 +35,22 @@ def packet_length(header):
 
     return (highbits << 8) | lowbits
 
+
+def generate_nonce(device_uuid, timestamp, low_reboots, high_reboots, counter_packed):
+    return struct.pack("<LLHBBB", device_uuid, timestamp, low_reboots, high_reboots, counter_packed, 0)
+
+
+def decrypt_payload(key, message, nonce):
+    aad = message[0:14]
+    body = message[14:20]
+    mac = message[20:]
+
+    cipher = AES.new(key, AES.MODE_CCM, nonce, mac_len=4)
+    cipher.update(aad)
+    decrypted_data = cipher.decrypt(body)
+    cipher.verify(mac)
+
+    return decrypted_data
 
 class BLED112Adapter(DeviceAdapter):
     """Callback based BLED112 wrapper supporting multiple simultaneous connections.
@@ -60,6 +83,8 @@ class BLED112Adapter(DeviceAdapter):
 
         self.scanning = False
         self.stopped = False
+
+        self._key_provider = ChainedAuthProvider()
 
         config = ConfigManager()
 
@@ -608,6 +633,7 @@ class BLED112Adapter(DeviceAdapter):
                 self._trigger_callback('on_report', None, report)
 
 
+
     def _parse_v2_advertisement(self, rssi, sender, data):
         """ Parse the IOTile Specific advertisement packet"""
 
@@ -637,21 +663,56 @@ class BLED112Adapter(DeviceAdapter):
         #   bit 5: Encryption key is user key
         #   bit 6: broadcast data is time synchronized to avoid leaking
         #   information about when it changes
+        is_pending_data = bool(flags & (1 << 0))
+        is_low_voltage = bool(flags & (1 << 1))
+        is_user_connected = bool(flags & (1 << 2))
+        is_encrypted = bool(flags & (1 << 3))
+        is_device_key = bool(flags & (1 << 4))
+        is_user_key = bool(flags & (1 << 5))
 
         self._device_scan_counts.setdefault(device_id, {'v1': 0, 'v2': 0})['v2'] += 1
 
         info = {'connection_string': sender,
                 'uuid': device_id,
-                'pending_data': bool(flags & (1 << 0)),
-                'low_voltage': bool(flags & (1 << 1)),
-                'user_connected': bool(flags & (1 << 2)),
+                'pending_data': is_pending_data,
+                'low_voltage': is_low_voltage,
+                'user_connected': is_user_connected,
                 'signal_strength': rssi,
                 'reboot_counter': reboots,
                 'sequence': counter,
-                'broadcast_toggle': broadcast_toggle,
+                'broadcast_toggle': broadcast_toggle, # FIX toggle is not decrypted at this point
                 'timestamp': timestamp,
                 'battery': battery / 32.0,
                 'advertising_version':2}
+
+        key_type = AuthProvider.NoKey
+        if is_encrypted:
+            if is_device_key:
+                key_type = AuthProvider.DeviceKey
+            elif is_user_key:
+                key_type = AuthProvider.UserKey
+
+        if is_encrypted:
+            try:
+                key = self._key_provider.get_rotated_key(key_type, device_id,
+                    reboot_counter=reboots,
+                    rotation_interval_power=EPHEMERAL_KEY_CYCLE_POWER,
+                    current_timestamp=timestamp)
+            except NotFoundError:
+                self._logger.warning("Key type {} is not found".format(key_type))
+                return info, timestamp, None, None, None, None, None
+
+            nonce = generate_nonce(device_id, timestamp, reboot_low, reboot_high_packed, counter_packed)
+
+            try:
+                decrypted_data = decrypt_payload(key, data[7:], nonce)
+            except ValueError:
+                self._logger.warning("Advertisement packet is not verified", exc_info=True)
+                return info, timestamp, None, None, None, None, None
+
+            broadcast_stream_packed, broadcast_value = unpack("<HL", decrypted_data)
+            broadcast_toggle = broadcast_stream_packed >> 15
+            broadcast_stream = broadcast_stream_packed & ((1 << 15) - 1)
 
         return info, timestamp, broadcast_stream, broadcast_value, \
             broadcast_toggle, counter, broadcast_multiplex
