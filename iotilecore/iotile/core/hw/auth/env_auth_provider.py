@@ -8,7 +8,7 @@ from .rootkey_auth_provider import RootKeyAuthProvider
 
 
 class EnvAuthProvider(RootKeyAuthProvider):
-    """Key provider implementation that search for keys in environment """
+    """Key provider implementation that search for keys in environment"""
 
     def __init__(self, args=None):
         if args is None:
@@ -28,7 +28,6 @@ class EnvAuthProvider(RootKeyAuthProvider):
         Returns:
             bytes: the root key
         """
-
         self.verify_key(key_type)
 
         if isinstance(device_id, str):
