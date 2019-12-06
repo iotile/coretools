@@ -73,6 +73,31 @@ class AbstractDeviceServer(abc.ABC):
     def __init__(self, adapter, args=None, *, loop=SharedLoop):
         """Required constructor signature."""
 
+    @property
+    @abc.abstractmethod
+    def failed(self):
+        """asyncio.Future that contains the reason why the server stopped working.
+
+        This property is designed to allow for the use case where you want to
+        run the server in the background but also check and see periodically
+        if it has had a fatal error.  Any fatal error that causes the server
+        to shutdown and no longer function should be set as an `exception`
+        on the failed Future so that users can wait for it and know when
+        the server shuts down.
+
+        The property is only guaranteed to return a non-None result once the
+        start() coroutine has been awaited and it is not guaranteed to ever
+        be set.  In particular, during normal operation, calling `stop()` will
+        not cause `failed` to be marked as done().
+
+        This future exists as a way for the server to notify interested parties
+        of **fatal errors** that prevent ongoing operation.
+
+        If ``failed`` is set, ``stop()`` should not be called and will not
+        necessarily work since the server is already broken.
+        """
+
+
     @abc.abstractmethod
     async def start(self):
         """Start serving access to devices.

@@ -2,15 +2,15 @@
 
 import argparse
 import sys
+import asyncio
 import logging
 import json
-import time
-from typedargs.doc_parser import ParsedDocstring
 from iotile.core.dev import ComponentRegistry
 from iotile.core.exceptions import ArgumentError
 from iotile.core.hw.virtual import BaseVirtualDevice
 from iotile.core.hw.transport import AbstractDeviceServer, StandardDeviceServer, VirtualDeviceAdapter
 from iotile.core.utilities import SharedLoop
+from typedargs.doc_parser import ParsedDocstring
 
 
 def one_line_desc(obj):
@@ -89,6 +89,8 @@ def main(argv=None, loop=SharedLoop):
 
     configure_logging(args.verbose)
 
+    logger = logging.getLogger(__name__)
+
     config = {}
     if args.config is not None:
         with open(args.config, "r") as conf_file:
@@ -140,19 +142,24 @@ def main(argv=None, loop=SharedLoop):
         if stop_immediately:
             return 0
 
-        # We need to periodically process events that are queued up in the interface
+        # Make sure to check if we have a fatal error running the server
         while True:
-            time.sleep(0.5)
+            loop.run_coroutine(supervise_server, server, timeout=0.2)
 
     except KeyboardInterrupt:
         print("Break received, cleanly exiting...")
+    except:  #pylint:disable=bare-except;We are running as a script and want to return an exit code
+        logger.critical("Device server failed, exiting", exc_info=True)
+        return 1
     finally:
         if args.dump is not None and device is not None:
             print("Dumping final device state to %s" % args.dump)
             device.save_state(args.dump)
 
         if started:
-            loop.run_coroutine(server.stop())
+            if not server.failed.done():
+                loop.run_coroutine(server.stop())
+
             loop.run_coroutine(adapter.stop())
 
         if args.track is not None and device is not None:
@@ -160,6 +167,21 @@ def main(argv=None, loop=SharedLoop):
             device.state_history.dump(args.track)
 
     return 0
+
+
+async def supervise_server(server: AbstractDeviceServer, timeout=0.5):
+    """Watch and see if the server dies in the next ``timeout`` seconds.
+
+    This internal helper function is designed to detect fatal errors serving
+    virtual devices and cleanly exit the script with an error.
+    """
+
+    try:
+        done, _pending = await asyncio.wait([server.failed], timeout=timeout)
+        if len(done) > 0:
+            return server.failed.result()
+    except asyncio.TimeoutError:
+        pass
 
 
 def instantiate_device(virtual_dev, config, loop):
