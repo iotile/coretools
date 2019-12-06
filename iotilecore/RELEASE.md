@@ -10,6 +10,10 @@ All major changes in each released version of `iotile-core` are listed here.
 - Add shim to make `iotile-core` compatible with Python 3.8.0 on Windows.  There is a bug in
   that python version that breaks background event loops only on Windows.  It is fixed in
   python 3.8.1.
+- Add `failed` future to `AbstractDeviceServer` that allows servers a way to communicate 
+  fatal errors that cause them to stop working.  This is now used inside `virtual-device`
+  to cleanly stop the process with a nonzero exit code if there is a fatal error serving
+  up the virtual device.
 
 ## 5.0.11
 

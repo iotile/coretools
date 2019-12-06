@@ -86,6 +86,12 @@ class StandardDeviceServer(AbstractDeviceServer):
         self._clients = {}
         self._loop = loop
         self._logger = logging.getLogger(__name__)
+        self._failed = loop.create_future()
+
+    @property
+    def failed(self):
+        """An asyncio.Future that alerts you if the server has a fatal error."""
+        return self._failed
 
     #pylint:disable=unused-argument;This method is designed to be overridden
     async def client_event_handler(self, client_id, event_tuple, user_data):
@@ -492,3 +498,10 @@ class StandardDeviceServer(AbstractDeviceServer):
             result = self.client_event_handler(client_id, event_tuple, user_data=user_data)  #pylint:disable=assignment-from-none;This is an overridable method
             if inspect.isawaitable(result):
                 await result
+
+    def _notify_fatal_error(self, exception):
+        if self._failed.done():
+            self._logger.warning("Multiple fatal errors notified, ignoring the subsequent ones, exc=%s", exception)
+            return
+
+        self._failed.set_exception(exception)
