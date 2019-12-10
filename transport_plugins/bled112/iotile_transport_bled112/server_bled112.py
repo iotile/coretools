@@ -20,7 +20,7 @@ from iotile.core.utilities import SharedLoop
 from iotile.core.hw.exceptions import VALID_RPC_EXCEPTIONS
 from iotile.core.hw.virtual import pack_rpc_response
 from .hardware.async_bled112 import AsyncBLED112
-from .hardware.ble import errors
+from iotile_transport_blelib.interface import errors
 from .tilebus import TileBusService, ArchManuID
 from .utilities import open_bled112
 

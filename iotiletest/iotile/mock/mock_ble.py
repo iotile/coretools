@@ -24,7 +24,7 @@ class WriteToUnhandledCharacteristic(IOTileException):
     pass
 
 
-class VirtualBLEDevice:
+class MockBLEDevice:
     """A virtual implementation of a BLE based IOTile device
 
     All actual IOTile functionality is delegated to a MockIOTileDevice

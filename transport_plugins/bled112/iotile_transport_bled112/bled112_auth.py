@@ -153,4 +153,3 @@ class BLED112AuthManager:
             return False, {"reason": "The device failed verification"}
 
         return True, self._session_key
-

@@ -1,14 +1,7 @@
 import uuid
 import logging
 import pytest
-import serial
-import asyncio
-from iotile_transport_bled112.hardware.emulator.mock_bled112 import MockBLED112
 from iotile_transport_bled112.hardware.async_bled112 import AsyncBLED112
-from iotile_transport_blelib.emulation import EmulatedBLEDevice
-from iotile.core.hw.virtual.virtualdevice_simple import SimpleVirtualDevice
-from iotile.core.utilities.async_tools import BackgroundEventLoop
-import util.dummy_serial
 
 
 logger = logging.getLogger(__name__)
