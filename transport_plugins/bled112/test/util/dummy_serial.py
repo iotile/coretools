@@ -29,19 +29,11 @@ __license__ = 'Apache License, Version 2.0'
 
 import logging
 import queue
+from collections import deque
 
 DEFAULT_TIMEOUT = 5
 """The default timeout value in seconds. Used if not set by the constructor."""
 
-
-RESPONSE_GENERATOR = None
-"""A dictionary of respones from the dummy serial port.
-
-The key is the message (string) sent to the dummy serial port, and the item is the response (string)
-from the dummy serial port.
-
-Intended to be monkey-patched in the calling test module.
-"""
 
 class Serial:
     """Dummy (mock) serial port for testing purposes.
@@ -56,6 +48,8 @@ class Serial:
     As the portname argument not is used properly, only one port on :mod:`dummy_serial` can be used simultaneously.
 
     """
+
+    RESPONDER = lambda x: None
 
     def __init__(self, port, baudrate, *_args, **kwargs):
         self._waiting_data = b''
@@ -120,14 +114,8 @@ class Serial:
         if not self._is_open:
             raise IOError('Dummy_serial: Trying to write, but the port is not open. Given:' + repr(inputdata))
 
-        # Look up which data that should be waiting for subsequent read commands
-        try:
-            response = RESPONSE_GENERATOR(inputdata)
-        except:
-            self._logger.exception("Error generating response")
-            raise
-
-        self._writes.put(response)
+        # Notify that we have received new data
+        self.RESPONDER(inputdata)
 
     def cancel_read(self):
         """Cancel an ongoing read.

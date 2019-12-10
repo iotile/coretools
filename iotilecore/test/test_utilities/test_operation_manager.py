@@ -3,6 +3,7 @@
 import asyncio
 import pytest
 from iotile.core.utilities.async_tools import OperationManager, BackgroundEventLoop
+from iotile.core.utilities.async_tools.operation_manager import MessageSpec
 
 
 @pytest.fixture(scope="function")
@@ -105,3 +106,33 @@ def test_persistent_callbacks(op_man):
 
     loop.run_coroutine(man.process_message(dict(name="msg", value=1)))
     assert shared[0] == 2
+
+
+def test_wait_many(op_man):
+    loop, man = op_man
+
+    man.pause()
+    man.queue_message_threadsafe(dict(action="event", value=1))
+    man.queue_message_threadsafe(dict(action="event", value=2))
+    man.queue_message_threadsafe(dict(action="error"))
+    man.queue_message_threadsafe(dict(action="end"))
+
+    end_spec = MessageSpec(action="end")
+    error_spec = MessageSpec(action="error")
+    event_spec = MessageSpec(action="event")
+
+    accum = loop.run_coroutine(
+        man.gather_until([event_spec, end_spec, error_spec], [end_spec, error_spec],
+                         unpause=True, pause=True, timeout=0.1)
+    )
+
+    assert len(accum) == 3
+    assert accum[0] == dict(action="event", value=1)
+    assert accum[1] == dict(action="event", value=2)
+    assert accum[2] == dict(action="error")
+
+    info = man.info()
+
+    assert info['queue_length'] == 1
+    assert info['waiter_count'] == 0
+    assert info['pause_count'] == 1

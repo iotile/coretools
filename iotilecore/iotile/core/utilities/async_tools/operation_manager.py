@@ -78,6 +78,7 @@ class OperationManager:
         if not isinstance(loop, event_loop.BackgroundEventLoop):
             raise ArgumentError("loop must be a BackgroundEventLoop, was {}".format(loop))
 
+        self._waiter_count = 0
         self._waiters = {}
         self._should_pause = set()
         self._loop = loop
@@ -86,6 +87,16 @@ class OperationManager:
         self._messages = deque()
         self._dispatch_lock = loop.create_lock()
         self._process_pending = False
+
+    def info(self):
+        """Return information about the current state of the OperationManager.
+
+        Returns:
+            dict: The current queue length, pause count and paused state.
+        """
+
+        return dict(queue_length=len(self._messages), paused=self._pause_count != 0,
+                    pause_count=self._pause_count, waiter_count=self._waiter_count)
 
     def _add_waiter(self, spec, responder=None, pause=False):
 
@@ -114,6 +125,8 @@ class OperationManager:
         if pause:
             self._should_pause.add(responder)
 
+        self._waiter_count += 1
+
         return responder
 
     def _remove_waiter(self, spec, future):
@@ -139,6 +152,8 @@ class OperationManager:
             return
 
         futures.remove(future)
+        self._waiter_count -= 1
+
         if len(futures) > 0:
             return
 
@@ -283,22 +298,67 @@ class OperationManager:
 
         return asyncio.wait_for(future, timeout=timeout)
 
-    async def gather_until(self, gather_specs, until, timeout=None, *, pause=False, unpause=False):
-        """Gather all matching messages until a message matching until is given or a timeout.
-
-        This method allows you to accumulate messages matching the ``MessageSpec`` objects in
-        ``gather_specs`` until a message matching the MessageSpec ``until`` is seen or a
-        timeout occurs.
+    async def wait_many(self, wait_specs, *, timeout=None, pause=False, unpause=False):
+        """Wait until the first message matching one of ``wait_specs``.
 
         Args:
-            gather_specs (Iterable(MessageSpec)): The message specs that should be accumulated
-            until (MessageSpec): The message spec that signals the end of gathering.  This will
-                not be returend unless you also include the same message spec in ``gather_specs``.
+            wait_specs (Iterable(MessageSpec)): The message specs that we should wait for.
             timeout (float): The maximum amount of time to wait for a message matching ``until``
                 before giving up.  This is in seconds.
             pause (bool): Pause the delivery of messages after receiving the message
                 that this method is waiting for.
             unpause (bool): Unpause message delivery before waiting for messages.
+
+        Returns:
+            object: The matching message.
+        """
+
+        futures = set()
+
+        for spec in wait_specs:
+            future = self._add_waiter(spec, pause=pause)
+            future.add_done_callback(lambda x, y=spec, z=future: self._remove_waiter(y, z))
+            futures.add(future)
+
+        if unpause:
+            self.unpause()
+
+        try:
+            done, _pending = await asyncio.wait(futures, timeout=timeout, return_when=asyncio.FIRST_COMPLETED)
+        finally:
+            for future in futures:
+                if not future.done():
+                    future.cancel()
+
+        done_list = list(done)
+        if len(done_list) == 0:
+            raise asyncio.TimeoutError("Timeout in wait_many() after %s seconds" % timeout)
+
+        if len(done_list) > 1:
+            self._logger.warning("Multiple messages matched in wait_many, an arbitray one was returned")
+
+        return done_list[0].result()
+
+    async def gather_until(self, gather, until, timeout=None, *, pause=False, unpause=False, include_until=False):
+        """Gather all matching messages until a message matching ``until`` is given or a timeout.
+
+        This method allows you to accumulate messages matching the ``MessageSpec`` objects in
+        ``gather`` until a message matching the MessageSpecs in ``until`` is seen or a
+        timeout occurs.  If a single ``until`` message is desired, ``until`` can be a single
+        ``MessageSpec`` object.  Otherwise you can pass an iterable of MessageSpec objects
+        to ``until`` and the first one seen will stop the gather operation.
+
+        Args:
+            gather (Iterable(MessageSpec)): The message specs that should be accumulated
+            until (MessageSpec or Iterable(MessageSpec)): The message specs that signal the end of gathering.
+                This will not be returend unless you set ``include=True``.
+            timeout (float): The maximum amount of time to wait for a message matching ``until``
+                before giving up.  This is in seconds.
+            pause (bool): Pause the delivery of messages after receiving the message
+                that this method is waiting for.
+            unpause (bool): Unpause message delivery before waiting for messages.
+            include_until (bool): Whether to include the message matching ``until`` in the returned
+                results.  Defaults to False.
 
         Returns:
             list(object): A list of the gathered messages.
@@ -313,21 +373,20 @@ class OperationManager:
             accum.append(message)
 
         handles = []
-        for spec in gather_specs:
+        for spec in gather:
             resp = self._add_waiter(spec, _accum_message)
             handles.append((spec, resp))
 
-        future = self._add_waiter(until, pause=pause)
-        future.add_done_callback(lambda x: self._remove_waiter(until, future))
-
-        if unpause:
-            self.unpause()
+        if isinstance(until, MessageSpec):
+            until = [until]
 
         try:
-            await asyncio.wait_for(future, timeout=timeout)
+            final = await self.wait_many(until, timeout=timeout, pause=pause, unpause=unpause)
+            if include_until:
+                accum.append(final)
         finally:
-            for spec, resp in handles:
-                self._remove_waiter(spec, resp)
+            for spec, future in handles:
+                self._remove_waiter(spec, future)
 
         return accum
 

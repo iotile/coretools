@@ -6,7 +6,7 @@ import logging
 from iotile.core.utilities import SharedLoop
 from iotile.core.hw.reports import IOTileReading
 from iotile.core.hw.exceptions import RPCInvalidIDError, RPCNotFoundError, TileNotFoundError
-from iotile.core.exceptions import *
+from iotile.core.exceptions import IOTileException
 
 
 class CouldNotFindHandleError(IOTileException):
@@ -24,8 +24,8 @@ class WriteToUnhandledCharacteristic(IOTileException):
     pass
 
 
-class MockBLEDevice:
-    """A mock implementation of a BLE based IOTile device
+class VirtualBLEDevice:
+    """A virtual implementation of a BLE based IOTile device
 
     All actual IOTile functionality is delegated to a MockIOTileDevice
     subclass.  This class should serve as the canonical reference class

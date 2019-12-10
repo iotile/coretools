@@ -1,53 +1,43 @@
-import unittest
-import serial
-from iotile_transport_bled112.hardware.emulator.mock_bled112 import MockBLED112
-from iotile.mock.mock_ble import MockBLEDevice
-from iotile.core.hw.virtual.virtualdevice_simple import SimpleVirtualDevice
-from iotile_transport_bled112.bled112 import BLED112Adapter
-import util.dummy_serial
-import threading
+import queue
+import pytest
+from iotile_transport_bled112.bled112_async import BLED112Adapter
 
-class TestBLED112AdapterActive(unittest.TestCase):
-    """
-    Test to make sure that the BLED112Manager is working correctly
-    """
+@pytest.fixture(scope='function')
+def bled112(loop, mock_hardware):
+    ser, adapter = mock_hardware
+    bled = BLED112Adapter(ser, loop=loop)
 
-    def setUp(self):
-        self.old_serial = serial.Serial
-        serial.Serial = util.dummy_serial.Serial
-        self.adapter = MockBLED112(3)
+    loop.run_coroutine(bled.start())
 
-        self.dev1 = SimpleVirtualDevice(100, 'TestCN')
-        self.dev1_ble = MockBLEDevice("00:11:22:33:44:55", self.dev1)
-        self.adapter.add_device(self.dev1_ble)
+    yield bled
 
-        util.dummy_serial.RESPONSE_GENERATOR = self.adapter.generate_response
+    loop.run_coroutine(bled.stop())
 
-        self._scanned_devices_seen = threading.Event()
-        self.num_scanned_devices = 0
-        self.scanned_devices = []
-        self.bled = BLED112Adapter('test', self._on_scan_callback,
-                                   self._on_disconnect_callback, passive=False, stop_check_interval=0.01)
 
-    def tearDown(self):
-        self.bled.stop_sync()
-        serial.Serial = self.old_serial
+def test_basic_init(bled112, mock_hardware):
+    """Test that we initialize correctly and the bled112 comes up scanning."""
 
-    def test_basic_init(self):
-        """Test that we initialize correctly and the bled112 comes up scanning
-        """
+    _, adapter = mock_hardware
 
-        assert self.bled.scanning
+    assert adapter.scanning
 
-    def _on_scan_callback(self, ad_id, info, expiry):
-        self.num_scanned_devices += 1
-        self.scanned_devices.append(info)
-        self._scanned_devices_seen.set()
 
-    def _on_disconnect_callback(self, *args, **kwargs):
-        pass
+def test_scanning(loop, bled112, mock_hardware):
+    """Make sure we can scan for devices."""
 
-    def test_scanning(self):
-        self._scanned_devices_seen.wait(timeout=1.0)
-        assert self.num_scanned_devices == 1
-        assert 'voltage' in self.scanned_devices[0]
+    _, adapter = mock_hardware
+
+    scanned_devices = queue.Queue()
+    def _on_scan_callback(conn_string, _conn_id, name, event):
+        nonlocal scanned_devices
+
+        scanned_devices.put(event)
+
+    bled112.register_monitor([None], ['device_seen'], _on_scan_callback)
+
+    loop.run_coroutine(adapter.advertise)
+
+    dev1 = scanned_devices.get(timeout=0.5)
+    dev2 = scanned_devices.get(timeout=0.5)
+
+    assert dev1 == 'a'

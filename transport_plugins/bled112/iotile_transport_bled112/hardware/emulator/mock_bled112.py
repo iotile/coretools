@@ -1,7 +1,13 @@
 import struct
 import copy
+import inspect
 import binascii
 import logging
+from typing import Dict
+from iotile.core.utilities.async_tools import SharedLoop
+from iotile_transport_blelib.iotile import EmulatedBLEDevice
+from iotile_transport_blelib.defines import AttributeType, compact_uuid
+
 
 def make_id(cmdclass, cmd, event, response=False):
     return (int(event) << 17 | int(response) << 16) | (cmdclass << 8) | cmd
@@ -179,18 +185,22 @@ class BGAPIPacket(object):
         return output
 
 
-class MockBLED112(object):
-    def __init__(self, max_connections):
-        self._register_handlers()
-        self.devices = {}
+class MockBLED112:
+    def __init__(self, max_connections, write_func=lambda x: None, *, loop=SharedLoop):
+        self.devices = {}  # type: Dict[str, EmulatedBLEDevice]
         self.max_connections = max_connections
-        self.connections =[]
+        self.connections = []
         self.active_scan = False
         self.scanning = False
         self.connecting = False
+
+        self._loop = loop
+        self._write_func = write_func
         self._logger = logging.getLogger(__name__)
 
-    def add_device(self, device):
+        self._register_handlers()
+
+    def add_device(self, device: EmulatedBLEDevice):
         self.devices[device.mac] = device
 
     def _register_handlers(self):
@@ -208,7 +218,19 @@ class MockBLED112(object):
         self.handlers[make_command(4, 6)] = self._write_command
         self.handlers[make_command(6, 1)] = self._set_mode
 
-    def generate_response(self, packetdata):
+    def inject_command_threadsafe(self, packetdata):
+        self._loop.launch_coroutine(self.handle_input(packetdata))
+
+    async def handle_input(self, packetdata):
+        """Process an input command and write the response."""
+
+        try:
+            response = await self.generate_response(packetdata)
+            self._write_func(response)
+        except:
+            self._logger.exception("Error processing packet data %r", packetdata)
+
+    async def generate_response(self, packetdata):
         try:
             packet = BGAPIPacket(packetdata, False)
         except KeyError:
@@ -219,12 +241,14 @@ class MockBLED112(object):
 
         handler = self.handlers[packet.cmd_id]
         responses = handler(packet.payload)
+        if inspect.isawaitable(responses):
+            responses = await responses
 
         out_packets = [BGAPIPacket.GeneratePacket(resp) for resp in responses]
 
         return b"".join([bytes(x) for x in out_packets])
 
-    def _read_handle(self, payload):
+    async def _read_handle(self, payload):
         handle = payload['handle']
 
         if handle > len(self.connections):
@@ -244,7 +268,7 @@ class MockBLED112(object):
         event['handle'] = handle
         event['char_handle'] = char_handle
         event['att_type'] = 0 #Value was read
-        event['value'] = dev.read_handle(char_handle)
+        event['value'] = await dev.read_handle(char_handle)
 
         packets.append(event)
 
@@ -255,7 +279,7 @@ class MockBLED112(object):
         resp = {'type': bgapi_resp(6, 1), 'result': 0}
         return [resp]
 
-    def _write_handle(self, payload):
+    async def _write_handle(self, payload):
         handle = payload['handle']
 
         if handle > len(self.connections):
@@ -270,7 +294,7 @@ class MockBLED112(object):
 
         char_handle = payload['char_handle']
 
-        success, notifications = dev.write_handle(char_handle, payload['value'])
+        success, notifications = await dev.write_handle(char_handle, payload['value'])
 
         event = {}
         event['type'] = bgapi_event(4, 1)
@@ -298,7 +322,7 @@ class MockBLED112(object):
 
         return packets
 
-    def _write_command(self, payload):
+    async def _write_command(self, payload):
         handle = payload['handle']
 
         if handle > len(self.connections):
@@ -312,7 +336,7 @@ class MockBLED112(object):
         dev = self.devices[self.connections[handle]]
         char_handle = payload['char_handle']
 
-        success, notifications = dev.write_handle(char_handle, payload['value'])
+        notifications = await dev.write_handle(char_handle, payload['value'])
 
         #If this write triggered any notifications, inject them
         for notification_handle, value in notifications:
@@ -340,12 +364,9 @@ class MockBLED112(object):
         dev = self.devices[self.connections[handle]]
 
         last_handle = 0xFFFF
-        for chr_handle, chr_type in dev.iter_handles(payload['start_handle'], payload['end_handle']):
-            if chr_type == 'char':
-                event = {'type': bgapi_event(4, 4), 'handle': handle, 'char_handle': chr_handle, 'uuid': bytearray([0x03, 0x28])}
-            elif chr_type == 'config':
-                event = event = {'type': bgapi_event(4, 4), 'handle': handle, 'char_handle': chr_handle, 'uuid': bytearray([0x02, 0x29])}
-
+        for attribute in dev.gatt_table.iter_handles(payload['start_handle'], payload['end_handle']):
+            event = {'type': bgapi_event(4, 4), 'handle': handle, 'char_handle': attribute.handle,
+                     'uuid': compact_uuid(attribute.type)}
             packets.append(event)
 
         end = {'type': bgapi_event(4, 1), 'handle': handle, 'result': 0, 'end_char': last_handle}
@@ -365,14 +386,14 @@ class MockBLED112(object):
         packets.append(resp)
 
         dev = self.devices[self.connections[handle]]
-        services = dev.gatt_services
 
         #Send along all of the gatt services
-        for service in services:
-            min_handle = dev.min_handle(service)
-            max_handle = dev.max_handle(service)
+        for service in dev.gatt_table.groups:
+            min_handle = service.start_handle
+            max_handle = service.end_handle
 
-            serv_event = {'type': bgapi_event(4, 2), 'handle': handle, 'start_handle': min_handle, 'end_handle': max_handle, 'uuid': service.bytes_le}
+            serv_event = {'type': bgapi_event(4, 2), 'handle': handle, 'start_handle': min_handle,
+                          'end_handle': max_handle, 'uuid': service.group_uuid.bytes_le}
             packets.append(serv_event)
 
         end = {'type': bgapi_event(4, 1), 'handle': handle, 'result': 0, 'end_char': 0xFFFF} #FIXME: Make this a real value
@@ -434,21 +455,22 @@ class MockBLED112(object):
 
             self.connections.append(addr)
             packets.append(event)
+            self.connecting = False  # Only stop the connecting procedure if we're successful
 
         return packets
 
-    def _start_scan(self, payload):
+    def _start_scan(self, _payload):
         if self.scanning is True:
             resp = {'type': bgapi_resp(6, 2), 'result': 0x181} #Device in wrong state
         else:
             resp = {'type': bgapi_resp(6, 2), 'result': 0}
             self.scanning = True
 
-        packets = self.advertise()
+        packets = self._generate_advertisements()
 
         return [resp] + packets
 
-    def _end_procedure(self, payload):
+    def _end_procedure(self, _payload):
         if self.scanning or self.connecting:
             resp = {'type': bgapi_resp(6, 4), 'result': 0}
             self.scanning = False
@@ -459,29 +481,38 @@ class MockBLED112(object):
         return [resp]
 
     def advertise(self):
-        """Send an advertising and scan response (if active scanning) for every attached device
-        """
+        """Send one advertisement for all connected devices."""
+
+        adverts = self._generate_advertisements()
+        out_packets = [BGAPIPacket.GeneratePacket(advert) for advert in adverts]
+
+        self._write_func(b"".join([bytes(x) for x in out_packets]))
+
+    def _generate_advertisements(self):
+        """Send an advertising and scan response (if active scanning) for every attached device."""
 
         if not self.scanning:
-            return
+            return []
 
         packets = []
 
         for mac, dev in self.devices.items():
+            advert = dev.advertisement()
+
             packet = {}
             packet['type'] = bgapi_event(6, 0)
-            packet['rssi'] = dev.rssi
-            packet['adv_type'] = dev.advertisement_type
+            packet['rssi'] = advert.rssi
+            packet['adv_type'] = advert.kind
             packet['address'] = mac
             packet['address_type'] = 1 #Random address
             packet['bond'] = 0xFF #No bond
-            packet['data'] = dev.advertisement()
+            packet['data'] = advert.advertisement
 
             packets.append(packet)
 
             if self.active_scan:
                 response = copy.deepcopy(packet)
-                response['data'] = dev.scan_response()
+                response['data'] = advert.scan_response
                 response['adv_type'] = dev.ScanResponsePacket
                 packets.append(response)
 

@@ -2,49 +2,7 @@ from threading import Thread, Event
 import struct
 import logging
 from serial import SerialException
-
-
-class BGAPIPacket:
-    __slots__ = ['class_', 'cmd', 'event', 'payload', 'conn']
-
-    _CONN_EVENTS = frozenset([
-        (4, 1), (4, 2), (4, 4), (4, 5), (3, 0), (3, 4)
-    ])
-
-    def __init__(self, header, payload):
-        flags, class_, command = struct.unpack("<BxBB", header)
-
-        self.class_ = class_
-        self.event = flags == 0x80
-        self.cmd = command
-        self.payload = payload
-
-        if self.event and (class_, command) in self._CONN_EVENTS:
-            self.conn = payload[0]
-        else:
-            self.conn = None
-
-
-class ConnectionPacket(BGAPIPacket):
-    """Special packet for connection events.
-
-    These events are reused in a number of contexts with flags set to
-    indicate different uses.  We need to filter on those flags in order
-    to react only to, for example, new connections.
-    """
-
-    __slots__ = ['new', 'connected']
-
-    def __init__(self, header, payload):
-        super(ConnectionPacket, self).__init__(header, payload)
-
-        if (self.class_, self.cmd) != (3, 0):
-            raise ValueError('Attempted to create connection packet from wrong packet type')
-
-        _, flags = struct.unpack_from("<BB", payload)
-        self.new = bool(flags & (1 << 2))
-        self.connected = bool(flags & (1 << 0))
-
+from . import packets
 
 class DeviceNotConfiguredError(Exception):
     pass
@@ -120,13 +78,12 @@ def _reader_thread(filelike, callback, header_length, length_function, stop):
                 break
 
             # We have a complete packet now, process it
-            packet = BGAPIPacket(header, remaining)
+            packet = packets.create_packet(header, remaining)
             logger.log(5, "BLED112 Packet: class=%d, cmd=%d, event=%s, payload_length=%d",
                        packet.class_, packet.cmd, packet.event, len(packet.payload))
-            if packet.class_ == 3 and packet.cmd == 0:
-                packet = ConnectionPacket(header, remaining)
 
             callback(packet)
-        except:
-            logger.exception("Error in reader thread")
-            break
+        except Exception as err:
+            logger.debug("Error in reader thread, exiting", exc_info=True)
+            callback(packets.HardwareFailurePacket(err))
+            return

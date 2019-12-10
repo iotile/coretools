@@ -1,8 +1,6 @@
-from collections import namedtuple
 import uuid
-from iotile.core.utilities.packed import unpack
-
-CharacteristicProperties = namedtuple("CharacteristicProperties", ["broadcast", "read", "write_no_response", "write", "notify", "indicate", "write_authenticated", "extended"])
+import struct
+from iotile_transport_blelib.interface.gatt import CharacteristicProperties
 
 
 def process_uuid(guiddata):
@@ -35,7 +33,7 @@ def process_gatt_service(services, event):
 
     length = len(event.payload) - 5
 
-    handle, start, end, uuid = unpack('<BHH%ds' % length, event.payload)
+    handle, start, end, uuid = struct.unpack('<BHH%ds' % length, event.payload)
 
     uuid = process_uuid(uuid)
     services[uuid] = {'uuid_raw': uuid, 'start_handle': start, 'end_handle': end}
@@ -43,7 +41,7 @@ def process_gatt_service(services, event):
 
 def process_read_handle(event):
     length = len(event.payload) - 5
-    conn, att_handle, att_type, act_length, value = unpack("<BHBB%ds" % length, event.payload)
+    conn, att_handle, att_type, act_length, value = struct.unpack("<BHBB%ds" % length, event.payload)
 
     assert act_length == length
 
@@ -52,7 +50,7 @@ def process_read_handle(event):
 
 def process_attribute(attributes, event):
     length = len(event.payload) - 3
-    handle, chrhandle, uuid = unpack("<BH%ds" % length, event.payload)
+    handle, chrhandle, uuid = struct.unpack("<BH%ds" % length, event.payload)
     uuid = process_uuid(uuid)
 
     attributes[chrhandle] = {'uuid': uuid}
@@ -68,12 +66,13 @@ def parse_characteristic_declaration(value):
     else:
         raise ValueError("Value has improper length for ble characteristic definition, length was %d" % len(value))
 
-    propval, handle, uuid = unpack("<BH%ds" % uuid_len, value)
+    propval, handle, uuid = struct.unpack("<BH%ds" % uuid_len, value)
 
 
     # Process the properties
-    properties = CharacteristicProperties(bool(propval & 0x1), bool(propval & 0x2), bool(propval & 0x4), bool(propval & 0x8),
-                                          bool(propval & 0x10), bool(propval & 0x20), bool(propval & 0x40), bool(propval & 0x80))
+    properties = CharacteristicProperties(bool(propval & 0x1), bool(propval & 0x2), bool(propval & 0x4),
+                                          bool(propval & 0x8), bool(propval & 0x10), bool(propval & 0x20),
+                                          bool(propval & 0x40), bool(propval & 0x80))
 
     uuid = process_uuid(uuid)
     char = {}
@@ -97,7 +96,7 @@ def handle_to_uuid(handle, services):
 
 def process_notification(event):
     length = len(event.payload) - 5
-    conn, att_handle, att_type, act_length, value = unpack("<BHBB%ds" % length, event.payload)
+    conn, att_handle, att_type, act_length, value = struct.unpack("<BHBB%ds" % length, event.payload)
 
     assert act_length == length
     return att_handle, bytearray(value)

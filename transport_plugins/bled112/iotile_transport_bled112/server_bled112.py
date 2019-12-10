@@ -19,7 +19,8 @@ from iotile.core.hw.transport import StandardDeviceServer
 from iotile.core.utilities import SharedLoop
 from iotile.core.hw.exceptions import VALID_RPC_EXCEPTIONS
 from iotile.core.hw.virtual import pack_rpc_response
-from .hardware.async_bled112 import AsyncBLED112, BLEQueueFullError, BLEDisconnectError
+from .hardware.async_bled112 import AsyncBLED112
+from .hardware.ble import errors
 from .tilebus import TileBusService, ArchManuID
 from .utilities import open_bled112
 
@@ -118,14 +119,17 @@ class BLED112Server(StandardDeviceServer):
         self._bled112.operations.every_match(self.on_disconnect, class_=3, cmd=4)
         self._bled112.operations.every_match(self.on_attribute_write, class_=2, cmd=2)
         self._bled112.operations.every_match(self.on_write, class_=2, cmd=0)
+        self._bled112.operations.every_match(self.on_hardware_fail, class_=0xFF, cmd=0xFF)
 
         self._logger.info("Serving device 0x%04X over BLED112", iotile_id)
+        await self._bled112.set_advertising_params(0x20, 0x20)
         await self._update_advertisement()
 
         self.setup_client(self.CLIENT_ID, scan=False, broadcast=True)
 
     async def stop(self):
         """Safely shut down this interface"""
+
         await self._bled112.set_mode(0, 0)  # Disable advertising
         await self._cleanup_old_connections()
         await self._bled112.stop()
@@ -216,6 +220,14 @@ class BLED112Server(StandardDeviceServer):
         assert len(response) == 31
 
         return response
+
+    def on_hardware_fail(self, packet):
+        """Callback when a packet is received indicating that the bled112 hardware failed.
+
+        The most likely reason is that the dongle was unplugged from the USB port.
+        """
+
+        self._notify_fatal_error(packet.exception)
 
     async def on_connect(self, _message):
         self._logger.debug("Received connect event")
@@ -336,9 +348,9 @@ class BLED112Server(StandardDeviceServer):
             try:
                 await self._bled112.send_notification(handle, payload)
                 return True
-            except BLEQueueFullError:
+            except errors.QueueFullError:
                 await asyncio.sleep(0.02)
-            except BLEDisconnectError:
+            except errors.DisconnectionError:
                 self._logger.warning("Error sending RPC response due to disconnection")
                 return False
             except:  #pylint:disable=bare-except;This routine can't raise so we convert to a return code and log.

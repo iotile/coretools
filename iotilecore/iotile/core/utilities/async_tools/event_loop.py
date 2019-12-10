@@ -414,8 +414,7 @@ class BackgroundEventLoop:
         # In some cases, tasks may not properly register or cancel their subtasks.
         # This catches that in development, and also in deployment when there are third-party libraries
         # that have this fault (such as hbmqtt)
-        tasks = [task for task in asyncio.Task.all_tasks() if task is not
-                 asyncio.tasks.Task.current_task() and not task.done()]
+        tasks = [task for task in _list_tasks() if task is not _current_task() and not task.done()]
         list(map(lambda task: task.cancel(), tasks))
         for task in tasks:
             self._logger.debug("A task wasn't properly registered/cancelled as expected: %s", task)
@@ -530,7 +529,7 @@ class BackgroundEventLoop:
 
         self.start()
 
-        cor = _instaniate_coroutine(cor, args, kwargs)
+        cor = _instantiate_coroutine(cor, args, kwargs)
 
         if self.inside_loop():
             raise InternalError("BackgroundEventLoop.run_coroutine called from inside event loop, "
@@ -566,7 +565,7 @@ class BackgroundEventLoop:
         # Ensure the loop exists and is started
         self.start()
 
-        cor = _instaniate_coroutine(cor, args, kwargs)
+        cor = _instantiate_coroutine(cor, args, kwargs)
 
         if self.inside_loop():
             return asyncio.ensure_future(cor, loop=self.loop)
@@ -610,7 +609,7 @@ class BackgroundEventLoop:
 
         self.start()
 
-        cor = _instaniate_coroutine(cor, args, kwargs)
+        cor = _instantiate_coroutine(cor, args, kwargs)
 
         def _run_and_log():
             task = self.loop.create_task(cor)
@@ -675,7 +674,11 @@ class BackgroundEventLoop:
         """
 
         self.start()
-        return asyncio.Event(loop=self.loop)
+
+        if self.inside_loop():
+            return asyncio.Event()
+
+        return self.run_coroutine(asyncio.Event)
 
     def create_lock(self):
         """Attach a Lock to the background loop.
@@ -685,7 +688,11 @@ class BackgroundEventLoop:
         """
 
         self.start()
-        return asyncio.Lock(loop=self.loop)
+
+        if self.inside_loop():
+            return asyncio.Lock()
+
+        return self.run_coroutine(asyncio.Lock)
 
     def create_future(self):
         """Attach a Future to the background loop.
@@ -695,7 +702,11 @@ class BackgroundEventLoop:
         """
 
         self.start()
-        return asyncio.Future(loop=self.loop)
+
+        if self.inside_loop():
+            return asyncio.Future()
+
+        return self.run_coroutine(asyncio.Future)
 
     def create_queue(self):
         """Attach a Queue to the background loop.
@@ -705,7 +716,11 @@ class BackgroundEventLoop:
         """
 
         self.start()
-        return asyncio.Queue(loop=self.loop)
+
+        if self.inside_loop():
+            return asyncio.Queue()
+
+        return self.run_coroutine(asyncio.Queue)
 
 
 def _create_task_threadsafe(cor, loop):
@@ -721,10 +736,17 @@ def _create_task_threadsafe(cor, loop):
     return future.result()
 
 
-def _instaniate_coroutine(cor, args, kwargs):
+def _instantiate_coroutine(cor, args, kwargs):
     if inspect.iscoroutinefunction(cor):
-        cor = cor(*args, **kwargs)
-    elif len(args) > 0 or len(kwargs) > 0:
+        return cor(*args, **kwargs)
+
+    if not inspect.isawaitable(cor):
+        async def _wrapper():
+            return cor(*args, **kwargs)
+
+        return _wrapper
+
+    if len(args) > 0 or len(kwargs) > 0:
         raise ArgumentError("You cannot pass arguments if coroutine is already created", args=args, kwargs=kwargs)
 
     return cor
@@ -777,6 +799,27 @@ def _tick_generator(period, loop):
         count += 1
         yield max(t1 + count * period - loop.time(), 0)
 
+
+def _list_tasks():
+    """Use nondeprecated way to list tasks on all supported python version.
+
+    asyncio.all_tasks() was added in 3.7 and Task.all_tasks was deprecated
+    in 3.8.
+    """
+
+    if hasattr(asyncio, 'all_tasks'):
+        return asyncio.all_tasks()
+
+    return asyncio.Task.all_tasks()
+
+
+def _current_task():
+    """Use nondeprecated way to get the current task."""
+
+    if hasattr(asyncio, 'current_task'):
+        return asyncio.current_task()
+
+    return asyncio.Task.current_task()
 
 def _check_patch_python_3_8_0():
     """Python 3.8 on windows switches event loops but has a bug.

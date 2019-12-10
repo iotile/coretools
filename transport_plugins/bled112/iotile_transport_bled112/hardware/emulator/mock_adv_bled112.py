@@ -6,8 +6,9 @@ import random
 import struct
 import datetime
 
-from iotile.mock.mock_ble import MockBLEDevice
 from iotile_transport_bled112.hardware.emulator.mock_bled112 import MockBLED112, BGAPIPacket, bgapi_resp, bgapi_event
+from iotile_transport_blelib.iotile import TileBusService, ARCH_MANUFACTURER
+from iotile_transport_blelib.defines import AdvertisementType
 from iotile.core.hw.reports import IOTileReading
 
 
@@ -69,13 +70,13 @@ class MockAdvertisingBLED112(MockBLED112):
     def advertisement(self, iotile_id, low_voltage=False, user_connected=False, device_reports=False):
         flags = (int(low_voltage) << 1) | (int(user_connected) << 2) | (int(device_reports))
         ble_flags = struct.pack("<BBB", 2, 0, 0) #FIXME fix length
-        uuid_list = struct.pack("<BB16s", 17, 6, MockBLEDevice.TBService.bytes_le)
-        manu = struct.pack("<BBHLH", 9, 0xFF, MockBLEDevice.ArchManuID, iotile_id, flags)
+        uuid_list = struct.pack("<BB16s", 17, 6, TileBusService.UUID.bytes_le)
+        manu = struct.pack("<BBHLH", 9, 0xFF, ARCH_MANUFACTURER, iotile_id, flags)
 
         return ble_flags + uuid_list + manu
 
     def scan_response(self, reading, voltage=3.5):
-        header = struct.pack("<BBH", 19, 0xFF, MockBLEDevice.ArchManuID)
+        header = struct.pack("<BBH", 19, 0xFF, ARCH_MANUFACTURER)
         voltage = struct.pack("<H", int(voltage*256))
         _reading = struct.pack("<HLLL", reading.stream, reading.value, reading.raw_time, 0)
         name = struct.pack("<BB6s", 7, 0x09, b"IOTile")
@@ -85,7 +86,6 @@ class MockAdvertisingBLED112(MockBLED112):
         assert len(response) == 31
 
         return response
-
 
     def _generate_adv_response(self, info_generator):
         if not self.scanning:
@@ -98,7 +98,7 @@ class MockAdvertisingBLED112(MockBLED112):
         packet = {}
         packet['type'] = bgapi_event(6, 0)
         packet['rssi'] = random.randint(-103, -38)
-        packet['adv_type'] = MockBLEDevice.NonconnectableAdvertising
+        packet['adv_type'] = AdvertisementType.NONCONNECTABLE
         packet['address'] = next_mac
         packet['address_type'] = 1 #Random address
         packet['bond'] = 0xFF #No bond
@@ -110,7 +110,7 @@ class MockAdvertisingBLED112(MockBLED112):
         if self.active_scan:
             response = copy.deepcopy(packet)
             response['data'] = self.scan_response(next_reading)
-            response['adv_type'] = MockBLEDevice.ScanResponsePacket
+            response['adv_type'] = AdvertisementType.SCAN_RESPONSE
 
             packets.append(response)
 

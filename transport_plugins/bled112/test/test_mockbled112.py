@@ -12,11 +12,12 @@ def test_create_disconnect_packet():
     packet = BGAPIPacket.GeneratePacket(info)
     parsed = BGAPIPacket(packet, False)
 
-    assert parsed.event == False
+    assert parsed.event is False
     assert parsed.cmdclass == 3
     assert parsed.cmd == 0
     assert isinstance(parsed.payload, dict)
     assert parsed.payload['handle'] == 1
+
 
 def test_create_disconnect_event():
     info = {
@@ -28,7 +29,7 @@ def test_create_disconnect_event():
     packet = BGAPIPacket.GeneratePacket(info)
     parsed = BGAPIPacket(packet, True)
 
-    assert parsed.event == True
+    assert parsed.event is True
     assert parsed.cmdclass == 3
     assert parsed.cmd == 4
     assert parsed.payload['handle'] == info['handle']
