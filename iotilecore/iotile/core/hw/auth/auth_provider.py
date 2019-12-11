@@ -3,7 +3,6 @@
 import hashlib
 import struct
 import hmac
-from Crypto.Cipher import AES
 from iotile.core.exceptions import NotFoundError
 
 class AuthProvider:
@@ -109,6 +108,12 @@ class AuthProvider:
             bytearray: the rotated key
         """
         timestamp = current_timestamp & (~(2 ** rotation_interval_power - 1))
+
+        try:
+            from Crypto.Cipher import AES
+        except ImportError as error:
+            raise NotFoundError("Cryptographic library is not available") from error
+
         cipher = AES.new(reboot_key, AES.MODE_ECB)
         msg = struct.pack("<LLLL", timestamp, 0, 0, 0)
 
