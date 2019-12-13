@@ -10,7 +10,6 @@ import copy
 import struct
 import serial
 import serial.tools.list_ports
-from Crypto.Cipher import AES
 from iotile_transport_bled112 import bgapi_structures
 from iotile.core.dev.config import ConfigManager
 from iotile.core.utilities.packed import unpack
@@ -23,7 +22,11 @@ from .async_packet import AsyncPacketBuffer
 from .utilities import open_bled112
 from iotile.core.hw.auth.auth_provider import AuthProvider
 from iotile.core.hw.auth.auth_chain import ChainedAuthProvider
-
+try:
+    from Crypto.Cipher import AES
+    _HAS_CRYPTO = True
+except ImportError:
+   _HAS_CRYPTO = False
 
 EPHEMERAL_KEY_CYCLE_POWER = 6
 
@@ -124,6 +127,9 @@ class BLED112Adapter(DeviceAdapter):
         self._command_task = BLED112CommandProcessor(self._stream, self._commands, stop_check_interval=stop_check_interval)
         self._command_task.event_handler = self._handle_event
         self._command_task.start()
+
+        if not _HAS_CRYPTO:
+            self._logger.warning("pycryptodome is not installed, encrypted v2 broadcasts will be dropped.")
 
         try:
             self.initialize_system_sync()
@@ -693,13 +699,16 @@ class BLED112Adapter(DeviceAdapter):
                 key_type = AuthProvider.UserKey
 
         if is_encrypted:
+            if not _HAS_CRYPTO:
+                return info, timestamp, None, None, None, None, None
+
             try:
                 key = self._key_provider.get_rotated_key(key_type, device_id,
                     reboot_counter=reboots,
                     rotation_interval_power=EPHEMERAL_KEY_CYCLE_POWER,
                     current_timestamp=timestamp)
             except NotFoundError:
-                self._logger.warning("Key type {} is not found".format(key_type))
+                self._logger.warning("Key type {} is not found".format(key_type), exc_info=True)
                 return info, timestamp, None, None, None, None, None
 
             nonce = generate_nonce(device_id, timestamp, reboot_low, reboot_high_packed, counter_packed)
