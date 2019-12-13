@@ -2,6 +2,10 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
+## HEAD
+
+- Fix bled112_auth error handling
+
 ## 3.0.2
 
 - Add core authentication logic, authentication is conducted after the characteristics

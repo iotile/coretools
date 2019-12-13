@@ -4,6 +4,10 @@ All major changes in each released version of `iotile-core` are listed here.
 
 ## HEAD
 
+## 5.0.11
+
+- Fix missing Crypto dependency #919
+
 ## 5.0.10
 
 - Add core authentication logic, authentication is conducted after the characteristics

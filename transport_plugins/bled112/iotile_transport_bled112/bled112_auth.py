@@ -1,3 +1,12 @@
+"""
+    Implements authentication logic.
+
+    Used with command processor that implement a routine:
+
+    command_processor.send_auth_client_request(payload, *additional_args) -> (bool, bytearray)
+        The routine is expected to send a request to server, used to send both hello and verify messages,
+        The device expects that messages are sent one after another unless server hello convey an error
+"""
 import enum
 import os
 import struct
@@ -5,11 +14,10 @@ import hashlib
 import hmac
 from iotile.core.hw.auth.auth_chain import ChainedAuthProvider
 
-
 class AuthType(enum.Enum):
-    AUTH_METHOD_0 = 1 << 0
-    AUTH_METHOD_1 = 1 << 1
-    AUTH_METHOD_2 = 1 << 2
+    AUTH_METHOD_0 = 1 << 0 # Null Key
+    AUTH_METHOD_1 = 1 << 1 # User Key
+    AUTH_METHOD_2 = 1 << 2 # Device Key
 
 class State(enum.Enum):
     NOT_AUTHENTICATED = 0
@@ -87,6 +95,24 @@ class BLED112AuthManager:
         return hmac.new(session_key, data, hashlib.sha256).digest()[0:16]
 
     def authenticate(self, uuid, auth_type, command_processor, *command_processor_args):
+        """
+        Perform authentication
+
+        Args:
+            uuid (int or str): either device mac or id
+            auth_type (int): See .AuthType
+            command_processor (obj): an object with member functions `send_auth_client_request` which
+                implements mean of communication with server, specification below
+                command_processor.send_auth_client_request(payload, *command_processor_args) -> (bool, bytearray)
+                    The routine is expected to send a request to server, used to send both hello and verify messages,
+                    The device expects that messages are sent one after another unless server hello convey an error
+        Returns:
+            (bool, bytearray/dict): tuple of success flag, sessin key or dict with reason of failure
+        """
+        required_method = getattr(command_processor, "send_auth_client_request", None)
+        if not required_method or not callable(required_method):
+            return False, {"reason": "command_processor should implement send_auth_client_request"}
+
         self._server_hello = self._send_client_hello(command_processor, *command_processor_args)
         generation, err, server_supported_auth, self._device_nonce = struct.unpack("HBB16s", self._server_hello)
 
@@ -96,16 +122,21 @@ class BLED112AuthManager:
         if generation > self._token_generation:
             return False, {"reason": "Server support only newer generation tokens {}".format(generation)}
 
-        if server_supported_auth & auth_type == 0:
-            return False, {"reason": "Auth type {} is not supported, supported: {}".format(auth_type, server_supported_auth)}
+        try:
+            auth_method = AuthType(auth_type)
+        except ValueError:
+            return False, {"reason": "Auth type {} does not exist".format(auth_method)}
 
-        if AuthType(auth_type) == AuthType.AUTH_METHOD_0:
+        if server_supported_auth & auth_type == 0:
+            return False, {"reason": "{} is not supported, bitmap of supported: {}".format(auth_method, bin(server_supported_auth))}
+
+        if auth_method == AuthType.AUTH_METHOD_0:
             self._session_key = self._compute_session_key_security_level_0()
-        elif AuthType(auth_type) == AuthType.AUTH_METHOD_1:
+        elif auth_method == AuthType.AUTH_METHOD_1:
             root_key = self._key_provider.get_root_key(key_type=ChainedAuthProvider.UserKey, device_id=uuid)
             self._session_key = self._compute_session_key_security_level_1(root_key=root_key)
         else:
-            return False, {"reason": "Auth type is not implemented{}".format(AuthType(auth_type))}
+            return False, {"reason": "Auth type is not implemented {}".format(auth_method)}
 
         err, granted_permissions, received_server_verify = \
             self._send_client_verify(self._session_key, auth_type, command_processor, *command_processor_args)

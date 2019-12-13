@@ -3,7 +3,6 @@
 import hashlib
 import struct
 import hmac
-from Crypto.Cipher import AES
 from iotile.core.exceptions import NotFoundError
 from .auth_provider import AuthProvider
 
