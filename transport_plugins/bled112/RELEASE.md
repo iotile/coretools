@@ -2,6 +2,16 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
+## HEAD
+
+- Fix bled112_auth error handling
+
+## 3.0.2
+
+- Add core authentication logic, authentication is conducted after the characteristics
+  where probed as additional stage of connection
+- Add auth provider to prompt user password
+
 ## 3.0.1
 
 - Hack fix for the log flood caused when a bled112 dongle gets disconnected

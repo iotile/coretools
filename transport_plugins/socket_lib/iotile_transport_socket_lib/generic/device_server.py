@@ -2,51 +2,42 @@
 
 import logging
 import base64
-import websockets
 from iotile.core.utilities import SharedLoop
 from iotile.core.hw.transport.server import StandardDeviceServer
 from iotile.core.hw.exceptions import VALID_RPC_EXCEPTIONS, DeviceServerError, DeviceAdapterError
 from iotile.core.hw.virtual import pack_rpc_response
-from .generic import AsyncValidatingWSServer, ServerCommandError
-from .protocol import COMMANDS, OPERATIONS
+from iotile_transport_socket_lib.protocol import COMMANDS, OPERATIONS
+from . import ServerCommandError
+from .socket_server import AsyncSocketServer
 
 _MISSING = object()
 
-class WebSocketDeviceServer(StandardDeviceServer):
-    """A device server for connections to multiple devices over websockets.
-
-    This class connects to an AbstractDeviceAdapter and serves it over
-    Websockets. Currently the support arguments to pass in args are:
-
-    - ``host``: The host name to serve on, defaults to 127.0.0.1
-    - ``port``: The port name to serve on, defaults to a random port if not specified.
-      If a random port is used, its value can be read on the ``port`` property after
-      start() has completed.
+class SocketDeviceServer(StandardDeviceServer):
+    """A device server for connections to multiple devices over any socket implementation
 
     Args:
-        adapter (AbstractDeviceAdapter): The device adapter that we should use
-            to find devices.
-        args (dict): Arguments to this device server.
+        adapter (AbstractDeviceAdapter): The device adapter that we should use to find devices.
+        implementation (AbstractSocketServer): The implementation of the socket Server
+            that will be used to listen to connections
         loop (BackgroundEventLoop): The background event loop we should
             run in.  Defaults to the shared global loop.
     """
 
-    def __init__(self, adapter, args=None, *, loop=SharedLoop):
-        host = args.get('host', '127.0.0.1')
-        port = args.get('port', None)
-
+    def __init__(self, adapter, implementation, args=None, *, loop=SharedLoop):
         StandardDeviceServer.__init__(self, adapter, args, loop=loop)
 
-        self.port = None
-        self.server = AsyncValidatingWSServer(host, port, loop=loop)
+        self.server = AsyncSocketServer(implementation, loop=loop)
+
         self.chunk_size = 4*1024  # Config chunk size to be 4kb for traces and reports streaming
         self._logger = logging.getLogger(__name__)
 
         self.server.register_command(OPERATIONS.CONNECT, self.connect_message, COMMANDS.ConnectCommand)
         self.server.register_command(OPERATIONS.PROBE, self.probe_message, COMMANDS.ProbeCommand)
         self.server.register_command(OPERATIONS.DISCONNECT, self.disconnect_message, COMMANDS.DisconnectCommand)
-        self.server.register_command(OPERATIONS.OPEN_INTERFACE, self.open_interface_message, COMMANDS.OpenInterfaceCommand)
-        self.server.register_command(OPERATIONS.CLOSE_INTERFACE, self.close_interface_message, COMMANDS.CloseInterfaceCommand)
+        self.server.register_command(OPERATIONS.OPEN_INTERFACE, self.open_interface_message,
+                                     COMMANDS.OpenInterfaceCommand)
+        self.server.register_command(OPERATIONS.CLOSE_INTERFACE, self.close_interface_message,
+                                     COMMANDS.CloseInterfaceCommand)
         self.server.register_command(OPERATIONS.SEND_RPC, self.send_rpc_message, COMMANDS.SendRPCCommand)
         self.server.register_command(OPERATIONS.SEND_SCRIPT, self.send_script_message, COMMANDS.SendScriptCommand)
         self.server.register_command(OPERATIONS.DEBUG, self.debug_command_message, COMMANDS.SendDebugCommand)
@@ -81,7 +72,6 @@ class WebSocketDeviceServer(StandardDeviceServer):
         """
 
         await self.server.start()
-        self.port = self.server.port
 
     async def stop(self):
         """Stop serving access to devices.
@@ -106,7 +96,7 @@ class WebSocketDeviceServer(StandardDeviceServer):
         await self.server.stop()
 
         # Cleanup any resources we had on the adapter
-        await super(WebSocketDeviceServer, self).stop()
+        await super(SocketDeviceServer, self).stop()
 
     async def probe_message(self, _message, context):
         """Handle a probe message.
@@ -271,5 +261,5 @@ class WebSocketDeviceServer(StandardDeviceServer):
         try:
             self._logger.debug("Sending event %s: %s", msg_name, msg_payload)
             await self.server.send_event(user_data, msg_name, msg_payload)
-        except websockets.exceptions.ConnectionClosed:
+        except ConnectionError:
             self._logger.debug("Could not send notification because connection was closed for client %s", client_id)

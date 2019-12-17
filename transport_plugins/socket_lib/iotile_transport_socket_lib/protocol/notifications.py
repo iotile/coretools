@@ -1,4 +1,4 @@
-"""List of notifications handled by the WebSocket plugin."""
+"""List of notifications handled by the Socket plugin."""
 
 from iotile.core.utilities.schema_verify import BytesVerifier, DictionaryVerifier, Verifier, BooleanVerifier, IntVerifier,\
     StringVerifier

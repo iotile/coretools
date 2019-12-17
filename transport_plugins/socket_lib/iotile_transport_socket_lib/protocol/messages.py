@@ -1,9 +1,10 @@
-"""The classes of messages supported by this websocket impementation."""
+"""The classes of messages supported by this socket impementation."""
 
-from iotile.core.utilities.schema_verify import Verifier, NoneVerifier, DictionaryVerifier, StringVerifier, LiteralVerifier, OptionsVerifier
+from iotile.core.utilities.schema_verify import Verifier, NoneVerifier, DictionaryVerifier, StringVerifier
+from iotile.core.utilities.schema_verify import LiteralVerifier, OptionsVerifier
 
 # The prescribed schema of command response messages
-# Messages with this format are automatically processed inside the ValidatingWSClient
+# Messages with this format are automatically processed inside the Client
 COMMAND = DictionaryVerifier()
 COMMAND.add_required('type', LiteralVerifier('command'))
 COMMAND.add_required('operation', StringVerifier())

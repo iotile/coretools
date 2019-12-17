@@ -76,8 +76,17 @@ class BGAPIPacket(object):
 
         #Write Command
         make_command(4, 6): ["BHA", ["handle", "char_handle", "value"]],
-        make_resp(4, 6): ["BH", ["handle", "result"]]
+        make_resp(4, 6): ["BH", ["handle", "result"]],
 
+        #Encrypt start
+        make_command(5, 0): ["BB", ["handle", "bonding"]],
+        make_resp(5, 0): ["BH", ["handle", "result"]],
+        #Bonding fail
+        make_event(5, 1): ["BH", ["handle", "result"]],
+
+        #Set OoB Data
+        make_command(5, 6): ["A", ["oob"]],
+        make_resp(5, 6): []
     }
 
     def __init__(self, packet, response):

@@ -58,18 +58,19 @@ DeviceAdapters and GatewayAgents together.  This program is called
 iotile-gateway package in CoreTools.
 
 The heavy lifting is done by an asynchronous event loop managed by the
-**DeviceManager** class.
+**AggregatingDeviceAdapter** class.
 
 .. py:module:: iotilegateway.device
 
-.. autoclass:: DeviceManager
+.. autoclass:: AggregatingDeviceAdapter
+    :noindex:
 
-By itself, DeviceManager does not allow serving access to IOTile Devices, it
+By itself, AggregatingDeviceAdapter does not allow serving access to IOTile Devices, it
 just aggregates multiple DeviceAdapters together and unifies the view of the
 devices that they can see.
 
 There still needs to be a way to configure what DeviceAdapters to add to the
-DeviceManager and to specify what GatewayAgents should be included as well.
+AggregatingDeviceAdapter and to specify what GatewayAgents should be included as well.
 
 This is performed by the **IOTileGateway** class.  IOTileGateway is designed
 for simple integration into host applications and forms the backbone of the
@@ -78,6 +79,7 @@ iotile-gateway command line program.
 .. py:module:: iotilegateway.gateway
 
 .. autoclass:: IOTileGateway
+    :noindex:
 
 The overall structure of the iotile-gateway system is shown in the figure below.
 You can see the different device adapters that can be used to find IOTile
@@ -94,7 +96,6 @@ Devices and the various gateway agents that allow users to access them.
 Key Concepts
 ############
 
-DeviceManager
     A class that takes multiple DeviceAdapters and merges all of the devices
     that they can see.  Requests to connect to individual devices are routed to
     the appropriate DeviceAdapter based on which adapters can see that device,

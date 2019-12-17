@@ -267,7 +267,7 @@ class BaseVirtualDevice:
         reading = IOTileReading(0, stream, value)
 
         report = IndividualReadingReport.FromReadings(self.iotile_id, [reading])
-        self.stream(report)
+        await self.stream(report)
 
     async def trace(self, data):
         """Trace data asynchronously.

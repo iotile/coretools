@@ -1,5 +1,4 @@
-"""An ordered list of authentication providers that are checked in turn to attempt a crypto operation"""
-
+"""An ordered list of authentication providers that are checked in turn to attempt to provide a key"""
 from iotile.core.exceptions import NotFoundError, ExternalError
 from iotile.core.dev import ComponentRegistry
 from .auth_provider import AuthProvider
@@ -45,136 +44,59 @@ class ChainedAuthProvider(AuthProvider):
         for name, entry in reg.load_extensions('iotile.auth_provider'):
             self._auth_factories[name] = entry
 
-    def encrypt_report(self, device_id, root, data, **kwargs):
-        """Encrypt a buffer of report data on behalf of a device.
+    def get_root_key(self, key_type, device_id):
+        """Deligates call to auth providers in the chain
 
         Args:
-            device_id (int): The id of the device that we should encrypt for
-            root (int): The root key type that should be used to generate the report
-            data (bytearray): The data that we should encrypt.
-            **kwargs: There are additional specific keyword args that are required
-                depending on the root key used.  Typically, you must specify
-                - report_id (int): The report id
-                - sent_timestamp (int): The sent timestamp of the report
-
-                These two bits of information are used to construct the per report
-                signing and encryption key from the specific root key type.
+            key_type (int): see KnownKeyRoots
+            device_id (int): uuid of the device
 
         Returns:
-            dict: The encrypted data and any associated metadata about the data.
-                The data itself must always be a bytearray stored under the 'data'
-                key, however additional keys may be present depending on the encryption method
-                used.
-
-        Raises:
-            NotFoundError: If the auth provider is not able to encrypt the data.
+            bytes: the root key
         """
-
         for _priority, provider in self.providers:
             try:
-                return provider.encrypt_report(device_id, root, data, **kwargs)
+                return provider.get_root_key(key_type, device_id)
             except NotFoundError:
                 pass
 
-        raise NotFoundError("encrypt_report method is not implemented in any sub_providers")
+        raise NotFoundError("get_serialized_key method is not implemented in any sub_providers")
 
-    def decrypt_report(self, device_id, root, data, **kwargs):
-        """Encrypt a buffer of report data on behalf of a device.
+    def get_serialized_key(self, key_type, device_id, **key_info):
+        """Deligates call to auth providers in the chain
 
         Args:
-            device_id (int): The id of the device that we should encrypt for
-            root (int): The root key type that should be used to generate the report
-            data (bytearray): The data that we should decrypt
-            **kwargs: There are additional specific keyword args that are required
-                depending on the root key used.  Typically, you must specify
-                - report_id (int): The report id
-                - sent_timestamp (int): The sent timestamp of the report
-
-                These two bits of information are used to construct the per report
-                signing and encryption key from the specific root key type.
+            key_type (int): see KnownKeyRoots
+            device_id (int): uuid of the device
+            key_info (dict): specific values for every auth provider
 
         Returns:
-            dict: The encrypted data and any associated metadata about the data.
-                The data itself must always be a bytearray stored under the 'data'
-                key, however additional keys may be present depending on the encryption method
-                used.
-
-        Raises:
-            NotFoundError: If the auth provider is not able to decrypt the data.
+            bytes: the serialized key
         """
-
         for _priority, provider in self.providers:
             try:
-                return provider.decrypt_report(device_id, root, data, **kwargs)
+                return provider.get_serialized_key(key_type, device_id, **key_info)
             except NotFoundError:
                 pass
 
-        raise NotFoundError("decrypt_report method is not implemented in any sub_providers")
+        raise NotFoundError("get_serialized_key method is not implemented in any sub_providers")
 
-    def sign_report(self, device_id, root, data, **kwargs):
-        """Sign a buffer of report data on behalf of a device.
+    def get_rotated_key(self, key_type, device_id, **rotation_info):
+        """Deligates call to auth providers in the chain
 
         Args:
-            device_id (int): The id of the device that we should encrypt for
-            root (int): The root key type that should be used to generate the report
-            data (bytearray): The data that we should sign
-            **kwargs: There are additional specific keyword args that are required
-                depending on the root key used.  Typically, you must specify
-                - report_id (int): The report id
-                - sent_timestamp (int): The sent timestamp of the report
-
-                These two bits of information are used to construct the per report
-                signing and encryption key from the specific root key type.
+            key_type (int): see KnownKeyRoots
+            device_id (int): uuid of the device
+            rotation_info (dict): specific value for every auth provider
 
         Returns:
-            dict: The signature and any associated metadata about the signature.
-                The signature itself must always be a bytearray stored under the
-                'signature' key, however additional keys may be present depending
-                on the signature method used.
-
-        Raises:
-            NotFoundError: If the auth provider is not able to sign the data.
+            bytes: the rotated key
         """
-
         for _priority, provider in self.providers:
             try:
-                return provider.sign_report(device_id, root, data, **kwargs)
+                return provider.get_rotated_key(key_type, device_id, **rotation_info)
             except NotFoundError:
                 pass
 
-        raise NotFoundError("sign_report method is not implemented in any sub_providers")
+        raise NotFoundError("get_rotated_key method is not implemented in any sub_providers")
 
-    def verify_report(self, device_id, root, data, signature, **kwargs):
-        """Verify a buffer of report data on behalf of a device.
-
-        Args:
-            device_id (int): The id of the device that we should encrypt for
-            root (int): The root key type that should be used to generate the report
-            data (bytearray): The data that we should verify
-            signature (bytearray): The signature attached to data that we should verify
-            **kwargs: There are additional specific keyword args that are required
-                depending on the root key used.  Typically, you must specify
-                - report_id (int): The report id
-                - sent_timestamp (int): The sent timestamp of the report
-
-                These two bits of information are used to construct the per report
-                signing and encryption key from the specific root key type.
-
-        Returns:
-            dict: The result of the verification process must always be a bool under the
-                'verified' key, however additional keys may be present depending on the
-                signature method used.
-
-        Raises:
-            NotFoundError: If the auth provider is not able to verify the data due to
-                an error.  If the data is simply not valid, then the function returns
-                normally.
-        """
-
-        for _priority, provider in self.providers:
-            try:
-                return provider.verify_report(device_id, root, data, signature, **kwargs)
-            except NotFoundError:
-                pass
-
-        raise NotFoundError("verify_report method is not implemented in any sub_providers")
