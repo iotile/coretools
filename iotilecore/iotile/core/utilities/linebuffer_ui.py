@@ -65,7 +65,7 @@ class LinebufferUI:
             from asciimatics.screen import Screen
         except ImportError:
             raise ExternalError("You must have asciimatics installed to use LinebufferUI",
-                                suggestion="pip install iotilecore[ui]")
+                                suggestion="pip install iotile-core[ui]")
 
         Screen.wrapper(self._run_loop, arguments=[refresh_interval])
 
