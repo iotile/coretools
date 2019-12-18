@@ -7,10 +7,7 @@ import yaml
 from iotile.core.exceptions import IOTileException
 from iotile.ship.recipe_manager import RecipeManager
 
-DESCRIPTION = \
-    u"""Load and run an iotile recipe.
-    
-    """
+DESCRIPTION = """Load and run an iotile recipe."""
 
 
 def build_args():
@@ -39,7 +36,7 @@ def load_variables(defines, config_file):
 
     if config_file is not None:
         with open(config_file, "r") as conf_file:
-            variables = yaml.load(conf_file)
+            variables = yaml.load(conf_file, Loader=yaml.FullLoader)
     else:
         variables = {}
 
