@@ -23,8 +23,8 @@ class HardwareManagerResource(SharedResource):
             it is destroyed.  This is an optional parameter.  If
             it is not specified the HardwareManager is not connected
             upon creation.
-        connect_direct: (str or int): The connection string of a device to connect 
-            directly to when this resource is created and disconnect from 
+        connect_direct: (str or int): The connection string of a device to connect
+            directly to when this resource is created and disconnect from
             when it is destroyed.  This is an optional parameter.  If
             it is not specified the HardwareManager is not connected
             upon creation.

@@ -1,25 +1,25 @@
 How CoreTools Works
 ===================
 
-CoreTools is architected to be modular in two major ways.  
+CoreTools is architected to be modular in two major ways.
 
 The first way is that it is distributed as a series of packages, so you can pick
-what you need to install depending on what you want to do.  If you don't plan on 
-building your own firmware, there's no reason to install ``iotile-build``.  
+what you need to install depending on what you want to do.  If you don't plan on
+building your own firmware, there's no reason to install ``iotile-build``.
 Everything else works perfectly without it.
 
 The second way is that CoreTools uses plugins heavily in order to allow users
 to swap in replacement functionality as needed.  For example, whenever CoreTools
 needs to search for a virtual IOTile Device it uses ``pkg_resources`` to look
 for all entry_points in the group ``iotile.virtual_device``.  You can provide
-your own virtual device by just pip installing a package that contains the 
-correct entry point. 
+your own virtual device by just pip installing a package that contains the
+correct entry point.
 
 Packages in CoreTools
 ---------------------
 
 iotile-core
-    The foundation of CoreTools, providing access to IOTile devices via 
+    The foundation of CoreTools, providing access to IOTile devices via
     HardwareManager as well as common utilities, the typedargs annotation system
     for the ``iotile`` tool and the ``virtual_device`` host program for creating
     virtual IOTile devices.
@@ -37,7 +37,7 @@ iotile-build
     designs are built and released.
 
 iotile-test
-    Mocks and routines for testing CoreTools and exercising its features.  
+    Mocks and routines for testing CoreTools and exercising its features.
 
 How the IOTile Tool Works
 -------------------------
@@ -47,8 +47,8 @@ functions and classes defined inside CoreTools or one of its installed plugins.
 
 The tool works by parsing commands given on the command line into python functions
 that can be executed.  Once a function is parsed, it is called and the return value
-is either printed or, if the function returns a specially decorated **context** 
-object, that object is set as the current context and used for resolving further 
+is either printed or, if the function returns a specially decorated **context**
+object, that object is set as the current context and used for resolving further
 commands.
 
 For example, consider the following ``iotile`` command line::
@@ -60,7 +60,7 @@ information to execute a command.  It starts in the **root context**. The root
 context only has a few commands defined as seen in ``iotile.core.scripts.iotile_script.py``::
 
     shell = HierarchicalShell('iotile', no_rc=norc)
-        
+
     shell.root_add("registry", "iotile.core.dev.annotated_registry,registry")
     shell.root_add('hw', "iotile.core.hw.hwmanager,HardwareManager")
 
@@ -80,6 +80,7 @@ to ``connect_direct``.
 
 .. autoclass:: HardwareManager
     :members: connect_direct, controller
+    :noindex:
 
 ``connect_direct`` does not return a context so the context for executing commands
 remains in the HardwareManager instance.  The next chunk of the command line is
@@ -93,7 +94,7 @@ So the flow is:
 2. connect_direct 1 calls a method on that instance
 3. controller calls a method on that instance that changes the current context
 4. quit terminates the shell.
-   
+
 To see how this works explicitly, we can execute the commands one by one and view
 how the current context changes as the result of each command::
 
@@ -104,8 +105,8 @@ how the current context changes as the result of each command::
     (SimpleProxy) quit
 
 .. note::
-    
-    The key idea to understand the iotile tools is that every command is a single 
+
+    The key idea to understand the iotile tools is that every command is a single
     python function call and the arguments on the command line are arguments passed
     to that function.
 
@@ -115,7 +116,7 @@ Type Conversions
 Since ``iotile`` commands call the same python functions that you would invoke
 directly from a python script, there needs to be some mapping between the strings
 that you pass on the command line and the native python types that the API functions
-accept as parameters.  This mapping and conversion is then done by the ``typedargs`` 
+accept as parameters.  This mapping and conversion is then done by the ``typedargs``
 package that is part of ``iotile-core``.  See :ref:`typedargs-reference` for more
 details.  It requires that functions you would like to call from ``iotile``
 be *annotated* with type information for their parameters and return value so
@@ -142,6 +143,7 @@ to specify how to display the information that they return, for example::
 
     If you pass ``string`` or ``str`` as a type to the ``@param`` decorator,
     you will always receive a unicode string.
+
 Adding Your Own Commands to the IOTile Tool
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -159,28 +161,28 @@ many different ways to talk to IOTile devices, including USB, BLE, Serial, etc.
 It would overly bloat CoreTools to include every possible way you could want to
 talk to an IOTile device.  On the other hand, many parts of CoreTools depend deeply
 on the ability to talk to an IOTile device, irrespective of how it happens to be
-connected.  
+connected.
 
-To allow for users to swap in new functionality into CoreTools, key areas are 
-delegated to plugins with a few default versions included and a mechanism to 
-easily add others.  
+To allow for users to swap in new functionality into CoreTools, key areas are
+delegated to plugins with a few default versions included and a mechanism to
+easily add others.
 
 The plugin mechanism is based on standard Python ``entry_points`` as defined
 in `pkg_resources`_.
 
 Any python distribution can define an entry point with a group name.  When CoreTools
 needs to look for a plugin, it searches all of the installed python distributions
-for entry points with the desired group name.  
+for entry points with the desired group name.
 
 .. warning::
-    
+
     Because of the ability to modify CoreTools through entry points, it is important
     to isolate different projects based on CoreTools from each other in their
     own virtual environments.  This is especially important in production settings
-    where careful control of the installed CoreTools plugins is essential for 
+    where careful control of the installed CoreTools plugins is essential for
     safe and robust usage.
 
-Entry points are defined in a package's ``setup.py`` file.  For example, 
+Entry points are defined in a package's ``setup.py`` file.  For example,
 the ``iotile-core`` package defines a number of entry points::
 
     setup(
@@ -223,12 +225,12 @@ iotile.virtual_device
     same way that physical IOTile devices are accessed.  See :ref:`virtualdevice`.
 
 iotile.device_adapter
-    Classes that allow access to an IOTile device over some kind of transport 
+    Classes that allow access to an IOTile device over some kind of transport
     mechanism such as USB, BLE, http, etc.  See :ref:`adapters`.
 
 iotile.virtual_interface
     Classes that provide access to a virtual IOTile device (i.e. one that does not
-    actually exist as real hardware) over some kind of transport mechanism.  You 
+    actually exist as real hardware) over some kind of transport mechanism.  You
     can think of virtual interfaces as the server portion of connecting to an
     IOTile device, whereas device adapters are the client portion.  For example,
     using a BLE virtual interface, you could turn a regular computer into an IOTile

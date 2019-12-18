@@ -9,12 +9,13 @@ import inspect
 from iotile.core.hw.exceptions import RPCInvalidArgumentsError, RPCInvalidReturnValueError
 from iotile.core.utilities import SharedLoop
 from iotile.core.exceptions import ArgumentError
-from iotile_transport_websocket import AsyncValidatingWSClient
+from iotile_transport_socket_lib.generic import AsyncSocketClient
+from iotile_transport_websocket.websocket_implementation import WebsocketClientImplementation
 from .protocol import OPERATIONS, MESSAGES
 from . import states
 
 
-class AsyncSupervisorClient(AsyncValidatingWSClient):
+class AsyncSupervisorClient(AsyncSocketClient):
     """A async websocket client that syncs the state of all known services.
 
     On creation it connects to the supervisor service and gets the
@@ -43,7 +44,9 @@ class AsyncSupervisorClient(AsyncValidatingWSClient):
     """
 
     def __init__(self, url, dispatcher=None, agent=None, logger_name=__name__, loop=SharedLoop):
-        super(AsyncSupervisorClient, self).__init__(url, loop=loop)
+
+        self.implementation = WebsocketClientImplementation(url)
+        super(AsyncSupervisorClient, self).__init__(self.implementation, loop=loop)
 
         # This is a multithreading lock so that we can use local_* methods
         # outside of the background loop and ensure that the underlying

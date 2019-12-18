@@ -415,7 +415,9 @@ class RecipeObject:
                 cleanup_errors.append((name, value, traceback))
 
         if len(cleanup_errors) > 0:
-            raise RecipeResourceManagementError(operation="resource cleanup", errors=cleanup_errors)
+            raise RecipeResourceManagementError("Clean Up errors during operation",
+                                                operation="resource cleanup",
+                                                errors=cleanup_errors)
 
     def run(self, variables=None, overrides=None):
         """Initialize and run this recipe.

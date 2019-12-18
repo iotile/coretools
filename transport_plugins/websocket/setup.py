@@ -9,17 +9,17 @@ setup(
     license="LGPLv3",
     install_requires=[
         "iotile-core>=5.0.0,<6",
-        "msgpack>=0.6.1,<1"
-        "msgpack>=0.6.1",
-        "websockets~=7.0"
+        "msgpack>=0.6.1,<1",
+        "websockets~=7.0",
+        "iotile-transport-socket-lib>=1.0.0"
     ],
     python_requires=">=3.5,<4",
     entry_points={
         'iotile.device_adapter': [
-            'ws = iotile_transport_websocket.device_adapter:WebSocketDeviceAdapter'
+            'ws = iotile_transport_websocket:WebSocketDeviceAdapter'
         ],
         'iotile.device_server': [
-            'websockets = iotile_transport_websocket.device_server:WebSocketDeviceServer'
+            'websockets = iotile_transport_websocket:WebSocketDeviceServer'
         ]
     },
     description="IOTile Websocket Transport Plugin",

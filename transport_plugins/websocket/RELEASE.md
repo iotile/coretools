@@ -2,6 +2,10 @@
 
 All major changes in each released version of the websocket transport plugin are listed here.
 
+## 3.1.0
+
+ - SRefactored plugin to allow for additional socket transports. Now depends on the new iotile_transport_socket_lib package.
+
 ## 3.0.0
 
 - Completely refactor to be based on `asyncio` and the `websockets` package

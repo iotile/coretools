@@ -64,7 +64,7 @@ def running_gateway(loop):
 
     loop.run_coroutine(gateway.start())
 
-    port = gateway.servers[0].port
+    port = gateway.servers[0].implementation.port
     hw = HardwareManager(port="ws:127.0.0.1:%d/iotile/v1" % port)
 
     yield hw, gateway

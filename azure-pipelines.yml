@@ -50,6 +50,7 @@ jobs:
       pip install -e ./transport_plugins/bled112/
       pip install -e ./transport_plugins/awsiot/
       pip install -e ./transport_plugins/jlink/
+      pip install -e ./transport_plugins/socket_lib/
       pip install -e ./transport_plugins/websocket/
       pip install -e ./iotilegateway/
       pip install -e ./iotilesensorgraph/
@@ -97,6 +98,7 @@ jobs:
       pip install -e ./transport_plugins/bled112/
       pip install -e ./transport_plugins/awsiot/
       pip install -e ./transport_plugins/jlink/
+      pip install -e ./transport_plugins/socket_lib/
       pip install -e ./transport_plugins/websocket/
       pip install -e ./iotilegateway/
       pip install -e ./iotilesensorgraph/

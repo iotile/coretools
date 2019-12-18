@@ -23,7 +23,7 @@ setup(
     install_requires=[
         "iotile-core>=5.0.0,<6",
         "msgpack>=0.6.1,<1",
-        "iotile-transport-websocket>=3.0.0,<4"
+        "iotile-transport-websocket>=3.1.0,<4"
     ],
     python_requires=">=3.5,<4",
     entry_points={

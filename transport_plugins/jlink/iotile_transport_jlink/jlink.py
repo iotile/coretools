@@ -337,6 +337,9 @@ class JLinkAdapter(StandardDeviceAdapter):
 
         self.opened_interfaces[interface] = True
 
+        if not self._control_info:
+            return # could do noting more, debug interface requires not actions to open
+
         if (interface == "tracing" or interface == "streaming") and self._control_info.version < 2:
             raise DeviceAdapterError(conn_id, 'open_interface',
                 'Controller firmware does not support streaming or tracing interfaces')

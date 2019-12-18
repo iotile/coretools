@@ -1,3 +1,4 @@
-from .generic import AsyncValidatingWSServer, AsyncValidatingWSClient
+from .websocket_adapter import WebSocketDeviceAdapter
+from .websocket_server import WebSocketDeviceServer
 
-__all__ = ['AsyncValidatingWSServer', 'AsyncValidatingWSClient']
+__all__ = ['WebSocketDeviceAdapter', 'WebSocketDeviceServer']

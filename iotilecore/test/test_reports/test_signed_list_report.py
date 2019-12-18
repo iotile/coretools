@@ -4,9 +4,10 @@ import pytest
 from iotile.core.exceptions import ExternalError
 from iotile.core.hw.reports.signed_list_format import SignedListReport
 from iotile.core.hw.reports.report import IOTileReading
+from iotile.core.hw.auth.env_auth_provider import EnvAuthProvider
 
 
-def make_sequential(iotile_id, stream, num_readings, give_ids=False, root_key=0):
+def make_sequential(iotile_id, stream, num_readings, give_ids=False, root_key=0, signer=None):
     readings = []
 
     for i in range(0, num_readings):
@@ -17,7 +18,7 @@ def make_sequential(iotile_id, stream, num_readings, give_ids=False, root_key=0)
 
         readings.append(reading)
 
-    report = SignedListReport.FromReadings(iotile_id, readings, root_key=root_key)
+    report = SignedListReport.FromReadings(iotile_id, readings, root_key=root_key, signer=signer)
     return report
 
 def test_basic_parsing():
@@ -56,11 +57,12 @@ def test_userkey_signing(monkeypatch):
     """Make sure we can sign and encrypt reports."""
 
     monkeypatch.setenv('USER_KEY_00000002', '0000000000000000000000000000000000000000000000000000000000000000')
+    signer = EnvAuthProvider()
 
     with pytest.raises(ExternalError):
-        report1 = make_sequential(1, 0x1000, 10, give_ids=True, root_key=1)
+        report1 = make_sequential(1, 0x1000, 10, give_ids=True, root_key=1, signer=signer)
 
-    report1 = make_sequential(2, 0x1000, 10, give_ids=True, root_key=1)
+    report1 = make_sequential(2, 0x1000, 10, give_ids=True, root_key=1, signer=signer)
 
     encoded = report1.encode()
     report2 = SignedListReport(encoded)

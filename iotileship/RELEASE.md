@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileShip are listed here.
 
+## 1.0.8
+
+- Fix py3 raw_input error in PromptStep
+- Fix exception cleanup in recipe
+
 ## 1.0.7
 
 - Unpin `iotile-core` to support iotile-core 5
@@ -16,7 +21,7 @@ All major changes in each released version of IOTileShip are listed here.
 
 ## 1.0.4
 
-- Change open mode from 'rb' to 'r'. 
+- Change open mode from 'rb' to 'r'.
 
 ## 1.0.3
 
@@ -32,7 +37,7 @@ All major changes in each released version of IOTileShip are listed here.
 
 ## 0.2.0
 
-- Refactor extension importing system to use new 
+- Refactor extension importing system to use new
   ComponentRegistry.load_extensions() functionality provided by `iotile-core`.
 
 ## 0.1.5
@@ -50,13 +55,13 @@ All major changes in each released version of IOTileShip are listed here.
 
 ## 0.1.2
 
-- SyncCloudStep has overwrite parameter default to False. Set to True if 
+- SyncCloudStep has overwrite parameter default to False. Set to True if
   cloud settings should be changed.
 - VerifyDeviceStep uses shared resources
 
 ## 0.1.1
 
-- HardwareManagerResource checks if connect_id is None before parsing it. 
+- HardwareManagerResource checks if connect_id is None before parsing it.
   Also added connect_direct as an option
 
 

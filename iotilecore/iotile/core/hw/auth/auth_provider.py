@@ -1,32 +1,16 @@
-"""Auth providers are classes that can encrypt, decrypt, sign or verify data from IOTile devics
-
-All auth providers must inherit from the AuthProvider class defined in this file and override the
-methods that it provides with their own implementations.
-"""
-
-#pylint:disable=C0103
+""" Interface that provides access to keys"""
 
 import hashlib
 import struct
 import hmac
-from iotile.core.dev import ComponentRegistry
-from iotile.core.exceptions import NotFoundError, ArgumentError
-
+from iotile.core.exceptions import NotFoundError
 
 class AuthProvider:
-    """Base class for all objects that provide a way to authenticate or protect data.
-
-    There are three kinds of things that are encrypted or signed in an IOTileDevice:
-
-    1. Reports: Reports are signed using a unique per report key derived from a root
-        key embedded on the device that guarantees its authenticity.
-    2. RPCs: RPCs are signed using a per-session key derived from a token generated
-        from a root key embedded on the device.
-    3. Scripts: Scripts are signed using a unique key derived from a root key embedded
-        on the device that guarantees its authenticity.
+    """Base class for all objects that provide a way to obtain a key
 
     Args:
         args (dict): An optional dictionary of AuthProvider specific config information
+            field "supported_keys" specify wich keys the AuthProvider supports
     """
 
     ReportKeyMagic = 0x00000002
@@ -46,27 +30,24 @@ class AuthProvider:
             args = {}
 
         self.args = args
+        self.supported_keys = self.args.get("supported_keys", [])
 
-    @classmethod
-    def FindByName(cls, name):
-        """Find a specific installed auth provider by name."""
-
-        reg = ComponentRegistry()
-        for _, entry in reg.load_extensions('iotile.auth_provider', name_filter=name):
-            return entry
-
-    @classmethod
-    def VerifyRoot(cls, root):
+    def verify_key(self, root_key_type):
         """Verify that the root key type is known to us.
+
+        Args:
+            root_key_type: requested key type
 
         Raises:
             NotFoundError: If the key type is not known.
         """
 
-        if root in cls.KnownKeyRoots:
-            return
+        if root_key_type not in self.KnownKeyRoots:
+            raise NotFoundError("Unknown key type", key=root_key_type)
 
-        raise NotFoundError("Unknown key type", key=root)
+        if root_key_type not in self.supported_keys:
+            raise NotFoundError("Not supported key type", key=root_key_type)
+
 
     @classmethod
     def DeriveReportKey(cls, root_key, report_id, sent_timestamp):
@@ -74,6 +55,14 @@ class AuthProvider:
 
         The standard method is HMAC-SHA256(root_key, MAGIC_NUMBER || report_id || sent_timestamp)
         where MAGIC_NUMBER is 0x00000002 and all integers are in little endian.
+
+        Args:
+            root_key (bytearray): 16 bytes with the key
+            report_id (int): id in report
+            sent_timestamp (int): timestamp in report
+
+        Returns:
+            bytearray: 32 bytes containing digest of id and timestamp
         """
 
         signed_data = struct.pack("<LLL", AuthProvider.ReportKeyMagic, report_id, sent_timestamp)
@@ -81,112 +70,121 @@ class AuthProvider:
         hmac_calc = hmac.new(root_key, signed_data, hashlib.sha256)
         return bytearray(hmac_calc.digest())
 
-    def encrypt_report(self, device_id, root, data, **kwargs):
-        """Encrypt a buffer of report data on behalf of a device.
+
+    @classmethod
+    def DeriveRebootKey(cls, root_key, key_purpose, reboot_counter):
+        """Derive a key generated on reboot
+
+        HMAC SHA-256-128(Root Key, key purpose (uint32_t) || reboot counter (uint32_t))
 
         Args:
-            device_id (int): The id of the device that we should encrypt for
-            root (int): The root key type that should be used to generate the report
-            data (bytearray): The data that we should encrypt.
-            **kwargs: There are additional specific keyword args that are required
-                depending on the root key used.  Typically, you must specify
-                - report_id (int): The report id
-                - sent_timestamp (int): The sent timestamp of the report
-
-                These two bits of information are used to construct the per report
-                signing and encryption key from the specific root key type.
+            root_key (bytearray): 16 bytes key
+            key_purpose (int): value to differentiate different keys,
+                for example with different permissions. Not used at the moment
+            reboot_counter (int): received in ble adv packet
 
         Returns:
-            dict: The encrypted data and any associated metadata about the data.
-                The data itself must always be a bytearray stored under the 'data'
-                key, however additional keys may be present depending on the encryption method
-                used.
-
-        Raises:
-            NotFoundError: If the auth provider is not able to encrypt the data.
+            bytearray: 16 bytes containing digest of key_purpose and reboot_counter
         """
+        signed_data = struct.pack("<LL", key_purpose, reboot_counter)
 
-        raise NotFoundError("encrypt_report method is not implemented")
+        hmac_calc = hmac.new(root_key, signed_data, hashlib.sha256)
+        return bytearray(hmac_calc.digest()[:16])
 
-    def decrypt_report(self, device_id, root, data, **kwargs):
-        """Encrypt a buffer of report data on behalf of a device.
+
+    @classmethod
+    def DeriveRotatedKey(cls, reboot_key, current_timestamp, rotation_interval_power):
+        """Derive an ephemeral key every 2^rotation_interval_power seconds,
+        The same key will be return if timeout of rotation is not elapsed
+
+        AES-128-ECB(Reboot Key, current_timestamp with low X bits masked to 0)
 
         Args:
-            device_id (int): The id of the device that we should encrypt for
-            root (int): The root key type that should be used to generate the report
-            data (bytearray): The data that we should decrypt
-            **kwargs: There are additional specific keyword args that are required
-                depending on the root key used.  Typically, you must specify
-                - report_id (int): The report id
-                - sent_timestamp (int): The sent timestamp of the report
-
-                These two bits of information are used to construct the per report
-                signing and encryption key from the specific root key type.
+            reboot_key (bytearray): 16 bytes key
+            current_timestamp (int): current time
+            rotation_interval_power (int): X in 2^X
 
         Returns:
-            dict: The encrypted data and any associated metadata about the data.
-                The data itself must always be a bytearray stored under the 'data'
-                key, however additional keys may be present depending on the encryption method
-                used.
-
-        Raises:
-            NotFoundError: If the auth provider is not able to decrypt the data.
+            bytearray: the rotated key
         """
+        timestamp = current_timestamp & (~(2 ** rotation_interval_power - 1))
 
-        raise NotFoundError("decrypt_report method is not implemented")
+        try:
+            from Crypto.Cipher import AES
+        except ImportError as error:
+            raise NotFoundError("Cryptographic library is not available") from error
 
-    def sign_report(self, device_id, root, data, **kwargs):
-        """Sign a buffer of report data on behalf of a device.
+        cipher = AES.new(reboot_key, AES.MODE_ECB)
+        msg = struct.pack("<LLLL", timestamp, 0, 0, 0)
+
+        return cipher.encrypt(msg)
+
+
+    def get_serialized_key(self, key_type, device_id, **key_info):
+        """Get a serialized key such for signing a streamer report.
+
+        These keys are designed to only be used once and only provide
+            access to the object of key_type with the given serial_number
 
         Args:
-            device_id (int): The id of the device that we should encrypt for
-            root (int): The root key type that should be used to generate the report
-            data (bytearray): The data that we should sign
-            **kwargs: There are additional specific keyword args that are required
-                depending on the root key used.  Typically, you must specify
-                - report_id (int): The report id
-                - sent_timestamp (int): The sent timestamp of the report
-
-                These two bits of information are used to construct the per report
-                signing and encryption key from the specific root key type.
+            key_type (int): no key, user key or device key
+            device_id (int): UUID of the device
+            key_info (dict): data required for key generation.
+                It may be report_id and sent_timestamp
 
         Returns:
-            dict: The signature and any associated metadata about the signature.
-                The signature itself must always be a bytearray stored under the
-                'signature' key, however additional keys may be present depending
-                on the signature method used.
-
-        Raises:
-            NotFoundError: If the auth provider is not able to sign the data.
+            bytearray: the key
         """
+        raise NotImplementedError()
 
-        raise NotFoundError("sign_report method is not implemented")
 
-    def verify_report(self, device_id, root, data, signature, **kwargs):
-        """Verify a buffer of report data on behalf of a device.
+    def get_rotated_key(self, key_type, device_id, **rotation_info):
+        """Get a key that is only valid for a limit period of time.
 
         Args:
-            device_id (int): The id of the device that we should encrypt for
-            root (int): The root key type that should be used to generate the report
-            data (bytearray): The data that we should verify
-            signature (bytearray): The signature attached to data that we should verify
-            **kwargs: There are additional specific keyword args that are required
-                depending on the root key used.  Typically, you must specify
-                - report_id (int): The report id
-                - sent_timestamp (int): The sent timestamp of the report
-
-                These two bits of information are used to construct the per report
-                signing and encryption key from the specific root key type.
+            key_type (int): no key, user key or device key
+            device_id (int): UUID of the device
+            key_info (dict): data that describes the conditions when
+                the key is rotated. For example, for a broadcast report key
+                it may be the reboot counter of the
+                device, the current uptime and the rotation interval of the key.
 
         Returns:
-            dict: The result of the verification process must always be a bool under the
-                'verified' key, however additional keys may be present depending on the
-                signature method used.
+            bytearray: the rotated key
+        """
+        raise NotImplementedError()
 
-        Raises:
-            NotFoundError: If the auth provider is not able to verify the data due to
-                an error.  If the data is simply not valid, then the function returns
-                normally.
+
+    def get_root_key(self, key_type, device_id):
+        """Get the actual root key of a given type for a device.
+
+        Few AuthProvider classes should actually implement this method
+        since it's safer to only handle derived keys that give specific
+        abilities.  For AuthProviders that have access to the root key
+            though, the other methods can be provided via a mixin from this
+            root method.
+
+        Args:
+            key_type (int): no key, user key or device key
+            device_id (int): UUID of the device
+
+        Returns:
+            bytearray: the root key
         """
 
-        raise NotFoundError("verify method is not implemented")
+        raise NotImplementedError()
+
+
+    def get_device_access_key(self, key_type, device_id, scope):
+        """Future method for scoped access tokens to device.
+
+        Args:
+            key_type (int): no key, user key or device key
+            device_id (int): UUID of the device
+            scope (int): permissions that will be granted with this key
+
+        Returns:
+            bytearray: the key
+
+        """
+        raise NotImplementedError()
