@@ -23,7 +23,8 @@ setup(
     license="LGPLv3",
     install_requires=[
         "iotile-core>=5.0.0,<6",
-        "pyaml>=18.11.0,<19"
+        "pyaml>=18.11.0,<19",
+        "pyyaml>5.1,<6"
     ],
     python_requires=">=3.5,<4",
     include_package_data=True,
