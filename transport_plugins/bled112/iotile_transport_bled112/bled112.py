@@ -664,17 +664,13 @@ class BLED112Adapter(DeviceAdapter):
         #   bit 0: Has pending data to stream
         #   bit 1: Low voltage indication
         #   bit 2: User connected
-        #   bit 3: Broadcast data is encrypted
-        #   bit 4: Encryption key is device key
-        #   bit 5: Encryption key is user key
+        #   bit 3 - 5: Broadcast encryption key type
         #   bit 6: broadcast data is time synchronized to avoid leaking
         #   information about when it changes
         is_pending_data = bool(flags & (1 << 0))
         is_low_voltage = bool(flags & (1 << 1))
         is_user_connected = bool(flags & (1 << 2))
-        is_encrypted = bool(flags & (1 << 3))
-        is_device_key = bool(flags & (1 << 4))
-        is_user_key = bool(flags & (1 << 5))
+        broadcast_encryption_key_type = (flags >> 3) & 7
 
         self._device_scan_counts.setdefault(device_id, {'v1': 0, 'v2': 0})['v2'] += 1
 
@@ -691,24 +687,17 @@ class BLED112Adapter(DeviceAdapter):
                 'battery': battery / 32.0,
                 'advertising_version':2}
 
-        key_type = AuthProvider.NoKey
-        if is_encrypted:
-            if is_device_key:
-                key_type = AuthProvider.DeviceKey
-            elif is_user_key:
-                key_type = AuthProvider.UserKey
-
-        if is_encrypted:
+        if broadcast_encryption_key_type:
             if not _HAS_CRYPTO:
                 return info, timestamp, None, None, None, None, None
 
             try:
-                key = self._key_provider.get_rotated_key(key_type, device_id,
+                key = self._key_provider.get_rotated_key(broadcast_encryption_key_type, device_id,
                     reboot_counter=reboots,
                     rotation_interval_power=EPHEMERAL_KEY_CYCLE_POWER,
                     current_timestamp=timestamp)
             except NotFoundError:
-                self._logger.warning("Key type {} is not found".format(key_type), exc_info=True)
+                self._logger.warning("Key type {} is not found".format(broadcast_encryption_key_type), exc_info=True)
                 return info, timestamp, None, None, None, None, None
 
             nonce = generate_nonce(device_id, timestamp, reboot_low, reboot_high_packed, counter_packed)

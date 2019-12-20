@@ -10,6 +10,7 @@ All major changes in each released version of `iotile-core` are listed here.
 - Add shim to make `iotile-core` compatible with Python 3.8.0 on Windows.  There is a bug in
   that python version that breaks background event loops only on Windows.  It is fixed in
   python 3.8.1.
+- Add new BLE broadcast encryption method: Encrypted with NullKey
 
 ## 5.0.11
 

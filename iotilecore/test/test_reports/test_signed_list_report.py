@@ -5,9 +5,10 @@ from iotile.core.exceptions import ExternalError
 from iotile.core.hw.reports.signed_list_format import SignedListReport
 from iotile.core.hw.reports.report import IOTileReading
 from iotile.core.hw.auth.env_auth_provider import EnvAuthProvider
+from iotile.core.hw.auth.auth_provider import AuthProvider
 
 
-def make_sequential(iotile_id, stream, num_readings, give_ids=False, root_key=0, signer=None):
+def make_sequential(iotile_id, stream, num_readings, give_ids=False, root_key=AuthProvider.NoKey, signer=None):
     readings = []
 
     for i in range(0, num_readings):
@@ -60,15 +61,15 @@ def test_userkey_signing(monkeypatch):
     signer = EnvAuthProvider()
 
     with pytest.raises(ExternalError):
-        report1 = make_sequential(1, 0x1000, 10, give_ids=True, root_key=1, signer=signer)
+        report1 = make_sequential(1, 0x1000, 10, give_ids=True, root_key=AuthProvider.UserKey, signer=signer)
 
-    report1 = make_sequential(2, 0x1000, 10, give_ids=True, root_key=1, signer=signer)
+    report1 = make_sequential(2, 0x1000, 10, give_ids=True, root_key=AuthProvider.UserKey, signer=signer)
 
     encoded = report1.encode()
     report2 = SignedListReport(encoded)
 
-    assert report1.signature_flags == 1
-    assert report2.signature_flags == 1
+    assert report1.signature_flags == AuthProvider.UserKey
+    assert report2.signature_flags == AuthProvider.UserKey
     assert report1.verified
     assert report1.encrypted
     assert report2.verified

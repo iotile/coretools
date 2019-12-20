@@ -16,11 +16,13 @@ class AuthProvider:
     ReportKeyMagic = 0x00000002
 
     NoKey = 0
-    UserKey = 1
-    DeviceKey = 2
+    NullKey = 1
+    UserKey = 2
+    DeviceKey = 3
 
     KnownKeyRoots = {
         NoKey: 'no_key',
+        NullKey: 'null_key',
         UserKey: 'user_key',
         DeviceKey: 'device_key'
     }
