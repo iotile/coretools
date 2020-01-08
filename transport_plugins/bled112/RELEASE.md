@@ -2,7 +2,7 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
-## HEAD
+## 3.0.3
 
 - Fix bled112_auth error handling
 
