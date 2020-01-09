@@ -269,10 +269,9 @@ class BLED112CommandProcessor(threading.Thread):
         return success, data
 
     def send_auth_client_request(self, payload, conn_handle, services, timeout=1.0):
-        auth_server_write_handle = services[TileBusService]['characteristics'][TileBusAuthServerWriteCharacteristic]['handle']
-        auth_client_write_handle = services[TileBusService]['characteristics'][TileBusAuthClientWriteCharacteristic]['handle']
+        auth_handle = services[TileBusService]['characteristics'][TileBusAuthCharacteristic]['handle']
 
-        result, value = self._write_handle(conn_handle, auth_client_write_handle, False, bytes(payload))
+        result, value = self._write_handle(conn_handle, auth_handle, False, bytes(payload))
 
         if not result:
             return result, value
@@ -280,7 +279,7 @@ class BLED112CommandProcessor(threading.Thread):
         def notified_payload(event):
             if event.command_class == 4 and event.command == 5:
                 event_handle, att_handle = unpack("<BH", event.payload[0:3])
-                return event_handle == conn_handle and att_handle == auth_server_write_handle
+                return event_handle == conn_handle and att_handle == auth_handle
 
         events = self._wait_process_events(timeout, lambda x: False, notified_payload)
 
@@ -288,16 +287,16 @@ class BLED112CommandProcessor(threading.Thread):
         if len(events) != 0:
             _, response_payload = process_notification(events[0])
         else: # notification did not arrived, just read the value
-            success, result = self._read_handle(conn_handle, auth_server_write_handle, timeout)
+            success, result = self._read_handle(conn_handle, auth_handle, timeout)
             if success:
                 response_payload = result['data']
 
         return response_payload
 
     def _check_is_authentication_required_async(self, conn_handle, services, timeout=1.0):
-        if TileBusFlagsCharacteristic in services[TileBusService]['characteristics']:
-            flags_handle = services[TileBusService]['characteristics'][TileBusFlagsCharacteristic]['handle']
-            return self._read_handle(conn_handle, flags_handle, timeout)
+        if TileBusInfoCharacteristic in services[TileBusService]['characteristics']:
+            info_handle = services[TileBusService]['characteristics'][TileBusInfoCharacteristic]['handle']
+            return self._read_handle(conn_handle, info_handle, timeout)
         else: # in case the device does not support authentication
             return False, None
 
