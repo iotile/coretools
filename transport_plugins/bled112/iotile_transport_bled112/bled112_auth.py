@@ -86,10 +86,6 @@ class BLED112AuthManager:
         session_key = hmac.new(scoped_token, self._client_nonce + self._device_nonce, hashlib.sha256).digest()
         return session_key
 
-    def _compute_session_key_security_level_0(self, uuid=b'\x00'):
-        scoped_token = uuid + b'\x00' * (32 - len(uuid)) #FIXME uuid
-        return self._compute_session_key_security_level_1(scoped_token=scoped_token)
-
     def _compute_server_verify(self, session_key):
         data = self._client_hello + self._server_hello + self._client_verify
         return hmac.new(session_key, data, hashlib.sha256).digest()[0:16]
@@ -131,12 +127,13 @@ class BLED112AuthManager:
             return False, {"reason": "{} is not supported, bitmap of supported: {}".format(auth_method, bin(server_supported_auth))}
 
         if auth_method == AuthType.AUTH_METHOD_0:
-            self._session_key = self._compute_session_key_security_level_0()
+            root_key = self._key_provider.get_root_key(key_type=ChainedAuthProvider.NullKey, device_id=uuid)
         elif auth_method == AuthType.AUTH_METHOD_1:
             root_key = self._key_provider.get_root_key(key_type=ChainedAuthProvider.UserKey, device_id=uuid)
-            self._session_key = self._compute_session_key_security_level_1(root_key=root_key)
         else:
             return False, {"reason": "Auth type is not implemented {}".format(auth_method)}
+
+        self._session_key = self._compute_session_key_security_level_1(root_key=root_key)
 
         err, granted_permissions, received_server_verify = \
             self._send_client_verify(self._session_key, auth_type, command_processor, *command_processor_args)

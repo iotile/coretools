@@ -7,6 +7,8 @@ All major changes in each released version of the bled112 transport plugin are l
 - Refactor BLE broadcast encryption flags: three bits are treated as an enumeration
 - Consilidate two authentication characteristics into one
 - Update info characteristic
+- Remove separate logic for NullKey encryption temp key generation, the temp key is
+  generated the same way it is done for user key
 
 ## 3.0.3
 
