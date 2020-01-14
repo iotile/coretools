@@ -6,6 +6,7 @@ All major changes in each released version of the bled112 transport plugin are l
 
 - Refactor BLE broadcast encryption flags: three bits are treated as an enumeration
 - Consilidate two authentication characteristics into one
+- Update info characteristic
 
 ## 3.0.3
 

@@ -311,6 +311,10 @@ class BLED112Adapter(DeviceAdapter):
 
         services = self._connections[found_handle]['services']
 
+        if self.check_is_rpc_in_progress(found_handle, services):
+            callback(conn_id, self.id, False, 'RPC still in progress', None, None)
+            return
+
         self._command_task.async_command(['_send_rpc', found_handle, services, address, rpc_id, payload, timeout], self._send_rpc_finished,
                                          {'connection_id': conn_id, 'handle': found_handle,
                                           'callback': callback})
@@ -859,6 +863,27 @@ class BLED112Adapter(DeviceAdapter):
                                           'handle': handle,
                                           'services': services})
 
+    def check_is_rpc_in_progress(self, handle, services):
+        """ Discover if the device handles RPC at the moment
+
+        Another RPC should not be sent to the device if handling of previous
+        is not finished
+
+        Args:
+            handle (int): a handle to the connection on the BLED112 dongle
+            services (dict): A dictionary of GATT services produced by probe_services()
+
+        Returns:
+            bool: True if RPC is being handled at the moment
+        """
+        RPC_IN_PROGRESS_FLAG = 0x0001
+        try:
+            value = self._command_task.sync_command(["get_info_flags", handle, services])
+            version, _, high_flags = struct.unpack("BBH16x", value['data'])
+            return (high_flags & RPC_IN_PROGRESS_FLAG) == 0x01
+        except HardwareError:
+            return False
+
     def initialize_system_sync(self):
         """Remove all active connections and query the maximum number of supported connections
         """
@@ -1114,8 +1139,8 @@ class BLED112Adapter(DeviceAdapter):
         context = result['context']
 
         if result['result']:
-            flags, = struct.unpack("B", result['return_value']['data'])
-            if flags == 0x01:
+            version, security_flags, _ = struct.unpack("BBH16x", result['return_value']['data'])
+            if security_flags == 0x01:
                 self._logger.debug("Authentication is required")
 
                 self.authenticate(context['uuid'], context['connection_id'],

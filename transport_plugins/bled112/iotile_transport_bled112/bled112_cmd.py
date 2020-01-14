@@ -300,6 +300,14 @@ class BLED112CommandProcessor(threading.Thread):
         else: # in case the device does not support authentication
             return False, None
 
+    def get_info_flags(self, conn_handle, services, timeout=1.0):
+        """Read info characteristic"""
+        if TileBusInfoCharacteristic in services[TileBusService]['characteristics']:
+            info_handle = services[TileBusService]['characteristics'][TileBusInfoCharacteristic]['handle']
+            return self._read_handle(conn_handle, info_handle, timeout)
+        else:
+            return False, None
+
     def _enable_rpcs(self, conn, services, timeout=1.0):
         """Prepare this device to receive RPCs
         """
