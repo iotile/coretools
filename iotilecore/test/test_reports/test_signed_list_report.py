@@ -9,6 +9,17 @@ from iotile.core.hw.auth.auth_provider import AuthProvider
 
 
 def make_sequential(iotile_id, stream, num_readings, give_ids=False, root_key=AuthProvider.NoKey, signer=None):
+    """Create sequaltial report from reading
+
+    Args:
+        iotile_id (int): The uuid of the device that this report came from
+        stream (int): The stream that these readings are part of
+        num_readings(int): amount of readings
+        give_ids(bool): whether to set sequantial id for every reading
+        root_key(int): type of root key to sign the report
+        signer (AuthProvider): An optional preconfigured AuthProvider that should be used to sign this
+            report.  If no AuthProvider is provided, the default ChainedAuthProvider is used.
+    """
     readings = []
 
     for i in range(0, num_readings):
@@ -23,8 +34,7 @@ def make_sequential(iotile_id, stream, num_readings, give_ids=False, root_key=Au
     return report
 
 def test_basic_parsing():
-    """Make sure we can decode a signed report
-    """
+    """Make sure we can decode a signed report"""
 
     report = make_sequential(1, 0x1000, 10)
     encoded = report.encode()
@@ -42,8 +52,7 @@ def test_basic_parsing():
     assert report.signature_flags == 0
 
 def test_footer_calculation():
-    """
-    """
+    """Test if make_sesuentail set properly ids"""
 
     report1 = make_sequential(1, 0x1000, 10, give_ids=False)
     report2 = make_sequential(1, 0x1000, 10, give_ids=True)
