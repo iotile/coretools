@@ -16,13 +16,17 @@ class AuthProvider:
     ReportKeyMagic = 0x00000002
 
     NoKey = 0
-    UserKey = 1
-    DeviceKey = 2
+    NullKey = 1
+    UserKey = 2
+    DeviceKey = 3
+    PasswordBasedKey = 4
 
     KnownKeyRoots = {
         NoKey: 'no_key',
+        NullKey: 'null_key',
         UserKey: 'user_key',
-        DeviceKey: 'device_key'
+        DeviceKey: 'device_key',
+        PasswordBasedKey: 'pasword_based_userkey'
     }
 
     def __init__(self, args=None):
@@ -48,6 +52,19 @@ class AuthProvider:
         if root_key_type not in self.supported_keys:
             raise NotFoundError("Not supported key type", key=root_key_type)
 
+    @classmethod
+    def DeriveRebootKeyFromPassword(cls, password):
+        """Derive the root key from the user password
+        TODO hashlib.pbkdf2_hmac arguments needs to be revised,
+            current values are not proved to be secure
+
+        Args:
+            password (str): user password
+
+        Returns:
+            bytes: derived key
+        """
+        return hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), b'salt', 100000)
 
     @classmethod
     def DeriveReportKey(cls, root_key, report_id, sent_timestamp):

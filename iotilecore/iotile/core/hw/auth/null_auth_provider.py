@@ -10,7 +10,7 @@ class NullAuthProvider(RootKeyAuthProvider):
         if args is None:
             args = {}
 
-        args['supported_keys'] = [self.NoKey]
+        args['supported_keys'] = [self.NullKey]
 
         super().__init__(args)
 

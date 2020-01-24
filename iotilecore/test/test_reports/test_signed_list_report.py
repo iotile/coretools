@@ -5,9 +5,21 @@ from iotile.core.exceptions import ExternalError
 from iotile.core.hw.reports.signed_list_format import SignedListReport
 from iotile.core.hw.reports.report import IOTileReading
 from iotile.core.hw.auth.env_auth_provider import EnvAuthProvider
+from iotile.core.hw.auth.auth_provider import AuthProvider
 
 
-def make_sequential(iotile_id, stream, num_readings, give_ids=False, root_key=0, signer=None):
+def make_sequential(iotile_id, stream, num_readings, give_ids=False, root_key=AuthProvider.NoKey, signer=None):
+    """Create sequaltial report from reading
+
+    Args:
+        iotile_id (int): The uuid of the device that this report came from
+        stream (int): The stream that these readings are part of
+        num_readings(int): amount of readings
+        give_ids(bool): whether to set sequantial id for every reading
+        root_key(int): type of root key to sign the report
+        signer (AuthProvider): An optional preconfigured AuthProvider that should be used to sign this
+            report.  If no AuthProvider is provided, the default ChainedAuthProvider is used.
+    """
     readings = []
 
     for i in range(0, num_readings):
@@ -22,8 +34,7 @@ def make_sequential(iotile_id, stream, num_readings, give_ids=False, root_key=0,
     return report
 
 def test_basic_parsing():
-    """Make sure we can decode a signed report
-    """
+    """Make sure we can decode a signed report"""
 
     report = make_sequential(1, 0x1000, 10)
     encoded = report.encode()
@@ -41,8 +52,7 @@ def test_basic_parsing():
     assert report.signature_flags == 0
 
 def test_footer_calculation():
-    """
-    """
+    """Test if make_sesuentail set properly ids"""
 
     report1 = make_sequential(1, 0x1000, 10, give_ids=False)
     report2 = make_sequential(1, 0x1000, 10, give_ids=True)
@@ -60,15 +70,15 @@ def test_userkey_signing(monkeypatch):
     signer = EnvAuthProvider()
 
     with pytest.raises(ExternalError):
-        report1 = make_sequential(1, 0x1000, 10, give_ids=True, root_key=1, signer=signer)
+        report1 = make_sequential(1, 0x1000, 10, give_ids=True, root_key=AuthProvider.UserKey, signer=signer)
 
-    report1 = make_sequential(2, 0x1000, 10, give_ids=True, root_key=1, signer=signer)
+    report1 = make_sequential(2, 0x1000, 10, give_ids=True, root_key=AuthProvider.UserKey, signer=signer)
 
     encoded = report1.encode()
     report2 = SignedListReport(encoded)
 
-    assert report1.signature_flags == 1
-    assert report2.signature_flags == 1
+    assert report1.signature_flags == AuthProvider.UserKey
+    assert report2.signature_flags == AuthProvider.UserKey
     assert report1.verified
     assert report1.encrypted
     assert report2.verified

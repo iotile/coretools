@@ -311,6 +311,10 @@ class BLED112Adapter(DeviceAdapter):
 
         services = self._connections[found_handle]['services']
 
+        if self.check_is_rpc_in_progress(found_handle, services):
+            callback(conn_id, self.id, False, 'RPC still in progress', None, None)
+            return
+
         self._command_task.async_command(['_send_rpc', found_handle, services, address, rpc_id, payload, timeout], self._send_rpc_finished,
                                          {'connection_id': conn_id, 'handle': found_handle,
                                           'callback': callback})
@@ -664,17 +668,13 @@ class BLED112Adapter(DeviceAdapter):
         #   bit 0: Has pending data to stream
         #   bit 1: Low voltage indication
         #   bit 2: User connected
-        #   bit 3: Broadcast data is encrypted
-        #   bit 4: Encryption key is device key
-        #   bit 5: Encryption key is user key
+        #   bit 3 - 5: Broadcast encryption key type
         #   bit 6: broadcast data is time synchronized to avoid leaking
         #   information about when it changes
         is_pending_data = bool(flags & (1 << 0))
         is_low_voltage = bool(flags & (1 << 1))
         is_user_connected = bool(flags & (1 << 2))
-        is_encrypted = bool(flags & (1 << 3))
-        is_device_key = bool(flags & (1 << 4))
-        is_user_key = bool(flags & (1 << 5))
+        broadcast_encryption_key_type = (flags >> 3) & 7
 
         self._device_scan_counts.setdefault(device_id, {'v1': 0, 'v2': 0})['v2'] += 1
 
@@ -691,24 +691,17 @@ class BLED112Adapter(DeviceAdapter):
                 'battery': battery / 32.0,
                 'advertising_version':2}
 
-        key_type = AuthProvider.NoKey
-        if is_encrypted:
-            if is_device_key:
-                key_type = AuthProvider.DeviceKey
-            elif is_user_key:
-                key_type = AuthProvider.UserKey
-
-        if is_encrypted:
+        if broadcast_encryption_key_type:
             if not _HAS_CRYPTO:
                 return info, timestamp, None, None, None, None, None
 
             try:
-                key = self._key_provider.get_rotated_key(key_type, device_id,
+                key = self._key_provider.get_rotated_key(broadcast_encryption_key_type, device_id,
                     reboot_counter=reboots,
                     rotation_interval_power=EPHEMERAL_KEY_CYCLE_POWER,
                     current_timestamp=timestamp)
             except NotFoundError:
-                self._logger.warning("Key type {} is not found".format(key_type), exc_info=True)
+                self._logger.warning("Key type {} is not found".format(broadcast_encryption_key_type), exc_info=True)
                 return info, timestamp, None, None, None, None, None
 
             nonce = generate_nonce(device_id, timestamp, reboot_low, reboot_high_packed, counter_packed)
@@ -869,6 +862,27 @@ class BLED112Adapter(DeviceAdapter):
                                           'connection_id': conn_id,
                                           'handle': handle,
                                           'services': services})
+
+    def check_is_rpc_in_progress(self, handle, services):
+        """ Discover if the device handles RPC at the moment
+
+        Another RPC should not be sent to the device if handling of previous
+        is not finished
+
+        Args:
+            handle (int): a handle to the connection on the BLED112 dongle
+            services (dict): A dictionary of GATT services produced by probe_services()
+
+        Returns:
+            bool: True if RPC is being handled at the moment
+        """
+        RPC_IN_PROGRESS_FLAG = 0x0001
+        try:
+            value = self._command_task.sync_command(["get_info_flags", handle, services])
+            version, _, high_flags = struct.unpack("BBH16x", value['data'])
+            return (high_flags & RPC_IN_PROGRESS_FLAG) == 0x01
+        except HardwareError:
+            return False
 
     def initialize_system_sync(self):
         """Remove all active connections and query the maximum number of supported connections
@@ -1125,8 +1139,8 @@ class BLED112Adapter(DeviceAdapter):
         context = result['context']
 
         if result['result']:
-            flags, = struct.unpack("B", result['return_value']['data'])
-            if flags == 0x01:
+            version, security_flags, _ = struct.unpack("BBH16x", result['return_value']['data'])
+            if security_flags == 0x01:
                 self._logger.debug("Authentication is required")
 
                 self.authenticate(context['uuid'], context['connection_id'],
