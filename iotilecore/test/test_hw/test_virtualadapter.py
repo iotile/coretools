@@ -7,7 +7,7 @@
 # are copyright Arch Systems Inc.
 
 from iotile.core.hw.hwmanager import HardwareManager
-from iotile.core.hw.reports.signed_list_format import SignedListReport
+from iotile.core.hw.reports.signed_list_format import SignedListReport, ReportSignatureFlags
 from iotile.core.hw.exceptions import *
 from iotile.core.exceptions import *
 from iotile.core.dev import ComponentRegistry
@@ -155,7 +155,7 @@ def test_config_file2(conf2_report_hw, monkeypatch):
 
     for report in conf2_report_hw.iter_reports():
         assert report.verified
-        assert report.signature_flags == 1
+        assert report.signature_flags == ReportSignatureFlags.SIGNED_WITH_USER_KEY
         assert report.lowest_id >= 1
         assert report.highest_id > report.lowest_id
         assert isinstance(report, SignedListReport)

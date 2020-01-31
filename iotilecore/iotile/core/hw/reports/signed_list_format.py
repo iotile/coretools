@@ -4,12 +4,18 @@ import datetime
 import struct
 import hashlib
 import hmac
+from enum import IntEnum
 from .report import IOTileReport, IOTileReading
 from iotile.core.utilities.packed import unpack
 from iotile.core.exceptions import NotFoundError, ExternalError
 from iotile.core.hw.auth.auth_provider import AuthProvider
 from iotile.core.hw.auth.auth_chain import ChainedAuthProvider
 
+class ReportSignatureFlags(IntEnum):
+    """Types of stream report signature"""
+    SIGNED_WITH_HASH = 0
+    SIGNED_WITH_USER_KEY = 1
+    SIGNED_WITH_DEVICE_KEY = 2
 
 class SignedListReport(IOTileReport):
     """A report that consists of a signed list of readings.
@@ -22,6 +28,45 @@ class SignedListReport(IOTileReport):
 
     def __init__(self, rawreport, **kwargs):
         super(SignedListReport, self).__init__(rawreport, signed=True, encrypted=False, **kwargs)
+
+    @classmethod
+    def KeyTypeToStreamType(cls, key_type):
+        """Converts key type into the type of signed report that can be encrypted with this key
+
+        Args:
+            int: a type of the key, see AuthProvider
+
+        Returns:
+            ReportSignatureFlags: a type of the stream report
+        """
+        if key_type == AuthProvider.NoKey:
+            return ReportSignatureFlags.SIGNED_WITH_HASH
+        elif key_type == AuthProvider.UserKey:
+            return ReportSignatureFlags.SIGNED_WITH_USER_KEY
+        elif key_type == AuthProvider.DeviceKey:
+            return ReportSignatureFlags.SIGNED_WITH_DEVICE_KEY
+        else:
+            raise ExternalError("Unsupported key type {}".format(key_type))
+
+    @classmethod
+    def StreamTypeToKeyType(cls, stream_type):
+        """Converts the stream type into the key type that was used to encryped this stream report
+
+        Args:
+            ReportSignatureFlags: a type of the stream report
+
+        Returns:
+            int: type of key, see AuthProvider
+        """
+
+        if stream_type == ReportSignatureFlags.SIGNED_WITH_HASH:
+            return AuthProvider.NoKey
+        elif stream_type == ReportSignatureFlags.SIGNED_WITH_USER_KEY:
+            return AuthProvider.UserKey
+        elif stream_type == ReportSignatureFlags.SIGNED_WITH_DEVICE_KEY:
+            return AuthProvider.DeviceKey
+        else:
+            raise ExternalError("Unsupported stream signature type {}".format(stream_type))
 
     @classmethod
     def HeaderLength(cls):
@@ -251,8 +296,9 @@ class SignedListReport(IOTileReport):
             lowest_id = min(unique_readings)
             highest_id = max(unique_readings)
 
+        signature_flags = SignedListReport.KeyTypeToStreamType(root_key)
         header = struct.pack("<BBHLLLBBH", cls.ReportType, len_low, len_high, uuid, report_id,
-                             sent_timestamp, root_key, streamer, selector)
+                             sent_timestamp, signature_flags, streamer, selector)
         header = bytearray(header)
 
         packed_readings = bytearray()
@@ -330,13 +376,11 @@ class SignedListReport(IOTileReport):
         signed_data = self.raw_report[:-16]
         signer = ChainedAuthProvider()
 
-        if signature_flags == AuthProvider.NoKey:
-            self.encrypted = False
-        else:
-            self.encrypted = True
+        key_type = self.StreamTypeToKeyType(signature_flags)
+        self.encrypted = (key_type != AuthProvider.NoKey)
 
         try:
-            verification = SignedListReport.VerifyReport(device_id, signer, signature_flags, signed_data, signature,
+            verification = SignedListReport.VerifyReport(device_id, signer, key_type, signed_data, signature,
                                                 report_id=report_id, sent_timestamp=sent_timestamp)
             self.verified = verification['verified']
         except NotFoundError:
@@ -350,7 +394,7 @@ class SignedListReport(IOTileReport):
         # If the report is encrypted, try to decrypt it before parsing the readings
         if self.encrypted:
             try:
-                result = SignedListReport.DecryptReport(device_id, signer, signature_flags, readings,
+                result = SignedListReport.DecryptReport(device_id, signer, key_type, readings,
                                                report_id=report_id, sent_timestamp=sent_timestamp)
                 readings = result['data']
             except NotFoundError:

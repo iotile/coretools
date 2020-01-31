@@ -2,7 +2,7 @@ import unittest
 import os
 import pytest
 from iotile.core.exceptions import ExternalError
-from iotile.core.hw.reports.signed_list_format import SignedListReport
+from iotile.core.hw.reports.signed_list_format import SignedListReport, ReportSignatureFlags
 from iotile.core.hw.reports.report import IOTileReading
 from iotile.core.hw.auth.env_auth_provider import EnvAuthProvider
 from iotile.core.hw.auth.auth_provider import AuthProvider
@@ -49,7 +49,7 @@ def test_basic_parsing():
 
     assert report2.verified is True
     assert report.verified is True
-    assert report.signature_flags == 0
+    assert report.signature_flags == ReportSignatureFlags.SIGNED_WITH_HASH
 
 def test_footer_calculation():
     """Test if make_sesuentail set properly ids"""
@@ -77,8 +77,8 @@ def test_userkey_signing(monkeypatch):
     encoded = report1.encode()
     report2 = SignedListReport(encoded)
 
-    assert report1.signature_flags == AuthProvider.UserKey
-    assert report2.signature_flags == AuthProvider.UserKey
+    assert report1.signature_flags == ReportSignatureFlags.SIGNED_WITH_USER_KEY
+    assert report2.signature_flags == ReportSignatureFlags.SIGNED_WITH_USER_KEY
     assert report1.verified
     assert report1.encrypted
     assert report2.verified
