@@ -311,10 +311,6 @@ class BLED112Adapter(DeviceAdapter):
 
         services = self._connections[found_handle]['services']
 
-        if self.check_is_rpc_in_progress(found_handle, services):
-            callback(conn_id, self.id, False, 'RPC still in progress', None, None)
-            return
-
         self._command_task.async_command(['_send_rpc', found_handle, services, address, rpc_id, payload, timeout], self._send_rpc_finished,
                                          {'connection_id': conn_id, 'handle': found_handle,
                                           'callback': callback})

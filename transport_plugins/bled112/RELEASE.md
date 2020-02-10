@@ -11,6 +11,7 @@ All major changes in each released version of the bled112 transport plugin are l
   generated the same way it is done for user key
 - Add the password-based authentication method
 - Update the authentication flow
+- Disable "RPC in progress" check
 
 ## 3.0.3
 
