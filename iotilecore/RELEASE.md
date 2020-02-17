@@ -11,6 +11,7 @@ All major changes in each released version of `iotile-core` are listed here.
   that python version that breaks background event loops only on Windows.  It is fixed in
   python 3.8.1.
 - Add new BLE broadcast encryption method: Encrypted with NullKey
+- Update decryption logic for signed reports
 
 ## 5.0.11
 
