@@ -4,6 +4,8 @@ All major changes in each released version of the bled112 transport plugin are l
 
 ## HEAD
 
+## 3.0.4
+
 - Refactor BLE broadcast encryption flags: three bits are treated as an enumeration
 - Consilidate two authentication characteristics into one
 - Update info characteristic
@@ -12,6 +14,7 @@ All major changes in each released version of the bled112 transport plugin are l
 - Add the password-based authentication method
 - Update the authentication flow
 - Disable "RPC in progress" check
+- Fix event handling for "Encrypt start" cmd
 
 ## 3.0.3
 
