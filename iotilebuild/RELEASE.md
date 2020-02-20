@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 3.0.12
+
+- Add ability for iotile modules to create build_resource products
+
 ## 3.0.11
 
 - Allow bundling data file with support wheels

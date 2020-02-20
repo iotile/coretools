@@ -57,6 +57,7 @@ class IOTile(object):
 
     PYTHON_PRODUCTS = frozenset([
         "build_step",
+        "build_resource",
         "app_module",
         "proxy_module",
         "type_package",

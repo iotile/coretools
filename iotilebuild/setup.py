@@ -28,7 +28,7 @@ setup(
     license="LGPLv3",
     install_requires=[
         "crcmod>=1.7.0",
-        "iotile-core>=5.0.0,<6",
+        "iotile-core>=5.0.13,<6",
         "sphinx>=2,<3",
         "jinja2>=2.10.0,<3",
         "breathe>=4.11.0,<5",

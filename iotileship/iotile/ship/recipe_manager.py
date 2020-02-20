@@ -28,7 +28,7 @@ class RecipeManager:
         for name, action in reg.load_extensions('iotile.recipe_action', product_name='build_step'):
             self._recipe_actions[name] = action
 
-        for name, resource in reg.load_extensions('iotile.recipe_resource'):
+        for name, resource in reg.load_extensions('iotile.recipe_resource', product_name='build_resource'):
             self._recipe_resources[name] = resource
 
     def is_valid_action(self, name):
