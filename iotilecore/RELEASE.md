@@ -4,6 +4,8 @@ All major changes in each released version of `iotile-core` are listed here.
 
 ## HEAD
 
+## 5.0.12
+
 - Refactor OperationManager for usability.  It was designed to create maintainable networking
   code by abstracting away the common waiting patterns and allowing the creation of simple
   coroutines instead of complex callback based logic.

@@ -313,6 +313,42 @@ class BLED112CommandProcessor(threading.Thread):
         else:
             return False, None
 
+
+    def encrypt_link(self, handle, session_key):
+        """Set up encrypted link for the connection
+
+        Args:
+            handle (int): The connection handle for the device we should interact with
+            session_key (bytearray): First 16 bytes would be set as out of band key
+
+        Returns:
+            bool: Successfully encrypted
+        """
+
+        if len(session_key) < 16:
+            self._logger.warning("Session key should be 16 bytes")
+            return False
+
+        self._set_bondable_mode(0)
+        self._encrypt_start(handle)
+        self._set_oob_data(session_key[0:16])
+
+        encryption_succeed = False
+        def status_event(event):
+            nonlocal encryption_succeed
+            if event.command_class == 3 and event.command == 0:
+                encryption_succeed = True
+                return True
+
+            if event.command_class == 5 and event.command == 1:
+                encryption_succeed = False
+                return True
+
+            return False
+
+        _ = self._wait_process_events(2.0, lambda x: False, status_event)
+        return encryption_succeed
+
     def _enable_rpcs(self, conn, services, timeout=1.0):
         """Prepare this device to receive RPCs
         """

@@ -1152,19 +1152,23 @@ class BLED112Adapter(DeviceAdapter):
         """Callback called on authentication is finished"""
 
         connection_handle = result['context']['handle']
+        conndata = self._get_connection(connection_handle, 'preparing')
+        conn_id = result['context']['connection_id']
+
         if result['result']:
             session_key = result['return_value']
 
-            self._command_task._set_bondable_mode(0)
-            self._command_task._encrypt_start(connection_handle)
-            self._command_task._set_oob_data(session_key[0:16])
+            encrypted = self._command_task.encrypt_link(connection_handle, session_key)
+            if encrypted:
+                self._logger.info("User is authenticated!")
 
-            self._logger.info("User is authenticated")
-            self._finish_connection(result['context'])
+                self._finish_connection(result['context'])
+            else:
+                conndata['failed'] = True
+                conndata['failure_reason'] = 'An error event recieved after \"Encrypt Start\" cmd!'
+
+                self.disconnect_async(conn_id, self._on_connection_failed)
         else:
-            conn_id = result['context']['connection_id']
-            conndata = self._get_connection(connection_handle, 'preparing')
-
             conndata['failed'] = True
             conndata['failure_reason'] = result['return_value']['reason']
 
