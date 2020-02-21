@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileShip are listed here.
 
+## 1.0.9
+
+- Add ability for iotile modules to create build_resource products
+
 ## 1.0.8
 
 - Fix py3 raw_input error in PromptStep

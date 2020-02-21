@@ -22,7 +22,7 @@ setup(
     version=version.version,
     license="LGPLv3",
     install_requires=[
-        "iotile-core>=5.0.0,<6",
+        "iotile-core>=5.0.13,<6",
         "pyaml>=18.11.0,<19",
         "pyyaml>5.1,<6"
     ],

@@ -17,6 +17,7 @@ from iotile.core.exceptions import *
 
 ENTRY_POINT_MAP = {
     'build_step': 'iotile.recipe_action',
+    'build_resource': 'iotile.recipe_resource',
     'app_module': 'iotile.app',
     'proxy_module': 'iotile.proxy',
     'emulated_tile': 'iotile.emulated_tile',

@@ -4,6 +4,10 @@ All major changes in each released version of `iotile-core` are listed here.
 
 ## HEAD
 
+## 5.0.13
+
+- Add ability for iotile modules to create build_resource products
+
 ## 5.0.12
 
 - Refactor OperationManager for usability.  It was designed to create maintainable networking
