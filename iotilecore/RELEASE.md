@@ -4,6 +4,10 @@ All major changes in each released version of `iotile-core` are listed here.
 
 ## HEAD
 
+## 5.0.14
+
+- Add ability for `debug_manager` to flash `.bin` files
+
 ## 5.0.13
 
 - Add ability for iotile modules to create build_resource products
