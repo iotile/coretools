@@ -260,7 +260,7 @@ class DebugManager:
         format_map = {
             "elf": self._process_elf,
             "hex": self._process_hex,
-            "bin": None
+            "bin": self._process_bin
         }
 
         if file_format is None:
@@ -321,6 +321,18 @@ class DebugManager:
             if os.path.isfile(tmp.name):
                 os.remove(tmp.name)
 
+    @classmethod
+    def _process_bin(cls, in_path):
+
+        from iotile.core.utilities.intelhex import IntelHex
+
+        ihex = IntelHex()
+        ihex.loadbin(in_path)
+        segments = ihex.segments()
+        segments_start = [segment[0] for segment in segments]
+        segments_data = [ihex.tobinarray(start=segment[0], end=segment[1]-1) for segment in segments]
+
+        return segments_start, segments_data
 
 def _clean_intenum(obj):
     """Remove all IntEnum classes from a map."""
