@@ -40,9 +40,9 @@ class AsyncioSocketConnection:
         """
         try:
             packed_header = struct.pack(self._HEADERFORMAT, self._ARCHMAGIC, len(encoded))
+            await self.writer.drain()
             self.writer.write(packed_header)
             self.writer.write(encoded)
-            await self.writer.drain()
 
         except Exception:
             raise ConnectionError from Exception
