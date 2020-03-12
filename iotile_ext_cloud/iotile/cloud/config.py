@@ -40,6 +40,7 @@ def link_cloud(self, username=None, password=None, device_id=None):
     reg = ComponentRegistry()
 
     domain = self.get('cloud:server')
+    verify_server_cert = self.get('cloud:verify-server')
 
     if username is None:
         prompt_str = "Please enter your IOTile.cloud email: "
@@ -51,7 +52,7 @@ def link_cloud(self, username=None, password=None, device_id=None):
 
         password = getpass.getpass(prompt_str)
 
-    cloud = Api(domain=domain)
+    cloud = Api(domain=domain, verify=verify_server_cert)
     ok_resp = cloud.login(email=username, password=password)
     if not ok_resp:
         raise ArgumentError("Could not login to iotile.cloud as user %s" % username)

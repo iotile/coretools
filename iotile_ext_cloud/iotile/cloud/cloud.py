@@ -48,7 +48,9 @@ class IOTileCloud:
         if domain is None:
             domain = conf.get('cloud:server')
 
-        self.api = Api(domain=domain, **kwargs)
+        verify_server_cert = conf.get('cloud:verify-server')
+
+        self.api = Api(domain=domain, verify=verify_server_cert, **kwargs)
         self._domain = self.api.domain
 
         try:
