@@ -43,14 +43,12 @@ class IOTileCloud:
 
     def __init__(self, domain=None, username=None, **kwargs):
         reg = ComponentRegistry()
-        conf = ConfigManager()
+        self._conf = ConfigManager()
 
         if domain is None:
-            domain = conf.get('cloud:server')
+            domain = self._conf.get('cloud:server')
 
-        verify_server_cert = conf.get('cloud:verify-server')
-
-        self.api = Api(domain=domain, verify=verify_server_cert, **kwargs)
+        self.api = Api(domain=domain, verify=self.server_cert_verifying, **kwargs)
         self._domain = self.api.domain
 
         try:
@@ -72,6 +70,10 @@ class IOTileCloud:
 
         self.token = self.api.token
         self.token_type = self.api.token_type
+
+    @property
+    def server_cert_verifying(self):
+        return self._conf.get('cloud:verify-server')
 
     def _prompt_user_pass(self, username, domain):
         if username is None:
