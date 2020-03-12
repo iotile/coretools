@@ -69,9 +69,9 @@ def get_variables():
     """Get a dictionary of configuration variables."""
 
     prefix = "cloud"
-    conf_vars = [["server",
-                  "string",
-                  "The domain name to talk to for iotile.cloud operations (including https:// prefix)",
-                  'https://iotile.cloud']]
+
+    conf_vars = []
+    conf_vars.append(["server", "string", "The domain name to talk to for iotile.cloud operations (including https:// prefix)", 'https://iotile.cloud'])
+    conf_vars.append(["verify-server", "bool", "Verify the TLS certificate of the cloud server", "true"])
 
     return prefix, conf_vars
