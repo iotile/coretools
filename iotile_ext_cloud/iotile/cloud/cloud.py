@@ -48,10 +48,10 @@ class IOTileCloud:
         if domain is None:
             domain = self._conf.get('cloud:server')
 
-        if not self.server_cert_verifying:
+        if not self.verify_server:
             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-        self.api = Api(domain=domain, verify=self.server_cert_verifying, **kwargs)
+        self.api = Api(domain=domain, verify=self.verify_server, **kwargs)
         self._domain = self.api.domain
 
         try:
@@ -75,7 +75,7 @@ class IOTileCloud:
         self.token_type = self.api.token_type
 
     @property
-    def server_cert_verifying(self) -> bool:
+    def verify_server(self) -> bool:
         return self._conf.get('cloud:verify-server')
 
     def _prompt_user_pass(self, username, domain):

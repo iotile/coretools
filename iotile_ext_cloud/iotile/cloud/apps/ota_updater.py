@@ -96,7 +96,7 @@ class OtaUpdater(IOTileApp):
 
         iprint("Downloading script")
         iprint(script[1])
-        blob = _download_ota_script(script[1], self._cloud.server_cert_verifying)
+        blob = _download_ota_script(script[1], self._cloud.verify_server)
 
         if not blob:
             iprint("Download of script failed for some reason")
