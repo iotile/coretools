@@ -5,7 +5,6 @@ import operator
 from iotile.core.hw import IOTileApp
 from iotile.core.hw.update import UpdateScript
 from iotile.core.dev.semver import SemanticVersion
-from iotile.core.dev.config import ConfigManager
 from iotile.cloud import IOTileCloud, device_id_to_slug
 from iotile_cloud.utils.basic import datetime_to_str
 from typedargs.annotate import docannotate, context
