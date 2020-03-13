@@ -1,7 +1,7 @@
 """Configuration information for iotile-ext-cloud."""
 
 import getpass
-
+import urllib3
 from iotile.core.dev.registry import ComponentRegistry
 from iotile.cloud.cloud import IOTileCloud
 from iotile.core.utilities.typedargs import param
@@ -51,6 +51,9 @@ def link_cloud(self, username=None, password=None, device_id=None):
         prompt_str = "Please enter your IOTile.cloud password: "
 
         password = getpass.getpass(prompt_str)
+
+    if not verify_server_cert:
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     cloud = Api(domain=domain, verify=verify_server_cert)
     ok_resp = cloud.login(email=username, password=password)

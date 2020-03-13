@@ -6,7 +6,7 @@ import datetime
 from collections import namedtuple
 from dateutil.tz import tzutc
 import dateutil.parser
-
+import urllib3
 from iotile_cloud.api.connection import Api
 from iotile_cloud.api.exceptions import RestHttpBaseException, HttpNotFoundError
 from iotile.core.dev.registry import ComponentRegistry
@@ -48,6 +48,9 @@ class IOTileCloud:
         if domain is None:
             domain = self._conf.get('cloud:server')
 
+        if not self.server_cert_verifying:
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
         self.api = Api(domain=domain, verify=self.server_cert_verifying, **kwargs)
         self._domain = self.api.domain
 
@@ -72,7 +75,7 @@ class IOTileCloud:
         self.token_type = self.api.token_type
 
     @property
-    def server_cert_verifying(self):
+    def server_cert_verifying(self) -> bool:
         return self._conf.get('cloud:verify-server')
 
     def _prompt_user_pass(self, username, domain):
