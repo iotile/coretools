@@ -51,7 +51,8 @@ class IOTileCloud:
         if not self.verify_server:
             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-        self.api = Api(domain=domain, verify=self.verify_server, **kwargs)
+        _verify = self.verify_server
+        self.api = Api(domain=domain, verify=_verify, **kwargs)
         self._domain = self.api.domain
 
         try:
