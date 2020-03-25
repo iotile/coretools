@@ -5,6 +5,7 @@ All major changes in each released version of `iotile-core` are listed here.
 ## HEAD
 
 - Add ability for `debug_manager` to flash `.bin` files
+- Add a fix for "disconnect" command execution when connection to device is interrupted
 
 ## 5.0.13
 
