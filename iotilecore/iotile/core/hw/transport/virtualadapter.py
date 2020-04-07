@@ -13,16 +13,13 @@ let you, for example, serve a virtual device from your computer over bluetooth
 low energy that lets users control your computer from their mobile phone.
 """
 
-import json
 import logging
-import inspect
 from iotile.core.exceptions import ArgumentError
-from iotile.core.dev import ComponentRegistry
 from iotile.core.hw.reports import BroadcastReport
 from iotile.core.hw.exceptions import DevicePushError
 from iotile.core.utilities import SharedLoop
 from ..exceptions import DeviceAdapterError, VALID_RPC_EXCEPTIONS
-from ..virtual import BaseVirtualDevice, AbstractAsyncDeviceChannel
+from ..virtual import AbstractAsyncDeviceChannel, load_virtual_device
 from .adapter import StandardDeviceAdapter
 
 
@@ -138,7 +135,7 @@ class VirtualDeviceAdapter(StandardDeviceAdapter):
                 if len(config) == 0:
                     config = None
 
-                loaded_dev = self._load_device(name, config)
+                loaded_dev, _ = load_virtual_device(name, config, loop)
 
                 if not self._validate_device(loaded_dev):
                     raise ArgumentError("Device type cannot be loaded on this adapter", name=name)
@@ -176,48 +173,6 @@ class VirtualDeviceAdapter(StandardDeviceAdapter):
         """
 
         return True
-
-    def _load_device(self, name, config):
-        """Load a device either from a script or from an installed module"""
-
-        if config is None:
-            config_dict = {}
-        elif isinstance(config, dict):
-            config_dict = config
-        elif config[0] == '#':
-            # Allow passing base64 encoded json directly in the port string to ease testing.
-            import base64
-            config_str = str(base64.b64decode(config[1:]), 'utf-8')
-            config_dict = json.loads(config_str)
-        else:
-            try:
-                with open(config, "r") as conf:
-                    data = json.load(conf)
-            except IOError as exc:
-                raise ArgumentError("Could not open config file", error=str(exc), path=config)
-
-            if 'device' not in data:
-                raise ArgumentError("Invalid configuration file passed to VirtualDeviceAdapter",
-                                    device_name=name, config_path=config, missing_key='device')
-
-            config_dict = data['device']
-
-        reg = ComponentRegistry()
-
-        if name.endswith('.py'):
-            _name, device_factory = reg.load_extension(name, class_filter=BaseVirtualDevice, unique=True)
-            return _instantiate_virtual_device(device_factory, config_dict, self._loop)
-
-        seen_names = []
-        for device_name, device_factory in reg.load_extensions('iotile.virtual_device',
-                                                               class_filter=BaseVirtualDevice,
-                                                               product_name="virtual_device"):
-            if device_name == name:
-                return _instantiate_virtual_device(device_factory, config_dict, self._loop)
-
-            seen_names.append(device_name)
-
-        raise ArgumentError("Could not find virtual_device by name", name=name, known_names=seen_names)
 
     def can_connect(self):
         """Return whether this device adapter can accept another connection."""
@@ -394,15 +349,3 @@ class VirtualDeviceAdapter(StandardDeviceAdapter):
 
         for dev in self.devices.values():
             await self._send_scan_event(dev)
-
-
-def _instantiate_virtual_device(factory, config, loop):
-    """Safely instantiate a virtualdevice passing a BackgroundEventLoop if necessary."""
-
-    kwargs = dict()
-
-    sig = inspect.signature(factory)
-    if 'loop' in sig.parameters:
-        kwargs['loop'] = loop
-
-    return factory(config, **kwargs)

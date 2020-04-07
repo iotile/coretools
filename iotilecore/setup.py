@@ -34,6 +34,9 @@ setup(
     extras_require={
         'ui': ["asciimatics>=1.10.0,<2"]
     },
+    package_data = {
+        'iotile-core': ['iotile/core/py.typed'],
+    },
     entry_points={
         'console_scripts': [
             'iotile = iotile.core.scripts.iotile_script:main',

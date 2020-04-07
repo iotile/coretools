@@ -31,6 +31,20 @@ class LinkError(BluetoothError):
 
 
 # Link Operation related errors
+
+class NotConnectedError(LinkError):
+    """An operation could not be completed because the device was disconnected.
+
+    This can happen if you attempt to perform an operation on after an
+    unexpected disconnect or if you attemp to interact with a device without
+    first connecting to it.
+    """
+
+    def __init__(self, operation: str, conn_string: Optional[str]):
+        message = "Operation %s failed because device %s was disconnected" % (operation, conn_string)
+        super(NotConnectedError, self).__init__(message, conn_string)
+
+
 class QueueFullError(LinkError):
     """An operation could not be queued, it should be retried.
 

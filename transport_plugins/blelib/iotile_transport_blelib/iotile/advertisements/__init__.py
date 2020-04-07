@@ -30,4 +30,4 @@ enhancements over the older v1 format:
    data.
 """
 
-from .generation import generate_v1_advertisement, generate_v2_advertisement
+from .generation import generate_v1_advertisement, generate_v2_advertisement, generate_advertisement

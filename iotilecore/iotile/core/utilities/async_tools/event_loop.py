@@ -667,6 +667,16 @@ class BackgroundEventLoop:
 
         return asyncio.run_coroutine_threadsafe(cor, loop=self.loop)
 
+    def create_condition(self, lock=None):
+        """Attach a Condition to the background loop.
+
+        Returns:
+            asyncio.Condition
+        """
+
+        self.start()
+        return asyncio.Condition(lock, loop=self.loop)
+
     def create_event(self):
         """Attach an Event to the background loop.
 

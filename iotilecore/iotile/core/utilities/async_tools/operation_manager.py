@@ -33,6 +33,7 @@ messages they are waiting for to continue their operation.
 import asyncio
 import inspect
 import logging
+from typing import TypeVar, Generic, List, Optional
 from collections import deque
 from iotile.core.exceptions import ArgumentError, InternalError
 from . import event_loop
@@ -45,7 +46,10 @@ class MessageSpec:
         self.fields = kwargs
 
 
-class OperationManager:
+T = TypeVar('T')
+
+
+class OperationManager(Generic[T]):
     """Manage complex operations blocking on specific network messages.
 
     This utility class is designed to provide a friendly API on which to build
@@ -84,11 +88,10 @@ class OperationManager:
         self._logger = logging.getLogger(__name__)
         self._pause_count = 0
         self._messages = deque()
-        self._dispatch_lock = loop.create_lock()
+        self._dispatch_lock = loop.create_condition()
         self._process_pending = False
 
     def _add_waiter(self, spec, responder=None, pause=False):
-
         if responder is not None and pause is True:
             raise ArgumentError("You can only pause after waiting for future based waiters")
 
@@ -283,7 +286,7 @@ class OperationManager:
 
         return asyncio.wait_for(future, timeout=timeout)
 
-    async def gather_until(self, gather_specs, until, timeout=None, *, pause=False, unpause=False):
+    async def gather_until(self, gather_specs, until, timeout=None, *, pause=False, unpause=False) -> List[T]:
         """Gather all matching messages until a message matching until is given or a timeout.
 
         This method allows you to accumulate messages matching the ``MessageSpec`` objects in
@@ -331,7 +334,7 @@ class OperationManager:
 
         return accum
 
-    async def gather_count(self, gather_specs, count, timeout=None, *, pause=False, unpause=False):
+    async def gather_count(self, gather_specs, count, timeout=None, *, pause=False, unpause=False) -> List[T]:
         """Gather all matching messages until a fixed number have been received.
 
         This method waits until an exact number of messages matching any of the specs in ``gather_specs``
@@ -387,7 +390,7 @@ class OperationManager:
 
         return accum
 
-    async def process_message(self, message, wait=True):
+    async def process_message(self, message: T, wait: bool = True):
         """Process a message to see if it wakes any waiters.
 
         This will check waiters registered to see if they match the given
@@ -480,7 +483,57 @@ class OperationManager:
                 current = self._messages.popleft()
                 await self.process_message(current)
 
-    def queue_message_threadsafe(self, message):
+            self._dispatch_lock.notify_all()
+
+    async def wait_idle(self, *, timeout: Optional[float] = None):
+        """Wait until there are no messages pending processing.
+
+        This method will yield until there is a moment in time when there are
+        no messages in the dispatch queue pending processing, or a timeout
+        occurs.
+
+        Note that the meaning of "idle" used here is nuanced since messages can be
+        added at any time from another thread using ``queue_message_threadsafe``.
+
+        This means that is it not guaranteed that there are no messages in the queue
+        when ``wait_idle`` returns.
+
+        .. important:
+
+            The only guarantee of this method is that any message placed in
+            the OperationManager before the call to wait_idle() will have been
+            processed by any listeners before wait_idle() returns (assuming it
+            didn't time out).
+
+            If the processors themselves are coroutines, then they will have
+            run to completion by the time wait_idle() returns.  If the
+            processors queued messages in the body of the processing function
+            then those messages will also have been processed by the time this
+            method returns.
+
+            If a processing function launches a corooutine but does
+            not await it and that coroutine adds a message for processing, it
+            is undefined whether or not it will be processed before
+            wait_idle() returns.
+
+            There is no guarantee that a momentary, fleeting empty status will
+            necessarily trigger wait_idle() to return.  If another message is
+            queued between when the queue empties and when wait_idle() wakes
+            up and checks to see if the queue is empty, it will not return and
+            go back to sleep.
+
+        Args:
+            timeout: The maximum number of seconds to wait for an idle condition
+                before aborting with asyncio.TimeoutError.
+
+        Raises:
+            asyncio.TimeoutError: A timeout was specified and expired before the queue was empty.
+        """
+
+        async with self._dispatch_lock:
+            await asyncio.wait_for(self._dispatch_lock.wait_for(lambda: len(self._messages) == 0), timeout)
+
+    def queue_message_threadsafe(self, message: T):
         """Queue a message for processing."""
 
         self._messages.append(message)

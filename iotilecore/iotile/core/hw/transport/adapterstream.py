@@ -104,10 +104,13 @@ class AdapterStream:
             raise ArgumentError("Unknown class passed as DeviceAdapter: %s" % str(adapter), adapter=adapter)
 
         self.adapter = adapter
-        self._loop.run_coroutine(adapter.start())
 
+        # Register monitors before calling start so that we receive any notifications that happen immediately (race-free)
         self.adapter.register_monitor([None], ['report', 'trace', 'broadcast', 'disconnection', 'device_seen', 'progress'],
                                       self._on_notification)
+
+        self._loop.run_coroutine(adapter.start())
+
 
         self._start_time = monotonic()
 

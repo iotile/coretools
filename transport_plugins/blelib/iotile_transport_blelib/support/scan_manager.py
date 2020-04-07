@@ -1,12 +1,13 @@
 """Helper class for sending advertisements to scan requesters."""
 
+from typing import Dict
+from iotile.core.utilities.async_tools import OperationManager
 from typedargs.exceptions import ArgumentError
-from ..interface.scan_delegate import BLEScanDelegate
-from ..interface.advertisement import BLEAdvertisement
+from ..interface import BLEAdvertisement
+from ..interface.messages import AdvertisementObserved, ScanningStarted, ScanningStopped
 
 class _ScanRequester:
-    def __init__(self, delegate: BLEScanDelegate, active: bool):
-        self.delegate = delegate
+    def __init__(self, active: bool):
         self.active = active
 
 
@@ -24,28 +25,23 @@ class BLEScanManager:
     separate callback is invoked for each bluetooth advertisement received.
     """
 
-    def __init__(self):
-        self.scanners = {}
+    def __init__(self, event_emitter: OperationManager):
+        self.scanners = {}  #type: Dict[str, _ScanRequester]
+        self.emitter = event_emitter
         self._active_count = 0
         self._scanning = False
         self._active_scanning = False
 
-    def request(self, tag: str, delegate: BLEScanDelegate, active=False):
+    def request(self, tag: str, active=False):
         """Update the internal state with another scan requester."""
 
         if tag in self.scanners:
             raise ArgumentError("Attempted to add a scan requester twice: tag=%s" % tag)
 
-        if delegate is None:
-            delegate = BLEScanDelegate()
-
-        self.scanners[tag] = _ScanRequester(delegate, active)
+        self.scanners[tag] = _ScanRequester(active)
 
         if active:
             self._active_count += 1
-
-        if self._scanning:
-            delegate.scan_started()
 
     def release(self, tag: str, force: bool = False):
         """Remove a currently registered scan requester."""
@@ -58,7 +54,6 @@ class BLEScanManager:
             info = self.scanners[tag]
             del self.scanners[tag]
 
-            info.delegate.scan_stopped()
             if info.active:
                 self._active_count -= 1
 
@@ -118,8 +113,8 @@ class BLEScanManager:
         self._scanning = True
         self._active_scanning = active
 
-        for info in self.scanners.values():
-            info.delegate.scan_started()
+        event = ScanningStarted(active)
+        self.emitter.queue_message_threadsafe(event)
 
     def scan_stopped(self):
         """Notify that scanning has stopped or paused."""
@@ -128,8 +123,9 @@ class BLEScanManager:
             return
 
         self._scanning = False
-        for info in self.scanners.values():
-            info.delegate.scan_stopped()
+
+        event = ScanningStopped()
+        self.emitter.queue_message_threadsafe(event)
 
     def handle_advertisement(self, advert: BLEAdvertisement):
         """Process a received ble advertisement."""
@@ -137,5 +133,5 @@ class BLEScanManager:
         if not self._scanning:
             return
 
-        for info in self.scanners.values():
-            info.delegate.on_advertisement(advert)
+        event = AdvertisementObserved(advert, self._active_scanning)
+        self.emitter.queue_message_threadsafe(event)
