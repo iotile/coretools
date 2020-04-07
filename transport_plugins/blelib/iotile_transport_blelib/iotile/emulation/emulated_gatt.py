@@ -2,9 +2,9 @@
 
 import uuid
 import struct
-from ..interface.gatt import GattTable, GattService, GattAttribute, GattCharacteristic, CharacteristicProperties
-from ..interface.errors import MissingHandleError
-from ..defines import compact_uuid, AttributeType
+from ...interface.gatt import GattTable, GattService, GattAttribute, GattCharacteristic, CharacteristicProperties
+from ...interface.errors import MissingHandleError
+from ...defines import compact_uuid, AttributeType
 
 class _AttributeGroup:
     def __init__(self, uuid: uuid.UUID, start_handle: int, end_handle: int):

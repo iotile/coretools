@@ -1,26 +1,30 @@
 """A generic api for interacting with ble adapters."""
 
-import abc
-from typing import Optional
 from uuid import UUID
-from .scan_delegate import BLEScanDelegate
+from typing import Optional
+from typing_extensions import Protocol
+from iotile.core.utilities.async_tools import OperationManager
 from .peripheral import BLEPeripheral
-from .peripheral_delegate import BLEPeripheralDelegate
 from .state import BLECentralState
+from ..interface import messages
 
-class AbstractBLECentral(abc.ABC):
+
+class AbstractBLECentral(Protocol):
     """Abstract specification for how BLE central hardware drivers expose their functionality.
 
     All operations that can be performed on a BLE central will be exposed via
     these coroutines. There is no standard specification of how the central
     object should be created since this may vary widely.
 
-    BLE Centrals are devices that are capable of scanning for perihperals and
+    BLE Centrals are devices that are capable of scanning for peripherals and
     connecting to them.  They are the active participant in initiating BLE
     operations.
     """
 
-    @abc.abstractmethod
+    @property
+    def events(self) -> OperationManager[messages.BluetoothEvent]:
+        """All bluetooth messages are dispatched through this operation manager."""
+
     async def start(self):
         """Start this ble central.
 
@@ -29,7 +33,6 @@ class AbstractBLECentral(abc.ABC):
         can succesfully respond to commands.
         """
 
-    @abc.abstractmethod
     async def stop(self):
         """Stop this ble central.
 
@@ -37,8 +40,7 @@ class AbstractBLECentral(abc.ABC):
         any internal resources that were reserved may be freed.
         """
 
-    @abc.abstractmethod
-    async def connect(self, conn_string: str, delegate: Optional[BLEPeripheralDelegate] = None) -> BLEPeripheral:
+    async def connect(self, conn_string: str) -> BLEPeripheral:
         """Connect to a peripheral device.
 
         This method should perform a combined BLE connect and gatt table probe
@@ -59,22 +61,35 @@ class AbstractBLECentral(abc.ABC):
         they wish to reach.
         """
 
-    @abc.abstractmethod
-    async def disconnect(self, peripheral: BLEPeripheral):
+    async def disconnect(self, conn_string: str):
         """Disconnect from a connected peripheral device."""
 
-    @abc.abstractmethod
-    async def set_notifications(self, peripheral: BLEPeripheral, characteristic: UUID,
-                                enabled: bool, kind: str = 'notify'):
+    async def manage_subscription(self, conn_string: str, characteristic: UUID,
+                                  enabled: bool, acknowledged: bool = False):
         """Enable or disable notifications/indications on a characteristic.
 
         This method allows you to control the notification status on any GATT
         characteristic that supports either notifications or indications.
+
+        If you pass acknowledged = False, the default, then notifications will
+        be enabled/disabled.
+
+        If you pass acknowledged = True, then indications will be enabled/disabled.
         """
 
-    @abc.abstractmethod
-    async def write(self, peripheral: BLEPeripheral, characteristic: UUID,
-                    value: bytes, with_response: bool):
+    async def advanced_operation(self, operation: str, conn_string: Optional[str], *args, **kwargs):
+        """Start or respond to an advanced bluetooth operation.
+
+        This allow for performing advanced optionations that are infrequently used so
+        they don't need their own named API methods.  The kinds of things you can
+        potentially perform here are:
+
+         - acknowledging receipt of an indication
+         - configuring oob keying material for encrypting a bluetooth link
+        """
+
+    async def write(self, conn_string: str, characteristic: UUID,
+                    value: bytes, with_response: bool = False):
         """Write the value of a characteristic.
 
         You can specify whether the write is acknowledged or unacknowledged.
@@ -84,12 +99,10 @@ class AbstractBLECentral(abc.ABC):
         caller should backoff and try again later.
         """
 
-    @abc.abstractmethod
-    async def read(self, peripheral: BLEPeripheral, characteristic: UUID):
+    async def read(self, conn_string: str, characteristic: UUID):
         """Read the current value of a characteristic."""
 
-    @abc.abstractmethod
-    async def request_scan(self, tag: str, active: bool, delegate: BLEScanDelegate = None):
+    async def request_scan(self, tag: str, active: bool):
         """Request that the BLE Central scan for ble devices.
 
         Many different users of a single ble central could request that
@@ -99,7 +112,6 @@ class AbstractBLECentral(abc.ABC):
         scanning during certain operations like connecting.
         """
 
-    @abc.abstractmethod
     async def release_scan(self, tag: str):
         """Release a previous scan request.
 
@@ -110,7 +122,6 @@ class AbstractBLECentral(abc.ABC):
         requesters.
         """
 
-    @abc.abstractmethod
     async def state(self) -> BLECentralState:
         """Return the current state of the BLE central.
 

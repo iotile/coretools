@@ -17,6 +17,7 @@ class AdvertisementType:
     CONNECTABLE = 0x00
     NONCONNECTABLE = 0x02
     SCAN_RESPONSE = 0x04
+    SCANNABLE = 0x06
 
 
 class AdElementType(IntEnum):

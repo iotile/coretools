@@ -3,10 +3,11 @@
 from typing import Optional, Union, Tuple
 import datetime
 import struct
-from typedargs.exceptions import ArgumentError, NotFoundError
+from typedargs.exceptions import ArgumentError
 from iotile.core.hw.reports import IOTileReading
 from ..constants import TileBusService, ARCH_MANUFACTURER, IOTILE_SERVICE_UUID_16
-from ...defines import AdElementType, GAPAdFlags
+from ...defines import AdElementType, GAPAdFlags, AdvertisementType
+from ...interface import BLEAdvertisement
 from .utilities import timestamp_to_integer, generate_rotated_key, generate_nonce, encrypt_v2_packet
 
 class AdvertisementOptions:  #pylint:disable=too-few-public-methods;This is a data class
@@ -137,8 +138,8 @@ _DEFAULT_OPTIONS = AdvertisementOptions()
 
 
 def generate_v1_advertisement(iotile_id: int, *, broadcast: Optional[IOTileReading] = None,
-                              current_time: Union[int, datetime.datetime] = 0,
-                              options: Optional[AdvertisementOptions] = None) -> Tuple[bytes, bytes]:
+                              options: Optional[AdvertisementOptions] = None,
+                              current_time: Union[int, datetime.datetime] = 0) -> Tuple[bytes, bytes]:
     """Generate a version 1 bluetooth advertisement.
 
     This function should be useful primarily for testing ble central
@@ -255,3 +256,47 @@ def generate_v2_advertisement(iotile_id: int, *, broadcast: Optional[IOTileReadi
         advertisement = encrypt_v2_packet(advertisement, ephemeral_key, nonce)
 
     return advertisement
+
+
+def generate_advertisement(iotile_id: int, version: str, mac: str, rssi: float, *,
+                           broadcast: Optional[IOTileReading] = None,
+                           options: Optional[AdvertisementOptions] = None,
+                           current_time: Union[int, datetime.datetime] = 0) -> BLEAdvertisement:
+    """Convenience routine to generate a v1 or v2 advertisement programmatically.
+
+    There are direct functions for generating the raw advertisement bytes for
+    a v1 or v2 advertisement packet but those force the user to wrap those raw
+    bytes inside of a BLEAdvertisement object themselves.  This convenience
+    routines handles everything in a single call, including setting the right
+    BLE PDU type (connectable or not) based on whether or not there is a
+    current user connected to the device and the advertising format.
+
+    Returns:
+        The constructed BLEAdvertisement.
+    """
+
+    if version not in ('v1', 'v2'):
+        raise ArgumentError("Unsupport advertisement version: %s, must be v1 or v2" % version)
+
+    if options is None:
+        options = _DEFAULT_OPTIONS
+
+    scan_response = None  #type: Optional[bytes]
+
+    if version == 'v1':
+        advert, scan_response = generate_v1_advertisement(iotile_id, broadcast=broadcast,
+                                                          options=options, current_time=current_time)
+        if options.user_connected:
+            kind = AdvertisementType.SCANNABLE
+        else:
+            kind = AdvertisementType.CONNECTABLE
+    else:
+        advert = generate_v2_advertisement(iotile_id, broadcast=broadcast,
+                                           options=options, current_time=current_time)
+
+        if options.user_connected:
+            kind = AdvertisementType.NONCONNECTABLE
+        else:
+            kind = AdvertisementType.CONNECTABLE
+
+    return BLEAdvertisement(mac, kind, rssi, advert, scan_response)

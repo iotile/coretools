@@ -64,3 +64,4 @@ target/
 workspace
 .pytest_cache
 test.bin
+.mypy_cache/

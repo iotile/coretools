@@ -9,6 +9,9 @@ setup(
     install_requires=[
         "iotile-core>=5.0.0,<6"
     ],
+    entry_points={
+        'iotile.device_adapter': ['emuble = iotile_transport_blelib.iotile.emulation:EmulatedBLEDeviceAdapter']
+    },
     python_requires=">=3.5,<4",
     description="IOTile BLE Support Package",
     author="Arch Systems",

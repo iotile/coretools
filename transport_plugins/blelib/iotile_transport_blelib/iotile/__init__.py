@@ -5,6 +5,4 @@ Charactistic UUIDs so that the rest of the `blelib` package can be generic to
 bluetooth support.
 """
 
-from .constants import TileBusService, ARCH_MANUFACTURER
-from .emulated_device import EmulatedBLEDevice
-
+from .constants import TileBusService, ARCH_MANUFACTURER, IOTILE_SERVICE_UUID
