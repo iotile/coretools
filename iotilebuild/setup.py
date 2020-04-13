@@ -32,7 +32,7 @@ setup(
         "sphinx>=2,<3",
         "jinja2>=2.10.0,<3",
         #"breathe>=4.11.0,<5",
-        "breathe~=4.14.1"
+        "breathe~=4.14.1",
         "pygtrie>=2.0.0,<3",
         "toposort>=1.5.0,<2",
         "wheel>=0.33",
