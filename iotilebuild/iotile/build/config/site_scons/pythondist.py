@@ -268,3 +268,23 @@ def run_pytest(target, source, env):
         outfile.write(output)
 
     return return_value
+
+
+def run_python_scripts(target, source, env):
+    """Run python script with arguments"""
+
+    for count, script in enumerate(source):
+        try:
+            return_value = 0
+            script_call = ['py', str(source[count])] + env['SCRIPT' + str(count) + '_ARGS']
+            output = subprocess.check_output(script_call, stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError as err:
+            output = err.output
+            return_value = err.returncode
+
+            print(output.decode('utf-8'))
+
+        with open(str(target[count]), "wb") as outfile:
+            outfile.write(output)
+
+    return return_value

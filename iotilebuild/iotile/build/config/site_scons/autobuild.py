@@ -12,6 +12,7 @@
 import os.path
 import os
 import sys
+import subprocess
 
 from SCons.Script import *
 
@@ -85,6 +86,39 @@ def autobuild_python_test(path):
                          action=env.Action(run_pytest, "Running python unit tests"))
     env.AlwaysBuild(target)
 
+
+def autobuild_python_scripts(scripts_list):
+    """Calls a list of python scripts required for the build
+    
+        Args:
+            scripts (list(dict)): Dictionary of scripts with their arguments
+
+            Ex.
+            scripts[0] = {
+                'script_path': 'example_script_1.py',
+                'args': [es1_arg1, es1_arg2, es1_arg3]
+            }
+            scripts[1] = {
+                'script_path': 'example_script_2.py',
+                'args': [es2_arg1, es2_arg2]
+            }
+    """
+ 
+    env = Environment(tools=[])
+    script_target_output = 'build/test/output/'
+    scripts_source = []
+    scripts_target = []
+    
+    for count, script in enumerate(scripts_list):
+        env['SCRIPT' + str(count) + '_ARGS'] = script['args']
+        scripts_source.append(script['script_path'])
+        scripts_target.append(os.path.join(script_target_output,
+                                           script['script_path'] + '.log'))
+
+    target = env.Command(scripts_target,
+                         scripts_source,
+                         action=env.Action(run_python_scripts, "Running python scripts"))
+    env.AlwaysBuild(target)
 
 def autobuild_onlycopy():
     """Autobuild a project that does not require building firmware, pcb or documentation
