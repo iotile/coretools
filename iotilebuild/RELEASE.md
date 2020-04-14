@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 3.0.13
+
+- Pin breathe to 4.14.1
+
 ## 3.0.12
 
 - Add ability for iotile modules to create build_resource products
