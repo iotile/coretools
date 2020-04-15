@@ -4,6 +4,7 @@ from .reflash_tile import ReflashTileRecord
 from .unknown import UnknownRecord
 from .send_rpc import SendRPCRecord, SendErrorCheckingRPCRecord
 from .reflash_controller import ReflashControllerRecord
+from .enhanced_reflash import EnhancedReflashControllerRecord
 from .reset_device import ResetDeviceRecord
 from .set_version import SetDeviceTagRecord
 from ..record import UpdateRecord
@@ -13,7 +14,8 @@ UpdateRecord.RegisterRecordType(ReflashTileRecord)
 UpdateRecord.RegisterRecordType(SendRPCRecord)
 UpdateRecord.RegisterRecordType(SendErrorCheckingRPCRecord)
 UpdateRecord.RegisterRecordType(ReflashControllerRecord)
+UpdateRecord.RegisterRecordType(EnhancedReflashControllerRecord)
 UpdateRecord.RegisterRecordType(ResetDeviceRecord)
 UpdateRecord.RegisterRecordType(SetDeviceTagRecord)
 
-__all__ = ['ReflashTileRecord', 'UnknownRecord', 'SendRPCRecord', 'SendErrorCheckingRPCRecord', 'ReflashControllerRecord', 'SetDeviceTagRecord']
+__all__ = ['ReflashTileRecord', 'UnknownRecord', 'SendRPCRecord', 'SendErrorCheckingRPCRecord', 'ReflashControllerRecord', 'EnhancedReflashControllerRecord', 'SetDeviceTagRecord']

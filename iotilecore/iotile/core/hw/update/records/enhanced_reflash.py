@@ -37,15 +37,16 @@ class EnhancedReflashControllerRecord(UpdateRecord):
 
     def __init__(self, raw_data, base_address, image_type=0, flags=0,
                  compression_type=0, compression_settings_length=0,
-                 compression_settings=0, preinstall_checks= 0):
+                 compression_settings=bytearray(16),
+                 preinstall_checks=bytearray(64)):
         self.raw_data = raw_data
         self.base_address = base_address
         self.image_type = image_type
         self.flags = flags
         self.compression_type = compression_type
         self.compression_settings_length = compression_settings_length
-        self.compression_settings = self.compression_settings
-        self.preinstall_checks = self.preinstall_checks
+        self.compression_settings = compression_settings
+        self.preinstall_checks = preinstall_checks
 
     def encode_contents(self):
         """Encode the contents of the enhanced reflash record.
