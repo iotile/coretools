@@ -27,7 +27,7 @@ from release import *
 from iotile.core.exceptions import *
 from iotile.core.dev import IOTile, ComponentRegistry
 from iotile.build.build import ProductResolver
-from trub_script import build_update_script
+from trub_script import build_update_script, build_update_script_proto
 
 
 def require(builder_name):
@@ -108,7 +108,7 @@ def autobuild_python_scripts(scripts_list):
     script_target_output = 'build/test/output/'
     scripts_source = []
     scripts_target = []
-    
+
     for count, script in enumerate(scripts_list):
         env['SCRIPT' + str(count) + '_ARGS'] = script['args']
         scripts_source.append(script['script_path'])
@@ -291,6 +291,36 @@ def autobuild_trub_script(file_name, slot_assignments=None, os_info=None, sensor
     """
 
     build_update_script(file_name, slot_assignments, os_info, sensor_graph, app_info, use_safeupdate)
+
+
+def autobuild_trub_script_proto(file_name, slot_assignments=None, os_info=None, 
+                                sensor_graph=None, app_info=None,
+                                use_safeupdate=False):
+    """Build an OTA trub script that loads given firmware into the given slots.
+
+    slot_assignments should be a list of tuples in the following form:
+    (record type, "slot X" or "controller", firmware_image_name, options)
+
+    The output of this autobuild action will be a trub script in
+    build/output/<file_name> that assigns the given firmware to each slot in
+    the order specified in the slot_assignments list.
+
+    Args:
+        file_name (str): The name of the output file that we should create.
+            This file name should end in .trub
+        slot_assignments (list of (str, str, str, list)): A list of tuples containing
+            the slot name and the firmware image that we should use to build
+            our update script. Optional
+        os_info (tuple(int, str)): A tuple of OS version tag and X.Y version
+            number that will be set as part of the OTA script if included. Optional.
+        sensor_graph (str): Name of sgf file. Optional.
+        app_info (tuple(int, str)): A tuple of App version tag and X.Y version
+            number that will be set as part of the OTA script if included. Optional.
+        use_safeupdate (bool): If True, Enables safemode before the firmware update records, then
+            disables them after the firmware update records.
+    """
+
+    build_update_script_proto(file_name, slot_assignments, os_info, sensor_graph, app_info, use_safeupdate)
 
 
 def autobuild_bootstrap_file(file_name, image_list):
