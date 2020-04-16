@@ -139,7 +139,7 @@ def _parse_slot(slot):
     return False, slot_number
 
 
-def build_update_script_proto(file_name, slot_assignments=None, os_info=None,
+def build_update_script_v2(file_name, slot_assignments=None, os_info=None,
                               sensor_graph=None, app_info=None,
                               use_safeupdate=False):
     """Build a trub script based on the records received for each slot.
@@ -176,7 +176,6 @@ def build_update_script_proto(file_name, slot_assignments=None, os_info=None,
     else:
         env['SLOTS'] = None
 
-    print("slots: ", env['SLOTS'])
     env['USE_SAFEUPDATE'] = use_safeupdate
     env['OS_INFO'] = os_info
     env['APP_INFO'] = app_info
