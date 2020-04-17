@@ -27,7 +27,7 @@ from release import *
 from iotile.core.exceptions import *
 from iotile.core.dev import IOTile, ComponentRegistry
 from iotile.build.build import ProductResolver
-from trub_script import build_update_script, build_update_script_v2
+from trub_script import build_update_script, build_trub_records
 
 
 def require(builder_name):
@@ -293,9 +293,9 @@ def autobuild_trub_script(file_name, slot_assignments=None, os_info=None, sensor
     build_update_script(file_name, slot_assignments, os_info, sensor_graph, app_info, use_safeupdate)
 
 
-def autobuild_trub_script_v2(file_name, slot_assignments=None, os_info=None, 
-                                sensor_graph=None, app_info=None,
-                                use_safeupdate=False):
+def autobuild_trub_records(file_name, slot_assignments=None, os_info=None, 
+                           sensor_graph=None, app_info=None,
+                           use_safeupdate=False):
     """Build an OTA trub script that loads given firmware into the given slots.
 
     slot_assignments should be a list of tuples in the following form:
@@ -320,7 +320,7 @@ def autobuild_trub_script_v2(file_name, slot_assignments=None, os_info=None,
             disables them after the firmware update records.
     """
 
-    build_update_script_v2(file_name, slot_assignments, os_info, sensor_graph, app_info, use_safeupdate)
+    build_trub_records(file_name, slot_assignments, os_info, sensor_graph, app_info, use_safeupdate)
 
 
 def autobuild_bootstrap_file(file_name, image_list):

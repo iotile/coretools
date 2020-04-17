@@ -139,9 +139,9 @@ def _parse_slot(slot):
     return False, slot_number
 
 
-def build_update_script_v2(file_name, slot_assignments=None, os_info=None,
-                              sensor_graph=None, app_info=None,
-                              use_safeupdate=False):
+def build_trub_records(file_name, slot_assignments=None, os_info=None,
+                       sensor_graph=None, app_info=None,
+                       use_safeupdate=False):
     """Build a trub script based on the records received for each slot.
 
     slot_assignments should be a list of tuples in the following form:
@@ -186,10 +186,10 @@ def build_update_script_v2(file_name, slot_assignments=None, os_info=None,
         env['UPDATE_SENSORGRAPH'] = True
 
     env.Command([os.path.join('build', 'output', file_name)], files,
-                action=Action(_build_script_action, "Building TRUB script at $TARGET"))
+                action=Action(_build_records_action, "Building TRUB script at $TARGET"))
 
 
-def _build_script_action(target, source, env):
+def _build_records_action(target, source, env):
     """Create a TRUB script different records for controllers and tiles
 
     If the app_info is provided, then the final source file will be a sensorgraph.
