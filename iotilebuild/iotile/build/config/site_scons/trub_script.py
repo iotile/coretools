@@ -260,13 +260,12 @@ def _build_record(slot_number, image_path, record_type, args):
         elif record_type == 5: # kResetController
             pass # Not implemented yet
         elif record_type == 6: # kEnhancedReflashControllerTile
-            if args['reboot'] == True:
-                reboot_flag = 1
+            if args['reboot'] == "True":
+                skip_reboot_flag = 0
             else:
-                reboot_flag = 0
-
+                skip_reboot_flag = 1
             return EnhancedReflashControllerRecord(bin_data, offset,
-                                                   flags=reboot_flag)
+                                                   flags=skip_reboot_flag)
         else:
             raise BuildError("Invalid record type for this slot.",
                              slot=slot_number, record=record_type)
