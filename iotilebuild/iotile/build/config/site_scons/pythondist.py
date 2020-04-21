@@ -271,12 +271,12 @@ def run_pytest(target, source, env):
 
 
 def run_python_scripts(target, source, env):
-    """Run python script with arguments"""
+    """Run python script with no arguments"""
 
-    for count, script in enumerate(source):
+    for count in range(len(source)):
         try:
             return_value = 0
-            script_call = ['py', str(source[count])] + env['SCRIPT' + str(count) + '_ARGS']
+            script_call = ['py', str(source[count])]
             output = subprocess.check_output(script_call, stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as err:
             output = err.output

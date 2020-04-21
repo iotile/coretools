@@ -87,7 +87,7 @@ def autobuild_python_test(path):
     env.AlwaysBuild(target)
 
 
-def autobuild_python_scripts(scripts_list):
+def autobuild_python_scripts(scripts_dir):
     """Calls a list of python scripts required for the build
     
         Args:
@@ -109,11 +109,10 @@ def autobuild_python_scripts(scripts_list):
     scripts_source = []
     scripts_target = []
 
-    for count, script in enumerate(scripts_list):
-        env['SCRIPT' + str(count) + '_ARGS'] = script['args']
-        scripts_source.append(script['script_path'])
+    for script in os.listdir(scripts_dir):
+        scripts_source.append(os.path.join(scripts_dir, script))
         scripts_target.append(os.path.join(script_target_output,
-                                           script['script_path'] + '.log'))
+                                           script + '.log'))
 
     target = env.Command(scripts_target,
                          scripts_source,
