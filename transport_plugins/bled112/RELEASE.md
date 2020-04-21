@@ -4,6 +4,8 @@ All major changes in each released version of the bled112 transport plugin are l
 
 ## HEAD
 
+- Add `safe_mode` advertisement flag in scan results
+
 ## 3.0.4
 
 - Refactor BLE broadcast encryption flags: three bits are treated as an enumeration
