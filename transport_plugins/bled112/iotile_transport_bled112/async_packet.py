@@ -50,9 +50,41 @@ class AsyncPacketBuffer:
         except Empty:
             raise InternalTimeoutError("Timeout waiting for packet in AsyncPacketBuffer")
 
+#80 2a 06 00 ca 00 00 90 29 81
+#25 cb 01 ff 1f 02 01 06 1b 16
+#dd fd 00 90 00 00 00 00 00 00 
+#23 16 00 00 a0 01 40 10 00 00
+#00 00 00 00 00 00  rssi: -54, type: 0, sender: 0090298125cb
+def packet_is_broadcast_v2(packet):
+    if len(packet) != 46:
+        return False
+    if not (packet[0] == 0x80 and packet[2] == 6 and packet[3] == 0):
+        return False
+    if not (packet[18] == 0x1b and packet[19] == 0x16 and packet[20] == 0xdd and packet[21] == 0xfd):
+        return False
+    return True
+
+def packet_is_dupe(packet, dedupe_dict):
+    mac = tuple(packet[6:11])
+
+    #Create the tuple for the packet, ignore the sequence value
+    broadcast = packet[22:]
+    del broadcast[13]
+    broadcast_tup = tuple(broadcast)
+
+    #print(f"Parsing from {mac}: {broadcast_tup}")
+    if dedupe_dict.get(mac, None) == broadcast_tup:
+        #print(f"Dropping from {mac}: {broadcast_tup}")
+        return True
+    #print(f"Not a dupe    {mac}: {broadcast_tup}")
+    dedupe_dict[mac] = broadcast_tup
+    return False
+
 
 def ReaderThread(filelike, read_queue, header_length, length_function, stop):
     logger = logging.getLogger(__name__)
+    dedupe_dict = {}
+    #count = 0
 
     while not stop.is_set():
         try:
@@ -81,6 +113,17 @@ def ReaderThread(filelike, read_queue, header_length, length_function, stop):
 
             # We have a complete packet now, process it
             packet = header + remaining
+
+            if packet_is_broadcast_v2(packet):
+                #count += 1
+                #if count % 100 != 0:
+                #if read_queue.qsize() > 25:
+                if read_queue.qsize() > 25 and packet_is_dupe(packet, dedupe_dict):
+                    #print("drop")
+                    continue
+
+                #print(packet.hex())
+
             read_queue.put(packet)
         except:
             logger.exception("Error in reader thread")
