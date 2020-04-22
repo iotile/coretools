@@ -12,6 +12,7 @@
 import os.path
 import os
 import sys
+import subprocess
 
 from SCons.Script import *
 
@@ -26,7 +27,7 @@ from release import *
 from iotile.core.exceptions import *
 from iotile.core.dev import IOTile, ComponentRegistry
 from iotile.build.build import ProductResolver
-from trub_script import build_update_script
+from trub_script import build_update_script, build_trub_records
 
 
 def require(builder_name):
@@ -85,6 +86,38 @@ def autobuild_python_test(path):
                          action=env.Action(run_pytest, "Running python unit tests"))
     env.AlwaysBuild(target)
 
+
+def autobuild_python_scripts(scripts_dir):
+    """Calls a list of python scripts required for the build
+    
+        Args:
+            scripts (list(dict)): Dictionary of scripts with their arguments
+
+            Ex.
+            scripts[0] = {
+                'script_path': 'example_script_1.py',
+                'args': [es1_arg1, es1_arg2, es1_arg3]
+            }
+            scripts[1] = {
+                'script_path': 'example_script_2.py',
+                'args': [es2_arg1, es2_arg2]
+            }
+    """
+ 
+    env = Environment(tools=[])
+    script_target_output = 'build/test/output/'
+    scripts_source = []
+    scripts_target = []
+
+    for script in os.listdir(scripts_dir):
+        scripts_source.append(os.path.join(scripts_dir, script))
+        scripts_target.append(os.path.join(script_target_output,
+                                           script + '.log'))
+
+    target = env.Command(scripts_target,
+                         scripts_source,
+                         action=env.Action(run_python_scripts, "Running python scripts"))
+    env.AlwaysBuild(target)
 
 def autobuild_onlycopy():
     """Autobuild a project that does not require building firmware, pcb or documentation
@@ -257,6 +290,36 @@ def autobuild_trub_script(file_name, slot_assignments=None, os_info=None, sensor
     """
 
     build_update_script(file_name, slot_assignments, os_info, sensor_graph, app_info, use_safeupdate)
+
+
+def autobuild_trub_records(file_name, slot_assignments=None, os_info=None, 
+                           sensor_graph=None, app_info=None,
+                           use_safeupdate=False):
+    """Build an OTA trub script that loads given firmware into the given slots.
+
+    slot_assignments should be a list of tuples in the following form:
+    (record type, "slot X" or "controller", firmware_image_name, options)
+
+    The output of this autobuild action will be a trub script in
+    build/output/<file_name> that assigns the given firmware to each slot in
+    the order specified in the slot_assignments list.
+
+    Args:
+        file_name (str): The name of the output file that we should create.
+            This file name should end in .trub
+        slot_assignments (list of (str, str, str, list)): A list of tuples containing
+            the slot name and the firmware image that we should use to build
+            our update script. Optional
+        os_info (tuple(int, str)): A tuple of OS version tag and X.Y version
+            number that will be set as part of the OTA script if included. Optional.
+        sensor_graph (str): Name of sgf file. Optional.
+        app_info (tuple(int, str)): A tuple of App version tag and X.Y version
+            number that will be set as part of the OTA script if included. Optional.
+        use_safeupdate (bool): If True, Enables safemode before the firmware update records, then
+            disables them after the firmware update records.
+    """
+
+    build_trub_records(file_name, slot_assignments, os_info, sensor_graph, app_info, use_safeupdate)
 
 
 def autobuild_bootstrap_file(file_name, image_list):
