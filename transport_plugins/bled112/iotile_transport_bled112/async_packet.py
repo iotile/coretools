@@ -69,12 +69,10 @@ def packet_is_broadcast_v2(packet):
 
 def packet_is_dupe(packet, dedupe_dict):
     mac = tuple(packet[6:11])
-
-    #Drop the sequence value from the packet, since that changes for each packet
     data = packet[22:]
 
     #print(f"Parsing from {mac}: {data}")
-    if dedupe_dict.get(mac, None) == data:
+    if dedupe_dict.get(mac) == data:
         #print(f"Dropping from {mac}: {data}")
         return True
     #print(f"Not a dupe    {mac}: {data}")
@@ -113,11 +111,15 @@ def ReaderThread(filelike, read_queue, header_length, length_function, stop):
 
             # We have a complete packet now, process it
             packet = header + remaining
+            #qsize = read_queue.qsize()
+            #qsize_limit = 50
+            #if qsize % qsize_limit == qsize_limit -1:
+                #logger.error("queue is %d", qsize)
 
+            #if qsize > qsize_limit and packet_is_broadcast_v2(packet):
             if packet_is_broadcast_v2(packet):
                 #if read_queue.qsize() > 25:
-                #if packet_is_dupe(packet, dedupe_dict):
-                if read_queue.qsize() > 25 and packet_is_dupe(packet, dedupe_dict):
+                if packet_is_dupe(packet, dedupe_dict):
                     #print("drop")
                     continue
 
