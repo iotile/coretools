@@ -2,6 +2,16 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 3.0.15
+
+- Invoke python script using path of current running Python interpreter
+
+## 3.0.14
+
+- Add new autobuild function to build trub scripts with specific records
+- Add ability to create enhanced reflash records
+- Add autobuild ability to run a batch of python scripts
+
 ## 3.0.13
 
 - Pin breathe to 4.14.1
