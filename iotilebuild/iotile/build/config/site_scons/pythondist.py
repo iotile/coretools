@@ -276,7 +276,7 @@ def run_python_scripts(target, source, env):
     for count in range(len(source)):
         try:
             return_value = 0
-            script_call = ['py', str(source[count])]
+            script_call = [sys.executable, str(source[count])]
             output = subprocess.check_output(script_call, stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as err:
             output = err.output
