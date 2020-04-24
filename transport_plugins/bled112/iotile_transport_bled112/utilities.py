@@ -38,11 +38,11 @@ def _find_available_bled112(logger):
     raise ExternalError("There were %d BLED112 adapters but all were in use." % len(devices))
 
 
-def open_bled112(port, logger):
+def open_bled112(port, logger, timeout=0.01):
     """Open a BLED112 adapter either by name or the first available."""
 
     if port is not None and port != '<auto>':
         logger.info("Using BLED112 adapter at %s", port)
-        return serial.Serial(port, _BAUD_RATE, timeout=0.01, rtscts=True, exclusive=True)
+        return serial.Serial(port, _BAUD_RATE, timeout, rtscts=True, exclusive=True)
 
     return _find_available_bled112(logger)

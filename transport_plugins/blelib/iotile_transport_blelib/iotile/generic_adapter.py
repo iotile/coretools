@@ -12,6 +12,7 @@ from time import monotonic
 from iotile.core.hw.transport import StandardDeviceAdapter
 from iotile.core.hw.exceptions import DeviceAdapterError
 from iotile.core.utilities.async_tools import SharedLoop
+from iotile_transport_bled112.hardware.async_central import BLED112Central
 from ..interface import AbstractBLECentral, errors, messages
 from .constants import TileBusService
 
@@ -20,10 +21,14 @@ class GenericBLEDeviceAdapter(StandardDeviceAdapter):
     CONNECT_RETRIES = 4
     ACTIVE_SCAN = False
 
-    def __init__(self, central: AbstractBLECentral, *, loop=SharedLoop):
+#    def __init__(self, central: AbstractBLECentral, *, loop=SharedLoop):
+    def __init__(self, port: str, *, loop=SharedLoop):
         super(GenericBLEDeviceAdapter, self).__init__(__name__, loop=loop)
 
-        self._central = central
+        # self._central = central
+
+        # parse port and find central device
+        self._central = BLED112Central(port)
 
         # Setup default configuration options
         self.set_config('connect_timeout', self.CONNECT_TIMEOUT)

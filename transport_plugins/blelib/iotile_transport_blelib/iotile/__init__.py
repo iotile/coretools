@@ -6,3 +6,6 @@ bluetooth support.
 """
 
 from .constants import TileBusService, ARCH_MANUFACTURER, IOTILE_SERVICE_UUID
+from .generic_adapter import GenericBLEDeviceAdapter
+
+__all__ = ['GenericBLEDeviceAdapter']
