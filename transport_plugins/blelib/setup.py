@@ -10,7 +10,8 @@ setup(
         "iotile-core>=5.0.0,<6"
     ],
     entry_points={
-        'iotile.device_adapter': ['emuble = iotile_transport_blelib.iotile.emulation:EmulatedBLEDeviceAdapter']
+        'iotile.device_adapter': ['emuble = iotile_transport_blelib.iotile.emulation:EmulatedBLEDeviceAdapter',
+                                  'ble = iotile_transport_blelib.iotile:GenericBLEDeviceAdapter']
     },
     python_requires=">=3.5,<4",
     description="IOTile BLE Support Package",
