@@ -12,6 +12,8 @@ from time import monotonic
 from iotile.core.hw.transport import StandardDeviceAdapter
 from iotile.core.hw.exceptions import DeviceAdapterError
 from iotile.core.utilities.async_tools import SharedLoop
+from ..iotile import TileBusService, ARCH_MANUFACTURER, IOTILE_SERVICE_UUID
+from ..iotile.advertisements import parse_v2_advertisement
 from ..interface import AbstractBLECentral, errors, messages, BLEAdvertisement
 from .constants import TileBusService
 
@@ -205,8 +207,14 @@ class GenericBLEDeviceAdapter(StandardDeviceAdapter):
     async def on_advertisement(self, advert_event: messages.AdvertisementObserved):
         advert = advert_event.advertisement
 
-        #FIXME: Actually parse the advertisements here and discard non-iotile advertisements
-        await self.notify_event(advert.sender, 'device_seen', dict(uuid=0, connection_string=advert.sender))
+        device_info = None
+
+        if advert.contains_service(IOTILE_SERVICE_UUID):
+            # v2
+            device_info = parse_v2_advertisement(advert)
+
+            #FIXME: Actually parse the advertisements here and discard non-iotile advertisements
+            await self.notify_event(advert.sender, 'device_seen', device_info)
 
     async def on_rpc_event(self, event: Union[messages.NotificationReceived, messages.PeripheralDisconnected]):
         """Callback triggered whenever an event relevant to rpc processing happens."""
