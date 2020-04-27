@@ -43,6 +43,6 @@ def open_bled112(port, logger, timeout=0.01):
 
     if port is not None and port != '<auto>':
         logger.info("Using BLED112 adapter at %s", port)
-        return serial.Serial(port, _BAUD_RATE, timeout, rtscts=True, exclusive=True)
+        return serial.Serial(port=port, baudrate=_BAUD_RATE, timeout=timeout, rtscts=True, exclusive=True)
 
     return _find_available_bled112(logger)
