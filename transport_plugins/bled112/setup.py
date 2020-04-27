@@ -11,7 +11,8 @@ setup(
         "pyserial>=3.4.0,<4"
     ],
     python_requires=">=3.5,<4",
-    entry_points={'iotile.device_adapter': ['bled112 = iotile_transport_bled112.bled112:BLED112Adapter'],
+    entry_points={'iotile.device_adapter': ['bled112 = iotile_transport_bled112.bled112:BLED112Adapter',
+                                            'async_bled112 = iotile_transport_bled112.hardware:BLED112Adapter'],
                   'iotile.device_server': ['bled112 = iotile_transport_bled112.server_bled112:BLED112Server'],
                   'iotile.config_variables': ['bled112 = iotile_transport_bled112.config_variables:get_variables']},
     description="IOTile BLED112 Transport Plugin",
