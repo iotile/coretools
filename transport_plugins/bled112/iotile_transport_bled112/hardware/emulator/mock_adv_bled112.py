@@ -8,6 +8,7 @@ import datetime
 
 from iotile.mock.mock_ble import MockBLEDevice
 from iotile_transport_bled112.hardware.emulator.mock_bled112 import MockBLED112, BGAPIPacket, bgapi_resp, bgapi_event
+from iotile_transport_blelib.iotile.advertisements import generate_v2_advertisement
 from iotile.core.hw.reports import IOTileReading
 
 
@@ -23,7 +24,7 @@ def generate_raw_time():
     return seconds_from_midnight
 
 
-def generate_random_reading():
+def generate_random_reading() -> IOTileReading:
     return IOTileReading(generate_raw_time(), random.randint(0, 0xFFFE), random.getrandbits(31))
 
 
@@ -31,7 +32,7 @@ def generate_iotile_id():
     return random.getrandbits(31)
 
 
-def update_random_reading(reading, update_value_probability):
+def update_random_reading(reading: IOTileReading, update_value_probability: int) -> IOTileReading:
     reading.raw_time = generate_raw_time()
     if random.randint(0, 100) < update_value_probability:
         reading.value = random.getrandbits(31)
@@ -66,27 +67,6 @@ class MockAdvertisingBLED112(MockBLED112):
 
         return [resp]
 
-    def advertisement(self, iotile_id, low_voltage=False, user_connected=False, device_reports=False):
-        flags = (int(low_voltage) << 1) | (int(user_connected) << 2) | (int(device_reports))
-        ble_flags = struct.pack("<BBB", 2, 0, 0) #FIXME fix length
-        uuid_list = struct.pack("<BB16s", 17, 6, MockBLEDevice.TBService.bytes_le)
-        manu = struct.pack("<BBHLH", 9, 0xFF, MockBLEDevice.ArchManuID, iotile_id, flags)
-
-        return ble_flags + uuid_list + manu
-
-    def scan_response(self, reading, voltage=3.5):
-        header = struct.pack("<BBH", 19, 0xFF, MockBLEDevice.ArchManuID)
-        voltage = struct.pack("<H", int(voltage*256))
-        _reading = struct.pack("<HLLL", reading.stream, reading.value, reading.raw_time, 0)
-        name = struct.pack("<BB6s", 7, 0x09, b"IOTile")
-        reserved = struct.pack("<BBB", 0, 0, 0)
-
-        response = header + voltage + _reading + name + reserved
-        assert len(response) == 31
-
-        return response
-
-
     def _generate_adv_response(self, info_generator):
         if not self.scanning:
             return
@@ -102,17 +82,17 @@ class MockAdvertisingBLED112(MockBLED112):
         packet['address'] = next_mac
         packet['address_type'] = 1 #Random address
         packet['bond'] = 0xFF #No bond
-        packet['data'] = self.advertisement(next_iotile_id)
+        packet['data'] = generate_v2_advertisement(next_iotile_id, broadcast=next_reading)
 
         packets.append(packet)
 
 
-        if self.active_scan:
-            response = copy.deepcopy(packet)
-            response['data'] = self.scan_response(next_reading)
-            response['adv_type'] = MockBLEDevice.ScanResponsePacket
+        # if self.active_scan:
+        #     response = copy.deepcopy(packet)
+        #     response['data'] = self.scan_response(next_reading)
+        #     response['adv_type'] = MockBLEDevice.ScanResponsePacket
 
-            packets.append(response)
+        #     packets.append(response)
 
         return packets
 
