@@ -1,7 +1,7 @@
 """Configuration information for iotile-ext-cloud."""
 
 import getpass
-
+import urllib3
 from iotile.core.dev.registry import ComponentRegistry
 from iotile.cloud.cloud import IOTileCloud
 from iotile.core.utilities.typedargs import param
@@ -40,6 +40,7 @@ def link_cloud(self, username=None, password=None, device_id=None):
     reg = ComponentRegistry()
 
     domain = self.get('cloud:server')
+    verify_server_cert = self.get('cloud:verify-server')
 
     if username is None:
         prompt_str = "Please enter your IOTile.cloud email: "
@@ -51,7 +52,10 @@ def link_cloud(self, username=None, password=None, device_id=None):
 
         password = getpass.getpass(prompt_str)
 
-    cloud = Api(domain=domain)
+    if not verify_server_cert:
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+    cloud = Api(domain=domain, verify=verify_server_cert)
     ok_resp = cloud.login(email=username, password=password)
     if not ok_resp:
         raise ArgumentError("Could not login to iotile.cloud as user %s" % username)
@@ -69,9 +73,9 @@ def get_variables():
     """Get a dictionary of configuration variables."""
 
     prefix = "cloud"
-    conf_vars = [["server",
-                  "string",
-                  "The domain name to talk to for iotile.cloud operations (including https:// prefix)",
-                  'https://iotile.cloud']]
+
+    conf_vars = []
+    conf_vars.append(["server", "string", "The domain name to talk to for iotile.cloud operations (including https:// prefix)", 'https://iotile.cloud'])
+    conf_vars.append(["verify-server", "bool", "Verify the TLS certificate of the cloud server", "true"])
 
     return prefix, conf_vars

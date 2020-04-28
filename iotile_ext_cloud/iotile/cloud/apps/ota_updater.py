@@ -24,11 +24,11 @@ op_map = {">=": operator.lt,
           }
 
 
-def _download_ota_script(script_url):
+def _download_ota_script(script_url, verify_server_cert):
     """Download the script from the cloud service and store to temporary file location"""
 
     try:
-        blob = requests.get(script_url, stream=True)
+        blob = requests.get(script_url, stream=True, verify=verify_server_cert)
         return blob.content
     except Exception as e:
         iprint("Failed to download OTA script")
@@ -96,7 +96,7 @@ class OtaUpdater(IOTileApp):
 
         iprint("Downloading script")
         iprint(script[1])
-        blob = _download_ota_script(script[1])
+        blob = _download_ota_script(script[1], self._cloud.verify_server)
 
         if not blob:
             iprint("Download of script failed for some reason")
@@ -109,7 +109,6 @@ class OtaUpdater(IOTileApp):
         except Exception:
             self._inform_cloud(script[0], self.dev_slug, False)
             raise
-
 
     def _check_criteria(self, criterion):
 

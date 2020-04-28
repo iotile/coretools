@@ -667,10 +667,12 @@ class BLED112Adapter(DeviceAdapter):
         #   bit 3 - 5: Broadcast encryption key type
         #   bit 6: broadcast data is time synchronized to avoid leaking
         #   information about when it changes
+        #   bit 7: Device is in Safe Mode
         is_pending_data = bool(flags & (1 << 0))
         is_low_voltage = bool(flags & (1 << 1))
         is_user_connected = bool(flags & (1 << 2))
         broadcast_encryption_key_type = (flags >> 3) & 7
+        is_safe_mode = bool(flags & (1 << 7))
 
         self._device_scan_counts.setdefault(device_id, {'v1': 0, 'v2': 0})['v2'] += 1
 
@@ -679,6 +681,7 @@ class BLED112Adapter(DeviceAdapter):
                 'pending_data': is_pending_data,
                 'low_voltage': is_low_voltage,
                 'user_connected': is_user_connected,
+                'safe_mode': is_safe_mode,
                 'signal_strength': rssi,
                 'reboot_counter': reboots,
                 'sequence': counter,

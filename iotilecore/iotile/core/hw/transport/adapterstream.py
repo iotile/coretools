@@ -240,7 +240,8 @@ class AdapterStream:
         self._reports = None
         self._traces = None
 
-        self._loop.run_coroutine(self.adapter.disconnect(0))
+        if not self.connection_interrupted:
+            self._loop.run_coroutine(self.adapter.disconnect(0))
         self.connected = False
         self.connection_interrupted = False
         self.connection_string = None
