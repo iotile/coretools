@@ -212,6 +212,7 @@ class GenericBLEDeviceAdapter(StandardDeviceAdapter):
         if advert.contains_service(IOTILE_SERVICE_UUID):
             # v2
             device_info = parse_v2_advertisement(advert)
+            device_info['validity_period'] = 60
 
             #FIXME: Actually parse the advertisements here and discard non-iotile advertisements
             await self.notify_event(advert.sender, 'device_seen', device_info)
