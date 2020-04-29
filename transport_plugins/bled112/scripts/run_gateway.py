@@ -13,25 +13,7 @@ from iotile.core.utilities import BackgroundEventLoop
 from iotile_transport_bled112.utilities import open_bled112
 from iotilegateway.gateway import IOTileGateway
 
-logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
-
-gateway_config = {
-    "adapters": [
-        {
-            "name": "bled112",
-            "port": "/dev/pts/4"
-        }
-    ],
-    "servers": [
-        {
-            "name": "websockets",
-            "args":
-            {
-                "port": 5120
-            }
-        }
-    ]
-}
+logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.DEBUG)
 
 def clean_port(port):
     ser = open_bled112(port, logging.getLogger(__name__))
@@ -49,8 +31,24 @@ def open_ws(gateway_event):
     hw.close()
 
 
-def profile_gateway(port_node, gateway_event, file_name="log.txt", time_to_profile=300):
-    gateway_config["adapters"][0]["port"] = port_node
+def profile_gateway(port_node, gateway_event, file_name="log.txt", time_to_profile=300, device_adapter="bled112"):
+    gateway_config = {
+    "adapters": [
+        {
+            "name": device_adapter,
+            "port": port_node
+        }
+    ],
+    "servers": [
+        {
+            "name": "websockets",
+            "args":
+            {
+                "port": 5120
+            }
+        }
+    ]
+}
 
     loop = BackgroundEventLoop()
     loop.start()
@@ -82,6 +80,7 @@ if __name__ == '__main__':
     argparser.add_argument("--log-file", required=True)
     argparser.add_argument("--port", help="/dev/pts/X", required=True)
     argparser.add_argument("--connect-ws", default=False, action='store_true')
+    argparser.add_argument("--device-adapter", help="[bled112 | async_bled112]", default="bled112")
     args = argparser.parse_args()
 
     clean_port(args.port)
@@ -93,7 +92,7 @@ if __name__ == '__main__':
         hw_process = multiprocessing.Process(target=open_ws, args=(gateway_event,))
         hw_process.start()
 
-    profile_gateway(args.port, gateway_event, args.log_file, args.time_to_profile)
+    profile_gateway(args.port, gateway_event, args.log_file, args.time_to_profile, args.device_adapter)
 
     if hw_process:
         hw_process.join()

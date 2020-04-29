@@ -27,6 +27,7 @@ def main():
     argparser.add_argument("--stream-value-update-probability", type=int, default=100,
         help="probability that next second stream value will change",
         choices=range(0, 101))
+    argparser.add_argument("--device-adapter", help="[bled112 | async_bled112]", default="bled112")
     args = argparser.parse_args()
 
     pts1_link = "/tmp/ttyV0"
@@ -51,7 +52,7 @@ def main():
         hw_process = multiprocessing.Process(target=open_ws, args=(gateway_event,))
         hw_process.start()
 
-    profile_gateway(pts2_link, gateway_event, args.log_file, args.time_to_profile)
+    profile_gateway(pts2_link, gateway_event, args.log_file, args.time_to_profile, args.device_adapter)
 
     if hw_process:
         hw_process.join()
