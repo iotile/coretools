@@ -7,14 +7,16 @@ implementation.
 """
 
 import asyncio
+import datetime
 from typing import Union
 from time import monotonic
 from iotile.core.hw.transport import StandardDeviceAdapter
 from iotile.core.hw.exceptions import DeviceAdapterError
 from iotile.core.utilities.async_tools import SharedLoop
-from ..iotile import TileBusService, ARCH_MANUFACTURER, IOTILE_SERVICE_UUID
-from ..iotile.advertisements import parse_v2_advertisement
-from ..interface import AbstractBLECentral, errors, messages, BLEAdvertisement
+from iotile.core.hw.reports import IOTileReading, BroadcastReport
+from ..iotile import TileBusService, IOTILE_SERVICE_UUID
+from ..iotile.advertisements import parse_v2_advertisement, parse_v1_advertisement
+from ..interface import AbstractBLECentral, errors, messages
 from .constants import TileBusService
 
 class GenericBLEDeviceAdapter(StandardDeviceAdapter):
@@ -208,14 +210,22 @@ class GenericBLEDeviceAdapter(StandardDeviceAdapter):
         advert = advert_event.advertisement
 
         device_info = None
+        broadcast = None
 
         if advert.contains_service(IOTILE_SERVICE_UUID):
-            # v2
-            device_info = parse_v2_advertisement(advert)
-            device_info['validity_period'] = 60
+            device_info, broadcast = parse_v2_advertisement(advert)
+        elif advert.contains_service(TileBusService.UUID):
+            device_info, broadcast = parse_v1_advertisement(advert)
 
-            #FIXME: Actually parse the advertisements here and discard non-iotile advertisements
+        if device_info:
+            device_info['validity_period'] = 60
             await self.notify_event(advert.sender, 'device_seen', device_info)
+
+        if broadcast and broadcast['stream'] and broadcast['stream'] not in [0xFFFF, 0x7FFF]:
+            io_tile_reading = IOTileReading(device_info['timestamp'], broadcast['stream'], broadcast['value'],
+                                            reading_time=datetime.datetime.utcnow())
+            report = BroadcastReport.FromReadings(device_info['uuid'], [io_tile_reading], broadcast['timestamp'])
+            await self.notify_event(advert.sender, 'broadcast', report)
 
     async def on_rpc_event(self, event: Union[messages.NotificationReceived, messages.PeripheralDisconnected]):
         """Callback triggered whenever an event relevant to rpc processing happens."""

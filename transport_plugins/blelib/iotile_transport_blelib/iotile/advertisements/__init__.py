@@ -31,4 +31,4 @@ enhancements over the older v1 format:
 """
 
 from .generation import generate_v1_advertisement, generate_v2_advertisement, generate_advertisement
-from .parsing import parse_v2_advertisement
+from .parsing import parse_v2_advertisement, parse_v1_advertisement

@@ -1,5 +1,7 @@
 """This module contains functions for parsing of advertising packets"""
 
+import datetime
+
 from iotile.core.utilities.packed import unpack
 from iotile_transport_blelib.iotile import IOTILE_SERVICE_UUID, TileBusService, ARCH_MANUFACTURER
 from iotile_transport_blelib.interface import BLEAdvertisement #AbstractBLECentral, errors, messages,
@@ -50,5 +52,49 @@ def parse_v2_advertisement(advert: BLEAdvertisement):
             'advertising_version':2}
 
     # TODO implement encryption
+    payload = {
+        'multiplex': broadcast_multiplex,
+        'stream': broadcast_stream,
+        'value': broadcast_value,
+        'timestamp': timestamp
+    }
 
-    return info
+    return info, payload
+
+def parse_v1_advertisement(advert: BLEAdvertisement):
+        if len(advert) != 31:
+            return None
+
+        manu_data = advert.manufacturer_data(ARCH_MANUFACTURER)
+
+        _length, _datatype, _manu_id, device_uuid, flags = unpack("<BBHLH", manu_data)
+
+        # Flags for version 1 are:
+        #   bit 0: whether we have pending data
+        #   bit 1: whether we are in a low voltage state
+        #   bit 2: whether another user is connected
+        #   bit 3: whether we support robust reports
+        #   bit 4: whether we allow fast writes
+        info = {'connection_string': advert.sender,
+                'uuid': device_uuid,
+                'pending_data': bool(flags & (1 << 0)),
+                'low_voltage': bool(flags & (1 << 1)),
+                'user_connected': bool(flags & (1 << 2)),
+                'signal_strength': advert.rssi,
+                'advertising_version': 1}
+
+        payload = {'stream': None}
+
+        if advert.scan_data:
+            _length, _datatype, _manu_id, voltage, stream, reading, reading_time, curr_time = unpack("<BBHHHLLL11x", advert.scan_data)
+            info['voltage'] = voltage / 256.0
+            info['current_time'] = curr_time
+            info['last_seen'] = datetime.datetime.now()
+
+            payload = {
+                'stream': stream,
+                'value': reading,
+                'timestamp': reading_time
+            }
+
+        return info, payload

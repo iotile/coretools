@@ -2,7 +2,7 @@
 
 import struct
 import asyncio
-from typing import Protocol
+from typing_extensions import Protocol
 import logging
 from iotile.core.hw.reports import IOTileReading
 from iotile.core.hw.virtual import AbstractAsyncDeviceChannel
