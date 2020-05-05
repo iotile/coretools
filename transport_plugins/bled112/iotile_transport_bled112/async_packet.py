@@ -115,6 +115,7 @@ def ReaderThread(filelike, read_queue, header_length, length_function, stop):
             #qsize_limit = 50
             #if qsize % qsize_limit == qsize_limit -1:
                 #logger.error("queue is %d", qsize)
+                #logger.error("%d", len(packet))
 
             #if qsize > qsize_limit and packet_is_broadcast_v2(packet):
             if packet_is_broadcast_v2(packet):
