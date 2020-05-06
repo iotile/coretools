@@ -1,0 +1,12 @@
+{
+    "file_format": "v2",
+    "module_name": "test_trub_1",
+    "version": "1.0.0",
+
+    "products":
+    {
+        "test_trub_1.trub": "trub_script"
+    },
+    "release": true,
+    "release_date": "2020-04-17T16:48:23.345545"
+}

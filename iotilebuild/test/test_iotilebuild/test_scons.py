@@ -21,6 +21,7 @@ from distutils.spawn import find_executable
 from iotile.core.dev import ComponentRegistry, IOTile
 from iotile.core.utilities.intelhex import IntelHex
 from iotile.core.exceptions import *
+from iotile.core.hw.update.script import UpdateScript
 
 
 def copy_folder(local_name, tmpdir):
@@ -381,6 +382,31 @@ def test_pytest(tmpdir):
         assert os.path.exists(os.path.join('build', 'test', 'output', 'pytest.log'))
     finally:
         os.chdir(olddir)
+
+
+def test_combining_trubs(tmpdir):
+    """Make sure we can combine trubs and verify its contents are valid."""
+
+    olddir = os.getcwd()
+    builddir = copy_folder('combine_trubs', tmpdir)
+
+    try:
+        os.chdir(builddir)
+
+        err = subprocess.call(["iotile", "build"])
+        assert err == 0
+
+        output = os.path.join('build', 'output', 'combined.trub')
+        assert os.path.exists(output)
+
+        with open(output, "rb") as out_file:
+            bin_data = out_file.read()
+            script = UpdateScript.FromBinary(bin_data)
+            for record in script.records:
+                assert isinstance(record, tuple(record.KNOWN_CLASSES[record.MatchType()]))
+    finally:
+        os.chdir(olddir)
+
 
 def test_data_bundling(tmpdir):
     """Make sure we can bundle files with support wheels."""
