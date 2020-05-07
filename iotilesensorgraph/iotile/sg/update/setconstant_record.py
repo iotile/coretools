@@ -95,3 +95,10 @@ class SetConstantRecord(SendErrorCheckingRPCRecord):
 
     def __str__(self):
         return "Initialize stream '%s' to %d (0x%08X)" % (self.stream, self.value, self.value)
+
+    def __eq__(self, other):
+        if not isinstance(other, SetConstantRecord):
+            return False
+
+        return self.stream == other.stream and self.value == other.value
+

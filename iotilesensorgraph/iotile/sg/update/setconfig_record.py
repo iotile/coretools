@@ -172,3 +172,10 @@ class SetConfigRecord(UpdateRecord):
 
     def __str__(self):
         return "Set config variable 0x%X on %s to 'hex:%s'" % (self.config_id, self.target, hexlify(self.data))
+
+    def __eq__(self, other):
+        if not isinstance(other, SetConfigRecord):
+            return False
+
+        return self.target == other.target and self.config_id == other.config_id\
+            and self.data == other.data
