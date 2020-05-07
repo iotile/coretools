@@ -56,6 +56,16 @@ def extract_entrypoints(wheel_path, file_name):
     return {section: [" = ".join(x) for x in parser.items(section)] for section in parser.sections()}
 
 
+def get_trub_from_binary(trub_path):
+    """Gets the trub script object from a trub file"""
+
+    with open(trub_path, "rb") as trub_file:
+        bin_data = trub_file.read()
+        script = UpdateScript.FromBinary(bin_data)
+
+        return script
+
+
 def test_iotiletool():
     """Make sure the iotile tool works."""
     err = subprocess.check_call(["iotile", "quit"])
@@ -399,11 +409,20 @@ def test_combining_trubs(tmpdir):
         output = os.path.join('build', 'output', 'combined.trub')
         assert os.path.exists(output)
 
-        with open(output, "rb") as out_file:
-            bin_data = out_file.read()
-            script = UpdateScript.FromBinary(bin_data)
-            for record in script.records:
-                assert isinstance(record, tuple(record.KNOWN_CLASSES[record.MatchType()]))
+        first_trub_path = os.path.join('build', 'deps', 'test_trub_1', 'test_trub_1.trub')
+        second_trub_path = os.path.join('build', 'deps', 'test_trub_2', 'test_trub_2.trub')
+
+        combined_trub = get_trub_from_binary(output)
+        first_trub = get_trub_from_binary(first_trub_path)
+        second_trub = get_trub_from_binary(second_trub_path)
+
+        record_index = 0
+        assert len(combined_trub.records) == len(first_trub.records) + len(second_trub.records)
+
+        assert combined_trub.records[:len(first_trub.records)] == first_trub.records
+
+        assert combined_trub.records[-len(second_trub.records):] == second_trub.records
+
     finally:
         os.chdir(olddir)
 
