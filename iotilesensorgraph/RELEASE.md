@@ -3,6 +3,10 @@
 All major changes in each released version of iotile-sensorgraph are listed
 here.
 
+## 1.0.8
+
+- Add "__eq__ " methods to records
+
 ## 1.0.7
 
 - Unpin iotile-core to support compatibility with `iotile-core` 5
