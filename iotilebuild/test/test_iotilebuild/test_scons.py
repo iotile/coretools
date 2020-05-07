@@ -416,11 +416,12 @@ def test_combining_trubs(tmpdir):
         first_trub = get_trub_from_binary(first_trub_path)
         second_trub = get_trub_from_binary(second_trub_path)
 
-        record_index = 0
+        # Checks combined records length is equal to the other two combined
         assert len(combined_trub.records) == len(first_trub.records) + len(second_trub.records)
 
+        # Checks that the former half of records matches the first trub script
         assert combined_trub.records[:len(first_trub.records)] == first_trub.records
-
+        # Checks that the latter half of records matches the second trub script
         assert combined_trub.records[-len(second_trub.records):] == second_trub.records
 
     finally:
