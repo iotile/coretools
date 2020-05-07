@@ -122,7 +122,8 @@ class BLED112Adapter(DeviceAdapter):
         self._logger = logging.getLogger(__name__)
         self._logger.addHandler(logging.NullHandler())
         self._serial_port = open_bled112(port, self._logger)
-        self._stream = AsyncPacketBuffer(self._serial_port, header_length=4, length_function=packet_length)
+        self._stream = AsyncPacketBuffer(self._serial_port, header_length=4, length_function=packet_length,
+                                         config=config)
         self._commands = Queue()
         self._command_task = BLED112CommandProcessor(self._stream, self._commands, stop_check_interval=stop_check_interval)
         self._command_task.event_handler = self._handle_event
