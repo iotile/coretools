@@ -78,3 +78,9 @@ class ClearDataRecord(SendErrorCheckingRPCRecord):
 
     def __str__(self):
         return "Clear all sensorgraph readings"
+
+    def __eq__(self, other):
+        if not isinstance(other, ClearDataRecord):
+            return False
+
+        return True

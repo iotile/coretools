@@ -78,3 +78,9 @@ class PersistGraphRecord(SendErrorCheckingRPCRecord):
 
     def __str__(self):
         return "Persist sensorgraph to flash"
+
+    def __eq__(self, other):
+        if not isinstance(other, PersistGraphRecord):
+            return False
+
+        return True
