@@ -60,7 +60,7 @@ class AsyncPacketBuffer:
             raise InternalTimeoutError("Timeout waiting for packet in AsyncPacketBuffer")
 
 
-def ReaderThread(filelike, read_queue, header_length, length_function, stop, dedupe=False, dedupe_timeout=5):
+def reader_thread(filelike, read_queue, header_length, length_function, stop, dedupe=False, dedupe_timeout=5):
     logger = logging.getLogger(__name__)
     broadcast_v2_dedupers = None
     read_buffer = bytearray()
