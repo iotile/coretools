@@ -2,7 +2,7 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
-## 3.0.16
+## HEAD
 
 - Add new autobuild function to combine trub scripts
 

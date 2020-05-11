@@ -3,7 +3,7 @@
 All major changes in each released version of iotile-sensorgraph are listed
 here.
 
-## 1.0.8
+## HEAD
 
 - Add "__eq__ " methods to records
 
