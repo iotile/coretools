@@ -223,13 +223,17 @@ def test_eviction():
     pod4 = load_pod(pod_9004)
 
     # First three come up
-    assert dedupers.allow_packet(pod1[0])
-    assert dedupers.allow_packet(pod2[0])
-    assert dedupers.allow_packet(pod3[0])
+    with patch('iotile_transport_bled112.broadcast_v2_dedupe.time.monotonic', return_value=1):
+        assert dedupers.allow_packet(pod1[0])
+    with patch('iotile_transport_bled112.broadcast_v2_dedupe.time.monotonic', return_value=2):
+        assert dedupers.allow_packet(pod2[0])
+    with patch('iotile_transport_bled112.broadcast_v2_dedupe.time.monotonic', return_value=3):
+        assert dedupers.allow_packet(pod3[0])
 
     #Fourth comes up, Pod1 should be evicted
 
-    assert dedupers.allow_packet(pod4[0])
+    with patch('iotile_transport_bled112.broadcast_v2_dedupe.time.monotonic', return_value=4):
+        assert dedupers.allow_packet(pod4[0])
     assert len(dedupers.dedupers) == dedupers.MAX_DEDUPERS
     assert_pods_in_dedupercollection([0x9002, 0x9003, 0x9004], dedupers)
 

@@ -613,8 +613,6 @@ class BLED112Adapter(DeviceAdapter):
                 self._v1_scan_count += 1
                 info = self._parse_v1_advertisement(rssi, string_address, data)
             elif data[3] == 27 and data[4] == 0x16 and data[5] == 0xdd and data[6] == 0xfd:
-
-                #print(f"{payload.hex()}   rssi: {rssi}, type: {packet_type}, sender: {sender.hex()}")
                 self._v2_scan_count += 1
                 info, reading_time, stream, reading, \
                     broadcast_toggle, counter, broadcast_multiplex = \
