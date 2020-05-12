@@ -317,6 +317,21 @@ class SensorGraph:
         except ArgumentError:
             return 0
 
+    def add_crc(self):
+        """Check metadata to see if the sensorgraph's CRC should be added."""
+
+        if 'set_crc' not in self.metadata_database:
+            return
+
+        slot = SlotIdentifier.FromString('controller')
+        config_id = self.metadata_database['set_crc']
+        config_type, polynomial = self.get_config(slot, config_id)
+        calculated_crc = self.calculate_sensorgraph_crc(polynomial=polynomial)
+
+        print("polynomial: {}\ncalculated_crc: {}".format(hex(polynomial),
+                                                          hex(calculated_crc)))
+        self.add_config(slot, config_id, config_type, calculated_crc)
+
     def process_input(self, stream, value, rpc_executor):
         """Process an input through this sensor graph.
 
@@ -514,3 +529,41 @@ class SensorGraph:
         """Dump all of the streamers in this sensor graph as a list of strings."""
 
         return [str(streamer) for streamer in self.streamers]
+
+    def dump_constant_database(self):
+        """Dump all of the constants in this sensor graph as a list of strings."""
+
+        return ["{}: {}".format(constant, val) for constant, val in self.constant_database.items()]
+
+    def dump_metadata_database(self):
+        """Dump all of the metadata in this sensor graph as a list of strings."""
+
+        return ["{}: {}".format(metadata, val) for metadata, val in self.metadata_database.items()]
+
+    def dump_config_database(self):
+        """Dump all of the config variables in this sensor graph as a list of strings."""
+
+        return ["{}: {}".format(config, val) for config, val in self.config_database.items()]
+
+    def calculate_sensorgraph_crc(self, polynomial=0x104C11DB7):
+        """Returns the calculated CRC of the sensor graph"""
+
+        sensor_graph_dump = self.dump_nodes() + self.dump_streamers() +\
+                            self.dump_constant_database() +\
+                            self.dump_metadata_database() +\
+                            self.dump_config_database()
+
+        sensor_graph_string = ', '.join(sensor_graph_dump)
+        sensor_graph_bytes = bytes(sensor_graph_string, 'utf-8')
+
+        try:
+            import crcmod
+            crc32_func = crcmod.mkCrcFun(polynomial, initCrc=0xFFFFFFFF,
+                                         rev=False, xorOut=0)
+            checksum = crc32_func(sensor_graph_bytes) & 0xFFFFFFFF
+        except ImportError:
+            self._logger.warning("Not calculating crc code because crcmod\
+                                 package is not installed.")
+            checksum = 0xFFFFFFFF
+
+        return checksum
