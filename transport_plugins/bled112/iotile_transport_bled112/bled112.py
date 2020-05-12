@@ -1155,7 +1155,6 @@ class BLED112Adapter(DeviceAdapter):
         """Callback called on authentication is finished"""
 
         connection_handle = result['context']['handle']
-        conndata = self._get_connection(connection_handle, 'preparing')
         conn_id = result['context']['connection_id']
 
         if result['result']:
@@ -1166,13 +1165,18 @@ class BLED112Adapter(DeviceAdapter):
                 self._logger.info("User is authenticated!")
 
                 self._finish_connection(result['context'])
-            else:
-                conndata['failed'] = True
-                conndata['failure_reason'] = 'An error event recieved after \"Encrypt Start\" cmd!'
+                return
 
-                self.disconnect_async(conn_id, self._on_connection_failed)
+            reason = 'An error event recieved after \"Encrypt Start\" cmd!'
+        else:
+            reason = result['return_value']['reason']
+
+        conndata = self._get_connection(connection_handle, 'preparing')
+        if not conndata:
+            self._logger.info('Connection disconnected before authentication failed, conn_id=%d',
+                              conn_id)
         else:
             conndata['failed'] = True
-            conndata['failure_reason'] = result['return_value']['reason']
+            conndata['failure_reason'] = reason
 
-            self.disconnect_async(conn_id, self._on_connection_failed)
+        self.disconnect_async(conn_id, self._on_connection_failed)
