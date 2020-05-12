@@ -5,6 +5,7 @@ here.
 
 ## HEAD
 
+- Add feature to set sensorgraph's CRC as config variable
 - Add "__eq__ " methods to records
 
 ## 1.0.7
