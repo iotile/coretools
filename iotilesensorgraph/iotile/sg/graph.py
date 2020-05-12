@@ -328,8 +328,8 @@ class SensorGraph:
         config_type, polynomial = self.get_config(slot, config_id)
         calculated_crc = self.calculate_sensorgraph_crc(polynomial=polynomial)
 
-        print("polynomial: {}\ncalculated_crc: {}".format(hex(polynomial),
-                                                          hex(calculated_crc)))
+        self._logger.debug("polynomial: %s\ncalculated_crc: %s",
+                           hex(polynomial), hex(calculated_crc))
         self.add_config(slot, config_id, config_type, calculated_crc)
 
     def process_input(self, stream, value, rpc_executor):
