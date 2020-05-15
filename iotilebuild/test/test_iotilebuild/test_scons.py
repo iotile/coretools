@@ -21,6 +21,7 @@ from distutils.spawn import find_executable
 from iotile.core.dev import ComponentRegistry, IOTile
 from iotile.core.utilities.intelhex import IntelHex
 from iotile.core.exceptions import *
+from iotile.core.hw.update.script import UpdateScript
 
 
 def copy_folder(local_name, tmpdir):
@@ -53,6 +54,16 @@ def extract_entrypoints(wheel_path, file_name):
     parser.read_string(entry_points_file)
 
     return {section: [" = ".join(x) for x in parser.items(section)] for section in parser.sections()}
+
+
+def get_trub_from_binary(trub_path):
+    """Gets the trub script object from a trub file"""
+
+    with open(trub_path, "rb") as trub_file:
+        bin_data = trub_file.read()
+        script = UpdateScript.FromBinary(bin_data)
+
+        return script
 
 
 def test_iotiletool():
@@ -381,6 +392,41 @@ def test_pytest(tmpdir):
         assert os.path.exists(os.path.join('build', 'test', 'output', 'pytest.log'))
     finally:
         os.chdir(olddir)
+
+
+def test_combining_trubs(tmpdir):
+    """Make sure we can combine trubs and verify its contents are valid."""
+
+    olddir = os.getcwd()
+    builddir = copy_folder('combine_trubs', tmpdir)
+
+    try:
+        os.chdir(builddir)
+
+        err = subprocess.call(["iotile", "build"])
+        assert err == 0
+
+        output = os.path.join('build', 'output', 'combined.trub')
+        assert os.path.exists(output)
+
+        first_trub_path = os.path.join('build', 'deps', 'test_trub_1', 'test_trub_1.trub')
+        second_trub_path = os.path.join('build', 'deps', 'test_trub_2', 'test_trub_2.trub')
+
+        combined_trub = get_trub_from_binary(output)
+        first_trub = get_trub_from_binary(first_trub_path)
+        second_trub = get_trub_from_binary(second_trub_path)
+
+        # Checks combined records length is equal to the other two combined
+        assert len(combined_trub.records) == len(first_trub.records) + len(second_trub.records)
+
+        # Checks that the former half of records matches the first trub script
+        assert combined_trub.records[:len(first_trub.records)] == first_trub.records
+        # Checks that the latter half of records matches the second trub script
+        assert combined_trub.records[-len(second_trub.records):] == second_trub.records
+
+    finally:
+        os.chdir(olddir)
+
 
 def test_data_bundling(tmpdir):
     """Make sure we can bundle files with support wheels."""

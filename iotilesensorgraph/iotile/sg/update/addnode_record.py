@@ -86,3 +86,9 @@ class AddNodeRecord(SendErrorCheckingRPCRecord):
 
     def __str__(self):
         return "Add sensorgraph node '%s'" % self.descriptor
+
+    def __eq__(self, other):
+        if not isinstance(other, AddNodeRecord):
+            return False
+
+        return self.descriptor == other.descriptor

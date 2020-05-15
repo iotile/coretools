@@ -1,0 +1,15 @@
+{
+    "file_format": "v2",
+    "module_name": "combined_trub",
+
+    "depends":
+    {
+        "test_trub_1,=1.0.0": ["test_trub_1.trub"],
+        "test_trub_2,=1.1.1": ["test_trub_2.trub"]
+    },
+
+    "products":
+    {
+        "combined.trub": "trub_script"
+    }
+}

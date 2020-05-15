@@ -335,3 +335,42 @@ def _parse_slot_args(slot_args):
         args[arg_name] = arg_value
 
     return args
+
+
+def combine_trub_scripts(trub_scripts_list, out_file):
+    """Combines trub scripts, processed from first to last"""
+
+    resolver = ProductResolver.Create()
+
+    files = [resolver.find_unique("trub_script", x).full_path for x in trub_scripts_list]
+
+    records = []
+
+    for script in files:
+        if not os.path.isfile(script):
+            raise BuildError("Path to script is not a valid file.",
+                             script=script)
+        
+        trub_binary = _get_trub_binary(script)
+        records += UpdateScript.FromBinary(trub_binary).records
+
+    new_script = UpdateScript(records)
+
+    out_path = os.path.join('build', 'output')
+
+    if not os.path.exists(out_path):
+        os.makedirs(out_path)
+
+    out_path = os.path.join(out_path, out_file)
+
+    with open(out_path, "wb") as outfile:
+        outfile.write(new_script.encode())
+
+
+def _get_trub_binary(script_path):
+    """Returns the encoded binary TRUB script"""
+
+    with open(script_path, "rb") as script_file:
+        trub_binary = script_file.read()
+
+        return trub_binary

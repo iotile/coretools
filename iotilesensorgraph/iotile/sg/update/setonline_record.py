@@ -91,3 +91,9 @@ class SetGraphOnlineRecord(SendErrorCheckingRPCRecord):
             return "Start sensorgraph engine"
 
         return "Stop sensorgraph engine"
+
+    def __eq__(self, other):
+        if not isinstance(other, SetGraphOnlineRecord):
+            return False
+
+        return self.enable == other.enable
