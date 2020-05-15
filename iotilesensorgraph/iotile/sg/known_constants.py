@@ -39,3 +39,7 @@ config_tick1_secs = 0x2002
 ## Configuration for the time interval of tick_2 in seconds, it defaults
 ## to 0 if not specified
 config_tick2_secs = 0x2003
+
+# Known metadata entries on the controller
+
+known_metadata = ['app_tag', 'app_version']

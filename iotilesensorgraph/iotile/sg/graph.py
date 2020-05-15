@@ -6,10 +6,11 @@ from pkg_resources import iter_entry_points
 from toposort import toposort_flatten
 from iotile.core.exceptions import ArgumentError
 from iotile.core.hw.reports import IOTileReading
+from iotile.core.utilities.hash_algorithms import KNOWN_HASH_ALGORITHMS
 from .node_descriptor import parse_node_descriptor
 from .slot import SlotIdentifier
 from .stream import DataStream
-from .known_constants import config_fast_tick_secs, config_tick1_secs, config_tick2_secs
+from .known_constants import config_fast_tick_secs, config_tick1_secs, config_tick2_secs, known_metadata
 from .exceptions import NodeConnectionError, ProcessingFunctionError, ResourceUsageError
 
 
@@ -318,19 +319,43 @@ class SensorGraph:
             return 0
 
     def add_crc(self):
-        """Check metadata to see if the sensorgraph's CRC should be added."""
+        """Check metadata if sensorgraph's checksum needs to be added."""
 
-        if 'set_crc' not in self.metadata_database:
+        if 'hash_address' not in self.metadata_database or\
+            'hash_algorithm' not in self.metadata_database:
             return
 
         slot = SlotIdentifier.FromString('controller')
-        config_id = self.metadata_database['set_crc']
-        config_type, polynomial = self.get_config(slot, config_id)
-        calculated_crc = self.calculate_sensorgraph_crc(polynomial=polynomial)
+        config_id = self.metadata_database['hash_address']
+        algorithm = self.metadata_database['hash_algorithm']
 
-        self._logger.debug("polynomial: %s\ncalculated_crc: %s",
-                           hex(polynomial), hex(calculated_crc))
-        self.add_config(slot, config_id, config_type, calculated_crc)
+        hash_algorithm = KNOWN_HASH_ALGORITHMS[algorithm]
+
+        nodes_checksum = hash_algorithm.calculate(hash_algorithm.algorithm,
+                                                  self.get_nodes_binary())
+        self._logger.debug("nodes_checksum: %s", nodes_checksum)
+        streamers_checksum = hash_algorithm.calculate(hash_algorithm.algorithm,
+                                                  self.get_streamers_binary())
+        self._logger.debug("streamers_checksum: %s", streamers_checksum)
+        configs_checksum = hash_algorithm.calculate(hash_algorithm.algorithm,
+                                                  self.get_config_database_binary())
+        self._logger.debug("configs_checksum: %s", configs_checksum)
+        constants_checksum = hash_algorithm.calculate(hash_algorithm.algorithm,
+                                                  self.get_constant_database_binary())
+        self._logger.debug("constants_checksum: %s", constants_checksum)
+        metadata_checksum = hash_algorithm.calculate(hash_algorithm.algorithm,
+                                                  self.get_metadata_database_binary())
+        self._logger.debug("metadata_checksum: %s", metadata_checksum)
+        combined_checksum_string = nodes_checksum + streamers_checksum +\
+                                   configs_checksum + constants_checksum +\
+                                   metadata_checksum
+        combined_checksum_bytes = bytes(combined_checksum_string, 'utf-8')
+        device_checksum = hash_algorithm.calculate(hash_algorithm.algorithm, 
+                                                   combined_checksum_bytes)
+        self._logger.debug("device_checksum: %s", device_checksum)
+
+        config_type, _ = self.get_config(slot, config_id)
+        self.add_config(slot, config_id, config_type, device_checksum)
 
     def process_input(self, stream, value, rpc_executor):
         """Process an input through this sensor graph.
@@ -520,6 +545,11 @@ class SensorGraph:
         for entry in iter_entry_points(u'iotile.sg_processor', name):
             return entry.load()
 
+    def dump_roots(self):
+        """Dump all the root nodes in this sensor graph as a list of strings."""
+
+        return [str(x) for x in self.roots]
+
     def dump_nodes(self):
         """Dump all of the nodes in this sensor graph as a list of strings."""
 
@@ -532,18 +562,98 @@ class SensorGraph:
 
     def dump_constant_database(self):
         """Dump all of the constants in this sensor graph as a list of strings."""
+        
+        constant_dump = []
 
-        return ["{}: {}".format(constant, val) for constant, val in self.constant_database.items()]
+        for stream, value in sorted(self.constant_database.items(), key=lambda x: x[0].encode()):
+            constant_dump.append("'{}' {}".format(stream, value))
+
+        return constant_dump
 
     def dump_metadata_database(self):
         """Dump all of the metadata in this sensor graph as a list of strings."""
 
-        return ["{}: {}".format(metadata, val) for metadata, val in self.metadata_database.items()]
+        metadata_dump = []
 
-    def dump_config_database(self):
+        for metadata, value in sorted(self.metadata_database.items(), key=lambda x: x[0].encode()):
+            metadata_dump.append("{}: {}".format(metadata, value))
+
+        return metadata_dump
+
+    def dump_config_database(self, dump_config_type=True):
         """Dump all of the config variables in this sensor graph as a list of strings."""
 
-        return ["{}: {}".format(config, val) for config, val in self.config_database.items()]
+        config_dump = []
+        for slot, conf_vars in self.config_database.items():
+            for conf_var, conf_def in conf_vars.items():
+                conf_type, conf_val = conf_def
+
+                if dump_config_type:
+                    config_dump.append("'{}' {} {} {}".format(slot, conf_var,
+                                                              conf_type,
+                                                              conf_val))
+                else:
+                    config_dump.append("'{}' {} {}".format(slot, conf_var,
+                                                              conf_val))
+
+        return config_dump
+
+    def get_nodes_binary(self):
+        """Returns the binary representation of all the nodes"""
+
+        from .node_descriptor import create_binary_descriptor
+        binary_representation = bytearray()
+
+        for node in self.dump_nodes():
+            binary_representation += create_binary_descriptor(node)
+
+        return binary_representation
+
+    def get_streamers_binary(self):
+        """Returns the binary representation of all the streamers"""
+
+        from .streamer_descriptor import parse_string_descriptor, create_binary_descriptor
+        binary_representation = bytearray()
+
+        for streamer in self.dump_streamers():
+            streamer_obj = parse_string_descriptor(streamer)
+            binary_representation += create_binary_descriptor(streamer_obj)
+
+        return binary_representation
+
+    def get_constant_database_binary(self):
+        """Returns the binary representation of all the constant streams"""
+
+        binary_representation = bytearray()
+
+        for constant in self.dump_constant_database():
+            binary_representation += bytes(constant, 'utf-8')
+
+        return binary_representation
+
+    def get_metadata_database_binary(self):
+        """Returns the binary representation of the KNOWN metadata variables"""
+
+        binary_representation = bytearray()
+
+        for metadata in self.dump_metadata_database():
+            entry, _ = metadata.split(': ')
+
+            if entry in known_metadata:
+                binary_representation += bytes(metadata, 'utf-8')
+
+        return binary_representation
+
+    def get_config_database_binary(self):
+        """Returns the binary representation of all the config variables"""
+
+        binary_representation = bytearray()
+
+        for config in self.dump_config_database(dump_config_type=False):
+            binary_representation += bytes(config, 'utf-8')
+
+        return binary_representation
+
 
     def calculate_sensorgraph_crc(self, polynomial=0x104C11DB7):
         """Returns the calculated CRC of the sensor graph"""
