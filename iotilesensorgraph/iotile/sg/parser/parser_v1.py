@@ -113,7 +113,6 @@ class SensorGraphFileParser:
 
         self.sensor_graph.initialize_remaining_constants()
         self.sensor_graph.sort_nodes()
-        self.sensor_graph.add_crc()
 
     def parse_statement(self, statement, orig_contents):
         """Parse a statement, possibly called recursively.

@@ -2,6 +2,7 @@
 
 import sys
 import argparse
+import logging
 from io import open
 from iotile.sg import DeviceModel
 from iotile.sg.parser import SensorGraphFileParser
@@ -17,6 +18,7 @@ def build_args():
     parser.add_argument(u'-f', u'--format', default=u"nodes", choices=[u'nodes', u'ast', u'snippet', u'ascii', u'config', u'script'], type=str, help=u"the output format for the compiled result.")
     parser.add_argument(u'-o', u'--output', type=str, help=u"the output file to save the results (defaults to stdout)")
     parser.add_argument(u'--disable-optimizer', action="store_true", help=u"disable the sensor graph optimizer completely")
+    parser.add_argument(u'-v', u'--verbose', help=u"increase output verbosity", action="store_true")
     return parser
 
 
@@ -51,6 +53,9 @@ def main():
     arg_parser = build_args()
     args = arg_parser.parse_args()
 
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+
     model = DeviceModel()
 
     parser = SensorGraphFileParser()
@@ -65,6 +70,8 @@ def main():
     if not args.disable_optimizer:
         opt = SensorGraphOptimizer()
         opt.optimize(parser.sensor_graph, model=model)
+
+    parser.sensor_graph.add_crc()
 
     if args.format == u'nodes':
         output = u'\n'.join(parser.sensor_graph.dump_nodes()) + u'\n'
