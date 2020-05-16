@@ -9,6 +9,6 @@ def calculate_crc(crc_type, data):
                                              rev=False, xorOut=0)
         checksum = crc_func(data) & 0xFFFFFFFF
 
-        return checksum
+        return hex(checksum)
 
     raise ArgumentError("Unknown/Unimplemented crc algorithm")
