@@ -338,7 +338,7 @@ class SensorGraph:
                                                   self.get_streamers_binary())
         self._logger.debug("streamers_checksum: %s", streamers_checksum)
         configs_checksum = hash_algorithm.calculate(hash_algorithm.algorithm,
-                                                  self.get_config_database_binary())
+                                                  self.get_config_database_binary(ignore_configs=[config_id]))
         self._logger.debug("configs_checksum: %s", configs_checksum)
         constants_checksum = hash_algorithm.calculate(hash_algorithm.algorithm,
                                                   self.get_constant_database_binary())
@@ -580,13 +580,16 @@ class SensorGraph:
 
         return metadata_dump
 
-    def dump_config_database(self, dump_config_type=True):
+    def dump_config_database(self, dump_config_type=True, ignore_configs=[]):
         """Dump all of the config variables in this sensor graph as a list of strings."""
 
         config_dump = []
         for slot, conf_vars in self.config_database.items():
             for conf_var, conf_def in conf_vars.items():
                 conf_type, conf_val = conf_def
+
+                if conf_var in ignore_configs:
+                    continue
 
                 if dump_config_type:
                     config_dump.append("'{}' {} {} {}".format(slot, conf_var,
@@ -644,36 +647,14 @@ class SensorGraph:
 
         return binary_representation
 
-    def get_config_database_binary(self):
+    def get_config_database_binary(self, ignore_configs=[]):
         """Returns the binary representation of all the config variables"""
 
         binary_representation = bytearray()
 
-        for config in self.dump_config_database(dump_config_type=False):
+        for config in self.dump_config_database(dump_config_type=False,
+                                                ignore_configs=ignore_configs):
             binary_representation += bytes(config, 'utf-8')
 
         return binary_representation
 
-
-    def calculate_sensorgraph_crc(self, polynomial=0x104C11DB7):
-        """Returns the calculated CRC of the sensor graph"""
-
-        sensor_graph_dump = self.dump_nodes() + self.dump_streamers() +\
-                            self.dump_constant_database() +\
-                            self.dump_metadata_database() +\
-                            self.dump_config_database()
-
-        sensor_graph_string = ', '.join(sensor_graph_dump)
-        sensor_graph_bytes = bytes(sensor_graph_string, 'utf-8')
-
-        try:
-            import crcmod
-            crc32_func = crcmod.mkCrcFun(polynomial, initCrc=0xFFFFFFFF,
-                                         rev=False, xorOut=0)
-            checksum = crc32_func(sensor_graph_bytes) & 0xFFFFFFFF
-        except ImportError:
-            self._logger.warning("Not calculating crc code because crcmod\
-                                 package is not installed.")
-            checksum = 0xFFFFFFFF
-
-        return checksum
