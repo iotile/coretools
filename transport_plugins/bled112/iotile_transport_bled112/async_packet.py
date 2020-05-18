@@ -67,11 +67,11 @@ def reader_thread(filelike, read_queue, header_length, length_function, stop, de
             # The bled112 will read EOF when there is no more data, so it's safe to read a large amount
             #read_buffer += bytearray(filelike.read(1024))
 
-            read_buffer += filelike.read(1)  # Pend until atleast one byte arrives
+            read_buffer += bytearray(filelike.read(1))  # Pend until atleast one byte arrives
             avail_length = filelike.in_waiting  # NOTE That this is a pyserial api, not generic filelike
 
             if avail_length > 0:
-                read_buffer += filelike.read(avail_length)
+                read_buffer += bytearray(filelike.read(avail_length))
 
             while not stop.is_set() and len(read_buffer) >= header_length:
                 next_packet_len = header_length + length_function(read_buffer[:header_length])
@@ -81,10 +81,10 @@ def reader_thread(filelike, read_queue, header_length, length_function, stop, de
                     break
 
                 # Process the packet and remove it from the read buffer
-                packet = read_buffer[next_packet_len:]
-                del read_buffer[next_packet_len:]
+                packet = read_buffer[:next_packet_len]
+                read_buffer = read_buffer[next_packet_len:]
 
-                if broadcast_v2_dedupersis not None not broadcast_v2_dedupers.allow_packet(packet):
+                if broadcast_v2_dedupers is not None and not broadcast_v2_dedupers.allow_packet(packet):
                         continue
 
                 if stop.is_set():
