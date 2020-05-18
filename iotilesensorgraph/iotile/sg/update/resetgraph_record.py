@@ -78,3 +78,10 @@ class ResetGraphRecord(SendErrorCheckingRPCRecord):
 
     def __str__(self):
         return "Clear current sensorgraph"
+
+    def __eq__(self, other):
+        if not isinstance(other, ResetGraphRecord):
+            return False
+
+        return True
+

@@ -1,0 +1,5 @@
+from autobuild import autobuild_combine_trub_scripts
+
+autobuild_combine_trub_scripts(["test_trub_1.trub",
+                                "test_trub_2.trub"],
+                                "combined.trub")

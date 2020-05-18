@@ -86,3 +86,9 @@ class AddStreamerRecord(SendErrorCheckingRPCRecord):
 
     def __str__(self):
         return "Add sensorgraph streamer '%s'" % self.descriptor
+
+    def __eq__(self, other):
+        if not isinstance(other, AddStreamerRecord):
+            return False
+
+        return self.descriptor == other.descriptor

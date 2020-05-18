@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## HEAD
+
+- Add new autobuild function to combine trub scripts
+
 ## 3.0.15
 
 - Invoke python script using path of current running Python interpreter

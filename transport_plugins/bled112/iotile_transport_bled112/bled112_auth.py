@@ -1,17 +1,10 @@
-"""
-    Implements authentication logic.
-
-    Used with command processor that implement a routine:
-
-    command_processor.send_auth_client_request(payload, *additional_args) -> (bool, bytearray)
-        The routine is expected to send a request to server, used to send both hello and verify messages,
-        The device expects that messages are sent one after another unless server hello convey an error
-"""
+"""Implements authentication logic."""
 import enum
 import os
 import struct
 import hashlib
 import hmac
+from typing import Callable, Tuple
 from iotile.core.hw.auth.auth_chain import ChainedAuthProvider
 from iotile.core.exceptions import NotFoundError
 
@@ -33,6 +26,22 @@ ERROR_CODES = {
     5: "Unacceptable client authentication method"
 }
 
+"""A return type
+
+Used in bled112 transport plug-in to convey results of communication to the device
+bool is True when communication is successful and object is response
+elsewise object conveys error reason
+"""
+TransportReturn = Tuple[bool, object]
+
+"""A function pointer which implements means of communication with the BLE device.
+
+The routine is expected to send a request to the server during the handshake procedure,
+it is used to send both hello and verify messages,
+The device expects that messages are sent one after another unless server hello conveys an error.
+"""
+SendAuthHandshakeFn = Callable[[bytes], TransportReturn]
+
 class BLED112AuthManager:
 
     def __init__(self, permissions, token_generation):
@@ -52,17 +61,32 @@ class BLED112AuthManager:
 
         self._state = State.NOT_AUTHENTICATED
 
-    def _send_client_hello(self, supported_auth, command_processor, *command_processor_args):
+    def _send_client_hello(self, supported_auth: int, handshake_fn: SendAuthHandshakeFn) -> TransportReturn:
         """Initiate the authentication process
 
-        Tell the server what authentication methods it supports and nonce
+        Tell the server what authentication methods it supports and the client nonce
         """
         self._client_nonce = bytearray(os.urandom(16))
         self._client_hello = struct.pack("xxxB16s", supported_auth, self._client_nonce)
 
-        return command_processor.send_auth_client_request(self._client_hello, *command_processor_args)
+        self._server_hello = handshake_fn(self._client_hello)
+        if self._server_hello:
+            generation, err, server_supported_auth, device_nonce = \
+                struct.unpack("HBB16s", self._server_hello)
+        else:
+            return False, {"reason": "Did not receive server hello"}
 
-    def _send_client_verify(self, session_key, auth_type, command_processor, *command_processor_args):
+        if err:
+            return False, {"reason": "Server hello contains error code {}".format(err)}
+
+        if generation > self._token_generation:
+            return False, {"reason": "Server support only newer generation tokens {}".format(generation)}
+
+        return True, (generation, server_supported_auth, device_nonce)
+
+    def _send_client_verify(self, session_key: bytes, auth_type: int,
+                            handshake_fn: SendAuthHandshakeFn) -> TransportReturn:
+
         """Verify session key between the client and the device"""
         verify_data = self._client_hello + self._server_hello
         client_verify = hmac.new(session_key, verify_data, hashlib.sha256).digest()[0:16]
@@ -70,10 +94,20 @@ class BLED112AuthManager:
         self._client_verify = struct.pack(
             "BBH16s", auth_type.value, self._permissions, self._token_generation, client_verify)
 
-        server_verify = command_processor.send_auth_client_request(self._client_verify, *command_processor_args)
-        err, granted_permissions, server_verify = struct.unpack("BBxx16s", server_verify)
+        server_verify = handshake_fn(self._client_verify)
+        if server_verify:
+            err, granted_permissions, server_verify = struct.unpack("BBxx16s", server_verify)
+        else:
+            return False, {"reason": "Did not received server verify"}
 
-        return err, granted_permissions, server_verify
+        if err:
+            reason = "Client verify returned an error {}".format(err)
+            if ERROR_CODES.get(err, None):
+                reason = ERROR_CODES[err]
+
+            return False, {"reason": reason}
+
+        return True, (granted_permissions, server_verify)
 
     def _compute_session_key(self, root_key=None, user_token=None, scoped_token=None):
         if not scoped_token and not user_token and not root_key:
@@ -125,36 +159,22 @@ class BLED112AuthManager:
 
         return None, None
 
-    def authenticate(self, uuid, client_supported_auth, command_processor, *command_processor_args):
+    def authenticate(self, uuid, client_supported_auth, handshake_fn: SendAuthHandshakeFn) -> TransportReturn:
         """
         Perform authentication
 
         Args:
             uuid (int or str): either device mac or id
             auth_type (int): See .AuthType
-            command_processor (obj): an object with member functions `send_auth_client_request` which
-                implements mean of communication with server, specification below
-                command_processor.send_auth_client_request(payload, *command_processor_args) -> (bool, bytearray)
-                    The routine is expected to send a request to server, used to send both hello and verify messages,
-                    The device expects that messages are sent one after another unless server hello convey an error
+            handshake_fn (SendAuthHandshakeFn): a function pointer
         Returns:
             (bool, bytearray/dict): tuple of success flag, session key or dict with reason of failure
         """
-        required_method = getattr(command_processor, "send_auth_client_request", None)
-        if not required_method or not callable(required_method):
-            return False, {"reason": "command_processor should implement send_auth_client_request"}
-
-        self._server_hello = self._send_client_hello(
-            client_supported_auth, command_processor, *command_processor_args)
-
-        generation, err, server_supported_auth, self._device_nonce = \
-            struct.unpack("HBB16s", self._server_hello)
-
-        if err:
-            return False, {"reason": "Server hello contains error code {}".format(err)}
-
-        if generation > self._token_generation:
-            return False, {"reason": "Server support only newer generation tokens {}".format(generation)}
+        result, response = self._send_client_hello(client_supported_auth, handshake_fn)
+        if result:
+            (_generation, server_supported_auth, self._device_nonce) = response
+        else:
+            return result, response
 
         root_key, auth_type = self._get_root_key(server_supported_auth, client_supported_auth, uuid)
         if root_key is None:
@@ -162,19 +182,14 @@ class BLED112AuthManager:
 
         self._session_key = self._compute_session_key(root_key=root_key)
 
-        err, granted_permissions, received_server_verify = \
-            self._send_client_verify(self._session_key, auth_type, command_processor, *command_processor_args)
-
-        if err:
-            reason = "Client verify returned an error {}".format(err)
-            if err in ERROR_CODES:
-                reason = ERROR_CODES[err]
-
-            return False, {"reason": reason}
+        result, response = self._send_client_verify(self._session_key, auth_type, handshake_fn)
+        if result:
+            (_granted_permissions, received_server_verify) = response
+        else:
+            return result, response
 
         computed_server_verify = self._compute_server_verify(self._session_key)
         if received_server_verify != computed_server_verify:
             return False, {"reason": "The device failed verification"}
 
         return True, self._session_key
-
