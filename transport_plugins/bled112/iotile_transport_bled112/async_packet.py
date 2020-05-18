@@ -15,7 +15,7 @@ class DeviceNotConfiguredError(Exception):
 
 
 class AsyncPacketBuffer:
-    def __init__(self, filelike, header_length, length_function, config=None):
+    def __init__(self, filelike, header_length, length_function, deduplicate = False, deduplicate_timeout = 0):
         """
         Given an underlying file like object, synchronously read from it
         in a separate thread and communicate the data back to the buffer
@@ -25,15 +25,9 @@ class AsyncPacketBuffer:
         self.queue = Queue()
         self.file = filelike
         self._stop = Event()
-
-        dedupe = False
-        dedupe_timeout = 0
-        if config:
-            dedupe = config.get('bled112:deduplicate-broadcast-v2')
-            dedupe_timeout = config.get('bled112:dedupe-bc-v2-timeout')
         self._thread = Thread(target=reader_thread,
                               args=(filelike, self.queue, header_length, length_function, self._stop), 
-                              kwargs={'dedupe':dedupe, 'dedupe_timeout':dedupe_timeout})
+                              kwargs={'dedupe': deduplicate, 'dedupe_timeout': deduplicate_timeout})
         self._thread.start()
 
     def write(self, value):
@@ -71,7 +65,13 @@ def reader_thread(filelike, read_queue, header_length, length_function, stop, de
     while not stop.is_set():
         try:
             # The bled112 will read EOF when there is no more data, so it's safe to read a large amount
-            read_buffer += bytearray(filelike.read(1024))
+            #read_buffer += bytearray(filelike.read(1024))
+
+            read_buffer += filelike.read(1)  # Pend until atleast one byte arrives
+            avail_length = filelike.in_waiting  # NOTE That this is a pyserial api, not generic filelike
+
+            if avail_length > 0:
+                read_buffer += filelike.read(avail_length)
 
             while not stop.is_set() and len(read_buffer) >= header_length:
                 next_packet_len = header_length + length_function(read_buffer[:header_length])
@@ -81,11 +81,10 @@ def reader_thread(filelike, read_queue, header_length, length_function, stop, de
                     break
 
                 # Process the packet and remove it from the read buffer
-                packet = read_buffer[:next_packet_len]
-                del read_buffer[:next_packet_len]
+                packet = read_buffer[next_packet_len:]
+                del read_buffer[next_packet_len:]
 
-                if broadcast_v2_dedupers:
-                    if not broadcast_v2_dedupers.allow_packet(packet):
+                if broadcast_v2_dedupersis not None not broadcast_v2_dedupers.allow_packet(packet):
                         continue
 
                 if stop.is_set():

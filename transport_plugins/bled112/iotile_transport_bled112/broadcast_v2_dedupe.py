@@ -21,7 +21,7 @@ def packet_is_broadcast_v2(packet: bytearray) -> bool:
         return False
     return True
 
-class BroadcastV2DeduperCollection():
+class BroadcastV2DeduperCollection:
     """Main interface into the Broadcast v2 deduplication code.
 
     This contains a dictionary, keyed on the broadcast sender's encoded UUID, and with the values being
@@ -63,15 +63,10 @@ class BroadcastV2DeduperCollection():
     def evict_oldest_deduper(self):
         """Find and remove the oldest deduper
 
-        This function will likely be called rarely, if ever
+        This function will likely be called rarely, if at all
         """
-        oldest = list(self.dedupers.values())[0]
-
-        for deduper in iter(self.dedupers.values()):
-            if deduper.last_allowed_packet < oldest.last_allowed_packet:
-                oldest = deduper
-
-        del self.dedupers[oldest.encoded_uuid]
+        first = next(iter(self.dedupers))
+        del self.dedupers[first]
 
 class BroadcastV2Deduper():
     """Individual deduplicator for an specific UUID."""
