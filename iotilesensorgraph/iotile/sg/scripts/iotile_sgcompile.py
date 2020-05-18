@@ -71,7 +71,7 @@ def main():
         opt = SensorGraphOptimizer()
         opt.optimize(parser.sensor_graph, model=model)
 
-    parser.sensor_graph.add_crc()
+    parser.sensor_graph.add_checksum()
 
     if args.format == u'nodes':
         output = u'\n'.join(parser.sensor_graph.dump_nodes()) + u'\n'

@@ -318,7 +318,7 @@ class SensorGraph:
         except ArgumentError:
             return 0
 
-    def add_crc(self):
+    def add_checksum(self):
         """Check metadata if sensorgraph's checksum needs to be added."""
 
         if 'hash_address' not in self.metadata_database or\
