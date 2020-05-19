@@ -74,7 +74,7 @@ class Serial():
     """
 
     def __init__(self, port, baudrate, *args, **kwargs):
-        self._waiting_data = NO_DATA_PRESENT
+        self._set_waiting_data(NO_DATA_PRESENT)
         self._isOpen = True
         self.port = port  # Serial port name.
         self.initial_port_name = self.port  # Initial name given to the serial port
@@ -93,6 +93,10 @@ class Serial():
             _print_out('\nDummy_serial: Initializing')
             _print_out('dummy_serial initialization args: ' + repr(args) )
             _print_out('dummy_serial initialization kwargs: ' + repr(kwargs) + '\n')
+
+    def _set_waiting_data(self, new_data):
+        self._waiting_data = new_data
+        self.in_waiting = len(self._waiting_data)
 
     def __repr__(self):
         """String representation of the dummy_serial object"""
@@ -135,7 +139,7 @@ class Serial():
         """
 
         with self._data_lock:
-            self._waiting_data += data
+            self._set_waiting_data(self._waiting_data + data)
 
     def write(self, inputdata):
         """Write to a port on dummy_serial.
@@ -169,7 +173,7 @@ class Serial():
             raise
 
         with self._data_lock:
-            self._waiting_data += response
+            self._set_waiting_data(self._waiting_data + response)
 
 
     def read(self, numberOfBytes):
@@ -200,14 +204,14 @@ class Serial():
         with self._data_lock:
             if numberOfBytes == len(self._waiting_data):
                 returnstring = self._waiting_data
-                self._waiting_data = NO_DATA_PRESENT
+                self._set_waiting_data(NO_DATA_PRESENT)
             elif numberOfBytes < len(self._waiting_data):
                 if VERBOSE:
                     _print_out('Dummy_serial: The numberOfBytes to read is smaller than the available data. ' + \
                         'Some bytes will be kept for later. Available data: {!r} (length = {}), numberOfBytes: {}'.format( \
                         self._waiting_data, len(self._waiting_data), numberOfBytes))
                 returnstring = self._waiting_data[:numberOfBytes]
-                self._waiting_data = self._waiting_data[numberOfBytes:]
+                self._set_waiting_data(self._waiting_data[numberOfBytes:])
             else: # Wait for timeout, as we have asked for more data than available
                 if VERBOSE:
                     _print_out('Dummy_serial: The numberOfBytes to read is larger than the available data. ' + \
@@ -215,7 +219,7 @@ class Serial():
                         self._waiting_data, len(self._waiting_data), numberOfBytes))
                 time.sleep(self.timeout)
                 returnstring = self._waiting_data
-                self._waiting_data = NO_DATA_PRESENT
+                self._set_waiting_data(NO_DATA_PRESENT)
 
         # TODO Adapt the behavior to better mimic the Windows behavior
 

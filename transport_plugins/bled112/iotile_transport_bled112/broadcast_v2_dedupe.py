@@ -4,6 +4,7 @@ performance increases.
 
 import time
 import struct
+import collections
 from typing import Dict
 
 from iotile.cloud.utilities import device_id_to_slug
@@ -37,7 +38,7 @@ class BroadcastV2DeduperCollection:
 
     def __init__(self, pass_packets_every: float = 5):
         self._pass_packets_every = pass_packets_every
-        self.dedupers = {}  #type: Dict[bytes, BroadcastV2Deduper]
+        self.dedupers = collections.OrderedDict()  #type: collections.OrderedDict[bytes, BroadcastV2Deduper]
 
     def allow_packet(self, packet: bytearray) -> bool:
         """Run a packet through the broadcast_v2 deduper.
@@ -65,8 +66,7 @@ class BroadcastV2DeduperCollection:
 
         This function will likely be called rarely, if at all
         """
-        first = next(iter(self.dedupers))
-        del self.dedupers[first]
+        self.dedupers.popitem(last=False)
 
 class BroadcastV2Deduper():
     """Individual deduplicator for an specific UUID."""

@@ -15,7 +15,7 @@ class DeviceNotConfiguredError(Exception):
 
 
 class AsyncPacketBuffer:
-    def __init__(self, filelike, header_length, length_function, deduplicate = False, deduplicate_timeout = 0):
+    def __init__(self, filelike, header_length, length_function, deduplicate=False, deduplicate_timeout=0):
         """
         Given an underlying file like object, synchronously read from it
         in a separate thread and communicate the data back to the buffer
@@ -26,7 +26,7 @@ class AsyncPacketBuffer:
         self.file = filelike
         self._stop = Event()
         self._thread = Thread(target=reader_thread,
-                              args=(filelike, self.queue, header_length, length_function, self._stop), 
+                              args=(filelike, self.queue, header_length, length_function, self._stop),
                               kwargs={'dedupe': deduplicate, 'dedupe_timeout': deduplicate_timeout})
         self._thread.start()
 
@@ -85,7 +85,7 @@ def reader_thread(filelike, read_queue, header_length, length_function, stop, de
                 read_buffer = read_buffer[next_packet_len:]
 
                 if broadcast_v2_dedupers is not None and not broadcast_v2_dedupers.allow_packet(packet):
-                        continue
+                    continue
 
                 if stop.is_set():
                     break
