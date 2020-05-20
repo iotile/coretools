@@ -27,7 +27,7 @@ from release import *
 from iotile.core.exceptions import *
 from iotile.core.dev import IOTile, ComponentRegistry
 from iotile.build.build import ProductResolver
-from trub_script import build_update_script, build_trub_records, combine_trub_scripts
+from trub_script import build_update_script, build_trub_records, combine_trub_scripts, get_device_checksum
 
 
 def require(builder_name):
@@ -331,6 +331,12 @@ def autobuild_combine_trub_scripts(trub_scripts_list, out_file):
     """
 
     combine_trub_scripts(trub_scripts_list, out_file)
+
+
+def autobuild_get_trub_device_checksum(trub_scripts_list, checksum_address):
+    """Returns the device checksum if it is set in one of the trub scripts"""
+
+    return get_device_checksum(trub_scripts_list, checksum_address)
 
 
 def autobuild_bootstrap_file(file_name, image_list):
