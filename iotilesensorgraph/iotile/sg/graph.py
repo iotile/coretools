@@ -2,6 +2,7 @@
 
 from collections import deque
 import logging
+import struct
 from pkg_resources import iter_entry_points
 from toposort import toposort_flatten
 from iotile.core.exceptions import ArgumentError
@@ -322,12 +323,17 @@ class SensorGraph:
         """Check metadata if sensorgraph's checksum needs to be added."""
 
         if 'hash_address' not in self.metadata_database or\
-            'hash_algorithm' not in self.metadata_database:
+            'hash_algorithm' not in self.metadata_database or\
+            'hash_algorithm_address' not in self.metadata_database:
             return
 
         slot = SlotIdentifier.FromString('controller')
-        config_id = self.metadata_database['hash_address']
+        hash_address = self.metadata_database['hash_address']
         algorithm = self.metadata_database['hash_algorithm']
+        algorithm_address = self.metadata_database['hash_algorithm_address']
+
+        algorithm_config_type, _ = self.get_config(slot, algorithm_address)
+        self.add_config(slot, algorithm_address, algorithm_config_type, algorithm)
 
         hash_algorithm = KNOWN_HASH_ALGORITHMS[algorithm]
 
@@ -338,7 +344,7 @@ class SensorGraph:
                                                   self.get_streamers_binary())
         self._logger.debug("streamers_checksum: %s", streamers_checksum)
         configs_checksum = hash_algorithm.calculate(hash_algorithm.algorithm,
-                                                  self.get_config_database_binary(ignore_configs=[config_id]))
+                                                  self.get_config_database_binary(ignore_configs=[hash_address]))
         self._logger.debug("configs_checksum: %s", configs_checksum)
         constants_checksum = hash_algorithm.calculate(hash_algorithm.algorithm,
                                                   self.get_constant_database_binary())
@@ -354,8 +360,8 @@ class SensorGraph:
                                                    combined_checksum_bytes)
         self._logger.debug("device_checksum: %s", device_checksum)
 
-        config_type, _ = self.get_config(slot, config_id)
-        self.add_config(slot, config_id, config_type, device_checksum)
+        hash_config_type, _ = self.get_config(slot, hash_address)
+        self.add_config(slot, hash_address, hash_config_type, device_checksum)
 
     def process_input(self, stream, value, rpc_executor):
         """Process an input through this sensor graph.
@@ -587,6 +593,7 @@ class SensorGraph:
         for slot, conf_vars in self.config_database.items():
             for conf_var, conf_def in conf_vars.items():
                 conf_type, conf_val = conf_def
+                conf_val_bytes = _convert_to_bytearray(conf_type, conf_val)
 
                 if conf_var in ignore_configs:
                     continue
@@ -594,10 +601,10 @@ class SensorGraph:
                 if dump_config_type:
                     config_dump.append("'{}' {} {} {}".format(slot, conf_var,
                                                               conf_type,
-                                                              conf_val))
+                                                              conf_val_bytes))
                 else:
                     config_dump.append("'{}' {} {}".format(slot, conf_var,
-                                                              conf_val))
+                                                              conf_val_bytes))
 
         return config_dump
 
@@ -658,3 +665,23 @@ class SensorGraph:
 
         return binary_representation
 
+
+def _convert_to_bytearray(type_name, value):
+    """Convert a typed value to a binary array"""
+
+    int_types = {'uint8_t': 'B', 'int8_t': 'b', 'uint16_t': 'H', 'int16_t': 'h', 'uint32_t': 'L', 'int32_t': 'l'}
+
+    type_name = type_name.lower()
+
+    if type_name not in int_types and type_name not in ['string', 'binary']:
+        raise ArgumentError('Type must be a known integer type, integer type array, string', known_integers=int_types.keys(), actual_type=type_name)
+
+    if type_name == 'string':
+        #value should be passed as a string
+        bytevalue = bytearray(value, 'utf-8')
+    elif type_name == 'binary':
+        bytevalue = bytearray(value)
+    else:
+        bytevalue = bytearray(struct.pack("<%s" % int_types[type_name], value))
+
+    return bytevalue
