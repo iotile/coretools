@@ -72,7 +72,7 @@ def _convert_to_bytes(type_name, value):
 
     if type_name == 'string':
         #value should be passed as a string
-        bytevalue = bytearray(value)
+        bytevalue = bytearray(value, 'utf-8')
     elif type_name == 'binary':
         bytevalue = bytearray(value)
     else:
