@@ -352,6 +352,9 @@ class SensorGraph:
         metadata_checksum = hash_algorithm.calculate(hash_algorithm.algorithm,
                                                   self.get_metadata_database_binary())
         self._logger.debug("metadata_checksum: %s", metadata_checksum)
+
+        # The order of building the following string is important for other
+        # applications to calculate the proper checksum
         combined_checksum_string = nodes_checksum + streamers_checksum +\
                                    configs_checksum + constants_checksum +\
                                    metadata_checksum
