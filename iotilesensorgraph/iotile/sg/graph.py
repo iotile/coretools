@@ -646,11 +646,10 @@ class SensorGraph:
                 conf_type, conf_val = conf_def
                 conf_val_bytes = _convert_to_bytearray(conf_type, conf_val)
 
-                for ignore_config in ignore_configs:
-                    if slot == ignore_config[0] and conf_var == ignore_config[1]:
-                        self._logger.debug("Ignoring '%s:%s' in checksum calculation", 
-                                           ignore_config[0], ignore_config[1])
-                        continue
+                if _is_ignored_config(ignore_configs, slot, conf_var):
+                    self._logger.debug("Ignoring '%s:%s' in checksum calculation", 
+                                       slot, conf_var)
+                    continue
 
                 if dump_config_type:
                     config_dump.append("'{}' {} {} {}".format(slot, conf_var,
@@ -718,6 +717,16 @@ class SensorGraph:
             binary_representation += bytes(config, 'utf-8')
 
         return binary_representation
+
+
+def _is_ignored_config(ignore_configs, slot, config_var):
+    """Checks if an entry is in the list of variables to ignore"""
+
+    for ignore_config in ignore_configs:
+        if slot == ignore_config[0] and config_var == ignore_config[1]:
+            return True
+
+    return False
 
 
 def _convert_to_bytearray(type_name, value):
