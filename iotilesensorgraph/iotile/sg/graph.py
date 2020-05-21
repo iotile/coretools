@@ -319,12 +319,58 @@ class SensorGraph:
         except ArgumentError:
             return 0
 
+    def _parse_configs_ignorelist(self):
+        """Parses the string containing configs to ignore into a list of tuples
+
+        Returns:
+            list(tuple): A list of config variable entries that are formatted
+                as tuples (slot, config_id)
+        """
+
+        configs_ignorelist = []
+        slot = SlotIdentifier.FromString('controller')
+
+        configs_ignorelist_string = self.metadata_database['hash_configs_ignorelist']
+        configs_ignorelist_address = self.metadata_database['hash_configs_ignorelist_address']
+        configs_ignorelist_type, _ = self.get_config(slot, configs_ignorelist_address)
+        self.add_config(slot, configs_ignorelist_address, configs_ignorelist_type, configs_ignorelist_string)
+
+        ignore_entries = configs_ignorelist_string.split(',')
+        for entry in ignore_entries:
+            target, entry = entry.split(':')
+            slot = SlotIdentifier.FromString(target)
+            configs_ignorelist.append((slot, int(entry, 0)))
+
+        return configs_ignorelist
+
     def add_checksum(self):
-        """Check metadata if sensorgraph's checksum needs to be added."""
+        """Check metadata if sensorgraph's checksum needs to be added.
+
+        The sensorgraph must contain all the meta tags required to calculate the
+        checksum.
+
+        hash_address: Address where calculated checksum will be flashed.
+        hash_algorihm: Algorithm to use to calculate checksums, only "sha256"
+            and "crc32_0x104C11DB7" are currently supported.
+        hash_algorithm_address: Address where the algorithm specifier is
+            flashed. This is used so the programmer knows which algorithm to use
+            to debug the device.
+        hash_configs_ignorelist: List of config variables to exclude during the
+            calculation of checksum. This MUST contain the 'hash_address'.
+            The ignore list must be formatted like so...
+                meta hash_configs_ignorelist = "controller:0xcafe,slot 1:0xbabe";
+            Where each ignored variable is <target>:<config_id>, delimitted by a
+            comma in between each entry.
+        hash_configs_ignorelist_address: Address where the ignore list is
+            flashed. This is used so the programmer knows which config variables
+            to exclude in the calculation of the device's checksums.
+        """
 
         if 'hash_address' not in self.metadata_database or\
             'hash_algorithm' not in self.metadata_database or\
-            'hash_algorithm_address' not in self.metadata_database:
+            'hash_algorithm_address' not in self.metadata_database or\
+            'hash_configs_ignorelist' not in self.metadata_database or\
+            'hash_configs_ignorelist_address' not in self.metadata_database:
             return
 
         slot = SlotIdentifier.FromString('controller')
@@ -335,6 +381,8 @@ class SensorGraph:
         algorithm_config_type, _ = self.get_config(slot, algorithm_address)
         self.add_config(slot, algorithm_address, algorithm_config_type, algorithm)
 
+        configs_ignorelist = self._parse_configs_ignorelist()
+
         hash_algorithm = KNOWN_HASH_ALGORITHMS[algorithm]
 
         nodes_checksum = hash_algorithm.calculate(hash_algorithm.algorithm,
@@ -344,7 +392,7 @@ class SensorGraph:
                                                   self.get_streamers_binary())
         self._logger.debug("streamers_checksum: %s", streamers_checksum)
         configs_checksum = hash_algorithm.calculate(hash_algorithm.algorithm,
-                                                  self.get_config_database_binary(ignore_configs=[hash_address]))
+                                                  self.get_config_database_binary(ignore_configs=configs_ignorelist))
         self._logger.debug("configs_checksum: %s", configs_checksum)
         constants_checksum = hash_algorithm.calculate(hash_algorithm.algorithm,
                                                   self.get_constant_database_binary())
@@ -598,8 +646,11 @@ class SensorGraph:
                 conf_type, conf_val = conf_def
                 conf_val_bytes = _convert_to_bytearray(conf_type, conf_val)
 
-                if conf_var in ignore_configs:
-                    continue
+                for ignore_config in ignore_configs:
+                    if slot == ignore_config[0] and conf_var == ignore_config[1]:
+                        self._logger.debug("Ignoring '%s:%s' in checksum calculation", 
+                                           ignore_config[0], ignore_config[1])
+                        continue
 
                 if dump_config_type:
                     config_dump.append("'{}' {} {} {}".format(slot, conf_var,
@@ -676,6 +727,13 @@ def _convert_to_bytearray(type_name, value):
 
     type_name = type_name.lower()
 
+    is_array = False
+    if type_name[-2:] == '[]':
+        if value[0] != '[' or value[-1] != ']':
+            raise ArgumentError("Array value improperly formated, must be a stringified list")
+        is_array = True
+        type_name = type_name[:-2]
+
     if type_name not in int_types and type_name not in ['string', 'binary']:
         raise ArgumentError('Type must be a known integer type, integer type array, string', known_integers=int_types.keys(), actual_type=type_name)
 
@@ -684,6 +742,9 @@ def _convert_to_bytearray(type_name, value):
         bytevalue = bytearray(value, 'utf-8')
     elif type_name == 'binary':
         bytevalue = bytearray(value)
+    elif is_array:
+        value = [int(n,0) for n in value[1:-1].split(',')]
+        bytevalue = bytearray(struct.pack("<%s" % (int_types[type_name]*len(value)), *value))
     else:
         bytevalue = bytearray(struct.pack("<%s" % int_types[type_name], value))
 
