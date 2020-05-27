@@ -262,41 +262,46 @@ class BLED112CommandProcessor(threading.Thread):
 
         return True, {'services': services}
 
-    def _authenticate_async(self, device_uuid, conn_handle, services):
+    def _authenticate_async(self, device_uuid, conn_handle, services, timeout=1.0):
+
+        def send_auth_client_request(payload):
+            auth_handle = services[TileBusService]['characteristics'][TileBusAuthCharacteristic]['handle']
+
+            result, value = self._write_handle(conn_handle, auth_handle, False, bytes(payload))
+
+            if not result:
+                self._logger.warning("Error writing to the handle %s", value)
+                return None
+
+            def notified_payload(event):
+                if event.command_class == 4 and event.command == 5:
+                    event_handle, att_handle = unpack("<BH", event.payload[0:3])
+                    return event_handle == conn_handle and att_handle == auth_handle
+                return False
+
+            events = self._wait_process_events(timeout, lambda x: False, notified_payload)
+
+            response_payload = None
+            if len(events) != 0:
+                _, response_payload = process_notification(events[0])
+            else: # notification did not arrived, just read the value
+                success, result = self._read_handle(conn_handle, auth_handle, timeout)
+                if success:
+                    response_payload = result['data']
+                else:
+                    self._logger.warning("Error reading the handle %s", result)
+
+            return response_payload
+
         supported_auth = AuthType.AUTH_METHOD_0.value | AuthType.AUTH_METHOD_1.value \
                          | AuthType.AUTH_METHOD_2.value | AuthType.AUTH_METHOD_3.value
         permisions = 0x00
         token_gen = 0x01
 
         manager = BLED112AuthManager(permisions, token_gen)
-        success, data = manager.authenticate(device_uuid, supported_auth, self, conn_handle, services)
+        success, data = manager.authenticate(device_uuid, supported_auth, send_auth_client_request)
 
         return success, data
-
-    def send_auth_client_request(self, payload, conn_handle, services, timeout=1.0):
-        auth_handle = services[TileBusService]['characteristics'][TileBusAuthCharacteristic]['handle']
-
-        result, value = self._write_handle(conn_handle, auth_handle, False, bytes(payload))
-
-        if not result:
-            return result, value
-
-        def notified_payload(event):
-            if event.command_class == 4 and event.command == 5:
-                event_handle, att_handle = unpack("<BH", event.payload[0:3])
-                return event_handle == conn_handle and att_handle == auth_handle
-
-        events = self._wait_process_events(timeout, lambda x: False, notified_payload)
-
-        response_payload = None
-        if len(events) != 0:
-            _, response_payload = process_notification(events[0])
-        else: # notification did not arrived, just read the value
-            success, result = self._read_handle(conn_handle, auth_handle, timeout)
-            if success:
-                response_payload = result['data']
-
-        return response_payload
 
     def _check_is_authentication_required_async(self, conn_handle, services, timeout=1.0):
         if TileBusInfoCharacteristic in services[TileBusService]['characteristics']:
