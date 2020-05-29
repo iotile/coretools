@@ -335,11 +335,16 @@ class SensorGraph:
         configs_ignorelist_type, _ = self.get_config(slot, configs_ignorelist_address)
         self.add_config(slot, configs_ignorelist_address, configs_ignorelist_type, configs_ignorelist_string)
 
-        ignore_entries = configs_ignorelist_string.split(',')
-        for entry in ignore_entries:
-            target, entry = entry.split(':')
+        if configs_ignorelist_string[0] != '{' and configs_ignorelist_string[-1] != '}':
+            configs_ignorelist_string = '{' + configs_ignorelist_string + '}'
+
+        configs_ignorelist_dict = eval(configs_ignorelist_string)
+
+        for target, config_ids in configs_ignorelist_dict.items():
             slot = SlotIdentifier.FromString(target)
-            configs_ignorelist.append((slot, int(entry, 0)))
+
+            for config_id in config_ids:
+                configs_ignorelist.append((slot, config_id))
 
         return configs_ignorelist
 
@@ -355,12 +360,11 @@ class SensorGraph:
         hash_algorithm_address: Address where the algorithm specifier is
             flashed. This is used so the programmer knows which algorithm to use
             to debug the device.
-        hash_configs_ignorelist: List of config variables to exclude during the
+        hash_configs_ignorelist: Dict of config variables to exclude during the
             calculation of checksum. This MUST contain the 'hash_address'.
             The ignore list must be formatted like so...
-                meta hash_configs_ignorelist = "controller:0xcafe,slot 1:0xbabe";
-            Where each ignored variable is <target>:<config_id>, delimitted by a
-            comma in between each entry.
+                meta hash_configs_ignorelist = "'controller':[0xcafe,0xdead],'slot 1':[0xbabe]";
+            This entry should be formatted as a stringified dictionary.
         hash_configs_ignorelist_address: Address where the ignore list is
             flashed. This is used so the programmer knows which config variables
             to exclude in the calculation of the device's checksums.

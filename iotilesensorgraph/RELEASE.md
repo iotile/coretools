@@ -3,9 +3,9 @@
 All major changes in each released version of iotile-sensorgraph are listed
 here.
 
-## HEAD
+## 1.0.8
 
-- Add feature to set sensorgraph's CRC as config variable
+- Add feature to set sensorgraph's checksum as config variable
 - Add "__eq__ " methods to records
 
 ## 1.0.7
