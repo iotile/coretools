@@ -2,12 +2,10 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
-## HEAD
-- Fix error handling in auth process
-
 ## 5.0.16
 
 - Add hash algorithms to utilities
+- Fix error handling in auth process
 
 ## 5.0.15
 
