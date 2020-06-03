@@ -9,6 +9,7 @@ from iotile.build.build import ProductResolver
 from iotile.core.utilities.intelhex import IntelHex
 from iotile.sg.compiler import compile_sgf
 from iotile.sg.output_formats.script import format_script
+from iotile.sg.update.setconfig_record import SetConfigRecord
 from iotile.core.hw.update.script import UpdateScript
 from iotile.core.hw.update.record import UpdateRecord
 
@@ -365,6 +366,30 @@ def combine_trub_scripts(trub_scripts_list, out_file):
 
     with open(out_path, "wb") as outfile:
         outfile.write(new_script.encode())
+
+
+def get_device_checksum(trub_scripts_list, checksum_address):
+    """Returns the device checksum from a trub file if it exists"""
+
+    resolver = ProductResolver.Create()
+
+    files = [resolver.find_unique("trub_script", x).full_path for x in trub_scripts_list]
+
+    for script in files:
+        if not os.path.isfile(script):
+            raise BuildError("Path to script is not a valid file.",
+                             script=script)
+
+        trub_binary = _get_trub_binary(script)
+        trub_script = UpdateScript.FromBinary(trub_binary)
+
+        for record in trub_script.records:
+            if isinstance(record, SetConfigRecord) and\
+            record.config_id == checksum_address:
+                device_checksum = record.data
+                return device_checksum
+
+    return None
 
 
 def _get_trub_binary(script_path):

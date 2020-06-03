@@ -5,6 +5,10 @@ All major changes in each released version of `iotile-core` are listed here.
 ## HEAD
 - Fix error handling in auth process
 
+## 5.0.16
+
+- Add hash algorithms to utilities
+
 ## 5.0.15
 
 - Add `EnhancedReflashControllerRecord` to update scripts
