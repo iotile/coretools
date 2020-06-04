@@ -57,41 +57,45 @@ class AsyncPacketBuffer:
 def reader_thread(filelike, read_queue, header_length, length_function, stop, dedupe=False, dedupe_timeout=5):
     logger = logging.getLogger(__name__)
     broadcast_v2_dedupers = None
-    read_buffer = bytearray()
 
     if dedupe:
         broadcast_v2_dedupers = BroadcastV2DeduperCollection(dedupe_timeout)
 
     while not stop.is_set():
         try:
-            # The bled112 will read EOF when there is no more data, so it's safe to read a large amount
-            #read_buffer += bytearray(filelike.read(1024))
-
-            read_buffer += bytearray(filelike.read(1))  # Pend until atleast one byte arrives
-            avail_length = filelike.in_waiting  # NOTE That this is a pyserial api, not generic filelike
-
-            if avail_length > 0:
-                read_buffer += bytearray(filelike.read(avail_length))
-
-            while not stop.is_set() and len(read_buffer) >= header_length:
-                next_packet_len = header_length + length_function(read_buffer[:header_length])
-
-                if len(read_buffer) < next_packet_len:
-                    # Still waiting to read this packet
-                    break
-
-                # Process the packet and remove it from the read buffer
-                packet = read_buffer[:next_packet_len]
-                read_buffer = read_buffer[next_packet_len:]
-
-                if broadcast_v2_dedupers is not None and not broadcast_v2_dedupers.allow_packet(packet):
-                    continue
+            header = bytearray()
+            while len(header) < header_length:
+                chunk = bytearray(filelike.read(header_length - len(header)))
+                header += chunk
 
                 if stop.is_set():
                     break
 
-                read_queue.put(packet)
+            if stop.is_set():
+                break
 
+            remaining_length = length_function(header)
+
+            remaining = bytearray()
+            while len(remaining) < remaining_length:
+                chunk = bytearray(filelike.read(remaining_length - len(remaining)))
+                remaining += chunk
+                if stop.is_set():
+                    break
+
+            if stop.is_set():
+                break
+
+            # We have a complete packet now, process it
+            packet = header + remaining
+
+            if broadcast_v2_dedupers is not None and not broadcast_v2_dedupers.allow_packet(packet):
+                continue
+
+            if stop.is_set():
+                break
+
+            read_queue.put(packet)
         except:
             logger.exception("Error in reader thread")
             break
