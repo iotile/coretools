@@ -2,14 +2,16 @@
 
 from collections import deque
 import logging
+import struct
 from pkg_resources import iter_entry_points
 from toposort import toposort_flatten
 from iotile.core.exceptions import ArgumentError
 from iotile.core.hw.reports import IOTileReading
+from iotile.core.utilities.hash_algorithms import KNOWN_HASH_ALGORITHMS
 from .node_descriptor import parse_node_descriptor
 from .slot import SlotIdentifier
 from .stream import DataStream
-from .known_constants import config_fast_tick_secs, config_tick1_secs, config_tick2_secs
+from .known_constants import config_fast_tick_secs, config_tick1_secs, config_tick2_secs, known_metadata
 from .exceptions import NodeConnectionError, ProcessingFunctionError, ResourceUsageError
 
 
@@ -317,6 +319,105 @@ class SensorGraph:
         except ArgumentError:
             return 0
 
+    def _parse_configs_ignorelist(self):
+        """Parses the string containing configs to ignore into a list of tuples
+
+        Returns:
+            list(tuple): A list of config variable entries that are formatted
+                as tuples (slot, config_id)
+        """
+
+        configs_ignorelist = []
+        slot = SlotIdentifier.FromString('controller')
+
+        configs_ignorelist_string = self.metadata_database['hash_configs_ignorelist']
+        configs_ignorelist_address = self.metadata_database['hash_configs_ignorelist_address']
+        configs_ignorelist_type, _ = self.get_config(slot, configs_ignorelist_address)
+        self.add_config(slot, configs_ignorelist_address, configs_ignorelist_type, configs_ignorelist_string)
+
+        if configs_ignorelist_string[0] != '{' and configs_ignorelist_string[-1] != '}':
+            configs_ignorelist_string = '{' + configs_ignorelist_string + '}'
+
+        configs_ignorelist_dict = eval(configs_ignorelist_string)
+
+        for target, config_ids in configs_ignorelist_dict.items():
+            slot = SlotIdentifier.FromString(target)
+
+            for config_id in config_ids:
+                configs_ignorelist.append((slot, config_id))
+
+        return configs_ignorelist
+
+    def add_checksum(self):
+        """Check metadata if sensorgraph's checksum needs to be added.
+
+        The sensorgraph must contain all the meta tags required to calculate the
+        checksum.
+
+        hash_address: Address where calculated checksum will be flashed.
+        hash_algorihm: Algorithm to use to calculate checksums, only "sha256"
+            and "crc32_0x104C11DB7" are currently supported.
+        hash_algorithm_address: Address where the algorithm specifier is
+            flashed. This is used so the programmer knows which algorithm to use
+            to debug the device.
+        hash_configs_ignorelist: Dict of config variables to exclude during the
+            calculation of checksum. This MUST contain the 'hash_address'.
+            The ignore list must be formatted like so...
+                meta hash_configs_ignorelist = "'controller':[0xcafe,0xdead],'slot 1':[0xbabe]";
+            This entry should be formatted as a stringified dictionary.
+        hash_configs_ignorelist_address: Address where the ignore list is
+            flashed. This is used so the programmer knows which config variables
+            to exclude in the calculation of the device's checksums.
+        """
+
+        if 'hash_address' not in self.metadata_database or\
+            'hash_algorithm' not in self.metadata_database or\
+            'hash_algorithm_address' not in self.metadata_database or\
+            'hash_configs_ignorelist' not in self.metadata_database or\
+            'hash_configs_ignorelist_address' not in self.metadata_database:
+            return
+
+        slot = SlotIdentifier.FromString('controller')
+        hash_address = self.metadata_database['hash_address']
+        algorithm = self.metadata_database['hash_algorithm']
+        algorithm_address = self.metadata_database['hash_algorithm_address']
+
+        algorithm_config_type, _ = self.get_config(slot, algorithm_address)
+        self.add_config(slot, algorithm_address, algorithm_config_type, algorithm)
+
+        configs_ignorelist = self._parse_configs_ignorelist()
+
+        hash_algorithm = KNOWN_HASH_ALGORITHMS[algorithm]
+
+        nodes_checksum = hash_algorithm.calculate(hash_algorithm.algorithm,
+                                                  self.get_nodes_binary())
+        self._logger.debug("nodes_checksum: %s", nodes_checksum)
+        streamers_checksum = hash_algorithm.calculate(hash_algorithm.algorithm,
+                                                  self.get_streamers_binary())
+        self._logger.debug("streamers_checksum: %s", streamers_checksum)
+        configs_checksum = hash_algorithm.calculate(hash_algorithm.algorithm,
+                                                  self.get_config_database_binary(ignore_configs=configs_ignorelist))
+        self._logger.debug("configs_checksum: %s", configs_checksum)
+        constants_checksum = hash_algorithm.calculate(hash_algorithm.algorithm,
+                                                  self.get_constant_database_binary())
+        self._logger.debug("constants_checksum: %s", constants_checksum)
+        metadata_checksum = hash_algorithm.calculate(hash_algorithm.algorithm,
+                                                  self.get_metadata_database_binary())
+        self._logger.debug("metadata_checksum: %s", metadata_checksum)
+
+        # The order of building the following string is important for other
+        # applications to calculate the proper checksum
+        combined_checksum_string = nodes_checksum + streamers_checksum +\
+                                   configs_checksum + constants_checksum +\
+                                   metadata_checksum
+        combined_checksum_bytes = bytes(combined_checksum_string, 'utf-8')
+        device_checksum = hash_algorithm.calculate(hash_algorithm.algorithm, 
+                                                   combined_checksum_bytes)
+        self._logger.debug("device_checksum: %s", device_checksum)
+
+        hash_config_type, _ = self.get_config(slot, hash_address)
+        self.add_config(slot, hash_address, hash_config_type, device_checksum)
+
     def process_input(self, stream, value, rpc_executor):
         """Process an input through this sensor graph.
 
@@ -505,6 +606,11 @@ class SensorGraph:
         for entry in iter_entry_points(u'iotile.sg_processor', name):
             return entry.load()
 
+    def dump_roots(self):
+        """Dump all the root nodes in this sensor graph as a list of strings."""
+
+        return [str(x) for x in self.roots]
+
     def dump_nodes(self):
         """Dump all of the nodes in this sensor graph as a list of strings."""
 
@@ -514,3 +620,145 @@ class SensorGraph:
         """Dump all of the streamers in this sensor graph as a list of strings."""
 
         return [str(streamer) for streamer in self.streamers]
+
+    def dump_constant_database(self):
+        """Dump all of the constants in this sensor graph as a list of strings."""
+        
+        constant_dump = []
+
+        for stream, value in sorted(self.constant_database.items(), key=lambda x: x[0].encode()):
+            constant_dump.append("'{}' {}".format(stream, value))
+
+        return constant_dump
+
+    def dump_metadata_database(self):
+        """Dump all of the metadata in this sensor graph as a list of strings."""
+
+        metadata_dump = []
+
+        for metadata, value in sorted(self.metadata_database.items(), key=lambda x: x[0].encode()):
+            metadata_dump.append("{}: {}".format(metadata, value))
+
+        return metadata_dump
+
+    def dump_config_database(self, dump_config_type=True, ignore_configs=[]):
+        """Dump all of the config variables in this sensor graph as a list of strings."""
+
+        config_dump = []
+        for slot, conf_vars in self.config_database.items():
+            for conf_var, conf_def in conf_vars.items():
+                conf_type, conf_val = conf_def
+                conf_val_bytes = _convert_to_bytearray(conf_type, conf_val)
+
+                if _is_ignored_config(ignore_configs, slot, conf_var):
+                    self._logger.debug("Ignoring '%s:%s' in checksum calculation", 
+                                       slot, conf_var)
+                    continue
+
+                if dump_config_type:
+                    config_dump.append("'{}' {} {} {}".format(slot, conf_var,
+                                                              conf_type,
+                                                              conf_val_bytes))
+                else:
+                    config_dump.append("'{}' {} {}".format(slot, conf_var,
+                                                              conf_val_bytes))
+
+        return config_dump
+
+    def get_nodes_binary(self):
+        """Returns the binary representation of all the nodes"""
+
+        from .node_descriptor import create_binary_descriptor
+        binary_representation = bytearray()
+
+        for node in self.dump_nodes():
+            binary_representation += create_binary_descriptor(node)
+
+        return binary_representation
+
+    def get_streamers_binary(self):
+        """Returns the binary representation of all the streamers"""
+
+        from .streamer_descriptor import parse_string_descriptor, create_binary_descriptor
+        binary_representation = bytearray()
+
+        for streamer in self.dump_streamers():
+            streamer_obj = parse_string_descriptor(streamer)
+            binary_representation += create_binary_descriptor(streamer_obj)
+
+        return binary_representation
+
+    def get_constant_database_binary(self):
+        """Returns the binary representation of all the constant streams"""
+
+        binary_representation = bytearray()
+
+        for constant in self.dump_constant_database():
+            binary_representation += bytes(constant, 'utf-8')
+
+        return binary_representation
+
+    def get_metadata_database_binary(self):
+        """Returns the binary representation of the KNOWN metadata variables"""
+
+        binary_representation = bytearray()
+
+        for metadata in self.dump_metadata_database():
+            entry, _ = metadata.split(': ')
+
+            if entry in known_metadata:
+                binary_representation += bytes(metadata, 'utf-8')
+
+        return binary_representation
+
+    def get_config_database_binary(self, ignore_configs=[]):
+        """Returns the binary representation of all the config variables"""
+
+        binary_representation = bytearray()
+
+        for config in self.dump_config_database(dump_config_type=False,
+                                                ignore_configs=ignore_configs):
+            binary_representation += bytes(config, 'utf-8')
+
+        return binary_representation
+
+
+def _is_ignored_config(ignore_configs, slot, config_var):
+    """Checks if an entry is in the list of variables to ignore"""
+
+    for ignore_config in ignore_configs:
+        if slot == ignore_config[0] and config_var == ignore_config[1]:
+            return True
+
+    return False
+
+
+def _convert_to_bytearray(type_name, value):
+    """Convert a typed value to a binary array"""
+
+    int_types = {'uint8_t': 'B', 'int8_t': 'b', 'uint16_t': 'H', 'int16_t': 'h', 'uint32_t': 'L', 'int32_t': 'l'}
+
+    type_name = type_name.lower()
+
+    is_array = False
+    if type_name[-2:] == '[]':
+        if value[0] != '[' or value[-1] != ']':
+            raise ArgumentError("Array value improperly formated, must be a stringified list")
+        is_array = True
+        type_name = type_name[:-2]
+
+    if type_name not in int_types and type_name not in ['string', 'binary']:
+        raise ArgumentError('Type must be a known integer type, integer type array, string', known_integers=int_types.keys(), actual_type=type_name)
+
+    if type_name == 'string':
+        #value should be passed as a string
+        bytevalue = bytearray(value, 'utf-8')
+    elif type_name == 'binary':
+        bytevalue = bytearray(value)
+    elif is_array:
+        value = [int(n,0) for n in value[1:-1].split(',')]
+        bytevalue = bytearray(struct.pack("<%s" % (int_types[type_name]*len(value)), *value))
+    else:
+        bytevalue = bytearray(struct.pack("<%s" % int_types[type_name], value))
+
+    return bytevalue
