@@ -2,8 +2,9 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
-## HEAD
+## 3.0.5
 
+- Add optional deduplication of broadcast-V2 formatted Advertising packets 
 - Add `safe_mode` advertisement flag in scan results
 
 ## 3.0.4
