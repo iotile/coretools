@@ -99,6 +99,8 @@ class BLED112Adapter(DeviceAdapter):
         self._throttle_broadcast = config.get('bled112:throttle-broadcast')
         self._throttle_scans = config.get('bled112:throttle-scan')
         self._throttle_timeout = config.get('bled112:throttle-timeout')
+        throttle_v2 = config.get('bled112:throttle-v2-advertisements')
+        throttle_v2_timeout = config.get('bled112:throttle-v2-timeout')
 
         # Prepare internal state of scannable and in progress devices
         # Do this before spinning off the BLED112CommandProcessor
@@ -122,7 +124,8 @@ class BLED112Adapter(DeviceAdapter):
         self._logger = logging.getLogger(__name__)
         self._logger.addHandler(logging.NullHandler())
         self._serial_port = open_bled112(port, self._logger)
-        self._stream = AsyncPacketBuffer(self._serial_port, header_length=4, length_function=packet_length)
+        self._stream = AsyncPacketBuffer(self._serial_port, header_length=4, length_function=packet_length,
+                                         deduplicate=throttle_v2, deduplicate_timeout=throttle_v2_timeout)
         self._commands = Queue()
         self._command_task = BLED112CommandProcessor(self._stream, self._commands, stop_check_interval=stop_check_interval)
         self._command_task.event_handler = self._handle_event
