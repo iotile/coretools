@@ -348,7 +348,7 @@ class SensorGraph:
 
         return configs_ignorelist
 
-    def add_checksum(self):
+    def add_checksum(self, force_checksum=False):
         """Check metadata if sensorgraph's checksum needs to be added.
 
         The sensorgraph must contain all the meta tags required to calculate the
@@ -370,7 +370,9 @@ class SensorGraph:
             to exclude in the calculation of the device's checksums.
         """
 
-        if 'hash_address' not in self.metadata_database or\
+        if force_checksum:
+            pass
+        elif 'hash_address' not in self.metadata_database or\
             'hash_algorithm' not in self.metadata_database or\
             'hash_algorithm_address' not in self.metadata_database or\
             'hash_configs_ignorelist' not in self.metadata_database or\
@@ -378,14 +380,19 @@ class SensorGraph:
             return
 
         slot = SlotIdentifier.FromString('controller')
-        hash_address = self.metadata_database['hash_address']
-        algorithm = self.metadata_database['hash_algorithm']
-        algorithm_address = self.metadata_database['hash_algorithm_address']
 
-        algorithm_config_type, _ = self.get_config(slot, algorithm_address)
-        self.add_config(slot, algorithm_address, algorithm_config_type, algorithm)
+        if not force_checksum:
+            hash_address = self.metadata_database['hash_address']
+            algorithm = self.metadata_database['hash_algorithm']
+            algorithm_address = self.metadata_database['hash_algorithm_address']
 
-        configs_ignorelist = self._parse_configs_ignorelist()
+            algorithm_config_type, _ = self.get_config(slot, algorithm_address)
+            self.add_config(slot, algorithm_address, algorithm_config_type, algorithm)
+
+            configs_ignorelist = self._parse_configs_ignorelist()
+        else:
+            algorithm = "sha256"
+            configs_ignorelist = []
 
         hash_algorithm = KNOWN_HASH_ALGORITHMS[algorithm]
 
@@ -415,8 +422,9 @@ class SensorGraph:
                                                    combined_checksum_bytes)
         self._logger.debug("device_checksum: %s", device_checksum)
 
-        hash_config_type, _ = self.get_config(slot, hash_address)
-        self.add_config(slot, hash_address, hash_config_type, device_checksum)
+        if not force_checksum:
+            hash_config_type, _ = self.get_config(slot, hash_address)
+            self.add_config(slot, hash_address, hash_config_type, device_checksum)
 
     def process_input(self, stream, value, rpc_executor):
         """Process an input through this sensor graph.
@@ -645,8 +653,8 @@ class SensorGraph:
         """Dump all of the config variables in this sensor graph as a list of strings."""
 
         config_dump = []
-        for slot, conf_vars in self.config_database.items():
-            for conf_var, conf_def in conf_vars.items():
+        for slot, conf_vars in sorted(self.config_database.items(), key=lambda x: x[0].encode()):
+            for conf_var, conf_def in sorted(conf_vars.items(), key=lambda x: x[0]):
                 conf_type, conf_val = conf_def
                 conf_val_bytes = _convert_to_bytearray(conf_type, conf_val)
 
