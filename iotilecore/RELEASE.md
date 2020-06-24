@@ -2,6 +2,14 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## 5.1.0
+
+- Remove dependency on sortedcontainers.  It was only used in one place and
+  was preventing compiling CoreTools based applications using the ``nuitka``
+  python compiler.  The specific use case in UTCAssigner was replaced with a
+  focused implementation that also happened to be faster for our specific use
+  case.
+
 ## 5.0.16
 
 - Add hash algorithms to utilities

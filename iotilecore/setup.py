@@ -27,7 +27,6 @@ setup(
     install_requires=[
         "python-dateutil>=2.8.0,<3",
         "typedargs>=1.0.0,<2",
-        "sortedcontainers~=2.1",
         "entrypoints>=0.3.0,<1",
         "msgpack>=0.6.1,<1"
     ],

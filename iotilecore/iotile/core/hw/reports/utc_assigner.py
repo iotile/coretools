@@ -27,8 +27,6 @@ from typedargs.exceptions import ArgumentError
 from .signed_list_format import SignedListReport
 from .report import IOTileReading
 
-LOG = logging.getLogger(__name__)
-
 class _TimeAnchor:
     """Internal class for storing a utc reference point."""
 
@@ -75,8 +73,6 @@ class SortedAnchorList:
     def _ensure_sorted(self):
         if self._sorted:
             return
-
-        LOG.info("Sorting")
 
         self._data.sort(key=lambda x: x.reading_id)
         self._keys = [x.reading_id for x in self._data]
