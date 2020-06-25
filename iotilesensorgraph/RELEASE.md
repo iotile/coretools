@@ -3,6 +3,11 @@
 All major changes in each released version of iotile-sensorgraph are listed
 here.
 
+## 1.0.9
+
+- Add ability to force checksum calculation regardless of hash settings
+- Fix checksum function's config dump to be sorted properly
+
 ## 1.0.8
 
 - Add feature to set sensorgraph's checksum as config variable

@@ -19,6 +19,7 @@ def build_args():
     parser.add_argument(u'-o', u'--output', type=str, help=u"the output file to save the results (defaults to stdout)")
     parser.add_argument(u'--disable-optimizer', action="store_true", help=u"disable the sensor graph optimizer completely")
     parser.add_argument(u'-v', u'--verbose', help=u"increase output verbosity", action="store_true")
+    parser.add_argument(u'--force_checksum', help=u"forces the compiler to calculate a checksum", action="store_true")
     return parser
 
 
@@ -71,7 +72,7 @@ def main():
         opt = SensorGraphOptimizer()
         opt.optimize(parser.sensor_graph, model=model)
 
-    parser.sensor_graph.add_checksum()
+    parser.sensor_graph.add_checksum(force_checksum=args.force_checksum)
 
     if args.format == u'nodes':
         output = u'\n'.join(parser.sensor_graph.dump_nodes()) + u'\n'
