@@ -38,6 +38,8 @@ class SensorGraph:
         self.metadata_database = {}
         self.config_database = {}
 
+        self.checksums = None
+
         self.sensor_log = sensor_log
         self.model = model
 
@@ -421,6 +423,15 @@ class SensorGraph:
         device_checksum = hash_algorithm.calculate(hash_algorithm.algorithm, 
                                                    combined_checksum_bytes)
         self._logger.debug("device_checksum: %s", device_checksum)
+
+        self.checksums = {
+            "nodes": nodes_checksum,
+            "streamers": streamers_checksum,
+            "configs": configs_checksum,
+            "constants": constants_checksum,
+            "metadata": metadata_checksum,
+            "device": device_checksum
+        }
 
         if not force_checksum:
             hash_config_type, _ = self.get_config(slot, hash_address)
