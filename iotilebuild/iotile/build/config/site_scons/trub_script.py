@@ -345,7 +345,18 @@ def combine_trub_scripts(trub_scripts_list, out_file):
 
     files = [resolver.find_unique("trub_script", x).full_path for x in trub_scripts_list]
 
+    env = Environment(tools=[])
+
+    env.Command([os.path.join('build', 'output', out_file)], files,
+                action=Action(_combine_trub_scripts_action, "Combining TRUB scripts at $TARGET"))
+
+
+def _combine_trub_scripts_action(target, source, env):
+    """Action to combine trub scripts"""
+
     records = []
+
+    files = [str(x) for x in source]
 
     for script in files:
         if not os.path.isfile(script):
@@ -357,39 +368,26 @@ def combine_trub_scripts(trub_scripts_list, out_file):
 
     new_script = UpdateScript(records)
 
-    out_path = os.path.join('build', 'output')
-
-    if not os.path.exists(out_path):
-        os.makedirs(out_path)
-
-    out_path = os.path.join(out_path, out_file)
-
-    with open(out_path, "wb") as outfile:
+    with open(str(target[0]), "wb") as outfile:
         outfile.write(new_script.encode())
 
 
-def get_device_checksum(trub_scripts_list, checksum_address):
-    """Returns the device checksum from a trub file if it exists"""
+def get_sgf_checksum(file_name=None, sensorgraph=None):
+    """Returns the device checksum from a sensorgraph file"""
 
-    resolver = ProductResolver.Create()
+    env = Environment(tools=[])
 
-    files = [resolver.find_unique("trub_script", x).full_path for x in trub_scripts_list]
+    env.Command([os.path.join('build', 'output', file_name)], [sensorgraph],
+                action=Action(_get_sgf_checksum_action, "Building SGF Checksum file at $TARGET"))
 
-    for script in files:
-        if not os.path.isfile(script):
-            raise BuildError("Path to script is not a valid file.",
-                             script=script)
 
-        trub_binary = _get_trub_binary(script)
-        trub_script = UpdateScript.FromBinary(trub_binary)
+def _get_sgf_checksum_action(target, source, env):
+    """Action to get the SGF's checksum"""
 
-        for record in trub_script.records:
-            if isinstance(record, SetConfigRecord) and\
-            record.config_id == checksum_address:
-                device_checksum = record.data
-                return device_checksum
+    checksum = compile_sgf(str(source[0])).checksums
 
-    return None
+    with open(str(target[0]), "w") as outfile:
+        outfile.write(str(checksum))
 
 
 def _get_trub_binary(script_path):
