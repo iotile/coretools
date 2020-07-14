@@ -23,9 +23,18 @@ returning confidence metrics along with the assigned value.
 import datetime
 import logging
 from bisect import bisect_left
-from typedargs.exceptions import ArgumentError
+from typedargs.exceptions import ArgumentError, KeyValueException
 from .signed_list_format import SignedListReport
 from .report import IOTileReading
+
+try:
+    from tqdm import tqdm
+except ImportError:
+    class MissingPackageException(KeyValueException):
+        pass
+    raise MissingPackageException("Missing required package tqdm. Install with the command `pip install tqdm`",
+            command="pip install tqdm")
+
 
 class _TimeAnchor:
     """Internal class for storing a utc reference point."""
@@ -372,9 +381,11 @@ class UTCAssigner:
         fixed_count = 0
         inexact_count = 0
 
-        self._logger.debug("Preparing UTCAssigner (%d total anchors)", len(self._anchor_points))
-
-        for curr in self._anchor_points:
+        self._logger.info("Preparing UTCAssigner (%d total anchors)", len(self._anchor_points))
+        pbar = tqdm(total=len(self._anchor_points), desc="Prepping Anchors")
+        for idx, curr in enumerate(self._anchor_points):
+            pbar.update(1)
+            pbar.refresh()
             if not curr.exact:
                 assignment = self.assign_utc(curr.reading_id, curr.uptime)
                 if assignment is not None and assignment.exact:
@@ -386,10 +397,10 @@ class UTCAssigner:
             else:
                 exact_count += 1
 
+        pbar.close()
         self._logger.debug("Prepared UTCAssigner with %d reference points, "
                            "%d exact anchors and %d inexact anchors",
                            exact_count, fixed_count, inexact_count)
-
         self._prepared = True
 
     def fix_report(self, report, errors="drop", prefer="before"):
@@ -425,7 +436,10 @@ class UTCAssigner:
         fixed_readings = []
         dropped_readings = 0
 
+        pbar = tqdm(total=len(report.visible_readings), desc="Assigning Readings")
         for reading in report.visible_readings:
+            pbar.update(1)
+            pbar.refresh()
             assignment = self.assign_utc(reading.reading_id, reading.raw_time, prefer=prefer)
 
             if assignment is None:
@@ -436,6 +450,7 @@ class UTCAssigner:
                                           reading_time=assignment.utc, reading_id=reading.reading_id)
             fixed_readings.append(fixed_reading)
 
+        pbar.close()
         fixed_report = SignedListReport.FromReadings(report.origin, fixed_readings, report_id=report.report_id,
                                                      selector=report.streamer_selector, streamer=report.origin_streamer,
                                                      sent_timestamp=report.sent_timestamp)
