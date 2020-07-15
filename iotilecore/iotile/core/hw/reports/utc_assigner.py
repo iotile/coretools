@@ -23,7 +23,7 @@ returning confidence metrics along with the assigned value.
 import datetime
 import logging
 from bisect import bisect_left
-from typedargs.exceptions import ArgumentError, KeyValueException
+from typedargs.exceptions import ArgumentError
 from .signed_list_format import SignedListReport
 from .report import IOTileReading
 
