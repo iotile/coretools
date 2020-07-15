@@ -2,6 +2,12 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## 5.1.1
+
+- Add the tqdm statusbar to the utc_assigner. There are some conditions where the binary 
+  reports take a significant amount of time to process. A status bar helps show estimated time
+  to process and show that code is not stalled.
+
 ## 5.1.0
 
 - Remove dependency on sortedcontainers.  It was only used in one place and

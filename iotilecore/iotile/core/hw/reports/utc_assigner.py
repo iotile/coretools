@@ -362,8 +362,11 @@ class UTCAssigner:
 
         return self._pick_best_fix(left_assign, right_assign, prefer)
 
-    def ensure_prepared(self):
-        """Calculate and cache UTC values for all exactly known anchor points."""
+    def ensure_prepared(self, progress_callback=None):
+        """Calculate and cache UTC values for all exactly known anchor points.
+                progress_callback: Callback with progress updates
+                    of the form function(current_index, total_index)
+        """
 
         if self._prepared:
             return
@@ -372,9 +375,10 @@ class UTCAssigner:
         fixed_count = 0
         inexact_count = 0
 
-        self._logger.debug("Preparing UTCAssigner (%d total anchors)", len(self._anchor_points))
-
-        for curr in self._anchor_points:
+        self._logger.info("Preparing UTCAssigner (%d total anchors)", len(self._anchor_points))
+        for idx, curr in enumerate(self._anchor_points):
+            if progress_callback:
+                progress_callback(idx, len(self._anchor_points))
             if not curr.exact:
                 assignment = self.assign_utc(curr.reading_id, curr.uptime)
                 if assignment is not None and assignment.exact:
@@ -389,10 +393,9 @@ class UTCAssigner:
         self._logger.debug("Prepared UTCAssigner with %d reference points, "
                            "%d exact anchors and %d inexact anchors",
                            exact_count, fixed_count, inexact_count)
-
         self._prepared = True
 
-    def fix_report(self, report, errors="drop", prefer="before"):
+    def fix_report(self, report, errors="drop", prefer="before", progress_callback=None):
         """Perform utc assignment on all readings in a report.
 
         The returned report will have all reading timestamps in UTC. This only
@@ -420,12 +423,15 @@ class UTCAssigner:
         if errors not in ('drop',):
             raise ArgumentError("Unknown errors handler: {}, supported=['drop']".format(errors))
 
-        self.ensure_prepared()
+        self.ensure_prepared(progress_callback=progress_callback)
 
         fixed_readings = []
         dropped_readings = 0
 
-        for reading in report.visible_readings:
+        for idx, reading in enumerate(report.visible_readings):
+            if progress_callback:
+                progress_callback(idx, len(report.visible_readings))
+
             assignment = self.assign_utc(reading.reading_id, reading.raw_time, prefer=prefer)
 
             if assignment is None:
