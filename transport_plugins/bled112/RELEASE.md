@@ -2,6 +2,14 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
+## 3.0.6
+
+- Add dongle removal detection logic that sets the `stopped` property.
+- Add a `heartbeat` debug command that checks if the dongle is currently alive.
+- Prevent API calls from hanging if a dongle is removed in the middle of an API call such
+  as connect or send_rpc.  Previously the call would never complete.  Now the call fails
+  with an exception.
+
 ## 3.0.5
 
 - Add optional deduplication of broadcast-V2 formatted Advertising packets 
