@@ -97,5 +97,6 @@ def reader_thread(filelike, read_queue, header_length, length_function, stop, de
 
             read_queue.put(packet)
         except:
-            logger.exception("Error in reader thread")
+            logger.exception("Error in reader thread, putting device failure event")
+            read_queue.put(bytearray([0x80, 0, 255, 255]))
             break

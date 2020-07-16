@@ -2,6 +2,12 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## 5.1.2
+
+- Add support for an experimental, unstable `heartbeat` command in `HardwareManager`.  This
+  command allows you to check if a DeviceAdapter is broken due to missing or nonresponsive
+  hardware.  For it to work, the DeviceAdapter must the support the `heartbeat` debug command.
+
 ## 5.1.1
 
 - Add the tqdm statusbar to the utc_assigner. There are some conditions where the binary 

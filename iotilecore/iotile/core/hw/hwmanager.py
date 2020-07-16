@@ -308,6 +308,13 @@ class HardwareManager:
         self.stream.enable_debug()
         return DebugManager(self.stream)
 
+    @return_type("bool")
+    def heartbeat(self):
+        """Check if we still have a connection to the DeviceAdapter."""
+
+        result = self.stream.debug_command('heartbeat')
+        return result.get('alive')
+
     @annotated
     def enable_broadcasting(self):
         """Enable the collection of broadcast IOTile reports.
@@ -787,7 +794,7 @@ class HardwareManager:
             return None
 
         proxy_match = self.find_correct_proxy_version(self._name_map[short_name], version)
-        return proxy_match if proxy_match is not None else self._name_map[short_name][0] 
+        return proxy_match if proxy_match is not None else self._name_map[short_name][0]
 
     def find_correct_proxy_version(self, proxies, version):
         """Retrieves the ModuleVersion of each proxy and match it with the tile version

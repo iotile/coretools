@@ -46,7 +46,11 @@ class BLED112CommandProcessor(threading.Thread):
                 self._current_callback = callback
 
                 if hasattr(self, cmd):
-                    res = getattr(self, cmd)(*args)
+                    try:
+                        res = getattr(self, cmd)(*args)
+                    except Exception as err:
+                        self._logger.error("Error executing command: %s", cmd, exc_info=True)
+                        res = (False, "Exception during command: %s" % err)
                 else:
                     pass #FIXME: Log an error for an invalid command
 
@@ -71,7 +75,7 @@ class BLED112CommandProcessor(threading.Thread):
             except Empty:
                 pass
             except:
-                self._logger.exception("Error executing command: %s", cmd)
+                self._logger.exception("Fatal error in background processing loop")
                 raise
 
     def _set_scan_parameters(self, interval=2100, window=2100, active=False):
@@ -842,6 +846,11 @@ class BLED112CommandProcessor(threading.Thread):
         self.join()
 
     def sync_command(self, cmd):
+        if self._stop_event.is_set():
+            self._logger.warning("Command %s sent after background processor was stopped; failing immediately", cmd)
+
+            raise HardwareError("Synchronous command %s failed because background processor was stopped" % cmd)
+
         done_event = threading.Event()
         results = []
 
@@ -861,6 +870,21 @@ class BLED112CommandProcessor(threading.Thread):
         return retval
 
     def async_command(self, cmd, callback, context):
+        if self._stop_event.is_set():
+            self._logger.warning("Command %s sent after background processor was stopped; failing immediately", cmd)
+
+            result_obj = {
+                'command': cmd,
+                'result': False,
+                'return_value': "Command processor has already stopped",
+                'context': context
+            }
+
+            if callback:
+                callback(result_obj)
+
+            return
+
         self._commands.put((cmd, callback, False, context))
 
 

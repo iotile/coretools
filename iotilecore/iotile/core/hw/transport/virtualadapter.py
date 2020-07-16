@@ -350,6 +350,9 @@ class VirtualDeviceAdapter(StandardDeviceAdapter):
         See :meth:`AbstractDeviceAdapter.debug`.
         """
 
+        if name == 'heartbeat':
+            return {'alive': True}
+
         self._ensure_connection(conn_id, True)
         dev = self._get_property(conn_id, 'device')
         conn_string = self._get_property(conn_id, 'connection_string')

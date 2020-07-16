@@ -279,6 +279,9 @@ class JLinkAdapter(StandardDeviceAdapter):
             'program_flash': self._jlink_async.program_flash
         }
 
+        if name == 'heartbeat':
+            return {'alive': True}
+
         self._ensure_connection(conn_id, True)
 
         func = known_commands.get(name)
