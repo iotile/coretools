@@ -3,6 +3,10 @@
 All major changes in each released version of the jlink transport plugin are
 listed here.
 
+## 1.1.1
+
+- Add placeholder support for heartbeat debug command.
+
 ## 1.1.0
 
 - JLink adapter support for streaming and tracing
