@@ -2,6 +2,11 @@
 
 All major changes in each released version of iotile-emulate are listed here.
 
+## 0.5.2
+
+- Add support for `heartbeat` debug command to power HardwareManager `heartbeat`
+  functionality.
+
 ## 0.5.1
 
 - Updating tests to use `ReferenceControllerProxy`

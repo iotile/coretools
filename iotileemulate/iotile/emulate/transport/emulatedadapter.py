@@ -69,6 +69,8 @@ class EmulatedDeviceAdapter(VirtualDeviceAdapter):
             cmd_args (dict): any arguments that we want to send with this command.
         """
 
+        if name == 'heartbeat':
+            return {'alive': True}
 
         device = self._get_property(conn_id, 'device')
 
