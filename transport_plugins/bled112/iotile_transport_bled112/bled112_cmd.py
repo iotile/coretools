@@ -46,7 +46,11 @@ class BLED112CommandProcessor(threading.Thread):
                 self._current_callback = callback
 
                 if hasattr(self, cmd):
-                    res = getattr(self, cmd)(*args)
+                    try:
+                        res = getattr(self, cmd)(*args)
+                    except Exception as err:
+                        self._logger.error("Error executing command: %s", cmd, exc_info=True)
+                        res = (False, "Exception during command: %s" % err)
                 else:
                     pass #FIXME: Log an error for an invalid command
 
@@ -71,7 +75,7 @@ class BLED112CommandProcessor(threading.Thread):
             except Empty:
                 pass
             except:
-                self._logger.exception("Error executing command: %s", cmd)
+                self._logger.exception("Fatal error in background processing loop")
                 raise
 
     def _set_scan_parameters(self, interval=2100, window=2100, active=False):
