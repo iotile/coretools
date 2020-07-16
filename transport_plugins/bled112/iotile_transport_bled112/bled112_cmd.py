@@ -846,6 +846,11 @@ class BLED112CommandProcessor(threading.Thread):
         self.join()
 
     def sync_command(self, cmd):
+        if self._stop_event.is_set():
+            self._logger.warning("Command %s sent after background processor was stopped; failing immediately", cmd)
+
+            raise HardwareError("Synchronous command %s failed because background processor was stopped" % cmd)
+
         done_event = threading.Event()
         results = []
 
@@ -865,6 +870,21 @@ class BLED112CommandProcessor(threading.Thread):
         return retval
 
     def async_command(self, cmd, callback, context):
+        if self._stop_event.is_set():
+            self._logger.warning("Command %s sent after background processor was stopped; failing immediately", cmd)
+
+            result_obj = {
+                'command': cmd,
+                'result': False,
+                'return_value': "Command processor has already stopped",
+                'context': context
+            }
+
+            if callback:
+                callback(result_obj)
+
+            return
+
         self._commands.put((cmd, callback, False, context))
 
 
