@@ -131,6 +131,8 @@ class BLED112Adapter(DeviceAdapter):
         self._command_task.event_handler = self._handle_event
         self._command_task.start()
 
+        self._hardware_failure_detected = False
+
         if not _HAS_CRYPTO:
             self._logger.warning("pycryptodome is not installed, encrypted v2 broadcasts will be dropped.")
 
@@ -545,6 +547,11 @@ class BLED112Adapter(DeviceAdapter):
         callback(context['connection_id'], self.id, success, failure)
 
     def _handle_event(self, event):
+        if event.command_class == 255 and event.command == 255:
+            self._logger.warning("Detected that the dongle was broken or disconnected")
+            self._hardware_failure_detected = True
+            return
+
         # See https://www.silabs.com/documents/login/reference-manuals/Bluetooth_Smart_Software-BLE-1.7-API-RM.PDF
         # page 109 for reference on scan event packets
         if event.command_class == 6 and event.command == 0:
@@ -1166,6 +1173,11 @@ class BLED112Adapter(DeviceAdapter):
         """
 
         if self.stopped:
+            return
+
+        if self._hardware_failure_detected:
+            self._logger.warning("Hardware failure detected, cleanly stopping device adapter")
+            self._stop_from_hardware_failure()
             return
 
         # Check if we should start scanning again
