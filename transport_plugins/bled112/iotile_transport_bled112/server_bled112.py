@@ -212,7 +212,7 @@ class BLED112Server(StandardDeviceServer):
             reboots_hi = (reboots & 0xFF0000) >> 16
             reboots_lo = (reboots & 0x00FFFF)
 
-            data1 = struct.pack("<BBHL", 27, 0x16, 0x03C0, self.device.iotile_id)
+            data1 = struct.pack("<BBBBL", 27, 0x16, 0xdd, 0xfd, self.device.iotile_id)
             data2 = struct.pack("<HBBLBB", reboots_lo, reboots_hi, flags, timestamp, voltage, OTHER)
             data3 = struct.pack("<HLL", bcast_stream, bcast_value, mac)
 

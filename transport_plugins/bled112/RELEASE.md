@@ -2,6 +2,9 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
+## 3.0.7
+- Correct indicator flags for Broadcast v2 advertisements
+
 ## 3.0.6
 
 - Add dongle removal detection logic that sets the `stopped` property.
