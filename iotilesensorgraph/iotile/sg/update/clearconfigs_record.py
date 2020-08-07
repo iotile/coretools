@@ -81,3 +81,9 @@ class ClearConfigVariablesRecord(SendErrorCheckingRPCRecord):
 
     def __str__(self):
         return "Clear all config variables"
+
+    def __eq__(self, other):
+        if not isinstance(other, ClearConfigVariablesRecord):
+            return False
+
+        return True

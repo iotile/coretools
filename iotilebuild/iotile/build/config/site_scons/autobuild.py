@@ -27,7 +27,7 @@ from release import *
 from iotile.core.exceptions import *
 from iotile.core.dev import IOTile, ComponentRegistry
 from iotile.build.build import ProductResolver
-from trub_script import build_update_script, build_trub_records
+from trub_script import build_update_script, build_trub_records, combine_trub_scripts, get_sgf_checksum
 
 
 def require(builder_name):
@@ -320,6 +320,23 @@ def autobuild_trub_records(file_name, slot_assignments=None, os_info=None,
     """
 
     build_trub_records(file_name, slot_assignments, os_info, sensor_graph, app_info, use_safeupdate)
+
+
+def autobuild_combine_trub_scripts(trub_scripts_list, out_file):
+    """Combines individual trub scripts into one.
+    
+    Args:
+        trub_scripts_list (list): A list of paths to individual trub scripts.
+        out_path (str): Path to save the new trub script to.
+    """
+
+    combine_trub_scripts(trub_scripts_list, out_file)
+
+
+def autobuild_get_sgf_checksum(file_name, sensorgraph):
+    """Returns the device checksum if it is set in one of the trub scripts"""
+
+    return get_sgf_checksum(file_name, sensorgraph)
 
 
 def autobuild_bootstrap_file(file_name, image_list):

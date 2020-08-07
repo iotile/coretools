@@ -22,11 +22,10 @@ returning confidence metrics along with the assigned value.
 
 import datetime
 import logging
+from bisect import bisect_left
 from typedargs.exceptions import ArgumentError
-from sortedcontainers import SortedKeyList
 from .signed_list_format import SignedListReport
 from .report import IOTileReading
-
 
 class _TimeAnchor:
     """Internal class for storing a utc reference point."""
@@ -43,6 +42,84 @@ class _TimeAnchor:
     def copy(self):
         """Return a copy of this _TimeAnchor."""
         return _TimeAnchor(self.reading_id, self.uptime, self.utc, self.is_break, self.exact)
+
+
+class SortedAnchorList:
+    """A simple but time-efficient list that is maintained sorted by a key.
+
+    This is a reimplementation of the API provided by the sortedcontainers
+    package.  It is based on SortedKeyList.
+
+    Internally it maintains 3 structures:
+     - data: the actual added values
+     - keys: a sorted list of the keys computed from the data
+     - key_set: A set for quickly testing key membership.
+
+    ``data`` is only sorted to produce ``keys`` on demand, when a request is
+    made for an operation that requires sorting.  This lazy sorting is
+    designed to work well with the usage pattern of this class in
+    UTCAssignment.
+
+    Unit tests show that runtime for the ``test_utc_assigner.py`` test suite
+    dropped from 7 seconds to 5.5 seconds using this class.
+    """
+
+    def __init__(self):
+        self._key_set = set()
+        self._data = []
+        self._keys = []
+        self._sorted = False
+
+    def _ensure_sorted(self):
+        if self._sorted:
+            return
+
+        self._data.sort(key=lambda x: x.reading_id)
+        self._keys = [x.reading_id for x in self._data]
+        self._sorted = True
+
+    def add(self, anchor: _TimeAnchor):
+        """Add a new TimeAnchor to this sorted list."""
+
+        self._key_set.add(anchor.reading_id)
+        self._data.append(anchor)
+        self._sorted = False
+
+    def bisect_key_left(self, reading_id: int) -> int:
+        """Find the position for inserting this key."""
+
+        self._ensure_sorted()
+        return bisect_left(self._keys, reading_id)
+
+    def islice(self, start=None, stop=None, reverse=False):
+        """Iterate over a slice of this sorted list."""
+
+        self._ensure_sorted()
+
+        start, stop, _ = slice(start, stop).indices(len(self._data))
+
+        iterator = range(start, stop)
+        if reverse:
+            iterator = reversed(iterator)
+
+        for i in iterator:
+            yield self._data[i]
+
+    def __len__(self):
+        return len(self._data)
+
+    def __iter__(self):
+        self._ensure_sorted()
+
+        return self._data.__iter__()
+
+    def __getitem__(self, i):
+        self._ensure_sorted()
+
+        return self._data[i]
+
+    def __contains__(self, anchor):
+        return anchor.reading_id in self._key_set
 
 
 class UTCAssignment:
@@ -108,7 +185,7 @@ class UTCAssigner:
     _EpochReference = datetime.datetime(1970, 1, 1)
 
     def __init__(self):
-        self._anchor_points = SortedKeyList(key=lambda x: x.reading_id)
+        self._anchor_points = SortedAnchorList()
         self._prepared = False
         self._anchor_streams = {}
         self._break_streams = set()
@@ -285,8 +362,11 @@ class UTCAssigner:
 
         return self._pick_best_fix(left_assign, right_assign, prefer)
 
-    def ensure_prepared(self):
-        """Calculate and cache UTC values for all exactly known anchor points."""
+    def ensure_prepared(self, progress_callback=None):
+        """Calculate and cache UTC values for all exactly known anchor points.
+                progress_callback: Callback with progress updates
+                    of the form function(current_index, total_index)
+        """
 
         if self._prepared:
             return
@@ -295,9 +375,10 @@ class UTCAssigner:
         fixed_count = 0
         inexact_count = 0
 
-        self._logger.debug("Preparing UTCAssigner (%d total anchors)", len(self._anchor_points))
-
-        for curr in self._anchor_points:
+        self._logger.info("Preparing UTCAssigner (%d total anchors)", len(self._anchor_points))
+        for idx, curr in enumerate(self._anchor_points):
+            if progress_callback:
+                progress_callback(idx, len(self._anchor_points))
             if not curr.exact:
                 assignment = self.assign_utc(curr.reading_id, curr.uptime)
                 if assignment is not None and assignment.exact:
@@ -312,10 +393,9 @@ class UTCAssigner:
         self._logger.debug("Prepared UTCAssigner with %d reference points, "
                            "%d exact anchors and %d inexact anchors",
                            exact_count, fixed_count, inexact_count)
-
         self._prepared = True
 
-    def fix_report(self, report, errors="drop", prefer="before"):
+    def fix_report(self, report, errors="drop", prefer="before", progress_callback=None):
         """Perform utc assignment on all readings in a report.
 
         The returned report will have all reading timestamps in UTC. This only
@@ -343,12 +423,15 @@ class UTCAssigner:
         if errors not in ('drop',):
             raise ArgumentError("Unknown errors handler: {}, supported=['drop']".format(errors))
 
-        self.ensure_prepared()
+        self.ensure_prepared(progress_callback=progress_callback)
 
         fixed_readings = []
         dropped_readings = 0
 
-        for reading in report.visible_readings:
+        for idx, reading in enumerate(report.visible_readings):
+            if progress_callback:
+                progress_callback(idx, len(report.visible_readings))
+
             assignment = self.assign_utc(reading.reading_id, reading.raw_time, prefer=prefer)
 
             if assignment is None:

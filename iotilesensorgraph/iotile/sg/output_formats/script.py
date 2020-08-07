@@ -67,14 +67,24 @@ def _convert_to_bytes(type_name, value):
 
     type_name = type_name.lower()
 
+    is_array = False
+    if type_name[-2:] == '[]':
+        if value[0] != '[' or value[-1] != ']':
+            raise ArgumentError("Array value improperly formated, must be a stringified list")
+        is_array = True
+        type_name = type_name[:-2]
+
     if type_name not in int_types and type_name not in ['string', 'binary']:
         raise ArgumentError('Type must be a known integer type, integer type array, string', known_integers=int_types.keys(), actual_type=type_name)
 
     if type_name == 'string':
         #value should be passed as a string
-        bytevalue = bytearray(value)
+        bytevalue = bytearray(value, 'utf-8')
     elif type_name == 'binary':
         bytevalue = bytearray(value)
+    elif is_array:
+        value = [int(n,0) for n in value[1:-1].split(',')]
+        bytevalue = bytearray(struct.pack("<%s" % (int_types[type_name]*len(value)), *value))
     else:
         bytevalue = struct.pack("<%s" % int_types[type_name], value)
 

@@ -4,5 +4,4 @@ websockets
 msgpack>=0.6.1
 python-dateutil>=2.6.0
 typedargs>=1.0.0
-sortedcontainers~=2.1
 entrypoints>=0.3.0

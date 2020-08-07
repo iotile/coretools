@@ -31,4 +31,6 @@ def compile_sgf(in_path, optimize=True, model=None):
         opt = SensorGraphOptimizer()
         opt.optimize(parser.sensor_graph, model=model)
 
+    parser.sensor_graph.add_checksum()
+
     return parser.sensor_graph

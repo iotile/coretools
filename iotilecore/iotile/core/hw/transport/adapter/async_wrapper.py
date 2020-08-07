@@ -206,7 +206,7 @@ class AsynchronousModernWrapper(StandardDeviceAdapter):
         progress_callback = functools.partial(_on_progress, self, 'debug', conn_id)
 
         resp = await self._execute(self._adapter.debug_sync, conn_id, name, cmd_args, progress_callback)
-        _raise_error(conn_id, 'send_rpc', resp)
+        _raise_error(conn_id, 'debug', resp)
 
         return resp.get('return_value')
 
@@ -219,7 +219,7 @@ class AsynchronousModernWrapper(StandardDeviceAdapter):
         progress_callback = functools.partial(_on_progress, self, 'script', conn_id)
 
         resp = await self._execute(self._adapter.send_script_sync, conn_id, data, progress_callback)
-        _raise_error(conn_id, 'send_rpc', resp)
+        _raise_error(conn_id, 'send_script', resp)
 
 
 def _raise_error(conn_id, operation, resp):

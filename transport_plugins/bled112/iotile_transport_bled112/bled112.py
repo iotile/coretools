@@ -99,6 +99,8 @@ class BLED112Adapter(DeviceAdapter):
         self._throttle_broadcast = config.get('bled112:throttle-broadcast')
         self._throttle_scans = config.get('bled112:throttle-scan')
         self._throttle_timeout = config.get('bled112:throttle-timeout')
+        throttle_v2 = config.get('bled112:throttle-v2-advertisements')
+        throttle_v2_timeout = config.get('bled112:throttle-v2-timeout')
 
         # Prepare internal state of scannable and in progress devices
         # Do this before spinning off the BLED112CommandProcessor
@@ -122,11 +124,14 @@ class BLED112Adapter(DeviceAdapter):
         self._logger = logging.getLogger(__name__)
         self._logger.addHandler(logging.NullHandler())
         self._serial_port = open_bled112(port, self._logger)
-        self._stream = AsyncPacketBuffer(self._serial_port, header_length=4, length_function=packet_length)
+        self._stream = AsyncPacketBuffer(self._serial_port, header_length=4, length_function=packet_length,
+                                         deduplicate=throttle_v2, deduplicate_timeout=throttle_v2_timeout)
         self._commands = Queue()
         self._command_task = BLED112CommandProcessor(self._stream, self._commands, stop_check_interval=stop_check_interval)
         self._command_task.event_handler = self._handle_event
         self._command_task.start()
+
+        self._hardware_failure_detected = False
 
         if not _HAS_CRYPTO:
             self._logger.warning("pycryptodome is not installed, encrypted v2 broadcasts will be dropped.")
@@ -191,6 +196,9 @@ class BLED112Adapter(DeviceAdapter):
     def stop_sync(self):
         """Safely stop this BLED112 instance without leaving it in a weird state"""
 
+        if self.stopped:
+            return
+
         if self.scanning:
             self.stop_scan()
 
@@ -206,6 +214,15 @@ class BLED112Adapter(DeviceAdapter):
 
         self.stopped = True
 
+    def _stop_from_hardware_failure(self):
+        self._connections = {}
+
+        self._command_task.stop()
+        self._stream.stop()
+        self._serial_port.close()
+
+        self.stopped = True
+
     def stop_scan(self):
         """Stop the scanning task"""
         self._command_task.sync_command(['_stop_scan'])
@@ -213,6 +230,7 @@ class BLED112Adapter(DeviceAdapter):
 
     def start_scan(self, active):
         """Start the scanning task"""
+
         self._command_task.sync_command(['_start_scan', active])
         self.scanning = True
 
@@ -346,6 +364,34 @@ class BLED112Adapter(DeviceAdapter):
         self._command_task.async_command(['_send_script', found_handle, services, data, 0, progress_callback],
                                          self._send_script_finished, {'connection_id': conn_id,
                                                                       'callback': callback})
+
+    def debug_async(self, conn_id, cmd_name, cmd_args, progress_callback, callback):
+        """Asynchronously complete a named debug command.
+
+        The command name and arguments are passed to the underlying device adapter
+        and interpreted there.  If the command is long running, progress_callback
+        may be used to provide status updates.  Callback is called when the command
+        has finished.
+
+        Args:
+            conn_id (int): A unique identifier that will refer to this connection
+            cmd_name (string): the name of the debug command we want to invoke
+            cmd_args (dict): any arguments that we want to send with this command.
+            progress_callback (callable): A function to be called with status on our progress, called as:
+                progress_callback(done_count, total_count)
+            callback (callable): A callback for when we have finished the debug command, called as:
+                callback(connection_id, adapter_id, success, retval, failure_reason)
+                'connection_id': the connection id
+                'adapter_id': this adapter's id
+                'success': a bool indicating whether we received a response to our attempted RPC
+                'retval': A command specific dictionary of return value information
+                'failure_reason': a string with the reason for the failure if success == False
+        """
+
+        if cmd_name == 'heartbeat':
+            callback(conn_id, self.id, True, {'alive': not self.stopped}, None)
+        else:
+            callback(conn_id, self.id, False, None, "Debug commands are not supported by this DeviceAdapter")
 
     def _send_script_finished(self, result):
         success, retval, context = self._parse_return(result)
@@ -501,6 +547,11 @@ class BLED112Adapter(DeviceAdapter):
         callback(context['connection_id'], self.id, success, failure)
 
     def _handle_event(self, event):
+        if event.command_class == 255 and event.command == 255:
+            self._logger.warning("Detected that the dongle was broken or disconnected")
+            self._hardware_failure_detected = True
+            return
+
         # See https://www.silabs.com/documents/login/reference-manuals/Bluetooth_Smart_Software-BLE-1.7-API-RM.PDF
         # page 109 for reference on scan event packets
         if event.command_class == 6 and event.command == 0:
@@ -637,8 +688,6 @@ class BLED112Adapter(DeviceAdapter):
                 io_tile_reading = IOTileReading(reading_time, stream, reading, reading_time=datetime.datetime.utcnow())
                 report = BroadcastReport.FromReadings(info['uuid'], [io_tile_reading], reading_time)
                 self._trigger_callback('on_report', None, report)
-
-
 
     def _parse_v2_advertisement(self, rssi, sender, data):
         """ Parse the IOTile Specific advertisement packet"""
@@ -1126,10 +1175,21 @@ class BLED112Adapter(DeviceAdapter):
         if self.stopped:
             return
 
+        if self._hardware_failure_detected:
+            self._logger.warning("Hardware failure detected, cleanly stopping device adapter")
+            self._stop_from_hardware_failure()
+            return
+
         # Check if we should start scanning again
         if not self.scanning and len(self._connections) == 0 and self.connecting_count == 0:
             self._logger.info("Restarting scan for devices")
-            self.start_scan(self._active_scan)
+            try:
+                self.start_scan(self._active_scan)
+            except:
+                self._logger.error("Hardware error restarting scanning, reporting failure", exc_info=True)
+                self._stop_from_hardware_failure()
+                return
+
             self._logger.info("Finished restarting scan for devices")
 
     def _on_authentication_check_response(self, result):
@@ -1155,7 +1215,6 @@ class BLED112Adapter(DeviceAdapter):
         """Callback called on authentication is finished"""
 
         connection_handle = result['context']['handle']
-        conndata = self._get_connection(connection_handle, 'preparing')
         conn_id = result['context']['connection_id']
 
         if result['result']:
@@ -1166,13 +1225,18 @@ class BLED112Adapter(DeviceAdapter):
                 self._logger.info("User is authenticated!")
 
                 self._finish_connection(result['context'])
-            else:
-                conndata['failed'] = True
-                conndata['failure_reason'] = 'An error event recieved after \"Encrypt Start\" cmd!'
+                return
 
-                self.disconnect_async(conn_id, self._on_connection_failed)
+            reason = 'An error event recieved after \"Encrypt Start\" cmd!'
+        else:
+            reason = result['return_value']['reason']
+
+        conndata = self._get_connection(connection_handle, 'preparing')
+        if not conndata:
+            self._logger.info('Connection disconnected before authentication failed, conn_id=%d',
+                              conn_id)
         else:
             conndata['failed'] = True
-            conndata['failure_reason'] = result['return_value']['reason']
+            conndata['failure_reason'] = reason
 
-            self.disconnect_async(conn_id, self._on_connection_failed)
+        self.disconnect_async(conn_id, self._on_connection_failed)

@@ -2,6 +2,11 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 3.0.16
+
+- Add new autobuild function to combine trub scripts
+- Add new autobuild function to generate an sgf checksum file
+
 ## 3.0.15
 
 - Invoke python script using path of current running Python interpreter

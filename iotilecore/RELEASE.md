@@ -2,7 +2,30 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
-## HEAD
+## 5.1.2
+
+- Add support for an experimental, unstable `heartbeat` command in `HardwareManager`.  This
+  command allows you to check if a DeviceAdapter is broken due to missing or nonresponsive
+  hardware.  For it to work, the DeviceAdapter must the support the `heartbeat` debug command.
+
+## 5.1.1
+
+- Add the tqdm statusbar to the utc_assigner. There are some conditions where the binary 
+  reports take a significant amount of time to process. A status bar helps show estimated time
+  to process and show that code is not stalled.
+
+## 5.1.0
+
+- Remove dependency on sortedcontainers.  It was only used in one place and
+  was preventing compiling CoreTools based applications using the ``nuitka``
+  python compiler.  The specific use case in UTCAssigner was replaced with a
+  focused implementation that also happened to be faster for our specific use
+  case.
+
+## 5.0.16
+
+- Add hash algorithms to utilities
+- Fix error handling in auth process
 
 ## 5.0.15
 

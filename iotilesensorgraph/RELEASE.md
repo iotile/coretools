@@ -3,6 +3,20 @@
 All major changes in each released version of iotile-sensorgraph are listed
 here.
 
+## 1.0.10
+
+- Add checksum to SensorGraph's class if it exists
+
+## 1.0.9
+
+- Add ability to force checksum calculation regardless of hash settings
+- Fix checksum function's config dump to be sorted properly
+
+## 1.0.8
+
+- Add feature to set sensorgraph's checksum as config variable
+- Add "__eq__ " methods to records
+
 ## 1.0.7
 
 - Unpin iotile-core to support compatibility with `iotile-core` 5

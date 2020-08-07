@@ -9,6 +9,7 @@ from iotile.build.build import ProductResolver
 from iotile.core.utilities.intelhex import IntelHex
 from iotile.sg.compiler import compile_sgf
 from iotile.sg.output_formats.script import format_script
+from iotile.sg.update.setconfig_record import SetConfigRecord
 from iotile.core.hw.update.script import UpdateScript
 from iotile.core.hw.update.record import UpdateRecord
 
@@ -335,3 +336,64 @@ def _parse_slot_args(slot_args):
         args[arg_name] = arg_value
 
     return args
+
+
+def combine_trub_scripts(trub_scripts_list, out_file):
+    """Combines trub scripts, processed from first to last"""
+
+    resolver = ProductResolver.Create()
+
+    files = [resolver.find_unique("trub_script", x).full_path for x in trub_scripts_list]
+
+    env = Environment(tools=[])
+
+    env.Command([os.path.join('build', 'output', out_file)], files,
+                action=Action(_combine_trub_scripts_action, "Combining TRUB scripts at $TARGET"))
+
+
+def _combine_trub_scripts_action(target, source, env):
+    """Action to combine trub scripts"""
+
+    records = []
+
+    files = [str(x) for x in source]
+
+    for script in files:
+        if not os.path.isfile(script):
+            raise BuildError("Path to script is not a valid file.",
+                             script=script)
+        
+        trub_binary = _get_trub_binary(script)
+        records += UpdateScript.FromBinary(trub_binary).records
+
+    new_script = UpdateScript(records)
+
+    with open(str(target[0]), "wb") as outfile:
+        outfile.write(new_script.encode())
+
+
+def get_sgf_checksum(file_name=None, sensorgraph=None):
+    """Returns the device checksum from a sensorgraph file"""
+
+    env = Environment(tools=[])
+
+    env.Command([os.path.join('build', 'output', file_name)], [sensorgraph],
+                action=Action(_get_sgf_checksum_action, "Building SGF Checksum file at $TARGET"))
+
+
+def _get_sgf_checksum_action(target, source, env):
+    """Action to get the SGF's checksum"""
+
+    checksum = compile_sgf(str(source[0])).checksums
+
+    with open(str(target[0]), "w") as outfile:
+        outfile.write(str(checksum))
+
+
+def _get_trub_binary(script_path):
+    """Returns the encoded binary TRUB script"""
+
+    with open(script_path, "rb") as script_file:
+        trub_binary = script_file.read()
+
+        return trub_binary
