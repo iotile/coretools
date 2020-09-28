@@ -73,7 +73,7 @@ class BroadcastV2DeduperCollection:
 class BroadcastV2Deduper():
     """Individual deduplicator for an specific UUID and stream."""
     def __init__(self, uuid_and_stream: tuple, pass_packets_every: float = 5):
-        self.encoded_uuid, _ = uuid_and_stream
+        self.encoded_uuid = uuid_and_stream[0]
         self._pass_packets_every = pass_packets_every
         self.last_allowed_packet = 0 #type: float
         self.last_data = bytes()
@@ -91,7 +91,6 @@ class BroadcastV2Deduper():
 
     def allow_packet(self, broadcast_data: bytes)-> bool:
         """Check if the packet is allowed. If so, save it and return True. Otherwise return False."""
-
         if (time.monotonic() > self.last_allowed_packet + self._pass_packets_every or
                 self.last_data != broadcast_data):
             self.last_data = broadcast_data
