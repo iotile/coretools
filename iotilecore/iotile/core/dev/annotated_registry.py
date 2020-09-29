@@ -4,6 +4,7 @@
 # itself make use of typedargs annotations
 from iotile.core.utilities.typedargs import annotated, param, return_type, context
 from iotile.core.exceptions import ExternalError
+from iotile.core.hw.auth.inmemory_auth_provider import InMemoryAuthProvider
 from .registry import ComponentRegistry
 
 _name_ = "Developer"
@@ -79,6 +80,15 @@ class AnnotatedRegistry(object):
         """
 
         return self.reg.list_config()
+
+    @param("device_uuid", "int", desc="Device UUID")
+    @param("password", "str", desc="Password to the device")
+    def set_temporary_password(self, device_uuid, password: str):
+        InMemoryAuthProvider.add_password(device_uuid, password)
+
+    @param("device_uuid", "int", desc="Device UUID")
+    def clear_temporary_password(self, device_uuid: int):
+        InMemoryAuthProvider.clear_password(device_uuid)
 
     @param("key", "string")
     @param("value", "string")
