@@ -23,16 +23,31 @@ class InMemoryAuthProvider(RootKeyAuthProvider):
         Args:
             device_id (int): uuid or mac of the device
             password (str): password to the device
-
         """
         key = AuthProvider.DeriveRebootKeyFromPassword(password)
         cls._shared_passwords[str(device_id)] = key
 
     @classmethod
+    def clear_password(cls, device_id):
+        """Clears a password from the class
+
+        Args:
+            device_id (int): uuid or mac of the device
+        """
+        cls._shared_passwords.pop(str(device_id), None)
+
+
+    @classmethod
     def get_password(cls, device_id):
         """Returns the password from the class
+
+        Returns:
+            bytes: the root key
         """
-        return cls._shared_passwords[str(device_id)] if str(device_id) in cls._shared_passwords else None
+        if str(device_id) in cls._shared_passwords:
+            return cls._shared_passwords[str(device_id)]
+        else:
+            raise NotFoundError("No key could be found for device", device_id=device_id)
 
     def get_root_key(self, key_type, device_id):
         """Attempt to get a user key from memory
