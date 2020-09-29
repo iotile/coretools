@@ -26,6 +26,7 @@ class BLED112CommandProcessor(threading.Thread):
         self._logger = logging.getLogger(__name__)
         self._logger.addHandler(logging.NullHandler())
         self.event_handler = None
+        self._auth_manager = BLED112AuthManager(0x00, 0x01)
         self._current_context = None
         self._current_callback = None
         self._stop_event_check_interval = stop_check_interval
@@ -299,11 +300,11 @@ class BLED112CommandProcessor(threading.Thread):
 
         supported_auth = AuthType.AUTH_METHOD_0.value | AuthType.AUTH_METHOD_1.value \
                          | AuthType.AUTH_METHOD_2.value | AuthType.AUTH_METHOD_3.value
-        permisions = 0x00
-        token_gen = 0x01
+        # permisions = 0x00
+        # token_gen = 0x01
 
-        manager = BLED112AuthManager(permisions, token_gen)
-        success, data = manager.authenticate(device_uuid, supported_auth, send_auth_client_request)
+        # manager = BLED112AuthManager(permisions, token_gen)
+        success, data = self._auth_manager.authenticate(device_uuid, supported_auth, send_auth_client_request)
 
         return success, data
 
