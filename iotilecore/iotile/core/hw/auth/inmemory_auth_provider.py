@@ -6,17 +6,19 @@ from .auth_provider import AuthProvider
 class InMemoryAuthProvider(RootKeyAuthProvider):
     """Key provider implementation that allows user to set a password in memory"""
 
+    _shared_passwords = {}
+
     def __init__(self, args=None):
         if args is None:
             args = {}
 
         args['supported_keys'] = [self.PasswordBasedKey]
-        self.keys = {}
 
         super().__init__(args)
 
-    def add_password(self, device_id, password):
-        """Adds a password to the instance
+    @classmethod
+    def add_password(cls, device_id, password):
+        """Adds a password to the class
 
         Args:
             device_id (int): uuid or mac of the device
@@ -24,7 +26,13 @@ class InMemoryAuthProvider(RootKeyAuthProvider):
 
         """
         key = AuthProvider.DeriveRebootKeyFromPassword(password)
-        self.keys[str(device_id)] = key
+        cls._shared_passwords[str(device_id)] = key
+
+    @classmethod
+    def get_password(cls, device_id):
+        """Returns the password from the class
+        """
+        return cls._shared_passwords[str(device_id)] if str(device_id) in cls._shared_passwords else None
 
     def get_root_key(self, key_type, device_id):
         """Attempt to get a user key from memory
@@ -38,7 +46,4 @@ class InMemoryAuthProvider(RootKeyAuthProvider):
         """
         self.verify_key(key_type)
 
-        if str(device_id) not in self.keys:
-            raise NotFoundError("No key could be found for devices", device_id=device_id)
-
-        return self.keys[str(device_id)]
+        return InMemoryAuthProvider.get_password(device_id)
