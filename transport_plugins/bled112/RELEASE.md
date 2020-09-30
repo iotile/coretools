@@ -2,7 +2,14 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
+## 3.0.8
+
+- Added a connection map consisting of devices' connection string and uuid
+to the command processor
+- Modified `BLED112CommandProcessor` to save `BLED112AuthManager` as a member
+
 ## 3.0.7
+
 - Correct indicator flags for Broadcast v2 advertisements
 
 ## 3.0.6

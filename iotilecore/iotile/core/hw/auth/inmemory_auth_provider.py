@@ -36,7 +36,6 @@ class InMemoryAuthProvider(RootKeyAuthProvider):
         """
         cls._shared_passwords.pop(device_id, None)
 
-
     @classmethod
     def get_password(cls, device_id):
         """Returns the password from the class
