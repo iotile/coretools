@@ -57,7 +57,7 @@ setup(
         ],
         'iotile.default_auth_providers': [
             'EnvAuthProvider = iotile.core.hw.auth.default_providers:DefaultEnvAuth',
-            'InMemoryAuthProvider = iotile.core.hw.auth.inmemory_auth_provider:InMemoryAuthProvider',
+            'InMemoryAuthProvider = iotile.core.hw.auth.default_providers:DefaultInMemoryAuth',
             'CliAuthProvider = iotile.core.hw.auth.default_providers:DefaultCliAuth',
             'NullAuthProvider = iotile.core.hw.auth.default_providers:DefaultNullAuth'
         ],
