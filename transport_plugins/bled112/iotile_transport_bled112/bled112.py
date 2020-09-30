@@ -675,6 +675,7 @@ class BLED112Adapter(DeviceAdapter):
                 self._parse_v1_scan_response(string_address, data)
 
         if info:
+            self._command_task.update_conn_map(info['connection_string'], info['uuid'])
             drop_broadcast = self._check_update_seen_broadcast(
                 sender, reading_time, stream, reading,
                 broadcast_toggle, counter=counter, channel=broadcast_multiplex)

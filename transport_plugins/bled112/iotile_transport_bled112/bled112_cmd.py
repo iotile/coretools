@@ -1,4 +1,4 @@
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 import time
 import struct
 import threading
@@ -9,7 +9,7 @@ from iotile.core.utilities.packed import unpack
 from iotile.core.exceptions import HardwareError
 from .tilebus import *
 from .bgapi_structures import process_gatt_service, process_attribute, process_read_handle, process_notification
-from .bgapi_structures import parse_characteristic_declaration
+from .bgapi_structures import parse_characteristic_declaration, handle_to_uuid
 from .async_packet import InternalTimeoutError, DeviceNotConfiguredError
 from .bled112_auth import AuthType, BLED112AuthManager
 
@@ -17,6 +17,9 @@ BGAPIPacket = namedtuple("BGAPIPacket", ["is_event", "command_class", "command",
 
 
 class BLED112CommandProcessor(threading.Thread):
+
+    CONN_MAP_MAX_SIZE = 1024
+
     def __init__(self, stream, commands, stop_check_interval=0.01):
         super(BLED112CommandProcessor, self).__init__()
 
@@ -26,6 +29,7 @@ class BLED112CommandProcessor(threading.Thread):
         self._logger = logging.getLogger(__name__)
         self._logger.addHandler(logging.NullHandler())
         self.event_handler = None
+        self._conn_map = []
         self._auth_manager = BLED112AuthManager(0x00, 0x01)
         self._current_context = None
         self._current_callback = None
@@ -78,6 +82,28 @@ class BLED112CommandProcessor(threading.Thread):
             except:
                 self._logger.exception("Fatal error in background processing loop")
                 raise
+
+    def update_conn_map(self, conn_string, device_uuid):
+        """
+        Updates the instance's mapping of device UUIDs to connection strings.
+
+        This uses a simple implementation of a Least Recently Used algorithm.
+        Everytime an entry is updated, it will remove the existing entry
+        and reinstert it at the end. As a result, the least recently used entries
+        will be towards the beginning of the list. That way if our list grows
+        too large and needs to be overwritten, it will do so by removing the
+        beginning elements.
+        """
+        if len(self._conn_map) >= BLED112CommandProcessor.CONN_MAP_MAX_SIZE:
+            self._conn_map = self._conn_map[-(BLED112CommandProcessor.CONN_MAP_MAX_SIZE):]
+    
+        entry = (conn_string, device_uuid)
+
+        if entry in self._conn_map:
+            self._conn_map.remove(entry)
+
+        self._conn_map.append(entry)
+
 
     def _set_scan_parameters(self, interval=2100, window=2100, active=False):
         """
@@ -300,10 +326,8 @@ class BLED112CommandProcessor(threading.Thread):
 
         supported_auth = AuthType.AUTH_METHOD_0.value | AuthType.AUTH_METHOD_1.value \
                          | AuthType.AUTH_METHOD_2.value | AuthType.AUTH_METHOD_3.value
-        # permisions = 0x00
-        # token_gen = 0x01
 
-        # manager = BLED112AuthManager(permisions, token_gen)
+        self._auth_manager._key_provider.conn_map = self._conn_map
         success, data = self._auth_manager.authenticate(device_uuid, supported_auth, send_auth_client_request)
 
         return success, data

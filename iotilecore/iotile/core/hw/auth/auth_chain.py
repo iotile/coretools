@@ -36,6 +36,7 @@ class ChainedAuthProvider(AuthProvider):
 
         sub_providers.sort(key=lambda x: x[0])
         self.providers = sub_providers
+        self.conn_map = None
 
     def _load_installed_providers(self):
         self._auth_factories = {}
@@ -44,12 +45,23 @@ class ChainedAuthProvider(AuthProvider):
         for name, entry in reg.load_extensions('iotile.auth_provider'):
             self._auth_factories[name] = entry
 
+    def _get_device_alias(self, device_id):
+        for conn_string, uuid in self.conn_map:
+            if conn_string == device_id:
+                return uuid
+            elif uuid == device_id:
+                return conn_string
+        return NotFoundError("No alias found for the device", device_id=device_id)
+
     def get_root_key(self, key_type, device_id):
-        """Deligates call to auth providers in the chain
+        """Deligates call to auth providers in the chain.
+        
+        This function will attempt to use a device alias if it exists.
+        This allows support of using both UUID and device MAC.
 
         Args:
             key_type (int): see KnownKeyRoots
-            device_id (int): uuid of the device
+            device_id (int): ID of the device
 
         Returns:
             bytes: the root key
@@ -58,7 +70,11 @@ class ChainedAuthProvider(AuthProvider):
             try:
                 return provider.get_root_key(key_type, device_id)
             except NotFoundError:
-                pass
+                try:
+                    device_alias = self._get_device_alias(device_id)
+                    return provider.get_root_key(key_type, device_alias)
+                except NotFoundError:
+                    pass
 
         raise NotFoundError("get_serialized_key method is not implemented in any sub_providers")
 
