@@ -2,6 +2,7 @@
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
 from queue import Queue
+from collections import OrderedDict
 import time
 import threading
 import logging
@@ -114,7 +115,7 @@ class BLED112Adapter(DeviceAdapter):
         self.count_lock = threading.Lock()
         self.connecting_count = 0
         self.maximum_connections = 0
-        self._conn_map = []
+        self._conn_map = OrderedDict()
 
         self._scan_event_count = 0
         self._v1_scan_count = 0
@@ -201,22 +202,13 @@ class BLED112Adapter(DeviceAdapter):
             conn_string (str): The string of the device's MAC address
             device_uuid (int): The integer representation of the device's UUID
         """
-        entry = (conn_string, device_uuid)
+        if conn_string in self._conn_map:
+            self._conn_map.move_to_end(conn_string, last=True)
+        else:
+            self._conn_map[conn_string] = device_uuid
 
-        if entry in self._conn_map:
-            self._conn_map.remove(entry)
-        elif len(self._conn_map) >= self.ConnMapMaxSize:
-            self._conn_map = self._conn_map[-(self.ConnMapMaxSize-1):]
-
-        self._conn_map.append(entry)
-
-    def _get_device_alias(self, device_id):
-        for conn_string, uuid in self._conn_map:
-            if conn_string == device_id:
-                return uuid
-            elif uuid == device_id:
-                return conn_string
-        return None
+        while len(self._conn_map) >= self.ConnMapMaxSize:
+            self._conn_map.popitem(last=False)
 
     def can_connect(self):
         """Check if this adapter can take another connection
@@ -1160,7 +1152,8 @@ class BLED112Adapter(DeviceAdapter):
             self.disconnect_async(conn_id, self._on_connection_failed)
             return
 
-        self.check_authentication(conndata['connection_string'], conn_id, handle, services)
+        uuid = self._conn_map.get(conndata['connection_string'])
+        self.check_authentication(uuid, conn_id, handle, services)
 
     def _finish_connection(self, context):
         """Routine called when all services and characteristics discovered and
@@ -1237,11 +1230,7 @@ class BLED112Adapter(DeviceAdapter):
             if security_flags == 0x01:
                 self._logger.debug("Authentication is required")
 
-                uuid = context['uuid']
-                if not isinstance(uuid, int):
-                    uuid = self._get_device_alias(uuid)
-
-                self.authenticate(uuid, context['connection_id'],
+                self.authenticate(context['uuid'], context['connection_id'],
                                   context['handle'], context['services'])
             else:
                 self._logger.debug("Authentication is not required")

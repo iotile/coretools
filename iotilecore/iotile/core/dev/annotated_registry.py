@@ -3,6 +3,7 @@
 # tool.  Since the registry is used internally in the type system it cannot
 # itself make use of typedargs annotations
 from iotile.core.utilities.typedargs import annotated, param, return_type, context
+from iotile.core.utilities.typedargs.annotate import docannotate
 from iotile.core.exceptions import ExternalError
 from iotile.core.hw.auth.inmemory_auth_provider import InMemoryAuthProvider
 from .registry import ComponentRegistry
@@ -81,13 +82,23 @@ class AnnotatedRegistry(object):
 
         return self.reg.list_config()
 
-    @param("device_uuid", "int", desc="Device UUID")
-    @param("password", "str", desc="Password to the device")
+    @docannotate
     def set_temporary_password(self, device_uuid: int, password: str):
+        """Sets a temporary password for a device in memory for the current instance.
+
+        Args:
+            device_uuid (int): the device UUID
+            password (str): the password to save in memory
+        """
         InMemoryAuthProvider.add_password(device_uuid, password)
 
-    @param("device_uuid", "int", desc="Device UUID")
+    @docannotate
     def clear_temporary_password(self, device_uuid: int):
+        """Clears the password based on the device UUID
+
+        Args:
+            device_uuid (int): the device UUID
+        """
         InMemoryAuthProvider.clear_password(device_uuid)
 
     @param("key", "string")
