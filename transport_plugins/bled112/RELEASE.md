@@ -5,8 +5,10 @@ All major changes in each released version of the bled112 transport plugin are l
 ## 3.0.8
 
 - Added a connection map consisting of devices' connection string and uuid
-to the command processor
-- Modified `BLED112CommandProcessor` to save `BLED112AuthManager` as a member
+to the `BLED112Adapter`
+- Callback `on_authentication_check_response` uses calls `authenticate` with device UUID instead of MAC
+- Authentication function does basic check if UUID is valid
+ - Fix typos
 
 ## 3.0.7
 
