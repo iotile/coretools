@@ -50,14 +50,16 @@ class BroadcastV2DeduperCollection:
             return True
 
         encoded_uuid = bytes(packet[22:26])
+        stream = bytes(packet[36:38])
+        uuid_and_stream = (encoded_uuid, stream)
         data = bytes(packet[22:])
 
-        deduper = self.dedupers.get(encoded_uuid)
+        deduper = self.dedupers.get(uuid_and_stream)
         if deduper is None:
-            deduper = BroadcastV2Deduper(encoded_uuid, self._pass_packets_every)
+            deduper = BroadcastV2Deduper(uuid_and_stream, self._pass_packets_every)
             if len(self.dedupers) == self.MAX_DEDUPERS:
                 self.evict_oldest_deduper()
-            self.dedupers[encoded_uuid] = deduper
+            self.dedupers[uuid_and_stream] = deduper
 
         return deduper.allow_packet(data)
 
@@ -69,9 +71,9 @@ class BroadcastV2DeduperCollection:
         self.dedupers.popitem(last=False)
 
 class BroadcastV2Deduper():
-    """Individual deduplicator for an specific UUID."""
-    def __init__(self, encoded_uuid: bytes, pass_packets_every: float = 5):
-        self.encoded_uuid = encoded_uuid
+    """Individual deduplicator for an specific UUID and stream."""
+    def __init__(self, uuid_and_stream: tuple, pass_packets_every: float = 5):
+        self.encoded_uuid = uuid_and_stream[0]
         self._pass_packets_every = pass_packets_every
         self.last_allowed_packet = 0 #type: float
         self.last_data = bytes()

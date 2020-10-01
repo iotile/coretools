@@ -8,7 +8,9 @@ All major changes in each released version of the bled112 transport plugin are l
 to the `BLED112Adapter`
 - Callback `on_authentication_check_response` uses calls `authenticate` with device UUID instead of MAC
 - Authentication function does basic check if UUID is valid
- - Fix typos
+- Fix typos
+- Add support for multiple streams per UUID to the deduplication logic
+
 
 ## 3.0.7
 
