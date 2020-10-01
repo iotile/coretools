@@ -93,17 +93,19 @@ class BLED112CommandProcessor(threading.Thread):
         will be towards the beginning of the list. That way if our list grows
         too large and needs to be overwritten, it will do so by removing the
         beginning elements.
+
+        Args:
+            conn_string (str): The string of the device's MAC address
+            device_uuid (int): The integer representation of the device's UUID
         """
-        if len(self._conn_map) >= BLED112CommandProcessor.CONN_MAP_MAX_SIZE:
-            self._conn_map = self._conn_map[-(BLED112CommandProcessor.CONN_MAP_MAX_SIZE):]
-    
         entry = (conn_string, device_uuid)
 
         if entry in self._conn_map:
             self._conn_map.remove(entry)
+        elif len(self._conn_map) >= BLED112CommandProcessor.CONN_MAP_MAX_SIZE:
+            self._conn_map = self._conn_map[-(BLED112CommandProcessor.CONN_MAP_MAX_SIZE-1):]
 
         self._conn_map.append(entry)
-
 
     def _set_scan_parameters(self, interval=2100, window=2100, active=False):
         """
