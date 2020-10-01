@@ -36,7 +36,6 @@ class ChainedAuthProvider(AuthProvider):
 
         sub_providers.sort(key=lambda x: x[0])
         self.providers = sub_providers
-        self.conn_map = None
 
     def _load_installed_providers(self):
         self._auth_factories = {}
