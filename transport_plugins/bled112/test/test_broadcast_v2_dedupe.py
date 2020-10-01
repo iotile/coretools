@@ -76,7 +76,8 @@ def test_single_deduper():
     assert packet_is_broadcast_v2(pod[0])
 
     uuid = bytes(pod[0][22:26])
-    deduper = BroadcastV2Deduper(uuid)
+    stream = bytes(0x1028)
+    deduper = BroadcastV2Deduper((uuid, stream))
     assert deduper.get_slug() == "d--0000-0000-0000-9001"
 
     assert deduper.allow_packet(pod[0][22:])
