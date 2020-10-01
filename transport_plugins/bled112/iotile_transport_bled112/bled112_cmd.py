@@ -1,4 +1,4 @@
-from collections import namedtuple, OrderedDict
+from collections import namedtuple
 import time
 import struct
 import threading
@@ -9,7 +9,7 @@ from iotile.core.utilities.packed import unpack
 from iotile.core.exceptions import HardwareError
 from .tilebus import *
 from .bgapi_structures import process_gatt_service, process_attribute, process_read_handle, process_notification
-from .bgapi_structures import parse_characteristic_declaration, handle_to_uuid
+from .bgapi_structures import parse_characteristic_declaration
 from .async_packet import InternalTimeoutError, DeviceNotConfiguredError
 from .bled112_auth import AuthType, BLED112AuthManager
 
@@ -17,8 +17,7 @@ BGAPIPacket = namedtuple("BGAPIPacket", ["is_event", "command_class", "command",
 
 
 class BLED112CommandProcessor(threading.Thread):
-
-
+    
     def __init__(self, stream, commands, stop_check_interval=0.01):
         super(BLED112CommandProcessor, self).__init__()
 
@@ -302,7 +301,7 @@ class BLED112CommandProcessor(threading.Thread):
         supported_auth = AuthType.AUTH_METHOD_0.value | AuthType.AUTH_METHOD_1.value \
                          | AuthType.AUTH_METHOD_2.value | AuthType.AUTH_METHOD_3.value
         permissions = 0x00
-        token_gen = 0x1
+        token_gen = 0x01
 
         manager = BLED112AuthManager(permissions, token_gen)
         success, data = manager.authenticate(device_uuid, supported_auth, send_auth_client_request)
