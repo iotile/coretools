@@ -40,6 +40,9 @@ class InMemoryAuthProvider(RootKeyAuthProvider):
     def get_password(cls, device_id):
         """Returns the password from the class
 
+        Args:
+            device_id (int): uuid or mac of the device
+
         Returns:
             bytes: the root key
         """

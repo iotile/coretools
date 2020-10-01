@@ -83,7 +83,7 @@ class AnnotatedRegistry(object):
 
     @param("device_uuid", "int", desc="Device UUID")
     @param("password", "str", desc="Password to the device")
-    def set_temporary_password(self, device_uuid, password: str):
+    def set_temporary_password(self, device_uuid: int, password: str):
         InMemoryAuthProvider.add_password(device_uuid, password)
 
     @param("device_uuid", "int", desc="Device UUID")
