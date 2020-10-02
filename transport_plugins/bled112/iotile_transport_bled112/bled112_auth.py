@@ -170,7 +170,7 @@ class BLED112AuthManager:
         Returns:
             (bool, bytearray/dict): tuple of success flag, session key or dict with reason of failure
         """
-        if not uuid or not isinstance(uuid, int):
+        if uuid is None or not isinstance(uuid, int):
             return False, {"reason": "Invalid device UUID to authenticate"}
 
         result, response = self._send_client_hello(client_supported_auth, handshake_fn)

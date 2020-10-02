@@ -207,7 +207,7 @@ class BLED112Adapter(DeviceAdapter):
         else:
             self._conn_map[conn_string] = device_uuid
 
-        while len(self._conn_map) >= self.ConnMapMaxSize:
+        while len(self._conn_map) > self.ConnMapMaxSize:
             self._conn_map.popitem(last=False)
 
     def can_connect(self):
