@@ -1,3 +1,4 @@
-DefaultNullAuth = (100, 'NullAuthProvider', {})
-DefaultCliAuth = (50, 'CliAuthProvider', {})
-DefaultEnvAuth = (0, 'EnvAuthProvider', {})
+DefaultNullAuth = (150, 'NullAuthProvider', {})
+DefaultCliAuth = (100, 'CliAuthProvider', {})
+DefaultEnvAuth = (50, 'EnvAuthProvider', {})
+DefaultInMemoryAuth = (0, 'InMemoryAuthProvider', {})

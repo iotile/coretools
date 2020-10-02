@@ -26,7 +26,7 @@ class AuthProvider:
         NullKey: 'null_key',
         UserKey: 'user_key',
         DeviceKey: 'device_key',
-        PasswordBasedKey: 'pasword_based_userkey'
+        PasswordBasedKey: 'password_based_userkey'
     }
 
     def __init__(self, args=None):

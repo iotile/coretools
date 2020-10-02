@@ -45,11 +45,14 @@ class ChainedAuthProvider(AuthProvider):
             self._auth_factories[name] = entry
 
     def get_root_key(self, key_type, device_id):
-        """Deligates call to auth providers in the chain
+        """Deligates call to auth providers in the chain.
+        
+        This function will attempt to use a device alias if it exists.
+        This allows support of using both UUID and device MAC.
 
         Args:
             key_type (int): see KnownKeyRoots
-            device_id (int): uuid of the device
+            device_id (int): ID of the device
 
         Returns:
             bytes: the root key
