@@ -145,7 +145,7 @@ class OperationManager:
         del loc[OperationManager._LEAF]
 
         for parent, key in reversed(parents):
-            if len(parent[key]) is not None:
+            if len(parent[key]) > 0:
                 return
 
             del parent[key]
