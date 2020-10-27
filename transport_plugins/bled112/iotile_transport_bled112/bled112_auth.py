@@ -164,12 +164,15 @@ class BLED112AuthManager:
         Perform authentication
 
         Args:
-            uuid (int or str): either device mac or id
+            uuid (int): the device UUID
             auth_type (int): See .AuthType
             handshake_fn (SendAuthHandshakeFn): a function pointer
         Returns:
             (bool, bytearray/dict): tuple of success flag, session key or dict with reason of failure
         """
+        if uuid is None or not isinstance(uuid, int):
+            return False, {"reason": "Invalid device UUID to authenticate"}
+
         result, response = self._send_client_hello(client_supported_auth, handshake_fn)
         if result:
             (_generation, server_supported_auth, self._device_nonce) = response

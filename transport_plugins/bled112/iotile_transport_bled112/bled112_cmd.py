@@ -17,6 +17,7 @@ BGAPIPacket = namedtuple("BGAPIPacket", ["is_event", "command_class", "command",
 
 
 class BLED112CommandProcessor(threading.Thread):
+    
     def __init__(self, stream, commands, stop_check_interval=0.01):
         super(BLED112CommandProcessor, self).__init__()
 
@@ -299,10 +300,10 @@ class BLED112CommandProcessor(threading.Thread):
 
         supported_auth = AuthType.AUTH_METHOD_0.value | AuthType.AUTH_METHOD_1.value \
                          | AuthType.AUTH_METHOD_2.value | AuthType.AUTH_METHOD_3.value
-        permisions = 0x00
+        permissions = 0x00
         token_gen = 0x01
 
-        manager = BLED112AuthManager(permisions, token_gen)
+        manager = BLED112AuthManager(permissions, token_gen)
         success, data = manager.authenticate(device_uuid, supported_auth, send_auth_client_request)
 
         return success, data

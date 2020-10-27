@@ -2,10 +2,18 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
-## Head
+## 3.0.8
+
+- Added a connection map consisting of devices' connection string and uuid
+to the `BLED112Adapter`
+- Callback `on_authentication_check_response` uses calls `authenticate` with device UUID instead of MAC
+- Authentication function does basic check if UUID is valid
+- Fix typos
 - Add support for multiple streams per UUID to the deduplication logic
 
+
 ## 3.0.7
+
 - Correct indicator flags for Broadcast v2 advertisements
 
 ## 3.0.6

@@ -2,6 +2,12 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## 5.1.3
+
+- Add new auth provider `InMemoryAuthProvider`. This allows users to
+authenticate their device without CLI or environment variables
+- Add registry support to temporarily set passwords for devices by uuid.
+
 ## 5.1.2
 
 - Add support for an experimental, unstable `heartbeat` command in `HardwareManager`.  This

@@ -2,6 +2,7 @@
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
 from queue import Queue
+from collections import OrderedDict
 import time
 import threading
 import logging
@@ -66,6 +67,7 @@ class BLED112Adapter(DeviceAdapter):
             values increase CPU usage in production.
     """
 
+    ConnMapMaxSize = 1024
     ExpirationTime = 60  # Expire devices 60 seconds after seeing them
 
     def __init__(self, port, on_scan=None, on_disconnect=None, passive=None, **kwargs):
@@ -113,6 +115,7 @@ class BLED112Adapter(DeviceAdapter):
         self.count_lock = threading.Lock()
         self.connecting_count = 0
         self.maximum_connections = 0
+        self._conn_map = OrderedDict()
 
         self._scan_event_count = 0
         self._v1_scan_count = 0
@@ -183,6 +186,29 @@ class BLED112Adapter(DeviceAdapter):
         self._v2_scan_count = 0
         self._device_scan_counts = {}
         self._last_reset_time = time.monotonic()
+
+    def _update_conn_map(self, conn_string, device_uuid):
+        """
+        Updates the instance's mapping of device UUIDs to connection strings.
+
+        This uses a simple implementation of a Least Recently Used algorithm.
+        Everytime an entry is updated, it will remove the existing entry
+        and reinstert it at the end. As a result, the least recently used entries
+        will be towards the beginning of the list. That way if our list grows
+        too large and needs to be overwritten, it will do so by removing the
+        beginning elements.
+
+        Args:
+            conn_string (str): The string of the device's MAC address
+            device_uuid (int): The integer representation of the device's UUID
+        """
+        if conn_string in self._conn_map:
+            self._conn_map.move_to_end(conn_string, last=True)
+        else:
+            self._conn_map[conn_string] = device_uuid
+
+        while len(self._conn_map) > self.ConnMapMaxSize:
+            self._conn_map.popitem(last=False)
 
     def can_connect(self):
         """Check if this adapter can take another connection
@@ -675,6 +701,7 @@ class BLED112Adapter(DeviceAdapter):
                 self._parse_v1_scan_response(string_address, data)
 
         if info:
+            self._update_conn_map(info['connection_string'], info['uuid'])
             drop_broadcast = self._check_update_seen_broadcast(
                 sender, reading_time, stream, reading,
                 broadcast_toggle, counter=counter, channel=broadcast_multiplex)
@@ -878,7 +905,7 @@ class BLED112Adapter(DeviceAdapter):
         and if the device require the authentication
 
         Args:
-            uuid (int): a device id, can be either int or str
+            uuid (int): the device UUID
             handle (int): a handle to the connection on the BLED112 dongle
             conn_id (int): a unique identifier for this connection on the DeviceManager
                 that owns this adapter.
@@ -1125,7 +1152,8 @@ class BLED112Adapter(DeviceAdapter):
             self.disconnect_async(conn_id, self._on_connection_failed)
             return
 
-        self.check_authentication(conndata['connection_string'], conn_id, handle, services)
+        uuid = self._conn_map.get(conndata['connection_string'])
+        self.check_authentication(uuid, conn_id, handle, services)
 
     def _finish_connection(self, context):
         """Routine called when all services and characteristics discovered and
