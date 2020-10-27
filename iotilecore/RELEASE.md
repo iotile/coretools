@@ -2,6 +2,10 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## 5.1.4
+
+- Fix memory leak in OperationManager
+
 ## 5.1.3
 
 - Add new auth provider `InMemoryAuthProvider`. This allows users to
