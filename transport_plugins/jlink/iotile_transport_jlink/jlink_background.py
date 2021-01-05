@@ -259,7 +259,7 @@ class AsyncJLink:
         if memory_region == 'external':
             if pause is False:
                 raise ArgumentError("Pause must be True in order to read external data.")
-            await self.reset()
+            await self.reset(halt=True)
             await self._inject_blob(ff_cfg.ff_absolute_bin_path)
 
             pc_reg = await self._loop.run_in_executor(
