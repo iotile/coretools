@@ -15,12 +15,16 @@ jobs:
     matrix:
       Python35:
         python.version: '3.5'
+        tox.env: 'py35-mac_windows'
       Python36:
         python.version: '3.6'
+        tox.env: 'py36-mac_windows'
       Python37:
         python.version: '3.7'
+        tox.env: 'py37-mac_windows'
       Python38:
         python.version: '3.8'
+        tox.env: 'py38-mac_windows'
     maxParallel: 3
 
   steps:
@@ -46,22 +50,25 @@ jobs:
 
   - script: |
       set PATH=%PATH%;c:\gcc\bin
-      tox -r
+      tox -r -e$(tox.env)
     displayName: 'Run tests'
 
 - job: 'Test_OSX'
   pool:
     vmImage: 'macOS-10.15'
   strategy:
-    matrix:
       Python35:
         python.version: '3.5'
+        tox.env: 'py35-mac_windows'
       Python36:
         python.version: '3.6'
+        tox.env: 'py36-mac_windows'
       Python37:
         python.version: '3.7'
+        tox.env: 'py37-mac_windows'
       Python38:
         python.version: '3.8'
+        tox.env: 'py38-mac_windows'
     maxParallel: 3
 
   steps:
@@ -82,5 +89,5 @@ jobs:
   - script: pip install tox
     displayName: "Install tox"
 
-  - script: tox -r
+  - script: tox -r -e$(tox.env)
     displayName: "Run tests"
