@@ -57,6 +57,7 @@ jobs:
   pool:
     vmImage: 'macOS-10.15'
   strategy:
+    matrix:
       Python35:
         python.version: '3.5'
         tox.env: 'py35-mac_windows'
