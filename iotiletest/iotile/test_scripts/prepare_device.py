@@ -1,9 +1,9 @@
 import argparse
+import importlib.util
+import json
 import pkg_resources
 import sys
-import json
 import os.path
-import imp
 from iotile.core.exceptions import IOTileException
 from iotile.core.hw.hwmanager import HardwareManager
 
@@ -112,13 +112,12 @@ def import_device_script(script_path):
         print("Script did not end with .py")
         sys.exit(1)
 
-    try:
-        file = None
-        file, pathname, desc = imp.find_module(module_name, [search_dir])
-        mod = imp.load_module(module_name, file, pathname, desc)
-    finally:
-        if file is not None:
-            file.close()
+    spec = importlib.util.spec_from_file_location(module_name, script_path)
+    if spec is None:
+        print("Unknown problem finding the module")
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = mod
+    spec.loader.exec_module(mod)
 
     if not hasattr(mod, 'main'):
         print("Script file had no main function containing a device recipe")

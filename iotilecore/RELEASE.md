@@ -2,6 +2,9 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
+## 5.1.5
+- migrate from deprecated `imp` module to `importlib`
+
 ## 5.1.4
 
 - Fix memory leak in OperationManager

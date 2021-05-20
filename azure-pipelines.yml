@@ -19,6 +19,8 @@ jobs:
         python.version: '3.6'
       Python37:
         python.version: '3.7'
+      Python38:
+        python.version: '3.8'
     maxParallel: 3
 
   steps:
@@ -39,26 +41,13 @@ jobs:
   - script: python -m pip install --upgrade pip && pip install -U setuptools
     displayName: 'Install dependencies'
 
+  - script: pip install tox
+    displayName: "Install tox"
+
   - script: |
       set PATH=%PATH%;c:\gcc\bin
-      pip install six cmdln pytest
-      pip install pytest pytest-logging pytest-localserver
-      pip install requests-mock pycryptodome configparser iotile-support-lib-controller-4 iotile-support-con-nrf52832-3
-      pip install -e ./iotilecore/
-      pip install -e ./iotilebuild/
-      pip install -e ./iotiletest/
-      pip install -e ./transport_plugins/bled112/
-      pip install -e ./transport_plugins/awsiot/
-      pip install -e ./transport_plugins/jlink/
-      pip install -e ./transport_plugins/socket_lib/
-      pip install -e ./transport_plugins/websocket/
-      pip install -e ./iotilegateway/
-      pip install -e ./iotilesensorgraph/
-      pip install -e ./iotileship/
-      pip install -e ./iotileemulate
-      pip install -e ./iotile_ext_cloud/
-      python scripts/test.py test_all test
-    displayName: 'pytest'
+      tox -r
+    displayName: 'Run tests'
 
 - job: 'Test_OSX'
   pool:
@@ -71,6 +60,8 @@ jobs:
         python.version: '3.6'
       Python37:
         python.version: '3.7'
+      Python38:
+        python.version: '3.8'
     maxParallel: 3
 
   steps:
@@ -88,22 +79,8 @@ jobs:
       which arm-none-eabi-gcc
     displayName: "Install GCC with brew"
 
-  - script: |
-      python -m pip install six cmdln pytest
-      python -m pip install pytest pytest-logging pytest-localserver requests-mock pycryptodome configparser iotile-support-lib-controller-4 iotile-support-con-nrf52832-3
-      pip install "tornado>=4.5.3,<5.0.0"
-      pip install -e ./iotilecore/
-      pip install -e ./iotilebuild/
-      pip install -e ./iotiletest/
-      pip install -e ./transport_plugins/bled112/
-      pip install -e ./transport_plugins/awsiot/
-      pip install -e ./transport_plugins/jlink/
-      pip install -e ./transport_plugins/socket_lib/
-      pip install -e ./transport_plugins/websocket/
-      pip install -e ./iotilegateway/
-      pip install -e ./iotilesensorgraph/
-      pip install -e ./iotileship/
-      pip install -e ./iotileemulate
-      pip install -e ./iotile_ext_cloud/
-      python scripts/test.py test_all test
-    displayName: 'pytest'
+  - script: pip install tox
+    displayName: "Install tox"
+
+  - script: tox -r
+    displayName: "Run tests"

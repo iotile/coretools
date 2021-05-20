@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 2.0.2
+
+- migrate from deprecated `imp` module to `importlib`
+
 ## 2.0.1
 
 - Fix max retry attempts for connecting
