@@ -5,7 +5,7 @@ import threading
 import logging
 import functools
 from queue import Empty
-from iotile.core.utilities.packed import unpack
+from struct import unpack
 from iotile.core.exceptions import HardwareError
 from .tilebus import *
 from .bgapi_structures import process_gatt_service, process_attribute, process_read_handle, process_notification

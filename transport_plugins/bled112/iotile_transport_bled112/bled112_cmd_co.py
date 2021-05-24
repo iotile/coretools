@@ -5,7 +5,7 @@ import threading
 import logging
 import functools
 from queue import Empty
-from iotile.core.utilities.packed import unpack
+from struct import unpack
 from iotile.core.utilities.async_tools import OperationManager, SharedLoop
 from iotile.core.exceptions import HardwareError
 from .tilebus import *
