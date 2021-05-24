@@ -3,7 +3,7 @@
 import datetime
 import struct
 from .report import IOTileReport, IOTileReading
-from iotile.core.utilities.packed import unpack
+from struct import unpack
 from iotile.core.exceptions import ArgumentError
 
 

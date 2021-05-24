@@ -9,7 +9,7 @@ import bable_interface
 from iotile.core.dev.config import ConfigManager
 from iotile.core.hw.reports import IOTileReportParser, IOTileReading, BroadcastReport
 from iotile.core.hw.transport.adapter import DeviceAdapter
-from iotile.core.utilities.packed import unpack
+from struct import unpack
 from iotile.core.exceptions import ArgumentError, ExternalError
 from .connection_manager import ConnectionManager
 from .tilebus import *

@@ -2,6 +2,10 @@
 
 All major changes in each released version of the iotile-ext-cloud plugin are listed here.
 
+## 1.1.1
+
+- Python compatibility set to 3.6-3.8 because of py35 EOL
+
 ## 1.1.0
 - Add cloud:verify-server config to iotile-ext-cloud. 
   This allows to disable verification of cloud server TLS certificate.  

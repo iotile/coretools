@@ -1,0 +1,69 @@
+name: "Run tests"
+
+on:
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  test-windows:
+    name: test-windows py3${{ matrix.python-minor }}
+    runs-on: windows-2019
+    timeout-minutes: 30
+    strategy:
+      max-parallel: 3
+      matrix:
+        python-minor: [6, 7, 8]
+
+    steps:
+      - name: Cancel duplicate jobs
+        uses: styfle/cancel-workflow-action@0.9.0
+        if: ${{ !env.ACT }}
+      - name: Set up py3.${{ matrix.python-minor }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.${{ matrix.python-minor }}
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: "make gcc dir"
+        run: mkdir c:\gcc
+      - name: "Download gcc-arm"
+        run: curl -L -o gcc-arm-none-eabi.zip "https://developer.arm.com/-/media/Files/downloads/gnu-rm/7-2017q4/gcc-arm-none-eabi-7-2017-q4-major-win32.zip?revision=df1b65d3-7c8d-4e82-b114-e0b6ad7c2e6d?product=GNU%20Arm%20Embedded%20Toolchain,ZIP,,Windows,7-2017-q4-major"
+      - name: "unzip gcc"
+        run: unzip -o gcc-arm-none-eabi.zip -d c:\gcc\
+      - name: 'Install dependencies'
+        run: python -m pip install --upgrade pip && pip install -U setuptools tox
+      - name: 'Update PATH'
+        run: echo c:\gcc\bin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: 'Run tests'
+        run: tox -r -e py3${{ matrix.python-minor }}-mac_windows
+        
+  test-macOS:
+    name: test macOS py3${{ matrix.python-minor }}
+    runs-on: macos-10.15
+    timeout-minutes: 30
+    strategy:
+      max-parallel: 3
+      matrix:
+        python-minor: [6, 7, 8]
+
+    steps:
+      - name: Cancel duplicate jobs
+        uses: styfle/cancel-workflow-action@0.9.0
+        if: ${{ !env.ACT }}
+      - name: Set up py3.${{ matrix.python-minor }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.${{ matrix.python-minor }}
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: 'Install dependencies'
+        run: python -m pip install --upgrade pip && pip install -U setuptools tox && pip install -r build_requirements.txt 
+
+      - name: "Install GCC with brew"
+        run: |
+          brew tap PX4/px4
+          brew install px4/px4/gcc-arm-none-eabi
+          which arm-none-eabi-gcc
+
+      - name: 'Run tests'
+        run: tox -r -e py3${{ matrix.python-minor }}-mac_windows

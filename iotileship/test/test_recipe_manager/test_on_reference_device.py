@@ -31,9 +31,6 @@ def resman():
 def recipe_fixture(request, resman):
     """Create a fixture with a hardware manager connected to our reference dev."""
 
-    if sys.version_info < (3, 5):
-        pytest.skip("test requires iotile-emulate on python 3.5+")
-
     recipe = resman.get_recipe(request.param)
 
     hw = HardwareManager(port="virtual:reference_1_0")

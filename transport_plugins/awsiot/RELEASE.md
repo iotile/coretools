@@ -2,6 +2,10 @@
 
 All major changes in each released version of iotile-transport-awsiot are listed here.
 
+## 1.0.5
+
+- Python compatibility set to 3.6-3.8 because of py35 EOL
+
 ## 1.0.4
 
 - Update for iotile-core 5.

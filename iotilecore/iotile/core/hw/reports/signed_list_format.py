@@ -6,7 +6,7 @@ import hashlib
 import hmac
 from enum import IntEnum
 from .report import IOTileReport, IOTileReading
-from iotile.core.utilities.packed import unpack
+from struct import unpack
 from iotile.core.exceptions import NotFoundError, ExternalError
 from iotile.core.hw.auth.auth_provider import AuthProvider
 from iotile.core.hw.auth.auth_chain import ChainedAuthProvider

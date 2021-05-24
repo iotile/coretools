@@ -11,7 +11,7 @@ setup(
         "iotile-core>=5.0.0,<6",
         "iotile_cloud>=0.9.11,<2"
     ],
-    python_requires=">=3.5,<4",
+    python_requires=">=3.6,<4",
     entry_points={'iotile.config_function': ['link_cloud = iotile.cloud.config:link_cloud'],
                   'iotile.config_variables': ['iotile-ext-cloud = iotile.cloud.config:get_variables'],
                   'iotile.plugin': ['cloud = iotile.cloud.plugin:setup_plugin'],
@@ -28,9 +28,9 @@ setup(
         "License :: OSI Approved :: GNU Library or Lesser General Public License (LGPL)",
         "Operating System :: OS Independent",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
         "Topic :: Software Development :: Libraries :: Python Modules"
         ],
     long_description="""\

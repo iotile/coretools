@@ -13,7 +13,7 @@ import serial
 import serial.tools.list_ports
 from iotile_transport_bled112 import bgapi_structures
 from iotile.core.dev.config import ConfigManager
-from iotile.core.utilities.packed import unpack
+from struct import unpack
 from iotile.core.exceptions import HardwareError, NotFoundError
 from iotile.core.hw.reports import IOTileReportParser, IOTileReading, BroadcastReport
 from iotile.core.hw.transport.adapter import DeviceAdapter

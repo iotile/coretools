@@ -2,6 +2,10 @@
 
 All major changes in each released version of the native BLE transport plugin are listed here.
 
+## 3.0.1
+
+- Python compatibility set to 3.6-3.8 because of py35 EOL
+
 ## 3.0.0
 
 - Temporarily remove `virtual_ble` interface as it is ported to be a DeviceServer.

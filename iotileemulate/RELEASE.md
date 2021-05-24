@@ -2,6 +2,10 @@
 
 All major changes in each released version of iotile-emulate are listed here.
 
+## 0.5.3
+
+- Python compatibility set to 3.6-3.8 because of py35 EOL
+
 ## 0.5.2
 
 - Add support for `heartbeat` debug command to power HardwareManager `heartbeat`

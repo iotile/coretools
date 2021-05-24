@@ -4,7 +4,7 @@
 import os.path
 import sys
 import logging
-import imp
+import importlib.util
 import inspect
 import json
 from types import ModuleType
@@ -638,8 +638,12 @@ def _ensure_package_loaded(path, component):
     support_distro = component.support_distribution
     if support_distro not in sys.modules:
         logger.debug("Creating dynamic support wheel package: %s", support_distro)
-        file, path, desc = imp.find_module(os.path.basename(package_base), [os.path.dirname(package_base)])
-        imp.load_module(support_distro, file, path, desc)
+        spec = importlib.util.spec_from_file_location(os.path.basename(package_base), package_base)
+        if spec is None:
+            raise ExternalError("importlib cannot find module at this path", path=package_base)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[support_distro] = module
+        spec.loader.exec_module(module)
 
     return "{}.{}".format(support_distro, relative_path)
 
@@ -685,26 +689,24 @@ def _try_load_module(path, import_name=None):
     else:
         logger.debug("Importing module as subpackage: %s", import_name)
 
-    try:
-        fileobj = None
-        fileobj, pathname, description = imp.find_module(basename, [folder])
+    # Don't load modules twice
+    if basename in sys.modules:
+        mod = sys.modules[basename]
+    else:
+        spec = importlib.util.spec_from_file_location(basename, path)
+        if spec is None:
+            raise ArgumentError("importlib failed to find module at this location", path=path)
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules[basename] = mod
+        spec.loader.exec_module(mod)
 
-        # Don't load modules twice
-        if basename in sys.modules:
-            mod = sys.modules[basename]
-        else:
-            mod = imp.load_module(import_name, fileobj, pathname, description)
+    if obj_name is not None:
+        if obj_name not in mod.__dict__:
+            raise ArgumentError("Cannot find named object '%s' inside module '%s'" % (obj_name, basename), path=path)
 
-        if obj_name is not None:
-            if obj_name not in mod.__dict__:
-                raise ArgumentError("Cannot find named object '%s' inside module '%s'" % (obj_name, basename), path=path)
+        mod = mod.__dict__[obj_name]
 
-            mod = mod.__dict__[obj_name]
-
-        return basename, mod
-    finally:
-        if fileobj is not None:
-            fileobj.close()
+    return basename, mod
 
 
 # Update our default registry backing store appropriately
