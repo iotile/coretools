@@ -26,21 +26,16 @@ jobs:
         uses: actions/checkout@v2
       - name: "make gcc dir"
         run: mkdir c:\gcc
-
       - name: "Download gcc-arm"
-        run: |
-          curl -L -o gcc-arm-none-eabi.zip "https://developer.arm.com/-/media/Files/downloads/gnu-rm/7-2017q4/gcc-arm-none-eabi-7-2017-q4-major-win32.zip?revision=df1b65d3-7c8d-4e82-b114-e0b6ad7c2e6d?product=GNU%20Arm%20Embedded%20Toolchain,ZIP,,Windows,7-2017-q4-major"
-
+        run: curl -L -o gcc-arm-none-eabi.zip "https://developer.arm.com/-/media/Files/downloads/gnu-rm/7-2017q4/gcc-arm-none-eabi-7-2017-q4-major-win32.zip?revision=df1b65d3-7c8d-4e82-b114-e0b6ad7c2e6d?product=GNU%20Arm%20Embedded%20Toolchain,ZIP,,Windows,7-2017-q4-major"
       - name: "unzip gcc"
         run: unzip -o gcc-arm-none-eabi.zip -d c:\gcc\
-
       - name: 'Install dependencies'
         run: python -m pip install --upgrade pip && pip install -U setuptools tox
-
+      - name: 'Update PATH'
+        run: echo c:\gcc\bin >> $GITHUB_PATH
       - name: 'Run tests'
-        run: |
-          set PATH="%PATH%;c:\gcc\bin"
-          tox -r -e py3${{ matrix.python-minor }}-mac_windows
+        run: tox -r -e py3${{ matrix.python-minor }}-mac_windows
         
   test-macOS:
     name: test macOS py3${{ matrix.python-minor }}
