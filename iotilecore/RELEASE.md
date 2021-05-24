@@ -6,7 +6,7 @@ All major changes in each released version of `iotile-core` are listed here.
 
 - migrate from deprecated `imp` module to `importlib`
 - Python compatibility set to 3.6-3.8 because of py35 EOL
-
+- removed deprecated `iotile.core.utilities.packed` module
 
 ## 5.1.4
 
