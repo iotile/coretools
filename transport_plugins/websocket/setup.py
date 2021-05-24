@@ -13,7 +13,7 @@ setup(
         "websockets~=7.0",
         "iotile-transport-socket-lib>=1.0.0"
     ],
-    python_requires=">=3.5,<4",
+    python_requires=">=3.6,<4",
     entry_points={
         'iotile.device_adapter': [
             'ws = iotile_transport_websocket:WebSocketDeviceAdapter'
@@ -30,7 +30,6 @@ setup(
     classifiers=[
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",

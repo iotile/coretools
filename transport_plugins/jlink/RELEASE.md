@@ -3,6 +3,10 @@
 All major changes in each released version of the jlink transport plugin are
 listed here.
 
+## 1.1.3
+
+- Python compatibility set to 3.6-3.8 because of py35 EOL
+
 ## 1.1.2
 
 - Halt the device before injecting flash forensics blob

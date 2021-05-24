@@ -13,7 +13,7 @@ setup(
         "pylink-square>=0.1.3,<1",
         "pylibftdi>=0.17.0,<1"
     ],
-    python_requires=">=3.5,<4",
+    python_requires=">=3.6,<4",
     include_package_data=True,
     entry_points={'iotile.device_adapter': ['jlink = iotile_transport_jlink.jlink:JLinkAdapter']},
     description="IOTile JLINK Transport Plugin",
@@ -27,7 +27,6 @@ setup(
         "License :: OSI Approved :: GNU Library or Lesser General Public License (LGPL)",
         "Operating System :: OS Independent",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",

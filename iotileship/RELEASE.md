@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileShip are listed here.
 
+## 1.0.10
+
+- Python compatibility set to 3.6-3.8 because of py35 EOL
+
 ## 1.0.9
 
 - Add ability for iotile modules to create build_resource products

@@ -37,7 +37,6 @@ def test_passing_config(tmpdir):
     virtualdev_main(['null', 'realtime_test', '--config', config])
 
 
-@pytest.mark.skipif(sys.version_info < (3,5), reason="requires iotile-emulate on 3.5+")
 def test_tracking_state(tmpdir):
     """Make sure we can track changes to a device's state."""
 
@@ -48,7 +47,6 @@ def test_tracking_state(tmpdir):
     assert out_state.exists()
 
 
-@pytest.mark.skipif(sys.version_info < (3,5), reason="requires iotile-emulate on 3.5+")
 def test_scenario_loading(tmpdir):
     """Make sure we can load a scenario into a device."""
 
@@ -67,7 +65,6 @@ def test_scenario_loading(tmpdir):
     assert out_state.isfile()
 
 
-@pytest.mark.skipif(sys.version_info < (3,5), reason="requires iotile-emulate on 3.5+")
 def test_scenario_loading_list(tmpdir):
     """Make sure we can load a scenario into a device."""
 

@@ -11,7 +11,7 @@ def run_test(component, args):
 
     currdir = os.getcwd()
 
-    testcmd = ['pytest'] + list(args)
+    testcmd = ['pytest', '-vv'] + list(args)
     output_status = 0
 
     if sys.version_info.major >= 3 and not comp.py3k_clean:

@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileGateway are listed here.
 
+## 3.0.2
+
+- Python compatibility set to 3.6-3.8 because of py35 EOL
+
 ## 3.0.1
 
  - Small refactor due to iotile_transport_websocket refactor

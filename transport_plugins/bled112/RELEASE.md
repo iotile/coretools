@@ -2,6 +2,10 @@
 
 All major changes in each released version of the bled112 transport plugin are listed here.
 
+## 3.0.9
+
+- Python compatibility set to 3.6-3.8 because of py35 EOL
+
 ## 3.0.8
 
 - Added a connection map consisting of devices' connection string and uuid

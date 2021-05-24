@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileTest are listed here.
 
+## 2.0.3
+
+- Python compatibility set to 3.6-3.8 because of py35 EOL
+
 ## 2.0.2
 
 - migrate from deprecated `imp` module to `importlib`

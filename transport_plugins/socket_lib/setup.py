@@ -11,7 +11,7 @@ setup(
         "iotile-core>=5.0.0,<6",
         "msgpack>=0.6.1,<1"
     ],
-    python_requires=">=3.5,<4",
+    python_requires=">=3.6,<4",
     entry_points={
         'iotile.device_adapter': [
             'unix = iotile_transport_socket_lib.unix_socket:UnixSocketDeviceAdapter',
@@ -30,7 +30,6 @@ setup(
     classifiers=[
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
