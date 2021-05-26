@@ -26,7 +26,8 @@ jobs:
         uses: actions/checkout@v2
       - name: Install dependencies
         run: |
-          sudo apt-get update && apt-get install -y gcc-arm-none-eabi
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-none-eabi
           python -m pip install --upgrade pip && pip install --upgrade -r build_requirements.txt
       - name: Set up xPack QEMU ARM
         run: |
