@@ -43,7 +43,10 @@ class ParsedCFile(object):
         # args.append('-mcpu=%s' % self.arch.property('chip'))
         args.append('-E')
         args.append('-D__attribute__(x)=')
+        args.append('-D__builtin_va_list=int')
         args.append('-D__extension__=')
+        # Next time you see `pycparser.plyparser.ParseError` - add whatever errs into defs above
+        # or consider biting the bullet and pulling in `utils/fake_libc_include` already.
         self.ast = parse_file(self.filepath, use_cpp=True, cpp_path='arm-none-eabi-gcc', cpp_args=args)
 
     def defined_functions(self, criterion=lambda x: True):

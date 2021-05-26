@@ -12,8 +12,10 @@ import subprocess
 DESCRIPTION = \
     """IOTile application emulator.
     
-    This program can load and run iotile applications on a modified
-    qemu emulator
+    This program can load and run iotile applications on an xPack QEMU Arm emulator.
+    Download last version for the HOST arch (x64?) here: https://github.com/xpack-dev-tools/qemu-arm-xpack/releases/
+    To install, unpack the archive anywhere and add `xpack-qemu-arm-<version>/bin` to PATH.
+    Run `qemu-system-gnuarmeclipse -v` to verify installation success.
     """
 
 
