@@ -2,6 +2,10 @@
 
 All major changes in each released version of IOTileBuild are listed here.
 
+## 3.1.0
+
+- Unbundle SCons
+
 ## 3.0.17
 
 - Python compatibility set to 3.6-3.8 because of py35 EOL

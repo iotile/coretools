@@ -14,7 +14,7 @@ import os
 import sys
 import subprocess
 
-from SCons.Script import *
+from SCons.Script import Action, Alias, Copy, Default,Exit, Environment
 
 import utilities
 import unit_test

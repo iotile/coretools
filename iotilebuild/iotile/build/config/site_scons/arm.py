@@ -1,8 +1,6 @@
 # This file is copyright Arch Systems, Inc.
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
-from SCons.Script import *
-from SCons.Environment import Environment
 import itertools
 import platform
 import os.path
@@ -15,6 +13,8 @@ from iotile.core.exceptions import BuildError
 from iotile.core.utilities.intelhex import IntelHex
 import os
 from dependencies import load_dependencies
+from SCons.Environment import Environment
+from SCons.Script import Action, Clean, Depends, SConscript, VariantDir
 
 
 def build_program(tile, elfname, chip, patch=True, objcopy_flags=""):

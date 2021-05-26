@@ -19,26 +19,24 @@
 from setuptools import setup, find_packages
 import version
 
-embedded_scons = "3.0.5"
-
 setup(
     name="iotile-build",
     packages=find_packages(exclude=("test",)),
     version=version.version,
     license="LGPLv3",
     install_requires=[
+        "breathe~=4.14.1",
         "crcmod>=1.7.0",
         "iotile-core>=5.0.13,<6",
-        "sphinx>=2,<3",
         "jinja2>=2.10.0,<3",
-        #"breathe>=4.11.0,<5",
-        "breathe~=4.14.1",
         "pygtrie>=2.0.0,<3",
-        "toposort>=1.5.0,<2",
-        "wheel>=0.33",
         "setuptools>=40.8",
+        "sphinx>=2,<3",
+        "toposort>=1.5.0,<2",
         "pycparser>=2.17,<3",
-        "pyparsing~=2.2.0"
+        "pyparsing~=2.2.0",
+        "scons>=4.1.0",
+        "wheel>=0.33",
     ],
     python_requires=">=3.6,<4",
     include_package_data=True,
@@ -71,8 +69,5 @@ IOTileBuild
 -----------
 
 A python package for building embedded firmware on IOTile based devices.  See https://www.arch-iot.com.
-
-IOTileBuild embeds SCons in accordance with its license permitting redistribution.  More information on
-SCons can be found at: https://scons.org
 """
 )
