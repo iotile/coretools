@@ -1,7 +1,6 @@
 """Routines for building trub scripts."""
 
 import os
-from SCons.Script import Environment, Action
 from arm import ensure_image_is_hex
 from iotile.core.exceptions import BuildError
 from iotile.core.hw.update.records import ReflashTileRecord, ReflashControllerRecord, EnhancedReflashControllerRecord, SetDeviceTagRecord, SendRPCRecord
@@ -12,6 +11,7 @@ from iotile.sg.output_formats.script import format_script
 from iotile.sg.update.setconfig_record import SetConfigRecord
 from iotile.core.hw.update.script import UpdateScript
 from iotile.core.hw.update.record import UpdateRecord
+from SCons.Script import Action, Environment
 
 
 def build_update_script(file_name, slot_assignments=None, os_info=None, sensor_graph=None,

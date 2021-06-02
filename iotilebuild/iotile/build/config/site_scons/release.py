@@ -1,8 +1,6 @@
 # This file is copyright Arch Systems, Inc.
 # Except as otherwise provided in the relevant LICENSE file, all rights are reserved.
 
-from SCons.Script import *
-from SCons.Environment import Environment
 import os.path
 import utilities
 from iotile.build.build import ProductResolver
@@ -11,6 +9,8 @@ import os
 import datetime
 import json
 import pygtrie
+from SCons.Environment import Environment
+from SCons.Script import Copy
 
 
 def create_release_settings_action(target, source, env):

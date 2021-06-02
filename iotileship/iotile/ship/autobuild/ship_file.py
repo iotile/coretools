@@ -5,12 +5,12 @@ should not be imported independently.  It is only for use inside SConstruct
 files."""
 import os
 import imp
-import inspect
-from SCons.Script import Environment, Copy, Action
+
 from iotile.build.build import ProductResolver, ArchitectureGroup
 from iotile.build.utilities import render_template_inplace
 from iotile.core.exceptions import BuildError
 from ..recipe_manager import RecipeManager
+from SCons.Script import Action, Copy, Environment
 
 def autobuild_shiparchive(src_file):
     """Create a ship file archive containing a yaml_file and its dependencies.

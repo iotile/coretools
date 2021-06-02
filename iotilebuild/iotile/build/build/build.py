@@ -9,18 +9,17 @@
 # build.py
 # Return the build settings json file.
 
-import sys
+from collections import namedtuple
 from copy import deepcopy
 import itertools
 import os
-from collections import namedtuple
-from typedargs.annotate import takes_cmdline
+import sys
+
 from iotile.core.exceptions import BuildError, InternalError, ArgumentError, DataError
 from iotile.core.dev.iotileobj import IOTile
 from iotile.build.utilities import resource_path
-
-SCONS_VERSION = "3.0.5"
-
+import SCons.Script
+from typedargs.annotate import takes_cmdline
 
 @takes_cmdline
 def build(args):
@@ -28,17 +27,6 @@ def build(args):
     Invoke the scons build system from the current directory, exactly as if
     the scons tool had been invoked.
     """
-
-    # Do some sleuthing work to find scons if it's not installed into an importable
-    # place, as it is usually not.
-    scons_path = "Error"
-    try:
-        scons_path = resource_path('scons-local-{}'.format(SCONS_VERSION), expect='folder')
-        sys.path.insert(0, scons_path)
-        import SCons.Script
-    except ImportError:
-        raise BuildError("Couldn't find internal scons packaged w/ iotile-build. This is a bug that should be reported",
-                         scons_path=scons_path)
 
     site_path = resource_path('site_scons', expect='folder')
 

@@ -7,12 +7,12 @@ import glob
 import subprocess
 import setuptools.sandbox
 
-from SCons.Script import *
 from docbuild import *
 from release import *
 from dependencies import find_dependency_wheels, _iter_dependencies
 from iotile.build.utilities import render_template
 from iotile.core.exceptions import *
+from SCons.Script import Action, Copy, Delete, Environment, Mkdir, Touch
 
 
 ENTRY_POINT_MAP = {

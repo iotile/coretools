@@ -10,10 +10,11 @@
 
 import os.path
 import os
-from SCons.Environment import Environment
 import test_summary
 import fnmatch
+
 from iotile.core.exceptions import *
+from SCons.Environment import Environment
 
 known_types = {}
 

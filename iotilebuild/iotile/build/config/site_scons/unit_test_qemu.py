@@ -2,11 +2,11 @@ import subprocess
 import unit_test
 import os
 import arm
-from SCons.Environment import Environment
-from SCons.Script import Copy, Builder
 from iotile.core.exceptions import BuildError
 from iotile.build.utilities import render_recursive_template, render_template_inplace
 from cfileparser import ParsedCFile
+from SCons.Environment import Environment
+from SCons.Script import Builder, Copy
 
 
 class QEMUSemihostedUnitTest(unit_test.UnitTest):
