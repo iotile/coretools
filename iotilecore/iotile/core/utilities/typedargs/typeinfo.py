@@ -1,1 +1,0 @@
-from typedargs.typeinfo import *

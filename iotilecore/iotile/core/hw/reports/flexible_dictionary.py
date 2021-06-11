@@ -76,13 +76,13 @@ class FlexibleDictionaryReport(IOTileReport):
             "data": reading_list
         }
 
-        encoded = msgpack.packb(report_dict, default=_encode_datetime, use_bin_type=True)
+        encoded = msgpack.packb(report_dict, default=_encode_datetime)
         return FlexibleDictionaryReport(encoded, signed=False, encrypted=False, received_time=received_time)
 
     def decode(self):
         """Decode this report from a msgpack encoded binary blob."""
 
-        report_dict = msgpack.unpackb(self.raw_report, raw=False)
+        report_dict = msgpack.unpackb(self.raw_report)
 
         events = [IOTileEvent.FromDict(x) for x in report_dict.get('events', [])]
         readings = [IOTileReading.FromDict(x) for x in report_dict.get('data', [])]

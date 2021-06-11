@@ -1,5 +1,5 @@
 from iotile.core.hw.proxy.proxy import TileBusProxyObject
-from iotile.core.utilities.typedargs import context
+from typedargs import context
 
 @context("TestProxy2")
 class TestTileProxy2(TileBusProxyObject):

@@ -7,10 +7,10 @@ setup(
     version=version.version,
     license="LGPLv3",
     install_requires=[
-        "iotile-core>=5.0.0,<6",
-        "pyserial>=3.4.0,<4"
+        "iotile-core>=5.2",
+        "pyserial>=3.5",
     ],
-    python_requires=">=3.6,<4",
+    python_requires=">=3.7,<4",
     entry_points={'iotile.device_adapter': ['bled112 = iotile_transport_bled112.bled112:BLED112Adapter'],
                   'iotile.device_server': ['bled112 = iotile_transport_bled112.server_bled112:BLED112Server'],
                   'iotile.config_variables': ['bled112 = iotile_transport_bled112.config_variables:get_variables']},
@@ -25,9 +25,9 @@ setup(
         "License :: OSI Approved :: GNU Library or Lesser General Public License (LGPL)",
         "Operating System :: OS Independent",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
         "Topic :: Software Development :: Libraries :: Python Modules"
         ],
     long_description="""\

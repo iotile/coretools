@@ -22,11 +22,11 @@ setup(
     version=version.version,
     license="LGPLv3",
     install_requires=[
-        "iotile-core>=5.0.13,<6",
-        "pyaml>=18.11.0,<19",
-        "pyyaml>5.1,<6"
+        "iotile-core>=5.2",
+        "pyaml>=20",
+        "pyyaml>5.4",
     ],
-    python_requires=">=3.6,<4",
+    python_requires=">=3.7,<4",
     include_package_data=True,
     entry_points={
         'console_scripts': [
@@ -61,9 +61,9 @@ setup(
         "License :: OSI Approved :: GNU Library or Lesser General Public License (LGPL)",
         "Operating System :: OS Independent",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
         "Topic :: Software Development :: Libraries :: Python Modules"
         ],
     long_description="""\

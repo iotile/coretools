@@ -8,7 +8,7 @@
 
 import sys
 from time import time
-from iotile.core.utilities.typedargs import type_system
+from typedargs import type_system
 
 
 class ProgressBar:

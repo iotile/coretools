@@ -113,22 +113,19 @@ def parse_string_descriptor(string_desc):
         with_other = parsed['with_other']
         auto = False
 
-    dest = SlotIdentifier.FromString('controller')
-    if 'explicit_tile' in parsed:
-        dest = parsed['explicit_tile']
+    dest = parsed.get('explicit_tile', SlotIdentifier.FromString('controller'))
 
     selector = parsed['selector']
 
     # Make sure all of the combination are valid
-    if realtime and (encrypted or signed):
-        raise SensorGraphSemanticError("Realtime streamers cannot be either signed or encrypted")
+    if encrypted or signed:
+        if realtime:
+            raise SensorGraphSemanticError("Realtime streamers cannot be either signed or encrypted")
 
-    if broadcast and (encrypted or signed):
-        raise SensorGraphSemanticError("Broadcast streamers cannot be either signed or encrypted")
+        if broadcast:
+            raise SensorGraphSemanticError("Broadcast streamers cannot be either signed or encrypted")
 
     report_type = 'broadcast' if broadcast else 'telegram'
-    dest = dest
-    selector = selector
 
     if realtime or broadcast:
         report_format = u'individual'

@@ -1,3 +1,3 @@
-iotile-core>=5.0.0,<6
+iotile-core>=5.2.0
 pyserial>=3.4.0,<4
 iotile_transport_bled112>=3.0.0<4

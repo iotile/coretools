@@ -190,7 +190,7 @@ This makes sense because we haven't created the proxy module yet.  So, lets crea
 following to ``demo_proxy.py`` (make sure this file is within the ``python`` subfolder)::
 
     from iotile.core.hw.proxy.proxy import TileBusProxyObject
-    from iotile.core.utilities.typedargs.annotate import return_type, context, param
+    from typedargs.annotate import return_type, context, param
     import struct
 
     @context("DemoProxy")

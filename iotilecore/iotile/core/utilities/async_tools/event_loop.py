@@ -414,8 +414,8 @@ class BackgroundEventLoop:
         # In some cases, tasks may not properly register or cancel their subtasks.
         # This catches that in development, and also in deployment when there are third-party libraries
         # that have this fault (such as hbmqtt)
-        tasks = [task for task in asyncio.Task.all_tasks() if task is not
-                 asyncio.tasks.Task.current_task() and not task.done()]
+        tasks = [task for task in asyncio.all_tasks() if task is not
+                 asyncio.current_task() and not task.done()]
         list(map(lambda task: task.cancel(), tasks))
         for task in tasks:
             self._logger.debug("A task wasn't properly registered/cancelled as expected: %s", task)

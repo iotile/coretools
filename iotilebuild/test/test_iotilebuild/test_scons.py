@@ -19,7 +19,7 @@ from zipfile import ZipFile
 from configparser import ConfigParser
 from distutils.spawn import find_executable
 from iotile.core.dev import ComponentRegistry, IOTile
-from iotile.core.utilities.intelhex import IntelHex
+from intelhex import IntelHex
 from iotile.core.exceptions import *
 from iotile.core.hw.update.script import UpdateScript
 

@@ -2,8 +2,8 @@
 # A wrapper to make the IOTile component registry accessible in the iotile
 # tool.  Since the registry is used internally in the type system it cannot
 # itself make use of typedargs annotations
-from iotile.core.utilities.typedargs import annotated, param, return_type, context
-from iotile.core.utilities.typedargs.annotate import docannotate
+from typedargs import context
+from typedargs.annotate import docannotate
 from iotile.core.exceptions import ExternalError
 from iotile.core.hw.auth.inmemory_auth_provider import InMemoryAuthProvider
 from .registry import ComponentRegistry

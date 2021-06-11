@@ -25,11 +25,12 @@ setup(
     version=version.version,
     license="LGPLv3",
     install_requires=[
-        "python-dateutil>=2.8.0,<3",
-        "typedargs>=1.0.0,<2",
-        "entrypoints>=0.3.0,<1",
-        "msgpack>=0.6.1,<1",
         "crcmod>=1.7,<2",
+        "entrypoints>=0.3.0,<1",
+        "intelhex>=2.3",
+        "msgpack>=1",
+        "python-dateutil>=2.8",
+        "typedargs>=1.1.2",
     ],
     extras_require={
         'ui': ["asciimatics>=1.10.0,<2"]
@@ -80,16 +81,16 @@ setup(
     author_email="info@arch-iot.com",
     url="https://github.com/iotile/coretools/iotilecore",
     keywords=["iotile", "arch", "embedded", "hardware"],
-    python_requires=">=3.6, <4",
+    python_requires=">=3.7, <4",
     classifiers=[
         "Programming Language :: Python",
         "Development Status :: 5 - Production/Stable",
         "License :: OSI Approved :: GNU Library or Lesser General Public License (LGPL)",
         "Operating System :: OS Independent",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
         "Topic :: Software Development :: Libraries :: Python Modules"
         ],
     long_description="""\

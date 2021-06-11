@@ -1,8 +1,6 @@
 """Virtual Tile for testing TileBasedVirtualDevice."""
 
 from iotile.core.hw.virtual import VirtualTile, tile_rpc
-from iotile.core.hw.proxy.proxy import TileBusProxyObject
-from iotile.core.utilities.typedargs import param, return_type, context
 
 
 class TestTile(VirtualTile):

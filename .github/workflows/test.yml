@@ -12,7 +12,7 @@ jobs:
     strategy:
       max-parallel: 3
       matrix:
-        python-minor: [6, 7, 8]
+        python-minor: [9, 8, 7]
 
     steps:
       - name: Cancel duplicate jobs
@@ -28,7 +28,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc-arm-none-eabi
-          python -m pip install --upgrade pip && pip install --upgrade -r build_requirements.txt
+          python -m pip install --upgrade pip wheel && pip install --upgrade -r build_requirements.txt
       - name: Set up xPack QEMU ARM
         run: |
           wget https://github.com/xpack-dev-tools/qemu-arm-xpack/releases/download/v2.8.0-12/xpack-qemu-arm-2.8.0-12-linux-x64.tar.gz
@@ -48,7 +48,7 @@ jobs:
     strategy:
       max-parallel: 3
       matrix:
-        python-minor: [6, 7, 8]
+        python-minor: [9, 8, 7]
 
     steps:
       - name: Cancel duplicate jobs
@@ -67,7 +67,7 @@ jobs:
           which arm-none-eabi-gcc
 
       - name: Install dependencies
-        run: python -m pip install --upgrade pip && pip install --upgrade -r build_requirements.txt
+        run: python -m pip install --upgrade pip wheel && pip install --upgrade -r build_requirements.txt
 
       - name: Run tests
         run: tox -r -e py3${{ matrix.python-minor }}-mac_windows
@@ -79,7 +79,7 @@ jobs:
     strategy:
       max-parallel: 3
       matrix:
-        python-minor: [6, 7, 8]
+        python-minor: [9, 8, 7]
 
     steps:
       - name: Cancel duplicate jobs
@@ -98,6 +98,6 @@ jobs:
           unzip -o gcc-arm-none-eabi.zip -d c:\gcc\
           echo c:\gcc\bin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Install dependencies
-        run: python -m pip install --upgrade pip && pip install --upgrade -r build_requirements.txt
+        run: python -m pip install --upgrade pip wheel && pip install --upgrade -r build_requirements.txt
       - name: Run tests
         run: tox -r -e py3${{ matrix.python-minor }}-mac_windows

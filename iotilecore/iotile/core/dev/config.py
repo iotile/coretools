@@ -21,7 +21,7 @@ import fnmatch
 from collections import namedtuple
 from iotile.core.dev.registry import ComponentRegistry
 from iotile.core.exceptions import ArgumentError, ExternalError
-from iotile.core.utilities.typedargs import context, param, return_type, stringable, type_system
+from typedargs import context, param, return_type, stringable, type_system
 
 MISSING = object()
 ConfigVariable = namedtuple("ConfigVariable", ['name', 'type', 'description', 'default'])

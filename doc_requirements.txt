@@ -1,7 +1,7 @@
+entrypoints>=0.3.0
 tornado>=4.5.3
 ws4py>=0.5.1
-websockets
-msgpack>=0.6.1
-python-dateutil>=2.6.0
-typedargs>=1.0.0
-entrypoints>=0.3.0
+websockets>=9.1
+msgpack>=1
+python-dateutil>=2.8
+typedargs>=1.1.2
