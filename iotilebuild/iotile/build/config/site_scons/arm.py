@@ -10,7 +10,7 @@ from iotile.build.tilebus.descriptor import TBDescriptor
 import struct
 from iotile.core.dev.config import ConfigManager
 from iotile.core.exceptions import BuildError
-from iotile.core.utilities.intelhex import IntelHex
+from intelhex import IntelHex
 import os
 from dependencies import load_dependencies
 from SCons.Environment import Environment

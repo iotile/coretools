@@ -2,9 +2,13 @@
 
 All major changes in each released version of `iotile-core` are listed here.
 
-## HEAD
+## 5.2.0
 
 - removed deprecated `iotile.core.utilities.packed` module
+- removed redistributed `intelhex` module
+- removed duplicate of `typedargs` module from `utilities`
+- removed support for python 3.6
+- Python 3.9 support
 
 ## 5.1.5
 

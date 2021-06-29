@@ -22,7 +22,10 @@ setup(
     version=version.version,
     license="LGPLv3",
     description="IOTile Test Infrastructure",
-    python_requires=">=3.6,<4",
+    install_requires=[
+        "iotile-core>=5.2",
+    ],
+    python_requires=">=3.7,<4",
     entry_points={'iotile.virtual_device': ['simple = iotile.mock.devices.simple_virtual_device:SimpleVirtualDevice',
                                             'report_test = iotile.mock.devices.report_test_device:ReportTestDevice',
                                             'realtime_test = iotile.mock.devices.realtime_test_device:RealtimeTestDevice',
@@ -43,9 +46,9 @@ setup(
         "Operating System :: OS Independent",
         "Topic :: Software Development :: Libraries :: Python Modules",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
         ],
     long_description="""\
 IOTileTest

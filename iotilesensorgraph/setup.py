@@ -23,11 +23,11 @@ setup(
     license="LGPLv3",
     description="IOTile SensorGraph Management and Simulation Package",
     install_requires=[
-        "pyparsing~=2.2.0",
-        "toposort>=1.5,<2",
-        "iotile-core>=5.0.0,<6"
+        "iotile-core>=5.2",
+        "pyparsing~=2.2.0",  # Bugfix in 2.2.2 breaks things
+        "toposort>=1.6",
     ],
-    python_requires=">=3.6,<4",
+    python_requires=">=3.7,<4",
     entry_points={'iotile.sg_processor': ['copy_all_a = iotile.sg.processors:copy_all_a',
                                           'copy_latest_a = iotile.sg.processors:copy_latest_a',
                                           'copy_count_a = iotile.sg.processors:copy_count_a',
@@ -56,8 +56,9 @@ setup(
         "License :: OSI Approved :: GNU Library or Lesser General Public License (LGPL)",
         "Operating System :: OS Independent",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
         "Topic :: Software Development :: Libraries :: Python Modules"
         ],
     long_description="""\

@@ -296,7 +296,7 @@ class DebugManager:
     def _process_hex(cls, in_path):
         """This function returns a list of base addresses and a list of the binary data for each segment."""
 
-        from iotile.core.utilities.intelhex import IntelHex
+        from intelhex import IntelHex
 
         ihex           = IntelHex(in_path)
         segments       = ihex.segments()
@@ -324,7 +324,7 @@ class DebugManager:
     @classmethod
     def _process_bin(cls, in_path):
 
-        from iotile.core.utilities.intelhex import IntelHex
+        from intelhex import IntelHex
 
         ihex = IntelHex()
         ihex.loadbin(in_path)

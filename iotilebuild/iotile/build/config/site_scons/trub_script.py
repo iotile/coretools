@@ -5,7 +5,7 @@ from arm import ensure_image_is_hex
 from iotile.core.exceptions import BuildError
 from iotile.core.hw.update.records import ReflashTileRecord, ReflashControllerRecord, EnhancedReflashControllerRecord, SetDeviceTagRecord, SendRPCRecord
 from iotile.build.build import ProductResolver
-from iotile.core.utilities.intelhex import IntelHex
+from intelhex import IntelHex
 from iotile.sg.compiler import compile_sgf
 from iotile.sg.output_formats.script import format_script
 from iotile.sg.update.setconfig_record import SetConfigRecord

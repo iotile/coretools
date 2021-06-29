@@ -1,8 +1,7 @@
 from iotile.core.hw.hwmanager import HardwareManager
-from iotile.core.hw.virtual import VirtualTile
 from iotile.core.hw.proxy.proxy import TileBusProxyObject
-from iotile.core.dev.semver import SemanticVersionRange, SemanticVersion
-from iotile.core.utilities.typedargs import context
+from iotile.core.dev.semver import SemanticVersionRange
+from typedargs import context
 from iotile.core.dev import ComponentRegistry
 import pytest
 import os

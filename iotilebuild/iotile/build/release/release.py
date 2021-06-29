@@ -1,7 +1,7 @@
 """Tools for automatically releasing built IOTile components"""
 
 from iotile.core.dev import IOTile, ComponentRegistry
-from iotile.core.utilities.typedargs import param
+from typedargs import param
 from iotile.core.exceptions import ArgumentError, DataError, BuildError, IOTileException
 
 

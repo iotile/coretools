@@ -9,9 +9,9 @@
 # MIB Proxy Objects
 from time import sleep
 import struct
-from iotile.core.hw.exceptions import RPCInvalidReturnValueError, BusyRPCResponse, RPCError, RPCInvalidArgumentsError, TileNotFoundError
+from iotile.core.hw.exceptions import BusyRPCResponse, RPCInvalidArgumentsError, TileNotFoundError
 from iotile.core.exceptions import HardwareError, ArgumentError
-from iotile.core.utilities.typedargs import return_type, annotated, param, context
+from typedargs import return_type, annotated, param, context
 from ..virtual import pack_rpc_payload, unpack_rpc_payload
 
 

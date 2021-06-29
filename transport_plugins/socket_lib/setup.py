@@ -8,10 +8,10 @@ setup(
     version=version.version,
     license="LGPLv3",
     install_requires=[
-        "iotile-core>=5.0.0,<6",
-        "msgpack>=0.6.1,<1"
+        "iotile-core>=5.2",
+        "msgpack>=1",
     ],
-    python_requires=">=3.6,<4",
+    python_requires=">=3.7,<4",
     entry_points={
         'iotile.device_adapter': [
             'unix = iotile_transport_socket_lib.unix_socket:UnixSocketDeviceAdapter',
@@ -30,9 +30,9 @@ setup(
     classifiers=[
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
         "Development Status :: 3 - Alpha",
         "License :: OSI Approved :: GNU Library or Lesser General Public License (LGPL)",
         "Operating System :: OS Independent",

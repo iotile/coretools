@@ -13,7 +13,7 @@ from iotile.core.dev.registry import ComponentRegistry
 from iotile.core.dev.config import ConfigManager
 from iotile.core.hw.reports import IndividualReadingReport, SignedListReport, FlexibleDictionaryReport
 from iotile.core.exceptions import ArgumentError, ExternalError, DataError
-from iotile.core.utilities.typedargs import context, param, return_type, annotated, type_system
+from typedargs import context, param, return_type, annotated, type_system
 from .utilities import device_id_to_slug, fleet_id_to_slug
 
 Acknowledgement = namedtuple("Acknowledgement", ["index", "ack", "selector"])

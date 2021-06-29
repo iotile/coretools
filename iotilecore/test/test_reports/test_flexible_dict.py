@@ -49,8 +49,8 @@ def test_decoding_flexible_report():
         ]
     }
 
-    encoded = msgpack.packb(data, use_bin_type=True)
-    decoded = msgpack.unpackb(encoded, raw=False)
+    encoded = msgpack.packb(data)
+    decoded = msgpack.unpackb(encoded)
     report = FlexibleDictionaryReport(encoded, False, False)
 
     assert len(report.visible_readings) == 0

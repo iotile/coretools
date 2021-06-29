@@ -9,7 +9,6 @@ from typedargs.typeinfo import type_system, iprint
 
 def load_external_components(typesys):
     """Load all external types defined by iotile plugins.
-
     This allows plugins to register their own types for type annotations and
     allows all registered iotile components that have associated type libraries to
     add themselves to the global type system.

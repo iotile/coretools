@@ -1,4 +1,4 @@
-from iotile.core.utilities.typedargs import context, annotated, param, return_type, iprint
+from typedargs import param
 from .resolverchain import DependencyResolverChain
 from iotile.core.dev.semver import SemanticVersionRange
 

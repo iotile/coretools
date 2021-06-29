@@ -1,5 +1,5 @@
 from iotile.core.hw.proxy.proxy import TileBusProxyObject
-from iotile.core.utilities.typedargs.annotate import annotated,param,return_type, context
+from typedargs.annotate import context
 
 
 @context("SimpleProxy")

@@ -4,7 +4,7 @@ import getpass
 import urllib3
 from iotile.core.dev.registry import ComponentRegistry
 from iotile.cloud.cloud import IOTileCloud
-from iotile.core.utilities.typedargs import param
+from typedargs import param
 from iotile.core.exceptions import ArgumentError
 from iotile_cloud.api.connection import Api
 

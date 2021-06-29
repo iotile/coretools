@@ -7,13 +7,13 @@ import msgpack
 def unpack(message):
     """Unpack a binary msgpacked message."""
 
-    return msgpack.unpackb(message, raw=False, object_hook=_decode_datetime)
+    return msgpack.unpackb(message, object_hook=_decode_datetime)
 
 
 def pack(message):
     """Pack a message into a binary packed message with datetime handling."""
 
-    return msgpack.packb(message, use_bin_type=True, default=_encode_datetime)
+    return msgpack.packb(message, default=_encode_datetime)
 
 
 def _decode_datetime(obj):
