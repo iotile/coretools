@@ -47,9 +47,9 @@ jobs:
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
           # Uncomment these for debugging and publishing to test PyPI
-          repository_url: https://test.pypi.org/legacy/
-          skip_existing: true
-          verbose: true
+          # repository_url: https://test.pypi.org/legacy/
+          # skip_existing: true
+          # verbose: true
 
       - name: Spam slack (#ci-releases)
         if: always()
