@@ -1,0 +1,76 @@
+name: "Build and Publish to PyPI"
+
+on:
+  release:
+    types:
+      - published
+
+env:
+  PYTHON_VERSION: 3.9
+
+jobs:
+  upload_pypi:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Cancel duplicate jobs
+        uses: styfle/cancel-workflow-action@0.9.0
+        if: ${{ !env.ACT }}
+
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Parse module name
+        run: |
+          module=$(echo ${{ github.event.release.tag_name }} | cut -d- -f1)
+          echo "MODULE_NAME=$module" >> $GITHUB_ENV
+
+      - name: Install dependencies
+        run: pip install -r build_requirements.txt
+
+      - name: Build package
+        run: |
+          cd ${{ env.MODULE_NAME }}
+          python setup.py sdist bdist_wheel
+          mv dist ..
+
+      - name: Validate package
+        id: validate
+        run: python scripts/validate_and_get_relnotes.py >> $GITHUB_ENV
+        env:
+          EVENT: ${{ toJSON(github.event) }}
+
+      - uses: pypa/gh-action-pypi-publish@v1.4.2
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          # Uncomment these for debugging and publishing to test PyPI
+          repository_url: https://test.pypi.org/legacy/
+          skip_existing: true
+          verbose: true
+
+      - name: Spam slack (#ci-releases)
+        if: always()
+        uses: 8398a7/action-slack@v3
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_CI_RELEASES_WEBHOOK }}
+        with:
+          status: custom
+          custom_payload: |
+            {
+              text: "Publishing `${{ github.event.release.tag_name }}` to PyPI..",
+              attachments: [
+                {
+                  color: '${{ job.status }}' === 'success' ? 'good' : '${{ job.status }}' === 'failure' ? 'danger' : 'warning',
+                  fallback: "what happened",
+                  text: `*${{ job.status }}* publishing ${process.env.AS_REPO}@${process.env.AS_COMMIT}`,
+                },
+                {
+                  fallback: "release notes",
+                  pretext: "Notes for `${{ github.event.release.tag_name }}`:",
+                  text: "${{ env.VALIDATION_NOTES }}",
+                },
+              ]
+            }

@@ -2,6 +2,4 @@ setuptools>=40.8.0
 wheel
 pip
 tox
-twine==1.11.0
 requests >= 2.21.0
-cmdln >= 2.0.0
