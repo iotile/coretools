@@ -33,9 +33,10 @@ jobs:
 
       - name: Build package
         run: |
+          checkout_dir=$(pwd)
           cd ${{ env.MODULE_NAME }}
           python setup.py sdist bdist_wheel
-          mv dist ..
+          mv dist $checkout_dir
 
       - name: Validate package
         id: validate
