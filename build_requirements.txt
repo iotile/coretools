@@ -3,3 +3,4 @@ wheel
 pip
 tox
 requests >= 2.21.0
+cmdln >= 2.0.0
